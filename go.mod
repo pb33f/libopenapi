@@ -1,4 +1,4 @@
-module github.com/pb33f
+module github.com/pb33f/libopenapi
 
 go 1.18
 
