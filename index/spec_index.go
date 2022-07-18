@@ -1,7 +1,7 @@
 // Copyright 2022 Dave Shanley / Quobix
 // SPDX-License-Identifier: MIT
 
-package datamodel
+package index
 
 import (
     "errors"

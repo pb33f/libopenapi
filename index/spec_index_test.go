@@ -1,4 +1,4 @@
-package datamodel
+package index
 
 import (
     "github.com/stretchr/testify/assert"
