@@ -1,0 +1,58 @@
+paths:
+  /burgers:
+    post:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Nine'
+components:
+  schemas:
+    One:
+      description: "test one"
+      properties:
+        things:
+          "$ref": "#/components/schemas/Two"
+    Two:
+      decription: "test two"
+      properties:
+        testThing:
+          "$ref": "#/components/schemas/One"
+        anyOf:
+          - "$ref": "#/components/schemas/Four"
+    Three:
+      description: "test three"
+      properties:
+        tester:
+          "$ref": "#/components/schemas/Four"
+        bester:
+          "$ref": "#/components/schemas/Seven"
+        yester:
+          "$ref": "#/components/schemas/Seven"
+    Four:
+      desription: "test four"
+      properties:
+        lemons:
+          "$ref": "#/components/schemas/Nine"
+    Five:
+      properties:
+        rice:
+          "$ref": "#/components/schemas/Six"
+    Six:
+      properties:
+        mints:
+          "$ref": "#/components/schemas/Nine"
+    Seven:
+      properties:
+        wow:
+          "$ref": "#/components/schemas/Three"
+    Nine:
+      description: done.
+    Ten:
+      properties:
+        yeah:
+          "$ref": "#/components/schemas/Ten"
+
+
+
+
