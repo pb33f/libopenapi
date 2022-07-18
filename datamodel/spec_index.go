@@ -6,7 +6,7 @@ package datamodel
 import (
     "errors"
     "fmt"
-    "github.com/pb33f/libopenapi/libopenapi/utils"
+    "github.com/pb33f/libopenapi/utils"
     "github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
     "gopkg.in/yaml.v3"
     "io/ioutil"
