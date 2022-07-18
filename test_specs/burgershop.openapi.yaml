@@ -10,8 +10,8 @@ info:
     name: Quobix
   version: "1.2"
 tags:
-  - name: "pizza"
-    description: false
+  - name: "Burgers"
+    description: "All kinds of yummy burgers."
     externalDocs:
       description: "Find out more"
       url: "https://quobix.com/"
@@ -27,7 +27,7 @@ paths:
     post:
       operationId: createBurger
       tags:
-        - "Meat"
+        - "Burgers"
       summary:  Create a new burger
       description: A new burger for our menu, yummy yum yum.
       requestBody:
@@ -35,7 +35,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: 'https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/burgershop.openapi.yaml#/components/schemas/Burger'
+              $ref: '#/components/schemas/Burger'
             examples:
               pbjBurger:
                 summary: A horrible, nutty, sticky mess.
@@ -53,18 +53,29 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/burgershop.openapi.yaml#/components/schemas/Burger'
+                $ref: '#/components/schemas/Burger'
               examples:
                 quarterPounder:
-                  summary: A juicy two handler sammich
+                  summary: a yummy tasty two patty burger, filled with beefy goodness.
                   value:
                     name: Quarter Pounder with Cheese
                     numPatties: 1
                 filetOFish:
-                  summary: A tasty treat from the sea
+                  summary: a cripsy fish sammich filled with ocean goodness.
                   value:
                     name: Filet-O-Fish
                     numPatties: 1
+          links:
+            LocateBurger:
+              operationId: locateBurger
+              parameters:
+                burgerId: '$response.body#/id'
+              description: Go and get a tasty burger
+            AnotherLocateBurger:
+              operationId: locateBurger
+              parameters:
+                burgerId: '$response.body#/id'
+              description: Go and get a another really tasty burger
         "500":
           description: Unexpected error creating a new burger. Sorry.
           content:
@@ -91,7 +102,7 @@ paths:
     get:
       operationId: locateBurger
       tags:
-        - "Meat"
+        - "Burgers"
       summary: Search a burger by ID - returns the burger with that identifier
       description: Look up a tasty burger take it and enjoy it
       parameters:
@@ -108,7 +119,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/burgershop.openapi.yaml#/components/schemas/Fries'
+                $ref: '#/components/schemas/Burger'
               examples:
                 quarterPounder:
                   summary: A juicy two handler sammich
@@ -120,7 +131,12 @@ paths:
                   value:
                     name: Filet-O-Fish
                     numPatties: 1
-
+          links:
+            ListBurgerDressings:
+              operationId: listBurgerDressings
+              parameters:
+                dressingId: 'something here'
+              description: 'Try the ketchup!'
         "404":
           description: Cannot find your burger. Sorry. We may have sold out of this type
           content:
@@ -160,25 +176,31 @@ paths:
           required: true
       responses:
         "200":
-          description: an array of
+          description: all the dressings for a burger.
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '../test_specs/burgershop.openapi.yaml#/components/schemas/Dressing'
+                  $ref: '#/components/schemas/Dressing'
+              example:
+                - name: Thousand Island
         "404":
           description: Cannot find your burger in which to list dressings. Sorry
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                message: There is no burger here
         "500":
           description: Unexpected error listing dressings for burger. Sorry.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                message: computer says no dressings for this burger.
   /dressings/{dressingId}:
     get:
       operationId: getDressing
@@ -195,18 +217,30 @@ paths:
           description: This is the unique identifier for the dressing items.
           required: true
       responses:
+        "200":
+          description: a dressing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dressing'
+              example:
+                name: Butter Sauce
         "404":
           description: Cannot find your dressing, sorry.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                message: No such dressing as 'Pizza'
         "500":
           description: Unexpected error getting a dressing. Sorry.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                message: failed looking up dressing by ID, our server borked.
   /dressings:
     get:
       operationId: getAllDressings
@@ -222,13 +256,25 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '../test_specs/burgershop.openapi.yaml#/components/schemas/Dressing'
-        "500":
-          description: Unexpected error. Sorry.
+                  $ref: '#/components/schemas/Dressing'
+              example:
+                - name: Burger Sauce
+        "418":
+          description: I am a teapot.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+              example:
+                message: It's teapot time.
+        "500":
+          description: Something went wrong with getting dressings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "failed looking up all dressings, something went wrong."
 components:
   schemas:
     Error:
@@ -239,3 +285,72 @@ components:
           type: string
           description: returns the error message if something wrong happens
           example: No such burger as 'Big-Whopper'
+    Burger:
+      type: object
+      description: The tastiest food on the planet you would love to eat everyday
+      required:
+        - name
+        - numPatties
+      properties:
+        name:
+          type: string
+          description: The name of your tasty burger - burger names are listed in our menus
+          example: Big Mac
+        numPatties:
+          type: integer
+          description: The number of burger patties used
+          example: 2
+        numTomatoes:
+          type: integer
+          description: how many slices of orange goodness would you like?
+          example: 1
+        fries:
+          $ref: '#/components/schemas/Fries'
+    Fries:
+      type: object
+      description: golden slices of happy fun joy
+      required:
+        - potatoShape
+        - favoriteDrink
+      properties:
+        seasoning:
+          type: array
+          description: herbs and spices for your golden joy
+          items:
+            type: string
+            description: type of herb or spice used to liven up the yummy
+            example: salt
+        potatoShape:
+          type: string
+          description: what type of potato shape? wedges? shoestring?
+          example: Crispy Shoestring
+        favoriteDrink:
+          $ref: '#/components/schemas/Drink'
+    Dressing:
+      type: object
+      description: This is the object that contains the information about the content of the dressing
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of your dressing you can pick up from the menu
+          example: Cheese
+    Drink:
+      type: object
+      description: a frosty cold beverage can be coke or sprite
+      required:
+        - size
+        - drinkType
+      properties:
+        ice:
+          type: boolean
+        drinkType:
+          description: select from coke or sprite
+          enum:
+            - coke
+            - sprite
+        size:
+          type: string
+          description: what size man? S/M/L
+          example: M
