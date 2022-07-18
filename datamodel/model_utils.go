@@ -35,7 +35,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
     var parsedSpec yaml.Node
 
     specVersion := &SpecInfo{}
-    specVersion.jsonParsingChannel = make(chan bool)
+    specVersion.JsonParsingChannel = make(chan bool)
 
     // set original bytes
     specVersion.SpecBytes = &spec
@@ -85,8 +85,8 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
             spec.SpecJSONBytes = &bytes
             spec.SpecJSON = &jsonSpec
         }
-        spec.jsonParsingChannel <- true
-        close(spec.jsonParsingChannel)
+        spec.JsonParsingChannel <- true
+        close(spec.JsonParsingChannel)
     }
     // check for specific keys
     if openAPI3 != nil {
