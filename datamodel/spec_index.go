@@ -1,7 +1,7 @@
 // Copyright 2022 Dave Shanley / Quobix
 // SPDX-License-Identifier: MIT
 
-package model
+package datamodel
 
 import (
     "errors"
@@ -249,7 +249,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
     runIndexFunction(countFuncs, &wg) // run as fast as we can.
     wg.Wait()
 
-    // these functions are aggregate and can only run once the rest of the model is ready
+    // these functions are aggregate and can only run once the rest of the datamodel is ready
     countFuncs = []func() int{
         index.GetInlineUniqueParamCount,
         index.GetOperationTagsCount,
