@@ -1,9 +1,8 @@
-module github.com/pb33f/libopenapi
+module github.com/pb33f
 
 go 1.18
 
 require (
-	github.com/daveshanley/vacuum v0.0.12
 	github.com/stretchr/testify v1.8.0
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
 	gopkg.in/yaml.v3 v3.0.1
