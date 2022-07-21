@@ -85,7 +85,7 @@ type SpecIndex struct {
     externalDocumentsRef                []*Reference                                // all external documents in spec
     rootSecurity                        []*Reference                                // root security definitions.
     rootSecurityNode                    *yaml.Node                                  // root security node.
-    refsWithSiblings                    map[string]*Reference                       // references with sibling elements next to them.
+    refsWithSiblings                    map[string]Reference                        // references with sibling elements next to them
     pathRefsLock                        sync.Mutex                                  // create lock for all refs maps, we want to build data as fast as we can
     externalDocumentsCount              int                                         // number of externalDocument nodes found
     operationTagsCount                  int                                         // number of unique tags in operations
@@ -219,7 +219,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
     index.allCallbacks = make(map[string]*Reference)
     index.allExternalDocuments = make(map[string]*Reference)
     index.polymorphicRefs = make(map[string]*Reference)
-    index.refsWithSiblings = make(map[string]*Reference)
+    index.refsWithSiblings = make(map[string]Reference)
     index.seenRemoteSources = make(map[string]*yaml.Node)
     index.opServersRefs = make(map[string]map[string][]*Reference)
 
@@ -420,7 +420,7 @@ func (index *SpecIndex) GetInlineOperationDuplicateParameters() map[string][]*Re
 }
 
 // GetReferencesWithSiblings will return a map of all the references with sibling nodes (illegal)
-func (index *SpecIndex) GetReferencesWithSiblings() map[string]*Reference {
+func (index *SpecIndex) GetReferencesWithSiblings() map[string]Reference {
     return index.refsWithSiblings
 }
 
@@ -579,7 +579,15 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
                 // if this ref value has any siblings (node.Content is larger than two elements)
                 // then add to refs with siblings
                 if len(node.Content) > 2 {
-                    index.refsWithSiblings[value] = ref
+                    copiedNode := *node
+                    copied := Reference{
+                        Definition: ref.Definition,
+                        Name:       ref.Name,
+                        Node:       &copiedNode,
+                        Path:       ref.Path,
+                    }
+                    // protect this data using a copy, prevent the resolver from destroying things.
+                    index.refsWithSiblings[value] = copied
                 }
 
                 // if this is a polymorphic reference, we're going to leave it out
