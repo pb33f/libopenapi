@@ -602,7 +602,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
                     case "anyOf":
                         index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)
                     case "allOf":
-                        index.polymorphicAnyOfRefs = append(index.polymorphicAllOfRefs, ref)
+                        index.polymorphicAllOfRefs = append(index.polymorphicAllOfRefs, ref)
                     case "oneOf":
                         index.polymorphicOneOfRefs = append(index.polymorphicOneOfRefs, ref)
                     }
@@ -1786,7 +1786,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
                 }
 
                 index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
-                    Error: fmt.Errorf("the '%s' operation parameter at path '%s', index %d has a duplicate name '%s'",
+                    Error: fmt.Errorf("the `%s` operation parameter at path `%s`, index %d has a duplicate name `%s`",
                         method, pathItemNode.Value, i, vn.Value),
                     Node: param,
                     Path: path,
