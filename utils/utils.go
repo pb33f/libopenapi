@@ -99,8 +99,8 @@ func ConvertInterfaceToStringArray(raw interface{}) []string {
     if vals, ok := raw.(map[string]interface{}); ok {
         var s []string
         for _, v := range vals {
-            if v, ok := v.([]interface{}); ok {
-                for _, q := range v {
+            if g, y := v.([]interface{}); y {
+                for _, q := range g {
                     s = append(s, fmt.Sprint(q))
                 }
             }

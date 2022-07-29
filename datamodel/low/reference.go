@@ -6,6 +6,10 @@ type HasNode interface {
     GetNode() *yaml.Node
 }
 
+type Buildable interface {
+    Build(node *yaml.Node)
+}
+
 type NodeReference[T comparable] struct {
     Value T
     Node  *yaml.Node
