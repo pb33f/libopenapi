@@ -5,16 +5,9 @@ import (
     "gopkg.in/yaml.v3"
 )
 
-type Responses struct {
-    Node    *yaml.Node
-    Codes   map[string]Response
-    Default Response
-}
-
-type Response struct {
+type ExternalDoc struct {
     Node        *yaml.Node
     Description low.NodeReference[string]
-    Headers     map[string]Parameter
-    Content     map[string]MediaType
+    URL         low.NodeReference[string]
     Extensions  map[string]low.ObjectReference
 }

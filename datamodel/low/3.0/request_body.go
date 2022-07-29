@@ -5,16 +5,10 @@ import (
     "gopkg.in/yaml.v3"
 )
 
-type Responses struct {
-    Node    *yaml.Node
-    Codes   map[string]Response
-    Default Response
-}
-
-type Response struct {
+type RequestBody struct {
     Node        *yaml.Node
     Description low.NodeReference[string]
-    Headers     map[string]Parameter
     Content     map[string]MediaType
+    Required    low.NodeReference[bool]
     Extensions  map[string]low.ObjectReference
 }
