@@ -33,4 +33,13 @@ type Schema struct {
     AdditionalProperties low.ObjectReference
     Description          low.NodeReference[string]
     Default              low.ObjectReference
+    Nullable             low.NodeReference[bool]
+    Discriminator        Discriminator
+    ReadOnly             low.NodeReference[bool]
+    WriteOnly            low.NodeReference[bool]
+    XML                  XML
+    ExternalDocs         ExternalDoc
+    Example              low.ObjectReference
+    Deprecated           low.NodeReference[bool]
+    Extensions           map[string]low.ObjectReference
 }
