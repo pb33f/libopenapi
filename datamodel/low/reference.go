@@ -16,6 +16,6 @@ type NodeReference[T comparable] struct {
 }
 
 type ObjectReference struct {
-    Value interface{}
+    Value map[string]interface{}
     Node  *yaml.Node
 }

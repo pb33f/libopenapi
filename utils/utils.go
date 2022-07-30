@@ -3,11 +3,15 @@ package utils
 import (
     "encoding/json"
     "fmt"
+    "github.com/iancoleman/strcase"
     "github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
     "gopkg.in/yaml.v3"
+    "regexp"
     "strconv"
     "strings"
 )
+
+type Case int8
 
 const (
     // OpenApi3 is used by all OpenAPI 3+ docs
@@ -18,6 +22,14 @@ const (
 
     // AsyncApi is used by akk AsyncAPI docs, all versions.
     AsyncApi = "asyncapi"
+
+    PascalCase Case = iota
+    CamelCase
+    ScreamingSnakeCase
+    SnakeCase
+    KebabCase
+    ScreamingKebabCase
+    RegularCase
 )
 
 // FindNodes will find a node based on JSONPath, it accepts raw yaml/json as input.
@@ -438,4 +450,57 @@ func RenderCodeSnippet(startNode *yaml.Node, specData []string, before, after in
     }
 
     return buf.String()
+}
+
+func ConvertCase(input string, convert Case) string {
+    if input == "" {
+        return ""
+    }
+    switch convert {
+    case PascalCase:
+        return strcase.ToCamel(input)
+    case CamelCase:
+        return strcase.ToLowerCamel(input)
+    case ScreamingKebabCase:
+        return strcase.ToScreamingKebab(input)
+    case ScreamingSnakeCase:
+        return strcase.ToScreamingSnake(input)
+    case SnakeCase:
+        return strcase.ToSnake(input)
+    default:
+        return input
+    }
+}
+
+func DetectCase(input string) Case {
+    trim := strings.TrimSpace(input)
+    if trim == "" {
+        return -1
+    }
+
+    pascalCase := regexp.MustCompile("^[A-Z][a-z]+(?:[A-Z][a-z]+)*$")
+    camelCase := regexp.MustCompile("^[a-z]+(?:[A-Z][a-z]+)*$")
+    screamingSnakeCase := regexp.MustCompile("^[A-Z]+(_[A-Z]+)*$")
+    snakeCase := regexp.MustCompile("^[a-z]+(_[a-z]+)*$")
+    kebabCase := regexp.MustCompile("^[a-z]+(-[a-z]+)*$")
+    screamingKebabCase := regexp.MustCompile("^[A-Z]+(-[A-Z]+)*$")
+    if pascalCase.MatchString(trim) {
+        return PascalCase
+    }
+    if camelCase.MatchString(trim) {
+        return CamelCase
+    }
+    if screamingSnakeCase.MatchString(trim) {
+        return ScreamingSnakeCase
+    }
+    if snakeCase.MatchString(trim) {
+        return SnakeCase
+    }
+    if kebabCase.MatchString(trim) {
+        return KebabCase
+    }
+    if screamingKebabCase.MatchString(trim) {
+        return ScreamingKebabCase
+    }
+    return RegularCase
 }

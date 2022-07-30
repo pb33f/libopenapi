@@ -419,3 +419,23 @@ func TestConvertComponentIdIntoPath(t *testing.T) {
     assert.Equal(t, "$.chicken.chips.pizza.cake", path)
     assert.Equal(t, "cake", segment)
 }
+
+func TestDetectCase(t *testing.T) {
+    assert.Equal(t, PascalCase, DetectCase("PizzaPie"))
+    assert.Equal(t, CamelCase, DetectCase("anyoneForTennis"))
+    assert.Equal(t, ScreamingSnakeCase, DetectCase("I_LOVE_BEER"))
+    assert.Equal(t, ScreamingKebabCase, DetectCase("I-LOVE-BURGERS"))
+    assert.Equal(t, SnakeCase, DetectCase("snakes_on_a_plane"))
+    assert.Equal(t, KebabCase, DetectCase("chicken-be-be-beef-or-pork"))
+    assert.Equal(t, RegularCase, DetectCase("kebab-TimeIn_london-TOWN"))
+}
+
+func TestConvertCase(t *testing.T) {
+    str1 := "chicken-nuggets-chicken-soup"
+    assert.Equal(t, "chickenNuggetsChickenSoup", ConvertCase(str1, CamelCase))
+    assert.Equal(t, "ChickenNuggetsChickenSoup", ConvertCase(str1, PascalCase))
+    assert.Equal(t, "chicken_nuggets_chicken_soup", ConvertCase(str1, SnakeCase))
+    assert.Equal(t, str1, ConvertCase(str1, KebabCase))
+    assert.Equal(t, "CHICKEN-NUGGETS-CHICKEN-SOUP", ConvertCase(str1, ScreamingKebabCase))
+    assert.Equal(t, "CHICKEN_NUGGETS_CHICKEN_SOUP", ConvertCase(str1, ScreamingSnakeCase))
+}
