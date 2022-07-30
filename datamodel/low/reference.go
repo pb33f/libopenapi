@@ -7,15 +7,17 @@ type HasNode interface {
 }
 
 type Buildable interface {
-    Build(node *yaml.Node)
+    Build(node *yaml.Node) error
 }
 
-type NodeReference[T comparable] struct {
-    Value T
-    Node  *yaml.Node
+type NodeReference[T any] struct {
+    Value     T
+    ValueNode *yaml.Node
+    KeyNode   *yaml.Node
 }
 
 type ObjectReference struct {
-    Value map[string]interface{}
-    Node  *yaml.Node
+    Value     map[string]interface{}
+    ValueNode *yaml.Node
+    KeyNode   *yaml.Node
 }

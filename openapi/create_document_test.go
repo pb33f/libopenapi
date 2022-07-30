@@ -13,7 +13,7 @@ func TestCreateDocument_NoData(t *testing.T) {
 }
 
 func TestCreateDocument(t *testing.T) {
-    data, aErr := ioutil.ReadFile("../test_specs/petstorev3.json")
+    data, aErr := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
     assert.NoError(t, aErr)
 
     doc, err := CreateDocument(data)
