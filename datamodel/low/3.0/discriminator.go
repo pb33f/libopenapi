@@ -8,5 +8,5 @@ import (
 type Discriminator struct {
     Node         *yaml.Node
     PropertyName low.NodeReference[string]
-    Mapping      map[string]string
+    Mapping      map[string]low.NodeReference[string]
 }
