@@ -6,8 +6,11 @@ info:
   termsOfService: https://quobix.com
   contact:
     name: quobix
+    email: test@quobix.com
+    url: https://quobix.com
   license:
     name: Quobix
+    url: https://quobix.com/made-up
   version: "1.2"
 tags:
   - name: "Burgers"
@@ -21,7 +24,22 @@ tags:
       description: "Find out more information about our products)"
       url: "https://quobix.com/"
 servers:
-  - url: https://quobix.com/api
+  - url: "{scheme}://api.quobix.com"
+    description: "this is our main API server, for all fun API things."
+    variables:
+      scheme:
+        enum: [https]
+        default: https
+        description: this is a server variable for the scheme
+  - url: "https://{domain}.{host}.com"
+    description: "this is our second API server, for all fun API things."
+    variables:
+      domain:
+        default: "api"
+        description: the default API domain is 'api'
+      host:
+        default: "quobix.com"
+        description: the default host for this API is 'quobix.com'
 paths:
   /burgers:
     post:

@@ -1,4 +1,4 @@
-package utils
+package datamodel
 
 import (
     "github.com/pb33f/libopenapi/datamodel/low"
@@ -106,7 +106,7 @@ there:
     hd := hotdog{}
     cErr := BuildModel(&rootNode, &hd)
     assert.Equal(t, 200, hd.Fat.Value)
-    assert.Equal(t, 3, hd.Fat.Node.Line)
+    assert.Equal(t, 3, hd.Fat.ValueNode.Line)
     assert.Equal(t, true, hd.Grilled.Value)
     assert.Equal(t, "yummy", hd.Name.Value)
     assert.Equal(t, float32(200.45), hd.Ketchup.Value)
@@ -119,7 +119,7 @@ there:
     assert.Len(t, hd.MaxTempAlt, 5)
     assert.Equal(t, int64(7392837462032342), hd.MaxTempHigh.Value)
     assert.Equal(t, 2, hd.Temps[1].Value)
-    assert.Equal(t, 26, hd.Temps[1].Node.Line)
+    assert.Equal(t, 26, hd.Temps[1].ValueNode.Line)
     assert.Len(t, hd.UnknownElements.Value, 2)
     assert.Len(t, hd.LotsOfUnknowns, 3)
     assert.Len(t, hd.Where, 2)
@@ -127,24 +127,6 @@ there:
     assert.Equal(t, "bear", hd.There["care"].Value)
     assert.Equal(t, 324938249028.98234892374892374923874823974, hd.Mustard.Value)
     assert.NoError(t, cErr)
-}
-
-func TestBuildModel_UnsupportedType(t *testing.T) {
-
-    type notSupported struct {
-        cake low.NodeReference[uintptr]
-    }
-    ns := notSupported{}
-    yml := `cake: -99999`
-
-    var rootNode yaml.Node
-    mErr := yaml.Unmarshal([]byte(yml), &rootNode)
-    assert.NoError(t, mErr)
-
-    cErr := BuildModel(&rootNode, &ns)
-    assert.Error(t, cErr)
-    assert.Nil(t, ns.cake)
-
 }
 
 func TestBuildModel_UseCopyNotRef(t *testing.T) {

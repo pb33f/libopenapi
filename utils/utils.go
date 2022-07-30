@@ -239,6 +239,29 @@ func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode 
     return nil, nil
 }
 
+func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
+    for i, v := range nodes {
+        if i%2 == 0 && key == v.Value {
+            return v, nodes[i], nodes[i+1] // next node is what we need.
+        }
+        for x, j := range v.Content {
+            if key == j.Value {
+                if IsNodeMap(v) {
+                    if x+1 == len(v.Content) {
+                        return v, v.Content[x], v.Content[x]
+                    }
+                    return v, v.Content[x], v.Content[x+1] // next node is what we need.
+
+                }
+                if IsNodeArray(v) {
+                    return v, v.Content[x], v.Content[x]
+                }
+            }
+        }
+    }
+    return nil, nil, nil
+}
+
 var ObjectLabel = "object"
 var IntegerLabel = "integer"
 var NumberLabel = "number"
