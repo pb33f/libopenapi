@@ -9,6 +9,10 @@ import (
 )
 
 func BuildModel(node *yaml.Node, model interface{}) error {
+
+    if reflect.ValueOf(model).Type().Kind() != reflect.Pointer {
+        return fmt.Errorf("cannot build model on non-pointer: %v", reflect.ValueOf(model).Type().Kind())
+    }
     v := reflect.ValueOf(model).Elem()
     for i := 0; i < v.NumField(); i++ {
 
@@ -37,11 +41,10 @@ func BuildModel(node *yaml.Node, model interface{}) error {
         case reflect.Struct, reflect.Slice, reflect.Map:
             err := SetField(field, vn, kn)
             if err != nil {
-                return nil
+                return err
             }
         default:
-            fmt.Printf("Unsupported type: %v", v.Field(i).Kind())
-            break
+            return fmt.Errorf("unable to parse unsupported type: %v", kind)
         }
 
     }
@@ -79,6 +82,27 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
         }
         break
 
+    case reflect.TypeOf(map[string]low.NodeReference[string]{}):
+        if valueNode != nil {
+            if IsNodeMap(valueNode) {
+                if field.CanSet() {
+                    items := make(map[string]low.NodeReference[string])
+                    var currentLabel string
+                    for i, sliceItem := range valueNode.Content {
+                        if i%2 == 0 {
+                            currentLabel = sliceItem.Value
+                            continue
+                        }
+                        items[currentLabel] = low.NodeReference[string]{
+                            Value: sliceItem.Value,
+                            Node:  sliceItem,
+                        }
+                    }
+                    field.Set(reflect.ValueOf(items))
+                }
+            }
+        }
+        break
     case reflect.TypeOf(low.ObjectReference{}):
         if valueNode != nil {
             var decoded map[string]interface{}
@@ -149,10 +173,10 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
         break
     case reflect.TypeOf(low.NodeReference[int64]{}):
         if valueNode != nil {
-            if IsNodeIntValue(valueNode) {
+            if IsNodeIntValue(valueNode) || IsNodeFloatValue(valueNode) { //
                 if field.CanSet() {
-                    fv, _ := strconv.Atoi(valueNode.Value)
-                    nr := low.NodeReference[int64]{Value: int64(fv), Node: valueNode}
+                    fv, _ := strconv.ParseInt(valueNode.Value, 10, 64)
+                    nr := low.NodeReference[int64]{Value: fv, Node: valueNode}
                     field.Set(reflect.ValueOf(nr))
                 }
             }
@@ -235,6 +259,20 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
             }
         }
         break
+    case reflect.TypeOf([]low.NodeReference[int64]{}):
+        if valueNode != nil {
+            if IsNodeArray(valueNode) {
+                if field.CanSet() {
+                    var items []low.NodeReference[int64]
+                    for _, sliceItem := range valueNode.Content {
+                        iv, _ := strconv.ParseInt(sliceItem.Value, 10, 64)
+                        items = append(items, low.NodeReference[int64]{Value: iv, Node: sliceItem})
+                    }
+                    field.Set(reflect.ValueOf(items))
+                }
+            }
+        }
+        break
     case reflect.TypeOf([]low.NodeReference[bool]{}):
         if valueNode != nil {
             if IsNodeArray(valueNode) {
@@ -251,7 +289,6 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
         break
     default:
         m := field.Type()
-        fmt.Printf("error, unknown type!!! %v", m)
         return fmt.Errorf("unknown type, cannot parse: %v", m)
     }
     return nil
