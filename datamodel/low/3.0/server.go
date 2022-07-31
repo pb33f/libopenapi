@@ -8,7 +8,8 @@ import (
 )
 
 const (
-	Variables = "variables"
+	VariablesLabel = "variables"
+	ServersLabel   = "servers"
 )
 
 type Server struct {
@@ -18,7 +19,7 @@ type Server struct {
 }
 
 func (s *Server) Build(root *yaml.Node) error {
-	kn, vars := utils.FindKeyNode(Variables, root.Content)
+	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)
 	if vars == nil {
 		return nil
 	}

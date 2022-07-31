@@ -448,7 +448,7 @@ func IsHttpVerb(verb string) bool {
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
-	name := segs[len(segs)-1]
+	name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
 
 	replaced := strings.ReplaceAll(fmt.Sprintf("%s['%s']",
 		strings.Join(segs[:len(segs)-1], "."), name), "#", "$")
