@@ -2,14 +2,14 @@ openapi: 3.0.1
 info:
   title: Burger Shop
   description: |
-    The best burger API at quobix. You can find the testiest burgers on the world
-  termsOfService: https://quobix.com
+    The best burger API at princess beef. You can find the testiest burgers in the world
+  termsOfService: https://pb33f.io
   contact:
-    name: quobix
-    email: test@quobix.com
-    url: https://quobix.com
+    name: pb33f
+    email: buckaroo@pb33f.io
+    url: https://pb33f.io
   license:
-    name: Quobix
+    name: pb33f
     url: https://quobix.com/made-up
   version: "1.2"
 tags:
