@@ -19,7 +19,7 @@ func CreateDocument(spec []byte) (*v3.Document, error) {
 
     // build an index
     //idx := index.NewSpecIndex(info.RootNode)
-    datamodel.BuildModel(info.RootNode.Content[0], &doc)
+    //datamodel.BuildModel(info.RootNode.Content[0], &doc)
 
     // extract info
     extractErr := extractInfo(info, &doc)
