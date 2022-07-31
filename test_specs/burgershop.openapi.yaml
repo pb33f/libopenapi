@@ -10,25 +10,38 @@ info:
     url: https://pb33f.io
   license:
     name: pb33f
-    url: https://quobix.com/made-up
+    url: https://pb33f.io/made-up
   version: "1.2"
 tags:
   - name: "Burgers"
     description: "All kinds of yummy burgers."
     externalDocs:
       description: "Find out more"
-      url: "https://quobix.com/"
+      url: "https://pb33f.io"
+    x-internal-ting: somethingSpecial
+    x-internal-tong: 1
+    x-internal-tang: 1.2
+    x-internal-tung: true
+    x-internal-arr:
+      - one
+      - two
+    x-internal-arrmap:
+      - what: now
+      - why: that
+    x-something-else:
+      ok:
+        - what: now?
   - name: "Dressing"
     description: "Variety of dressings: cheese, veggie, oil and a lot more"
     externalDocs:
       description: "Find out more information about our products)"
-      url: "https://quobix.com/"
+      url: "https://pb33f.io"
 servers:
-  - url: "{scheme}://api.quobix.com"
+  - url: "{scheme}://api.pb33f.io"
     description: "this is our main API server, for all fun API things."
     variables:
       scheme:
-        enum: [https]
+        enum: [https, wss]
         default: https
         description: this is a server variable for the scheme
   - url: "https://{domain}.{host}.com"
@@ -38,8 +51,8 @@ servers:
         default: "api"
         description: the default API domain is 'api'
       host:
-        default: "quobix.com"
-        description: the default host for this API is 'quobix.com'
+        default: "pb33f.io"
+        description: the default host for this API is 'pb33f.com'
 paths:
   /burgers:
     post:
