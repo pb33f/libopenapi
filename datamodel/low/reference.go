@@ -3,21 +3,21 @@ package low
 import "gopkg.in/yaml.v3"
 
 type HasNode interface {
-    GetNode() *yaml.Node
+	GetNode() *yaml.Node
 }
 
 type Buildable interface {
-    Build(node *yaml.Node) error
+	Build(node *yaml.Node) error
 }
 
 type NodeReference[T any] struct {
-    Value     T
-    ValueNode *yaml.Node
-    KeyNode   *yaml.Node
+	Value     T
+	ValueNode *yaml.Node
+	KeyNode   *yaml.Node
 }
 
 type ObjectReference struct {
-    Value     map[string]interface{}
-    ValueNode *yaml.Node
-    KeyNode   *yaml.Node
+	Value     interface{}
+	ValueNode *yaml.Node
+	KeyNode   *yaml.Node
 }
