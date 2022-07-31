@@ -54,7 +54,11 @@ servers:
         default: "pb33f.io"
         description: the default host for this API is 'pb33f.com'
 paths:
+  x-milky-milk: milky
+  /refingtons:
+    $ref: '../test_specs/petstorev3.json#/paths~1pet~1findByStatus'
   /burgers:
+    x-burger-meta: meaty
     post:
       operationId: createBurger
       tags:
@@ -385,3 +389,4 @@ components:
           type: string
           description: what size man? S/M/L
           example: M
+

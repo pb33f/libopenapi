@@ -8,10 +8,10 @@ type Document struct {
 	Version      low.NodeReference[string]
 	Info         low.NodeReference[*Info]
 	Servers      []low.NodeReference[*Server]
-	Paths        *Paths
+	Paths        low.NodeReference[*Paths]
 	Components   *Components
 	Security     []*SecurityRequirement
 	Tags         []low.NodeReference[*Tag]
 	ExternalDocs *ExternalDoc
-	Extensions   map[string]low.ObjectReference
+	Extensions   map[low.NodeReference[string]]low.NodeReference[any]
 }

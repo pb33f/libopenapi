@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	Tags         = "tags"
-	ExternalDocs = "externalDocs"
+	TagsLabel         = "tags"
+	ExternalDocsLabel = "externalDocs"
 )
 
 type Tag struct {
@@ -20,8 +20,6 @@ type Tag struct {
 }
 
 func (t *Tag) Build(root *yaml.Node) error {
-	_, ln, exDocs := utils.FindKeyNodeFull(ExternalDocs, root.Content)
-
 	// extract extensions
 	extensionMap, err := datamodel.ExtractExtensions(root)
 	if err != nil {
@@ -29,6 +27,7 @@ func (t *Tag) Build(root *yaml.Node) error {
 	}
 	t.Extensions = extensionMap
 
+	_, ln, exDocs := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	// extract external docs
 	var externalDoc ExternalDoc
 	err = datamodel.BuildModel(exDocs, &externalDoc)
