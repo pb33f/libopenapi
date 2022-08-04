@@ -1,7 +1,6 @@
 package openapi
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
@@ -52,7 +51,6 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	if len(errors) > 0 {
 		return &doc, errors[0]
 	}
-	fmt.Sprint(idx)
 	return &doc, nil
 }
 
