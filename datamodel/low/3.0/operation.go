@@ -72,7 +72,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				KeyNode:   paramLabel,
 			})
 		}
-
+		o.Parameters = params
 	}
 
 	return nil
