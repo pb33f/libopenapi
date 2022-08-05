@@ -1,4 +1,4 @@
-package datamodel
+package v3
 
 import (
 	"fmt"
@@ -16,7 +16,8 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 		return fmt.Errorf("cannot build model on non-pointer: %v", reflect.ValueOf(model).Type().Kind())
 	}
 	v := reflect.ValueOf(model).Elem()
-	for i := 0; i < v.NumField(); i++ {
+	num := v.NumField()
+	for i := 0; i < num; i++ {
 
 		fName := v.Type().Field(i).Name
 
@@ -336,6 +337,30 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
+		// helper for unpacking string maps.
+	case reflect.TypeOf(map[low.NodeReference[string]]low.NodeReference[string]{}):
+		if valueNode != nil {
+			if utils.IsNodeMap(valueNode) {
+				if field.CanSet() {
+					items := make(map[low.NodeReference[string]]low.NodeReference[string])
+					var cf *yaml.Node
+					for i, sliceItem := range valueNode.Content {
+						if i%2 == 0 {
+							cf = sliceItem
+							continue
+						}
+						items[low.NodeReference[string]{
+							Value:   cf.Value,
+							KeyNode: cf,
+						}] = low.NodeReference[string]{
+							Value:     sliceItem.Value,
+							ValueNode: sliceItem,
+						}
+					}
+					field.Set(reflect.ValueOf(items))
+				}
+			}
+		}
 	default:
 		// we want to ignore everything else.
 		break

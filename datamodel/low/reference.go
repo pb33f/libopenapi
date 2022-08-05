@@ -21,3 +21,7 @@ type ObjectReference struct {
 	ValueNode *yaml.Node
 	KeyNode   *yaml.Node
 }
+
+func (n NodeReference[T]) IsEmpty() bool {
+	return n.KeyNode == nil && n.ValueNode == nil
+}

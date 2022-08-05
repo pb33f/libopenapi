@@ -1,7 +1,6 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
@@ -37,7 +36,7 @@ func (p *Paths) GetPathMap() map[string]*Path {
 func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	// extract extensions
-	extensionMap, err := datamodel.ExtractExtensions(root)
+	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
 	}
@@ -61,7 +60,7 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			continue
 		}
 		var path = Path{}
-		err = datamodel.BuildModel(pathNode, &path)
+		err = BuildModel(pathNode, &path)
 		if err != nil {
 
 		}
@@ -102,7 +101,7 @@ type Path struct {
 }
 
 func (p *Path) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	extensionMap, err := datamodel.ExtractExtensions(root)
+	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
 	}
@@ -132,7 +131,7 @@ func (p *Path) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		var op Operation
 
 		wg.Add(1)
-		datamodel.BuildModelAsync(pathNode, &op, &wg, &errors)
+		BuildModelAsync(pathNode, &op, &wg, &errors)
 
 		opRef := low.NodeReference[*Operation]{
 			Value:     &op,

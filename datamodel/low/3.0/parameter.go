@@ -1,7 +1,6 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -31,7 +30,7 @@ type Parameter struct {
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	// extract extensions
-	extensionMap, err := datamodel.ExtractExtensions(root)
+	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
 	}
@@ -42,7 +41,7 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if schNode != nil {
 		// deal with schema flat props
 		var schema Schema
-		err = datamodel.BuildModel(schNode, &schema)
+		err = BuildModel(schNode, &schema)
 		if err != nil {
 			return err
 		}

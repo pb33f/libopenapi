@@ -1,12 +1,19 @@
 package v3
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/low"
-    "gopkg.in/yaml.v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
 )
 
 type Discriminator struct {
-    Node         *yaml.Node
-    PropertyName low.NodeReference[string]
-    Mapping      map[string]low.NodeReference[string]
+	PropertyName low.NodeReference[string]
+	Mapping      map[low.NodeReference[string]]low.NodeReference[string]
+}
+
+func (d *Discriminator) FindMappingValue(key string) *low.NodeReference[string] {
+	for k, v := range d.Mapping {
+		if k.Value == key {
+			return &v
+		}
+	}
+	return nil
 }
