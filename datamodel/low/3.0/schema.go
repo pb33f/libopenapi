@@ -5,18 +5,20 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strconv"
 	"sync"
 )
 
 const (
-	PropertiesLabel    = "properties"
-	ExampleLabel       = "example"
-	ItemsLabel         = "items"
-	AllOfLabel         = "allOf"
-	AnyOfLabel         = "anyOf"
-	OneOfLabel         = "oneOf"
-	NotLabel           = "not"
-	DiscriminatorLabel = "discriminator"
+	PropertiesLabel           = "properties"
+	AdditionalPropertiesLabel = "additionalProperties"
+	ExampleLabel              = "example"
+	ItemsLabel                = "items"
+	AllOfLabel                = "allOf"
+	AnyOfLabel                = "anyOf"
+	OneOfLabel                = "oneOf"
+	NotLabel                  = "not"
+	DiscriminatorLabel        = "discriminator"
 )
 
 type Schema struct {
@@ -82,6 +84,20 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
 	if expNode != nil {
 		s.Example = low.NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
+	}
+
+	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
+	if addPNode != nil {
+		if utils.IsNodeMap(addPNode) {
+			var props map[string]interface{}
+			addPNode.Decode(&props)
+			s.AdditionalProperties = low.NodeReference[any]{Value: props, KeyNode: addPLabel, ValueNode: addPNode}
+		}
+
+		if utils.IsNodeBoolValue(addPNode) {
+			b, _ := strconv.ParseBool(addPNode.Value)
+			s.AdditionalProperties = low.NodeReference[any]{Value: b, KeyNode: addPLabel, ValueNode: addPNode}
+		}
 	}
 
 	// handle discriminator if set.
