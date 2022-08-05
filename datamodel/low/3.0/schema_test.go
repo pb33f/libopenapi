@@ -87,7 +87,11 @@ properties:
       somethingBProp:
         type: string
         description: something b subprop
-        example: picnics are nice.`
+        example: picnics are nice.
+    additionalProperties: 
+        why: yes
+        thatIs: true    
+additionalProperties: true`
 
 	var rootNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
@@ -100,12 +104,22 @@ properties:
 	schErr := sch.Build(rootNode.Content[0], nil, 0)
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
+	assert.True(t, sch.AdditionalProperties.Value.(bool))
+
+	assert.Len(t, sch.Properties, 2)
+	v := sch.FindProperty("somethingB")
+	assert.NotNil(t, v.Value.AdditionalProperties.Value)
+
+	var addProps map[string]interface{}
+	v.Value.AdditionalProperties.ValueNode.Decode(&addProps)
+	assert.Equal(t, "yes", addProps["why"])
+	assert.Equal(t, true, addProps["thatIs"])
 
 	// check polymorphic values allOf
 	assert.Equal(t, "an allof thing", sch.AllOf[0].Value.Description.Value)
 	assert.Len(t, sch.AllOf[0].Value.Properties, 2)
 
-	v := sch.AllOf[0].Value.FindProperty("allOfA")
+	v = sch.AllOf[0].Value.FindProperty("allOfA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "allOfA description", v.Value.Description.Value)
 	assert.Equal(t, "allOfAExp", v.Value.Example.Value)
