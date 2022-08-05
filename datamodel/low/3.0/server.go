@@ -1,7 +1,6 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -34,7 +33,7 @@ func (s *Server) Build(root *yaml.Node) error {
 				continue
 			}
 			variable := ServerVariable{}
-			err := datamodel.BuildModel(varNode, &variable)
+			err := BuildModel(varNode, &variable)
 			if err != nil {
 				return err
 			}

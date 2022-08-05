@@ -58,7 +58,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 	_, ln, vn := utils.FindKeyNodeFull(v3.InfoLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Info{}
-		err := datamodel.BuildModel(vn, &ir)
+		err := v3.BuildModel(vn, &ir)
 		if err != nil {
 			return err
 		}
@@ -77,7 +77,7 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecI
 			for _, srvN := range vn.Content {
 				if utils.IsNodeMap(srvN) {
 					srvr := v3.Server{}
-					err := datamodel.BuildModel(srvN, &srvr)
+					err := v3.BuildModel(srvN, &srvr)
 					if err != nil {
 						return err
 					}
@@ -103,7 +103,7 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 			for _, tagN := range vn.Content {
 				if utils.IsNodeMap(tagN) {
 					tag := v3.Tag{}
-					err := datamodel.BuildModel(tagN, &tag)
+					err := v3.BuildModel(tagN, &tag)
 					if err != nil {
 						return err
 					}

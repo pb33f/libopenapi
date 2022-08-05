@@ -1,7 +1,6 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -21,7 +20,7 @@ type Tag struct {
 
 func (t *Tag) Build(root *yaml.Node) error {
 	// extract extensions
-	extensionMap, err := datamodel.ExtractExtensions(root)
+	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
 	}
@@ -30,7 +29,7 @@ func (t *Tag) Build(root *yaml.Node) error {
 	_, ln, exDocs := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	// extract external docs
 	var externalDoc ExternalDoc
-	err = datamodel.BuildModel(exDocs, &externalDoc)
+	err = BuildModel(exDocs, &externalDoc)
 	if err != nil {
 		return err
 	}

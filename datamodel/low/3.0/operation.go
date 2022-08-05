@@ -1,7 +1,6 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -30,7 +29,7 @@ type Operation struct {
 
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
-	extensionMap, err := datamodel.ExtractExtensions(root)
+	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
 	}
@@ -40,7 +39,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	_, ln, exDocs := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	if exDocs != nil {
 		var externalDoc ExternalDoc
-		err = datamodel.BuildModel(exDocs, &externalDoc)
+		err = BuildModel(exDocs, &externalDoc)
 		if err != nil {
 			return err
 		}
@@ -58,7 +57,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 		for _, pN := range paramNode.Content {
 			var param Parameter
-			err = datamodel.BuildModel(pN, &param)
+			err = BuildModel(pN, &param)
 			if err != nil {
 				return err
 			}
