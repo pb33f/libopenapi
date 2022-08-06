@@ -23,20 +23,17 @@ type Parameter struct {
 	AllowReserved   low.NodeReference[bool]
 	Schema          low.NodeReference[*Schema]
 	Example         low.NodeReference[any]
-	Examples        map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*Example]
-	Content         map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*MediaType]
+	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
+	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
 func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
-	for _, c := range p.Content {
-		for n, o := range c {
-			if n.Value == cType {
-				return &o
-			}
-		}
-	}
-	return nil
+	return FindItemInMap[*MediaType](cType, p.Content.Value)
+}
+
+func (p *Parameter) FindExample(eType string) *low.ValueReference[*Example] {
+	return FindItemInMap[*Example](eType, p.Examples.Value)
 }
 
 func (p *Parameter) Build(root *yaml.Node) error {
@@ -62,19 +59,27 @@ func (p *Parameter) Build(root *yaml.Node) error {
 	p.Schema = *sch
 
 	// handle examples if set.
-	exps, eErr := ExtractMap[*Example](ExamplesLabel, root)
+	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root)
 	if eErr != nil {
 		return eErr
 	}
 	if exps != nil {
-		p.Examples = exps
+		p.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]{
+			Value:     exps,
+			KeyNode:   expsL,
+			ValueNode: expsN,
+		}
 	}
 
 	// handle content, if set.
-	con, cErr := ExtractMap[*MediaType](ContentLabel, root)
+	con, cL, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root)
 	if cErr != nil {
 		return cErr
 	}
-	p.Content = con
+	p.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+		Value:     con,
+		KeyNode:   cL,
+		ValueNode: cN,
+	}
 	return nil
 }

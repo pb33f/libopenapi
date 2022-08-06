@@ -52,7 +52,7 @@ servers:
         description: the default API domain is 'api'
       host:
         default: "pb33f.io"
-        description: the default host for this API is 'pb33f.com'
+        description: the default host for this API is 'pb33f.io'
 paths:
   x-milky-milk: milky
   /refingtons:
@@ -84,6 +84,11 @@ paths:
                   numPatties: 5
       responses:
         "200":
+          headers:
+            UseOil:
+              description: this is a header
+              schema:
+                type: string
           description: A tasty burger for you to eat.
           content:
             application/json:
@@ -135,6 +140,19 @@ paths:
                     message: unable to accept this request, looks bad, missing something.
   /burgers/{burgerId}:
     get:
+      callbacks:
+        burgerCallback:
+          "{$request.query.queryUrl}":
+            post:
+              requestBody:
+                description: Callback payload
+                content:
+                  'application/json':
+                    schema:
+                      $ref: '#/components/schemas/SomePayload'
+              responses:
+                '200':
+                  description: callback successfully processed
       operationId: locateBurger
       tags:
         - "Burgers"

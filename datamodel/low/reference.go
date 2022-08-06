@@ -37,10 +37,10 @@ func (n NodeReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil && n.ValueNode == nil
 }
 
-func (n NodeReference[T]) IsMapKeyNode() bool {
-	return n.KeyNode != nil && n.ValueNode == nil
+func (n ValueReference[T]) IsEmpty() bool {
+	return n.ValueNode == nil
 }
 
-func (n NodeReference[T]) IsMapValueNode() bool {
-	return n.KeyNode == nil && n.ValueNode != nil
+func (n KeyReference[T]) IsEmpty() bool {
+	return n.KeyNode == nil
 }

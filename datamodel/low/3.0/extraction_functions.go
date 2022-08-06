@@ -9,6 +9,26 @@ import (
 	"sync"
 )
 
+func FindItemInCollection[T any](item string, collection map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[T]) *low.ValueReference[T] {
+	for _, c := range collection {
+		for n, o := range c {
+			if n.Value == item {
+				return &o
+			}
+		}
+	}
+	return nil
+}
+
+func FindItemInMap[T any](item string, collection map[low.KeyReference[string]]low.ValueReference[T]) *low.ValueReference[T] {
+	for n, o := range collection {
+		if n.Value == item {
+			return &o
+		}
+	}
+	return nil
+}
+
 func ExtractSchema(root *yaml.Node) (*low.NodeReference[*Schema], error) {
 	_, schLabel, schNode := utils.FindKeyNodeFull(SchemaLabel, root.Content)
 	if schNode != nil {
@@ -28,21 +48,38 @@ func ExtractSchema(root *yaml.Node) (*low.NodeReference[*Schema], error) {
 
 var mapLock sync.Mutex
 
-func ExtractObject[T any](label string, root *yaml.Node) (low.NodeReference[*T], error) {
-	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
-	var n *T = new(T)
+func ExtractObjectRaw[T low.Buildable[N], N any](root *yaml.Node) (T, error) {
+	var n T = new(N)
 	err := BuildModel(root, n)
 	if err != nil {
-		return low.NodeReference[*T]{}, err
+		return n, err
 	}
-	return low.NodeReference[*T]{
+	err = n.Build(root)
+	if err != nil {
+		return n, err
+	}
+	return n, nil
+}
+
+func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node) (low.NodeReference[T], error) {
+	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
+	var n T = new(N)
+	err := BuildModel(root, n)
+	if err != nil {
+		return low.NodeReference[T]{}, err
+	}
+	err = n.Build(root)
+	if err != nil {
+		return low.NodeReference[T]{}, err
+	}
+	return low.NodeReference[T]{
 		Value:     n,
 		KeyNode:   ln,
 		ValueNode: vn,
 	}, nil
 }
 
-func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node) ([]low.NodeReference[T], error) {
+func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node) ([]low.NodeReference[T], *yaml.Node, *yaml.Node, error) {
 	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
 	var items []low.NodeReference[T]
 	if vn != nil && ln != nil {
@@ -50,20 +87,55 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node) ([]l
 			var n T = new(N)
 			err := BuildModel(node, n)
 			if err != nil {
-				return []low.NodeReference[T]{}, err
+				return []low.NodeReference[T]{}, ln, vn, err
 			}
 			berr := n.Build(node)
 			if berr != nil {
-				return nil, berr
+				return nil, ln, vn, berr
 			}
 			items = append(items, low.NodeReference[T]{
 				Value:     n,
-				ValueNode: vn,
+				ValueNode: node,
 				KeyNode:   ln,
 			})
 		}
 	}
-	return items, nil
+	return items, ln, vn, nil
+}
+
+func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[low.KeyReference[string]]low.ValueReference[PT], *yaml.Node, *yaml.Node, error) {
+	_, labelNode, valueNode := utils.FindKeyNodeFull(label, root.Content)
+	if valueNode != nil {
+		var currentLabelNode *yaml.Node
+		valueMap := make(map[low.KeyReference[string]]low.ValueReference[PT])
+		for i, en := range valueNode.Content {
+			if i%2 == 0 {
+				currentLabelNode = en
+				continue
+			}
+			if strings.HasPrefix(strings.ToLower(currentLabelNode.Value), "x-") {
+				continue // yo, don't pay any attention to extensions, not here anyway.
+			}
+			var n PT = new(N)
+			err := BuildModel(en, n)
+			if err != nil {
+				return nil, labelNode, valueNode, err
+			}
+			berr := n.Build(en)
+			if berr != nil {
+				return nil, labelNode, valueNode, berr
+			}
+			valueMap[low.KeyReference[string]{
+				Value:   currentLabelNode.Value,
+				KeyNode: currentLabelNode,
+			}] = low.ValueReference[PT]{
+				Value:     n,
+				ValueNode: en,
+			}
+		}
+		return valueMap, labelNode, valueNode, nil
+	}
+	return nil, labelNode, valueNode, nil
 }
 
 func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[PT], error) {
@@ -80,11 +152,11 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			var n PT = new(N)
-			err := BuildModel(valueNode, n)
+			err := BuildModel(en, n)
 			if err != nil {
 				return nil, err
 			}
-			berr := n.Build(valueNode)
+			berr := n.Build(en)
 			if berr != nil {
 				return nil, berr
 			}

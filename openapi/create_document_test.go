@@ -112,8 +112,8 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Len(t, doc.Paths.Value.PathItems, 6)
 	burgerId := doc.Paths.Value.FindPath("/burgers/{burgerId}")
 	assert.NotNil(t, burgerId)
-	assert.Len(t, burgerId.Value.Get.Value.Parameters, 2)
-	param := burgerId.Value.Get.Value.Parameters[1]
+	assert.Len(t, burgerId.Value.Get.Value.Parameters.Value, 2)
+	param := burgerId.Value.Get.Value.Parameters.Value[1]
 	assert.Equal(t, "burgerHeader", param.Value.Name.Value)
 	prop := param.Value.Schema.Value.FindProperty("burgerTheme")
 	assert.Equal(t, "something about a theme?", prop.Value.Description.Value)
@@ -125,7 +125,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 
 	encoding := pContent.Value.FindPropertyEncoding("burgerTheme")
 	assert.NotNil(t, encoding.Value)
-	assert.Len(t, encoding.Value.Headers, 1)
+	assert.Len(t, encoding.Value.Headers.Value, 1)
 
 	header := encoding.Value.FindHeader("someHeader")
 	assert.NotNil(t, header.Value)
@@ -133,6 +133,85 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Equal(t, "string", header.Value.Schema.Value.Type.Value)
 
 	// check request body on operation
-	//burgers:= doc.Paths.Value.FindPath("/burgers/{burgerId}")
+	burgers := doc.Paths.Value.FindPath("/burgers")
+	assert.NotNil(t, burgers.Value.Post.Value)
+
+	burgersPost := burgers.Value.Post.Value
+	assert.Equal(t, "createBurger", burgersPost.OperationId.Value)
+	assert.Equal(t, "Create a new burger", burgersPost.Summary.Value)
+	assert.NotEmpty(t, burgersPost.Description.Value)
+
+	requestBody := burgersPost.RequestBody.Value
+
+	assert.NotEmpty(t, requestBody.Description.Value)
+	content := requestBody.FindContent("application/json").Value
+
+	assert.NotNil(t, content)
+	assert.Len(t, content.Schema.Value.Properties.Value, 4)
+	assert.Len(t, content.GetAllExamples(), 2)
+
+	ex := content.FindExample("pbjBurger")
+	assert.NotNil(t, ex.Value)
+	assert.NotEmpty(t, ex.Value.Summary.Value)
+	assert.NotNil(t, ex.Value.Value.Value)
+
+	if n, ok := ex.Value.Value.Value.(map[string]interface{}); ok {
+		assert.Len(t, n, 2)
+		assert.Equal(t, 3, n["numPatties"])
+	} else {
+		assert.Fail(t, "should easily be convertable. something changed!")
+	}
+
+	cb := content.FindExample("cakeBurger")
+	assert.NotNil(t, cb.Value)
+	assert.NotEmpty(t, cb.Value.Summary.Value)
+	assert.NotNil(t, cb.Value.Value.Value)
+
+	if n, ok := cb.Value.Value.Value.(map[string]interface{}); ok {
+		assert.Len(t, n, 2)
+		assert.Equal(t, "Chocolate Cake Burger", n["name"])
+		assert.Equal(t, 5, n["numPatties"])
+	} else {
+		assert.Fail(t, "should easily be convertable. something changed!")
+	}
+
+	// check responses
+	responses := burgersPost.Responses.Value
+	assert.NotNil(t, responses)
+	assert.Len(t, responses.Codes, 3)
+
+	okCode := responses.FindResponseByCode("200")
+	assert.NotNil(t, okCode.Value)
+	assert.Equal(t, "A tasty burger for you to eat.", okCode.Value.Description.Value)
+
+	// check headers are populated
+	assert.Len(t, okCode.Value.Headers.Value, 1)
+	okheader := okCode.Value.FindHeader("UseOil")
+	assert.NotNil(t, okheader.Value)
+	assert.Equal(t, "this is a header", okheader.Value.Description.Value)
+
+	respContent := okCode.Value.FindContent("application/json").Value
+	assert.NotNil(t, respContent)
+
+	assert.NotNil(t, respContent.Schema.Value)
+	assert.Len(t, respContent.Schema.Value.Required.Value, 2)
+
+	respExample := respContent.FindExample("quarterPounder")
+	assert.NotNil(t, respExample.Value)
+	assert.NotNil(t, respExample.Value.Value.Value)
+
+	if n, ok := respExample.Value.Value.Value.(map[string]interface{}); ok {
+		assert.Len(t, n, 2)
+		assert.Equal(t, "Quarter Pounder with Cheese", n["name"])
+		assert.Equal(t, 1, n["numPatties"])
+	} else {
+		assert.Fail(t, "should easily be convertable. something changed!")
+	}
+
+	// check links
+	links := okCode.Value.Links
+	assert.NotNil(t, links.Value)
+	assert.Len(t, links.Value, 2)
+	assert.Equal(t, "locateBurger", okCode.Value.FindLink("LocateBurger").Value.OperationId.Value)
 
 }
