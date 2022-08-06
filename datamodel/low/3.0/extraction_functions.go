@@ -5,6 +5,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -27,6 +28,44 @@ func ExtractSchema(root *yaml.Node) (*low.NodeReference[*Schema], error) {
 
 var mapLock sync.Mutex
 
+func ExtractObject[T any](label string, root *yaml.Node) (low.NodeReference[*T], error) {
+	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
+	var n *T = new(T)
+	err := BuildModel(root, n)
+	if err != nil {
+		return low.NodeReference[*T]{}, err
+	}
+	return low.NodeReference[*T]{
+		Value:     n,
+		KeyNode:   ln,
+		ValueNode: vn,
+	}, nil
+}
+
+func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node) ([]low.NodeReference[T], error) {
+	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
+	var items []low.NodeReference[T]
+	if vn != nil && ln != nil {
+		for _, node := range vn.Content {
+			var n T = new(N)
+			err := BuildModel(node, n)
+			if err != nil {
+				return []low.NodeReference[T]{}, err
+			}
+			berr := n.Build(node)
+			if berr != nil {
+				return nil, berr
+			}
+			items = append(items, low.NodeReference[T]{
+				Value:     n,
+				ValueNode: vn,
+				KeyNode:   ln,
+			})
+		}
+	}
+	return items, nil
+}
+
 func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[PT], error) {
 	_, labelNode, valueNode := utils.FindKeyNodeFull(label, root.Content)
 	if valueNode != nil {
@@ -36,6 +75,9 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[
 			if i%2 == 0 {
 				currentLabelNode = en
 				continue
+			}
+			if strings.HasPrefix(strings.ToLower(currentLabelNode.Value), "x-") {
+				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			var n PT = new(N)
 			err := BuildModel(valueNode, n)
@@ -54,7 +96,6 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[
 				ValueNode: en,
 			}
 		}
-
 		resMap := make(map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[PT])
 		resMap[low.KeyReference[string]{
 			Value:   labelNode.Value,

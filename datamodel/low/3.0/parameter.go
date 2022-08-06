@@ -28,7 +28,7 @@ type Parameter struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (p *Parameter) GetContent(cType string) *low.ValueReference[*MediaType] {
+func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
 	for _, c := range p.Content {
 		for n, o := range c {
 			if n.Value == cType {
@@ -60,6 +60,15 @@ func (p *Parameter) Build(root *yaml.Node) error {
 		return sErr
 	}
 	p.Schema = *sch
+
+	// handle examples if set.
+	exps, eErr := ExtractMap[*Example](ExamplesLabel, root)
+	if eErr != nil {
+		return eErr
+	}
+	if exps != nil {
+		p.Examples = exps
+	}
 
 	// handle content, if set.
 	con, cErr := ExtractMap[*MediaType](ContentLabel, root)

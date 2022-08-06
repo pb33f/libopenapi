@@ -2,7 +2,6 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,17 +25,12 @@ func (t *Tag) Build(root *yaml.Node) error {
 	}
 	t.Extensions = extensionMap
 
-	_, ln, exDocs := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
-	// extract external docs
-	var externalDoc ExternalDoc
-	err = BuildModel(exDocs, &externalDoc)
-	if err != nil {
-		return err
+	// extract externalDocs
+	extDocs, dErr := ExtractObject[ExternalDoc](ExternalDocsLabel, root)
+	if dErr != nil {
+		return dErr
 	}
-	t.ExternalDocs = low.NodeReference[*ExternalDoc]{
-		Value:     &externalDoc,
-		KeyNode:   ln,
-		ValueNode: exDocs,
-	}
+	t.ExternalDocs = extDocs
+
 	return nil
 }
