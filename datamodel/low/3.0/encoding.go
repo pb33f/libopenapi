@@ -17,7 +17,18 @@ type Encoding struct {
 	AllowReserved low.NodeReference[bool]
 }
 
-func (en Encoding) Build(root *yaml.Node) error {
+func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
+	for _, c := range en.Headers {
+		for n, o := range c {
+			if n.Value == hType {
+				return &o
+			}
+		}
+	}
+	return nil
+}
+
+func (en *Encoding) Build(root *yaml.Node) error {
 
 	headers, err := ExtractMap[*Header](HeadersLabel, root)
 	if err != nil {

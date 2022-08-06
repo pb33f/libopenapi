@@ -6,9 +6,29 @@ import (
 )
 
 type RequestBody struct {
-    Node        *yaml.Node
     Description low.NodeReference[string]
-    Content     map[string]MediaType
+    Content     map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*MediaType]
     Required    low.NodeReference[bool]
-    Extensions  map[string]low.ObjectReference
+    Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+func (rb *RequestBody) Build(root *yaml.Node) error {
+    // extract extensions
+    extensionMap, err := ExtractExtensions(root)
+    if err != nil {
+        return err
+    }
+    if extensionMap != nil {
+        rb.Extensions = extensionMap
+    }
+
+    // handle content, if set.
+    con, cErr := ExtractMap[*MediaType](ContentLabel, root)
+    if cErr != nil {
+        return cErr
+    }
+    if con != nil {
+        rb.Content = con
+    }
+    return nil
 }

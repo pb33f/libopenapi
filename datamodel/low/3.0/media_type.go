@@ -14,6 +14,17 @@ type MediaType struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (mt *MediaType) FindPropertyEncoding(eType string) *low.ValueReference[*Encoding] {
+	for _, c := range mt.Encoding {
+		for n, o := range c {
+			if n.Value == eType {
+				return &o
+			}
+		}
+	}
+	return nil
+}
+
 func (mt *MediaType) Build(root *yaml.Node) error {
 
 	// extract extensions

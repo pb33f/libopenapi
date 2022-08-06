@@ -2,7 +2,6 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -34,42 +33,19 @@ func (o *Operation) Build(root *yaml.Node) error {
 	}
 	o.Extensions = extensionMap
 
-	// extract external docs
-	_, ln, exDocs := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
-	if exDocs != nil {
-		var externalDoc ExternalDoc
-		err = BuildModel(exDocs, &externalDoc)
-		if err != nil {
-			return err
-		}
-		o.ExternalDocs = low.NodeReference[*ExternalDoc]{
-			Value:     &externalDoc,
-			KeyNode:   ln,
-			ValueNode: exDocs,
-		}
+	// extract externalDocs
+	extDocs, dErr := ExtractObject[ExternalDoc](ExternalDocsLabel, root)
+	if dErr != nil {
+		return dErr
 	}
+	o.ExternalDocs = extDocs
 
-	// build parameters
-	_, paramLabel, paramNode := utils.FindKeyNodeFull(ParametersLabel, root.Content)
-	if paramNode != nil && paramLabel != nil {
-		var params []low.NodeReference[*Parameter]
-
-		for _, pN := range paramNode.Content {
-			var param Parameter
-			err = BuildModel(pN, &param)
-			if err != nil {
-				return err
-			}
-			err = param.Build(pN)
-			if err != nil {
-				return err
-			}
-			params = append(params, low.NodeReference[*Parameter]{
-				Value:     &param,
-				ValueNode: paramNode,
-				KeyNode:   paramLabel,
-			})
-		}
+	// extract parameters
+	params, pErr := ExtractArray[*Parameter](ParametersLabel, root)
+	if pErr != nil {
+		return pErr
+	}
+	if params != nil {
 		o.Parameters = params
 	}
 

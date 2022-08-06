@@ -24,7 +24,7 @@ type Paths struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (p *Paths) GetPath(path string) *low.ValueReference[*PathItem] {
+func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 	for k, p := range p.PathItems {
 		if k.Value == path {
 			return &p
@@ -87,16 +87,16 @@ func (p *Paths) Build(root *yaml.Node) error {
 type PathItem struct {
 	Description low.NodeReference[string]
 	Summary     low.NodeReference[string]
-	Get         *low.NodeReference[*Operation]
-	Put         *low.NodeReference[*Operation]
-	Post        *low.NodeReference[*Operation]
-	Delete      *low.NodeReference[*Operation]
-	Options     *low.NodeReference[*Operation]
-	Head        *low.NodeReference[*Operation]
-	Patch       *low.NodeReference[*Operation]
-	Trace       *low.NodeReference[*Operation]
-	Servers     []*low.NodeReference[*Server]
-	Parameters  []*low.NodeReference[*Parameter]
+	Get         low.NodeReference[*Operation]
+	Put         low.NodeReference[*Operation]
+	Post        low.NodeReference[*Operation]
+	Delete      low.NodeReference[*Operation]
+	Options     low.NodeReference[*Operation]
+	Head        low.NodeReference[*Operation]
+	Patch       low.NodeReference[*Operation]
+	Trace       low.NodeReference[*Operation]
+	Servers     []low.NodeReference[*Server]
+	Parameters  []low.NodeReference[*Parameter]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
@@ -143,21 +143,21 @@ func (p *PathItem) Build(root *yaml.Node) error {
 
 		switch currentNode.Value {
 		case GetLabel:
-			p.Get = &opRef
+			p.Get = opRef
 		case PostLabel:
-			p.Post = &opRef
+			p.Post = opRef
 		case PutLabel:
-			p.Put = &opRef
+			p.Put = opRef
 		case PatchLabel:
-			p.Patch = &opRef
+			p.Patch = opRef
 		case DeleteLabel:
-			p.Delete = &opRef
+			p.Delete = opRef
 		case HeadLabel:
-			p.Head = &opRef
+			p.Head = opRef
 		case OptionsLabel:
-			p.Options = &opRef
+			p.Options = opRef
 		case TraceLabel:
-			p.Trace = &opRef
+			p.Trace = opRef
 		}
 	}
 
