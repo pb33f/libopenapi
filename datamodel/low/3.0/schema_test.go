@@ -116,7 +116,7 @@ additionalProperties: true      `
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.True(t, sch.AdditionalProperties.Value.(bool))
 
-	assert.Len(t, sch.Properties, 2)
+	assert.Len(t, sch.Properties.Value, 2)
 	v := sch.FindProperty("somethingB")
 
 	assert.Equal(t, "https://pb33f.io", v.Value.ExternalDocs.Value.URL.Value)
@@ -139,71 +139,71 @@ additionalProperties: true      `
 	assert.Equal(t, true, addProps["thatIs"])
 
 	// check polymorphic values allOf
-	assert.Equal(t, "an allof thing", sch.AllOf[0].Value.Description.Value)
-	assert.Len(t, sch.AllOf[0].Value.Properties, 2)
+	assert.Equal(t, "an allof thing", sch.AllOf.Value[0].Value.Description.Value)
+	assert.Len(t, sch.AllOf.Value[0].Value.Properties.Value, 2)
 
-	v = sch.AllOf[0].Value.FindProperty("allOfA")
+	v = sch.AllOf.Value[0].Value.FindProperty("allOfA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "allOfA description", v.Value.Description.Value)
 	assert.Equal(t, "allOfAExp", v.Value.Example.Value)
 
-	v = sch.AllOf[0].Value.FindProperty("allOfB")
+	v = sch.AllOf.Value[0].Value.FindProperty("allOfB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "allOfB description", v.Value.Description.Value)
 	assert.Equal(t, "allOfBExp", v.Value.Example.Value)
 
 	// check polymorphic values anyOf
-	assert.Equal(t, "an anyOf thing", sch.AnyOf[0].Value.Description.Value)
-	assert.Len(t, sch.AnyOf[0].Value.Properties, 2)
+	assert.Equal(t, "an anyOf thing", sch.AnyOf.Value[0].Value.Description.Value)
+	assert.Len(t, sch.AnyOf.Value[0].Value.Properties.Value, 2)
 
-	v = sch.AnyOf[0].Value.FindProperty("anyOfA")
+	v = sch.AnyOf.Value[0].Value.FindProperty("anyOfA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "anyOfA description", v.Value.Description.Value)
 	assert.Equal(t, "anyOfAExp", v.Value.Example.Value)
 
-	v = sch.AnyOf[0].Value.FindProperty("anyOfB")
+	v = sch.AnyOf.Value[0].Value.FindProperty("anyOfB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "anyOfB description", v.Value.Description.Value)
 	assert.Equal(t, "anyOfBExp", v.Value.Example.Value)
 
 	// check polymorphic values oneOf
-	assert.Equal(t, "a oneof thing", sch.OneOf[0].Value.Description.Value)
-	assert.Len(t, sch.OneOf[0].Value.Properties, 2)
+	assert.Equal(t, "a oneof thing", sch.OneOf.Value[0].Value.Description.Value)
+	assert.Len(t, sch.OneOf.Value[0].Value.Properties.Value, 2)
 
-	v = sch.OneOf[0].Value.FindProperty("oneOfA")
+	v = sch.OneOf.Value[0].Value.FindProperty("oneOfA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "oneOfA description", v.Value.Description.Value)
 	assert.Equal(t, "oneOfAExp", v.Value.Example.Value)
 
-	v = sch.OneOf[0].Value.FindProperty("oneOfB")
+	v = sch.OneOf.Value[0].Value.FindProperty("oneOfB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "oneOfB description", v.Value.Description.Value)
 	assert.Equal(t, "oneOfBExp", v.Value.Example.Value)
 
 	// check values NOT
-	assert.Equal(t, "a not thing", sch.Not[0].Value.Description.Value)
-	assert.Len(t, sch.Not[0].Value.Properties, 2)
+	assert.Equal(t, "a not thing", sch.Not.Value[0].Value.Description.Value)
+	assert.Len(t, sch.Not.Value[0].Value.Properties.Value, 2)
 
-	v = sch.Not[0].Value.FindProperty("notA")
+	v = sch.Not.Value[0].Value.FindProperty("notA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "notA description", v.Value.Description.Value)
 	assert.Equal(t, "notAExp", v.Value.Example.Value)
 
-	v = sch.Not[0].Value.FindProperty("notB")
+	v = sch.Not.Value[0].Value.FindProperty("notB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "notB description", v.Value.Description.Value)
 	assert.Equal(t, "notBExp", v.Value.Example.Value)
 
 	// check values Items
-	assert.Equal(t, "an items thing", sch.Items[0].Value.Description.Value)
-	assert.Len(t, sch.Items[0].Value.Properties, 2)
+	assert.Equal(t, "an items thing", sch.Items.Value[0].Value.Description.Value)
+	assert.Len(t, sch.Items.Value[0].Value.Properties.Value, 2)
 
-	v = sch.Items[0].Value.FindProperty("itemsA")
+	v = sch.Items.Value[0].Value.FindProperty("itemsA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsA description", v.Value.Description.Value)
 	assert.Equal(t, "itemsAExp", v.Value.Example.Value)
 
-	v = sch.Items[0].Value.FindProperty("itemsB")
+	v = sch.Items.Value[0].Value.FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Description.Value)
 	assert.Equal(t, "itemsBExp", v.Value.Example.Value)
