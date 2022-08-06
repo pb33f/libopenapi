@@ -2,7 +2,6 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strconv"
@@ -12,7 +11,7 @@ import (
 const (
 	PropertiesLabel           = "properties"
 	AdditionalPropertiesLabel = "additionalProperties"
-	ExampleLabel              = "example"
+	XMLLabel                  = "xml"
 	ItemsLabel                = "items"
 	AllOfLabel                = "allOf"
 	AnyOfLabel                = "anyOf"
@@ -44,7 +43,7 @@ type Schema struct {
 	AnyOf                []low.NodeReference[*Schema]
 	Not                  []low.NodeReference[*Schema]
 	Items                []low.NodeReference[*Schema]
-	Properties           map[low.NodeReference[string]]*low.NodeReference[*Schema]
+	Properties           map[low.KeyReference[string]]*low.ValueReference[*Schema]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
 	Default              low.NodeReference[any]
@@ -52,14 +51,14 @@ type Schema struct {
 	Discriminator        low.NodeReference[*Discriminator]
 	ReadOnly             low.NodeReference[bool]
 	WriteOnly            low.NodeReference[bool]
-	XML                  *low.NodeReference[*XML]
-	ExternalDocs         *low.NodeReference[*ExternalDoc]
+	XML                  low.NodeReference[*XML]
+	ExternalDocs         low.NodeReference[*ExternalDoc]
 	Example              low.NodeReference[any]
 	Deprecated           low.NodeReference[bool]
-	Extensions           map[low.NodeReference[string]]low.NodeReference[any]
+	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (s *Schema) FindProperty(name string) *low.NodeReference[*Schema] {
+func (s *Schema) FindProperty(name string) *low.ValueReference[*Schema] {
 	for k, v := range s.Properties {
 		if k.Value == name {
 			return v
@@ -68,17 +67,16 @@ func (s *Schema) FindProperty(name string) *low.NodeReference[*Schema] {
 	return nil
 }
 
-func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
+func (s *Schema) Build(root *yaml.Node, level int) error {
 	level++
 	if level > 50 {
 		return nil // we're done, son! too fricken deep.
 	}
 
-	extensionMap, err := ExtractExtensions(root)
+	err := s.extractExtensions(root)
 	if err != nil {
 		return err
 	}
-	s.Extensions = extensionMap
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
@@ -90,7 +88,10 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
 	if addPNode != nil {
 		if utils.IsNodeMap(addPNode) {
 			var props map[string]interface{}
-			addPNode.Decode(&props)
+			err = addPNode.Decode(&props)
+			if err != nil {
+				return err
+			}
 			s.AdditionalProperties = low.NodeReference[any]{Value: props, KeyNode: addPLabel, ValueNode: addPNode}
 		}
 
@@ -111,11 +112,43 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
 		s.Discriminator = low.NodeReference[*Discriminator]{Value: &discriminator, KeyNode: discLabel, ValueNode: discNode}
 	}
 
+	// handle externalDocs if set.
+	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
+	if extDocNode != nil {
+		var exDoc ExternalDoc
+		err = BuildModel(extDocNode, &exDoc)
+		if err != nil {
+			return err
+		}
+		err = exDoc.Build(extDocNode)
+		if err != nil {
+			return err
+		}
+		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
+	}
+
+	// handle xml if set.
+	_, xmlLabel, xmlNode := utils.FindKeyNodeFull(XMLLabel, root.Content)
+	if xmlNode != nil {
+		var xml XML
+		err = BuildModel(xmlNode, &xml)
+		if err != nil {
+			return err
+		}
+		// extract extensions if set.
+		err = xml.Build(xmlNode)
+		if err != nil {
+			return err
+		}
+		s.XML = low.NodeReference[*XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
+	}
+
 	// handle properties
 	_, propLabel, propsNode := utils.FindKeyNodeFull(PropertiesLabel, root.Content)
 	if propsNode != nil {
-		propertyMap := make(map[low.NodeReference[string]]*low.NodeReference[*Schema])
+		propertyMap := make(map[low.KeyReference[string]]*low.ValueReference[*Schema])
 		var currentProp *yaml.Node
+		var wg sync.WaitGroup
 		for i, prop := range propsNode.Content {
 			if i%2 == 0 {
 				currentProp = prop
@@ -127,17 +160,15 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
 			if err != nil {
 				return err
 			}
-			err = property.Build(prop, idx, level)
+			err = property.Build(prop, level)
 			if err != nil {
 				return err
 			}
-			propertyMap[low.NodeReference[string]{
-				Value:     currentProp.Value,
-				KeyNode:   propLabel,
-				ValueNode: propsNode,
-			}] = &low.NodeReference[*Schema]{
+			propertyMap[low.KeyReference[string]{
+				Value:   currentProp.Value,
+				KeyNode: propLabel,
+			}] = &low.ValueReference[*Schema]{
 				Value:     &property,
-				KeyNode:   currentProp,
 				ValueNode: prop,
 			}
 		}
@@ -145,16 +176,15 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
 
 		// extract all sub-schemas
 		var errors []error
-		var wg sync.WaitGroup
 
 		var allOf, anyOf, oneOf, not, items []low.NodeReference[*Schema]
 
 		// make this async at some point to speed things up.
-		buildSchema(&allOf, AllOfLabel, idx, root, level, &errors, &wg)
-		buildSchema(&anyOf, AnyOfLabel, idx, root, level, &errors, &wg)
-		buildSchema(&oneOf, OneOfLabel, idx, root, level, &errors, &wg)
-		buildSchema(&not, NotLabel, idx, root, level, &errors, &wg)
-		buildSchema(&items, ItemsLabel, idx, root, level, &errors, &wg)
+		buildSchema(&allOf, AllOfLabel, root, level, &errors, &wg)
+		buildSchema(&anyOf, AnyOfLabel, root, level, &errors, &wg)
+		buildSchema(&oneOf, OneOfLabel, root, level, &errors, &wg)
+		buildSchema(&not, NotLabel, root, level, &errors, &wg)
+		buildSchema(&items, ItemsLabel, root, level, &errors, &wg)
 		//wg.Wait()
 
 		if len(errors) > 0 {
@@ -182,7 +212,16 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex, level int) error {
 	return nil
 }
 
-func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, idx *index.SpecIndex, rootNode *yaml.Node, level int, errors *[]error, wg *sync.WaitGroup) {
+func (s *Schema) extractExtensions(root *yaml.Node) error {
+	extensionMap, err := ExtractExtensions(root)
+	if err != nil {
+		return err
+	}
+	s.Extensions = extensionMap
+	return err
+}
+
+func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int, errors *[]error, wg *sync.WaitGroup) {
 	_, labelNode, valueNode := utils.FindKeyNodeFull(attribute, rootNode.Content)
 	//wg.Add(1)
 	if valueNode != nil {
@@ -194,7 +233,7 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, idx *i
 				*errors = append(*errors, err)
 				return nil
 			}
-			err = schema.Build(vn, idx, level)
+			err = schema.Build(vn, level)
 			if err != nil {
 				*errors = append(*errors, err)
 				return nil

@@ -15,7 +15,7 @@ type Tag struct {
 	Name         low.NodeReference[string]
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
-	Extensions   map[low.NodeReference[string]]low.NodeReference[any]
+	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
 func (t *Tag) Build(root *yaml.Node) error {

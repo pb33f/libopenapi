@@ -83,15 +83,25 @@ properties:
   somethingB:
     type: object
     description: an object
+    externalDocs:
+      description: the best docs
+      url: https://pb33f.io
     properties:
       somethingBProp:
         type: string
         description: something b subprop
         example: picnics are nice.
+        xml:
+          name: an xml thing
+          namespace: an xml namespace
+          prefix: a prefix
+          attribute: true
+          wrapped: false
+          x-pizza: love
     additionalProperties: 
         why: yes
         thatIs: true    
-additionalProperties: true`
+additionalProperties: true      `
 
 	var rootNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
@@ -101,13 +111,26 @@ additionalProperties: true`
 	mbErr := BuildModel(&rootNode, &sch)
 	assert.NoError(t, mbErr)
 
-	schErr := sch.Build(rootNode.Content[0], nil, 0)
+	schErr := sch.Build(rootNode.Content[0], 0)
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.True(t, sch.AdditionalProperties.Value.(bool))
 
 	assert.Len(t, sch.Properties, 2)
 	v := sch.FindProperty("somethingB")
+
+	assert.Equal(t, "https://pb33f.io", v.Value.ExternalDocs.Value.URL.Value)
+	assert.Equal(t, "the best docs", v.Value.ExternalDocs.Value.Description.Value)
+
+	j := v.Value.FindProperty("somethingBProp")
+	assert.NotNil(t, j.Value)
+	assert.NotNil(t, j.Value.XML.Value)
+	assert.Equal(t, "an xml thing", j.Value.XML.Value.Name.Value)
+	assert.Equal(t, "an xml namespace", j.Value.XML.Value.Namespace.Value)
+	assert.Equal(t, "a prefix", j.Value.XML.Value.Prefix.Value)
+	assert.Equal(t, true, j.Value.XML.Value.Attribute.Value)
+	assert.Len(t, j.Value.XML.Value.Extensions, 1)
+
 	assert.NotNil(t, v.Value.AdditionalProperties.Value)
 
 	var addProps map[string]interface{}

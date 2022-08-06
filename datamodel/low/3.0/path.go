@@ -2,7 +2,6 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 	"strings"
 	"sync"
@@ -21,19 +20,20 @@ const (
 )
 
 type Paths struct {
-	Paths      map[low.NodeReference[string]]low.NodeReference[*Path]
-	Extensions map[low.NodeReference[string]]low.NodeReference[any]
+	PathItems  map[low.KeyReference[string]]low.ValueReference[*PathItem]
+	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (p *Paths) GetPathMap() map[string]*Path {
-	pMap := make(map[string]*Path)
-	for i, pv := range p.Paths {
-		pMap[i.Value] = pv.Value
+func (p *Paths) GetPath(path string) *low.ValueReference[*PathItem] {
+	for k, p := range p.PathItems {
+		if k.Value == path {
+			return &p
+		}
 	}
-	return pMap
+	return nil
 }
 
-func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Paths) Build(root *yaml.Node) error {
 
 	// extract extensions
 	extensionMap, err := ExtractExtensions(root)
@@ -44,7 +44,7 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	skip := false
 	var currentNode *yaml.Node
 
-	pathsMap := make(map[low.NodeReference[string]]low.NodeReference[*Path])
+	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
 
 	for i, pathNode := range root.Content {
 		if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
@@ -59,32 +59,32 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			currentNode = pathNode
 			continue
 		}
-		var path = Path{}
+		var path = PathItem{}
 		err = BuildModel(pathNode, &path)
 		if err != nil {
 
 		}
-		err = path.Build(pathNode, idx)
+		err = path.Build(pathNode)
 		if err != nil {
 			return err
 		}
 
 		// add bulk here
-		pathsMap[low.NodeReference[string]{
+		pathsMap[low.KeyReference[string]{
 			Value:   currentNode.Value,
 			KeyNode: currentNode,
-		}] = low.NodeReference[*Path]{
+		}] = low.ValueReference[*PathItem]{
 			Value:     &path,
 			ValueNode: pathNode,
 		}
 	}
 
-	p.Paths = pathsMap
+	p.PathItems = pathsMap
 	return nil
 
 }
 
-type Path struct {
+type PathItem struct {
 	Description low.NodeReference[string]
 	Summary     low.NodeReference[string]
 	Get         *low.NodeReference[*Operation]
@@ -97,10 +97,10 @@ type Path struct {
 	Trace       *low.NodeReference[*Operation]
 	Servers     []*low.NodeReference[*Server]
 	Parameters  []*low.NodeReference[*Parameter]
-	Extensions  map[low.NodeReference[string]]low.NodeReference[any]
+	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (p *Path) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *PathItem) Build(root *yaml.Node) error {
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
@@ -171,7 +171,7 @@ func (p *Path) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
 
 		// build out the operation.
-		er := op.Value.Build(op.ValueNode, idx)
+		er := op.Value.Build(op.ValueNode)
 		if err != nil {
 			errCh <- er
 		}
