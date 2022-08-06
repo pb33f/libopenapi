@@ -16,6 +16,10 @@ type Link struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
+	return FindItemInMap[string](pName, l.Parameters.Value)
+}
+
 func (l *Link) Build(root *yaml.Node) error {
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {

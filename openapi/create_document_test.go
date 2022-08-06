@@ -214,4 +214,10 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Len(t, links.Value, 2)
 	assert.Equal(t, "locateBurger", okCode.Value.FindLink("LocateBurger").Value.OperationId.Value)
 
+	locateBurger := okCode.Value.FindLink("LocateBurger").Value
+
+	burgerIdParam := locateBurger.FindParameter("burgerId")
+	assert.NotNil(t, burgerIdParam)
+	assert.Equal(t, "$response.body#/id", burgerIdParam.Value)
+
 }
