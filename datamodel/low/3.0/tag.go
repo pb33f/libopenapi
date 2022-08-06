@@ -26,7 +26,7 @@ func (t *Tag) Build(root *yaml.Node) error {
 	t.Extensions = extensionMap
 
 	// extract externalDocs
-	extDocs, dErr := ExtractObject[ExternalDoc](ExternalDocsLabel, root)
+	extDocs, dErr := ExtractObject[*ExternalDoc](ExternalDocsLabel, root)
 	if dErr != nil {
 		return dErr
 	}

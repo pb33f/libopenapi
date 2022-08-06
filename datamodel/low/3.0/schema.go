@@ -5,7 +5,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strconv"
-	"sync"
 )
 
 const (
@@ -35,15 +34,15 @@ type Schema struct {
 	UniqueItems          low.NodeReference[int]
 	MaxProperties        low.NodeReference[int]
 	MinProperties        low.NodeReference[int]
-	Required             []low.NodeReference[string]
-	Enum                 []low.NodeReference[string]
+	Required             low.NodeReference[[]low.NodeReference[string]]
+	Enum                 low.NodeReference[[]low.NodeReference[string]]
 	Type                 low.NodeReference[string]
-	AllOf                []low.NodeReference[*Schema]
-	OneOf                []low.NodeReference[*Schema]
-	AnyOf                []low.NodeReference[*Schema]
-	Not                  []low.NodeReference[*Schema]
-	Items                []low.NodeReference[*Schema]
-	Properties           map[low.KeyReference[string]]*low.ValueReference[*Schema]
+	AllOf                low.NodeReference[[]low.NodeReference[*Schema]]
+	OneOf                low.NodeReference[[]low.NodeReference[*Schema]]
+	AnyOf                low.NodeReference[[]low.NodeReference[*Schema]]
+	Not                  low.NodeReference[[]low.NodeReference[*Schema]]
+	Items                low.NodeReference[[]low.NodeReference[*Schema]]
+	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
 	Default              low.NodeReference[any]
@@ -59,12 +58,7 @@ type Schema struct {
 }
 
 func (s *Schema) FindProperty(name string) *low.ValueReference[*Schema] {
-	for k, v := range s.Properties {
-		if k.Value == name {
-			return v
-		}
-	}
-	return nil
+	return FindItemInMap[*Schema](name, s.Properties.Value)
 }
 
 func (s *Schema) Build(root *yaml.Node, level int) error {
@@ -146,15 +140,13 @@ func (s *Schema) Build(root *yaml.Node, level int) error {
 	// handle properties
 	_, propLabel, propsNode := utils.FindKeyNodeFull(PropertiesLabel, root.Content)
 	if propsNode != nil {
-		propertyMap := make(map[low.KeyReference[string]]*low.ValueReference[*Schema])
+		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*Schema])
 		var currentProp *yaml.Node
-		var wg sync.WaitGroup
 		for i, prop := range propsNode.Content {
 			if i%2 == 0 {
 				currentProp = prop
 				continue
 			}
-
 			var property Schema
 			err = BuildModel(prop, &property)
 			if err != nil {
@@ -166,13 +158,17 @@ func (s *Schema) Build(root *yaml.Node, level int) error {
 			}
 			propertyMap[low.KeyReference[string]{
 				Value:   currentProp.Value,
-				KeyNode: propLabel,
-			}] = &low.ValueReference[*Schema]{
+				KeyNode: currentProp,
+			}] = low.ValueReference[*Schema]{
 				Value:     &property,
 				ValueNode: prop,
 			}
 		}
-		s.Properties = propertyMap
+		s.Properties = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]{
+			Value:     propertyMap,
+			KeyNode:   propLabel,
+			ValueNode: propsNode,
+		}
 
 		// extract all sub-schemas
 		var errors []error
@@ -180,35 +176,52 @@ func (s *Schema) Build(root *yaml.Node, level int) error {
 		var allOf, anyOf, oneOf, not, items []low.NodeReference[*Schema]
 
 		// make this async at some point to speed things up.
-		buildSchema(&allOf, AllOfLabel, root, level, &errors, &wg)
-		buildSchema(&anyOf, AnyOfLabel, root, level, &errors, &wg)
-		buildSchema(&oneOf, OneOfLabel, root, level, &errors, &wg)
-		buildSchema(&not, NotLabel, root, level, &errors, &wg)
-		buildSchema(&items, ItemsLabel, root, level, &errors, &wg)
-		//wg.Wait()
+		allOfLabel, allOfValue := buildSchema(&allOf, AllOfLabel, root, level, &errors)
+		anyOfLabel, anyOfValue := buildSchema(&anyOf, AnyOfLabel, root, level, &errors)
+		oneOfLabel, oneOfValue := buildSchema(&oneOf, OneOfLabel, root, level, &errors)
+		notLabel, notValue := buildSchema(&not, NotLabel, root, level, &errors)
+		itemsLabel, itemsValue := buildSchema(&items, ItemsLabel, root, level, &errors)
 
 		if len(errors) > 0 {
 			// todo fix this
 			return errors[0]
 		}
 		if len(anyOf) > 0 {
-			s.AnyOf = anyOf
+			s.AnyOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+				Value:     anyOf,
+				KeyNode:   anyOfLabel,
+				ValueNode: anyOfValue,
+			}
 		}
 		if len(oneOf) > 0 {
-			s.OneOf = oneOf
+			s.OneOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+				Value:     oneOf,
+				KeyNode:   oneOfLabel,
+				ValueNode: oneOfValue,
+			}
 		}
 		if len(allOf) > 0 {
-			s.AllOf = allOf
+			s.AllOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+				Value:     allOf,
+				KeyNode:   allOfLabel,
+				ValueNode: allOfValue,
+			}
 		}
 		if len(not) > 0 {
-			s.Not = not
+			s.Not = low.NodeReference[[]low.NodeReference[*Schema]]{
+				Value:     not,
+				KeyNode:   notLabel,
+				ValueNode: notValue,
+			}
 		}
 		if len(items) > 0 {
-			s.Items = items
+			s.Items = low.NodeReference[[]low.NodeReference[*Schema]]{
+				Value:     items,
+				KeyNode:   itemsLabel,
+				ValueNode: itemsValue,
+			}
 		}
-
 	}
-
 	return nil
 }
 
@@ -221,11 +234,10 @@ func (s *Schema) extractExtensions(root *yaml.Node) error {
 	return err
 }
 
-func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int, errors *[]error, wg *sync.WaitGroup) {
-	_, labelNode, valueNode := utils.FindKeyNodeFull(attribute, rootNode.Content)
+func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int, errors *[]error) (labelNode *yaml.Node, valueNode *yaml.Node) {
+	_, labelNode, valueNode = utils.FindKeyNodeFull(attribute, rootNode.Content)
 	//wg.Add(1)
 	if valueNode != nil {
-
 		var build = func(kn *yaml.Node, vn *yaml.Node) *low.NodeReference[*Schema] {
 			var schema Schema
 			err := BuildModel(vn, &schema)
@@ -262,4 +274,5 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 
 	}
 	//wg.Done()
+	return labelNode, valueNode
 }

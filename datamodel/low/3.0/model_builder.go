@@ -361,6 +361,27 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 				}
 			}
 		}
+	case reflect.TypeOf(low.NodeReference[[]low.NodeReference[string]]{}):
+		if valueNode != nil {
+			if utils.IsNodeArray(valueNode) {
+				if field.CanSet() {
+					var items []low.NodeReference[string]
+					for _, sliceItem := range valueNode.Content {
+						items = append(items, low.NodeReference[string]{
+							Value:     sliceItem.Value,
+							ValueNode: sliceItem,
+							KeyNode:   valueNode,
+						})
+					}
+					n := low.NodeReference[[]low.NodeReference[string]]{
+						Value:     items,
+						KeyNode:   keyNode,
+						ValueNode: valueNode,
+					}
+					field.Set(reflect.ValueOf(n))
+				}
+			}
+		}
 	default:
 		// we want to ignore everything else.
 		break

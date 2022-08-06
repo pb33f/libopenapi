@@ -9,20 +9,21 @@ import (
 type MediaType struct {
 	Schema     low.NodeReference[*Schema]
 	Example    low.NodeReference[any]
-	Examples   map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*Example]
-	Encoding   map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*Encoding]
+	Examples   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
+	Encoding   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Encoding]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
 func (mt *MediaType) FindPropertyEncoding(eType string) *low.ValueReference[*Encoding] {
-	for _, c := range mt.Encoding {
-		for n, o := range c {
-			if n.Value == eType {
-				return &o
-			}
-		}
-	}
-	return nil
+	return FindItemInMap[*Encoding](eType, mt.Encoding.Value)
+}
+
+func (mt *MediaType) FindExample(eType string) *low.ValueReference[*Example] {
+	return FindItemInMap[*Example](eType, mt.Examples.Value)
+}
+
+func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueReference[*Example] {
+	return mt.Examples.Value
 }
 
 func (mt *MediaType) Build(root *yaml.Node) error {
@@ -50,21 +51,29 @@ func (mt *MediaType) Build(root *yaml.Node) error {
 	}
 
 	// handle examples if set.
-	exps, eErr := ExtractMap[*Example](ExamplesLabel, root)
+	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root)
 	if eErr != nil {
 		return eErr
 	}
 	if exps != nil {
-		mt.Examples = exps
+		mt.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]{
+			Value:     exps,
+			KeyNode:   expsL,
+			ValueNode: expsN,
+		}
 	}
 
 	// handle encoding
-	encs, encErr := ExtractMap[*Encoding](EncodingLabel, root)
+	encs, encsL, encsN, encErr := ExtractMapFlat[*Encoding](EncodingLabel, root)
 	if encErr != nil {
 		return err
 	}
 	if encs != nil {
-		mt.Encoding = encs
+		mt.Encoding = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Encoding]]{
+			Value:     encs,
+			KeyNode:   encsL,
+			ValueNode: encsN,
+		}
 	}
 	return nil
 }
