@@ -15,8 +15,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	doc := v3.Document{Version: low.NodeReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 
 	// build an index
-	idx := index.NewSpecIndex(info.RootNode)
-	rsolvr := resolver.NewResolver(idx)
+	rsolvr := resolver.NewResolver(index.NewSpecIndex(info.RootNode))
 
 	// todo handle errors
 	rsolvr.Resolve()
@@ -24,18 +23,18 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	var wg sync.WaitGroup
 	var errors []error
 	var runExtraction = func(info *datamodel.SpecInfo, doc *v3.Document,
-		runFunc func(i *datamodel.SpecInfo, d *v3.Document, idx *index.SpecIndex) error,
+		runFunc func(i *datamodel.SpecInfo, d *v3.Document) error,
 		ers *[]error,
 		wg *sync.WaitGroup) {
 
-		if er := runFunc(info, doc, idx); er != nil {
+		if er := runFunc(info, doc); er != nil {
 			*ers = append(*ers, er)
 		}
 
 		wg.Done()
 	}
 
-	extractionFuncs := []func(i *datamodel.SpecInfo, d *v3.Document, idx *index.SpecIndex) error{
+	extractionFuncs := []func(i *datamodel.SpecInfo, d *v3.Document) error{
 		extractInfo,
 		extractServers,
 		extractTags,
@@ -54,7 +53,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	return &doc, nil
 }
 
-func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
+func extractInfo(info *datamodel.SpecInfo, doc *v3.Document) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.InfoLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Info{}
@@ -69,7 +68,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 	return nil
 }
 
-func extractServers(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
+func extractServers(info *datamodel.SpecInfo, doc *v3.Document) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.ServersLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
@@ -95,7 +94,7 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecI
 	return nil
 }
 
-func extractTags(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
+func extractTags(info *datamodel.SpecInfo, doc *v3.Document) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.TagsLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
@@ -121,11 +120,11 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 	return nil
 }
 
-func extractPaths(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
+func extractPaths(info *datamodel.SpecInfo, doc *v3.Document) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.PathsLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Paths{}
-		err := ir.Build(vn, idx)
+		err := ir.Build(vn)
 		if err != nil {
 			return err
 		}

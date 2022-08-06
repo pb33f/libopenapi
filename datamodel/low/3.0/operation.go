@@ -2,7 +2,6 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -15,19 +14,19 @@ type Operation struct {
 	Tags         []low.NodeReference[string]
 	Summary      low.NodeReference[string]
 	Description  low.NodeReference[string]
-	ExternalDocs *low.NodeReference[*ExternalDoc]
+	ExternalDocs low.NodeReference[*ExternalDoc]
 	OperationId  low.NodeReference[string]
 	Parameters   []low.NodeReference[*Parameter]
-	RequestBody  *low.NodeReference[*RequestBody]
-	Responses    *low.NodeReference[*Responses]
-	Callbacks    map[low.NodeReference[string]]low.NodeReference[*Callback]
-	Deprecated   *low.NodeReference[bool]
+	RequestBody  low.NodeReference[*RequestBody]
+	Responses    low.NodeReference[*Responses]
+	Callbacks    map[low.KeyReference[string]]low.ValueReference[*Callback]
+	Deprecated   low.NodeReference[bool]
 	Security     []low.NodeReference[*SecurityRequirement]
 	Servers      []low.NodeReference[*Server]
-	Extensions   map[low.NodeReference[string]]low.NodeReference[any]
+	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (o *Operation) Build(root *yaml.Node) error {
 
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
@@ -43,7 +42,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		if err != nil {
 			return err
 		}
-		o.ExternalDocs = &low.NodeReference[*ExternalDoc]{
+		o.ExternalDocs = low.NodeReference[*ExternalDoc]{
 			Value:     &externalDoc,
 			KeyNode:   ln,
 			ValueNode: exDocs,
@@ -61,7 +60,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			if err != nil {
 				return err
 			}
-			err = param.Build(pN, idx)
+			err = param.Build(pN)
 			if err != nil {
 				return err
 			}

@@ -1,15 +1,31 @@
 package v3
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/low"
-    "gopkg.in/yaml.v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"gopkg.in/yaml.v3"
+)
+
+const (
+	EncodingLabel = "encoding"
 )
 
 type Encoding struct {
-    Node          *yaml.Node
-    ContentType   low.NodeReference[string]
-    Headers       map[string]Parameter
-    Style         low.NodeReference[string]
-    Explode       low.NodeReference[bool]
-    AllowReserved low.NodeReference[bool]
+	ContentType   low.NodeReference[string]
+	Headers       map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*Header]
+	Style         low.NodeReference[string]
+	Explode       low.NodeReference[bool]
+	AllowReserved low.NodeReference[bool]
+}
+
+func (en Encoding) Build(root *yaml.Node) error {
+
+	headers, err := ExtractMap[*Header](HeadersLabel, root)
+	if err != nil {
+		return err
+	}
+	if headers != nil {
+		en.Headers = headers
+	}
+
+	return nil
 }

@@ -321,6 +321,27 @@ components:
       example: big-mac
       description: the name of the burger. use this to order your food
       required: true
+      content:
+        application/json:
+          example: somethingNice
+          encoding:
+            burgerTheme:
+              contentType: text/plain
+              headers:
+                someHeader:
+                  description: this is a header
+                  schema:
+                    type: string
+          schema:
+            type: object
+            required: [burgerTheme, burgerTime]
+            properties:
+              burgerTheme:
+                type: string
+                description: something about a theme?
+              burgerTime:
+                type: number
+                description: number of burgers ordered this year.
     BurgerId:
       in: path
       name: burgerId

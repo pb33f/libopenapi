@@ -2,18 +2,14 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	SchemaLabel  = "schema"
-	ContentLabel = "content"
+	HeadersLabel = "headers"
 )
 
-type Parameter struct {
-	Name            low.NodeReference[string]
-	In              low.NodeReference[string]
+type Header struct {
 	Description     low.NodeReference[string]
 	Required        low.NodeReference[bool]
 	Deprecated      low.NodeReference[bool]
@@ -28,44 +24,38 @@ type Parameter struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (p *Parameter) GetContent(cType string) *low.ValueReference[*MediaType] {
-	for _, c := range p.Content {
-		for n, o := range c {
-			if n.Value == cType {
-				return &o
-			}
-		}
-	}
-	return nil
-}
-
-func (p *Parameter) Build(root *yaml.Node) error {
-
+func (h *Header) Build(root *yaml.Node) error {
 	// extract extensions
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
 		return err
 	}
-	p.Extensions = extensionMap
+	h.Extensions = extensionMap
 
-	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
-	if expNode != nil {
-		p.Example = low.NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
+	// handle examples if set.
+	exps, eErr := ExtractMap[*Example](ExamplesLabel, root)
+	if eErr != nil {
+		return eErr
+	}
+	if exps != nil {
+		h.Examples = exps
 	}
 
 	// handle schema
 	sch, sErr := ExtractSchema(root)
 	if sErr != nil {
-		return sErr
+		return nil
 	}
-	p.Schema = *sch
+	if sch != nil {
+		h.Schema = *sch
+	}
 
 	// handle content, if set.
 	con, cErr := ExtractMap[*MediaType](ContentLabel, root)
 	if cErr != nil {
 		return cErr
 	}
-	p.Content = con
+	h.Content = con
+
 	return nil
 }
