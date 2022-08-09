@@ -221,7 +221,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.NotNil(t, index.GetDiscoveredReferences())
 	assert.Equal(t, 0, len(index.GetPolyReferences()))
 	assert.NotNil(t, index.GetOperationParameterReferences())
-	assert.Equal(t, 0, len(index.GetAllSecuritySchemes()))
+	assert.Equal(t, 3, len(index.GetAllSecuritySchemes()))
 	assert.Equal(t, 2, len(index.GetAllParameters()))
 	assert.Equal(t, 0, len(index.GetAllResponses()))
 	assert.Equal(t, 2, len(index.GetInlineOperationDuplicateParameters()))

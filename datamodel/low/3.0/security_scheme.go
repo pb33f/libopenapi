@@ -2,7 +2,12 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	SecurityLabel = "security"
 )
 
 type SecurityScheme struct {
@@ -27,5 +32,89 @@ func (ss *SecurityScheme) Build(root *yaml.Node) error {
 }
 
 type SecurityRequirement struct {
-	Value low.NodeReference[[]low.ValueReference[string]]
+	Value []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+}
+
+func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference[string] {
+	for _, r := range sr.Value {
+		for k, v := range r.Value {
+			if k.Value == name {
+				return v
+			}
+		}
+	}
+	return nil
+}
+
+func (sr *SecurityRequirement) Build(root *yaml.Node) error {
+
+	//if utils.IsNodeArray(root) {
+	//	var currSec *yaml.Node
+	//	var requirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+	//	for i, n := range root.Content {
+	//		if i%2 == 0 {
+	//			currSec = n
+	//			continue
+	//		}
+	//		if utils.IsNodeArray(n) {
+	//			res := make(map[low.KeyReference[string]][]low.ValueReference[string])
+	//			var dat []low.ValueReference[string]
+	//			for _, r := range n.Content {
+	//				dat = append(dat, low.ValueReference[string]{
+	//					Value:     r.Value,
+	//					ValueNode: r,
+	//				})
+	//			}
+	//			res[low.KeyReference[string]{
+	//				Value:   currSec.Value,
+	//				KeyNode: currSec,
+	//			}] = dat
+	//			requirements = append(requirements, low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]{
+	//				Value:     res,
+	//				ValueNode: n,
+	//			})
+	//		}
+	//	}
+	//	sr.Value = requirements
+	//}
+
+	if utils.IsNodeArray(root) {
+
+		var requirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+		for _, n := range root.Content {
+			var currSec *yaml.Node
+			if utils.IsNodeMap(n) {
+				res := make(map[low.KeyReference[string]][]low.ValueReference[string])
+				var dat []low.ValueReference[string]
+				for i, r := range n.Content {
+					if i%2 == 0 {
+						currSec = r
+						continue
+					}
+					if utils.IsNodeArray(r) {
+						// value (should be) an array of strings
+						var keyValues []low.ValueReference[string]
+						for _, strN := range r.Content {
+							keyValues = append(keyValues, low.ValueReference[string]{
+								Value:     strN.Value,
+								ValueNode: strN,
+							})
+						}
+						dat = keyValues
+					}
+				}
+				res[low.KeyReference[string]{
+					Value:   currSec.Value,
+					KeyNode: currSec,
+				}] = dat
+				requirements = append(requirements, low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]{
+					Value:     res,
+					ValueNode: n,
+				})
+			}
+		}
+		sr.Value = requirements
+	}
+
+	return nil
 }

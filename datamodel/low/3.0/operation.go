@@ -18,13 +18,13 @@ type Operation struct {
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
 	OperationId  low.NodeReference[string]
-	Parameters   low.NodeReference[[]low.NodeReference[*Parameter]]
+	Parameters   low.NodeReference[[]low.ValueReference[*Parameter]]
 	RequestBody  low.NodeReference[*RequestBody]
 	Responses    low.NodeReference[*Responses]
 	Callbacks    low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]]
 	Deprecated   low.NodeReference[bool]
-	Security     []low.NodeReference[*SecurityRequirement]
-	Servers      []low.NodeReference[*Server]
+	Security     low.NodeReference[*SecurityRequirement]
+	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
@@ -48,7 +48,7 @@ func (o *Operation) Build(root *yaml.Node) error {
 		return pErr
 	}
 	if params != nil {
-		o.Parameters = low.NodeReference[[]low.NodeReference[*Parameter]]{
+		o.Parameters = low.NodeReference[[]low.ValueReference[*Parameter]]{
 			Value:     params,
 			KeyNode:   ln,
 			ValueNode: vn,
@@ -82,5 +82,24 @@ func (o *Operation) Build(root *yaml.Node) error {
 		}
 	}
 
+	// extract security
+	sec, sErr := ExtractObject[*SecurityRequirement](SecurityLabel, root)
+	if sErr != nil {
+		return sErr
+	}
+	o.Security = sec
+
+	// extract servers
+	servers, sl, sn, serErr := ExtractArray[*Server](ServersLabel, root)
+	if serErr != nil {
+		return serErr
+	}
+	if servers != nil {
+		o.Servers = low.NodeReference[[]low.ValueReference[*Server]]{
+			Value:     servers,
+			KeyNode:   sl,
+			ValueNode: sn,
+		}
+	}
 	return nil
 }

@@ -7,9 +7,9 @@ import (
 type Document struct {
 	Version      low.NodeReference[string]
 	Info         low.NodeReference[*Info]
-	Servers      []low.NodeReference[*Server]
+	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Paths        low.NodeReference[*Paths]
-	Components   *Components
+	Components   low.NodeReference[*Components]
 	Security     []*SecurityRequirement
 	Tags         []low.NodeReference[*Tag]
 	ExternalDocs *ExternalDoc

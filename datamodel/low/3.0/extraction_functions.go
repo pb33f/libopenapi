@@ -64,11 +64,14 @@ func ExtractObjectRaw[T low.Buildable[N], N any](root *yaml.Node) (T, error) {
 func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node) (low.NodeReference[T], error) {
 	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
 	var n T = new(N)
-	err := BuildModel(root, n)
+	err := BuildModel(vn, n)
 	if err != nil {
 		return low.NodeReference[T]{}, err
 	}
-	err = n.Build(root)
+	if ln == nil {
+		return low.NodeReference[T]{}, nil
+	}
+	err = n.Build(vn)
 	if err != nil {
 		return low.NodeReference[T]{}, err
 	}
@@ -79,28 +82,57 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node) (lo
 	}, nil
 }
 
-func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node) ([]low.NodeReference[T], *yaml.Node, *yaml.Node, error) {
+func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node) ([]low.ValueReference[T], *yaml.Node, *yaml.Node, error) {
 	_, ln, vn := utils.FindKeyNodeFull(label, root.Content)
-	var items []low.NodeReference[T]
+	var items []low.ValueReference[T]
 	if vn != nil && ln != nil {
 		for _, node := range vn.Content {
 			var n T = new(N)
 			err := BuildModel(node, n)
 			if err != nil {
-				return []low.NodeReference[T]{}, ln, vn, err
+				return []low.ValueReference[T]{}, ln, vn, err
 			}
 			berr := n.Build(node)
 			if berr != nil {
 				return nil, ln, vn, berr
 			}
-			items = append(items, low.NodeReference[T]{
+			items = append(items, low.ValueReference[T]{
 				Value:     n,
 				ValueNode: node,
-				KeyNode:   ln,
 			})
 		}
 	}
 	return items, ln, vn, nil
+}
+
+func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node) (map[low.KeyReference[string]]low.ValueReference[PT], error) {
+	valueMap := make(map[low.KeyReference[string]]low.ValueReference[PT])
+	if utils.IsNodeMap(root) {
+		var currentKey *yaml.Node
+		for i, node := range root.Content {
+			if i%2 == 0 {
+				currentKey = node
+				continue
+			}
+			var n PT = new(N)
+			err := BuildModel(node, n)
+			if err != nil {
+				return nil, err
+			}
+			berr := n.Build(node)
+			if berr != nil {
+				return nil, berr
+			}
+			valueMap[low.KeyReference[string]{
+				Value:   currentKey.Value,
+				KeyNode: currentKey,
+			}] = low.ValueReference[PT]{
+				Value:     n,
+				ValueNode: node,
+			}
+		}
+	}
+	return valueMap, nil
 }
 
 func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node) (map[low.KeyReference[string]]low.ValueReference[PT], *yaml.Node, *yaml.Node, error) {
