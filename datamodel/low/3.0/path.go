@@ -189,9 +189,11 @@ allDone:
 		case buildError := <-opErrorChan:
 			return buildError
 		case <-opBuildChan:
-			if n == len(ops)-1 {
+			n++
+			if n == len(ops) {
 				break allDone
 			}
+
 		}
 	}
 

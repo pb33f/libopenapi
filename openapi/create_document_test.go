@@ -235,3 +235,26 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Equal(t, "https://pb33f.io", servers[0].Value.URL.Value)
 
 }
+
+func TestCreateDocument_Components_Schemas(t *testing.T) {
+
+	components := doc.Components.Value
+	assert.NotNil(t, components)
+	assert.Len(t, components.Schemas.Value, 5)
+
+	burger := components.FindSchema("Burger")
+	assert.NotNil(t, burger.Value)
+	assert.Equal(t, "The tastiest food on the planet you would love to eat everyday", burger.Value.Description.Value)
+
+	er := components.FindSchema("Error")
+	assert.NotNil(t, er.Value)
+	assert.Equal(t, "Error defining what went wrong when providing a specification. The message should help indicate the issue clearly.", er.Value.Description.Value)
+
+	fries := components.FindSchema("Fries")
+	assert.NotNil(t, fries.Value)
+
+	assert.Len(t, fries.Value.Properties.Value, 3)
+	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
+		fries.Value.FindProperty("favoriteDrink").Value.Description.Value)
+
+}

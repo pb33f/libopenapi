@@ -6,10 +6,11 @@ import (
 )
 
 const (
-	ParametersLabel  = "parameters"
-	RequestBodyLabel = "requestBody"
-	ResponsesLabel   = "responses"
-	CallbacksLabel   = "callbacks"
+	ParametersLabel    = "parameters"
+	RequestBodyLabel   = "requestBody"
+	RequestBodiesLabel = "requestBodies"
+	ResponsesLabel     = "responses"
+	CallbacksLabel     = "callbacks"
 )
 
 type Operation struct {

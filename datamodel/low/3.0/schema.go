@@ -61,7 +61,11 @@ func (s *Schema) FindProperty(name string) *low.ValueReference[*Schema] {
 	return FindItemInMap[*Schema](name, s.Properties.Value)
 }
 
-func (s *Schema) Build(root *yaml.Node, level int) error {
+func (s *Schema) Build(root *yaml.Node) error {
+	return s.BuildLevel(root, 0)
+}
+
+func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	level++
 	if level > 50 {
 		return nil // we're done, son! too fricken deep.
@@ -152,7 +156,7 @@ func (s *Schema) Build(root *yaml.Node, level int) error {
 			if err != nil {
 				return err
 			}
-			err = property.Build(prop, level)
+			err = property.BuildLevel(prop, level)
 			if err != nil {
 				return err
 			}
@@ -245,7 +249,7 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 				*errors = append(*errors, err)
 				return nil
 			}
-			err = schema.Build(vn, level)
+			err = schema.BuildLevel(vn, level)
 			if err != nil {
 				*errors = append(*errors, err)
 				return nil
