@@ -111,7 +111,7 @@ additionalProperties: true      `
 	mbErr := BuildModel(&rootNode, &sch)
 	assert.NoError(t, mbErr)
 
-	schErr := sch.Build(rootNode.Content[0], 0)
+	schErr := sch.Build(rootNode.Content[0])
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.True(t, sch.AdditionalProperties.Value.(bool))

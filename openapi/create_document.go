@@ -39,6 +39,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 		extractServers,
 		extractTags,
 		extractPaths,
+		extractComponents,
 	}
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
@@ -64,6 +65,21 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document) error {
 		err = ir.Build(vn)
 		nr := low.NodeReference[*v3.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
+	}
+	return nil
+}
+
+func extractComponents(info *datamodel.SpecInfo, doc *v3.Document) error {
+	_, ln, vn := utils.FindKeyNodeFull(v3.ComponentsLabel, info.RootNode.Content)
+	if vn != nil {
+		ir := v3.Components{}
+		err := v3.BuildModel(vn, &ir)
+		if err != nil {
+			return err
+		}
+		err = ir.Build(vn)
+		nr := low.NodeReference[*v3.Components]{Value: &ir, ValueNode: vn, KeyNode: ln}
+		doc.Components = nr
 	}
 	return nil
 }

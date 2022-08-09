@@ -37,7 +37,7 @@ func ExtractSchema(root *yaml.Node) (*low.NodeReference[*Schema], error) {
 		if err != nil {
 			return nil, err
 		}
-		err = schema.Build(schNode, 0)
+		err = schema.Build(schNode)
 		if err != nil {
 			return nil, err
 		}

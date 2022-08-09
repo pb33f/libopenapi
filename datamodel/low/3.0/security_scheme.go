@@ -7,7 +7,8 @@ import (
 )
 
 const (
-	SecurityLabel = "security"
+	SecurityLabel        = "security"
+	SecuritySchemesLabel = "securitySchemes"
 )
 
 type SecurityScheme struct {
@@ -47,39 +48,7 @@ func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference
 }
 
 func (sr *SecurityRequirement) Build(root *yaml.Node) error {
-
-	//if utils.IsNodeArray(root) {
-	//	var currSec *yaml.Node
-	//	var requirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
-	//	for i, n := range root.Content {
-	//		if i%2 == 0 {
-	//			currSec = n
-	//			continue
-	//		}
-	//		if utils.IsNodeArray(n) {
-	//			res := make(map[low.KeyReference[string]][]low.ValueReference[string])
-	//			var dat []low.ValueReference[string]
-	//			for _, r := range n.Content {
-	//				dat = append(dat, low.ValueReference[string]{
-	//					Value:     r.Value,
-	//					ValueNode: r,
-	//				})
-	//			}
-	//			res[low.KeyReference[string]{
-	//				Value:   currSec.Value,
-	//				KeyNode: currSec,
-	//			}] = dat
-	//			requirements = append(requirements, low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]{
-	//				Value:     res,
-	//				ValueNode: n,
-	//			})
-	//		}
-	//	}
-	//	sr.Value = requirements
-	//}
-
 	if utils.IsNodeArray(root) {
-
 		var requirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
 		for _, n := range root.Content {
 			var currSec *yaml.Node
