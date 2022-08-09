@@ -138,6 +138,13 @@ paths:
                   summary: invalid request
                   value:
                     message: unable to accept this request, looks bad, missing something.
+      security:
+        - OAuthScheme:
+          - read:burgers
+          - write:burgers
+      servers:
+        - url: https://pb33f.io
+          description: this is an alternative server for this operation.
   /burgers/{burgerId}:
     get:
       callbacks:
@@ -324,6 +331,34 @@ paths:
               example:
                 message: "failed looking up all dressings, something went wrong."
 components:
+  securitySchemes:
+    APIKeyScheme:
+      type: apiKey
+      description: an apiKey security scheme
+      name: apiKeyScheme
+      in: query
+    JWTScheme:
+      type: http
+      description: an JWT security scheme
+      name: aJWTThing
+      scheme: bearer
+      bearerFormat: JWT
+    OAuthScheme:
+      type: oauth2
+      description: an oAuth security scheme
+      name: oAuthy
+      flows:
+        implicit:
+          authorizationUrl: https://pb33f.io/oauth
+          scopes:
+            write:burgers: modify and add new burgers
+            read:burgers: read all burgers
+        authorizationCode:
+          authorizationUrl: https://pb33f.io/oauth
+          tokenUrl: https://api.pb33f.io/oauth/token
+          scopes:
+            write:burgers: modify burgers and stuff
+            read:burgers: read all the burgers
   parameters:
     BurgerHeader:
       in: header

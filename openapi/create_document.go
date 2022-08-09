@@ -72,7 +72,7 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.ServersLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
-			var servers []low.NodeReference[*v3.Server]
+			var servers []low.ValueReference[*v3.Server]
 			for _, srvN := range vn.Content {
 				if utils.IsNodeMap(srvN) {
 					srvr := v3.Server{}
@@ -81,14 +81,17 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document) error {
 						return err
 					}
 					srvr.Build(srvN)
-					servers = append(servers, low.NodeReference[*v3.Server]{
+					servers = append(servers, low.ValueReference[*v3.Server]{
 						Value:     &srvr,
 						ValueNode: srvN,
-						KeyNode:   ln,
 					})
 				}
 			}
-			doc.Servers = servers
+			doc.Servers = low.NodeReference[[]low.ValueReference[*v3.Server]]{
+				Value:     servers,
+				KeyNode:   ln,
+				ValueNode: vn,
+			}
 		}
 	}
 	return nil

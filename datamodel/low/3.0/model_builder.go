@@ -11,6 +11,9 @@ import (
 )
 
 func BuildModel(node *yaml.Node, model interface{}) error {
+	if node == nil {
+		return nil
+	}
 
 	if reflect.ValueOf(model).Type().Kind() != reflect.Pointer {
 		return fmt.Errorf("cannot build model on non-pointer: %v", reflect.ValueOf(model).Type().Kind())

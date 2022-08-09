@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,12 +16,14 @@ type Responses struct {
 }
 
 func (r *Responses) Build(root *yaml.Node) error {
-	codes, _, _, err := ExtractMapFlat[*Response](ResponsesLabel, root)
-	if err != nil {
-		return err
-	}
-	if codes != nil {
-		r.Codes = codes
+	if utils.IsNodeMap(root) {
+		codes, err := ExtractMapFlatNoLookup[*Response](root)
+		if err != nil {
+			return err
+		}
+		if codes != nil {
+			r.Codes = codes
+		}
 	}
 	return nil
 }

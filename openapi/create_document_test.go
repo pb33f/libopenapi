@@ -40,26 +40,26 @@ func TestCreateDocument_Info(t *testing.T) {
 }
 
 func TestCreateDocument_Servers(t *testing.T) {
-	assert.Len(t, doc.Servers, 2)
-	server1 := doc.Servers[0]
-	server2 := doc.Servers[1]
+	assert.Len(t, doc.Servers.Value, 2)
+	server1 := doc.Servers.Value[0].Value
+	server2 := doc.Servers.Value[1].Value
 
 	// server 1
-	assert.Equal(t, "{scheme}://api.pb33f.io", server1.Value.URL.Value)
-	assert.NotEmpty(t, server1.Value.Description.Value)
-	assert.Len(t, server1.Value.Variables.Value, 1)
-	assert.Len(t, server1.Value.Variables.Value["scheme"].Value.Enum, 2)
-	assert.Equal(t, server1.Value.Variables.Value["scheme"].Value.Default.Value, "https")
-	assert.NotEmpty(t, server1.Value.Variables.Value["scheme"].Value.Description.Value)
+	assert.Equal(t, "{scheme}://api.pb33f.io", server1.URL.Value)
+	assert.NotEmpty(t, server1.Description.Value)
+	assert.Len(t, server1.Variables.Value, 1)
+	assert.Len(t, server1.Variables.Value["scheme"].Value.Enum, 2)
+	assert.Equal(t, server1.Variables.Value["scheme"].Value.Default.Value, "https")
+	assert.NotEmpty(t, server1.Variables.Value["scheme"].Value.Description.Value)
 
 	// server 2
-	assert.Equal(t, "https://{domain}.{host}.com", server2.Value.URL.Value)
-	assert.NotEmpty(t, server2.Value.Description.Value)
-	assert.Len(t, server2.Value.Variables.Value, 2)
-	assert.Equal(t, server2.Value.Variables.Value["domain"].Value.Default.Value, "api")
-	assert.NotEmpty(t, server2.Value.Variables.Value["domain"].Value.Description.Value)
-	assert.NotEmpty(t, server2.Value.Variables.Value["host"].Value.Description.Value)
-	assert.Equal(t, server2.Value.Variables.Value["host"].Value.Default.Value, "pb33f.io")
+	assert.Equal(t, "https://{domain}.{host}.com", server2.URL.Value)
+	assert.NotEmpty(t, server2.Description.Value)
+	assert.Len(t, server2.Variables.Value, 2)
+	assert.Equal(t, server2.Variables.Value["domain"].Value.Default.Value, "api")
+	assert.NotEmpty(t, server2.Variables.Value["domain"].Value.Description.Value)
+	assert.NotEmpty(t, server2.Variables.Value["host"].Value.Description.Value)
+	assert.Equal(t, server2.Variables.Value["host"].Value.Default.Value, "pb33f.io")
 	assert.Equal(t, "1.2", doc.Info.Value.Version.Value)
 }
 
@@ -219,5 +219,19 @@ func TestCreateDocument_Paths(t *testing.T) {
 	burgerIdParam := locateBurger.FindParameter("burgerId")
 	assert.NotNil(t, burgerIdParam)
 	assert.Equal(t, "$response.body#/id", burgerIdParam.Value)
+
+	// check security requirements
+	security := burgersPost.Security.Value
+	assert.NotNil(t, security)
+	assert.Len(t, security.Value, 1)
+
+	oAuthReq := security.FindRequirement("OAuthScheme")
+	assert.Len(t, oAuthReq, 2)
+	assert.Equal(t, "read:burgers", oAuthReq[0].Value)
+
+	servers := burgersPost.Servers.Value
+	assert.NotNil(t, servers)
+	assert.Len(t, servers, 1)
+	assert.Equal(t, "https://pb33f.io", servers[0].Value.URL.Value)
 
 }
