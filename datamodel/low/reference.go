@@ -27,12 +27,6 @@ type ValueReference[T any] struct {
 	ValueNode *yaml.Node
 }
 
-type ObjectReference struct {
-	Value     interface{}
-	ValueNode *yaml.Node
-	KeyNode   *yaml.Node
-}
-
 func (n NodeReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil && n.ValueNode == nil
 }

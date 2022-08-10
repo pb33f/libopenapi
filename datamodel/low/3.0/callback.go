@@ -10,6 +10,10 @@ type Callback struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
+	return FindItemInMap[*PathItem](exp, cb.Expression.Value)
+}
+
 func (cb *Callback) Build(root *yaml.Node) error {
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {

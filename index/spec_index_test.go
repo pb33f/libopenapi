@@ -162,7 +162,7 @@ func TestSpecIndex_PetstoreV3(t *testing.T) {
 
 }
 
-var mappedRefs = 9
+var mappedRefs = 16
 
 func TestSpecIndex_BurgerShop(t *testing.T) {
 
@@ -182,7 +182,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 
 	assert.Equal(t, 5, len(index.GetAllSchemas()))
 
-	assert.Equal(t, 22, len(index.GetAllSequencedReferences()))
+	assert.Equal(t, 30, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
 	assert.NotNil(t, index.GetParametersNode())
 
@@ -214,7 +214,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 2, index.componentsInlineParamUniqueCount)
 	assert.Equal(t, 2, index.GetInlineUniqueParamCount())
 
-	assert.Equal(t, 0, len(index.GetAllRequestBodies()))
+	assert.Equal(t, 1, len(index.GetAllRequestBodies()))
 	assert.NotNil(t, index.GetRootNode())
 	assert.NotNil(t, index.GetGlobalTagsNode())
 	assert.NotNil(t, index.GetPathsNode())
@@ -223,7 +223,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.NotNil(t, index.GetOperationParameterReferences())
 	assert.Equal(t, 3, len(index.GetAllSecuritySchemes()))
 	assert.Equal(t, 2, len(index.GetAllParameters()))
-	assert.Equal(t, 0, len(index.GetAllResponses()))
+	assert.Equal(t, 1, len(index.GetAllResponses()))
 	assert.Equal(t, 2, len(index.GetInlineOperationDuplicateParameters()))
 	assert.Equal(t, 0, len(index.GetReferencesWithSiblings()))
 	assert.Equal(t, mappedRefs, len(index.GetAllReferences()))

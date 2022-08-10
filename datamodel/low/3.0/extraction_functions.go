@@ -9,17 +9,6 @@ import (
 	"sync"
 )
 
-func FindItemInCollection[T any](item string, collection map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[T]) *low.ValueReference[T] {
-	for _, c := range collection {
-		for n, o := range c {
-			if n.Value == item {
-				return &o
-			}
-		}
-	}
-	return nil
-}
-
 func FindItemInMap[T any](item string, collection map[low.KeyReference[string]]low.ValueReference[T]) *low.ValueReference[T] {
 	for n, o := range collection {
 		if n.Value == item {

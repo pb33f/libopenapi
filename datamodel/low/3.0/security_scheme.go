@@ -24,6 +24,10 @@ type SecurityScheme struct {
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+type SecurityRequirement struct {
+	Value []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+}
+
 func (ss *SecurityScheme) Build(root *yaml.Node) error {
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
@@ -40,10 +44,6 @@ func (ss *SecurityScheme) Build(root *yaml.Node) error {
 	}
 
 	return nil
-}
-
-type SecurityRequirement struct {
-	Value []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
 }
 
 func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference[string] {

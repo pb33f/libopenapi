@@ -64,17 +64,17 @@ func TestCreateDocument_Servers(t *testing.T) {
 }
 
 func TestCreateDocument_Tags(t *testing.T) {
-	assert.Len(t, doc.Tags, 2)
+	assert.Len(t, doc.Tags.Value, 2)
 
 	// tag1
-	assert.Equal(t, "Burgers", doc.Tags[0].Value.Name.Value)
-	assert.NotEmpty(t, doc.Tags[0].Value.Description.Value)
-	assert.NotNil(t, doc.Tags[0].Value.ExternalDocs.Value)
-	assert.Equal(t, "https://pb33f.io", doc.Tags[0].Value.ExternalDocs.Value.URL.Value)
-	assert.NotEmpty(t, doc.Tags[0].Value.ExternalDocs.Value.URL.Value)
-	assert.Len(t, doc.Tags[0].Value.Extensions, 7)
+	assert.Equal(t, "Burgers", doc.Tags.Value[0].Value.Name.Value)
+	assert.NotEmpty(t, doc.Tags.Value[0].Value.Description.Value)
+	assert.NotNil(t, doc.Tags.Value[0].Value.ExternalDocs.Value)
+	assert.Equal(t, "https://pb33f.io", doc.Tags.Value[0].Value.ExternalDocs.Value.URL.Value)
+	assert.NotEmpty(t, doc.Tags.Value[0].Value.ExternalDocs.Value.URL.Value)
+	assert.Len(t, doc.Tags.Value[0].Value.Extensions, 7)
 
-	for key, extension := range doc.Tags[0].Value.Extensions {
+	for key, extension := range doc.Tags.Value[0].Value.Extensions {
 		switch key.Value {
 		case "x-internal-ting":
 			assert.Equal(t, "somethingSpecial", extension.Value)
@@ -99,12 +99,12 @@ func TestCreateDocument_Tags(t *testing.T) {
 	}
 
 	/// tag2
-	assert.Equal(t, "Dressing", doc.Tags[1].Value.Name.Value)
-	assert.NotEmpty(t, doc.Tags[1].Value.Description.Value)
-	assert.NotNil(t, doc.Tags[1].Value.ExternalDocs.Value)
-	assert.Equal(t, "https://pb33f.io", doc.Tags[1].Value.ExternalDocs.Value.URL.Value)
-	assert.NotEmpty(t, doc.Tags[1].Value.ExternalDocs.Value.URL.Value)
-	assert.Len(t, doc.Tags[1].Value.Extensions, 0)
+	assert.Equal(t, "Dressing", doc.Tags.Value[1].Value.Name.Value)
+	assert.NotEmpty(t, doc.Tags.Value[1].Value.Description.Value)
+	assert.NotNil(t, doc.Tags.Value[1].Value.ExternalDocs.Value)
+	assert.Equal(t, "https://pb33f.io", doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
+	assert.NotEmpty(t, doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
+	assert.Len(t, doc.Tags.Value[1].Value.Extensions, 0)
 
 }
 
@@ -257,7 +257,10 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
 		fries.Value.FindProperty("favoriteDrink").Value.Description.Value)
 
-	// check security schemes
+}
+
+func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
+	components := doc.Components.Value
 	securitySchemes := components.SecuritySchemes.Value
 	assert.Len(t, securitySchemes, 3)
 
@@ -282,4 +285,114 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	assert.NotNil(t, readScope)
 	assert.Equal(t, "modify burgers and stuff", readScope.Value)
 
+}
+
+func TestCreateDocument_Components_Responses(t *testing.T) {
+	components := doc.Components.Value
+	responses := components.Responses.Value
+	assert.Len(t, responses, 1)
+
+	dressingResponse := components.FindResponse("DressingResponse")
+	assert.NotNil(t, dressingResponse.Value)
+	assert.Equal(t, "all the dressings for a burger.", dressingResponse.Value.Description.Value)
+	assert.Len(t, dressingResponse.Value.Content.Value, 1)
+
+}
+
+func TestCreateDocument_Components_Examples(t *testing.T) {
+	components := doc.Components.Value
+	examples := components.Examples.Value
+	assert.Len(t, examples, 1)
+
+	quarterPounder := components.FindExample("QuarterPounder")
+	assert.NotNil(t, quarterPounder.Value)
+	assert.Equal(t, "A juicy two hander sammich", quarterPounder.Value.Summary.Value)
+	assert.NotNil(t, quarterPounder.Value.Value.Value)
+}
+
+func TestCreateDocument_Components_RequestBodies(t *testing.T) {
+	components := doc.Components.Value
+	requestBodies := components.RequestBodies.Value
+	assert.Len(t, requestBodies, 1)
+
+	burgerRequest := components.FindRequestBody("BurgerRequest")
+	assert.NotNil(t, burgerRequest.Value)
+	assert.Equal(t, "Give us the new burger!", burgerRequest.Value.Description.Value)
+	assert.Len(t, burgerRequest.Value.Content.Value, 1)
+}
+
+func TestCreateDocument_Components_Headers(t *testing.T) {
+	components := doc.Components.Value
+	headers := components.Headers.Value
+	assert.Len(t, headers, 1)
+
+	useOil := components.FindHeader("UseOil")
+	assert.NotNil(t, useOil.Value)
+	assert.Equal(t, "this is a header", useOil.Value.Description.Value)
+	assert.Equal(t, "string", useOil.Value.Schema.Value.Type.Value)
+}
+
+func TestCreateDocument_Components_Links(t *testing.T) {
+	components := doc.Components.Value
+	links := components.Links.Value
+	assert.Len(t, links, 2)
+
+	locateBurger := components.FindLink("LocateBurger")
+	assert.NotNil(t, locateBurger.Value)
+	assert.Equal(t, "Go and get a tasty burger", locateBurger.Value.Description.Value)
+
+	anotherLocateBurger := components.FindLink("AnotherLocateBurger")
+	assert.NotNil(t, anotherLocateBurger.Value)
+	assert.Equal(t, "Go and get another really tasty burger", anotherLocateBurger.Value.Description.Value)
+}
+
+func TestCreateDocument_Doc_Security(t *testing.T) {
+	security := doc.Security.Value
+	assert.NotNil(t, security)
+	assert.Len(t, security.Value, 1)
+
+	oAuth := security.FindRequirement("OAuthScheme")
+	assert.Len(t, oAuth, 2)
+}
+
+func TestCreateDocument_Callbacks(t *testing.T) {
+	callbacks := doc.Components.Value.Callbacks.Value
+	assert.Len(t, callbacks, 1)
+
+	bCallback := doc.Components.Value.FindCallback("BurgerCallback")
+	assert.NotNil(t, bCallback.Value)
+	assert.Len(t, callbacks, 1)
+
+	exp := bCallback.Value.FindExpression("{$request.query.queryUrl}")
+	assert.NotNil(t, exp.Value)
+	assert.NotNil(t, exp.Value.Post.Value)
+	assert.Equal(t, "Callback payload", exp.Value.Post.Value.RequestBody.Value.Description.Value)
+}
+
+func TestCreateDocument_Component_Discriminator(t *testing.T) {
+
+	components := doc.Components.Value
+	dsc := components.FindSchema("Drink").Value.Discriminator.Value
+	assert.NotNil(t, dsc)
+	assert.Equal(t, "drinkType", dsc.PropertyName.Value)
+	assert.Equal(t, "some value", dsc.FindMappingValue("drink").Value)
+	assert.Nil(t, dsc.FindMappingValue("don't exist"))
+}
+
+func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
+	components := doc.Components.Value
+	d := components.FindSchema("Dressing")
+	assert.NotNil(t, d.Value.AdditionalProperties.Value)
+	if n, ok := d.Value.AdditionalProperties.Value.(*v3.Schema); ok {
+		assert.Equal(t, "something in here.", n.Description.Value)
+	} else {
+		assert.Fail(t, "should be a schema")
+	}
+}
+
+func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
+	components := doc.Components.Value
+	d := components.FindSchema("Drink")
+	assert.NotNil(t, d.Value.AdditionalProperties.Value)
+	assert.True(t, d.Value.AdditionalProperties.Value.(bool))
 }

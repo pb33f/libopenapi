@@ -22,9 +22,9 @@ type hotdog struct {
 	Temps           []low.NodeReference[int]
 	HighTemps       []low.NodeReference[int64]
 	Buns            []low.NodeReference[bool]
-	UnknownElements low.ObjectReference
-	LotsOfUnknowns  []low.ObjectReference
-	Where           map[string]low.ObjectReference
+	UnknownElements low.NodeReference[any]
+	LotsOfUnknowns  []low.NodeReference[any]
+	Where           map[string]low.NodeReference[any]
 	There           map[string]low.NodeReference[string]
 }
 

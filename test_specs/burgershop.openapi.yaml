@@ -12,6 +12,10 @@ info:
     name: pb33f
     url: https://pb33f.io/made-up
   version: "1.2"
+security:
+  - OAuthScheme:
+      - read:burgers
+      - write:burgers
 tags:
   - name: "Burgers"
     description: "All kinds of yummy burgers."
@@ -66,29 +70,12 @@ paths:
       summary:  Create a new burger
       description: A new burger for our menu, yummy yum yum.
       requestBody:
-        description: Give us the new burger!
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Burger'
-            examples:
-              pbjBurger:
-                summary: A horrible, nutty, sticky mess.
-                value:
-                  name: Peanut And Jelly
-                  numPatties: 3
-              cakeBurger:
-                summary: A sickly, sweet, atrocity
-                value:
-                  name: Chocolate Cake Burger
-                  numPatties: 5
+        $ref: '#/components/requestBodies/BurgerRequest'
       responses:
         "200":
           headers:
             UseOil:
-              description: this is a header
-              schema:
-                type: string
+              $ref: '#/components/headers/UseOil'
           description: A tasty burger for you to eat.
           content:
             application/json:
@@ -96,10 +83,7 @@ paths:
                 $ref: '#/components/schemas/Burger'
               examples:
                 quarterPounder:
-                  summary: a yummy tasty two patty burger, filled with beefy goodness.
-                  value:
-                    name: Quarter Pounder with Cheese
-                    numPatties: 1
+                  $ref: '#/components/examples/QuarterPounder'
                 filetOFish:
                   summary: a cripsy fish sammich filled with ocean goodness.
                   value:
@@ -107,15 +91,9 @@ paths:
                     numPatties: 1
           links:
             LocateBurger:
-              operationId: locateBurger
-              parameters:
-                burgerId: '$response.body#/id'
-              description: Go and get a tasty burger
+              $ref: '#/components/links/LocateBurger'
             AnotherLocateBurger:
-              operationId: locateBurger
-              parameters:
-                burgerId: '$response.body#/id'
-              description: Go and get a another really tasty burger
+              $ref: '#/components/links/AnotherLocateBurger'
         "500":
           description: Unexpected error creating a new burger. Sorry.
           content:
@@ -149,17 +127,7 @@ paths:
     get:
       callbacks:
         burgerCallback:
-          "{$request.query.queryUrl}":
-            post:
-              requestBody:
-                description: Callback payload
-                content:
-                  'application/json':
-                    schema:
-                      $ref: '#/components/schemas/SomePayload'
-              responses:
-                '200':
-                  description: callback successfully processed
+          $ref: '#/components/callbacks/BurgerCallback'
       operationId: locateBurger
       tags:
         - "Burgers"
@@ -177,10 +145,7 @@ paths:
                 $ref: '#/components/schemas/Burger'
               examples:
                 quarterPounder:
-                  summary: A juicy two handler sammich
-                  value:
-                    name: Quarter Pounder with Cheese
-                    numPatties: 1
+                  $ref: '#/components/examples/QuarterPounder'
                 filetOFish:
                   summary: A tasty treat from the sea
                   value:
@@ -231,15 +196,7 @@ paths:
           required: true
       responses:
         "200":
-          description: all the dressings for a burger.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Dressing'
-              example:
-                - name: Thousand Island
+          $ref: '#/components/responses/DressingResponse'
         "404":
           description: Cannot find your burger in which to list dressings. Sorry
           content:
@@ -331,6 +288,70 @@ paths:
               example:
                 message: "failed looking up all dressings, something went wrong."
 components:
+  callbacks:
+    BurgerCallback:
+      "{$request.query.queryUrl}":
+        post:
+          requestBody:
+            description: Callback payload
+            content:
+              'application/json':
+                schema:
+                  $ref: '#/components/schemas/SomePayload'
+          responses:
+            '200':
+              description: callback successfully processes
+  links:
+    LocateBurger:
+      operationId: locateBurger
+      parameters:
+        burgerId: '$response.body#/id'
+      description: Go and get a tasty burger
+    AnotherLocateBurger:
+      operationId: locateBurger
+      parameters:
+        burgerId: '$response.body#/id'
+      description: Go and get another really tasty burger
+  headers:
+    UseOil:
+      description: this is a header
+      schema:
+        type: string
+  requestBodies:
+    BurgerRequest:
+      description: Give us the new burger!
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Burger'
+          examples:
+            pbjBurger:
+              summary: A horrible, nutty, sticky mess.
+              value:
+                name: Peanut And Jelly
+                numPatties: 3
+            cakeBurger:
+              summary: A sickly, sweet, atrocity
+              value:
+                name: Chocolate Cake Burger
+                numPatties: 5
+  examples:
+    QuarterPounder:
+      summary: A juicy two hander sammich
+      value:
+        name: Quarter Pounder with Cheese
+        numPatties: 1
+  responses:
+    DressingResponse:
+      description: all the dressings for a burger.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/Dressing'
+          example:
+            - name: Thousand Island
   securitySchemes:
     APIKeyScheme:
       type: apiKey
@@ -463,6 +484,9 @@ components:
           type: string
           description: The name of your dressing you can pick up from the menu
           example: Cheese
+      additionalProperties:
+        type: object
+        description: something in here.
     Drink:
       type: object
       description: a frosty cold beverage can be coke or sprite
@@ -481,4 +505,8 @@ components:
           type: string
           description: what size man? S/M/L
           example: M
-
+      additionalProperties: true
+      discriminator:
+        propertyName: drinkType
+        mapping:
+          drink: some value
