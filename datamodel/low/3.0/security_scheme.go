@@ -9,6 +9,7 @@ import (
 const (
 	SecurityLabel        = "security"
 	SecuritySchemesLabel = "securitySchemes"
+	OAuthFlowsLabel      = "flows"
 )
 
 type SecurityScheme struct {
@@ -29,6 +30,15 @@ func (ss *SecurityScheme) Build(root *yaml.Node) error {
 		return err
 	}
 	ss.Extensions = extensionMap
+
+	oa, oaErr := ExtractObject[*OAuthFlows](OAuthFlowsLabel, root)
+	if oaErr != nil {
+		return oaErr
+	}
+	if oa.Value != nil {
+		ss.Flows = oa
+	}
+
 	return nil
 }
 

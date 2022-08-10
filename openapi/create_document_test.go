@@ -257,4 +257,29 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
 		fries.Value.FindProperty("favoriteDrink").Value.Description.Value)
 
+	// check security schemes
+	securitySchemes := components.SecuritySchemes.Value
+	assert.Len(t, securitySchemes, 3)
+
+	apiKey := components.FindSecurityScheme("APIKeyScheme").Value
+	assert.NotNil(t, apiKey)
+	assert.Equal(t, "an apiKey security scheme", apiKey.Description.Value)
+
+	oAuth := components.FindSecurityScheme("OAuthScheme").Value
+	assert.NotNil(t, oAuth)
+	assert.Equal(t, "an oAuth security scheme", oAuth.Description.Value)
+	assert.NotNil(t, oAuth.Flows.Value.Implicit.Value)
+	assert.NotNil(t, oAuth.Flows.Value.AuthorizationCode.Value)
+
+	scopes := oAuth.Flows.Value.Implicit.Value.Scopes.Value
+	assert.NotNil(t, scopes)
+
+	readScope := oAuth.Flows.Value.Implicit.Value.FindScope("write:burgers")
+	assert.NotNil(t, readScope)
+	assert.Equal(t, "modify and add new burgers", readScope.Value)
+
+	readScope = oAuth.Flows.Value.AuthorizationCode.Value.FindScope("write:burgers")
+	assert.NotNil(t, readScope)
+	assert.Equal(t, "modify burgers and stuff", readScope.Value)
+
 }
