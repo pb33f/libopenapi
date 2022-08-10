@@ -10,8 +10,8 @@ type Document struct {
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Paths        low.NodeReference[*Paths]
 	Components   low.NodeReference[*Components]
-	Security     []*SecurityRequirement
-	Tags         []low.NodeReference[*Tag]
-	ExternalDocs *ExternalDoc
+	Security     low.NodeReference[*SecurityRequirement]
+	Tags         low.NodeReference[[]low.ValueReference[*Tag]]
+	ExternalDocs low.NodeReference[*ExternalDoc]
 	Extensions   map[low.NodeReference[string]]low.NodeReference[any]
 }

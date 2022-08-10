@@ -40,6 +40,8 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 		extractTags,
 		extractPaths,
 		extractComponents,
+		extractSecurity,
+		extractExternalDocs,
 	}
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
@@ -66,6 +68,24 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document) error {
 		nr := low.NodeReference[*v3.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
+	return nil
+}
+
+func extractSecurity(info *datamodel.SpecInfo, doc *v3.Document) error {
+	sec, sErr := v3.ExtractObject[*v3.SecurityRequirement](v3.SecurityLabel, info.RootNode)
+	if sErr != nil {
+		return sErr
+	}
+	doc.Security = sec
+	return nil
+}
+
+func extractExternalDocs(info *datamodel.SpecInfo, doc *v3.Document) error {
+	extDocs, dErr := v3.ExtractObject[*v3.ExternalDoc](v3.ExternalDocsLabel, info.RootNode)
+	if dErr != nil {
+		return dErr
+	}
+	doc.ExternalDocs = extDocs
 	return nil
 }
 
@@ -117,7 +137,7 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.TagsLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
-			var tags []low.NodeReference[*v3.Tag]
+			var tags []low.ValueReference[*v3.Tag]
 			for _, tagN := range vn.Content {
 				if utils.IsNodeMap(tagN) {
 					tag := v3.Tag{}
@@ -126,14 +146,17 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document) error {
 						return err
 					}
 					tag.Build(tagN)
-					tags = append(tags, low.NodeReference[*v3.Tag]{
+					tags = append(tags, low.ValueReference[*v3.Tag]{
 						Value:     &tag,
 						ValueNode: tagN,
-						KeyNode:   ln,
 					})
 				}
 			}
-			doc.Tags = tags
+			doc.Tags = low.NodeReference[[]low.ValueReference[*v3.Tag]]{
+				Value:     tags,
+				KeyNode:   ln,
+				ValueNode: vn,
+			}
 		}
 	}
 	return nil

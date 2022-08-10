@@ -36,6 +36,26 @@ func (co *Components) FindSecurityScheme(sScheme string) *low.ValueReference[*Se
 	return FindItemInMap[*SecurityScheme](sScheme, co.SecuritySchemes.Value)
 }
 
+func (co *Components) FindExample(example string) *low.ValueReference[*Example] {
+	return FindItemInMap[*Example](example, co.Examples.Value)
+}
+
+func (co *Components) FindRequestBody(requestBody string) *low.ValueReference[*RequestBody] {
+	return FindItemInMap[*RequestBody](requestBody, co.RequestBodies.Value)
+}
+
+func (co *Components) FindHeader(header string) *low.ValueReference[*Header] {
+	return FindItemInMap[*Header](header, co.Headers.Value)
+}
+
+func (co *Components) FindLink(link string) *low.ValueReference[*Link] {
+	return FindItemInMap[*Link](link, co.Links.Value)
+}
+
+func (co *Components) FindCallback(callback string) *low.ValueReference[*Callback] {
+	return FindItemInMap[*Callback](callback, co.Callbacks.Value)
+}
+
 func (co *Components) Build(root *yaml.Node) error {
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {

@@ -34,8 +34,8 @@ type Schema struct {
 	UniqueItems          low.NodeReference[int]
 	MaxProperties        low.NodeReference[int]
 	MinProperties        low.NodeReference[int]
-	Required             low.NodeReference[[]low.NodeReference[string]]
-	Enum                 low.NodeReference[[]low.NodeReference[string]]
+	Required             low.NodeReference[[]low.ValueReference[string]]
+	Enum                 low.NodeReference[[]low.ValueReference[string]]
 	Type                 low.NodeReference[string]
 	AllOf                low.NodeReference[[]low.NodeReference[*Schema]]
 	OneOf                low.NodeReference[[]low.NodeReference[*Schema]]
@@ -85,12 +85,11 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
 	if addPNode != nil {
 		if utils.IsNodeMap(addPNode) {
-			var props map[string]interface{}
-			err = addPNode.Decode(&props)
-			if err != nil {
-				return err
+			schema, serr := ExtractObjectRaw[*Schema](addPNode)
+			if serr != nil {
+				return serr
 			}
-			s.AdditionalProperties = low.NodeReference[any]{Value: props, KeyNode: addPLabel, ValueNode: addPNode}
+			s.AdditionalProperties = low.NodeReference[any]{Value: schema, KeyNode: addPLabel, ValueNode: addPNode}
 		}
 
 		if utils.IsNodeBoolValue(addPNode) {

@@ -61,11 +61,11 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) error {
 	switch field.Type() {
 
-	case reflect.TypeOf(map[string]low.ObjectReference{}):
+	case reflect.TypeOf(map[string]low.NodeReference[any]{}):
 		if valueNode != nil {
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					items := make(map[string]low.ObjectReference)
+					items := make(map[string]low.NodeReference[any])
 					var currentLabel string
 					for i, sliceItem := range valueNode.Content {
 						if i%2 == 0 {
@@ -77,7 +77,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 						if err != nil {
 							return err
 						}
-						items[currentLabel] = low.ObjectReference{
+						items[currentLabel] = low.NodeReference[any]{
 							Value:     decoded,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -111,33 +111,33 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.ObjectReference{}):
+	case reflect.TypeOf(low.NodeReference[any]{}):
 		if valueNode != nil {
-			var decoded map[string]interface{}
+			var decoded interface{}
 			err := valueNode.Decode(&decoded)
 			if err != nil {
 				return err
 			}
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					or := low.ObjectReference{Value: decoded, ValueNode: valueNode}
+					or := low.NodeReference[any]{Value: decoded, ValueNode: valueNode}
 					field.Set(reflect.ValueOf(or))
 				}
 			}
 		}
 		break
-	case reflect.TypeOf([]low.ObjectReference{}):
+	case reflect.TypeOf([]low.NodeReference[any]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.ObjectReference
+					var items []low.NodeReference[any]
 					for _, sliceItem := range valueNode.Content {
 						var decoded map[string]interface{}
 						err := sliceItem.Decode(&decoded)
 						if err != nil {
 							return err
 						}
-						items = append(items, low.ObjectReference{
+						items = append(items, low.NodeReference[any]{
 							Value:     decoded,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -341,21 +341,21 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 		}
 		break
 		// helper for unpacking string maps.
-	case reflect.TypeOf(map[low.NodeReference[string]]low.NodeReference[string]{}):
+	case reflect.TypeOf(map[low.KeyReference[string]]low.ValueReference[string]{}):
 		if valueNode != nil {
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					items := make(map[low.NodeReference[string]]low.NodeReference[string])
+					items := make(map[low.KeyReference[string]]low.ValueReference[string])
 					var cf *yaml.Node
 					for i, sliceItem := range valueNode.Content {
 						if i%2 == 0 {
 							cf = sliceItem
 							continue
 						}
-						items[low.NodeReference[string]{
+						items[low.KeyReference[string]{
 							Value:   cf.Value,
 							KeyNode: cf,
-						}] = low.NodeReference[string]{
+						}] = low.ValueReference[string]{
 							Value:     sliceItem.Value,
 							ValueNode: sliceItem,
 						}
@@ -364,19 +364,18 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 				}
 			}
 		}
-	case reflect.TypeOf(low.NodeReference[[]low.NodeReference[string]]{}):
+	case reflect.TypeOf(low.NodeReference[[]low.ValueReference[string]]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[string]
+					var items []low.ValueReference[string]
 					for _, sliceItem := range valueNode.Content {
-						items = append(items, low.NodeReference[string]{
+						items = append(items, low.ValueReference[string]{
 							Value:     sliceItem.Value,
 							ValueNode: sliceItem,
-							KeyNode:   valueNode,
 						})
 					}
-					n := low.NodeReference[[]low.NodeReference[string]]{
+					n := low.NodeReference[[]low.ValueReference[string]]{
 						Value:     items,
 						KeyNode:   keyNode,
 						ValueNode: valueNode,

@@ -6,10 +6,10 @@ import (
 
 type Discriminator struct {
 	PropertyName low.NodeReference[string]
-	Mapping      map[low.NodeReference[string]]low.NodeReference[string]
+	Mapping      map[low.KeyReference[string]]low.ValueReference[string]
 }
 
-func (d *Discriminator) FindMappingValue(key string) *low.NodeReference[string] {
+func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string] {
 	for k, v := range d.Mapping {
 		if k.Value == key {
 			return &v
