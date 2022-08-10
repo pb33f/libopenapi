@@ -32,6 +32,10 @@ func (co *Components) FindResponse(response string) *low.ValueReference[*Respons
 	return FindItemInMap[*Response](response, co.Responses.Value)
 }
 
+func (co *Components) FindSecurityScheme(sScheme string) *low.ValueReference[*SecurityScheme] {
+	return FindItemInMap[*SecurityScheme](sScheme, co.SecuritySchemes.Value)
+}
+
 func (co *Components) Build(root *yaml.Node) error {
 	extensionMap, err := ExtractExtensions(root)
 	if err != nil {
