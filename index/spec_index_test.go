@@ -348,7 +348,7 @@ func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	assert.Equal(t, 2, index.GetGlobalTagsCount())
 	assert.Equal(t, 3, index.GetTotalTagsCount())
 	assert.Equal(t, 2, index.GetOperationTagsCount())
-	assert.Equal(t, 2, index.GetGlobalLinksCount())
+	assert.Equal(t, 4, index.GetGlobalLinksCount())
 	assert.Equal(t, 0, index.GetComponentParameterCount())
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())

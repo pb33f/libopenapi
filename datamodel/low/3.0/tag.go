@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,16 +18,11 @@ type Tag struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (t *Tag) Build(root *yaml.Node) error {
-	// extract extensions
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	t.Extensions = extensionMap
+func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	t.Extensions = ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, dErr := ExtractObject[*ExternalDoc](ExternalDocsLabel, root)
+	extDocs, dErr := ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
 	if dErr != nil {
 		return dErr
 	}

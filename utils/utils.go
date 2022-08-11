@@ -372,6 +372,17 @@ func IsNodeBoolValue(node *yaml.Node) bool {
 	return node.Tag == "!!bool"
 }
 
+func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
+	for i, r := range node.Content {
+		if i%2 == 0 {
+			if r.Value == "$ref" {
+				return true, r, node.Content[i+1].Value
+			}
+		}
+	}
+	return false, nil, ""
+}
+
 // FixContext will clean up a JSONpath string to be correctly traversable.
 func FixContext(context string) string {
 

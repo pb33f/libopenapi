@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -20,19 +21,14 @@ type Example struct {
 	Extensions    map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (ex *Example) Build(root *yaml.Node) error {
-	// extract extensions
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	ex.Extensions = extensionMap
+func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	ex.Extensions = ExtractExtensions(root)
 
 	// extract value
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
 	if vn != nil {
 		var n map[string]interface{}
-		err = vn.Decode(&n)
+		err := vn.Decode(&n)
 		if err != nil {
 			return err
 		}

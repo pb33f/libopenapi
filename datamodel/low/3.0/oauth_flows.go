@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -22,32 +23,28 @@ type OAuthFlows struct {
 	Extensions        map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (o *OAuthFlows) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	o.Extensions = extensionMap
+func (o *OAuthFlows) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	o.Extensions = ExtractExtensions(root)
 
-	v, vErr := ExtractObject[*OAuthFlow](ImplicitLabel, root)
+	v, vErr := ExtractObject[*OAuthFlow](ImplicitLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.Implicit = v
 
-	v, vErr = ExtractObject[*OAuthFlow](PasswordLabel, root)
+	v, vErr = ExtractObject[*OAuthFlow](PasswordLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.Password = v
 
-	v, vErr = ExtractObject[*OAuthFlow](ClientCredentialsLabel, root)
+	v, vErr = ExtractObject[*OAuthFlow](ClientCredentialsLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.ClientCredentials = v
 
-	v, vErr = ExtractObject[*OAuthFlow](AuthorizationCodeLabel, root)
+	v, vErr = ExtractObject[*OAuthFlow](AuthorizationCodeLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
@@ -68,12 +65,8 @@ func (o *OAuthFlow) FindScope(scope string) *low.ValueReference[string] {
 	return FindItemInMap[string](scope, o.Scopes.Value)
 }
 
-func (o *OAuthFlow) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	o.Extensions = extensionMap
+func (o *OAuthFlow) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	o.Extensions = ExtractExtensions(root)
 
 	var currSec *yaml.Node
 

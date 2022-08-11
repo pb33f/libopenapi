@@ -24,6 +24,17 @@ func BenchmarkCreateDocument(b *testing.B) {
 	}
 }
 
+func BenchmarkCreateDocument_Stripe(b *testing.B) {
+	data, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	for i := 0; i < b.N; i++ {
+		_, err := CreateDocument(info)
+		if err != nil {
+			panic("this should not error")
+		}
+	}
+}
+
 func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, "3.0.1", doc.Version.Value)
 	assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)
@@ -254,8 +265,9 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	assert.NotNil(t, fries.Value)
 
 	assert.Len(t, fries.Value.Properties.Value, 3)
+	p := fries.Value.FindProperty("favoriteDrink")
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
-		fries.Value.FindProperty("favoriteDrink").Value.Description.Value)
+		p.Value.Description.Value)
 
 }
 

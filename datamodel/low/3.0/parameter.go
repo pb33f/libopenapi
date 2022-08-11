@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -36,14 +37,8 @@ func (p *Parameter) FindExample(eType string) *low.ValueReference[*Example] {
 	return FindItemInMap[*Example](eType, p.Examples.Value)
 }
 
-func (p *Parameter) Build(root *yaml.Node) error {
-
-	// extract extensions
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	p.Extensions = extensionMap
+func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	p.Extensions = ExtractExtensions(root)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
@@ -52,14 +47,16 @@ func (p *Parameter) Build(root *yaml.Node) error {
 	}
 
 	// handle schema
-	sch, sErr := ExtractSchema(root)
+	sch, sErr := ExtractSchema(root, idx)
 	if sErr != nil {
 		return sErr
 	}
-	p.Schema = *sch
+	if sch != nil {
+		p.Schema = *sch
+	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root)
+	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -72,7 +69,7 @@ func (p *Parameter) Build(root *yaml.Node) error {
 	}
 
 	// handle content, if set.
-	con, cL, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root)
+	con, cL, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

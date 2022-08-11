@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -15,9 +16,9 @@ type Responses struct {
 	Default low.NodeReference[*Response]
 }
 
-func (r *Responses) Build(root *yaml.Node) error {
+func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if utils.IsNodeMap(root) {
-		codes, err := ExtractMapFlatNoLookup[*Response](root)
+		codes, err := ExtractMapFlatNoLookup[*Response](root, idx)
 		if err != nil {
 			return err
 		}
@@ -52,15 +53,11 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 	return FindItemInMap[*Link](hType, r.Links.Value)
 }
 
-func (r *Response) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	r.Extensions = extensionMap
+func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	r.Extensions = ExtractExtensions(root)
 
 	// extract headers
-	headers, lN, kN, err := ExtractMapFlat[*Header](HeadersLabel, root)
+	headers, lN, kN, err := ExtractMapFlat[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}
@@ -73,7 +70,7 @@ func (r *Response) Build(root *yaml.Node) error {
 	}
 
 	// handle content, if set.
-	con, clN, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root)
+	con, clN, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}
@@ -86,7 +83,7 @@ func (r *Response) Build(root *yaml.Node) error {
 	}
 
 	// handle links if set
-	links, linkLabel, linkValue, lErr := ExtractMapFlat[*Link](LinksLabel, root)
+	links, linkLabel, linkValue, lErr := ExtractMapFlat[*Link](LinksLabel, root, idx)
 	if lErr != nil {
 		return lErr
 	}

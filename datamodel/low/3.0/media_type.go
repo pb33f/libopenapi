@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -26,14 +27,8 @@ func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueRefe
 	return mt.Examples.Value
 }
 
-func (mt *MediaType) Build(root *yaml.Node) error {
-
-	// extract extensions
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	mt.Extensions = extensionMap
+func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	mt.Extensions = ExtractExtensions(root)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
@@ -42,7 +37,7 @@ func (mt *MediaType) Build(root *yaml.Node) error {
 	}
 
 	// handle schema
-	sch, sErr := ExtractSchema(root)
+	sch, sErr := ExtractSchema(root, idx)
 	if sErr != nil {
 		return nil
 	}
@@ -51,7 +46,7 @@ func (mt *MediaType) Build(root *yaml.Node) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root)
+	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -64,9 +59,9 @@ func (mt *MediaType) Build(root *yaml.Node) error {
 	}
 
 	// handle encoding
-	encs, encsL, encsN, encErr := ExtractMapFlat[*Encoding](EncodingLabel, root)
+	encs, encsL, encsN, encErr := ExtractMapFlat[*Encoding](EncodingLabel, root, idx)
 	if encErr != nil {
-		return err
+		return encErr
 	}
 	if encs != nil {
 		mt.Encoding = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Encoding]]{
