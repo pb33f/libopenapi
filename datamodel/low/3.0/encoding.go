@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,9 +22,9 @@ func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
 	return FindItemInMap[*Header](hType, en.Headers.Value)
 }
 
-func (en *Encoding) Build(root *yaml.Node) error {
+func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
-	headers, hL, hN, err := ExtractMapFlat[*Header](HeadersLabel, root)
+	headers, hL, hN, err := ExtractMapFlat[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}

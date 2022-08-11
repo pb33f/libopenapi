@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,22 +30,18 @@ type Operation struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (o *Operation) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	o.Extensions = extensionMap
+func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	o.Extensions = ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, dErr := ExtractObject[*ExternalDoc](ExternalDocsLabel, root)
+	extDocs, dErr := ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
 	if dErr != nil {
 		return dErr
 	}
 	o.ExternalDocs = extDocs
 
 	// extract parameters
-	params, ln, vn, pErr := ExtractArray[*Parameter](ParametersLabel, root)
+	params, ln, vn, pErr := ExtractArray[*Parameter](ParametersLabel, root, idx)
 	if pErr != nil {
 		return pErr
 	}
@@ -57,21 +54,21 @@ func (o *Operation) Build(root *yaml.Node) error {
 	}
 
 	// extract request body
-	rBody, rErr := ExtractObject[*RequestBody](RequestBodyLabel, root)
+	rBody, rErr := ExtractObject[*RequestBody](RequestBodyLabel, root, idx)
 	if rErr != nil {
 		return rErr
 	}
 	o.RequestBody = rBody
 
 	// extract responses
-	respBody, respErr := ExtractObject[*Responses](ResponsesLabel, root)
+	respBody, respErr := ExtractObject[*Responses](ResponsesLabel, root, idx)
 	if respErr != nil {
 		return rErr
 	}
 	o.Responses = respBody
 
 	// extract callbacks
-	callbacks, cbL, cbN, cbErr := ExtractMapFlat[*Callback](CallbacksLabel, root)
+	callbacks, cbL, cbN, cbErr := ExtractMapFlat[*Callback](CallbacksLabel, root, idx)
 	if cbErr != nil {
 		return cbErr
 	}
@@ -84,14 +81,14 @@ func (o *Operation) Build(root *yaml.Node) error {
 	}
 
 	// extract security
-	sec, sErr := ExtractObject[*SecurityRequirement](SecurityLabel, root)
+	sec, sErr := ExtractObject[*SecurityRequirement](SecurityLabel, root, idx)
 	if sErr != nil {
 		return sErr
 	}
 	o.Security = sec
 
 	// extract servers
-	servers, sl, sn, serErr := ExtractArray[*Server](ServersLabel, root)
+	servers, sl, sn, serErr := ExtractArray[*Server](ServersLabel, root, idx)
 	if serErr != nil {
 		return serErr
 	}

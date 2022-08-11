@@ -15,10 +15,6 @@ type XML struct {
 }
 
 func (x *XML) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	x.Extensions = extensionMap
+	x.Extensions = ExtractExtensions(root)
 	return nil
 }

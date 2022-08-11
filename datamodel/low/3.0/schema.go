@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strconv"
@@ -61,20 +62,17 @@ func (s *Schema) FindProperty(name string) *low.ValueReference[*Schema] {
 	return FindItemInMap[*Schema](name, s.Properties.Value)
 }
 
-func (s *Schema) Build(root *yaml.Node) error {
-	return s.BuildLevel(root, 0)
+func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	return s.BuildLevel(root, idx, 0)
 }
 
-func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
+func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) error {
 	level++
-	if level > 50 {
+	if level > 10 {
 		return nil // we're done, son! too fricken deep.
 	}
 
-	err := s.extractExtensions(root)
-	if err != nil {
-		return err
-	}
+	s.extractExtensions(root)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
@@ -85,7 +83,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
 	if addPNode != nil {
 		if utils.IsNodeMap(addPNode) {
-			schema, serr := ExtractObjectRaw[*Schema](addPNode)
+			schema, serr := ExtractObjectRaw[*Schema](addPNode, idx)
 			if serr != nil {
 				return serr
 			}
@@ -102,7 +100,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	_, discLabel, discNode := utils.FindKeyNodeFull(DiscriminatorLabel, root.Content)
 	if discNode != nil {
 		var discriminator Discriminator
-		err = BuildModel(discNode, &discriminator)
+		err := BuildModel(discNode, &discriminator)
 		if err != nil {
 			return err
 		}
@@ -113,11 +111,11 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	if extDocNode != nil {
 		var exDoc ExternalDoc
-		err = BuildModel(extDocNode, &exDoc)
+		err := BuildModel(extDocNode, &exDoc)
 		if err != nil {
 			return err
 		}
-		err = exDoc.Build(extDocNode)
+		err = exDoc.Build(extDocNode, idx)
 		if err != nil {
 			return err
 		}
@@ -128,7 +126,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	_, xmlLabel, xmlNode := utils.FindKeyNodeFull(XMLLabel, root.Content)
 	if xmlNode != nil {
 		var xml XML
-		err = BuildModel(xmlNode, &xml)
+		err := BuildModel(xmlNode, &xml)
 		if err != nil {
 			return err
 		}
@@ -150,12 +148,21 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 				currentProp = prop
 				continue
 			}
+
+			// check our prop isn't reference
+			if h, _, _ := utils.IsNodeRefValue(prop); h {
+				ref := LocateRefNode(prop, idx)
+				if ref != nil {
+					prop = ref
+				}
+			}
+
 			var property Schema
-			err = BuildModel(prop, &property)
+			err := BuildModel(prop, &property)
 			if err != nil {
 				return err
 			}
-			err = property.BuildLevel(prop, level)
+			err = property.BuildLevel(prop, idx, level)
 			if err != nil {
 				return err
 			}
@@ -179,11 +186,11 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 		var allOf, anyOf, oneOf, not, items []low.NodeReference[*Schema]
 
 		// make this async at some point to speed things up.
-		allOfLabel, allOfValue := buildSchema(&allOf, AllOfLabel, root, level, &errors)
-		anyOfLabel, anyOfValue := buildSchema(&anyOf, AnyOfLabel, root, level, &errors)
-		oneOfLabel, oneOfValue := buildSchema(&oneOf, OneOfLabel, root, level, &errors)
-		notLabel, notValue := buildSchema(&not, NotLabel, root, level, &errors)
-		itemsLabel, itemsValue := buildSchema(&items, ItemsLabel, root, level, &errors)
+		allOfLabel, allOfValue := buildSchema(&allOf, AllOfLabel, root, level, &errors, idx)
+		anyOfLabel, anyOfValue := buildSchema(&anyOf, AnyOfLabel, root, level, &errors, idx)
+		oneOfLabel, oneOfValue := buildSchema(&oneOf, OneOfLabel, root, level, &errors, idx)
+		notLabel, notValue := buildSchema(&not, NotLabel, root, level, &errors, idx)
+		itemsLabel, itemsValue := buildSchema(&items, ItemsLabel, root, level, &errors, idx)
 
 		if len(errors) > 0 {
 			// todo fix this
@@ -228,16 +235,13 @@ func (s *Schema) BuildLevel(root *yaml.Node, level int) error {
 	return nil
 }
 
-func (s *Schema) extractExtensions(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	s.Extensions = extensionMap
-	return err
+func (s *Schema) extractExtensions(root *yaml.Node) {
+	s.Extensions = ExtractExtensions(root)
 }
 
-func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int, errors *[]error) (labelNode *yaml.Node, valueNode *yaml.Node) {
+func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int,
+	errors *[]error, idx *index.SpecIndex) (labelNode *yaml.Node, valueNode *yaml.Node) {
+
 	_, labelNode, valueNode = utils.FindKeyNodeFull(attribute, rootNode.Content)
 	//wg.Add(1)
 	if valueNode != nil {
@@ -248,7 +252,7 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 				*errors = append(*errors, err)
 				return nil
 			}
-			err = schema.BuildLevel(vn, level)
+			err = schema.BuildLevel(vn, idx, level)
 			if err != nil {
 				*errors = append(*errors, err)
 				return nil

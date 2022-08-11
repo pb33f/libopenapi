@@ -5,7 +5,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"sync"
 )
@@ -15,26 +14,27 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	doc := v3.Document{Version: low.NodeReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 
 	// build an index
-	rsolvr := resolver.NewResolver(index.NewSpecIndex(info.RootNode))
+	idx := index.NewSpecIndex(info.RootNode)
+	//rsolvr := resolver.NewResolver()
 
 	// todo handle errors
-	rsolvr.Resolve()
+	//rsolvr.Resolve()
 
 	var wg sync.WaitGroup
 	var errors []error
-	var runExtraction = func(info *datamodel.SpecInfo, doc *v3.Document,
-		runFunc func(i *datamodel.SpecInfo, d *v3.Document) error,
+	var runExtraction = func(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex,
+		runFunc func(i *datamodel.SpecInfo, d *v3.Document, idx *index.SpecIndex) error,
 		ers *[]error,
 		wg *sync.WaitGroup) {
 
-		if er := runFunc(info, doc); er != nil {
+		if er := runFunc(info, doc, idx); er != nil {
 			*ers = append(*ers, er)
 		}
 
 		wg.Done()
 	}
 
-	extractionFuncs := []func(i *datamodel.SpecInfo, d *v3.Document) error{
+	extractionFuncs := []func(i *datamodel.SpecInfo, d *v3.Document, idx *index.SpecIndex) error{
 		extractInfo,
 		extractServers,
 		extractTags,
@@ -45,7 +45,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	}
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
-		go runExtraction(info, &doc, f, &errors, &wg)
+		go runExtraction(info, &doc, idx, f, &errors, &wg)
 	}
 	wg.Wait()
 
@@ -56,7 +56,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	return &doc, nil
 }
 
-func extractInfo(info *datamodel.SpecInfo, doc *v3.Document) error {
+func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.InfoLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Info{}
@@ -71,8 +71,8 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document) error {
 	return nil
 }
 
-func extractSecurity(info *datamodel.SpecInfo, doc *v3.Document) error {
-	sec, sErr := v3.ExtractObject[*v3.SecurityRequirement](v3.SecurityLabel, info.RootNode)
+func extractSecurity(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
+	sec, sErr := v3.ExtractObject[*v3.SecurityRequirement](v3.SecurityLabel, info.RootNode, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -80,8 +80,8 @@ func extractSecurity(info *datamodel.SpecInfo, doc *v3.Document) error {
 	return nil
 }
 
-func extractExternalDocs(info *datamodel.SpecInfo, doc *v3.Document) error {
-	extDocs, dErr := v3.ExtractObject[*v3.ExternalDoc](v3.ExternalDocsLabel, info.RootNode)
+func extractExternalDocs(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
+	extDocs, dErr := v3.ExtractObject[*v3.ExternalDoc](v3.ExternalDocsLabel, info.RootNode, idx)
 	if dErr != nil {
 		return dErr
 	}
@@ -89,7 +89,7 @@ func extractExternalDocs(info *datamodel.SpecInfo, doc *v3.Document) error {
 	return nil
 }
 
-func extractComponents(info *datamodel.SpecInfo, doc *v3.Document) error {
+func extractComponents(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.ComponentsLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Components{}
@@ -97,14 +97,14 @@ func extractComponents(info *datamodel.SpecInfo, doc *v3.Document) error {
 		if err != nil {
 			return err
 		}
-		err = ir.Build(vn)
+		err = ir.Build(vn, idx)
 		nr := low.NodeReference[*v3.Components]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Components = nr
 	}
 	return nil
 }
 
-func extractServers(info *datamodel.SpecInfo, doc *v3.Document) error {
+func extractServers(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.ServersLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
@@ -116,7 +116,7 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document) error {
 					if err != nil {
 						return err
 					}
-					srvr.Build(srvN)
+					srvr.Build(srvN, idx)
 					servers = append(servers, low.ValueReference[*v3.Server]{
 						Value:     &srvr,
 						ValueNode: srvN,
@@ -133,7 +133,7 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document) error {
 	return nil
 }
 
-func extractTags(info *datamodel.SpecInfo, doc *v3.Document) error {
+func extractTags(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.TagsLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
@@ -145,7 +145,7 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document) error {
 					if err != nil {
 						return err
 					}
-					tag.Build(tagN)
+					tag.Build(tagN, idx)
 					tags = append(tags, low.ValueReference[*v3.Tag]{
 						Value:     &tag,
 						ValueNode: tagN,
@@ -162,11 +162,11 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document) error {
 	return nil
 }
 
-func extractPaths(info *datamodel.SpecInfo, doc *v3.Document) error {
+func extractPaths(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(v3.PathsLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Paths{}
-		err := ir.Build(vn)
+		err := ir.Build(vn, idx)
 		if err != nil {
 			return err
 		}

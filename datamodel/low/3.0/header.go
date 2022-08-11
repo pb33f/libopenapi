@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,16 +25,11 @@ type Header struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (h *Header) Build(root *yaml.Node) error {
-	// extract extensions
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	h.Extensions = extensionMap
+func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	h.Extensions = ExtractExtensions(root)
 
 	// handle examples if set.
-	exps, eErr := ExtractMap[*Example](ExamplesLabel, root)
+	exps, eErr := ExtractMap[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -42,7 +38,7 @@ func (h *Header) Build(root *yaml.Node) error {
 	}
 
 	// handle schema
-	sch, sErr := ExtractSchema(root)
+	sch, sErr := ExtractSchema(root, idx)
 	if sErr != nil {
 		return nil
 	}
@@ -51,7 +47,7 @@ func (h *Header) Build(root *yaml.Node) error {
 	}
 
 	// handle content, if set.
-	con, cErr := ExtractMap[*MediaType](ContentLabel, root)
+	con, cErr := ExtractMap[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

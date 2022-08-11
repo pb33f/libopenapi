@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -56,12 +57,8 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 	return FindItemInMap[*Callback](callback, co.Callbacks.Value)
 }
 
-func (co *Components) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	co.Extensions = extensionMap
+func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	co.Extensions = ExtractExtensions(root)
 
 	// build out components asynchronously for speed. There could be some significant weight here.
 	skipChan := make(chan bool)
@@ -76,15 +73,15 @@ func (co *Components) Build(root *yaml.Node) error {
 	linkChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]])
 	callbackChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]])
 
-	go extractComponentValues[*Schema](SchemasLabel, root, skipChan, errorChan, schemaChan)
-	go extractComponentValues[*Parameter](ParametersLabel, root, skipChan, errorChan, paramChan)
-	go extractComponentValues[*Response](ResponsesLabel, root, skipChan, errorChan, responsesChan)
-	go extractComponentValues[*Example](ExamplesLabel, root, skipChan, errorChan, examplesChan)
-	go extractComponentValues[*RequestBody](RequestBodiesLabel, root, skipChan, errorChan, requestBodiesChan)
-	go extractComponentValues[*Header](HeadersLabel, root, skipChan, errorChan, headersChan)
-	go extractComponentValues[*SecurityScheme](SecuritySchemesLabel, root, skipChan, errorChan, securitySchemesChan)
-	go extractComponentValues[*Link](LinksLabel, root, skipChan, errorChan, linkChan)
-	go extractComponentValues[*Callback](CallbacksLabel, root, skipChan, errorChan, callbackChan)
+	go extractComponentValues[*Schema](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
+	go extractComponentValues[*Parameter](ParametersLabel, root, skipChan, errorChan, paramChan, idx)
+	go extractComponentValues[*Response](ResponsesLabel, root, skipChan, errorChan, responsesChan, idx)
+	go extractComponentValues[*Example](ExamplesLabel, root, skipChan, errorChan, examplesChan, idx)
+	go extractComponentValues[*RequestBody](RequestBodiesLabel, root, skipChan, errorChan, requestBodiesChan, idx)
+	go extractComponentValues[*Header](HeadersLabel, root, skipChan, errorChan, headersChan, idx)
+	go extractComponentValues[*SecurityScheme](SecuritySchemesLabel, root, skipChan, errorChan, securitySchemesChan, idx)
+	go extractComponentValues[*Link](LinksLabel, root, skipChan, errorChan, linkChan, idx)
+	go extractComponentValues[*Callback](CallbacksLabel, root, skipChan, errorChan, callbackChan, idx)
 
 	n := 0
 	total := 9
@@ -159,7 +156,7 @@ allDone:
 }
 
 func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node,
-	skip chan bool, errorChan chan<- error, resultChan chan<- low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]]) {
+	skip chan bool, errorChan chan<- error, resultChan chan<- low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]], idx *index.SpecIndex) {
 	_, nodeLabel, nodeValue := utils.FindKeyNodeFull(label, root.Content)
 	if nodeValue == nil {
 		skip <- true
@@ -177,7 +174,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 		if err != nil {
 			errorChan <- err
 		}
-		err = n.Build(v)
+		err = n.Build(v, idx)
 		if err != nil {
 			errorChan <- err
 		}

@@ -2,6 +2,8 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strings"
 	"sync"
@@ -33,14 +35,8 @@ func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 	return nil
 }
 
-func (p *Paths) Build(root *yaml.Node) error {
-
-	// extract extensions
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	p.Extensions = extensionMap
+func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	p.Extensions = ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node
 
@@ -60,11 +56,11 @@ func (p *Paths) Build(root *yaml.Node) error {
 			continue
 		}
 		var path = PathItem{}
-		err = BuildModel(pathNode, &path)
+		err := BuildModel(pathNode, &path)
 		if err != nil {
 
 		}
-		err = path.Build(pathNode)
+		err = path.Build(pathNode, idx)
 		if err != nil {
 			return err
 		}
@@ -100,12 +96,8 @@ type PathItem struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (p *PathItem) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	p.Extensions = extensionMap
+func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	p.Extensions = ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node
 
@@ -113,6 +105,15 @@ func (p *PathItem) Build(root *yaml.Node) error {
 	var errors []error
 
 	var ops []low.NodeReference[*Operation]
+
+	if ok, _, _ := utils.IsNodeRefValue(root); ok {
+		r := LocateRefNode(root, idx)
+		if r != nil {
+			root = r
+		} else {
+			return nil
+		}
+	}
 
 	for i, pathNode := range root.Content {
 		if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
@@ -161,18 +162,20 @@ func (p *PathItem) Build(root *yaml.Node) error {
 		}
 	}
 
-	wg.Wait()
+	if len(ops) > 0 {
+		//wg.Wait()
+	}
 
-	// all operations have been superficially built,
-	// now we need to build out the operation, we will do this asynchronously for speed.
+	//all operations have been superficially built,
+	//now we need to build out the operation, we will do this asynchronously for speed.
 	opBuildChan := make(chan bool)
 	opErrorChan := make(chan error)
 
 	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
 
-		// build out the operation.
-		er := op.Value.Build(op.ValueNode)
-		if err != nil {
+		//build out the operation.
+		er := op.Value.Build(op.ValueNode, idx)
+		if er != nil {
 			errCh <- er
 		}
 		ch <- true

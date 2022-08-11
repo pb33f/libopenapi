@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -17,7 +18,7 @@ type Server struct {
 	Variables   low.NodeReference[map[string]low.NodeReference[*ServerVariable]]
 }
 
-func (s *Server) Build(root *yaml.Node) error {
+func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)
 	if vars == nil {
 		return nil

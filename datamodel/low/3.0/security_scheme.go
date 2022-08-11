@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -28,14 +29,10 @@ type SecurityRequirement struct {
 	Value []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
 }
 
-func (ss *SecurityScheme) Build(root *yaml.Node) error {
-	extensionMap, err := ExtractExtensions(root)
-	if err != nil {
-		return err
-	}
-	ss.Extensions = extensionMap
+func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	ss.Extensions = ExtractExtensions(root)
 
-	oa, oaErr := ExtractObject[*OAuthFlows](OAuthFlowsLabel, root)
+	oa, oaErr := ExtractObject[*OAuthFlows](OAuthFlowsLabel, root, idx)
 	if oaErr != nil {
 		return oaErr
 	}
@@ -57,7 +54,7 @@ func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference
 	return nil
 }
 
-func (sr *SecurityRequirement) Build(root *yaml.Node) error {
+func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if utils.IsNodeArray(root) {
 		var requirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
 		for _, n := range root.Content {

@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	localResolve int = 0
-	httpResolve  int = 1
-	fileResolve  int = 2
+	LocalResolve int = 0
+	HttpResolve  int = 1
+	FileResolve  int = 2
 )
 
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing
@@ -72,7 +72,8 @@ type SpecIndex struct {
 	responsesRefs                       map[string]*Reference                       // top level responses
 	headersRefs                         map[string]*Reference                       // top level responses
 	examplesRefs                        map[string]*Reference                       // top level examples
-	linksRefs                           map[string]map[string][]*Reference          // all links
+	callbacksRefs                       map[string]map[string][]*Reference          // all links
+	linksRefs                           map[string]map[string][]*Reference          // all  callbacks
 	operationTagsRefs                   map[string]map[string][]*Reference          // tags found in operations
 	operationDescriptionRefs            map[string]map[string]*Reference            // descriptions in operations.
 	operationSummaryRefs                map[string]map[string]*Reference            // summaries in operations
@@ -99,6 +100,7 @@ type SpecIndex struct {
 	globalHeadersCount                  int                                         // component headers
 	globalExamplesCount                 int                                         // component examples
 	globalLinksCount                    int                                         // component links
+	globalCallbacksCount                int                                         // component callbacks
 	globalCallbacks                     int                                         // component callbacks.
 	pathCount                           int                                         // number of paths
 	operationCount                      int                                         // number of operations
@@ -207,6 +209,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.responsesRefs = make(map[string]*Reference)
 	index.headersRefs = make(map[string]*Reference)
 	index.examplesRefs = make(map[string]*Reference)
+	index.callbacksRefs = make(map[string]map[string][]*Reference)
 	index.linksRefs = make(map[string]map[string][]*Reference)
 	index.callbackRefs = make(map[string]*Reference)
 	index.externalSpecIndex = make(map[string]*SpecIndex)
@@ -256,6 +259,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 		index.GetInlineUniqueParamCount,
 		index.GetOperationTagsCount,
 		index.GetGlobalLinksCount,
+		index.GetGlobalCallbacksCount,
 	}
 
 	wg.Add(len(countFuncs))
@@ -872,13 +876,59 @@ func (index *SpecIndex) GetTotalTagsCount() int {
 	return index.totalTagsCount
 }
 
-// GetGlobalLinksCount for each response of each operation method, multiple links can be defined
+// GetGlobalCallbacksCount for each response of each operation method, multiple links can be defined
+func (index *SpecIndex) GetGlobalCallbacksCount() int {
+	if index.root == nil {
+		return -1
+	}
+
+	if index.globalCallbacksCount > 0 {
+		return index.globalCallbacksCount
+	}
+
+	index.pathRefsLock.Lock()
+	for path, p := range index.pathRefs {
+		for _, m := range p {
+
+			// look through method for callbacks
+			callbacks, _ := yamlpath.NewPath("$..callbacks")
+			res, _ := callbacks.Find(m.Node)
+
+			if len(res) > 0 {
+
+				for _, callback := range res[0].Content {
+					if utils.IsNodeMap(callback) {
+
+						ref := &Reference{
+							Definition: m.Name,
+							Name:       m.Name,
+							Node:       callback,
+						}
+
+						if index.callbacksRefs[path] == nil {
+							index.callbacksRefs[path] = make(map[string][]*Reference)
+						}
+						if len(index.callbacksRefs[path][m.Name]) > 0 {
+							index.callbacksRefs[path][m.Name] = append(index.callbacksRefs[path][m.Name], ref)
+						}
+						index.callbacksRefs[path][m.Name] = []*Reference{ref}
+						index.globalCallbacksCount++
+					}
+				}
+			}
+		}
+	}
+	index.pathRefsLock.Unlock()
+	return index.globalCallbacksCount
+}
+
+// GetGlobalLinksCount for each response of each operation method, multiple callbacks can be defined
 func (index *SpecIndex) GetGlobalLinksCount() int {
 	if index.root == nil {
 		return -1
 	}
 
-	if index.globalLinksCount > 0 {
+	if index.globalCallbacksCount > 0 {
 		return index.globalLinksCount
 	}
 
@@ -900,7 +950,6 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 							Name:       m.Name,
 							Node:       link,
 						}
-
 						if index.linksRefs[path] == nil {
 							index.linksRefs[path] = make(map[string][]*Reference)
 						}
@@ -1421,17 +1470,17 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 		return index.lookupFileReference(id)
 	}
 
-	switch determineReferenceResolveType(componentId) {
-	case localResolve: // ideally, every single ref in every single spec is local. however, this is not the case.
-		return index.findComponentInRoot(componentId)
+	switch DetermineReferenceResolveType(componentId) {
+	case LocalResolve: // ideally, every single ref in every single spec is local. however, this is not the case.
+		return index.FindComponentInRoot(componentId)
 
-	case httpResolve:
+	case HttpResolve:
 		uri := strings.Split(componentId, "#")
 		if len(uri) == 2 {
 			return index.performExternalLookup(uri, componentId, remoteLookup, parent)
 		}
 
-	case fileResolve:
+	case FileResolve:
 		uri := strings.Split(componentId, "#")
 		if len(uri) == 2 {
 			return index.performExternalLookup(uri, componentId, fileLookup, parent)
@@ -1450,22 +1499,22 @@ func (index *SpecIndex) GetAllSummariesCount() int {
 	return len(index.allSummaries)
 }
 
-/* private */
-
-func determineReferenceResolveType(ref string) int {
+func DetermineReferenceResolveType(ref string) int {
 	if ref != "" && ref[0] == '#' {
-		return localResolve
+		return LocalResolve
 	}
 	if ref != "" && len(ref) >= 5 && (ref[:5] == "https" || ref[:5] == "http:") {
-		return httpResolve
+		return HttpResolve
 	}
 	if strings.Contains(ref, ".json") ||
 		strings.Contains(ref, ".yaml") ||
 		strings.Contains(ref, ".yml") {
-		return fileResolve
+		return FileResolve
 	}
 	return -1
 }
+
+/* private */
 
 func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pathPrefix string) {
 	var name string
@@ -1650,7 +1699,7 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 
 	} else {
 
-		foundRef := externalSpecIndex.findComponentInRoot(uri[1])
+		foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
 		if foundRef != nil {
 			foundNode = foundRef.Node
 		}
@@ -1670,7 +1719,7 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 	return nil
 }
 
-func (index *SpecIndex) findComponentInRoot(componentId string) *Reference {
+func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 
 	name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
 
