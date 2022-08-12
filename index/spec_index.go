@@ -928,7 +928,7 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 		return -1
 	}
 
-	if index.globalCallbacksCount > 0 {
+	if index.globalLinksCount > 0 {
 		return index.globalLinksCount
 	}
 
