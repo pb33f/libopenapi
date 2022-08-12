@@ -202,6 +202,9 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 3, index.globalLinksCount)
 	assert.Equal(t, 3, index.GetGlobalLinksCount())
 
+	assert.Equal(t, 1, index.globalCallbacksCount)
+	assert.Equal(t, 1, index.GetGlobalCallbacksCount())
+
 	assert.Equal(t, 2, index.componentParamCount)
 	assert.Equal(t, 2, index.GetComponentParameterCount())
 

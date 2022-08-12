@@ -876,7 +876,7 @@ func (index *SpecIndex) GetTotalTagsCount() int {
 	return index.totalTagsCount
 }
 
-// GetGlobalCallbacksCount for each response of each operation method, multiple links can be defined
+// GetGlobalCallbacksCount for each response of each operation method, multiple callbacks can be defined
 func (index *SpecIndex) GetGlobalCallbacksCount() int {
 	if index.root == nil {
 		return -1
@@ -1424,7 +1424,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		if strings.Contains(ref.Definition, "\\") { // this was from blazemeter.com haha!
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 			indexError := &IndexingError{
-				Error: fmt.Errorf("component '%s' contains a backslash '\\'. It's not valid.", ref.Definition),
+				Error: fmt.Errorf("component '%s' contains a backslash '\\'. It's not valid", ref.Definition),
 				Node:  ref.Node,
 				Path:  path,
 			}
