@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -174,6 +175,16 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
 
 		//build out the operation.
+		if ok, _, _ := utils.IsNodeRefValue(op.ValueNode); ok {
+			r := LocateRefNode(op.ValueNode, idx)
+			if r != nil {
+				op.ValueNode = r
+			} else {
+				// any reference would be the second node.
+				errCh <- fmt.Errorf("cannot extract reference: %s", op.ValueNode.Content[1].Value)
+			}
+		}
+
 		er := op.Value.Build(op.ValueNode, idx)
 		if er != nil {
 			errCh <- er
