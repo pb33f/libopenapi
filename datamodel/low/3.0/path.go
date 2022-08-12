@@ -132,7 +132,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		var op Operation
 
 		wg.Add(1)
-		BuildModelAsync(pathNode, &op, &wg, &errors)
+		go BuildModelAsync(pathNode, &op, &wg, &errors)
 
 		opRef := low.NodeReference[*Operation]{
 			Value:     &op,
