@@ -15,10 +15,6 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 
 	// build an index
 	idx := index.NewSpecIndex(info.RootNode)
-	//rsolvr := resolver.NewResolver()
-
-	// todo handle errors
-	//rsolvr.Resolve()
 
 	var wg sync.WaitGroup
 	var errors []error

@@ -35,6 +35,17 @@ func BenchmarkCreateDocument_Stripe(b *testing.B) {
 	}
 }
 
+func BenchmarkCreateDocument_Petstore(b *testing.B) {
+	data, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	for i := 0; i < b.N; i++ {
+		_, err := CreateDocument(info)
+		if err != nil {
+			panic("this should not error")
+		}
+	}
+}
+
 func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, "3.0.1", doc.Version.Value)
 	assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)

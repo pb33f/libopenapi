@@ -886,7 +886,7 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 		return index.globalCallbacksCount
 	}
 
-	index.pathRefsLock.Lock()
+	//index.pathRefsLock.Lock()
 	for path, p := range index.pathRefs {
 		for _, m := range p {
 
@@ -918,7 +918,7 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 			}
 		}
 	}
-	index.pathRefsLock.Unlock()
+	//index.pathRefsLock.Unlock()
 	return index.globalCallbacksCount
 }
 
@@ -932,7 +932,7 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 		return index.globalLinksCount
 	}
 
-	index.pathRefsLock.Lock()
+	//index.pathRefsLock.Lock()
 	for path, p := range index.pathRefs {
 		for _, m := range p {
 
@@ -963,7 +963,7 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 			}
 		}
 	}
-	index.pathRefsLock.Unlock()
+	//index.pathRefsLock.Unlock()
 	return index.globalLinksCount
 }
 
