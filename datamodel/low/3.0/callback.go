@@ -3,7 +3,6 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,15 +21,6 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// handle callback
 	var currentCB *yaml.Node
 	callbacks := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
-
-	if ok, _, _ := utils.IsNodeRefValue(root); ok {
-		r := LocateRefNode(root, idx)
-		if r != nil {
-			root = r
-		} else {
-			return nil
-		}
-	}
 
 	for i, callbackNode := range root.Content {
 		if i%2 == 0 {

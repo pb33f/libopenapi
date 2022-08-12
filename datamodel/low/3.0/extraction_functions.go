@@ -1,9 +1,11 @@
 package v3
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
 	"strconv"
 	"strings"
@@ -66,9 +68,42 @@ var mapLock sync.Mutex
 
 func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 	if rf, _, rv := utils.IsNodeRefValue(root); rf {
-		found := idx.GetMappedReferences()
-		if found != nil && found[rv] != nil {
-			return found[rv].Node
+		// run through everything and return as soon as we find a match.
+		// this operates as fast as possible as ever
+		collections := []func() map[string]*index.Reference{
+			idx.GetAllSchemas,
+			idx.GetMappedReferences,
+			idx.GetAllExternalDocuments,
+			idx.GetAllParameters,
+			idx.GetAllHeaders,
+			idx.GetAllCallbacks,
+			idx.GetAllLinks,
+			idx.GetAllExternalDocuments,
+			idx.GetAllExamples,
+			idx.GetAllRequestBodies,
+			idx.GetAllResponses,
+			idx.GetAllSecuritySchemes,
+			idx.GetAllCombinedReferences,
+		}
+		var found map[string]*index.Reference
+		for _, collection := range collections {
+			found = collection()
+			if found != nil && found[rv] != nil {
+				return found[rv].Node
+			}
+		}
+
+		// cant be found? last resort is to try a path lookup
+		cleaned := strings.ReplaceAll(rv, "~1", "/")
+		cleaned = strings.ReplaceAll(cleaned, "#/paths/", "")
+		path, err := yamlpath.NewPath(fmt.Sprintf("$.paths.%s", cleaned))
+		if err == nil {
+			nodes, fErr := path.Find(idx.GetRootNode())
+			if fErr == nil {
+				if len(nodes) > 0 {
+					return nodes[0]
+				}
+			}
 		}
 	}
 	return nil
@@ -182,6 +217,15 @@ func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *in
 				currentKey = node
 				continue
 			}
+
+			// if value is a reference, we have to look it up in the index!
+			if h, _, _ := utils.IsNodeRefValue(node); h {
+				ref := LocateRefNode(node, idx)
+				if ref != nil {
+					node = ref
+				}
+			}
+
 			var n PT = new(N)
 			err := BuildModel(node, n)
 			if err != nil {
