@@ -30,6 +30,7 @@ type Schema struct {
 	MaxLength            low.NodeReference[int]
 	MinLength            low.NodeReference[int]
 	Pattern              low.NodeReference[string]
+	Format               low.NodeReference[string]
 	MaxItems             low.NodeReference[int]
 	MinItems             low.NodeReference[int]
 	UniqueItems          low.NodeReference[int]

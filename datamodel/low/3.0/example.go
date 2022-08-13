@@ -21,23 +21,46 @@ type Example struct {
 	Extensions    map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (ex *Example) FindExtension(ext string) *low.ValueReference[any] {
+	return FindItemInMap[any](ext, ex.Extensions)
+}
+
 func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	ex.Extensions = ExtractExtensions(root)
 
-	// extract value
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
+
 	if vn != nil {
 		var n map[string]interface{}
 		err := vn.Decode(&n)
 		if err != nil {
-			return err
+			// if not a map, then try an array
+			var k []interface{}
+			err = vn.Decode(&k)
+			if err != nil {
+				// lets just default to interface
+				var j interface{}
+				_ = vn.Decode(&j)
+				ex.Value = low.NodeReference[any]{
+					Value:     j,
+					KeyNode:   ln,
+					ValueNode: vn,
+				}
+				return nil
+			}
+			ex.Value = low.NodeReference[any]{
+				Value:     k,
+				KeyNode:   ln,
+				ValueNode: vn,
+			}
+			return nil
 		}
 		ex.Value = low.NodeReference[any]{
 			Value:     n,
 			KeyNode:   ln,
 			ValueNode: vn,
 		}
+		return nil
 	}
-
 	return nil
 }
