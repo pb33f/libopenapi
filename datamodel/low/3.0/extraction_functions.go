@@ -36,6 +36,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
+		} else {
+			return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
 		}
 	} else {
 		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
@@ -83,7 +85,6 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 			idx.GetAllRequestBodies,
 			idx.GetAllResponses,
 			idx.GetAllSecuritySchemes,
-			idx.GetAllCombinedReferences,
 		}
 		var found map[string]*index.Reference
 		for _, collection := range collections {
@@ -130,6 +131,9 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx
 		if ref != nil {
 			vn = ref
 			ln = rl
+		} else {
+			return low.NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
+				root.Content[1].Value)
 		}
 	} else {
 		_, ln, vn = utils.FindKeyNodeFull(label, root.Content)
@@ -138,6 +142,9 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx
 				ref := LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
+				} else {
+					return low.NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
+						root.Content[1].Value)
 				}
 			}
 		}
@@ -161,7 +168,8 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx
 	}, nil
 }
 
-func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) ([]low.ValueReference[T], *yaml.Node, *yaml.Node, error) {
+func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) ([]low.ValueReference[T],
+	*yaml.Node, *yaml.Node, error) {
 	var ln, vn *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
@@ -169,6 +177,9 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 		if ref != nil {
 			vn = ref
 			ln = rl
+		} else {
+			return []low.ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
+				root.Content[1].Value)
 		}
 	} else {
 		_, ln, vn = utils.FindKeyNodeFull(label, root.Content)
@@ -177,6 +188,9 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 				ref := LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
+				} else {
+					return []low.ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
+						root.Content[1].Value)
 				}
 			}
 		}
@@ -188,6 +202,9 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 				ref := LocateRefNode(node, idx)
 				if ref != nil {
 					node = ref
+				} else {
+					return []low.ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
+						root.Content[1].Value)
 				}
 			}
 			var n T = new(N)
@@ -223,6 +240,8 @@ func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *in
 				ref := LocateRefNode(node, idx)
 				if ref != nil {
 					node = ref
+				} else {
+					return nil, fmt.Errorf("map build failed: reference cannot be found: %s", root.Content[1].Value)
 				}
 			}
 
@@ -255,6 +274,9 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
+		} else {
+			return nil, labelNode, valueNode, fmt.Errorf("map build failed: reference cannot be found: %s",
+				root.Content[1].Value)
 		}
 	} else {
 		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
@@ -263,6 +285,9 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 				ref := LocateRefNode(valueNode, idx)
 				if ref != nil {
 					valueNode = ref
+				} else {
+					return nil, labelNode, valueNode, fmt.Errorf("map build failed: reference cannot be found: %s",
+						root.Content[1].Value)
 				}
 			}
 		}
@@ -281,6 +306,9 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 				ref := LocateRefNode(en, idx)
 				if ref != nil {
 					en = ref
+				} else {
+					return nil, labelNode, valueNode, fmt.Errorf("flat map build failed: reference cannot be found: %s",
+						root.Content[1].Value)
 				}
 			}
 
@@ -317,6 +345,8 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
+		} else {
+			return nil, fmt.Errorf("map build failed: reference cannot be found: %s", root.Content[1].Value)
 		}
 	} else {
 		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)

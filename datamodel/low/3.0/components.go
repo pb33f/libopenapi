@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -31,6 +32,10 @@ func (co *Components) FindSchema(schema string) *low.ValueReference[*Schema] {
 
 func (co *Components) FindResponse(response string) *low.ValueReference[*Response] {
 	return FindItemInMap[*Response](response, co.Responses.Value)
+}
+
+func (co *Components) FindParameter(response string) *low.ValueReference[*Parameter] {
+	return FindItemInMap[*Parameter](response, co.Parameters.Value)
 }
 
 func (co *Components) FindSecurityScheme(sScheme string) *low.ValueReference[*SecurityScheme] {
@@ -85,68 +90,67 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	n := 0
 	total := 9
+
+	var stateCheck = func() bool {
+		n++
+		if n == total {
+			return true
+		}
+		return false
+	}
+
 allDone:
 	for {
 		select {
 		case buildError := <-errorChan:
 			return buildError
 		case <-skipChan:
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case params := <-paramChan:
 			co.Parameters = params
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case schemas := <-schemaChan:
 			co.Schemas = schemas
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case responses := <-responsesChan:
 			co.Responses = responses
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case examples := <-examplesChan:
 			co.Examples = examples
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case reqBody := <-requestBodiesChan:
 			co.RequestBodies = reqBody
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case headers := <-headersChan:
 			co.Headers = headers
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case sScheme := <-securitySchemesChan:
 			co.SecuritySchemes = sScheme
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case links := <-linkChan:
 			co.Links = links
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		case callbacks := <-callbackChan:
 			co.Callbacks = callbacks
-			n++
-			if n == total {
+			if stateCheck() {
 				break allDone
 			}
 		}
@@ -164,17 +168,18 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	}
 	var currentLabel *yaml.Node
 	componentValues := make(map[low.KeyReference[string]]low.ValueReference[T])
+	if utils.IsNodeArray(nodeValue) {
+		errorChan <- fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
+		return
+	}
 	for i, v := range nodeValue.Content {
 		if i%2 == 0 {
 			currentLabel = v
 			continue
 		}
 		var n T = new(N)
-		err := BuildModel(v, n)
-		if err != nil {
-			errorChan <- err
-		}
-		err = n.Build(v, idx)
+		_ = BuildModel(v, n)
+		err := n.Build(v, idx)
 		if err != nil {
 			errorChan <- err
 		}

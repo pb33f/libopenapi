@@ -192,6 +192,10 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		ch <- true
 	}
 
+	if len(ops) <= 0 {
+		return nil // nothing to do.
+	}
+
 	for _, op := range ops {
 		go buildOpFunc(op, opBuildChan, opErrorChan)
 	}

@@ -385,7 +385,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 	default:
-		// we want to ignore everything else.
+		// we want to ignore everything else, each model handles its own complex types.
 		break
 	}
 	return nil
