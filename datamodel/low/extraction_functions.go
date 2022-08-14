@@ -1,8 +1,9 @@
-package v3
+package datamodel
 
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
@@ -12,10 +13,10 @@ import (
 	"sync"
 )
 
-var KnownSchemas map[string]low.NodeReference[*Schema]
+var KnownSchemas map[string]low.NodeReference[*v3.Schema]
 
 func init() {
-	KnownSchemas = make(map[string]low.NodeReference[*Schema])
+	KnownSchemas = make(map[string]low.NodeReference[*v3.Schema])
 
 }
 
@@ -28,7 +29,7 @@ func FindItemInMap[T any](item string, collection map[low.KeyReference[string]]l
 	return nil
 }
 
-func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*Schema], error) {
+func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*v3.Schema], error) {
 	var schLabel, schNode *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
@@ -40,7 +41,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 			return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
 		}
 	} else {
-		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
+		_, schLabel, schNode = utils.FindKeyNodeFull(v3.SchemaLabel, root.Content)
 		if schNode != nil {
 			if h, _, _ := utils.IsNodeRefValue(schNode); h {
 				ref := LocateRefNode(schNode, idx)
@@ -52,8 +53,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 	}
 
 	if schNode != nil {
-		var schema Schema
-		err := BuildModel(schNode, &schema)
+		var schema v3.Schema
+		err := v3.BuildModel(schNode, &schema)
 		if err != nil {
 			return nil, err
 		}
@@ -61,7 +62,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 		if err != nil {
 			return nil, err
 		}
-		return &low.NodeReference[*Schema]{Value: &schema, KeyNode: schLabel, ValueNode: schNode}, nil
+		return &low.NodeReference[*v3.Schema]{Value: &schema, KeyNode: schLabel, ValueNode: schNode}, nil
 	}
 	return nil, nil
 }
@@ -112,7 +113,7 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 
 func ExtractObjectRaw[T low.Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error) {
 	var n T = new(N)
-	err := BuildModel(root, n)
+	err := v3.BuildModel(root, n)
 	if err != nil {
 		return n, err
 	}
@@ -150,7 +151,7 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx
 		}
 	}
 	var n T = new(N)
-	err := BuildModel(vn, n)
+	err := v3.BuildModel(vn, n)
 	if err != nil {
 		return low.NodeReference[T]{}, err
 	}
@@ -208,7 +209,7 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 				}
 			}
 			var n T = new(N)
-			err := BuildModel(node, n)
+			err := v3.BuildModel(node, n)
 			if err != nil {
 				return []low.ValueReference[T]{}, ln, vn, err
 			}
@@ -246,7 +247,7 @@ func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *in
 			}
 
 			var n PT = new(N)
-			err := BuildModel(node, n)
+			err := v3.BuildModel(node, n)
 			if err != nil {
 				return nil, err
 			}
@@ -316,7 +317,7 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			var n PT = new(N)
-			err := BuildModel(en, n)
+			err := v3.BuildModel(en, n)
 			if err != nil {
 				return nil, labelNode, valueNode, err
 			}
@@ -364,7 +365,7 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			var n PT = new(N)
-			err := BuildModel(en, n)
+			err := v3.BuildModel(en, n)
 			if err != nil {
 				return nil, err
 			}
