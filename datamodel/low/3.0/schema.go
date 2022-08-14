@@ -304,6 +304,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 				ref := low.LocateRefNode(schNode, idx)
 				if ref != nil {
 					schNode = ref
+				} else {
+					return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
 				}
 			}
 		}
