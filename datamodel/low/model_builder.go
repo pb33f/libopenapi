@@ -363,6 +363,33 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 				}
 			}
 		}
+	case reflect.TypeOf(KeyReference[map[KeyReference[string]]ValueReference[string]]{}):
+		if valueNode != nil {
+			if utils.IsNodeMap(valueNode) {
+				if field.CanSet() {
+					items := make(map[KeyReference[string]]ValueReference[string])
+					var cf *yaml.Node
+					for i, sliceItem := range valueNode.Content {
+						if i%2 == 0 {
+							cf = sliceItem
+							continue
+						}
+						items[KeyReference[string]{
+							Value:   cf.Value,
+							KeyNode: cf,
+						}] = ValueReference[string]{
+							Value:     sliceItem.Value,
+							ValueNode: sliceItem,
+						}
+					}
+					ref := KeyReference[map[KeyReference[string]]ValueReference[string]]{
+						Value:   items,
+						KeyNode: keyNode,
+					}
+					field.Set(reflect.ValueOf(ref))
+				}
+			}
+		}
 	case reflect.TypeOf(NodeReference[[]ValueReference[string]]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {

@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -13,6 +16,10 @@ type MediaType struct {
 	Examples   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
 	Encoding   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Encoding]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+func (mt *MediaType) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, mt.Extensions)
 }
 
 func (mt *MediaType) FindPropertyEncoding(eType string) *low.ValueReference[*Encoding] {
@@ -39,7 +46,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// handle schema
 	sch, sErr := ExtractSchema(root, idx)
 	if sErr != nil {
-		return nil
+		return sErr
 	}
 	if sch != nil {
 		mt.Schema = *sch

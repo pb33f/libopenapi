@@ -1,7 +1,11 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 )
 
 type Document struct {
@@ -14,4 +18,5 @@ type Document struct {
 	Tags         low.NodeReference[[]low.ValueReference[*Tag]]
 	ExternalDocs low.NodeReference[*ExternalDoc]
 	Extensions   map[low.NodeReference[string]]low.NodeReference[any]
+	Index        *index.SpecIndex
 }

@@ -1420,7 +1420,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	var found []*Reference
 	for _, ref := range refs {
 
-		// check reference for back slashes (hah yeah seen this too!)
+		// check reference for backslashes (hah yeah seen this too!)
 		if strings.Contains(ref.Definition, "\\") { // this was from blazemeter.com haha!
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 			indexError := &IndexingError{

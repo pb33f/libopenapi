@@ -9,15 +9,17 @@ import (
 	"sync"
 )
 
-func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
+func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, []error) {
 
 	doc := v3.Document{Version: low.NodeReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 
 	// build an index
 	idx := index.NewSpecIndex(info.RootNode)
+	doc.Index = idx
 
 	var wg sync.WaitGroup
 	var errors []error
+
 	var runExtraction = func(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex,
 		runFunc func(i *datamodel.SpecInfo, d *v3.Document, idx *index.SpecIndex) error,
 		ers *[]error,
@@ -45,11 +47,8 @@ func CreateDocument(info *datamodel.SpecInfo) (*v3.Document, error) {
 	}
 	wg.Wait()
 
-	// todo fix this.
-	if len(errors) > 0 {
-		return &doc, errors[0]
-	}
-	return &doc, nil
+	return &doc, errors
+
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
@@ -60,7 +59,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 		if err != nil {
 			return err
 		}
-		err = ir.Build(vn)
+		err = ir.Build(vn, idx)
 		nr := low.NodeReference[*v3.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
