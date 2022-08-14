@@ -10,6 +10,7 @@ import (
 const (
 	VariablesLabel = "variables"
 	ServersLabel   = "servers"
+	ServerLabel    = "server"
 )
 
 type Server struct {

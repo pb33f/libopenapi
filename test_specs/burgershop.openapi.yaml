@@ -510,3 +510,6 @@ components:
         propertyName: drinkType
         mapping:
           drink: some value
+    SomePayload:
+      type: string
+      description: some kind of payload for something.

@@ -262,7 +262,7 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 
 	components := doc.Components.Value
 	assert.NotNil(t, components)
-	assert.Len(t, components.Schemas.Value, 5)
+	assert.Len(t, components.Schemas.Value, 6)
 
 	burger := components.FindSchema("Burger")
 	assert.NotNil(t, burger.Value)

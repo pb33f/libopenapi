@@ -173,14 +173,14 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	index := NewSpecIndex(&rootNode)
 
 	assert.Len(t, index.allRefs, mappedRefs)
-	assert.Len(t, index.allMappedRefs, mappedRefs-1)
-	assert.Equal(t, mappedRefs-1, len(index.GetMappedReferences()))
-	assert.Equal(t, mappedRefs-1, len(index.GetMappedReferencesSequenced()))
+	assert.Len(t, index.allMappedRefs, mappedRefs)
+	assert.Equal(t, mappedRefs, len(index.GetMappedReferences()))
+	assert.Equal(t, mappedRefs, len(index.GetMappedReferencesSequenced()))
 
 	assert.Equal(t, 7, index.pathCount)
 	assert.Equal(t, 7, index.GetPathCount())
 
-	assert.Equal(t, 5, len(index.GetAllSchemas()))
+	assert.Equal(t, 6, len(index.GetAllSchemas()))
 
 	assert.Equal(t, 30, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
@@ -189,8 +189,8 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 5, index.operationCount)
 	assert.Equal(t, 5, index.GetOperationCount())
 
-	assert.Equal(t, 5, index.schemaCount)
-	assert.Equal(t, 5, index.GetComponentSchemaCount())
+	assert.Equal(t, 6, index.schemaCount)
+	assert.Equal(t, 6, index.GetComponentSchemaCount())
 
 	assert.Equal(t, 2, index.globalTagsCount)
 	assert.Equal(t, 2, index.GetGlobalTagsCount())

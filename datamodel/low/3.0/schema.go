@@ -288,6 +288,7 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 
 func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*Schema], error) {
 	var schLabel, schNode *yaml.Node
+	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		ref := low.LocateRefNode(root, idx)
@@ -295,7 +296,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 			schNode = ref
 			schLabel = rl
 		} else {
-			return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
+			return nil, fmt.Errorf(errStr,
+				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
 		}
 	} else {
 		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
@@ -305,7 +307,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 				if ref != nil {
 					schNode = ref
 				} else {
-					return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
+					return nil, fmt.Errorf(errStr,
+						schNode.Content[1].Value, schNode.Content[1].Line, schNode.Content[1].Column)
 				}
 			}
 		}

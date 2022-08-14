@@ -1,14 +1,18 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
-	"sync"
 )
 
 const (
-	InfoLabel = "info"
+	InfoLabel    = "info"
+	ContactLabel = "contact"
+	LicenseLabel = "license"
 )
 
 type Info struct {
@@ -20,20 +24,13 @@ type Info struct {
 	Version        low.NodeReference[string]
 }
 
-func (i *Info) Build(root *yaml.Node) error {
-	var wg sync.WaitGroup
-	wg.Add(2)
-	var errs []error
+func (i *Info) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	// extract contact
+	contact, _ := low.ExtractObject[*Contact](ContactLabel, root, idx)
+	i.Contact = contact
 
-	contact := Contact{}
-	_, kln, cn := utils.FindKeyNodeFull("contact", root.Content)
-	go low.BuildModelAsync(cn, &contact, &wg, &errs)
-
-	license := License{}
-	_, kln, ln := utils.FindKeyNodeFull("license", root.Content)
-	go low.BuildModelAsync(ln, &license, &wg, &errs)
-	//wg.Wait()
-	i.Contact = low.NodeReference[*Contact]{Value: &contact, ValueNode: cn, KeyNode: kln}
-	i.License = low.NodeReference[*License]{Value: &license, ValueNode: ln, KeyNode: kln}
+	// extract license
+	lic, _ := low.ExtractObject[*License](LicenseLabel, root, idx)
+	i.License = lic
 	return nil
 }

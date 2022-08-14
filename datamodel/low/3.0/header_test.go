@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -9,7 +12,6 @@ import (
 )
 
 func TestHeader_Build(t *testing.T) {
-
 	yml := `description: michelle, meddy and maddy
 required: true
 deprecated: false
@@ -79,11 +81,9 @@ content:
 
 	ext := n.FindExtension("x-family-love").Value
 	assert.Equal(t, "strong", ext)
-
 }
 
 func TestHeader_Build_Success_Examples(t *testing.T) {
-
 	yml := `examples:
   family:
     value:
@@ -112,11 +112,9 @@ func TestHeader_Build_Success_Examples(t *testing.T) {
 	} else {
 		assert.Fail(t, "should not fail")
 	}
-
 }
 
 func TestHeader_Build_Fail_Examples(t *testing.T) {
-
 	yml := `examples:
   family:
     $ref: I AM BORKED`
@@ -131,11 +129,9 @@ func TestHeader_Build_Fail_Examples(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestHeader_Build_Fail_Schema(t *testing.T) {
-
 	yml := `schema:
   $ref: I will fail.`
 
@@ -149,11 +145,9 @@ func TestHeader_Build_Fail_Schema(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestHeader_Build_Fail_Content(t *testing.T) {
-
 	yml := `content:
   ohMyStars:
     $ref: fail!`
@@ -168,5 +162,4 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
