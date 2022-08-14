@@ -56,7 +56,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 	_, ln, vn := utils.FindKeyNodeFull(v3.InfoLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Info{}
-		err := v3.BuildModel(vn, &ir)
+		err := low.BuildModel(vn, &ir)
 		if err != nil {
 			return err
 		}
@@ -68,7 +68,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 }
 
 func extractSecurity(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
-	sec, sErr := v3.ExtractObject[*v3.SecurityRequirement](v3.SecurityLabel, info.RootNode, idx)
+	sec, sErr := low.ExtractObject[*v3.SecurityRequirement](v3.SecurityLabel, info.RootNode, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -77,7 +77,7 @@ func extractSecurity(info *datamodel.SpecInfo, doc *v3.Document, idx *index.Spec
 }
 
 func extractExternalDocs(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecIndex) error {
-	extDocs, dErr := v3.ExtractObject[*v3.ExternalDoc](v3.ExternalDocsLabel, info.RootNode, idx)
+	extDocs, dErr := low.ExtractObject[*v3.ExternalDoc](v3.ExternalDocsLabel, info.RootNode, idx)
 	if dErr != nil {
 		return dErr
 	}
@@ -89,7 +89,7 @@ func extractComponents(info *datamodel.SpecInfo, doc *v3.Document, idx *index.Sp
 	_, ln, vn := utils.FindKeyNodeFull(v3.ComponentsLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := v3.Components{}
-		err := v3.BuildModel(vn, &ir)
+		err := low.BuildModel(vn, &ir)
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func extractServers(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecI
 			for _, srvN := range vn.Content {
 				if utils.IsNodeMap(srvN) {
 					srvr := v3.Server{}
-					err := v3.BuildModel(srvN, &srvr)
+					err := low.BuildModel(srvN, &srvr)
 					if err != nil {
 						return err
 					}
@@ -137,7 +137,7 @@ func extractTags(info *datamodel.SpecInfo, doc *v3.Document, idx *index.SpecInde
 			for _, tagN := range vn.Content {
 				if utils.IsNodeMap(tagN) {
 					tag := v3.Tag{}
-					err := v3.BuildModel(tagN, &tag)
+					err := low.BuildModel(tagN, &tag)
 					if err != nil {
 						return err
 					}

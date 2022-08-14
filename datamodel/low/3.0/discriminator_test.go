@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -16,7 +17,7 @@ mapping:
 	assert.NoError(t, mErr)
 
 	var n Discriminator
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 	assert.Equal(t, "nothing", n.FindMappingValue("something").Value)
 	assert.Nil(t, n.FindMappingValue("freshCakes"))

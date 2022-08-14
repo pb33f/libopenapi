@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -24,7 +25,7 @@ explode: true`
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Encoding
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -52,7 +53,7 @@ headers:
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Encoding
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)

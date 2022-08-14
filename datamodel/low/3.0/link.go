@@ -18,11 +18,11 @@ type Link struct {
 }
 
 func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
-	return FindItemInMap[string](pName, l.Parameters.Value)
+	return low.FindItemInMap[string](pName, l.Parameters.Value)
 }
 
 func (l *Link) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	l.Extensions = ExtractExtensions(root)
+	l.Extensions = low.ExtractExtensions(root)
 
 	// extract parameters
 	_, pl, pv := utils.FindKeyNodeFull(ParametersLabel, root.Content)

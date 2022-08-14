@@ -27,43 +27,43 @@ type Components struct {
 }
 
 func (co *Components) FindSchema(schema string) *low.ValueReference[*Schema] {
-	return FindItemInMap[*Schema](schema, co.Schemas.Value)
+	return low.FindItemInMap[*Schema](schema, co.Schemas.Value)
 }
 
 func (co *Components) FindResponse(response string) *low.ValueReference[*Response] {
-	return FindItemInMap[*Response](response, co.Responses.Value)
+	return low.FindItemInMap[*Response](response, co.Responses.Value)
 }
 
 func (co *Components) FindParameter(response string) *low.ValueReference[*Parameter] {
-	return FindItemInMap[*Parameter](response, co.Parameters.Value)
+	return low.FindItemInMap[*Parameter](response, co.Parameters.Value)
 }
 
 func (co *Components) FindSecurityScheme(sScheme string) *low.ValueReference[*SecurityScheme] {
-	return FindItemInMap[*SecurityScheme](sScheme, co.SecuritySchemes.Value)
+	return low.FindItemInMap[*SecurityScheme](sScheme, co.SecuritySchemes.Value)
 }
 
 func (co *Components) FindExample(example string) *low.ValueReference[*Example] {
-	return FindItemInMap[*Example](example, co.Examples.Value)
+	return low.FindItemInMap[*Example](example, co.Examples.Value)
 }
 
 func (co *Components) FindRequestBody(requestBody string) *low.ValueReference[*RequestBody] {
-	return FindItemInMap[*RequestBody](requestBody, co.RequestBodies.Value)
+	return low.FindItemInMap[*RequestBody](requestBody, co.RequestBodies.Value)
 }
 
 func (co *Components) FindHeader(header string) *low.ValueReference[*Header] {
-	return FindItemInMap[*Header](header, co.Headers.Value)
+	return low.FindItemInMap[*Header](header, co.Headers.Value)
 }
 
 func (co *Components) FindLink(link string) *low.ValueReference[*Link] {
-	return FindItemInMap[*Link](link, co.Links.Value)
+	return low.FindItemInMap[*Link](link, co.Links.Value)
 }
 
 func (co *Components) FindCallback(callback string) *low.ValueReference[*Callback] {
-	return FindItemInMap[*Callback](callback, co.Callbacks.Value)
+	return low.FindItemInMap[*Callback](callback, co.Callbacks.Value)
 }
 
 func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	co.Extensions = ExtractExtensions(root)
+	co.Extensions = low.ExtractExtensions(root)
 
 	// build out components asynchronously for speed. There could be some significant weight here.
 	skipChan := make(chan bool)
@@ -178,7 +178,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			continue
 		}
 		var n T = new(N)
-		_ = BuildModel(v, n)
+		_ = low.BuildModel(v, n)
 		err := n.Build(v, idx)
 		if err != nil {
 			errorChan <- err

@@ -1,9 +1,7 @@
-package datamodel
+package low
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
@@ -13,58 +11,13 @@ import (
 	"sync"
 )
 
-var KnownSchemas map[string]low.NodeReference[*v3.Schema]
-
-func init() {
-	KnownSchemas = make(map[string]low.NodeReference[*v3.Schema])
-
-}
-
-func FindItemInMap[T any](item string, collection map[low.KeyReference[string]]low.ValueReference[T]) *low.ValueReference[T] {
+func FindItemInMap[T any](item string, collection map[KeyReference[string]]ValueReference[T]) *ValueReference[T] {
 	for n, o := range collection {
 		if n.Value == item {
 			return &o
 		}
 	}
 	return nil
-}
-
-func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*v3.Schema], error) {
-	var schLabel, schNode *yaml.Node
-	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
-		// locate reference in index.
-		ref := LocateRefNode(root, idx)
-		if ref != nil {
-			schNode = ref
-			schLabel = rl
-		} else {
-			return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
-		}
-	} else {
-		_, schLabel, schNode = utils.FindKeyNodeFull(v3.SchemaLabel, root.Content)
-		if schNode != nil {
-			if h, _, _ := utils.IsNodeRefValue(schNode); h {
-				ref := LocateRefNode(schNode, idx)
-				if ref != nil {
-					schNode = ref
-				}
-			}
-		}
-	}
-
-	if schNode != nil {
-		var schema v3.Schema
-		err := v3.BuildModel(schNode, &schema)
-		if err != nil {
-			return nil, err
-		}
-		err = schema.Build(schNode, idx)
-		if err != nil {
-			return nil, err
-		}
-		return &low.NodeReference[*v3.Schema]{Value: &schema, KeyNode: schLabel, ValueNode: schNode}, nil
-	}
-	return nil, nil
 }
 
 var mapLock sync.Mutex
@@ -111,9 +64,9 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 	return nil
 }
 
-func ExtractObjectRaw[T low.Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error) {
+func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error) {
 	var n T = new(N)
-	err := v3.BuildModel(root, n)
+	err := BuildModel(root, n)
 	if err != nil {
 		return n, err
 	}
@@ -124,7 +77,7 @@ func ExtractObjectRaw[T low.Buildable[N], N any](root *yaml.Node, idx *index.Spe
 	return n, nil
 }
 
-func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[T], error) {
+func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (NodeReference[T], error) {
 	var ln, vn *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
@@ -133,7 +86,7 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx
 			vn = ref
 			ln = rl
 		} else {
-			return low.NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
+			return NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
 				root.Content[1].Value)
 		}
 	} else {
@@ -144,32 +97,32 @@ func ExtractObject[T low.Buildable[N], N any](label string, root *yaml.Node, idx
 				if ref != nil {
 					vn = ref
 				} else {
-					return low.NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
+					return NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
 						root.Content[1].Value)
 				}
 			}
 		}
 	}
 	var n T = new(N)
-	err := v3.BuildModel(vn, n)
+	err := BuildModel(vn, n)
 	if err != nil {
-		return low.NodeReference[T]{}, err
+		return NodeReference[T]{}, err
 	}
 	if ln == nil {
-		return low.NodeReference[T]{}, nil
+		return NodeReference[T]{}, nil
 	}
 	err = n.Build(vn, idx)
 	if err != nil {
-		return low.NodeReference[T]{}, err
+		return NodeReference[T]{}, err
 	}
-	return low.NodeReference[T]{
+	return NodeReference[T]{
 		Value:     n,
 		KeyNode:   ln,
 		ValueNode: vn,
 	}, nil
 }
 
-func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) ([]low.ValueReference[T],
+func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) ([]ValueReference[T],
 	*yaml.Node, *yaml.Node, error) {
 	var ln, vn *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
@@ -179,7 +132,7 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 			vn = ref
 			ln = rl
 		} else {
-			return []low.ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
+			return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
 				root.Content[1].Value)
 		}
 	} else {
@@ -190,13 +143,13 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 				if ref != nil {
 					vn = ref
 				} else {
-					return []low.ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
+					return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
 						root.Content[1].Value)
 				}
 			}
 		}
 	}
-	var items []low.ValueReference[T]
+	var items []ValueReference[T]
 	if vn != nil && ln != nil {
 		for _, node := range vn.Content {
 			if rf, _, _ := utils.IsNodeRefValue(node); rf {
@@ -204,20 +157,20 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 				if ref != nil {
 					node = ref
 				} else {
-					return []low.ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
+					return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
 						root.Content[1].Value)
 				}
 			}
 			var n T = new(N)
-			err := v3.BuildModel(node, n)
+			err := BuildModel(node, n)
 			if err != nil {
-				return []low.ValueReference[T]{}, ln, vn, err
+				return []ValueReference[T]{}, ln, vn, err
 			}
 			berr := n.Build(node, idx)
 			if berr != nil {
 				return nil, ln, vn, berr
 			}
-			items = append(items, low.ValueReference[T]{
+			items = append(items, ValueReference[T]{
 				Value:     n,
 				ValueNode: node,
 			})
@@ -226,8 +179,8 @@ func ExtractArray[T low.Buildable[N], N any](label string, root *yaml.Node, idx 
 	return items, ln, vn, nil
 }
 
-func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (map[low.KeyReference[string]]low.ValueReference[PT], error) {
-	valueMap := make(map[low.KeyReference[string]]low.ValueReference[PT])
+func ExtractMapFlatNoLookup[PT Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], error) {
+	valueMap := make(map[KeyReference[string]]ValueReference[PT])
 	if utils.IsNodeMap(root) {
 		var currentKey *yaml.Node
 		for i, node := range root.Content {
@@ -247,7 +200,7 @@ func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *in
 			}
 
 			var n PT = new(N)
-			err := v3.BuildModel(node, n)
+			err := BuildModel(node, n)
 			if err != nil {
 				return nil, err
 			}
@@ -255,10 +208,10 @@ func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *in
 			if berr != nil {
 				return nil, berr
 			}
-			valueMap[low.KeyReference[string]{
+			valueMap[KeyReference[string]{
 				Value:   currentKey.Value,
 				KeyNode: currentKey,
-			}] = low.ValueReference[PT]{
+			}] = ValueReference[PT]{
 				Value:     n,
 				ValueNode: node,
 			}
@@ -267,7 +220,7 @@ func ExtractMapFlatNoLookup[PT low.Buildable[N], N any](root *yaml.Node, idx *in
 	return valueMap, nil
 }
 
-func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (map[low.KeyReference[string]]low.ValueReference[PT], *yaml.Node, *yaml.Node, error) {
+func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
 	var labelNode, valueNode *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
@@ -295,7 +248,7 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 	}
 	if valueNode != nil {
 		var currentLabelNode *yaml.Node
-		valueMap := make(map[low.KeyReference[string]]low.ValueReference[PT])
+		valueMap := make(map[KeyReference[string]]ValueReference[PT])
 		for i, en := range valueNode.Content {
 			if i%2 == 0 {
 				currentLabelNode = en
@@ -317,7 +270,7 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			var n PT = new(N)
-			err := v3.BuildModel(en, n)
+			err := BuildModel(en, n)
 			if err != nil {
 				return nil, labelNode, valueNode, err
 			}
@@ -325,10 +278,10 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 			if berr != nil {
 				return nil, labelNode, valueNode, berr
 			}
-			valueMap[low.KeyReference[string]{
+			valueMap[KeyReference[string]{
 				Value:   currentLabelNode.Value,
 				KeyNode: currentLabelNode,
-			}] = low.ValueReference[PT]{
+			}] = ValueReference[PT]{
 				Value:     n,
 				ValueNode: en,
 			}
@@ -338,7 +291,7 @@ func ExtractMapFlat[PT low.Buildable[N], N any](label string, root *yaml.Node, i
 	return nil, labelNode, valueNode, nil
 }
 
-func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[PT], error) {
+func ExtractMap[PT Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]map[KeyReference[string]]ValueReference[PT], error) {
 	var labelNode, valueNode *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
@@ -355,7 +308,7 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *
 
 	if valueNode != nil {
 		var currentLabelNode *yaml.Node
-		valueMap := make(map[low.KeyReference[string]]low.ValueReference[PT])
+		valueMap := make(map[KeyReference[string]]ValueReference[PT])
 		for i, en := range valueNode.Content {
 			if i%2 == 0 {
 				currentLabelNode = en
@@ -365,7 +318,7 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			var n PT = new(N)
-			err := v3.BuildModel(en, n)
+			err := BuildModel(en, n)
 			if err != nil {
 				return nil, err
 			}
@@ -373,16 +326,16 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *
 			if berr != nil {
 				return nil, berr
 			}
-			valueMap[low.KeyReference[string]{
+			valueMap[KeyReference[string]{
 				Value:   currentLabelNode.Value,
 				KeyNode: currentLabelNode,
-			}] = low.ValueReference[PT]{
+			}] = ValueReference[PT]{
 				Value:     n,
 				ValueNode: en,
 			}
 		}
-		resMap := make(map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[PT])
-		resMap[low.KeyReference[string]{
+		resMap := make(map[KeyReference[string]]map[KeyReference[string]]ValueReference[PT])
+		resMap[KeyReference[string]{
 			Value:   labelNode.Value,
 			KeyNode: labelNode,
 		}] = valueMap
@@ -391,52 +344,52 @@ func ExtractMap[PT low.Buildable[N], N any](label string, root *yaml.Node, idx *
 	return nil, nil
 }
 
-func ExtractExtensions(root *yaml.Node) map[low.KeyReference[string]]low.ValueReference[any] {
+func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[any] {
 	extensions := utils.FindExtensionNodes(root.Content)
-	extensionMap := make(map[low.KeyReference[string]]low.ValueReference[any])
+	extensionMap := make(map[KeyReference[string]]ValueReference[any])
 	for _, ext := range extensions {
 		if utils.IsNodeMap(ext.Value) {
 			var v interface{}
 			_ = ext.Value.Decode(&v)
-			extensionMap[low.KeyReference[string]{
+			extensionMap[KeyReference[string]{
 				Value:   ext.Key.Value,
 				KeyNode: ext.Key,
-			}] = low.ValueReference[any]{Value: v, ValueNode: ext.Value}
+			}] = ValueReference[any]{Value: v, ValueNode: ext.Value}
 		}
 		if utils.IsNodeStringValue(ext.Value) {
-			extensionMap[low.KeyReference[string]{
+			extensionMap[KeyReference[string]{
 				Value:   ext.Key.Value,
 				KeyNode: ext.Key,
-			}] = low.ValueReference[any]{Value: ext.Value.Value, ValueNode: ext.Value}
+			}] = ValueReference[any]{Value: ext.Value.Value, ValueNode: ext.Value}
 		}
 		if utils.IsNodeFloatValue(ext.Value) {
 			fv, _ := strconv.ParseFloat(ext.Value.Value, 64)
-			extensionMap[low.KeyReference[string]{
+			extensionMap[KeyReference[string]{
 				Value:   ext.Key.Value,
 				KeyNode: ext.Key,
-			}] = low.ValueReference[any]{Value: fv, ValueNode: ext.Value}
+			}] = ValueReference[any]{Value: fv, ValueNode: ext.Value}
 		}
 		if utils.IsNodeIntValue(ext.Value) {
 			iv, _ := strconv.ParseInt(ext.Value.Value, 10, 64)
-			extensionMap[low.KeyReference[string]{
+			extensionMap[KeyReference[string]{
 				Value:   ext.Key.Value,
 				KeyNode: ext.Key,
-			}] = low.ValueReference[any]{Value: iv, ValueNode: ext.Value}
+			}] = ValueReference[any]{Value: iv, ValueNode: ext.Value}
 		}
 		if utils.IsNodeBoolValue(ext.Value) {
 			bv, _ := strconv.ParseBool(ext.Value.Value)
-			extensionMap[low.KeyReference[string]{
+			extensionMap[KeyReference[string]{
 				Value:   ext.Key.Value,
 				KeyNode: ext.Key,
-			}] = low.ValueReference[any]{Value: bv, ValueNode: ext.Value}
+			}] = ValueReference[any]{Value: bv, ValueNode: ext.Value}
 		}
 		if utils.IsNodeArray(ext.Value) {
 			var v []interface{}
 			_ = ext.Value.Decode(&v)
-			extensionMap[low.KeyReference[string]{
+			extensionMap[KeyReference[string]{
 				Value:   ext.Key.Value,
 				KeyNode: ext.Key,
-			}] = low.ValueReference[any]{Value: v, ValueNode: ext.Value}
+			}] = ValueReference[any]{Value: v, ValueNode: ext.Value}
 		}
 	}
 	return extensionMap

@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -60,7 +61,7 @@ type Schema struct {
 }
 
 func (s *Schema) FindProperty(name string) *low.ValueReference[*Schema] {
-	return FindItemInMap[*Schema](name, s.Properties.Value)
+	return low.FindItemInMap[*Schema](name, s.Properties.Value)
 }
 
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -84,7 +85,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
 	if addPNode != nil {
 		if utils.IsNodeMap(addPNode) {
-			schema, serr := ExtractObjectRaw[*Schema](addPNode, idx)
+			schema, serr := low.ExtractObjectRaw[*Schema](addPNode, idx)
 			if serr != nil {
 				return serr
 			}
@@ -101,7 +102,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, discLabel, discNode := utils.FindKeyNodeFull(DiscriminatorLabel, root.Content)
 	if discNode != nil {
 		var discriminator Discriminator
-		err := BuildModel(discNode, &discriminator)
+		err := low.BuildModel(discNode, &discriminator)
 		if err != nil {
 			return err
 		}
@@ -112,7 +113,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	if extDocNode != nil {
 		var exDoc ExternalDoc
-		err := BuildModel(extDocNode, &exDoc)
+		err := low.BuildModel(extDocNode, &exDoc)
 		if err != nil {
 			return err
 		}
@@ -127,7 +128,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, xmlLabel, xmlNode := utils.FindKeyNodeFull(XMLLabel, root.Content)
 	if xmlNode != nil {
 		var xml XML
-		err := BuildModel(xmlNode, &xml)
+		err := low.BuildModel(xmlNode, &xml)
 		if err != nil {
 			return err
 		}
@@ -152,14 +153,14 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 
 			// check our prop isn't reference
 			if h, _, _ := utils.IsNodeRefValue(prop); h {
-				ref := LocateRefNode(prop, idx)
+				ref := low.LocateRefNode(prop, idx)
 				if ref != nil {
 					prop = ref
 				}
 			}
 
 			var property Schema
-			err := BuildModel(prop, &property)
+			err := low.BuildModel(prop, &property)
 			if err != nil {
 				return err
 			}
@@ -237,7 +238,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 }
 
 func (s *Schema) extractExtensions(root *yaml.Node) {
-	s.Extensions = ExtractExtensions(root)
+	s.Extensions = low.ExtractExtensions(root)
 }
 
 func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int,
@@ -248,7 +249,7 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 	if valueNode != nil {
 		var build = func(kn *yaml.Node, vn *yaml.Node) *low.NodeReference[*Schema] {
 			var schema Schema
-			err := BuildModel(vn, &schema)
+			err := low.BuildModel(vn, &schema)
 			if err != nil {
 				*errors = append(*errors, err)
 				return nil
@@ -283,4 +284,42 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 	}
 	//wg.Done()
 	return labelNode, valueNode
+}
+
+func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*Schema], error) {
+	var schLabel, schNode *yaml.Node
+	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
+		// locate reference in index.
+		ref := low.LocateRefNode(root, idx)
+		if ref != nil {
+			schNode = ref
+			schLabel = rl
+		} else {
+			return nil, fmt.Errorf("schema build failed: reference cannot be found: %s", root.Content[1].Value)
+		}
+	} else {
+		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
+		if schNode != nil {
+			if h, _, _ := utils.IsNodeRefValue(schNode); h {
+				ref := low.LocateRefNode(schNode, idx)
+				if ref != nil {
+					schNode = ref
+				}
+			}
+		}
+	}
+
+	if schNode != nil {
+		var schema Schema
+		err := low.BuildModel(schNode, &schema)
+		if err != nil {
+			return nil, err
+		}
+		err = schema.Build(schNode, idx)
+		if err != nil {
+			return nil, err
+		}
+		return &low.NodeReference[*Schema]{Value: &schema, KeyNode: schLabel, ValueNode: schNode}, nil
+	}
+	return nil, nil
 }

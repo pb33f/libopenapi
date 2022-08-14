@@ -22,11 +22,11 @@ type Example struct {
 }
 
 func (ex *Example) FindExtension(ext string) *low.ValueReference[any] {
-	return FindItemInMap[any](ext, ex.Extensions)
+	return low.FindItemInMap[any](ext, ex.Extensions)
 }
 
 func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	ex.Extensions = ExtractExtensions(root)
+	ex.Extensions = low.ExtractExtensions(root)
 
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
 

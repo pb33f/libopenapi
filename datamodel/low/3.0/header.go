@@ -26,10 +26,10 @@ type Header struct {
 }
 
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	h.Extensions = ExtractExtensions(root)
+	h.Extensions = low.ExtractExtensions(root)
 
 	// handle examples if set.
-	exps, eErr := ExtractMap[*Example](ExamplesLabel, root, idx)
+	exps, eErr := low.ExtractMap[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -47,7 +47,7 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle content, if set.
-	con, cErr := ExtractMap[*MediaType](ContentLabel, root, idx)
+	con, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

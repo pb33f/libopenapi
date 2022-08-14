@@ -19,12 +19,12 @@ type Encoding struct {
 }
 
 func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
-	return FindItemInMap[*Header](hType, en.Headers.Value)
+	return low.FindItemInMap[*Header](hType, en.Headers.Value)
 }
 
 func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
-	headers, hL, hN, err := ExtractMapFlat[*Header](HeadersLabel, root, idx)
+	headers, hL, hN, err := low.ExtractMapFlat[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}

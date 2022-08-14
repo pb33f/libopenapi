@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -108,7 +109,7 @@ additionalProperties: true      `
 	assert.NoError(t, mErr)
 
 	sch := Schema{}
-	mbErr := BuildModel(&rootNode, &sch)
+	mbErr := low.BuildModel(&rootNode, &sch)
 	assert.NoError(t, mbErr)
 
 	schErr := sch.Build(rootNode.Content[0], nil)

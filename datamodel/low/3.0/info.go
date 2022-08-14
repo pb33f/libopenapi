@@ -27,11 +27,11 @@ func (i *Info) Build(root *yaml.Node) error {
 
 	contact := Contact{}
 	_, kln, cn := utils.FindKeyNodeFull("contact", root.Content)
-	go BuildModelAsync(cn, &contact, &wg, &errs)
+	go low.BuildModelAsync(cn, &contact, &wg, &errs)
 
 	license := License{}
 	_, kln, ln := utils.FindKeyNodeFull("license", root.Content)
-	go BuildModelAsync(ln, &license, &wg, &errs)
+	go low.BuildModelAsync(ln, &license, &wg, &errs)
 	//wg.Wait()
 	i.Contact = low.NodeReference[*Contact]{Value: &contact, ValueNode: cn, KeyNode: kln}
 	i.License = low.NodeReference[*License]{Value: &license, ValueNode: ln, KeyNode: kln}

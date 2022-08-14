@@ -30,15 +30,15 @@ type Parameter struct {
 }
 
 func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
-	return FindItemInMap[*MediaType](cType, p.Content.Value)
+	return low.FindItemInMap[*MediaType](cType, p.Content.Value)
 }
 
 func (p *Parameter) FindExample(eType string) *low.ValueReference[*Example] {
-	return FindItemInMap[*Example](eType, p.Examples.Value)
+	return low.FindItemInMap[*Example](eType, p.Examples.Value)
 }
 
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	p.Extensions = ExtractExtensions(root)
+	p.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
@@ -56,7 +56,7 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMapFlat[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -69,7 +69,7 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle content, if set.
-	con, cL, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMapFlat[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}
