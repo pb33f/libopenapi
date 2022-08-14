@@ -16,11 +16,11 @@ type MediaType struct {
 }
 
 func (mt *MediaType) FindPropertyEncoding(eType string) *low.ValueReference[*Encoding] {
-	return FindItemInMap[*Encoding](eType, mt.Encoding.Value)
+	return low.FindItemInMap[*Encoding](eType, mt.Encoding.Value)
 }
 
 func (mt *MediaType) FindExample(eType string) *low.ValueReference[*Example] {
-	return FindItemInMap[*Example](eType, mt.Examples.Value)
+	return low.FindItemInMap[*Example](eType, mt.Examples.Value)
 }
 
 func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueReference[*Example] {
@@ -28,7 +28,7 @@ func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueRefe
 }
 
 func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	mt.Extensions = ExtractExtensions(root)
+	mt.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
@@ -46,7 +46,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := ExtractMapFlat[*Example](ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMapFlat[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -59,7 +59,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle encoding
-	encs, encsL, encsN, encErr := ExtractMapFlat[*Encoding](EncodingLabel, root, idx)
+	encs, encsL, encsN, encErr := low.ExtractMapFlat[*Encoding](EncodingLabel, root, idx)
 	if encErr != nil {
 		return encErr
 	}

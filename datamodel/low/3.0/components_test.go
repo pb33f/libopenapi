@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -66,7 +67,7 @@ func TestComponents_Build_Success(t *testing.T) {
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Components
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -103,7 +104,7 @@ func TestComponents_Build_Success_Skip(t *testing.T) {
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Components
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -124,7 +125,7 @@ func TestComponents_Build_Fail(t *testing.T) {
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Components
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -145,7 +146,7 @@ func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Components
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)

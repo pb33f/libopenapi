@@ -14,14 +14,14 @@ type RequestBody struct {
 }
 
 func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType] {
-	return FindItemInMap[*MediaType](cType, rb.Content.Value)
+	return low.FindItemInMap[*MediaType](cType, rb.Content.Value)
 }
 
 func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	rb.Extensions = ExtractExtensions(root)
+	rb.Extensions = low.ExtractExtensions(root)
 
 	// handle content, if set.
-	con, cL, cN, cErr := ExtractMapFlat[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMapFlat[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

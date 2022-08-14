@@ -1,6 +1,7 @@
 package datamodel
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
@@ -20,7 +21,7 @@ x-b33f: princess`
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n v3.ExternalDoc
-	err := v3.BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)

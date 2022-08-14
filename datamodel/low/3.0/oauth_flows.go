@@ -24,27 +24,27 @@ type OAuthFlows struct {
 }
 
 func (o *OAuthFlows) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	o.Extensions = ExtractExtensions(root)
+	o.Extensions = low.ExtractExtensions(root)
 
-	v, vErr := ExtractObject[*OAuthFlow](ImplicitLabel, root, idx)
+	v, vErr := low.ExtractObject[*OAuthFlow](ImplicitLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.Implicit = v
 
-	v, vErr = ExtractObject[*OAuthFlow](PasswordLabel, root, idx)
+	v, vErr = low.ExtractObject[*OAuthFlow](PasswordLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.Password = v
 
-	v, vErr = ExtractObject[*OAuthFlow](ClientCredentialsLabel, root, idx)
+	v, vErr = low.ExtractObject[*OAuthFlow](ClientCredentialsLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.ClientCredentials = v
 
-	v, vErr = ExtractObject[*OAuthFlow](AuthorizationCodeLabel, root, idx)
+	v, vErr = low.ExtractObject[*OAuthFlow](AuthorizationCodeLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
@@ -62,11 +62,11 @@ type OAuthFlow struct {
 }
 
 func (o *OAuthFlow) FindScope(scope string) *low.ValueReference[string] {
-	return FindItemInMap[string](scope, o.Scopes.Value)
+	return low.FindItemInMap[string](scope, o.Scopes.Value)
 }
 
 func (o *OAuthFlow) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	o.Extensions = ExtractExtensions(root)
+	o.Extensions = low.ExtractExtensions(root)
 
 	var currSec *yaml.Node
 

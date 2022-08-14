@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -19,7 +20,7 @@ x-cake: hot`
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Example
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -45,7 +46,7 @@ x-cake: hot`
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Example
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -72,7 +73,7 @@ value:
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Example
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -103,7 +104,7 @@ value:
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Example
-	err := BuildModel(&idxNode, &n)
+	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)

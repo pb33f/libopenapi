@@ -19,10 +19,10 @@ type Tag struct {
 }
 
 func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	t.Extensions = ExtractExtensions(root)
+	t.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, dErr := ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
+	extDocs, dErr := low.ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
 	if dErr != nil {
 		return dErr
 	}

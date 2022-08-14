@@ -1,8 +1,7 @@
-package v3
+package low
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"reflect"
@@ -61,11 +60,11 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) error {
 	switch field.Type() {
 
-	case reflect.TypeOf(map[string]low.NodeReference[any]{}):
+	case reflect.TypeOf(map[string]NodeReference[any]{}):
 		if valueNode != nil {
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					items := make(map[string]low.NodeReference[any])
+					items := make(map[string]NodeReference[any])
 					var currentLabel string
 					for i, sliceItem := range valueNode.Content {
 						if i%2 == 0 {
@@ -77,7 +76,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 						if err != nil {
 							return err
 						}
-						items[currentLabel] = low.NodeReference[any]{
+						items[currentLabel] = NodeReference[any]{
 							Value:     decoded,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -89,18 +88,18 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 		}
 		break
 
-	case reflect.TypeOf(map[string]low.NodeReference[string]{}):
+	case reflect.TypeOf(map[string]NodeReference[string]{}):
 		if valueNode != nil {
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					items := make(map[string]low.NodeReference[string])
+					items := make(map[string]NodeReference[string])
 					var currentLabel string
 					for i, sliceItem := range valueNode.Content {
 						if i%2 == 0 {
 							currentLabel = sliceItem.Value
 							continue
 						}
-						items[currentLabel] = low.NodeReference[string]{
+						items[currentLabel] = NodeReference[string]{
 							Value:     sliceItem.Value,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -111,7 +110,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[any]{}):
+	case reflect.TypeOf(NodeReference[any]{}):
 		if valueNode != nil {
 			var decoded interface{}
 			err := valueNode.Decode(&decoded)
@@ -120,24 +119,24 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					or := low.NodeReference[any]{Value: decoded, ValueNode: valueNode}
+					or := NodeReference[any]{Value: decoded, ValueNode: valueNode}
 					field.Set(reflect.ValueOf(or))
 				}
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[any]{}):
+	case reflect.TypeOf([]NodeReference[any]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[any]
+					var items []NodeReference[any]
 					for _, sliceItem := range valueNode.Content {
 						var decoded map[string]interface{}
 						err := sliceItem.Decode(&decoded)
 						if err != nil {
 							return err
 						}
-						items = append(items, low.NodeReference[any]{
+						items = append(items, NodeReference[any]{
 							Value:     decoded,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -148,11 +147,11 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[string]{}):
+	case reflect.TypeOf(NodeReference[string]{}):
 		if valueNode != nil {
 			if utils.IsNodeStringValue(valueNode) {
 				if field.CanSet() {
-					nr := low.NodeReference[string]{
+					nr := NodeReference[string]{
 						Value:     valueNode.Value,
 						ValueNode: valueNode,
 						KeyNode:   keyNode,
@@ -162,12 +161,12 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[bool]{}):
+	case reflect.TypeOf(NodeReference[bool]{}):
 		if valueNode != nil {
 			if utils.IsNodeBoolValue(valueNode) {
 				if field.CanSet() {
 					bv, _ := strconv.ParseBool(valueNode.Value)
-					nr := low.NodeReference[bool]{
+					nr := NodeReference[bool]{
 						Value:     bv,
 						ValueNode: valueNode,
 						KeyNode:   keyNode,
@@ -177,12 +176,12 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[int]{}):
+	case reflect.TypeOf(NodeReference[int]{}):
 		if valueNode != nil {
 			if utils.IsNodeIntValue(valueNode) {
 				if field.CanSet() {
 					fv, _ := strconv.Atoi(valueNode.Value)
-					nr := low.NodeReference[int]{
+					nr := NodeReference[int]{
 						Value:     fv,
 						ValueNode: valueNode,
 						KeyNode:   keyNode,
@@ -192,12 +191,12 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[int64]{}):
+	case reflect.TypeOf(NodeReference[int64]{}):
 		if valueNode != nil {
 			if utils.IsNodeIntValue(valueNode) || utils.IsNodeFloatValue(valueNode) { //
 				if field.CanSet() {
 					fv, _ := strconv.ParseInt(valueNode.Value, 10, 64)
-					nr := low.NodeReference[int64]{
+					nr := NodeReference[int64]{
 						Value:     fv,
 						ValueNode: valueNode,
 						KeyNode:   keyNode,
@@ -207,12 +206,12 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[float32]{}):
+	case reflect.TypeOf(NodeReference[float32]{}):
 		if valueNode != nil {
 			if utils.IsNodeFloatValue(valueNode) {
 				if field.CanSet() {
 					fv, _ := strconv.ParseFloat(valueNode.Value, 32)
-					nr := low.NodeReference[float32]{
+					nr := NodeReference[float32]{
 						Value:     float32(fv),
 						ValueNode: valueNode,
 						KeyNode:   keyNode,
@@ -222,12 +221,12 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf(low.NodeReference[float64]{}):
+	case reflect.TypeOf(NodeReference[float64]{}):
 		if valueNode != nil {
 			if utils.IsNodeFloatValue(valueNode) {
 				if field.CanSet() {
 					fv, _ := strconv.ParseFloat(valueNode.Value, 64)
-					nr := low.NodeReference[float64]{
+					nr := NodeReference[float64]{
 						Value:     fv,
 						ValueNode: valueNode,
 						KeyNode:   keyNode,
@@ -237,13 +236,13 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[string]{}):
+	case reflect.TypeOf([]NodeReference[string]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[string]
+					var items []NodeReference[string]
 					for _, sliceItem := range valueNode.Content {
-						items = append(items, low.NodeReference[string]{
+						items = append(items, NodeReference[string]{
 							Value:     sliceItem.Value,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -254,14 +253,14 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[float32]{}):
+	case reflect.TypeOf([]NodeReference[float32]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[float32]
+					var items []NodeReference[float32]
 					for _, sliceItem := range valueNode.Content {
 						fv, _ := strconv.ParseFloat(sliceItem.Value, 32)
-						items = append(items, low.NodeReference[float32]{
+						items = append(items, NodeReference[float32]{
 							Value:     float32(fv),
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -272,28 +271,28 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[float64]{}):
+	case reflect.TypeOf([]NodeReference[float64]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[float64]
+					var items []NodeReference[float64]
 					for _, sliceItem := range valueNode.Content {
 						fv, _ := strconv.ParseFloat(sliceItem.Value, 64)
-						items = append(items, low.NodeReference[float64]{Value: fv, ValueNode: sliceItem})
+						items = append(items, NodeReference[float64]{Value: fv, ValueNode: sliceItem})
 					}
 					field.Set(reflect.ValueOf(items))
 				}
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[int]{}):
+	case reflect.TypeOf([]NodeReference[int]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[int]
+					var items []NodeReference[int]
 					for _, sliceItem := range valueNode.Content {
 						iv, _ := strconv.Atoi(sliceItem.Value)
-						items = append(items, low.NodeReference[int]{
+						items = append(items, NodeReference[int]{
 							Value:     iv,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -304,14 +303,14 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[int64]{}):
+	case reflect.TypeOf([]NodeReference[int64]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[int64]
+					var items []NodeReference[int64]
 					for _, sliceItem := range valueNode.Content {
 						iv, _ := strconv.ParseInt(sliceItem.Value, 10, 64)
-						items = append(items, low.NodeReference[int64]{
+						items = append(items, NodeReference[int64]{
 							Value:     iv,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -322,14 +321,14 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 			}
 		}
 		break
-	case reflect.TypeOf([]low.NodeReference[bool]{}):
+	case reflect.TypeOf([]NodeReference[bool]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.NodeReference[bool]
+					var items []NodeReference[bool]
 					for _, sliceItem := range valueNode.Content {
 						bv, _ := strconv.ParseBool(sliceItem.Value)
-						items = append(items, low.NodeReference[bool]{
+						items = append(items, NodeReference[bool]{
 							Value:     bv,
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
@@ -341,21 +340,21 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 		}
 		break
 		// helper for unpacking string maps.
-	case reflect.TypeOf(map[low.KeyReference[string]]low.ValueReference[string]{}):
+	case reflect.TypeOf(map[KeyReference[string]]ValueReference[string]{}):
 		if valueNode != nil {
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
-					items := make(map[low.KeyReference[string]]low.ValueReference[string])
+					items := make(map[KeyReference[string]]ValueReference[string])
 					var cf *yaml.Node
 					for i, sliceItem := range valueNode.Content {
 						if i%2 == 0 {
 							cf = sliceItem
 							continue
 						}
-						items[low.KeyReference[string]{
+						items[KeyReference[string]{
 							Value:   cf.Value,
 							KeyNode: cf,
-						}] = low.ValueReference[string]{
+						}] = ValueReference[string]{
 							Value:     sliceItem.Value,
 							ValueNode: sliceItem,
 						}
@@ -364,18 +363,18 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 				}
 			}
 		}
-	case reflect.TypeOf(low.NodeReference[[]low.ValueReference[string]]{}):
+	case reflect.TypeOf(NodeReference[[]ValueReference[string]]{}):
 		if valueNode != nil {
 			if utils.IsNodeArray(valueNode) {
 				if field.CanSet() {
-					var items []low.ValueReference[string]
+					var items []ValueReference[string]
 					for _, sliceItem := range valueNode.Content {
-						items = append(items, low.ValueReference[string]{
+						items = append(items, ValueReference[string]{
 							Value:     sliceItem.Value,
 							ValueNode: sliceItem,
 						})
 					}
-					n := low.NodeReference[[]low.ValueReference[string]]{
+					n := NodeReference[[]ValueReference[string]]{
 						Value:     items,
 						KeyNode:   keyNode,
 						ValueNode: valueNode,

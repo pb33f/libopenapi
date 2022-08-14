@@ -30,9 +30,9 @@ type SecurityRequirement struct {
 }
 
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	ss.Extensions = ExtractExtensions(root)
+	ss.Extensions = low.ExtractExtensions(root)
 
-	oa, oaErr := ExtractObject[*OAuthFlows](OAuthFlowsLabel, root, idx)
+	oa, oaErr := low.ExtractObject[*OAuthFlows](OAuthFlowsLabel, root, idx)
 	if oaErr != nil {
 		return oaErr
 	}

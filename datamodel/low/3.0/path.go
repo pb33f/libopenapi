@@ -37,7 +37,7 @@ func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 }
 
 func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	p.Extensions = ExtractExtensions(root)
+	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node
 
@@ -57,7 +57,7 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			continue
 		}
 		var path = PathItem{}
-		err := BuildModel(pathNode, &path)
+		err := low.BuildModel(pathNode, &path)
 		if err != nil {
 
 		}
@@ -98,7 +98,7 @@ type PathItem struct {
 }
 
 func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	p.Extensions = ExtractExtensions(root)
+	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node
 
@@ -108,7 +108,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	var ops []low.NodeReference[*Operation]
 
 	if ok, _, _ := utils.IsNodeRefValue(root); ok {
-		r := LocateRefNode(root, idx)
+		r := low.LocateRefNode(root, idx)
 		if r != nil {
 			root = r
 		} else {
@@ -133,7 +133,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		var op Operation
 
 		wg.Add(1)
-		go BuildModelAsync(pathNode, &op, &wg, &errors)
+		go low.BuildModelAsync(pathNode, &op, &wg, &errors)
 
 		opRef := low.NodeReference[*Operation]{
 			Value:     &op,
@@ -176,7 +176,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 		//build out the operation.
 		if ok, _, _ := utils.IsNodeRefValue(op.ValueNode); ok {
-			r := LocateRefNode(op.ValueNode, idx)
+			r := low.LocateRefNode(op.ValueNode, idx)
 			if r != nil {
 				op.ValueNode = r
 			} else {

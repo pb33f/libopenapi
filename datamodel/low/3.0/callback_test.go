@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -26,7 +27,7 @@ func TestCallback_Build_Success(t *testing.T) {
 	assert.NoError(t, mErr)
 
 	var n Callback
-	err := BuildModel(rootNode.Content[0], &n)
+	err := low.BuildModel(rootNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(rootNode.Content[0], nil)
@@ -59,7 +60,7 @@ func TestCallback_Build_Error(t *testing.T) {
 	assert.NoError(t, mErr)
 
 	var n Callback
-	err := BuildModel(rootNode.Content[0], &n)
+	err := low.BuildModel(rootNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(rootNode.Content[0], idx)
@@ -94,7 +95,7 @@ func TestCallback_Build_Using_InlineRef(t *testing.T) {
 	assert.NoError(t, mErr)
 
 	var n Callback
-	err := BuildModel(rootNode.Content[0], &n)
+	err := low.BuildModel(rootNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(rootNode.Content[0], idx)
@@ -142,7 +143,7 @@ components:
 	assert.NoError(t, mErr)
 
 	var n Callback
-	err := BuildModel(rootNode.Content[0], &n)
+	err := low.BuildModel(rootNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(rootNode.Content[0], idx)

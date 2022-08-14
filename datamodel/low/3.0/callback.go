@@ -15,11 +15,11 @@ type Callback struct {
 }
 
 func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
-	return FindItemInMap[*PathItem](exp, cb.Expression.Value)
+	return low.FindItemInMap[*PathItem](exp, cb.Expression.Value)
 }
 
 func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	cb.Extensions = ExtractExtensions(root)
+	cb.Extensions = low.ExtractExtensions(root)
 
 	// handle callback
 	var currentCB *yaml.Node
@@ -30,7 +30,7 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			currentCB = callbackNode
 			continue
 		}
-		callback, eErr := ExtractObjectRaw[*PathItem](callbackNode, idx)
+		callback, eErr := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
 		if eErr != nil {
 			return eErr
 		}

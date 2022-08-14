@@ -12,7 +12,11 @@ type ExternalDoc struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (ex *ExternalDoc) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, ex.Extensions)
+}
+
 func (ex *ExternalDoc) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	ex.Extensions = ExtractExtensions(root)
+	ex.Extensions = low.ExtractExtensions(root)
 	return nil
 }

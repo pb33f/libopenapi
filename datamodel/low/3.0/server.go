@@ -34,7 +34,7 @@ func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				continue
 			}
 			variable := ServerVariable{}
-			err := BuildModel(varNode, &variable)
+			err := low.BuildModel(varNode, &variable)
 			if err != nil {
 				return err
 			}

@@ -1,31 +1,30 @@
-package v3
+package low
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
 )
 
 type hotdog struct {
-	Name            low.NodeReference[string]
-	Fat             low.NodeReference[int]
-	Ketchup         low.NodeReference[float32]
-	Mustard         low.NodeReference[float64]
-	Grilled         low.NodeReference[bool]
-	MaxTemp         low.NodeReference[int]
-	MaxTempHigh     low.NodeReference[int64]
-	MaxTempAlt      []low.NodeReference[int]
-	Drinks          []low.NodeReference[string]
-	Sides           []low.NodeReference[float32]
-	BigSides        []low.NodeReference[float64]
-	Temps           []low.NodeReference[int]
-	HighTemps       []low.NodeReference[int64]
-	Buns            []low.NodeReference[bool]
-	UnknownElements low.NodeReference[any]
-	LotsOfUnknowns  []low.NodeReference[any]
-	Where           map[string]low.NodeReference[any]
-	There           map[string]low.NodeReference[string]
+	Name            NodeReference[string]
+	Fat             NodeReference[int]
+	Ketchup         NodeReference[float32]
+	Mustard         NodeReference[float64]
+	Grilled         NodeReference[bool]
+	MaxTemp         NodeReference[int]
+	MaxTempHigh     NodeReference[int64]
+	MaxTempAlt      []NodeReference[int]
+	Drinks          []NodeReference[string]
+	Sides           []NodeReference[float32]
+	BigSides        []NodeReference[float64]
+	Temps           []NodeReference[int]
+	HighTemps       []NodeReference[int64]
+	Buns            []NodeReference[bool]
+	UnknownElements NodeReference[any]
+	LotsOfUnknowns  []NodeReference[any]
+	Where           map[string]NodeReference[any]
+	There           map[string]NodeReference[string]
 }
 
 func TestBuildModel_Mismatch(t *testing.T) {
