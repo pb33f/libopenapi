@@ -304,6 +304,17 @@ func ExtractMap[PT Buildable[N], N any](label string, root *yaml.Node, idx *inde
 		}
 	} else {
 		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
+		if valueNode != nil {
+			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
+				ref := LocateRefNode(valueNode, idx)
+				if ref != nil {
+					valueNode = ref
+				} else {
+					return nil, fmt.Errorf("map build failed: reference cannot be found: %s",
+						root.Content[1].Value)
+				}
+			}
+		}
 	}
 
 	if valueNode != nil {
@@ -317,6 +328,18 @@ func ExtractMap[PT Buildable[N], N any](label string, root *yaml.Node, idx *inde
 			if strings.HasPrefix(strings.ToLower(currentLabelNode.Value), "x-") {
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
+
+			// check our valueNode isn't a reference still.
+			if h, _, _ := utils.IsNodeRefValue(en); h {
+				ref := LocateRefNode(en, idx)
+				if ref != nil {
+					en = ref
+				} else {
+					return nil, fmt.Errorf("map build failed: reference cannot be found: %s",
+						root.Content[1].Value)
+				}
+			}
+
 			var n PT = new(N)
 			err := BuildModel(en, n)
 			if err != nil {
