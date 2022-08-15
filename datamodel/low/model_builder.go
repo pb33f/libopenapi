@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package low
 
 import (
@@ -22,6 +25,14 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 	for i := 0; i < num; i++ {
 
 		fName := v.Type().Field(i).Name
+
+		if fName == "Extensions" {
+			continue // internal construct
+		}
+
+		if fName == "PathItems" {
+			continue // internal construct
+		}
 
 		// we need to find a matching field in the YAML, the cases may be off, so take no chances.
 		cases := []utils.Case{utils.PascalCase, utils.CamelCase, utils.ScreamingSnakeCase,

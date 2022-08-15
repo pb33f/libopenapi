@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -26,7 +29,7 @@ type SecurityScheme struct {
 }
 
 type SecurityRequirement struct {
-	Value []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+	ValueRequirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
 }
 
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -44,7 +47,7 @@ func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 }
 
 func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference[string] {
-	for _, r := range sr.Value {
+	for _, r := range sr.ValueRequirements {
 		for k, v := range r.Value {
 			if k.Value == name {
 				return v
@@ -89,7 +92,7 @@ func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) erro
 				})
 			}
 		}
-		sr.Value = requirements
+		sr.ValueRequirements = requirements
 	}
 
 	return nil
