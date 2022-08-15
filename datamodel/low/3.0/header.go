@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -52,6 +53,12 @@ func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
 
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	h.Extensions = low.ExtractExtensions(root)
+
+	// handle example if set.
+	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
+	if expNode != nil {
+		h.Example = low.ExtractExample(expNode, expLabel)
+	}
 
 	// handle examples if set.
 	exps, eErr := low.ExtractMap[*Example](ExamplesLabel, root, idx)

@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -37,13 +40,17 @@ func (p *Parameter) FindExample(eType string) *low.ValueReference[*Example] {
 	return low.FindItemInMap[*Example](eType, p.Examples.Value)
 }
 
+func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, p.Extensions)
+}
+
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
 	if expNode != nil {
-		p.Example = low.NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
+		p.Example = low.ExtractExample(expNode, expLabel)
 	}
 
 	// handle schema

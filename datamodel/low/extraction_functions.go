@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package low
 
 import (
@@ -49,8 +52,9 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 		}
 
 		// cant be found? last resort is to try a path lookup
-		cleaned := strings.ReplaceAll(rv, "~1", "/")
-		cleaned = strings.ReplaceAll(cleaned, "#/paths/", "")
+		cleaned := strings.ReplaceAll(rv, "#/paths/", "")
+		cleaned = strings.ReplaceAll(cleaned, "/", ".")
+		cleaned = strings.ReplaceAll(cleaned, "~1", "/")
 		path, err := yamlpath.NewPath(fmt.Sprintf("$.paths.%s", cleaned))
 		if err == nil {
 			nodes, fErr := path.Find(idx.GetRootNode())
@@ -151,6 +155,9 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 	}
 	var items []ValueReference[T]
 	if vn != nil && ln != nil {
+		if !utils.IsNodeArray(vn) {
+			return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
+		}
 		for _, node := range vn.Content {
 			if rf, _, _ := utils.IsNodeRefValue(node); rf {
 				ref := LocateRefNode(node, idx)
@@ -179,16 +186,39 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 	return items, ln, vn, nil
 }
 
+func ExtractExample(expNode, expLabel *yaml.Node) NodeReference[any] {
+	ref := NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
+	if utils.IsNodeMap(expNode) {
+		var decoded map[string]interface{}
+		_ = expNode.Decode(&decoded)
+		ref.Value = decoded
+	}
+	if utils.IsNodeArray(expNode) {
+		var decoded []interface{}
+		_ = expNode.Decode(&decoded)
+		ref.Value = decoded
+	}
+	return ref
+}
+
 func ExtractMapFlatNoLookup[PT Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], error) {
 	valueMap := make(map[KeyReference[string]]ValueReference[PT])
 	if utils.IsNodeMap(root) {
 		var currentKey *yaml.Node
+		skip := false
 		for i, node := range root.Content {
+			if strings.HasPrefix(strings.ToLower(node.Value), "x-") {
+				skip = true
+				continue
+			}
+			if skip {
+				skip = false
+				continue
+			}
 			if i%2 == 0 {
 				currentKey = node
 				continue
 			}
-
 			// if value is a reference, we have to look it up in the index!
 			if h, _, _ := utils.IsNodeRefValue(node); h {
 				ref := LocateRefNode(node, idx)

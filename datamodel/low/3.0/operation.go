@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -15,7 +18,7 @@ const (
 )
 
 type Operation struct {
-	Tags         low.NodeReference[low.NodeReference[string]]
+	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
@@ -28,6 +31,10 @@ type Operation struct {
 	Security     low.NodeReference[*SecurityRequirement]
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+func (o *Operation) FindCallback(callback string) *low.ValueReference[*Callback] {
+	return low.FindItemInMap[*Callback](callback, o.Callbacks.Value)
 }
 
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -63,7 +70,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// extract responses
 	respBody, respErr := low.ExtractObject[*Responses](ResponsesLabel, root, idx)
 	if respErr != nil {
-		return rErr
+		return respErr
 	}
 	o.Responses = respBody
 

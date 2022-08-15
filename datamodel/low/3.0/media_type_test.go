@@ -12,7 +12,6 @@ import (
 )
 
 func TestMediaType_Build(t *testing.T) {
-
 	yml := `schema:
   type: string
 example: hello
@@ -46,7 +45,6 @@ x-rock: and roll`
 }
 
 func TestMediaType_Build_Fail_Schema(t *testing.T) {
-
 	yml := `schema:
   $ref: #bork`
 
@@ -60,11 +58,9 @@ func TestMediaType_Build_Fail_Schema(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestMediaType_Build_Fail_Examples(t *testing.T) {
-
 	yml := `examples:
   waff:
     $ref: #bork`
@@ -83,7 +79,6 @@ func TestMediaType_Build_Fail_Examples(t *testing.T) {
 }
 
 func TestMediaType_Build_Fail_Encoding(t *testing.T) {
-
 	yml := `encoding:
   wiff:
     $ref: #bork`
@@ -98,5 +93,4 @@ func TestMediaType_Build_Fail_Encoding(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }

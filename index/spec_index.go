@@ -1722,7 +1722,7 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 
 	name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
-
+	friendlySearch = strings.ReplaceAll(friendlySearch, "~1", "/")
 	path, _ := yamlpath.NewPath(friendlySearch)
 	res, _ := path.Find(index.root)
 

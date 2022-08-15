@@ -131,6 +131,7 @@ func TestCreateDocument_Tags(t *testing.T) {
 }
 
 func TestCreateDocument_Paths(t *testing.T) {
+	doc := doc
 	assert.Len(t, doc.Paths.Value.PathItems, 6)
 	burgerId := doc.Paths.Value.FindPath("/burgers/{burgerId}")
 	assert.NotNil(t, burgerId)
@@ -245,7 +246,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	// check security requirements
 	security := burgersPost.Security.Value
 	assert.NotNil(t, security)
-	assert.Len(t, security.Value, 1)
+	assert.Len(t, security.ValueRequirements, 1)
 
 	oAuthReq := security.FindRequirement("OAuthScheme")
 	assert.Len(t, oAuthReq, 2)
@@ -372,7 +373,7 @@ func TestCreateDocument_Components_Links(t *testing.T) {
 func TestCreateDocument_Doc_Security(t *testing.T) {
 	security := doc.Security.Value
 	assert.NotNil(t, security)
-	assert.Len(t, security.Value, 1)
+	assert.Len(t, security.ValueRequirements, 1)
 
 	oAuth := security.FindRequirement("OAuthScheme")
 	assert.Len(t, oAuth, 2)
