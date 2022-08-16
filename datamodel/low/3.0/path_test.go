@@ -223,7 +223,7 @@ func TestPaths_Build_BadRef(t *testing.T) {
 
 func TestPathItem_Build_GoodRef(t *testing.T) {
 
-	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.bfes
+	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
  get:
