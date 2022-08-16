@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -11,6 +14,10 @@ type RequestBody struct {
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Required    low.NodeReference[bool]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, rb.Extensions)
 }
 
 func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType] {
