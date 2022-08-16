@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -11,7 +12,8 @@ import (
 )
 
 const (
-	LinksLabel = "links"
+	LinksLabel   = "links"
+	DefaultLabel = "default"
 )
 
 type Responses struct {
@@ -28,6 +30,16 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		if codes != nil {
 			r.Codes = codes
 		}
+
+		def, derr := low.ExtractObject[*Response](DefaultLabel, root, idx)
+		if derr != nil {
+			return derr
+		}
+		if def.Value != nil {
+			r.Default = def
+		}
+	} else {
+		return fmt.Errorf("responses build failed: root node is not a map! line %d, col %d", root.Line, root.Column)
 	}
 	return nil
 }
@@ -42,6 +54,10 @@ type Response struct {
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 	Links       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]]
+}
+
+func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, r.Extensions)
 }
 
 func (r *Response) FindContent(cType string) *low.ValueReference[*MediaType] {

@@ -356,6 +356,14 @@ func IsNodeIntValue(node *yaml.Node) bool {
 	return node.Tag == "!!int"
 }
 
+// IsNodeNullValue Checks of the input is null or not.
+func IsNodeNullValue(node *yaml.Node) bool {
+	if node == nil {
+		return false
+	}
+	return node.Tag == "!!null"
+}
+
 // IsNodeFloatValue will check is a node is a float value.
 func IsNodeFloatValue(node *yaml.Node) bool {
 	if node == nil {
