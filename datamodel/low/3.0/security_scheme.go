@@ -24,12 +24,16 @@ type SecurityScheme struct {
 	Scheme           low.NodeReference[string]
 	BearerFormat     low.NodeReference[string]
 	Flows            low.NodeReference[*OAuthFlows]
-	OpenIdConnectURL low.NodeReference[string]
+	OpenIdConnectUrl low.NodeReference[string]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
 
 type SecurityRequirement struct {
 	ValueRequirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+}
+
+func (ss *SecurityScheme) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, ss.Extensions)
 }
 
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -94,6 +98,5 @@ func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) erro
 		}
 		sr.ValueRequirements = requirements
 	}
-
 	return nil
 }
