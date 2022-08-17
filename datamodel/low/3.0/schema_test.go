@@ -2,6 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -217,4 +218,692 @@ additionalProperties: true      `
 	assert.Equal(t, "cat", mv.Value)
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")
 	assert.Equal(t, "party", mv.Value)
+}
+
+func TestSchema_BuildLevel_TooDeep(t *testing.T) {
+
+	// if you design data models like this, you're doing it fucking wrong. Seriously. why, what is so complex about a model
+	// that it needs to be 30+ levels deep? I have seen this shit in the wild, it's unreadable, un-parsable garbage.
+	yml := `type: object
+properties:
+  aValue:
+    type: object
+    properties:
+      aValue:
+        type: object
+        properties:
+          aValue:
+            type: object
+            properties:
+              aValue:
+                type: object
+                properties:
+                  aValue:
+                    type: object
+                    properties:
+                      aValue:
+                        type: object
+                        properties:
+                          aValue:
+                            type: object
+                            properties:
+                              aValue:
+                                type: object
+                                properties:
+                                  aValue:
+                                    type: object
+                                    properties:
+                                      aValue:
+                                        type: object
+                                        properties:
+                                          aValue:
+                                            type: object
+                                            properties:
+                                              aValue:
+                                                type: object
+                                                properties:
+                                                  aValue:
+                                                    type: object
+                                                    properties:
+                                                      aValue:
+                                                        type: object
+                                                        properties:
+                                                          aValue:
+                                                            type: object
+                                                            properties:
+                                                              aValue:
+                                                                type: object
+                                                                properties:
+                                                                  aValue:
+                                                                    type: object
+                                                                    properties:
+                                                                      aValue:
+                                                                        type: object
+                                                                        properties:
+                                                                          aValue:
+                                                                            type: object
+                                                                            properties:
+                                                                              aValue:
+                                                                                type: object
+                                                                                properties:
+                                                                                  aValue:
+                                                                                    type: object
+                                                                                    properties:
+                                                                                      aValue:
+                                                                                        type: object
+                                                                                        properties:
+                                                                                          aValue:
+                                                                                            type: object
+                                                                                            properties:
+                                                                                              aValue:
+                                                                                                type: object
+                                                                                                properties:
+                                                                                                  aValue:
+                                                                                                    type: object
+                                                                                                    properties:
+                                                                                                      aValue:
+                                                                                                        type: object
+                                                                                                        properties:
+                                                                                                          aValue:
+                                                                                                            type: object
+                                                                                                            properties:
+                                                                                                              aValue:
+                                                                                                                type: object
+                                                                                                                properties:
+                                                                                                                  aValue:
+                                                                                                                    type: object
+                                                                                                                    properties:
+                                                                                                                      aValue:
+                                                                                                                        type: object
+                                                                                                                        properties:
+                                                                                                                          aValue:
+                                                                                                                            type: object
+                                                                                                                            properties:
+                                                                                                                              aValue:
+                                                                                                                                type: object
+                                                                                                                                properties:
+                                                                                                                                  aValue:
+                                                                                                                                    type: object`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestSchema_Build_ErrorAdditionalProps(t *testing.T) {
+
+	yml := `additionalProperties:
+  $ref: #borko`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestSchema_Build_PropsLookup(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+properties:
+  aValue:
+    $ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var n Schema
+	err := n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "this is something", n.FindProperty("aValue").Value.Description.Value)
+
+}
+
+func TestSchema_Build_PropsLookup_Fail(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+properties:
+  aValue:
+    $ref: '#/bork'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var n Schema
+	err := n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func Test_Schema_Polymorphism_Array_Ref(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      type: object
+      description: poly thing
+      properties:
+        polyProp:
+          type: string
+          description: a property
+          example: anything`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  - $ref: '#/components/schemas/Something'
+oneOf:
+  - $ref: '#/components/schemas/Something'
+anyOf:
+  - $ref: '#/components/schemas/Something'
+not:
+  - $ref: '#/components/schemas/Something'
+items:
+  - $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.NoError(t, schErr)
+
+	desc := "poly thing"
+	assert.Equal(t, desc, sch.OneOf.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.Not.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.Items.Value[0].Value.Description.Value)
+}
+
+func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      type: object
+      description: poly thing
+      properties:
+        polyProp:
+          type: string
+          description: a property
+          example: anything`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  - $ref: '#/components/schemas/Missing'
+oneOf:
+  - $ref: '#/components/schemas/Something'
+anyOf:
+  - $ref: '#/components/schemas/Something'
+not:
+  - $ref: '#/components/schemas/Something'
+items:
+  - $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
+func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      type: object
+      description: poly thing
+      properties:
+        polyProp:
+          type: string
+          description: a property
+          example: anything`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  $ref: '#/components/schemas/Something'
+oneOf:
+  $ref: '#/components/schemas/Something'
+anyOf:
+  $ref: '#/components/schemas/Something'
+not:
+  $ref: '#/components/schemas/Something'
+items:
+  $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.NoError(t, schErr)
+
+	desc := "poly thing"
+	assert.Equal(t, desc, sch.OneOf.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.Not.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.Items.Value[0].Value.Description.Value)
+}
+
+func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      type: object
+      description: poly thing
+      properties:
+        polyProp:
+          type: string
+          description: a property
+          example: anything`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  $ref: '#/components/schemas/Missing'
+oneOf:
+  $ref: '#/components/schemas/Something'
+anyOf:
+  $ref: '#/components/schemas/Something'
+not:
+  $ref: '#/components/schemas/Something'
+items:
+  $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
+func Test_Schema_Polymorphism_BorkParent(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: #borko`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
+func Test_Schema_Polymorphism_BorkChild(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: #borko`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  $ref: #borko`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
+func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: '#/components/schemas/Else'
+    Else:
+      description: madness`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.NoError(t, schErr)
+
+	desc := "madness"
+	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
+
+}
+
+func Test_Schema_Polymorphism_RefMadnessBork(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: '#/components/schemas/Else'
+    Else:
+      $ref: #borko`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `type: object
+allOf:
+  $ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
+func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
+
+	// this does not work, but it won't error out.
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: '#/components/schemas/Else'
+    Else:
+      description: hey!`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `$ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.NoError(t, schErr)
+
+}
+
+func TestExtractSchema(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `schema: 
+  type: object
+  properties:
+    aValue:
+      $ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, res.Value)
+	assert.Equal(t, "this is something", res.Value.FindProperty("aValue").Value.Description.Value)
+}
+
+func TestExtractSchema_Ref(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `schema: 
+  $ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, res.Value)
+	assert.Equal(t, "this is something", res.Value.Description.Value)
+}
+
+func TestExtractSchema_Ref_Fail(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `schema: 
+  $ref: '#/components/schemas/Missing'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	_, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.Error(t, err)
+}
+
+func TestExtractSchema_RefRoot(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, res.Value)
+	assert.Equal(t, "this is something", res.Value.Description.Value)
+}
+
+func TestExtractSchema_RefRoot_Fail(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `$ref: '#/components/schemas/Missing'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	_, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: #bork`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	_, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestExtractSchema_DoNothing(t *testing.T) {
+
+	doc := `components:
+  schemas:
+    Something:
+      $ref: #bork`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml := `please: do nothing.`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.Nil(t, res)
+	assert.Nil(t, err)
+
 }

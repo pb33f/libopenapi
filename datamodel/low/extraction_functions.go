@@ -43,6 +43,31 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 			idx.GetAllResponses,
 			idx.GetAllSecuritySchemes,
 		}
+
+		// if there are any external indexes being used by remote
+		// documents, then we need to search through them also.
+		externalIndexes := idx.GetAllExternalIndexes()
+		if len(externalIndexes) > 0 {
+			var extCollection []func() map[string]*index.Reference
+			for _, extIndex := range externalIndexes {
+				extCollection = []func() map[string]*index.Reference{
+					extIndex.GetAllSchemas,
+					extIndex.GetMappedReferences,
+					extIndex.GetAllExternalDocuments,
+					extIndex.GetAllParameters,
+					extIndex.GetAllHeaders,
+					extIndex.GetAllCallbacks,
+					extIndex.GetAllLinks,
+					extIndex.GetAllExternalDocuments,
+					extIndex.GetAllExamples,
+					extIndex.GetAllRequestBodies,
+					extIndex.GetAllResponses,
+					extIndex.GetAllSecuritySchemes,
+				}
+				collections = append(collections, extCollection...)
+			}
+		}
+
 		var found map[string]*index.Reference
 		for _, collection := range collections {
 			found = collection()
@@ -69,6 +94,16 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 }
 
 func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error) {
+
+	if h, _, _ := utils.IsNodeRefValue(root); h {
+		ref := LocateRefNode(root, idx)
+		if ref != nil {
+			root = ref
+		} else {
+			return nil, fmt.Errorf("object extraction failed: reference cannot be found: %s, line %d, col %d",
+				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
+		}
+	}
 	var n T = new(N)
 	err := BuildModel(root, n)
 	if err != nil {

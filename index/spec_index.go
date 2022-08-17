@@ -495,6 +495,11 @@ func (index *SpecIndex) GetAllOperationsServers() map[string]map[string][]*Refer
 	return index.opServersRefs
 }
 
+// GetAllExternalIndexes will return all indexes for external documents
+func (index *SpecIndex) GetAllExternalIndexes() map[string]*SpecIndex {
+	return index.externalSpecIndex
+}
+
 func (index *SpecIndex) checkPolymorphicNode(name string) (bool, string) {
 	switch name {
 	case "anyOf":
