@@ -1,0 +1,84 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
+package v3
+
+import (
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+	"testing"
+)
+
+func TestSecurityRequirement_Build(t *testing.T) {
+	yml := `- something:
+  - read:me
+  - write:me`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n SecurityRequirement
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, n.ValueRequirements, 1)
+	assert.Equal(t, "read:me", n.FindRequirement("something")[0].Value)
+	assert.Equal(t, "write:me", n.FindRequirement("something")[1].Value)
+	assert.Nil(t, n.FindRequirement("none"))
+}
+
+func TestSecurityScheme_Build(t *testing.T) {
+	yml := `type: tea
+description: cake
+name: biscuit
+in: jar
+scheme: lovely
+bearerFormat: wow
+flows:
+ implicit:
+  tokenUrl: https://pb33f.io
+openIdConnectUrl: https://pb33f.io/openid  
+x-milk: please`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n SecurityScheme
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "tea", n.Type.Value)
+	assert.Equal(t, "cake", n.Description.Value)
+	assert.Equal(t, "biscuit", n.Name.Value)
+	assert.Equal(t, "jar", n.In.Value)
+	assert.Equal(t, "lovely", n.Scheme.Value)
+	assert.Equal(t, "wow", n.BearerFormat.Value)
+	assert.Equal(t, "https://pb33f.io/openid", n.OpenIdConnectUrl.Value)
+	assert.Equal(t, "please", n.FindExtension("x-milk").Value)
+	assert.Equal(t, "https://pb33f.io", n.Flows.Value.Implicit.Value.TokenUrl.Value)
+
+}
+
+func TestSecurityScheme_Build_Fail(t *testing.T) {
+	yml := `flows:
+  $ref: #bork`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n SecurityScheme
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+}
