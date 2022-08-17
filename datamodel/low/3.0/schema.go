@@ -70,8 +70,18 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) error {
 	level++
-	if level > 10 {
-		return nil // we're done, son! too fricken deep.
+	if level > 30 {
+		return fmt.Errorf("schema is too nested to continue: %d levels deep, is too deep", level) // we're done, son! too fricken deep.
+	}
+
+	if h, _, _ := utils.IsNodeRefValue(root); h {
+		ref := low.LocateRefNode(root, idx)
+		if ref != nil {
+			root = ref
+		} else {
+			return fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
+		}
 	}
 
 	s.extractExtensions(root)
@@ -102,10 +112,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, discLabel, discNode := utils.FindKeyNodeFull(DiscriminatorLabel, root.Content)
 	if discNode != nil {
 		var discriminator Discriminator
-		err := low.BuildModel(discNode, &discriminator)
-		if err != nil {
-			return err
-		}
+		_ = low.BuildModel(discNode, &discriminator)
 		s.Discriminator = low.NodeReference[*Discriminator]{Value: &discriminator, KeyNode: discLabel, ValueNode: discNode}
 	}
 
@@ -113,14 +120,8 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	if extDocNode != nil {
 		var exDoc ExternalDoc
-		err := low.BuildModel(extDocNode, &exDoc)
-		if err != nil {
-			return err
-		}
-		err = exDoc.Build(extDocNode, idx)
-		if err != nil {
-			return err
-		}
+		_ = low.BuildModel(extDocNode, &exDoc)
+		_ = exDoc.Build(extDocNode, idx) // throws no errors, can't check for one.
 		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
 	}
 
@@ -128,15 +129,9 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	_, xmlLabel, xmlNode := utils.FindKeyNodeFull(XMLLabel, root.Content)
 	if xmlNode != nil {
 		var xml XML
-		err := low.BuildModel(xmlNode, &xml)
-		if err != nil {
-			return err
-		}
+		_ = low.BuildModel(xmlNode, &xml)
 		// extract extensions if set.
-		err = xml.Build(xmlNode)
-		if err != nil {
-			return err
-		}
+		_ = xml.Build(xmlNode) // returns no errors, can't check for one.
 		s.XML = low.NodeReference[*XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
 	}
 
@@ -156,15 +151,15 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 				ref := low.LocateRefNode(prop, idx)
 				if ref != nil {
 					prop = ref
+				} else {
+					return fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
+						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
 				}
 			}
 
 			var property Schema
-			err := low.BuildModel(prop, &property)
-			if err != nil {
-				return err
-			}
-			err = property.BuildLevel(prop, idx, level)
+			_ = low.BuildModel(prop, &property)
+			err := property.BuildLevel(prop, idx, level)
 			if err != nil {
 				return err
 			}
@@ -181,59 +176,60 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 			KeyNode:   propLabel,
 			ValueNode: propsNode,
 		}
+	}
 
-		// extract all sub-schemas
-		var errors []error
+	// extract all sub-schemas
+	var errors []error
 
-		var allOf, anyOf, oneOf, not, items []low.NodeReference[*Schema]
+	var allOf, anyOf, oneOf, not, items []low.NodeReference[*Schema]
 
-		// make this async at some point to speed things up.
-		allOfLabel, allOfValue := buildSchema(&allOf, AllOfLabel, root, level, &errors, idx)
-		anyOfLabel, anyOfValue := buildSchema(&anyOf, AnyOfLabel, root, level, &errors, idx)
-		oneOfLabel, oneOfValue := buildSchema(&oneOf, OneOfLabel, root, level, &errors, idx)
-		notLabel, notValue := buildSchema(&not, NotLabel, root, level, &errors, idx)
-		itemsLabel, itemsValue := buildSchema(&items, ItemsLabel, root, level, &errors, idx)
+	// make this async at some point to speed things up.
+	allOfLabel, allOfValue := buildSchema(&allOf, AllOfLabel, root, level, &errors, idx)
+	anyOfLabel, anyOfValue := buildSchema(&anyOf, AnyOfLabel, root, level, &errors, idx)
+	oneOfLabel, oneOfValue := buildSchema(&oneOf, OneOfLabel, root, level, &errors, idx)
+	notLabel, notValue := buildSchema(&not, NotLabel, root, level, &errors, idx)
+	itemsLabel, itemsValue := buildSchema(&items, ItemsLabel, root, level, &errors, idx)
 
-		if len(errors) > 0 {
-			// todo fix this
-			return errors[0]
-		}
-		if len(anyOf) > 0 {
-			s.AnyOf = low.NodeReference[[]low.NodeReference[*Schema]]{
-				Value:     anyOf,
-				KeyNode:   anyOfLabel,
-				ValueNode: anyOfValue,
-			}
-		}
-		if len(oneOf) > 0 {
-			s.OneOf = low.NodeReference[[]low.NodeReference[*Schema]]{
-				Value:     oneOf,
-				KeyNode:   oneOfLabel,
-				ValueNode: oneOfValue,
-			}
-		}
-		if len(allOf) > 0 {
-			s.AllOf = low.NodeReference[[]low.NodeReference[*Schema]]{
-				Value:     allOf,
-				KeyNode:   allOfLabel,
-				ValueNode: allOfValue,
-			}
-		}
-		if len(not) > 0 {
-			s.Not = low.NodeReference[[]low.NodeReference[*Schema]]{
-				Value:     not,
-				KeyNode:   notLabel,
-				ValueNode: notValue,
-			}
-		}
-		if len(items) > 0 {
-			s.Items = low.NodeReference[[]low.NodeReference[*Schema]]{
-				Value:     items,
-				KeyNode:   itemsLabel,
-				ValueNode: itemsValue,
-			}
+	if len(errors) > 0 {
+		// todo fix this
+		return errors[0]
+	}
+	if len(anyOf) > 0 {
+		s.AnyOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+			Value:     anyOf,
+			KeyNode:   anyOfLabel,
+			ValueNode: anyOfValue,
 		}
 	}
+	if len(oneOf) > 0 {
+		s.OneOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+			Value:     oneOf,
+			KeyNode:   oneOfLabel,
+			ValueNode: oneOfValue,
+		}
+	}
+	if len(allOf) > 0 {
+		s.AllOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+			Value:     allOf,
+			KeyNode:   allOfLabel,
+			ValueNode: allOfValue,
+		}
+	}
+	if len(not) > 0 {
+		s.Not = low.NodeReference[[]low.NodeReference[*Schema]]{
+			Value:     not,
+			KeyNode:   notLabel,
+			ValueNode: notValue,
+		}
+	}
+	if len(items) > 0 {
+		s.Items = low.NodeReference[[]low.NodeReference[*Schema]]{
+			Value:     items,
+			KeyNode:   itemsLabel,
+			ValueNode: itemsValue,
+		}
+	}
+
 	return nil
 }
 
@@ -246,15 +242,27 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 
 	_, labelNode, valueNode = utils.FindKeyNodeFull(attribute, rootNode.Content)
 	//wg.Add(1)
+	if valueNode == nil {
+		return nil, nil
+	}
+
 	if valueNode != nil {
 		var build = func(kn *yaml.Node, vn *yaml.Node) *low.NodeReference[*Schema] {
 			var schema Schema
-			err := low.BuildModel(vn, &schema)
-			if err != nil {
-				*errors = append(*errors, err)
-				return nil
+
+			if h, _, _ := utils.IsNodeRefValue(vn); h {
+				ref := low.LocateRefNode(vn, idx)
+				if ref != nil {
+					vn = ref
+				} else {
+					*errors = append(*errors, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+						vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column))
+					return nil
+				}
 			}
-			err = schema.BuildLevel(vn, idx, level)
+
+			_ = low.BuildModel(vn, &schema)
+			err := schema.BuildLevel(vn, idx, level)
 			if err != nil {
 				*errors = append(*errors, err)
 				return nil
@@ -267,6 +275,17 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 		}
 
 		if utils.IsNodeMap(valueNode) {
+			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
+				ref := low.LocateRefNode(valueNode, idx)
+				if ref != nil {
+					valueNode = ref
+				} else {
+					*errors = append(*errors, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column))
+					return
+				}
+			}
+
 			schema := build(labelNode, valueNode)
 			if schema != nil {
 				*schemas = append(*schemas, *schema)
@@ -274,6 +293,17 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 		}
 		if utils.IsNodeArray(valueNode) {
 			for _, vn := range valueNode.Content {
+
+				if h, _, _ := utils.IsNodeRefValue(vn); h {
+					ref := low.LocateRefNode(vn, idx)
+					if ref != nil {
+						vn = ref
+					} else {
+						*errors = append(*errors, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column))
+					}
+				}
+
 				schema := build(vn, vn)
 				if schema != nil {
 					*schemas = append(*schemas, *schema)
@@ -316,11 +346,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 
 	if schNode != nil {
 		var schema Schema
-		err := low.BuildModel(schNode, &schema)
-		if err != nil {
-			return nil, err
-		}
-		err = schema.Build(schNode, idx)
+		_ = low.BuildModel(schNode, &schema)
+		err := schema.Build(schNode, idx)
 		if err != nil {
 			return nil, err
 		}

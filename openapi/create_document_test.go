@@ -13,7 +13,11 @@ var doc *v3.Document
 func init() {
 	data, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	doc, _ = CreateDocument(info)
+	var err []error
+	doc, err = CreateDocument(info)
+	if err != nil {
+		panic("broken something")
+	}
 }
 
 func BenchmarkCreateDocument(b *testing.B) {
