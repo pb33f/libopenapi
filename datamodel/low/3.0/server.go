@@ -19,7 +19,11 @@ const (
 type Server struct {
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]
-	Variables   low.NodeReference[map[string]low.NodeReference[*ServerVariable]]
+	Variables   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]
+}
+
+func (s *Server) FindVariable(ext string) *low.ValueReference[*ServerVariable] {
+	return low.FindItemInMap[*ServerVariable](ext, s.Variables.Value)
 }
 
 func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -27,7 +31,7 @@ func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if vars == nil {
 		return nil
 	}
-	variablesMap := make(map[string]low.NodeReference[*ServerVariable])
+	variablesMap := make(map[low.KeyReference[string]]low.ValueReference[*ServerVariable])
 	if utils.IsNodeMap(vars) {
 		var currentNode string
 		var keyNode *yaml.Node
@@ -38,17 +42,16 @@ func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				continue
 			}
 			variable := ServerVariable{}
-			err := low.BuildModel(varNode, &variable)
-			if err != nil {
-				return err
-			}
-			variablesMap[currentNode] = low.NodeReference[*ServerVariable]{
+			_ = low.BuildModel(varNode, &variable)
+			variablesMap[low.KeyReference[string]{
+				Value:   currentNode,
+				KeyNode: keyNode,
+			}] = low.ValueReference[*ServerVariable]{
 				ValueNode: varNode,
-				KeyNode:   keyNode,
 				Value:     &variable,
 			}
 		}
-		s.Variables = low.NodeReference[map[string]low.NodeReference[*ServerVariable]]{
+		s.Variables = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]{
 			KeyNode:   kn,
 			ValueNode: vars,
 			Value:     variablesMap,
