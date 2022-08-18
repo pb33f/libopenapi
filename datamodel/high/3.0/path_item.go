@@ -22,6 +22,13 @@ type PathItem struct {
 	low         *low.PathItem
 }
 
+func NewPathItem(lowPathItem *low.PathItem) *PathItem {
+	pi := new(PathItem)
+	pi.Description = lowPathItem.Description.Value
+	pi.Summary = lowPathItem.Summary.Value
+	return pi
+}
+
 func (p *PathItem) GoLow() *low.PathItem {
 	return p.low
 }

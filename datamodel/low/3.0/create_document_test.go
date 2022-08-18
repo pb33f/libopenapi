@@ -1,17 +1,16 @@
-package openapi
+package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
 )
 
-var doc *v3.Document
+var doc *Document
 
 func init() {
-	data, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
 	doc, err = CreateDocument(info)
@@ -21,7 +20,7 @@ func init() {
 }
 
 func BenchmarkCreateDocument(b *testing.B) {
-	data, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		doc, _ = CreateDocument(info)
@@ -29,7 +28,7 @@ func BenchmarkCreateDocument(b *testing.B) {
 }
 
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
-	data, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		_, err := CreateDocument(info)
@@ -40,7 +39,7 @@ func BenchmarkCreateDocument_Stripe(b *testing.B) {
 }
 
 func BenchmarkCreateDocument_Petstore(b *testing.B) {
-	data, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		_, err := CreateDocument(info)
@@ -136,7 +135,7 @@ func TestCreateDocument_Tags(t *testing.T) {
 
 func TestCreateDocument_Paths(t *testing.T) {
 	doc := doc
-	assert.Len(t, doc.Paths.Value.PathItems, 6)
+	assert.Len(t, doc.Paths.Value.PathItems, 5)
 	burgerId := doc.Paths.Value.FindPath("/burgers/{burgerId}")
 	assert.NotNil(t, burgerId)
 	assert.Len(t, burgerId.Value.Get.Value.Parameters.Value, 2)
@@ -411,7 +410,7 @@ func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
 	components := doc.Components.Value
 	d := components.FindSchema("Dressing")
 	assert.NotNil(t, d.Value.AdditionalProperties.Value)
-	if n, ok := d.Value.AdditionalProperties.Value.(*v3.Schema); ok {
+	if n, ok := d.Value.AdditionalProperties.Value.(*Schema); ok {
 		assert.Equal(t, "something in here.", n.Description.Value)
 	} else {
 		assert.Fail(t, "should be a schema")

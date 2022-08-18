@@ -18,6 +18,14 @@ type Document struct {
 	low          *low.Document
 }
 
+func NewDocument(document *low.Document) *Document {
+	d := new(Document)
+	d.low = document
+	d.Info = NewInfo(document.Info.Value)
+	d.Version = document.Version.Value
+	return d
+}
+
 func (d *Document) GoLow() *low.Document {
 	return d.low
 }

@@ -162,7 +162,7 @@ func TestSpecIndex_PetstoreV3(t *testing.T) {
 
 }
 
-var mappedRefs = 16
+var mappedRefs = 15
 
 func TestSpecIndex_BurgerShop(t *testing.T) {
 
@@ -177,12 +177,12 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, mappedRefs, len(index.GetMappedReferences()))
 	assert.Equal(t, mappedRefs, len(index.GetMappedReferencesSequenced()))
 
-	assert.Equal(t, 7, index.pathCount)
-	assert.Equal(t, 7, index.GetPathCount())
+	assert.Equal(t, 6, index.pathCount)
+	assert.Equal(t, 6, index.GetPathCount())
 
 	assert.Equal(t, 6, len(index.GetAllSchemas()))
 
-	assert.Equal(t, 30, len(index.GetAllSequencedReferences()))
+	assert.Equal(t, 29, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
 	assert.NotNil(t, index.GetParametersNode())
 
