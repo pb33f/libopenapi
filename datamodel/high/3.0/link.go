@@ -5,14 +5,17 @@ package v3
 
 import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 
-type Tag struct {
-	Name         string
+type Link struct {
+	OperationRef string
+	OperationId  string
+	Parameters   map[string]string
+	RequestBody  string
 	Description  string
-	ExternalDocs *ExternalDoc
+	Server       *Server
 	Extensions   map[string]any
-	low          *low.Tag
+	low          *low.Link
 }
 
-func (t *Tag) GoLow() *low.Tag {
-	return t.low
+func (l *Link) GoLow() *low.Link {
+	return l.low
 }

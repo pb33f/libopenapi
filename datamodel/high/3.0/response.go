@@ -5,13 +5,15 @@ package v3
 
 import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 
-type ExternalDoc struct {
+type Response struct {
 	Description string
-	URL         string
+	Headers     map[string]*Header
+	Content     map[string]*MediaType
 	Extensions  map[string]any
-	low         *low.ExternalDoc
+	Links       map[string]*Link
+	low         *low.Response
 }
 
-func (e *ExternalDoc) GoLow() *low.ExternalDoc {
-	return e.low
+func (r *Response) GoLow() *low.Response {
+	return r.low
 }

@@ -5,9 +5,7 @@ package v3
 
 import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 
-type Parameter struct {
-	Name            string
-	In              string
+type Header struct {
 	Description     string
 	Required        bool
 	Deprecated      bool
@@ -20,9 +18,9 @@ type Parameter struct {
 	Examples        map[string]*Example
 	Content         map[string]*MediaType
 	Extensions      map[string]any
-	low             *low.Parameter
+	low             *low.Header
 }
 
-func (p *Parameter) GoLow() *low.Parameter {
-	return p.low
+func (h *Header) GoLow() *low.Header {
+	return h.low
 }
