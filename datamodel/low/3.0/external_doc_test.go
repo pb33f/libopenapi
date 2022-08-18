@@ -28,3 +28,28 @@ func TestExternalDoc_FindExtension(t *testing.T) {
 	assert.Equal(t, "cake", n.FindExtension("x-fish").Value)
 
 }
+
+func TestExternalDoc_Build(t *testing.T) {
+
+	yml := `url: https://pb33f.io
+description: the ranch
+x-b33f: princess`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n ExternalDoc
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "https://pb33f.io", n.URL.Value)
+	assert.Equal(t, "the ranch", n.Description.Value)
+	ext := n.FindExtension("x-b33f")
+	assert.NotNil(t, ext)
+	assert.Equal(t, "princess", ext.Value)
+
+}

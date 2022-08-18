@@ -59,8 +59,6 @@ servers:
         description: the default host for this API is 'pb33f.io'
 paths:
   x-milky-milk: milky
-  /refingtons:
-    $ref: '../test_specs/petstorev3.json#/paths~1pet~1findByStatus'
   /burgers:
     x-burger-meta: meaty
     post:

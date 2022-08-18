@@ -11,6 +11,14 @@ type License struct {
 	low  *low.License
 }
 
+func NewLicense(license *low.License) *License {
+	l := new(License)
+	l.low = license
+	l.URL = license.URL.Value
+	l.Name = license.Name.Value
+	return l
+}
+
 func (l *License) GoLow() *low.License {
 	return l.low
 }
