@@ -74,18 +74,18 @@ func TestCreateDocument_Servers(t *testing.T) {
 	assert.Equal(t, "{scheme}://api.pb33f.io", server1.URL.Value)
 	assert.NotEmpty(t, server1.Description.Value)
 	assert.Len(t, server1.Variables.Value, 1)
-	assert.Len(t, server1.Variables.Value["scheme"].Value.Enum, 2)
-	assert.Equal(t, server1.Variables.Value["scheme"].Value.Default.Value, "https")
-	assert.NotEmpty(t, server1.Variables.Value["scheme"].Value.Description.Value)
+	assert.Len(t, server1.FindVariable("scheme").Value.Enum, 2)
+	assert.Equal(t, server1.FindVariable("scheme").Value.Default.Value, "https")
+	assert.NotEmpty(t, server1.FindVariable("scheme").Value.Description.Value)
 
 	// server 2
 	assert.Equal(t, "https://{domain}.{host}.com", server2.URL.Value)
 	assert.NotEmpty(t, server2.Description.Value)
 	assert.Len(t, server2.Variables.Value, 2)
-	assert.Equal(t, server2.Variables.Value["domain"].Value.Default.Value, "api")
-	assert.NotEmpty(t, server2.Variables.Value["domain"].Value.Description.Value)
-	assert.NotEmpty(t, server2.Variables.Value["host"].Value.Description.Value)
-	assert.Equal(t, server2.Variables.Value["host"].Value.Default.Value, "pb33f.io")
+	assert.Equal(t, "api", server2.FindVariable("domain").Value.Default.Value)
+	assert.NotEmpty(t, server2.FindVariable("domain").Value.Description.Value)
+	assert.NotEmpty(t, server2.FindVariable("host").Value.Description.Value)
+	assert.Equal(t, server2.FindVariable("host").Value.Default.Value, "pb33f.io")
 	assert.Equal(t, "1.2", doc.Info.Value.Version.Value)
 }
 
