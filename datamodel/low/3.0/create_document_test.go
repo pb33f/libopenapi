@@ -134,7 +134,6 @@ func TestCreateDocument_Tags(t *testing.T) {
 }
 
 func TestCreateDocument_Paths(t *testing.T) {
-	doc := doc
 	assert.Len(t, doc.Paths.Value.PathItems, 5)
 	burgerId := doc.Paths.Value.FindPath("/burgers/{burgerId}")
 	assert.NotNil(t, burgerId)

@@ -40,4 +40,37 @@ func TestNewDocument_Info(t *testing.T) {
 	assert.Equal(t, "pb33f", highDoc.Info.License.Name)
 	assert.Equal(t, "https://pb33f.io/made-up", highDoc.Info.License.URL)
 	assert.Equal(t, "1.2", highDoc.Info.Version)
+
+	wentLow := highDoc.GoLow()
+	assert.Equal(t, 1, wentLow.Version.ValueNode.Line)
+	assert.Equal(t, 3, wentLow.Info.Value.Title.KeyNode.Line)
+
+}
+
+func TestNewDocument_Servers(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Servers, 2)
+	assert.Equal(t, "{scheme}://api.pb33f.io", h.Servers[0].URL)
+	assert.Equal(t, "this is our main API server, for all fun API things.", h.Servers[0].Description)
+	assert.Len(t, h.Servers[0].Variables, 1)
+	assert.Equal(t, "https", h.Servers[0].Variables["scheme"].Default)
+	assert.Len(t, h.Servers[0].Variables["scheme"].Enum, 2)
+
+	assert.Equal(t, "https://{domain}.{host}.com", h.Servers[1].URL)
+	assert.Equal(t, "this is our second API server, for all fun API things.", h.Servers[1].Description)
+	assert.Len(t, h.Servers[1].Variables, 2)
+	assert.Equal(t, "api", h.Servers[1].Variables["domain"].Default)
+	assert.Equal(t, "pb33f.io", h.Servers[1].Variables["host"].Default)
+
+	wentLow := h.GoLow()
+	assert.Equal(t, 45, wentLow.Servers.Value[0].Value.Description.KeyNode.Line)
+	assert.Equal(t, 5, wentLow.Servers.Value[0].Value.Description.KeyNode.Column)
+	assert.Equal(t, 45, wentLow.Servers.Value[0].Value.Description.ValueNode.Line)
+	assert.Equal(t, 18, wentLow.Servers.Value[0].Value.Description.ValueNode.Column)
+	// holy shit! the perfect Golang OpenAPI Model! high and low! fuck yeah!
+}
+
+func TestNewDocument_Tags(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Tags, 2)
 }

@@ -10,7 +10,7 @@ import (
 
 func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
-	doc := Document{Version: low.NodeReference[string]{Value: info.Version, ValueNode: info.RootNode}}
+	doc := Document{Version: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 
 	// build an index
 	idx := index.NewSpecIndex(info.RootNode)

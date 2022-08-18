@@ -23,6 +23,16 @@ func NewDocument(document *low.Document) *Document {
 	d.low = document
 	d.Info = NewInfo(document.Info.Value)
 	d.Version = document.Version.Value
+	var servers []*Server
+	for _, ser := range document.Servers.Value {
+		servers = append(servers, NewServer(ser.Value))
+	}
+	d.Servers = servers
+	var tags []*Tag
+	for _, tag := range document.Tags.Value {
+		tags = append(tags, NewTag(tag.Value))
+	}
+	d.Tags = tags
 	return d
 }
 
