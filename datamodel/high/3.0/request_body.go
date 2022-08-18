@@ -5,13 +5,14 @@ package v3
 
 import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 
-type ExternalDoc struct {
+type RequestBody struct {
 	Description string
-	URL         string
+	Content     map[string]*MediaType
+	Required    bool
 	Extensions  map[string]any
-	low         *low.ExternalDoc
+	low         *low.RequestBody
 }
 
-func (e *ExternalDoc) GoLow() *low.ExternalDoc {
-	return e.low
+func (r *RequestBody) GoLow() *low.RequestBody {
+	return r.low
 }

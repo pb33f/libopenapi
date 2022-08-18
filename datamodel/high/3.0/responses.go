@@ -5,12 +5,12 @@ package v3
 
 import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 
-type License struct {
-	Name string
-	URL  string
-	low  *low.License
+type Responses struct {
+	Codes   map[string]*Response
+	Default *Response
+	low     *low.Responses
 }
 
-func (l *License) GoLow() *low.License {
-	return l.low
+func (r *Responses) GoLow() *low.Responses {
+	return r.low
 }
