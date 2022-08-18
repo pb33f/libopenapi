@@ -1,3 +1,6 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package v3
 
 import (
@@ -16,6 +19,10 @@ type Tag struct {
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+func (t *Tag) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, t.Extensions)
 }
 
 func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
