@@ -14,6 +14,17 @@ type Encoding struct {
 	low           *low.Encoding
 }
 
+func NewEncoding(encoding *low.Encoding) *Encoding {
+	e := new(Encoding)
+	e.low = encoding
+	e.ContentType = encoding.ContentType.Value
+	e.Style = encoding.Style.Value
+	e.Explode = encoding.Explode.Value
+	e.AllowReserved = encoding.AllowReserved.Value
+	//e.Headers
+	return e
+}
+
 func (e *Encoding) GoLow() *low.Encoding {
 	return e.low
 }

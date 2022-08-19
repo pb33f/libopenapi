@@ -22,6 +22,23 @@ type Operation struct {
 	low          *low.Operation
 }
 
+func NewOperation(operation *low.Operation) *Operation {
+	o := new(Operation)
+	o.low = operation
+	var tags []string
+	for i := range operation.Tags.Value {
+		tags = append(tags, operation.Tags.Value[i].Value)
+	}
+	o.Tags = tags
+	o.Summary = operation.Summary.Value
+	o.Description = operation.Description.Value
+	o.ExternalDocs = NewExternalDoc(operation.ExternalDocs.Value)
+	o.OperationId = operation.OperationId.Value
+
+	// TODO: come back and finish.
+	return o
+}
+
 func (o *Operation) GoLow() *low.Operation {
 	return o.low
 }
