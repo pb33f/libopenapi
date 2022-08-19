@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Components struct {
 	Schemas         map[string]*Schema
@@ -17,6 +20,24 @@ type Components struct {
 	Callbacks       map[string]*Callback
 	Extensions      map[string]any
 	low             *low.Components
+}
+
+func NewComponents(comp *low.Components) *Components {
+	c := new(Components)
+	c.low = comp
+	c.Extensions = high.ExtractExtensions(comp.Extensions)
+	callbacks := make(map[string]*Callback)
+	links := make(map[string]*Link)
+
+	for k, v := range comp.Callbacks.Value {
+		callbacks[k.Value] = NewCallback(v.Value)
+	}
+	c.Callbacks = callbacks
+	for k, v := range comp.Links.Value {
+		links[k.Value] = NewLink(v.Value)
+	}
+	c.Links = links
+	return c
 }
 
 func (c *Components) GoLow() *low.Components {

@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Document struct {
 	Version      string
@@ -33,6 +36,11 @@ func NewDocument(document *low.Document) *Document {
 		tags = append(tags, NewTag(tag.Value))
 	}
 	d.Tags = tags
+	if !document.ExternalDocs.IsEmpty() {
+		d.ExternalDocs = NewExternalDoc(document.ExternalDocs.Value)
+	}
+	d.Extensions = high.ExtractExtensions(document.Extensions)
+	d.Components = NewComponents(document.Components.Value)
 	return d
 }
 

@@ -22,10 +22,17 @@ type PathItem struct {
 	low         *low.PathItem
 }
 
-func NewPathItem(lowPathItem *low.PathItem) *PathItem {
+func NewPathItem(pathItem *low.PathItem) *PathItem {
 	pi := new(PathItem)
-	pi.Description = lowPathItem.Description.Value
-	pi.Summary = lowPathItem.Summary.Value
+	pi.Description = pathItem.Description.Value
+	pi.Summary = pathItem.Summary.Value
+
+	var servers []*Server
+	for _, ser := range pathItem.Servers.Value {
+		servers = append(servers, NewServer(ser.Value))
+	}
+	pi.Servers = servers
+
 	return pi
 }
 

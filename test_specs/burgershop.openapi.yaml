@@ -511,3 +511,7 @@ components:
     SomePayload:
       type: string
       description: some kind of payload for something.
+x-something-something: darkside
+externalDocs:
+  description: "Find out more information about our products)"
+  url: "https://pb33f.io"

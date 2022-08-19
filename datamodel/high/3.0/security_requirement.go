@@ -10,6 +10,25 @@ type SecurityRequirement struct {
 	low               *low.SecurityRequirement
 }
 
+func NewSecurityRequirement(req *low.SecurityRequirement) *SecurityRequirement {
+	r := new(SecurityRequirement)
+	r.low = req
+	values := make([]map[string][]string, len(req.ValueRequirements))
+	for i := range req.ValueRequirements {
+		valmap := make(map[string][]string)
+		for k, v := range req.ValueRequirements[i].Value {
+			var mItems []string
+			for h := range v {
+				mItems = append(mItems, v[h].Value)
+			}
+			valmap[k.Value] = mItems
+		}
+		values = append(values, valmap)
+	}
+	r.ValueRequirements = values
+	return r
+}
+
 func (s *SecurityRequirement) GoLow() *low.SecurityRequirement {
 	return s.low
 }

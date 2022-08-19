@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Link struct {
 	OperationRef string
@@ -14,6 +17,25 @@ type Link struct {
 	Server       *Server
 	Extensions   map[string]any
 	low          *low.Link
+}
+
+func NewLink(link *low.Link) *Link {
+	l := new(Link)
+	l.low = link
+	l.OperationRef = link.OperationRef.Value
+	l.OperationId = link.OperationId.Value
+	params := make(map[string]string)
+	for k, v := range link.Parameters.Value {
+		params[k.Value] = v.Value
+	}
+	l.Parameters = params
+	l.RequestBody = link.RequestBody.Value
+	l.Description = link.Description.Value
+	if link.Server.Value != nil {
+		l.Server = NewServer(link.Server.Value)
+	}
+	l.Extensions = high.ExtractExtensions(link.Extensions)
+	return l
 }
 
 func (l *Link) GoLow() *low.Link {

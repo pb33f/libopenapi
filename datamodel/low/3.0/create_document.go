@@ -19,6 +19,8 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 	var wg sync.WaitGroup
 	var errors []error
 
+	doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])
+
 	var runExtraction = func(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex,
 		runFunc func(i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error,
 		ers *[]error,

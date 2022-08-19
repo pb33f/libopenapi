@@ -17,6 +17,6 @@ type Document struct {
 	Security     low.NodeReference[*SecurityRequirement]
 	Tags         low.NodeReference[[]low.ValueReference[*Tag]]
 	ExternalDocs low.NodeReference[*ExternalDoc]
-	Extensions   map[low.NodeReference[string]]low.NodeReference[any]
+	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 	Index        *index.SpecIndex
 }

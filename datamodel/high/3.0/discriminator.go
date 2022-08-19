@@ -11,6 +11,18 @@ type Discriminator struct {
 	low          *low.Discriminator
 }
 
+func NewDiscriminator(disc *low.Discriminator) *Discriminator {
+	d := new(Discriminator)
+	d.low = disc
+	d.PropertyName = disc.PropertyName.Value
+	mapping := make(map[string]string)
+	for k, v := range disc.Mapping {
+		mapping[k.Value] = v.Value
+	}
+	d.Mapping = mapping
+	return d
+}
+
 func (d *Discriminator) GoLow() *low.Discriminator {
 	return d.low
 }
