@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 )
 
@@ -36,10 +37,20 @@ func NewParameter(param *low.Parameter) *Parameter {
 	p.Style = param.Style.Value
 	p.Explode = param.Explode.Value
 	p.AllowReserved = param.AllowReserved.Value
-	p.Schema = NewSchema(param.Schema.Value)
+
+	if !param.Schema.IsEmpty() {
+		if v := getSeenSchema(param.Schema.GenerateMapKey()); v != nil {
+			p.Schema = v
+		} else {
+			p.Schema = NewSchema(param.Schema.Value)
+			addSeenSchema(param.Schema.GenerateMapKey(), p.Schema)
+		}
+	}
+
 	p.Example = param.Example.Value
 	p.Examples = ExtractExamples(param.Examples.Value)
-
+	p.Content = ExtractContent(param.Content.Value)
+	p.Extensions = high.ExtractExtensions(param.Extensions)
 	return p
 }
 

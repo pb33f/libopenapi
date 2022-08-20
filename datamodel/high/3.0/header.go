@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Header struct {
 	Description     string
@@ -29,11 +32,31 @@ func NewHeader(header *low.Header) *Header {
 	h.Deprecated = header.Deprecated.Value
 	h.AllowEmptyValue = header.AllowEmptyValue.Value
 	h.Style = header.Style.Value
-
-	// TODO continue this.
+	h.Explode = header.Explode.Value
+	h.AllowReserved = header.AllowReserved.Value
+	if !header.Schema.IsEmpty() {
+		// check if schema has been seen or not.
+		if v := getSeenSchema(header.Schema.GenerateMapKey()); v != nil {
+			h.Schema = v
+		} else {
+			h.Schema = NewSchema(header.Schema.Value)
+			addSeenSchema(header.Schema.GenerateMapKey(), h.Schema)
+		}
+	}
+	h.Content = ExtractContent(header.Content.Value)
+	h.Example = header.Example.Value
+	h.Examples = ExtractExamples(header.Examples.Value)
 	return h
 }
 
 func (h *Header) GoLow() *low.Header {
 	return h.low
+}
+
+func ExtractHeaders(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Header]) map[string]*Header {
+	extracted := make(map[string]*Header)
+	for k, v := range elements {
+		extracted[k.Value] = NewHeader(v.Value)
+	}
+	return extracted
 }

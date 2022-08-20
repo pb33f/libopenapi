@@ -24,8 +24,8 @@ type Header struct {
 	AllowReserved   low.NodeReference[bool]
 	Schema          low.NodeReference[*Schema]
 	Example         low.NodeReference[any]
-	Examples        map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*Example]
-	Content         map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[*MediaType]
+	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
+	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
@@ -34,21 +34,11 @@ func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 func (h *Header) FindExample(eType string) *low.ValueReference[*Example] {
-	// there is only one item in here by design, so this can only ever loop once
-	var k *low.ValueReference[*Example]
-	for _, v := range h.Examples {
-		k = low.FindItemInMap[*Example](eType, v)
-	}
-	return k
+	return low.FindItemInMap[*Example](eType, h.Examples.Value)
 }
 
 func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
-	// there is only one item in here by design, so this can only ever loop once
-	var k *low.ValueReference[*MediaType]
-	for _, v := range h.Content {
-		k = low.FindItemInMap[*MediaType](ext, v)
-	}
-	return k
+	return low.FindItemInMap[*MediaType](ext, h.Content.Value)
 }
 
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -61,12 +51,16 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, eErr := low.ExtractMap[*Example](ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMapFlat[*Example](ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
 	if exps != nil {
-		h.Examples = exps
+		h.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]{
+			Value:     exps,
+			KeyNode:   expsL,
+			ValueNode: expsN,
+		}
 	}
 
 	// handle schema
@@ -79,11 +73,15 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle content, if set.
-	con, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMapFlat[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}
-	h.Content = con
+	h.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+		Value:     con,
+		KeyNode:   cL,
+		ValueNode: cN,
+	}
 
 	return nil
 }

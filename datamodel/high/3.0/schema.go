@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"sync"
 )
 
 type Schema struct {
@@ -97,40 +98,117 @@ func NewSchema(schema *low.Schema) *Schema {
 	}
 	s.Enum = enum
 
-	totalItems := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Not.Value) +
-		len(schema.Items.Value)
+	// async work.
+	// any polymorphic properties need to be handled in their own threads
+	// any properties each need to be processed in their own thread.
+	// we go as fast as we can.
 
-	completedChan := make(chan bool)
+	polyCompletedChan := make(chan bool)
+	propsChan := make(chan bool)
 
+	// schema async
 	buildOutSchema := func(schemas []lowmodel.NodeReference[*low.Schema], items *[]*Schema, doneChan chan bool) {
+		bChan := make(chan *Schema)
+
+		// for every item, build schema async
+		buildSchema := func(sch lowmodel.NodeReference[*low.Schema], bChan chan *Schema) {
+			if ss := getSeenSchema(sch.GenerateMapKey()); ss != nil {
+				bChan <- ss
+				return
+			}
+			ns := NewSchema(sch.Value)
+			addSeenSchema(sch.GenerateMapKey(), ns)
+			bChan <- ns
+		}
+		totalSchemas := len(schemas)
 		for v := range schemas {
-			*items = append(*items, NewSchema(schemas[v].Value))
+			go buildSchema(schemas[v], bChan)
+		}
+		j := 0
+		for j < totalSchemas {
+			select {
+			case t := <-bChan:
+				j++
+				*items = append(*items, t)
+			}
 		}
 		doneChan <- true
 	}
 
-	allOf := make([]*Schema, len(schema.AllOf.Value))
-	oneOf := make([]*Schema, len(schema.OneOf.Value))
-	anyOf := make([]*Schema, len(schema.AnyOf.Value))
-	not := make([]*Schema, len(schema.Not.Value))
-	items := make([]*Schema, len(schema.Items.Value))
-
-	go buildOutSchema(schema.AllOf.Value, &allOf, completedChan)
-	go buildOutSchema(schema.AnyOf.Value, &anyOf, completedChan)
-	go buildOutSchema(schema.OneOf.Value, &oneOf, completedChan)
-	go buildOutSchema(schema.Not.Value, &not, completedChan)
-	go buildOutSchema(schema.Items.Value, &items, completedChan)
-
-	complete := 0
-	for complete < totalItems {
-		select {
-		case <-completedChan:
-			complete++
+	// props async
+	plock := sync.RWMutex{}
+	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*low.Schema], c chan bool,
+		props map[string]*Schema) {
+		if ss := getSeenSchema(v.GenerateMapKey()); ss != nil {
+			plock.Lock()
+			props[k.Value] = ss
+			plock.Unlock()
+		} else {
+			plock.Lock()
+			props[k.Value] = NewSchema(v.Value)
+			plock.Unlock()
+			addSeenSchema(k.GenerateMapKey(), props[k.Value])
 		}
+		s.Properties = props
+		c <- true
 	}
 
-	return s
+	props := make(map[string]*Schema)
+	for k, v := range schema.Properties.Value {
+		go buildProps(k, v, propsChan, props)
+	}
 
+	var allOf []*Schema
+	var oneOf []*Schema
+	var anyOf []*Schema
+	var not []*Schema
+	var items []*Schema
+
+	if !schema.AllOf.IsEmpty() {
+		go buildOutSchema(schema.AllOf.Value, &allOf, polyCompletedChan)
+	}
+	if !schema.AnyOf.IsEmpty() {
+		go buildOutSchema(schema.AnyOf.Value, &anyOf, polyCompletedChan)
+	}
+	if !schema.OneOf.IsEmpty() {
+		go buildOutSchema(schema.OneOf.Value, &oneOf, polyCompletedChan)
+	}
+	if !schema.Not.IsEmpty() {
+		go buildOutSchema(schema.Not.Value, &not, polyCompletedChan)
+	}
+	if !schema.Items.IsEmpty() {
+		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan)
+	}
+
+	completePoly := 0
+	completedProps := 0
+	totalProps := len(schema.Properties.Value)
+	totalPoly := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Not.Value) +
+		len(schema.Items.Value)
+
+	if totalProps+totalPoly > 0 {
+	allDone:
+		for true {
+			select {
+			case <-polyCompletedChan:
+				completePoly++
+				if totalProps == completedProps && totalPoly == completePoly {
+					break allDone
+				}
+			case <-propsChan:
+				completedProps++
+				if totalProps == completedProps && totalPoly == completePoly {
+					break allDone
+				}
+			}
+		}
+	}
+	s.OneOf = oneOf
+	s.AnyOf = anyOf
+	s.AllOf = allOf
+	s.Not = not
+	s.Items = items
+	return s
 }
 
 func (s *Schema) GoLow() *low.Schema {
