@@ -1,6 +1,7 @@
 package low
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 )
@@ -34,10 +35,22 @@ func (n NodeReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil && n.ValueNode == nil
 }
 
+func (n NodeReference[T]) GenerateMapKey() string {
+	return fmt.Sprintf("%d:%d", n.ValueNode.Line, n.ValueNode.Column)
+}
+
 func (n ValueReference[T]) IsEmpty() bool {
 	return n.ValueNode == nil
 }
 
+func (n ValueReference[T]) GenerateMapKey() string {
+	return fmt.Sprintf("%d:%d", n.ValueNode.Line, n.ValueNode.Column)
+}
+
 func (n KeyReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil
+}
+
+func (n KeyReference[T]) GenerateMapKey() string {
+	return fmt.Sprintf("%d:%d", n.KeyNode.Line, n.KeyNode.Column)
 }

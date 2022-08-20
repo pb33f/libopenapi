@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Encoding struct {
 	ContentType   string
@@ -21,10 +24,18 @@ func NewEncoding(encoding *low.Encoding) *Encoding {
 	e.Style = encoding.Style.Value
 	e.Explode = encoding.Explode.Value
 	e.AllowReserved = encoding.AllowReserved.Value
-	//e.Headers
+	e.Headers = ExtractHeaders(encoding.Headers.Value)
 	return e
 }
 
 func (e *Encoding) GoLow() *low.Encoding {
 	return e.low
+}
+
+func ExtractEncoding(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Encoding]) map[string]*Encoding {
+	extracted := make(map[string]*Encoding)
+	for k, v := range elements {
+		extracted[k.Value] = NewEncoding(v.Value)
+	}
+	return extracted
 }
