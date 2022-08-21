@@ -10,6 +10,17 @@ import (
 	"sync"
 )
 
+const (
+	responses = iota
+	parameters
+	examples
+	requestBodies
+	headers
+	securitySchemes
+	links
+	callbacks
+)
+
 var seenSchemas map[string]*Schema
 
 func init() {
@@ -49,48 +60,123 @@ func NewComponents(comp *low.Components) *Components {
 	c := new(Components)
 	c.low = comp
 	c.Extensions = high.ExtractExtensions(comp.Extensions)
-	callbacks := make(map[string]*Callback)
-	links := make(map[string]*Link)
+	cbMap := make(map[string]*Callback)
+	linkMap := make(map[string]*Link)
+	responseMap := make(map[string]*Response)
+	parameterMap := make(map[string]*Parameter)
+	exampleMap := make(map[string]*Example)
+	requestBodyMap := make(map[string]*RequestBody)
+	headerMap := make(map[string]*Header)
+	securitySchemeMap := make(map[string]*SecurityScheme)
 	schemas := make(map[string]*Schema)
+	schemaChan := make(chan componentResult[*Schema])
+	cbChan := make(chan componentResult[*Callback])
+	linkChan := make(chan componentResult[*Link])
+	responseChan := make(chan componentResult[*Response])
+	paramChan := make(chan componentResult[*Parameter])
+	exampleChan := make(chan componentResult[*Example])
+	requestBodyChan := make(chan componentResult[*RequestBody])
+	headerChan := make(chan componentResult[*Header])
+	securitySchemeChan := make(chan componentResult[*SecurityScheme])
 
+	// build all components asynchronously.
 	for k, v := range comp.Callbacks.Value {
-		callbacks[k.Value] = NewCallback(v.Value)
+		go buildComponent[*Callback, *low.Callback](callbacks, k.Value, v.Value, cbChan, NewCallback)
 	}
-	c.Callbacks = callbacks
 	for k, v := range comp.Links.Value {
-		links[k.Value] = NewLink(v.Value)
+		go buildComponent[*Link, *low.Link](links, k.Value, v.Value, linkChan, NewLink)
 	}
-	c.Links = links
-
-	sLock := sync.RWMutex{}
-	buildOutSchema := func(k lowmodel.KeyReference[string],
-		schema lowmodel.ValueReference[*low.Schema], doneChan chan bool, schemas map[string]*Schema) {
-		var sch *Schema
-		if ss := getSeenSchema(schema.GenerateMapKey()); ss != nil {
-			sch = ss
-		} else {
-			sch = NewSchema(schema.Value)
-		}
-		defer sLock.Unlock()
-		sLock.Lock()
-		schemas[k.Value] = sch
-		addSeenSchema(schema.GenerateMapKey(), sch)
-		doneChan <- true
+	for k, v := range comp.Responses.Value {
+		go buildComponent[*Response, *low.Response](responses, k.Value, v.Value, responseChan, NewResponse)
+	}
+	for k, v := range comp.Parameters.Value {
+		go buildComponent[*Parameter, *low.Parameter](parameters, k.Value, v.Value, paramChan, NewParameter)
+	}
+	for k, v := range comp.Examples.Value {
+		go buildComponent[*Example, *low.Example](parameters, k.Value, v.Value, exampleChan, NewExample)
+	}
+	for k, v := range comp.RequestBodies.Value {
+		go buildComponent[*RequestBody, *low.RequestBody](requestBodies, k.Value, v.Value,
+			requestBodyChan, NewRequestBody)
+	}
+	for k, v := range comp.Headers.Value {
+		go buildComponent[*Header, *low.Header](headers, k.Value, v.Value, headerChan, NewHeader)
+	}
+	for k, v := range comp.SecuritySchemes.Value {
+		go buildComponent[*SecurityScheme, *low.SecurityScheme](securitySchemes, k.Value, v.Value,
+			securitySchemeChan, NewSecurityScheme)
 	}
 
-	doneChan := make(chan bool)
 	for k, v := range comp.Schemas.Value {
-		go buildOutSchema(k, v, doneChan, schemas)
+		go buildSchema(k, v.Value, schemaChan)
 	}
-	k := 0
-	for k < len(comp.Schemas.Value) {
+
+	totalComponents := len(comp.Callbacks.Value) + len(comp.Links.Value) + len(comp.Responses.Value) +
+		len(comp.Parameters.Value) + len(comp.Examples.Value) + len(comp.RequestBodies.Value) +
+		len(comp.Headers.Value) + len(comp.SecuritySchemes.Value) + len(comp.Schemas.Value)
+
+	processedComponents := 0
+	for processedComponents < totalComponents {
 		select {
-		case <-doneChan:
-			k++
+		case sRes := <-schemaChan:
+			processedComponents++
+			schemas[sRes.key] = sRes.res
+		case cbRes := <-cbChan:
+			processedComponents++
+			cbMap[cbRes.key] = cbRes.res
+		case lRes := <-linkChan:
+			processedComponents++
+			linkMap[lRes.key] = lRes.res
+		case respRes := <-responseChan:
+			processedComponents++
+			responseMap[respRes.key] = respRes.res
+		case pRes := <-paramChan:
+			processedComponents++
+			parameterMap[pRes.key] = pRes.res
+		case eRes := <-exampleChan:
+			processedComponents++
+			exampleMap[eRes.key] = eRes.res
+		case rbRes := <-requestBodyChan:
+			processedComponents++
+			requestBodyMap[rbRes.key] = rbRes.res
+		case hRes := <-headerChan:
+			processedComponents++
+			headerMap[hRes.key] = hRes.res
+		case ssRes := <-securitySchemeChan:
+			processedComponents++
+			securitySchemeMap[ssRes.key] = ssRes.res
 		}
 	}
 	c.Schemas = schemas
+	c.Callbacks = cbMap
+	c.Links = linkMap
+	c.Parameters = parameterMap
+	c.Headers = headerMap
+	c.Responses = responseMap
+	c.RequestBodies = requestBodyMap
+	c.Examples = exampleMap
+	c.SecuritySchemes = securitySchemeMap
 	return c
+}
+
+type componentResult[T any] struct {
+	res  T
+	key  string
+	comp int
+}
+
+func buildComponent[N any, O any](comp int, key string, orig O, c chan componentResult[N], f func(O) N) {
+	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
+}
+
+func buildSchema(key lowmodel.KeyReference[string], orig *low.Schema, c chan componentResult[*Schema]) {
+	var sch *Schema
+	if ss := getSeenSchema(key.GenerateMapKey()); ss != nil {
+		sch = ss
+	} else {
+		sch = NewSchema(orig)
+	}
+	c <- componentResult[*Schema]{res: sch, key: key.Value}
 }
 
 func (c *Components) GoLow() *low.Components {

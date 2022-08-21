@@ -140,13 +140,14 @@ func NewSchema(schema *low.Schema) *Schema {
 	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*low.Schema], c chan bool,
 		props map[string]*Schema) {
 		if ss := getSeenSchema(v.GenerateMapKey()); ss != nil {
+			defer plock.Unlock()
 			plock.Lock()
 			props[k.Value] = ss
-			plock.Unlock()
+
 		} else {
+			defer plock.Unlock()
 			plock.Lock()
 			props[k.Value] = NewSchema(v.Value)
-			plock.Unlock()
 			addSeenSchema(k.GenerateMapKey(), props[k.Value])
 		}
 		s.Properties = props

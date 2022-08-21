@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type RequestBody struct {
 	Description string
@@ -11,6 +14,16 @@ type RequestBody struct {
 	Required    bool
 	Extensions  map[string]any
 	low         *low.RequestBody
+}
+
+func NewRequestBody(rb *low.RequestBody) *RequestBody {
+	r := new(RequestBody)
+	r.low = rb
+	r.Description = rb.Description.Value
+	r.Required = rb.Required.Value
+	r.Extensions = high.ExtractExtensions(rb.Extensions)
+	r.Content = ExtractContent(rb.Content.Value)
+	return r
 }
 
 func (r *RequestBody) GoLow() *low.RequestBody {
