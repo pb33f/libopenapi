@@ -127,7 +127,7 @@ func TestNewDocument_Components(t *testing.T) {
 	assert.Equal(t, "locateBurger", h.Components.Links["LocateBurger"].OperationId)
 	assert.Equal(t, "$response.body#/id", h.Components.Links["LocateBurger"].Parameters["burgerId"])
 	assert.Len(t, h.Components.Callbacks, 1)
-	//assert.Equal(t, "Callback payload",
-	//	h.Components.Callbacks["BurgerCallback"].Expression["{$request.query.queryUrl}"].Post.RequestBody.Description)
+	assert.Equal(t, "Callback payload",
+		h.Components.Callbacks["BurgerCallback"].Expression["{$request.query.queryUrl}"].Post.RequestBody.Description)
 
 }
