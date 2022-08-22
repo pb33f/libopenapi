@@ -33,7 +33,7 @@ type Schema struct {
 	OneOf                []*Schema
 	AnyOf                []*Schema
 	Not                  []*Schema
-	Items                []*Schema
+	Items                *Schema
 	Properties           map[string]*Schema
 	AdditionalProperties any
 	Description          string
@@ -94,7 +94,7 @@ func NewSchema(schema *low.Schema) *Schema {
 
 	var enum []string
 	for i := range schema.Enum.Value {
-		enum = append(req, schema.Enum.Value[i].Value)
+		enum = append(enum, schema.Enum.Value[i].Value)
 	}
 	s.Enum = enum
 
@@ -111,7 +111,7 @@ func NewSchema(schema *low.Schema) *Schema {
 		bChan := make(chan *Schema)
 
 		// for every item, build schema async
-		buildSchema := func(sch lowmodel.NodeReference[*low.Schema], bChan chan *Schema) {
+		buildSchemaChild := func(sch lowmodel.NodeReference[*low.Schema], bChan chan *Schema) {
 			if ss := getSeenSchema(sch.GenerateMapKey()); ss != nil {
 				bChan <- ss
 				return
@@ -122,7 +122,7 @@ func NewSchema(schema *low.Schema) *Schema {
 		}
 		totalSchemas := len(schemas)
 		for v := range schemas {
-			go buildSchema(schemas[v], bChan)
+			go buildSchemaChild(schemas[v], bChan)
 		}
 		j := 0
 		for j < totalSchemas {
@@ -178,15 +178,23 @@ func NewSchema(schema *low.Schema) *Schema {
 		go buildOutSchema(schema.Not.Value, &not, polyCompletedChan)
 	}
 	if !schema.Items.IsEmpty() {
-		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan)
+		// items is only a single prop, however the method uses an array, so pack it up in one.
+		var itms []lowmodel.NodeReference[*low.Schema]
+		itms = append(itms, lowmodel.NodeReference[*low.Schema]{
+			Value:     schema.Items.Value,
+			KeyNode:   schema.Items.KeyNode,
+			ValueNode: schema.Items.ValueNode,
+		})
+		go buildOutSchema(itms, &items, polyCompletedChan)
 	}
 
 	completePoly := 0
 	completedProps := 0
 	totalProps := len(schema.Properties.Value)
-	totalPoly := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Not.Value) +
-		len(schema.Items.Value)
-
+	totalPoly := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Not.Value)
+	if !schema.Items.IsEmpty() {
+		totalPoly++ // only a single item can be present.
+	}
 	if totalProps+totalPoly > 0 {
 	allDone:
 		for true {
@@ -208,7 +216,10 @@ func NewSchema(schema *low.Schema) *Schema {
 	s.AnyOf = anyOf
 	s.AllOf = allOf
 	s.Not = not
-	s.Items = items
+	if len(items) > 0 {
+		s.Items = items[0] // there will only ever be one.
+	}
+
 	return s
 }
 

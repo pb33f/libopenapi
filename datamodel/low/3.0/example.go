@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strconv"
 )
 
 const (
@@ -66,4 +67,20 @@ func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		return nil
 	}
 	return nil
+}
+
+func ExtractExampleValue(exp *yaml.Node) any {
+	if utils.IsNodeBoolValue(exp) {
+		v, _ := strconv.ParseBool(exp.Value)
+		return v
+	}
+	if utils.IsNodeIntValue(exp) {
+		v, _ := strconv.ParseInt(exp.Value, 10, 64)
+		return v
+	}
+	if utils.IsNodeFloatValue(exp) {
+		v, _ := strconv.ParseFloat(exp.Value, 64)
+		return v
+	}
+	return exp.Value
 }
