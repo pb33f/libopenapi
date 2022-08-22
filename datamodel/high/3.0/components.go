@@ -24,6 +24,10 @@ const (
 var seenSchemas map[string]*Schema
 
 func init() {
+	clearSchemas()
+}
+
+func clearSchemas() {
 	seenSchemas = make(map[string]*Schema)
 }
 
@@ -108,7 +112,7 @@ func NewComponents(comp *low.Components) *Components {
 	}
 
 	for k, v := range comp.Schemas.Value {
-		go buildSchema(k, v.Value, schemaChan)
+		go buildSchema(k, v, schemaChan)
 	}
 
 	totalComponents := len(comp.Callbacks.Value) + len(comp.Links.Value) + len(comp.Responses.Value) +
@@ -169,12 +173,13 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
 }
 
-func buildSchema(key lowmodel.KeyReference[string], orig *low.Schema, c chan componentResult[*Schema]) {
+func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*low.Schema], c chan componentResult[*Schema]) {
 	var sch *Schema
-	if ss := getSeenSchema(key.GenerateMapKey()); ss != nil {
+	if ss := getSeenSchema(orig.GenerateMapKey()); ss != nil {
 		sch = ss
 	} else {
-		sch = NewSchema(orig)
+		sch = NewSchema(orig.Value)
+		addSeenSchema(orig.GenerateMapKey(), sch)
 	}
 	c <- componentResult[*Schema]{res: sch, key: key.Value}
 }

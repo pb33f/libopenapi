@@ -9,12 +9,38 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sync"
 )
 
 const (
 	ComponentsLabel = "components"
 	SchemasLabel    = "schemas"
 )
+
+var seenSchemas map[string]*Schema
+
+func init() {
+	clearSchemas()
+}
+
+func clearSchemas() {
+	seenSchemas = make(map[string]*Schema)
+}
+
+var seenSchemaLock sync.RWMutex
+
+func addSeenSchema(key string, schema *Schema) {
+	defer seenSchemaLock.Unlock()
+	seenSchemaLock.Lock()
+	if seenSchemas[key] == nil {
+		seenSchemas[key] = schema
+	}
+}
+func getSeenSchema(key string) *Schema {
+	defer seenSchemaLock.Unlock()
+	seenSchemaLock.Lock()
+	return seenSchemas[key]
+}
 
 type Components struct {
 	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]
@@ -94,72 +120,54 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	n := 0
 	total := 9
 
-	var stateCheck = func() bool {
-		n++
-		if n == total {
-			return true
-		}
-		return false
-	}
-
-allDone:
-	for {
+	for n < total {
 		select {
 		case buildError := <-errorChan:
 			return buildError
 		case <-skipChan:
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case params := <-paramChan:
 			co.Parameters = params
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case schemas := <-schemaChan:
 			co.Schemas = schemas
-			if stateCheck() {
-				break allDone
-			}
+			cacheSchemas(co.Schemas.Value)
+			n++
 		case responses := <-responsesChan:
 			co.Responses = responses
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case examples := <-examplesChan:
 			co.Examples = examples
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case reqBody := <-requestBodiesChan:
 			co.RequestBodies = reqBody
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case headers := <-headersChan:
 			co.Headers = headers
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case sScheme := <-securitySchemesChan:
 			co.SecuritySchemes = sScheme
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case links := <-linkChan:
 			co.Links = links
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		case callbacks := <-callbackChan:
 			co.Callbacks = callbacks
-			if stateCheck() {
-				break allDone
-			}
+			n++
 		}
 	}
-
 	return nil
+}
+
+func cacheSchemas(sch map[low.KeyReference[string]]low.ValueReference[*Schema]) {
+	for _, v := range sch {
+		addSeenSchema(v.GenerateMapKey(), v.Value)
+	}
+}
+
+type componentBuildResult[T any] struct {
+	k low.KeyReference[string]
+	v low.ValueReference[T]
 }
 
 func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node,
@@ -175,25 +183,47 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 		errorChan <- fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
 		return
 	}
+
+	// for every component, build in a new thread!
+	bChan := make(chan componentBuildResult[T])
+	var buildComponent = func(label *yaml.Node, value *yaml.Node, c chan componentBuildResult[T], ec chan<- error) {
+		var n T = new(N)
+		_ = low.BuildModel(value, n)
+		err := n.Build(value, idx)
+		if err != nil {
+			ec <- err
+			return
+		}
+		c <- componentBuildResult[T]{
+			k: low.KeyReference[string]{
+				KeyNode: label,
+				Value:   label.Value,
+			},
+			v: low.ValueReference[T]{
+				Value:     n,
+				ValueNode: value,
+			},
+		}
+	}
+
 	for i, v := range nodeValue.Content {
 		if i%2 == 0 {
 			currentLabel = v
 			continue
 		}
-		var n T = new(N)
-		_ = low.BuildModel(v, n)
-		err := n.Build(v, idx)
-		if err != nil {
-			errorChan <- err
-		}
-		componentValues[low.KeyReference[string]{
-			KeyNode: currentLabel,
-			Value:   currentLabel.Value,
-		}] = low.ValueReference[T]{
-			Value:     n,
-			ValueNode: v,
+		go buildComponent(currentLabel, v, bChan, errorChan)
+	}
+
+	totalComponents := len(nodeValue.Content) / 2
+	completedComponents := 0
+	for completedComponents < totalComponents {
+		select {
+		case r := <-bChan:
+			componentValues[r.k] = r.v
+			completedComponents++
 		}
 	}
+
 	results := low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]]{
 		KeyNode:   nodeLabel,
 		ValueNode: nodeValue,

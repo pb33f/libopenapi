@@ -9,7 +9,10 @@ import (
 
 var doc *Document
 
-func init() {
+func initTest() {
+	if doc != nil {
+		return
+	}
 	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
@@ -27,10 +30,36 @@ func BenchmarkCreateDocument(b *testing.B) {
 	}
 }
 
-func BenchmarkCreateDocument_Stripe(b *testing.B) {
-	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+func BenchmarkCreateDocument_Circular(b *testing.B) {
+	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
+		_, err := CreateDocument(info)
+		if err != nil {
+			panic("this should not error")
+		}
+	}
+}
+
+func BenchmarkCreateDocument_k8s(b *testing.B) {
+
+	data, _ := ioutil.ReadFile("../../../test_specs/k8s.json")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	for i := 0; i < b.N; i++ {
+
+		_, err := CreateDocument(info)
+		if err != nil {
+			panic("this should not error")
+		}
+	}
+}
+
+func BenchmarkCreateDocument_Stripe(b *testing.B) {
+
+	for i := 0; i < b.N; i++ {
+		data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+		info, _ := datamodel.ExtractSpecInfo(data)
 		_, err := CreateDocument(info)
 		if err != nil {
 			panic("this should not error")
@@ -50,12 +79,14 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 }
 
 func TestCreateDocument(t *testing.T) {
+	initTest()
 	assert.Equal(t, "3.0.1", doc.Version.Value)
 	assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)
 	assert.NotEmpty(t, doc.Info.Value.Title.Value)
 }
 
 func TestCreateDocument_Info(t *testing.T) {
+	initTest()
 	assert.Equal(t, "https://pb33f.io", doc.Info.Value.TermsOfService.Value)
 	assert.Equal(t, "pb33f", doc.Info.Value.Contact.Value.Name.Value)
 	assert.Equal(t, "buckaroo@pb33f.io", doc.Info.Value.Contact.Value.Email.Value)
@@ -65,6 +96,7 @@ func TestCreateDocument_Info(t *testing.T) {
 }
 
 func TestCreateDocument_Servers(t *testing.T) {
+	initTest()
 	assert.Len(t, doc.Servers.Value, 2)
 	server1 := doc.Servers.Value[0].Value
 	server2 := doc.Servers.Value[1].Value
@@ -89,6 +121,7 @@ func TestCreateDocument_Servers(t *testing.T) {
 }
 
 func TestCreateDocument_Tags(t *testing.T) {
+	initTest()
 	assert.Len(t, doc.Tags.Value, 2)
 
 	// tag1
@@ -134,6 +167,7 @@ func TestCreateDocument_Tags(t *testing.T) {
 }
 
 func TestCreateDocument_Paths(t *testing.T) {
+	initTest()
 	assert.Len(t, doc.Paths.Value.PathItems, 5)
 	burgerId := doc.Paths.Value.FindPath("/burgers/{burgerId}")
 	assert.NotNil(t, burgerId)
@@ -262,6 +296,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Schemas(t *testing.T) {
+	initTest()
 
 	components := doc.Components.Value
 	assert.NotNil(t, components)
@@ -286,6 +321,7 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 }
 
 func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	securitySchemes := components.SecuritySchemes.Value
 	assert.Len(t, securitySchemes, 3)
@@ -314,6 +350,7 @@ func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Responses(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	responses := components.Responses.Value
 	assert.Len(t, responses, 1)
@@ -326,6 +363,7 @@ func TestCreateDocument_Components_Responses(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Examples(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	examples := components.Examples.Value
 	assert.Len(t, examples, 1)
@@ -337,6 +375,7 @@ func TestCreateDocument_Components_Examples(t *testing.T) {
 }
 
 func TestCreateDocument_Components_RequestBodies(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	requestBodies := components.RequestBodies.Value
 	assert.Len(t, requestBodies, 1)
@@ -348,6 +387,7 @@ func TestCreateDocument_Components_RequestBodies(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Headers(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	headers := components.Headers.Value
 	assert.Len(t, headers, 1)
@@ -359,6 +399,7 @@ func TestCreateDocument_Components_Headers(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Links(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	links := components.Links.Value
 	assert.Len(t, links, 2)
@@ -373,6 +414,7 @@ func TestCreateDocument_Components_Links(t *testing.T) {
 }
 
 func TestCreateDocument_Doc_Security(t *testing.T) {
+	initTest()
 	security := doc.Security.Value
 	assert.NotNil(t, security)
 	assert.Len(t, security.ValueRequirements, 1)
@@ -382,6 +424,7 @@ func TestCreateDocument_Doc_Security(t *testing.T) {
 }
 
 func TestCreateDocument_Callbacks(t *testing.T) {
+	initTest()
 	callbacks := doc.Components.Value.Callbacks.Value
 	assert.Len(t, callbacks, 1)
 
@@ -396,6 +439,7 @@ func TestCreateDocument_Callbacks(t *testing.T) {
 }
 
 func TestCreateDocument_Component_Discriminator(t *testing.T) {
+	initTest()
 
 	components := doc.Components.Value
 	dsc := components.FindSchema("Drink").Value.Discriminator.Value
@@ -406,6 +450,7 @@ func TestCreateDocument_Component_Discriminator(t *testing.T) {
 }
 
 func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	d := components.FindSchema("Dressing")
 	assert.NotNil(t, d.Value.AdditionalProperties.Value)
@@ -417,6 +462,7 @@ func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
 }
 
 func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
+	initTest()
 	components := doc.Components.Value
 	d := components.FindSchema("Drink")
 	assert.NotNil(t, d.Value.AdditionalProperties.Value)

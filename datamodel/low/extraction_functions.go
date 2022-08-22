@@ -285,6 +285,11 @@ func ExtractMapFlatNoLookup[PT Buildable[N], N any](root *yaml.Node, idx *index.
 	return valueMap, nil
 }
 
+type mappingResult[T any] struct {
+	k KeyReference[string]
+	v ValueReference[T]
+}
+
 func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
 	var labelNode, valueNode *yaml.Node
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
@@ -314,12 +319,36 @@ func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *
 	if valueNode != nil {
 		var currentLabelNode *yaml.Node
 		valueMap := make(map[KeyReference[string]]ValueReference[PT])
+
+		bChan := make(chan mappingResult[PT])
+		eChan := make(chan error)
+
+		var buildMap = func(label *yaml.Node, value *yaml.Node, c chan mappingResult[PT], ec chan<- error) {
+			var n PT = new(N)
+			_ = BuildModel(value, n)
+			err := n.Build(value, idx)
+			if err != nil {
+				ec <- err
+				return
+			}
+			c <- mappingResult[PT]{
+				k: KeyReference[string]{
+					KeyNode: label,
+					Value:   label.Value,
+				},
+				v: ValueReference[PT]{
+					Value:     n,
+					ValueNode: value,
+				},
+			}
+		}
+
+		totalKeys := 0
 		for i, en := range valueNode.Content {
 			if i%2 == 0 {
 				currentLabelNode = en
 				continue
 			}
-
 			// check our valueNode isn't a reference still.
 			if h, _, _ := utils.IsNodeRefValue(en); h {
 				ref := LocateRefNode(en, idx)
@@ -334,21 +363,18 @@ func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *
 			if strings.HasPrefix(strings.ToLower(currentLabelNode.Value), "x-") {
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
-			var n PT = new(N)
-			err := BuildModel(en, n)
-			if err != nil {
-				return nil, labelNode, valueNode, err
-			}
-			berr := n.Build(en, idx)
-			if berr != nil {
-				return nil, labelNode, valueNode, berr
-			}
-			valueMap[KeyReference[string]{
-				Value:   currentLabelNode.Value,
-				KeyNode: currentLabelNode,
-			}] = ValueReference[PT]{
-				Value:     n,
-				ValueNode: en,
+			totalKeys++
+			go buildMap(currentLabelNode, en, bChan, eChan)
+		}
+
+		completedKeys := 0
+		for completedKeys < totalKeys {
+			select {
+			case err := <-eChan:
+				return valueMap, labelNode, valueNode, err
+			case res := <-bChan:
+				completedKeys++
+				valueMap[res.k] = res.v
 			}
 		}
 		return valueMap, labelNode, valueNode, nil

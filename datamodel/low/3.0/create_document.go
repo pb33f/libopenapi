@@ -4,17 +4,24 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"sync"
 )
 
 func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
+	// clean state
+	clearSchemas()
 	doc := Document{Version: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 
 	// build an index
 	idx := index.NewSpecIndex(info.RootNode)
 	doc.Index = idx
+
+	// create resolver and check for circular references.
+	resolve := resolver.NewResolver(idx)
+	_ = resolve.CheckForCircularReferences()
 
 	var wg sync.WaitGroup
 	var errors []error
@@ -32,24 +39,23 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
 		wg.Done()
 	}
-
 	extractionFuncs := []func(i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error{
 		extractInfo,
 		extractServers,
 		extractTags,
-		extractPaths,
 		extractComponents,
 		extractSecurity,
 		extractExternalDocs,
+		extractPaths,
 	}
+
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
 		go runExtraction(info, &doc, idx, f, &errors, &wg)
 	}
+
 	wg.Wait()
-
 	return &doc, errors
-
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
