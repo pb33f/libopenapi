@@ -36,15 +36,6 @@ type Reference struct {
 	Path           string // this won't always be available.
 }
 
-// CircularReferenceResult contains a circular reference found when traversing the graph.
-type CircularReferenceResult struct {
-	Journey       []*Reference
-	JourneyString string
-	Start         *Reference
-	LoopIndex     int
-	LoopPoint     *Reference
-}
-
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
 type ReferenceMapped struct {
 	Reference  *Reference
@@ -146,6 +137,7 @@ type SpecIndex struct {
 	summaryCount                        int
 	seenRemoteSources                   map[string]*yaml.Node
 	remoteLock                          sync.Mutex
+	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
 }
 
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the
@@ -282,6 +274,17 @@ func (index *SpecIndex) GetRootNode() *yaml.Node {
 // GetGlobalTagsNode returns document root node.
 func (index *SpecIndex) GetGlobalTagsNode() *yaml.Node {
 	return index.tagsNode
+}
+
+// SetCircularReferences is a convenience method for the resolver to pass in circular references
+// if the resolver is used.
+func (index *SpecIndex) SetCircularReferences(refs []*CircularReferenceResult) {
+	index.circularReferences = refs
+}
+
+// GetCircularReferences will return any circular reference results that were found by the resolver.
+func (index *SpecIndex) GetCircularReferences() []*CircularReferenceResult {
+	return index.circularReferences
 }
 
 // GetPathsNode returns document root node.
