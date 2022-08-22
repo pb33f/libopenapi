@@ -8,27 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"strings"
 )
-
-// CircularReferenceResult contains a circular reference found when traversing the graph.
-type CircularReferenceResult struct {
-	Journey   []*index.Reference
-	Start     *index.Reference
-	LoopIndex int
-	LoopPoint *index.Reference
-}
-
-func (c *CircularReferenceResult) GenerateJourneyPath() string {
-	buf := strings.Builder{}
-	for i, ref := range c.Journey {
-		buf.WriteString(ref.Name)
-		if i+1 < len(c.Journey) {
-			buf.WriteString(" -> ")
-		}
-	}
-	return buf.String()
-}
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
 type ResolvingError struct {
@@ -43,7 +23,7 @@ type Resolver struct {
 	specIndex          *index.SpecIndex
 	resolvedRoot       *yaml.Node
 	resolvingErrors    []*ResolvingError
-	circularReferences []*CircularReferenceResult
+	circularReferences []*index.CircularReferenceResult
 }
 
 // NewResolver will create a new resolver from a *index.SpecIndex
@@ -63,7 +43,7 @@ func (resolver *Resolver) GetResolvingErrors() []*ResolvingError {
 }
 
 // GetCircularErrors returns all errors found during resolving
-func (resolver *Resolver) GetCircularErrors() []*CircularReferenceResult {
+func (resolver *Resolver) GetCircularErrors() []*index.CircularReferenceResult {
 	return resolver.circularReferences
 }
 
@@ -77,7 +57,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
 		var journey []*index.Reference
-		ref.Reference.Node.Content = resolver.VisitReference(ref.Reference, seenReferences, journey)
+		ref.Reference.Node.Content = resolver.VisitReference(ref.Reference, seenReferences, journey, true)
 	}
 
 	schemas := resolver.specIndex.GetAllSchemas()
@@ -86,7 +66,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
 			var journey []*index.Reference
-			schemaRef.Node.Content = resolver.VisitReference(schemaRef, seenReferences, journey)
+			schemaRef.Node.Content = resolver.VisitReference(schemaRef, seenReferences, journey, true)
 		}
 	}
 
@@ -111,15 +91,45 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	return resolver.resolvingErrors
 }
 
+// CheckForCircularReferences Check for circular references, without resolving.
+func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
+
+	mapped := resolver.specIndex.GetMappedReferencesSequenced()
+	mappedIndex := resolver.specIndex.GetMappedReferences()
+	for _, ref := range mapped {
+		seenReferences := make(map[string]bool)
+		var journey []*index.Reference
+		resolver.VisitReference(ref.Reference, seenReferences, journey, false)
+	}
+	schemas := resolver.specIndex.GetAllSchemas()
+	for s, schemaRef := range schemas {
+		if mappedIndex[s] == nil {
+			seenReferences := make(map[string]bool)
+			var journey []*index.Reference
+			resolver.VisitReference(schemaRef, seenReferences, journey, false)
+		}
+	}
+	for _, circRef := range resolver.circularReferences {
+		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
+			Error: fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
+			Node:  circRef.LoopPoint.Node,
+			Path:  circRef.GenerateJourneyPath(),
+		})
+	}
+	// update our index with any circular refs we found.
+	resolver.specIndex.SetCircularReferences(resolver.circularReferences)
+	return resolver.resolvingErrors
+}
+
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
-func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]bool, journey []*index.Reference) []*yaml.Node {
+func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]bool, journey []*index.Reference, resolve bool) []*yaml.Node {
 
 	if ref.Resolved || ref.Seen {
 		return ref.Node.Content
 	}
 
 	journey = append(journey, ref)
-	relatives := resolver.extractRelatives(ref.Node, seen, journey)
+	relatives := resolver.extractRelatives(ref.Node, seen, journey, resolve)
 
 	seen = make(map[string]bool)
 
@@ -133,11 +143,11 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 
 				foundDup := resolver.specIndex.GetMappedReferences()[r.Definition]
 
-				var circRef *CircularReferenceResult
+				var circRef *index.CircularReferenceResult
 				if !foundDup.Circular {
 
 					loop := append(journey, foundDup)
-					circRef = &CircularReferenceResult{
+					circRef = &index.CircularReferenceResult{
 						Journey:   loop,
 						Start:     foundDup,
 						LoopIndex: i,
@@ -155,8 +165,10 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 		}
 		if !skip {
 			original := resolver.specIndex.GetMappedReferences()[r.Definition]
-			resolved := resolver.VisitReference(original, seen, journey)
-			r.Node.Content = resolved // this is where we perform the actual resolving.
+			resolved := resolver.VisitReference(original, seen, journey, resolve)
+			if resolve {
+				r.Node.Content = resolved // this is where we perform the actual resolving.
+			}
 			r.Seen = true
 			ref.Seen = true
 		}
@@ -169,13 +181,13 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 
 func (resolver *Resolver) extractRelatives(node *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*index.Reference) []*index.Reference {
+	journey []*index.Reference, resolve bool) []*index.Reference {
 
 	var found []*index.Reference
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
-				found = append(found, resolver.extractRelatives(n, foundRelatives, journey)...)
+				found = append(found, resolver.extractRelatives(n, foundRelatives, journey, resolve)...)
 			}
 
 			if i%2 == 0 && n.Value == "$ref" {
@@ -216,12 +228,34 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 					n.Value == "oneOf" ||
 					n.Value == "anyOf" {
 
-					// TODO: track this.
-
+					// if this is a polymorphic link, we want to follow it and see if it becomes circular
+					if utils.IsNodeMap(node.Content[i+1]) { // check for nested items
+						// check if items is present, to indicate an array
+						if _, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
+							if utils.IsNodeMap(v) {
+								items := resolver.extractRelatives(v, foundRelatives, journey, resolve)
+								for j := range items {
+									resolver.VisitReference(items[j], foundRelatives, journey, resolve)
+								}
+							}
+						}
+					}
+					// for array based polymorphic items
+					if utils.IsNodeArray(node.Content[i+1]) { // check for nested items
+						// check if items is present, to indicate an array
+						for q := range node.Content[i+1].Content {
+							v := node.Content[i+1].Content[q]
+							if utils.IsNodeMap(v) {
+								items := resolver.extractRelatives(v, foundRelatives, journey, resolve)
+								for j := range items {
+									resolver.VisitReference(items[j], foundRelatives, journey, resolve)
+								}
+							}
+						}
+					}
 					break
 				}
 			}
-
 		}
 	}
 
