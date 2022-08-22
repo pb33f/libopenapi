@@ -121,13 +121,50 @@ func TestNewDocument_Tags(t *testing.T) {
 	assert.Equal(t, 20, wentLower.Description.ValueNode.Column)
 }
 
-func TestNewDocument_Components(t *testing.T) {
+func TestNewDocument_Components_Links(t *testing.T) {
 	h := NewDocument(doc)
 	assert.Len(t, h.Components.Links, 2)
 	assert.Equal(t, "locateBurger", h.Components.Links["LocateBurger"].OperationId)
 	assert.Equal(t, "$response.body#/id", h.Components.Links["LocateBurger"].Parameters["burgerId"])
+}
+
+func TestNewDocument_Components_Callbacks(t *testing.T) {
+	h := NewDocument(doc)
 	assert.Len(t, h.Components.Callbacks, 1)
 	assert.Equal(t, "Callback payload",
 		h.Components.Callbacks["BurgerCallback"].Expression["{$request.query.queryUrl}"].Post.RequestBody.Description)
 
+}
+
+func TestNewDocument_Components_Schemas(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.Schemas, 6)
+
+	a := h.Components.Schemas["Error"]
+	assert.Equal(t, "No such burger as 'Big-Whopper'", a.Properties["message"].Example)
+
+	b := h.Components.Schemas["Burger"]
+	assert.Len(t, b.Required, 2)
+	assert.Equal(t, "golden slices of happy fun joy", b.Properties["fries"].Description)
+	assert.Equal(t, int64(2), b.Properties["numPatties"].Example)
+
+	f := h.Components.Schemas["Fries"]
+	assert.Equal(t, "salt", f.Properties["seasoning"].Items.Example)
+	assert.Len(t, f.Properties["favoriteDrink"].Properties["drinkType"].Enum, 2)
+
+	d := h.Components.Schemas["Drink"]
+	assert.Len(t, d.Required, 2)
+	assert.True(t, d.AdditionalProperties.(bool))
+	assert.Equal(t, "drinkType", d.Discriminator.PropertyName)
+	assert.Equal(t, "some value", d.Discriminator.Mapping["drink"])
+
+	ext := h.Components.Extensions
+	assert.Equal(t, "loud", ext["x-screaming-baby"])
+
+}
+
+func TestNewDocument_Components_Headers(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.Headers, 1)
+	assert.Equal(t, "this is a header", h.Components.Headers["UseOil"].Description)
 }

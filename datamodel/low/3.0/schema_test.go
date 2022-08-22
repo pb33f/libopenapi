@@ -197,15 +197,15 @@ additionalProperties: true      `
 	assert.Equal(t, "notBExp", v.Value.Example.Value)
 
 	// check values Items
-	assert.Equal(t, "an items thing", sch.Items.Value[0].Value.Description.Value)
-	assert.Len(t, sch.Items.Value[0].Value.Properties.Value, 2)
+	assert.Equal(t, "an items thing", sch.Items.Value.Description.Value)
+	assert.Len(t, sch.Items.Value.Properties.Value, 2)
 
-	v = sch.Items.Value[0].Value.FindProperty("itemsA")
+	v = sch.Items.Value.FindProperty("itemsA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsA description", v.Value.Description.Value)
 	assert.Equal(t, "itemsAExp", v.Value.Example.Value)
 
-	v = sch.Items.Value[0].Value.FindProperty("itemsB")
+	v = sch.Items.Value.FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Description.Value)
 	assert.Equal(t, "itemsBExp", v.Value.Example.Value)
@@ -456,7 +456,7 @@ items:
 	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.Not.Value[0].Value.Description.Value)
-	assert.Equal(t, desc, sch.Items.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.Items.Value.Description.Value)
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
@@ -546,7 +546,7 @@ items:
 	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.Not.Value[0].Value.Description.Value)
-	assert.Equal(t, desc, sch.Items.Value[0].Value.Description.Value)
+	assert.Equal(t, desc, sch.Items.Value.Description.Value)
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {

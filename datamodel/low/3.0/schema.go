@@ -44,7 +44,7 @@ type Schema struct {
 	OneOf                low.NodeReference[[]low.NodeReference[*Schema]]
 	AnyOf                low.NodeReference[[]low.NodeReference[*Schema]]
 	Not                  low.NodeReference[[]low.NodeReference[*Schema]]
-	Items                low.NodeReference[[]low.NodeReference[*Schema]]
+	Items                low.NodeReference[*Schema]
 	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
@@ -93,7 +93,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
 	if expNode != nil {
-		s.Example = low.NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
+		s.Example = low.NodeReference[any]{Value: ExtractExampleValue(expNode), KeyNode: expLabel, ValueNode: expNode}
 	}
 
 	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
@@ -265,8 +265,9 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 		}
 	}
 	if len(items) > 0 {
-		s.Items = low.NodeReference[[]low.NodeReference[*Schema]]{
-			Value:     items,
+		// items can only be a single def, so only extract a single value
+		s.Items = low.NodeReference[*Schema]{
+			Value:     items[0].Value,
 			KeyNode:   itemsLabel,
 			ValueNode: itemsValue,
 		}

@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"sync"
 )
 
@@ -205,16 +206,20 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			},
 		}
 	}
-
+	totalComponents := 0
 	for i, v := range nodeValue.Content {
+		// always ignore extensions
 		if i%2 == 0 {
 			currentLabel = v
 			continue
 		}
+		if strings.HasPrefix(strings.ToLower(currentLabel.Value), "x-") {
+			continue
+		}
+		totalComponents++
 		go buildComponent(currentLabel, v, bChan, errorChan)
 	}
 
-	totalComponents := len(nodeValue.Content) / 2
 	completedComponents := 0
 	for completedComponents < totalComponents {
 		select {
