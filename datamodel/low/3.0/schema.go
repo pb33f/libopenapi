@@ -69,11 +69,15 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 }
 
 func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) error {
-	level++
+
+	if low.IsCircular(root, idx) {
+		return nil // circular references cannot be built.
+	}
+
 	if level > 30 {
 		return fmt.Errorf("schema is too nested to continue: %d levels deep, is too deep", level) // we're done, son! too fricken deep.
 	}
-
+	level++
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref := low.LocateRefNode(root, idx)
 		if ref != nil {
@@ -135,11 +139,51 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 		s.XML = low.NodeReference[*XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
 	}
 
+	// for property, build in a new thread!
+	bChan := make(chan schemaBuildResult)
+	eChan := make(chan error)
+
+	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaBuildResult, ec chan<- error) {
+		// have we seen this before?
+		seen := getSeenSchema(fmt.Sprintf("%d:%d", value.Line, value.Column))
+		if seen != nil {
+			c <- schemaBuildResult{
+				k: low.KeyReference[string]{
+					KeyNode: label,
+					Value:   label.Value,
+				},
+				v: low.ValueReference[*Schema]{
+					Value:     seen,
+					ValueNode: value,
+				},
+			}
+			return
+		}
+		p := new(Schema)
+		_ = low.BuildModel(value, p)
+		err := p.BuildLevel(value, idx, level)
+		if err != nil {
+			ec <- err
+			return
+		}
+		c <- schemaBuildResult{
+			k: low.KeyReference[string]{
+				KeyNode: label,
+				Value:   label.Value,
+			},
+			v: low.ValueReference[*Schema]{
+				Value:     p,
+				ValueNode: value,
+			},
+		}
+	}
+
 	// handle properties
 	_, propLabel, propsNode := utils.FindKeyNodeFull(PropertiesLabel, root.Content)
 	if propsNode != nil {
 		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*Schema])
 		var currentProp *yaml.Node
+		totalProps := 0
 		for i, prop := range propsNode.Content {
 			if i%2 == 0 {
 				currentProp = prop
@@ -156,19 +200,17 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
 				}
 			}
-
-			var property Schema
-			_ = low.BuildModel(prop, &property)
-			err := property.BuildLevel(prop, idx, level)
-			if err != nil {
+			totalProps++
+			go buildProperty(currentProp, prop, bChan, eChan)
+		}
+		completedProps := 0
+		for completedProps < totalProps {
+			select {
+			case err := <-eChan:
 				return err
-			}
-			propertyMap[low.KeyReference[string]{
-				Value:   currentProp.Value,
-				KeyNode: currentProp,
-			}] = low.ValueReference[*Schema]{
-				Value:     &property,
-				ValueNode: prop,
+			case res := <-bChan:
+				completedProps++
+				propertyMap[res.k] = res.v
 			}
 		}
 		s.Properties = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]{
@@ -233,6 +275,11 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	return nil
 }
 
+type schemaBuildResult struct {
+	k low.KeyReference[string]
+	v low.ValueReference[*Schema]
+}
+
 func (s *Schema) extractExtensions(root *yaml.Node) {
 	s.Extensions = low.ExtractExtensions(root)
 }
@@ -247,9 +294,9 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 	}
 
 	if valueNode != nil {
-		var build = func(kn *yaml.Node, vn *yaml.Node) *low.NodeReference[*Schema] {
-			var schema Schema
 
+		build := func(kn *yaml.Node, vn *yaml.Node) *low.NodeReference[*Schema] {
+			schema := new(Schema)
 			if h, _, _ := utils.IsNodeRefValue(vn); h {
 				ref := low.LocateRefNode(vn, idx)
 				if ref != nil {
@@ -261,14 +308,28 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 				}
 			}
 
-			_ = low.BuildModel(vn, &schema)
+			seen := getSeenSchema(fmt.Sprintf("%d:%d", vn.Line, vn.Column))
+			if seen != nil {
+				return &low.NodeReference[*Schema]{
+					Value:     seen,
+					KeyNode:   kn,
+					ValueNode: vn,
+				}
+			}
+
+			_ = low.BuildModel(vn, schema)
+
+			// add schema before we build, so it doesn't get stuck in an infinite loop.
+			addSeenSchema(fmt.Sprintf("%d:%d", vn.Line, vn.Column), schema)
+
 			err := schema.BuildLevel(vn, idx, level)
 			if err != nil {
 				*errors = append(*errors, err)
 				return nil
 			}
+
 			return &low.NodeReference[*Schema]{
-				Value:     &schema,
+				Value:     schema,
 				KeyNode:   kn,
 				ValueNode: vn,
 			}
@@ -292,8 +353,8 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 			}
 		}
 		if utils.IsNodeArray(valueNode) {
+			//fmt.Println("polymorphic looping sucks dude.")
 			for _, vn := range valueNode.Content {
-
 				if h, _, _ := utils.IsNodeRefValue(vn); h {
 					ref := low.LocateRefNode(vn, idx)
 					if ref != nil {
@@ -312,7 +373,6 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 		}
 
 	}
-	//wg.Done()
 	return labelNode, valueNode
 }
 
@@ -345,12 +405,20 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 	}
 
 	if schNode != nil {
+		// check if schema has already been built.
+		seen := getSeenSchema(fmt.Sprintf("%d:%d", schNode.Line, schNode.Column))
+		if seen != nil {
+			return &low.NodeReference[*Schema]{Value: seen, KeyNode: schLabel, ValueNode: schNode}, nil
+		}
+
 		var schema Schema
 		_ = low.BuildModel(schNode, &schema)
 		err := schema.Build(schNode, idx)
+		addSeenSchema(fmt.Sprintf("%d:%d", schNode.Line, schNode.Column), &schema)
 		if err != nil {
 			return nil, err
 		}
+
 		return &low.NodeReference[*Schema]{Value: &schema, KeyNode: schLabel, ValueNode: schNode}, nil
 	}
 	return nil, nil

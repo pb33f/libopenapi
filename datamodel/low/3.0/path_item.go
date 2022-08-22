@@ -174,17 +174,13 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	n := 0
-allDone:
-	for {
+	total := len(ops)
+	for n < total {
 		select {
 		case buildError := <-opErrorChan:
 			return buildError
 		case <-opBuildChan:
 			n++
-			if n == len(ops) {
-				break allDone
-			}
-
 		}
 	}
 

@@ -9,7 +9,7 @@ import (
 )
 
 func Test_Schema(t *testing.T) {
-
+	clearSchemas()
 	testSpec := `type: object
 description: something object
 discriminator:
@@ -221,7 +221,7 @@ additionalProperties: true      `
 }
 
 func TestSchema_BuildLevel_TooDeep(t *testing.T) {
-
+	clearSchemas()
 	// if you design data models like this, you're doing it fucking wrong. Seriously. why, what is so complex about a model
 	// that it needs to be 30+ levels deep? I have seen this shit in the wild, it's unreadable, un-parsable garbage.
 	yml := `type: object
@@ -339,7 +339,7 @@ properties:
 }
 
 func TestSchema_Build_ErrorAdditionalProps(t *testing.T) {
-
+	clearSchemas()
 	yml := `additionalProperties:
   $ref: #borko`
 
@@ -357,19 +357,19 @@ func TestSchema_Build_ErrorAdditionalProps(t *testing.T) {
 }
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
-
-	doc := `components:
+	clearSchemas()
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 properties:
   aValue:
     $ref: '#/components/schemas/Something'`
@@ -385,19 +385,19 @@ properties:
 }
 
 func TestSchema_Build_PropsLookup_Fail(t *testing.T) {
-
-	doc := `components:
+	clearSchemas()
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 properties:
   aValue:
     $ref: '#/bork'`
@@ -412,8 +412,8 @@ properties:
 }
 
 func Test_Schema_Polymorphism_Array_Ref(t *testing.T) {
-
-	doc := `components:
+	clearSchemas()
+	yml := `components:
   schemas:
     Something:
       type: object
@@ -425,11 +425,11 @@ func Test_Schema_Polymorphism_Array_Ref(t *testing.T) {
           example: anything`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   - $ref: '#/components/schemas/Something'
 oneOf:
@@ -460,8 +460,8 @@ items:
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
-
-	doc := `components:
+	clearSchemas()
+	yml := `components:
   schemas:
     Something:
       type: object
@@ -473,11 +473,11 @@ func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
           example: anything`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   - $ref: '#/components/schemas/Missing'
 oneOf:
@@ -502,8 +502,8 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
-
-	doc := `components:
+	clearSchemas()
+	yml := `components:
   schemas:
     Something:
       type: object
@@ -515,11 +515,11 @@ func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
           example: anything`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   $ref: '#/components/schemas/Something'
 oneOf:
@@ -550,8 +550,8 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
-
-	doc := `components:
+	clearSchemas()
+	yml := `components:
   schemas:
     Something:
       type: object
@@ -563,11 +563,11 @@ func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
           example: anything`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   $ref: '#/components/schemas/Missing'
 oneOf:
@@ -592,18 +592,19 @@ items:
 }
 
 func Test_Schema_Polymorphism_BorkParent(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       $ref: #borko`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   $ref: '#/components/schemas/Something'`
 
@@ -620,18 +621,19 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_BorkChild(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       $ref: #borko`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   $ref: #borko`
 
@@ -648,8 +650,9 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       $ref: '#/components/schemas/Else'
@@ -657,11 +660,11 @@ func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
       description: madness`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   $ref: '#/components/schemas/Something'`
 
@@ -681,8 +684,9 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadnessBork(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       $ref: '#/components/schemas/Else'
@@ -690,11 +694,11 @@ func Test_Schema_Polymorphism_RefMadnessBork(t *testing.T) {
       $ref: #borko`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `type: object
+	yml = `type: object
 allOf:
   $ref: '#/components/schemas/Something'`
 
@@ -711,10 +715,11 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
+	clearSchemas()
 
 	// this does not work, but it won't error out.
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       $ref: '#/components/schemas/Else'
@@ -722,11 +727,11 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
       description: hey!`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `$ref: '#/components/schemas/Something'`
+	yml = `$ref: '#/components/schemas/Something'`
 
 	var sch Schema
 	var idxNode yaml.Node
@@ -741,19 +746,20 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
 }
 
 func TestExtractSchema(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `schema: 
+	yml = `schema: 
   type: object
   properties:
     aValue:
@@ -765,23 +771,25 @@ func TestExtractSchema(t *testing.T) {
 	res, err := ExtractSchema(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
-	assert.Equal(t, "this is something", res.Value.FindProperty("aValue").Value.Description.Value)
+	aValue := res.Value.FindProperty("aValue")
+	assert.Equal(t, "this is something", aValue.Value.Description.Value)
 }
 
 func TestExtractSchema_Ref(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `schema: 
+	yml = `schema: 
   $ref: '#/components/schemas/Something'`
 
 	var idxNode yaml.Node
@@ -794,19 +802,20 @@ func TestExtractSchema_Ref(t *testing.T) {
 }
 
 func TestExtractSchema_Ref_Fail(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `schema: 
+	yml = `schema: 
   $ref: '#/components/schemas/Missing'`
 
 	var idxNode yaml.Node
@@ -817,19 +826,20 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `$ref: '#/components/schemas/Something'`
+	yml = `$ref: '#/components/schemas/Something'`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -841,19 +851,20 @@ func TestExtractSchema_RefRoot(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Fail(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       description: this is something
       type: string`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `$ref: '#/components/schemas/Missing'`
+	yml = `$ref: '#/components/schemas/Missing'`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -864,18 +875,19 @@ func TestExtractSchema_RefRoot_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
+	clearSchemas()
 
-	doc := `components:
+	yml := `components:
   schemas:
     Something:
       $ref: #bork`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `$ref: '#/components/schemas/Something'`
+	yml = `$ref: '#/components/schemas/Something'`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -887,17 +899,19 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 
 func TestExtractSchema_DoNothing(t *testing.T) {
 
-	doc := `components:
+	clearSchemas()
+
+	yml := `components:
   schemas:
     Something:
       $ref: #bork`
 
 	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &iNode)
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml := `please: do nothing.`
+	yml = `please: do nothing.`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)

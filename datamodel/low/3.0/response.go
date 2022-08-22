@@ -75,7 +75,7 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 
-	// extract headers
+	//extract headers
 	headers, lN, kN, err := low.ExtractMapFlat[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
