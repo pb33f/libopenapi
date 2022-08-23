@@ -288,6 +288,7 @@ paths:
 components:
   callbacks:
     BurgerCallback:
+      x-break-everything: please
       "{$request.query.queryUrl}":
         post:
           requestBody:
@@ -310,6 +311,8 @@ components:
       parameters:
         burgerId: '$response.body#/id'
       description: Go and get another really tasty burger
+      server:
+        url: https://pb33f.io
   headers:
     UseOil:
       description: this is a header

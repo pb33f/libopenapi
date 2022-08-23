@@ -126,6 +126,11 @@ func TestNewDocument_Components_Links(t *testing.T) {
 	assert.Len(t, h.Components.Links, 2)
 	assert.Equal(t, "locateBurger", h.Components.Links["LocateBurger"].OperationId)
 	assert.Equal(t, "$response.body#/id", h.Components.Links["LocateBurger"].Parameters["burgerId"])
+
+	wentLow := h.Components.Links["LocateBurger"].GoLow()
+	assert.Equal(t, 305, wentLow.OperationId.ValueNode.Line)
+	assert.Equal(t, 20, wentLow.OperationId.ValueNode.Column)
+
 }
 
 func TestNewDocument_Components_Callbacks(t *testing.T) {
@@ -134,19 +139,40 @@ func TestNewDocument_Components_Callbacks(t *testing.T) {
 	assert.Equal(t, "Callback payload",
 		h.Components.Callbacks["BurgerCallback"].Expression["{$request.query.queryUrl}"].Post.RequestBody.Description)
 
+	assert.Equal(t, 293,
+		h.Components.Callbacks["BurgerCallback"].GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Line)
+	assert.Equal(t, 9,
+		h.Components.Callbacks["BurgerCallback"].GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Column)
+
+	assert.Equal(t, "please", h.Components.Callbacks["BurgerCallback"].Extensions["x-break-everything"])
+
+	for k := range h.Components.GoLow().Callbacks.Value {
+		if k.Value == "BurgerCallback" {
+			assert.Equal(t, 290, k.KeyNode.Line)
+			assert.Equal(t, 5, k.KeyNode.Column)
+		}
+	}
 }
 
 func TestNewDocument_Components_Schemas(t *testing.T) {
 	h := NewDocument(doc)
 	assert.Len(t, h.Components.Schemas, 6)
 
+	goLow := h.Components.GoLow()
+
 	a := h.Components.Schemas["Error"]
 	assert.Equal(t, "No such burger as 'Big-Whopper'", a.Properties["message"].Example)
+	assert.Equal(t, 428, goLow.Schemas.KeyNode.Line)
+	assert.Equal(t, 3, goLow.Schemas.KeyNode.Column)
+	assert.Equal(t, 431, a.GoLow().Description.KeyNode.Line)
 
 	b := h.Components.Schemas["Burger"]
 	assert.Len(t, b.Required, 2)
 	assert.Equal(t, "golden slices of happy fun joy", b.Properties["fries"].Description)
 	assert.Equal(t, int64(2), b.Properties["numPatties"].Example)
+	assert.Equal(t, 443, goLow.FindSchema("Burger").Value.Properties.KeyNode.Line)
+	assert.Equal(t, 7, goLow.FindSchema("Burger").Value.Properties.KeyNode.Column)
+	assert.Equal(t, 445, b.GoLow().FindProperty("name").ValueNode.Line)
 
 	f := h.Components.Schemas["Fries"]
 	assert.Equal(t, "salt", f.Properties["seasoning"].Items.Example)
@@ -160,11 +186,12 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 
 	ext := h.Components.Extensions
 	assert.Equal(t, "loud", ext["x-screaming-baby"])
-
 }
 
 func TestNewDocument_Components_Headers(t *testing.T) {
 	h := NewDocument(doc)
 	assert.Len(t, h.Components.Headers, 1)
 	assert.Equal(t, "this is a header", h.Components.Headers["UseOil"].Description)
+	assert.Equal(t, 318, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Column)
 }

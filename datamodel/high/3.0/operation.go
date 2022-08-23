@@ -51,6 +51,10 @@ func NewOperation(operation *low.Operation) *Operation {
 	if !operation.Responses.IsEmpty() {
 		o.Responses = NewResponses(operation.Responses.Value)
 	}
+	if !operation.Security.IsEmpty() {
+		o.Security = NewSecurityRequirement(operation.Security.Value)
+	}
+
 	return o
 }
 
