@@ -33,7 +33,7 @@ type Schema struct {
 	OneOf                []*Schema
 	AnyOf                []*Schema
 	Not                  []*Schema
-	Items                *Schema
+	Items                []*Schema
 	Properties           map[string]*Schema
 	AdditionalProperties any
 	Description          string
@@ -178,35 +178,25 @@ func NewSchema(schema *low.Schema) *Schema {
 		go buildOutSchema(schema.Not.Value, &not, polyCompletedChan)
 	}
 	if !schema.Items.IsEmpty() {
-		// items is only a single prop, however the method uses an array, so pack it up in one.
-		var itms []lowmodel.NodeReference[*low.Schema]
-		itms = append(itms, lowmodel.NodeReference[*low.Schema]{
-			Value:     schema.Items.Value,
-			KeyNode:   schema.Items.KeyNode,
-			ValueNode: schema.Items.ValueNode,
-		})
-		go buildOutSchema(itms, &items, polyCompletedChan)
+		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan)
 	}
 
-	completePoly := 0
+	completeChildren := 0
 	completedProps := 0
 	totalProps := len(schema.Properties.Value)
-	totalPoly := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Not.Value)
-	if !schema.Items.IsEmpty() {
-		totalPoly++ // only a single item can be present.
-	}
-	if totalProps+totalPoly > 0 {
+	totalChildren := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Items.Value) + len(schema.Not.Value)
+	if totalProps+totalChildren > 0 {
 	allDone:
 		for true {
 			select {
 			case <-polyCompletedChan:
-				completePoly++
-				if totalProps == completedProps && totalPoly == completePoly {
+				completeChildren++
+				if totalProps == completedProps && totalChildren == completeChildren {
 					break allDone
 				}
 			case <-propsChan:
 				completedProps++
-				if totalProps == completedProps && totalPoly == completePoly {
+				if totalProps == completedProps && totalChildren == completeChildren {
 					break allDone
 				}
 			}
@@ -215,10 +205,8 @@ func NewSchema(schema *low.Schema) *Schema {
 	s.OneOf = oneOf
 	s.AnyOf = anyOf
 	s.AllOf = allOf
+	s.Items = items
 	s.Not = not
-	if len(items) > 0 {
-		s.Items = items[0] // there will only ever be one.
-	}
 
 	return s
 }

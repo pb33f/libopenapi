@@ -182,7 +182,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 
 	assert.Equal(t, 6, len(index.GetAllSchemas()))
 
-	assert.Equal(t, 29, len(index.GetAllSequencedReferences()))
+	assert.Equal(t, 30, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
 	assert.NotNil(t, index.GetParametersNode())
 
@@ -222,7 +222,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.NotNil(t, index.GetGlobalTagsNode())
 	assert.NotNil(t, index.GetPathsNode())
 	assert.NotNil(t, index.GetDiscoveredReferences())
-	assert.Equal(t, 0, len(index.GetPolyReferences()))
+	assert.Equal(t, 1, len(index.GetPolyReferences()))
 	assert.NotNil(t, index.GetOperationParameterReferences())
 	assert.Equal(t, 3, len(index.GetAllSecuritySchemes()))
 	assert.Equal(t, 2, len(index.GetAllParameters()))
