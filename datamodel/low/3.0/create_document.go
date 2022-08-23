@@ -46,7 +46,6 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 		extractComponents,
 		extractSecurity,
 		extractExternalDocs,
-		extractPaths,
 	}
 
 	wg.Add(len(extractionFuncs))
@@ -55,6 +54,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 	}
 
 	wg.Wait()
+	extractPaths(info, &doc, idx)
 	return &doc, errors
 }
 

@@ -514,6 +514,12 @@ components:
     SomePayload:
       type: string
       description: some kind of payload for something.
+      xml:
+        name: is html programming? yes.
+      externalDocs:
+        url: https://pb33f.io/docs
+      oneOf:
+        - $ref: '#/components/schemas/Drink'
   x-screaming-baby: loud
 x-something-something: darkside
 externalDocs:

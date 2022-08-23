@@ -197,15 +197,15 @@ additionalProperties: true      `
 	assert.Equal(t, "notBExp", v.Value.Example.Value)
 
 	// check values Items
-	assert.Equal(t, "an items thing", sch.Items.Value.Description.Value)
-	assert.Len(t, sch.Items.Value.Properties.Value, 2)
+	assert.Equal(t, "an items thing", sch.Items.Value[0].Value.Description.Value)
+	assert.Len(t, sch.Items.Value[0].Value.Properties.Value, 2)
 
-	v = sch.Items.Value.FindProperty("itemsA")
+	v = sch.Items.Value[0].Value.FindProperty("itemsA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsA description", v.Value.Description.Value)
 	assert.Equal(t, "itemsAExp", v.Value.Example.Value)
 
-	v = sch.Items.Value.FindProperty("itemsB")
+	v = sch.Items.Value[0].Value.FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Description.Value)
 	assert.Equal(t, "itemsBExp", v.Value.Example.Value)
@@ -456,7 +456,7 @@ items:
 	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.Not.Value[0].Value.Description.Value)
-	assert.Equal(t, desc, sch.Items.Value.Description.Value)
+	assert.Equal(t, desc, sch.Items.Value[0].Value.Description.Value)
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
@@ -546,7 +546,7 @@ items:
 	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Description.Value)
 	assert.Equal(t, desc, sch.Not.Value[0].Value.Description.Value)
-	assert.Equal(t, desc, sch.Items.Value.Description.Value)
+	assert.Equal(t, desc, sch.Items.Value[0].Value.Description.Value)
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
@@ -919,5 +919,123 @@ func TestExtractSchema_DoNothing(t *testing.T) {
 	res, err := ExtractSchema(idxNode.Content[0], idx)
 	assert.Nil(t, res)
 	assert.Nil(t, err)
+
+}
+
+func TestExtractSchema_OneOfRef(t *testing.T) {
+
+	clearSchemas()
+
+	yml := `components:
+  schemas:
+    Error:
+      type: object
+      description: Error defining what went wrong when providing a specification. The message should help indicate the issue clearly.
+      properties:
+        message:
+          type: string
+          description: returns the error message if something wrong happens
+          example: No such burger as 'Big-Whopper'
+    Burger:
+      type: object
+      description: The tastiest food on the planet you would love to eat everyday
+      required:
+        - name
+        - numPatties
+      properties:
+        name:
+          type: string
+          description: The name of your tasty burger - burger names are listed in our menus
+          example: Big Mac
+        numPatties:
+          type: integer
+          description: The number of burger patties used
+          example: 2
+        numTomatoes:
+          type: integer
+          description: how many slices of orange goodness would you like?
+          example: 1
+        fries:
+          $ref: '#/components/schemas/Fries'
+    Fries:
+      type: object
+      description: golden slices of happy fun joy
+      required:
+        - potatoShape
+        - favoriteDrink
+      properties:
+        seasoning:
+          type: array
+          description: herbs and spices for your golden joy
+          items:
+            type: string
+            description: type of herb or spice used to liven up the yummy
+            example: salt
+        potatoShape:
+          type: string
+          description: what type of potato shape? wedges? shoestring?
+          example: Crispy Shoestring
+        favoriteDrink:
+          $ref: '#/components/schemas/Drink'
+    Dressing:
+      type: object
+      description: This is the object that contains the information about the content of the dressing
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of your dressing you can pick up from the menu
+          example: Cheese
+      additionalProperties:
+        type: object
+        description: something in here.
+    Drink:
+      type: object
+      description: a frosty cold beverage can be coke or sprite
+      required:
+        - size
+        - drinkType
+      properties:
+        ice:
+          type: boolean
+        drinkType:
+          description: select from coke or sprite
+          enum:
+            - coke
+            - sprite
+        size:
+          type: string
+          description: what size man? S/M/L
+          example: M
+      additionalProperties: true
+      discriminator:
+        propertyName: drinkType
+        mapping:
+          drink: some value
+    SomePayload:
+      type: string
+      description: some kind of payload for something.
+      xml:
+        name: is html programming? yes.
+      externalDocs:
+        url: https://pb33f.io/docs
+      oneOf:
+        - $ref: '#/components/schemas/Drink'`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `schema:
+  $ref: '#/components/schemas/SomePayload'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "a frosty cold beverage can be coke or sprite", res.Value.OneOf.Value[0].Value.Description.Value)
 
 }

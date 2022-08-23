@@ -35,7 +35,7 @@ func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
-	assert.Len(t, circ, 4)
+	assert.Len(t, circ, 3)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -53,7 +53,7 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
-	assert.Len(t, circ, 229)
+	assert.Len(t, circ, 21)
 
 }
 

@@ -183,6 +183,10 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 	foundRelatives map[string]bool,
 	journey []*index.Reference, resolve bool) []*index.Reference {
 
+	if len(journey) > 100 {
+		return nil
+	}
+
 	var found []*index.Reference
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
@@ -233,9 +237,32 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 						// check if items is present, to indicate an array
 						if _, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
 							if utils.IsNodeMap(v) {
-								items := resolver.extractRelatives(v, foundRelatives, journey, resolve)
-								for j := range items {
-									resolver.VisitReference(items[j], foundRelatives, journey, resolve)
+								if d, _, l := utils.IsNodeRefValue(v); d {
+									ref := resolver.specIndex.GetMappedReferences()[l]
+									if ref != nil && !ref.Circular {
+										circ := false
+										for f := range journey {
+											if journey[f].Definition == ref.Definition {
+												circ = true
+												break
+											}
+										}
+										if !circ {
+											resolver.VisitReference(ref, foundRelatives, journey, resolve)
+										} else {
+											loop := append(journey, ref)
+											circRef := &index.CircularReferenceResult{
+												Journey:   loop,
+												Start:     ref,
+												LoopIndex: i,
+												LoopPoint: ref,
+											}
+
+											ref.Seen = true
+											ref.Circular = true
+											resolver.circularReferences = append(resolver.circularReferences, circRef)
+										}
+									}
 								}
 							}
 						}
@@ -246,9 +273,32 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 						for q := range node.Content[i+1].Content {
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
-								items := resolver.extractRelatives(v, foundRelatives, journey, resolve)
-								for j := range items {
-									resolver.VisitReference(items[j], foundRelatives, journey, resolve)
+								if d, _, l := utils.IsNodeRefValue(v); d {
+									ref := resolver.specIndex.GetMappedReferences()[l]
+									if ref != nil && !ref.Circular {
+										circ := false
+										for f := range journey {
+											if journey[f].Definition == ref.Definition {
+												circ = true
+												break
+											}
+										}
+										if !circ {
+											resolver.VisitReference(ref, foundRelatives, journey, resolve)
+										} else {
+											loop := append(journey, ref)
+											circRef := &index.CircularReferenceResult{
+												Journey:   loop,
+												Start:     ref,
+												LoopIndex: i,
+												LoopPoint: ref,
+											}
+
+											ref.Seen = true
+											ref.Circular = true
+											resolver.circularReferences = append(resolver.circularReferences, circRef)
+										}
+									}
 								}
 							}
 						}

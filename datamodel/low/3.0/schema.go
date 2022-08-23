@@ -44,7 +44,7 @@ type Schema struct {
 	OneOf                low.NodeReference[[]low.NodeReference[*Schema]]
 	AnyOf                low.NodeReference[[]low.NodeReference[*Schema]]
 	Not                  low.NodeReference[[]low.NodeReference[*Schema]]
-	Items                low.NodeReference[*Schema]
+	Items                low.NodeReference[[]low.NodeReference[*Schema]]
 	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
@@ -263,11 +263,11 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 			KeyNode:   notLabel,
 			ValueNode: notValue,
 		}
+
 	}
 	if len(items) > 0 {
-		// items can only be a single def, so only extract a single value
-		s.Items = low.NodeReference[*Schema]{
-			Value:     items[0].Value,
+		s.Items = low.NodeReference[[]low.NodeReference[*Schema]]{
+			Value:     items,
 			KeyNode:   itemsLabel,
 			ValueNode: itemsValue,
 		}

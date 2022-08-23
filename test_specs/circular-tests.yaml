@@ -14,7 +14,7 @@ components:
         things:
           "$ref": "#/components/schemas/Two"
     Two:
-      decription: "test two"
+      description: "test two"
       properties:
         testThing:
           "$ref": "#/components/schemas/One"
