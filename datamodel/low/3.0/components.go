@@ -56,6 +56,10 @@ type Components struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, co.Extensions)
+}
+
 func (co *Components) FindSchema(schema string) *low.ValueReference[*Schema] {
 	return low.FindItemInMap[*Schema](schema, co.Schemas.Value)
 }

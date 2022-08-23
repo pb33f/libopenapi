@@ -20,7 +20,7 @@ func NewCallback(lowCallback *low.Callback) *Callback {
 	}
 	n.Extensions = make(map[string]any)
 	for k, v := range lowCallback.Extensions {
-		n.Extensions[k.Value] = v
+		n.Extensions[k.Value] = v.Value
 	}
 	return n
 }
