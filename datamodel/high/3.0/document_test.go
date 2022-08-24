@@ -195,3 +195,113 @@ func TestNewDocument_Components_Headers(t *testing.T) {
 	assert.Equal(t, 318, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Column)
 }
+
+func TestNewDocument_Components_RequestBodies(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.RequestBodies, 1)
+	assert.Equal(t, "Give us the new burger!", h.Components.RequestBodies["BurgerRequest"].Description)
+	assert.Equal(t, 323, h.Components.RequestBodies["BurgerRequest"].GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, h.Components.RequestBodies["BurgerRequest"].GoLow().Description.ValueNode.Column)
+	assert.Len(t, h.Components.RequestBodies["BurgerRequest"].Content["application/json"].Examples, 2)
+}
+
+func TestNewDocument_Components_Examples(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.Examples, 1)
+	assert.Equal(t, "A juicy two hander sammich", h.Components.Examples["QuarterPounder"].Summary)
+	assert.Equal(t, 341, h.Components.Examples["QuarterPounder"].GoLow().Summary.ValueNode.Line)
+	assert.Equal(t, 16, h.Components.Examples["QuarterPounder"].GoLow().Summary.ValueNode.Column)
+
+}
+
+func TestNewDocument_Components_Responses(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.Responses, 1)
+	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses["DressingResponse"].Description)
+	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Type)
+	assert.Equal(t, 347, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Line)
+	assert.Equal(t, 7, h.Components.Examples["QuarterPounder"].GoLow().Summary.KeyNode.Column)
+}
+
+func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.SecuritySchemes, 3)
+
+	api := h.Components.SecuritySchemes["APIKeyScheme"]
+	assert.Equal(t, "an apiKey security scheme", api.Description)
+	assert.Equal(t, 359, api.GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, api.GoLow().Description.ValueNode.Column)
+
+	jwt := h.Components.SecuritySchemes["JWTScheme"]
+	assert.Equal(t, "an JWT security scheme", jwt.Description)
+	assert.Equal(t, 364, jwt.GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, jwt.GoLow().Description.ValueNode.Column)
+
+	oAuth := h.Components.SecuritySchemes["OAuthScheme"]
+	assert.Equal(t, "an oAuth security scheme", oAuth.Description)
+	assert.Equal(t, 370, oAuth.GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, oAuth.GoLow().Description.ValueNode.Column)
+	assert.Len(t, oAuth.Flows.Implicit.Scopes, 2)
+	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes["read:burgers"])
+	assert.Equal(t, "https://pb33f.io/oauth", oAuth.Flows.AuthorizationCode.AuthorizationUrl)
+
+	// check the lowness is low.
+	assert.Equal(t, 375, oAuth.Flows.GoLow().Implicit.Value.Scopes.KeyNode.Line)
+	assert.Equal(t, 11, oAuth.Flows.GoLow().Implicit.Value.Scopes.KeyNode.Column)
+	assert.Equal(t, 375, oAuth.Flows.Implicit.GoLow().Scopes.KeyNode.Line)
+	assert.Equal(t, 11, oAuth.Flows.Implicit.GoLow().Scopes.KeyNode.Column)
+
+}
+
+func TestNewDocument_Components_Parameters(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Components.Parameters, 2)
+	bh := h.Components.Parameters["BurgerHeader"]
+	assert.Equal(t, "burgerHeader", bh.Name)
+	assert.Equal(t, 387, bh.GoLow().Name.KeyNode.Line)
+	assert.Len(t, bh.Schema.Properties, 2)
+	assert.Equal(t, "big-mac", bh.Example)
+	assert.True(t, bh.Required)
+	assert.Equal(t, "this is a header",
+		bh.Content["application/json"].Encoding["burgerTheme"].Headers["someHeader"].Description)
+	assert.Len(t, bh.Content["application/json"].Schema.Properties, 2)
+}
+
+func TestNewDocument_Paths(t *testing.T) {
+	h := NewDocument(doc)
+	assert.Len(t, h.Paths.PathItems, 5)
+
+	burgersOp := h.Paths.PathItems["/burgers"]
+	assert.Equal(t, "meaty", burgersOp.Extensions["x-burger-meta"])
+	assert.Nil(t, burgersOp.Get)
+	assert.Nil(t, burgersOp.Put)
+	assert.Nil(t, burgersOp.Patch)
+	assert.Nil(t, burgersOp.Head)
+	assert.Nil(t, burgersOp.Options)
+	assert.Nil(t, burgersOp.Trace)
+	assert.Equal(t, 64, burgersOp.GoLow().Post.KeyNode.Line)
+	assert.Equal(t, "createBurger", burgersOp.Post.OperationId)
+	assert.Len(t, burgersOp.Post.Tags, 1)
+	assert.Equal(t, "A new burger for our menu, yummy yum yum.", burgersOp.Post.Description)
+	assert.Equal(t, "Give us the new burger!", burgersOp.Post.RequestBody.Description)
+	assert.Len(t, burgersOp.Post.Responses.Codes, 3)
+
+	okResp := burgersOp.Post.Responses.FindResponseByCode(200)
+	assert.Len(t, okResp.Headers, 1)
+	assert.Equal(t, "A tasty burger for you to eat.", okResp.Description)
+	assert.Equal(t, 69, burgersOp.Post.GoLow().Description.ValueNode.Line)
+	assert.Len(t, okResp.Content["application/json"].Examples, 2)
+	assert.Equal(t, "a cripsy fish sammich filled with ocean goodness.",
+		okResp.Content["application/json"].Examples["filetOFish"].Summary)
+	assert.Equal(t, 77, okResp.GoLow().Description.KeyNode.Line)
+	assert.Len(t, okResp.Links, 2)
+	assert.Equal(t, "locateBurger", okResp.Links["LocateBurger"].OperationId)
+	assert.Equal(t, 305, okResp.Links["LocateBurger"].GoLow().OperationId.ValueNode.Line)
+	assert.Len(t, burgersOp.Post.Security.ValueRequirements[0], 1)
+	assert.Len(t, burgersOp.Post.Security.ValueRequirements[0]["OAuthScheme"], 2)
+	assert.Equal(t, "read:burgers", burgersOp.Post.Security.ValueRequirements[0]["OAuthScheme"][0])
+	assert.Equal(t, 118, burgersOp.Post.Security.GoLow().ValueRequirements[0].ValueNode.Line)
+	assert.Len(t, burgersOp.Post.Servers, 1)
+	assert.Equal(t, "https://pb33f.io", burgersOp.Post.Servers[0].URL)
+
+}

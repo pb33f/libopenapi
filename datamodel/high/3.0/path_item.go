@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 const (
 	get = iota
@@ -35,9 +38,10 @@ type PathItem struct {
 
 func NewPathItem(pathItem *low.PathItem) *PathItem {
 	pi := new(PathItem)
+	pi.low = pathItem
 	pi.Description = pathItem.Description.Value
 	pi.Summary = pathItem.Summary.Value
-
+	pi.Extensions = high.ExtractExtensions(pathItem.Extensions)
 	var servers []*Server
 	for _, ser := range pathItem.Servers.Value {
 		servers = append(servers, NewServer(ser.Value))

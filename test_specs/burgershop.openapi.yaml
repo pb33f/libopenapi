@@ -520,6 +520,14 @@ components:
         url: https://pb33f.io/docs
       oneOf:
         - $ref: '#/components/schemas/Drink'
+      anyOf:
+        - $ref: '#/components/schemas/Drink'
+      allOf:
+        - $ref: '#/components/schemas/Drink'
+      not:
+        type: string
+      items:
+        - $ref: '#/components/schemas/Drink'
   x-screaming-baby: loud
 x-something-something: darkside
 externalDocs:

@@ -55,6 +55,9 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 21)
 
+	assert.Len(t, resolver.GetNonPolymorphicCircularErrors(), 2)
+	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 19)
+
 }
 
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
