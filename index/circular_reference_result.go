@@ -4,10 +4,11 @@ import "strings"
 
 // CircularReferenceResult contains a circular reference found when traversing the graph.
 type CircularReferenceResult struct {
-	Journey   []*Reference
-	Start     *Reference
-	LoopIndex int
-	LoopPoint *Reference
+	Journey             []*Reference
+	Start               *Reference
+	LoopIndex           int
+	LoopPoint           *Reference
+	IsPolymorphicResult bool // if this result comes from a polymorphic loop.
 }
 
 func (c *CircularReferenceResult) GenerateJourneyPath() string {

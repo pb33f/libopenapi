@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	"fmt"
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Responses struct {
 	Codes   map[string]*Response
@@ -44,7 +47,10 @@ func NewResponses(response *low.Responses) *Responses {
 	}
 	r.Codes = codes
 	return r
+}
 
+func (r *Responses) FindResponseByCode(code int) *Response {
+	return r.Codes[fmt.Sprintf("%d", code)]
 }
 
 func (r *Responses) GoLow() *low.Responses {

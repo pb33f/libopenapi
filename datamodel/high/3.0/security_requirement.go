@@ -13,7 +13,7 @@ type SecurityRequirement struct {
 func NewSecurityRequirement(req *low.SecurityRequirement) *SecurityRequirement {
 	r := new(SecurityRequirement)
 	r.low = req
-	values := make([]map[string][]string, len(req.ValueRequirements))
+	var values []map[string][]string
 	for i := range req.ValueRequirements {
 		valmap := make(map[string][]string)
 		for k, v := range req.ValueRequirements[i].Value {

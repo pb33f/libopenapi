@@ -3,7 +3,9 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+)
 
 type Operation struct {
 	Tags         []string
@@ -54,7 +56,11 @@ func NewOperation(operation *low.Operation) *Operation {
 	if !operation.Security.IsEmpty() {
 		o.Security = NewSecurityRequirement(operation.Security.Value)
 	}
-
+	var servers []*Server
+	for i := range operation.Servers.Value {
+		servers = append(servers, NewServer(operation.Servers.Value[i].Value))
+	}
+	o.Servers = servers
 	return o
 }
 

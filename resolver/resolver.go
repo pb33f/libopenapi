@@ -42,13 +42,37 @@ func (resolver *Resolver) GetResolvingErrors() []*ResolvingError {
 	return resolver.resolvingErrors
 }
 
-// GetCircularErrors returns all errors found during resolving
+// GetCircularErrors returns all circular reference errors found.
 func (resolver *Resolver) GetCircularErrors() []*index.CircularReferenceResult {
 	return resolver.circularReferences
 }
 
+// GetPolymorphicCircularErrors returns all circular errors that stem from polymorphism
+func (resolver *Resolver) GetPolymorphicCircularErrors() []*index.CircularReferenceResult {
+	var res []*index.CircularReferenceResult
+	for i := range resolver.circularReferences {
+		if resolver.circularReferences[i].IsPolymorphicResult {
+			res = append(res, resolver.circularReferences[i])
+		}
+	}
+	return res
+}
+
+// GetNonPolymorphicCircularErrors returns all circular errors that DO NOT stem from polymorphism
+func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*index.CircularReferenceResult {
+	var res []*index.CircularReferenceResult
+	for i := range resolver.circularReferences {
+		if !resolver.circularReferences[i].IsPolymorphicResult {
+			res = append(res, resolver.circularReferences[i])
+		}
+	}
+	return res
+}
+
 // Resolve will resolve the specification, everything that is not polymorphic and not circular, will be resolved.
-// this data can get big, it results in a massive duplication of data.
+// this data can get big, it results in a massive duplication of data. This is a destructive method and will permanently
+// re-organize the node tree. Make sure you have copied your original tree before running this (if you want to preserve
+// original data)
 func (resolver *Resolver) Resolve() []*ResolvingError {
 
 	mapped := resolver.specIndex.GetMappedReferencesSequenced()
@@ -91,7 +115,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	return resolver.resolvingErrors
 }
 
-// CheckForCircularReferences Check for circular references, without resolving.
+// CheckForCircularReferences Check for circular references, without resolving, a non-destructive run.
 func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 
 	mapped := resolver.specIndex.GetMappedReferencesSequenced()
@@ -252,10 +276,11 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 										} else {
 											loop := append(journey, ref)
 											circRef := &index.CircularReferenceResult{
-												Journey:   loop,
-												Start:     ref,
-												LoopIndex: i,
-												LoopPoint: ref,
+												Journey:             loop,
+												Start:               ref,
+												LoopIndex:           i,
+												LoopPoint:           ref,
+												IsPolymorphicResult: true,
 											}
 
 											ref.Seen = true
@@ -288,10 +313,11 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 										} else {
 											loop := append(journey, ref)
 											circRef := &index.CircularReferenceResult{
-												Journey:   loop,
-												Start:     ref,
-												LoopIndex: i,
-												LoopPoint: ref,
+												Journey:             loop,
+												Start:               ref,
+												LoopIndex:           i,
+												LoopPoint:           ref,
+												IsPolymorphicResult: true,
 											}
 
 											ref.Seen = true

@@ -46,7 +46,7 @@ func NewParameter(param *low.Parameter) *Parameter {
 			addSeenSchema(param.Schema.GenerateMapKey(), p.Schema)
 		}
 	}
-
+	p.Required = param.Required.Value
 	p.Example = param.Example.Value
 	p.Examples = ExtractExamples(param.Examples.Value)
 	p.Content = ExtractContent(param.Content.Value)
