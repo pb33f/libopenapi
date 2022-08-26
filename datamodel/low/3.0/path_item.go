@@ -56,6 +56,29 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
+	_, ln, vn = utils.FindKeyNodeFull(ServersLabel, root.Content)
+	if vn != nil {
+		if utils.IsNodeArray(vn) {
+			var servers []low.ValueReference[*Server]
+			for _, srvN := range vn.Content {
+				if utils.IsNodeMap(srvN) {
+					srvr := new(Server)
+					_ = low.BuildModel(srvN, srvr)
+					srvr.Build(srvN, idx)
+					servers = append(servers, low.ValueReference[*Server]{
+						Value:     srvr,
+						ValueNode: srvN,
+					})
+				}
+			}
+			p.Servers = low.NodeReference[[]low.ValueReference[*Server]]{
+				Value:     servers,
+				KeyNode:   ln,
+				ValueNode: vn,
+			}
+		}
+	}
+
 	for i, pathNode := range root.Content {
 		if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
 			skip = true

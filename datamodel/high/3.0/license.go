@@ -14,8 +14,12 @@ type License struct {
 func NewLicense(license *low.License) *License {
 	l := new(License)
 	l.low = license
-	l.URL = license.URL.Value
-	l.Name = license.Name.Value
+	if !license.URL.IsEmpty() {
+		l.URL = license.URL.Value
+	}
+	if !license.Name.IsEmpty() {
+		l.Name = license.Name.Value
+	}
 	return l
 }
 

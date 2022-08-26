@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/stretchr/testify/assert"
@@ -183,6 +184,12 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	assert.True(t, d.AdditionalProperties.(bool))
 	assert.Equal(t, "drinkType", d.Discriminator.PropertyName)
 	assert.Equal(t, "some value", d.Discriminator.Mapping["drink"])
+	assert.Equal(t, 511, d.Discriminator.GoLow().PropertyName.ValueNode.Line)
+	assert.Equal(t, 23, d.Discriminator.GoLow().PropertyName.ValueNode.Column)
+
+	pl := h.Components.Schemas["SomePayload"]
+	assert.Equal(t, "is html programming? yes.", pl.XML.Name)
+	assert.Equal(t, 518, pl.XML.GoLow().Name.ValueNode.Line)
 
 	ext := h.Components.Extensions
 	assert.Equal(t, "loud", ext["x-screaming-baby"])
@@ -220,7 +227,7 @@ func TestNewDocument_Components_Responses(t *testing.T) {
 	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses["DressingResponse"].Description)
 	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Type)
 	assert.Equal(t, 347, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Line)
-	assert.Equal(t, 7, h.Components.Examples["QuarterPounder"].GoLow().Summary.KeyNode.Column)
+	assert.Equal(t, 7, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Column)
 }
 
 func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
@@ -265,6 +272,8 @@ func TestNewDocument_Components_Parameters(t *testing.T) {
 	assert.Equal(t, "this is a header",
 		bh.Content["application/json"].Encoding["burgerTheme"].Headers["someHeader"].Description)
 	assert.Len(t, bh.Content["application/json"].Schema.Properties, 2)
+	assert.Equal(t, 404, bh.Content["application/json"].Encoding["burgerTheme"].GoLow().ContentType.ValueNode.Line)
+
 }
 
 func TestNewDocument_Paths(t *testing.T) {
@@ -285,6 +294,7 @@ func TestNewDocument_Paths(t *testing.T) {
 	assert.Equal(t, "A new burger for our menu, yummy yum yum.", burgersOp.Post.Description)
 	assert.Equal(t, "Give us the new burger!", burgersOp.Post.RequestBody.Description)
 	assert.Len(t, burgersOp.Post.Responses.Codes, 3)
+	assert.Equal(t, 63, h.Paths.GoLow().FindPath("/burgers").ValueNode.Line)
 
 	okResp := burgersOp.Post.Responses.FindResponseByCode(200)
 	assert.Len(t, okResp.Headers, 1)
@@ -293,6 +303,11 @@ func TestNewDocument_Paths(t *testing.T) {
 	assert.Len(t, okResp.Content["application/json"].Examples, 2)
 	assert.Equal(t, "a cripsy fish sammich filled with ocean goodness.",
 		okResp.Content["application/json"].Examples["filetOFish"].Summary)
+	assert.Equal(t, 74, burgersOp.Post.Responses.GoLow().FindResponseByCode("200").ValueNode.Line)
+
+	assert.Equal(t, 80, okResp.Content["application/json"].GoLow().Schema.KeyNode.Line)
+	assert.Equal(t, 15, okResp.Content["application/json"].GoLow().Schema.KeyNode.Column)
+
 	assert.Equal(t, 77, okResp.GoLow().Description.KeyNode.Line)
 	assert.Len(t, okResp.Links, 2)
 	assert.Equal(t, "locateBurger", okResp.Links["LocateBurger"].OperationId)
@@ -304,4 +319,17 @@ func TestNewDocument_Paths(t *testing.T) {
 	assert.Len(t, burgersOp.Post.Servers, 1)
 	assert.Equal(t, "https://pb33f.io", burgersOp.Post.Servers[0].URL)
 
+}
+
+func TestStripeAsDoc(t *testing.T) {
+
+	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err []error
+	doc, err = lowv3.CreateDocument(info)
+	if err != nil {
+		panic("broken something")
+	}
+	d := NewDocument(doc)
+	fmt.Println(d)
 }

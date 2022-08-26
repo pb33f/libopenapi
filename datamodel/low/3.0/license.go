@@ -15,6 +15,5 @@ type License struct {
 }
 
 func (l *License) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	// not implemented.
 	return nil
 }

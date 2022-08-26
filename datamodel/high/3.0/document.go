@@ -39,9 +39,9 @@ func NewDocument(document *low.Document) *Document {
 	if !document.ExternalDocs.IsEmpty() {
 		d.ExternalDocs = NewExternalDoc(document.ExternalDocs.Value)
 	}
-	d.Paths = NewPaths(document.Paths.Value)
 	d.Extensions = high.ExtractExtensions(document.Extensions)
 	d.Components = NewComponents(document.Components.Value)
+	d.Paths = NewPaths(document.Paths.Value)
 	return d
 }
 

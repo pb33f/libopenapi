@@ -468,3 +468,17 @@ func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
 	assert.NotNil(t, d.Value.AdditionalProperties.Value)
 	assert.True(t, d.Value.AdditionalProperties.Value.(bool))
 }
+
+func TestCreateDocument_Components_Error(t *testing.T) {
+	yml := `components:
+  schemas:
+    bork:
+      properties:
+        bark:
+          $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+}

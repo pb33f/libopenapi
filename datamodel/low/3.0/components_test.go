@@ -156,3 +156,24 @@ func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestComponents_Build_ExtensionTest(t *testing.T) {
+
+	yml := `x-curry: seagull
+headers:
+  x-curry-gull: vinadloo`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "seagull", n.FindExtension("x-curry").Value)
+
+}

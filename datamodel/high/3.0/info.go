@@ -21,8 +21,12 @@ func NewInfo(info *low.Info) *Info {
 	i.Title = info.Title.Value
 	i.Description = info.Description.Value
 	i.TermsOfService = info.TermsOfService.Value
-	i.Contact = NewContact(info.Contact.Value)
-	i.License = NewLicense(info.License.Value)
+	if !info.Contact.IsEmpty() {
+		i.Contact = NewContact(info.Contact.Value)
+	}
+	if !info.License.IsEmpty() {
+		i.License = NewLicense(info.License.Value)
+	}
 	i.Version = info.Version.Value
 	return i
 }
