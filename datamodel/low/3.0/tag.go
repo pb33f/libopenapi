@@ -29,11 +29,7 @@ func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	t.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, dErr := low.ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
-	if dErr != nil {
-		return dErr
-	}
+	extDocs, err := low.ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
 	t.ExternalDocs = extDocs
-
-	return nil
+	return err
 }
