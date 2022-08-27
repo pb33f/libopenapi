@@ -56,10 +56,10 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 }
 
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
+	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
 
 	for i := 0; i < b.N; i++ {
-		data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
-		info, _ := datamodel.ExtractSpecInfo(data)
 		_, err := CreateDocument(info)
 		if err != nil {
 			panic("this should not error")
@@ -76,6 +76,20 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 			panic("this should not error")
 		}
 	}
+}
+
+func TestCreateDocumentStripe(t *testing.T) {
+
+	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	d, err := CreateDocument(info)
+	if err != nil {
+		panic("broken something")
+	}
+
+	assert.Equal(t, "3.0.0", d.Version.Value)
+	assert.Equal(t, "Stripe API", d.Info.Value.Title.Value)
+	assert.NotEmpty(t, d.Info.Value.Title.Value)
 }
 
 func TestCreateDocument(t *testing.T) {
@@ -174,8 +188,8 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Len(t, burgerId.Value.Get.Value.Parameters.Value, 2)
 	param := burgerId.Value.Get.Value.Parameters.Value[1]
 	assert.Equal(t, "burgerHeader", param.Value.Name.Value)
-	prop := param.Value.Schema.Value.FindProperty("burgerTheme")
-	assert.Equal(t, "something about a theme?", prop.Value.Description.Value)
+	prop := param.Value.Schema.Value.Schema().FindProperty("burgerTheme")
+	assert.Equal(t, "something about a theme?", prop.Value.Schema().Description.Value)
 	assert.Equal(t, "big-mac", param.Value.Example.Value)
 
 	// check content
@@ -189,7 +203,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	header := encoding.Value.FindHeader("someHeader")
 	assert.NotNil(t, header.Value)
 	assert.Equal(t, "this is a header", header.Value.Description.Value)
-	assert.Equal(t, "string", header.Value.Schema.Value.Type.Value)
+	assert.Equal(t, "string", header.Value.Schema.Value.Schema().Type.Value)
 
 	// check request body on operation
 	burgers := doc.Paths.Value.FindPath("/burgers")
@@ -206,7 +220,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	content := requestBody.FindContent("application/json").Value
 
 	assert.NotNil(t, content)
-	assert.Len(t, content.Schema.Value.Properties.Value, 4)
+	assert.Len(t, content.Schema.Value.Schema().Properties.Value, 4)
 	assert.Len(t, content.GetAllExamples(), 2)
 
 	ex := content.FindExample("pbjBurger")
@@ -253,7 +267,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.NotNil(t, respContent)
 
 	assert.NotNil(t, respContent.Schema.Value)
-	assert.Len(t, respContent.Schema.Value.Required.Value, 2)
+	assert.Len(t, respContent.Schema.Value.Schema().Required.Value, 2)
 
 	respExample := respContent.FindExample("quarterPounder")
 	assert.NotNil(t, respExample.Value)
@@ -304,19 +318,20 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 
 	burger := components.FindSchema("Burger")
 	assert.NotNil(t, burger.Value)
-	assert.Equal(t, "The tastiest food on the planet you would love to eat everyday", burger.Value.Description.Value)
+	assert.Equal(t, "The tastiest food on the planet you would love to eat everyday", burger.Value.Schema().Description.Value)
 
 	er := components.FindSchema("Error")
 	assert.NotNil(t, er.Value)
-	assert.Equal(t, "Error defining what went wrong when providing a specification. The message should help indicate the issue clearly.", er.Value.Description.Value)
+	assert.Equal(t, "Error defining what went wrong when providing a specification. The message should help "+
+		"indicate the issue clearly.", er.Value.Schema().Description.Value)
 
 	fries := components.FindSchema("Fries")
 	assert.NotNil(t, fries.Value)
 
-	assert.Len(t, fries.Value.Properties.Value, 3)
-	p := fries.Value.FindProperty("favoriteDrink")
+	assert.Len(t, fries.Value.Schema().Properties.Value, 3)
+	p := fries.Value.Schema().FindProperty("favoriteDrink")
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
-		p.Value.Description.Value)
+		p.Value.Schema().Description.Value)
 
 }
 
@@ -395,7 +410,7 @@ func TestCreateDocument_Components_Headers(t *testing.T) {
 	useOil := components.FindHeader("UseOil")
 	assert.NotNil(t, useOil.Value)
 	assert.Equal(t, "this is a header", useOil.Value.Description.Value)
-	assert.Equal(t, "string", useOil.Value.Schema.Value.Type.Value)
+	assert.Equal(t, "string", useOil.Value.Schema.Value.Schema().Type.Value)
 }
 
 func TestCreateDocument_Components_Links(t *testing.T) {
@@ -442,7 +457,7 @@ func TestCreateDocument_Component_Discriminator(t *testing.T) {
 	initTest()
 
 	components := doc.Components.Value
-	dsc := components.FindSchema("Drink").Value.Discriminator.Value
+	dsc := components.FindSchema("Drink").Value.Schema().Discriminator.Value
 	assert.NotNil(t, dsc)
 	assert.Equal(t, "drinkType", dsc.PropertyName.Value)
 	assert.Equal(t, "some value", dsc.FindMappingValue("drink").Value)
@@ -453,8 +468,8 @@ func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	d := components.FindSchema("Dressing")
-	assert.NotNil(t, d.Value.AdditionalProperties.Value)
-	if n, ok := d.Value.AdditionalProperties.Value.(*Schema); ok {
+	assert.NotNil(t, d.Value.Schema().AdditionalProperties.Value)
+	if n, ok := d.Value.Schema().AdditionalProperties.Value.(*Schema); ok {
 		assert.Equal(t, "something in here.", n.Description.Value)
 	} else {
 		assert.Fail(t, "should be a schema")
@@ -465,8 +480,8 @@ func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	d := components.FindSchema("Drink")
-	assert.NotNil(t, d.Value.AdditionalProperties.Value)
-	assert.True(t, d.Value.AdditionalProperties.Value.(bool))
+	assert.NotNil(t, d.Value.Schema().AdditionalProperties.Value)
+	assert.True(t, d.Value.Schema().AdditionalProperties.Value.(bool))
 }
 
 func TestCreateDocument_Components_Error(t *testing.T) {
@@ -476,6 +491,51 @@ func TestCreateDocument_Components_Error(t *testing.T) {
       properties:
         bark:
           $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 0)
+
+	ob := doc.Components.Value.FindSchema("bork").Value
+	ob.Schema()
+	assert.Error(t, ob.GetBuildError())
+}
+
+func TestCreateDocument_Paths_Errors(t *testing.T) {
+	yml := `paths:
+  /p:
+    $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+}
+
+func TestCreateDocument_Tags_Errors(t *testing.T) {
+	yml := `tags:
+  - $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+}
+
+func TestCreateDocument_Security_Error(t *testing.T) {
+	yml := `security:
+  $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+}
+
+func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
+	yml := `externalDocs:
+  $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error

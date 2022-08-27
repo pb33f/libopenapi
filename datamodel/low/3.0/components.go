@@ -44,7 +44,7 @@ func getSeenSchema(key string) *Schema {
 }
 
 type Components struct {
-	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]
+	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
 	Responses       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]]
 	Parameters      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]]
 	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
@@ -60,8 +60,8 @@ func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, co.Extensions)
 }
 
-func (co *Components) FindSchema(schema string) *low.ValueReference[*Schema] {
-	return low.FindItemInMap[*Schema](schema, co.Schemas.Value)
+func (co *Components) FindSchema(schema string) *low.ValueReference[*SchemaProxy] {
+	return low.FindItemInMap[*SchemaProxy](schema, co.Schemas.Value)
 }
 
 func (co *Components) FindResponse(response string) *low.ValueReference[*Response] {
@@ -103,7 +103,7 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	skipChan := make(chan bool)
 	errorChan := make(chan error)
 	paramChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]])
-	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]])
+	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]])
 	responsesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]])
 	examplesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]])
 	requestBodiesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*RequestBody]])
@@ -112,7 +112,7 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	linkChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]])
 	callbackChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]])
 
-	go extractComponentValues[*Schema](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
+	go extractComponentValues[*SchemaProxy](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
 	go extractComponentValues[*Parameter](ParametersLabel, root, skipChan, errorChan, paramChan, idx)
 	go extractComponentValues[*Response](ResponsesLabel, root, skipChan, errorChan, responsesChan, idx)
 	go extractComponentValues[*Example](ExamplesLabel, root, skipChan, errorChan, examplesChan, idx)
@@ -136,7 +136,6 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			n++
 		case schemas := <-schemaChan:
 			co.Schemas = schemas
-			cacheSchemas(co.Schemas.Value)
 			n++
 		case responses := <-responsesChan:
 			co.Responses = responses
@@ -191,6 +190,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 
 	// for every component, build in a new thread!
 	bChan := make(chan componentBuildResult[T])
+	eChan := make(chan error)
 	var buildComponent = func(label *yaml.Node, value *yaml.Node, c chan componentBuildResult[T], ec chan<- error) {
 		var n T = new(N)
 		_ = low.BuildModel(value, n)
@@ -221,12 +221,14 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			continue
 		}
 		totalComponents++
-		go buildComponent(currentLabel, v, bChan, errorChan)
+		go buildComponent(currentLabel, v, bChan, eChan)
 	}
 
 	completedComponents := 0
 	for completedComponents < totalComponents {
 		select {
+		case e := <-eChan:
+			errorChan <- e
 		case r := <-bChan:
 			componentValues[r.k] = r.v
 			completedComponents++

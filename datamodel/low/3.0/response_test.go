@@ -49,7 +49,7 @@ default:
 
 	con := ok.Value.FindContent("nice/rice")
 	assert.NotNil(t, con.Value)
-	assert.Equal(t, "this is some content.", con.Value.Schema.Value.Description.Value)
+	assert.Equal(t, "this is some content.", con.Value.Schema.Value.Schema().Description.Value)
 
 	head := ok.Value.FindHeader("header1")
 	assert.NotNil(t, head.Value)

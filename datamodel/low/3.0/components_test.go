@@ -76,8 +76,8 @@ func TestComponents_Build_Success(t *testing.T) {
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "one of many", n.FindSchema("one").Value.Description.Value)
-	assert.Equal(t, "two of many", n.FindSchema("two").Value.Description.Value)
+	assert.Equal(t, "one of many", n.FindSchema("one").Value.Schema().Description.Value)
+	assert.Equal(t, "two of many", n.FindSchema("two").Value.Schema().Description.Value)
 	assert.Equal(t, "three of many", n.FindResponse("three").Value.Description.Value)
 	assert.Equal(t, "four of many", n.FindResponse("four").Value.Description.Value)
 	assert.Equal(t, "five of many", n.FindParameter("five").Value.Description.Value)
@@ -92,8 +92,10 @@ func TestComponents_Build_Success(t *testing.T) {
 	assert.Equal(t, "fourteen of many", n.FindSecurityScheme("fourteen").Value.Description.Value)
 	assert.Equal(t, "fifteen of many", n.FindLink("fifteen").Value.Description.Value)
 	assert.Equal(t, "sixteen of many", n.FindLink("sixteen").Value.Description.Value)
-	assert.Equal(t, "seventeen of many", n.FindCallback("seventeen").Value.FindExpression("{reference}").Value.Description.Value)
-	assert.Equal(t, "eighteen of many", n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Description.Value)
+	assert.Equal(t, "seventeen of many",
+		n.FindCallback("seventeen").Value.FindExpression("{reference}").Value.Description.Value)
+	assert.Equal(t, "eighteen of many",
+		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Description.Value)
 
 }
 

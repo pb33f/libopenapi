@@ -162,34 +162,35 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	goLow := h.Components.GoLow()
 
 	a := h.Components.Schemas["Error"]
-	assert.Equal(t, "No such burger as 'Big-Whopper'", a.Properties["message"].Example)
+	abcd := a.Schema().Properties["message"].Schema().Example
+	assert.Equal(t, "No such burger as 'Big-Whopper'", abcd)
 	assert.Equal(t, 428, goLow.Schemas.KeyNode.Line)
 	assert.Equal(t, 3, goLow.Schemas.KeyNode.Column)
-	assert.Equal(t, 431, a.GoLow().Description.KeyNode.Line)
+	assert.Equal(t, 431, a.Schema().GoLow().Description.KeyNode.Line)
 
 	b := h.Components.Schemas["Burger"]
-	assert.Len(t, b.Required, 2)
-	assert.Equal(t, "golden slices of happy fun joy", b.Properties["fries"].Description)
-	assert.Equal(t, int64(2), b.Properties["numPatties"].Example)
-	assert.Equal(t, 443, goLow.FindSchema("Burger").Value.Properties.KeyNode.Line)
-	assert.Equal(t, 7, goLow.FindSchema("Burger").Value.Properties.KeyNode.Column)
-	assert.Equal(t, 445, b.GoLow().FindProperty("name").ValueNode.Line)
+	assert.Len(t, b.Schema().Required, 2)
+	assert.Equal(t, "golden slices of happy fun joy", b.Schema().Properties["fries"].Schema().Description)
+	assert.Equal(t, int64(2), b.Schema().Properties["numPatties"].Schema().Example)
+	assert.Equal(t, 443, goLow.FindSchema("Burger").Value.Schema().Properties.KeyNode.Line)
+	assert.Equal(t, 7, goLow.FindSchema("Burger").Value.Schema().Properties.KeyNode.Column)
+	assert.Equal(t, 445, b.Schema().GoLow().FindProperty("name").ValueNode.Line)
 
 	f := h.Components.Schemas["Fries"]
-	assert.Equal(t, "salt", f.Properties["seasoning"].Items[0].Example)
-	assert.Len(t, f.Properties["favoriteDrink"].Properties["drinkType"].Enum, 2)
+	assert.Equal(t, "salt", f.Schema().Properties["seasoning"].Schema().Items[0].Schema().Example)
+	assert.Len(t, f.Schema().Properties["favoriteDrink"].Schema().Properties["drinkType"].Schema().Enum, 2)
 
 	d := h.Components.Schemas["Drink"]
-	assert.Len(t, d.Required, 2)
-	assert.True(t, d.AdditionalProperties.(bool))
-	assert.Equal(t, "drinkType", d.Discriminator.PropertyName)
-	assert.Equal(t, "some value", d.Discriminator.Mapping["drink"])
-	assert.Equal(t, 511, d.Discriminator.GoLow().PropertyName.ValueNode.Line)
-	assert.Equal(t, 23, d.Discriminator.GoLow().PropertyName.ValueNode.Column)
+	assert.Len(t, d.Schema().Required, 2)
+	assert.True(t, d.Schema().AdditionalProperties.(bool))
+	assert.Equal(t, "drinkType", d.Schema().Discriminator.PropertyName)
+	assert.Equal(t, "some value", d.Schema().Discriminator.Mapping["drink"])
+	assert.Equal(t, 511, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Line)
+	assert.Equal(t, 23, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Column)
 
 	pl := h.Components.Schemas["SomePayload"]
-	assert.Equal(t, "is html programming? yes.", pl.XML.Name)
-	assert.Equal(t, 518, pl.XML.GoLow().Name.ValueNode.Line)
+	assert.Equal(t, "is html programming? yes.", pl.Schema().XML.Name)
+	assert.Equal(t, 518, pl.Schema().XML.GoLow().Name.ValueNode.Line)
 
 	ext := h.Components.Extensions
 	assert.Equal(t, "loud", ext["x-screaming-baby"])
@@ -225,7 +226,7 @@ func TestNewDocument_Components_Responses(t *testing.T) {
 	h := NewDocument(doc)
 	assert.Len(t, h.Components.Responses, 1)
 	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses["DressingResponse"].Description)
-	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Type)
+	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Schema().Type)
 	assert.Equal(t, 347, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Line)
 	assert.Equal(t, 7, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Column)
 }
@@ -266,12 +267,12 @@ func TestNewDocument_Components_Parameters(t *testing.T) {
 	bh := h.Components.Parameters["BurgerHeader"]
 	assert.Equal(t, "burgerHeader", bh.Name)
 	assert.Equal(t, 387, bh.GoLow().Name.KeyNode.Line)
-	assert.Len(t, bh.Schema.Properties, 2)
+	assert.Len(t, bh.Schema.Schema().Properties, 2)
 	assert.Equal(t, "big-mac", bh.Example)
 	assert.True(t, bh.Required)
 	assert.Equal(t, "this is a header",
 		bh.Content["application/json"].Encoding["burgerTheme"].Headers["someHeader"].Description)
-	assert.Len(t, bh.Content["application/json"].Schema.Properties, 2)
+	assert.Len(t, bh.Content["application/json"].Schema.Schema().Properties, 2)
 	assert.Equal(t, 404, bh.Content["application/json"].Encoding["burgerTheme"].GoLow().ContentType.ValueNode.Line)
 
 }

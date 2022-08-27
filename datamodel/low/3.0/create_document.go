@@ -36,7 +36,6 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 		if er := runFunc(info, doc, idx); er != nil {
 			*ers = append(*ers, er)
 		}
-
 		wg.Done()
 	}
 	extractionFuncs := []func(i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error{
@@ -46,15 +45,14 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 		extractComponents,
 		extractSecurity,
 		extractExternalDocs,
+		extractPaths,
 	}
 
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
 		go runExtraction(info, &doc, idx, f, &errors, &wg)
 	}
-
 	wg.Wait()
-	extractPaths(info, &doc, idx)
 	return &doc, errors
 }
 
@@ -62,11 +60,8 @@ func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 	_, ln, vn := utils.FindKeyNodeFull(InfoLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := Info{}
-		err := low.BuildModel(vn, &ir)
-		if err != nil {
-			return err
-		}
-		err = ir.Build(vn, idx)
+		_ = low.BuildModel(vn, &ir)
+		_ = ir.Build(vn, idx)
 		nr := low.NodeReference[*Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
@@ -95,11 +90,11 @@ func extractComponents(info *datamodel.SpecInfo, doc *Document, idx *index.SpecI
 	_, ln, vn := utils.FindKeyNodeFull(ComponentsLabel, info.RootNode.Content)
 	if vn != nil {
 		ir := Components{}
-		err := low.BuildModel(vn, &ir)
+		_ = low.BuildModel(vn, &ir)
+		err := ir.Build(vn, idx)
 		if err != nil {
 			return err
 		}
-		err = ir.Build(vn, idx)
 		nr := low.NodeReference[*Components]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Components = nr
 	}
@@ -114,11 +109,8 @@ func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInde
 			for _, srvN := range vn.Content {
 				if utils.IsNodeMap(srvN) {
 					srvr := Server{}
-					err := low.BuildModel(srvN, &srvr)
-					if err != nil {
-						return err
-					}
-					srvr.Build(srvN, idx)
+					_ = low.BuildModel(srvN, &srvr)
+					_ = srvr.Build(srvN, idx)
 					servers = append(servers, low.ValueReference[*Server]{
 						Value:     &srvr,
 						ValueNode: srvN,
@@ -143,11 +135,10 @@ func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 			for _, tagN := range vn.Content {
 				if utils.IsNodeMap(tagN) {
 					tag := Tag{}
-					err := low.BuildModel(tagN, &tag)
-					if err != nil {
+					_ = low.BuildModel(tagN, &tag)
+					if err := tag.Build(tagN, idx); err != nil {
 						return err
 					}
-					tag.Build(tagN, idx)
 					tags = append(tags, low.ValueReference[*Tag]{
 						Value:     &tag,
 						ValueNode: tagN,

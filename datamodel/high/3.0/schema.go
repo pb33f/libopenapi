@@ -29,12 +29,12 @@ type Schema struct {
 	Required             []string
 	Enum                 []string
 	Type                 string
-	AllOf                []*Schema
-	OneOf                []*Schema
-	AnyOf                []*Schema
-	Not                  []*Schema
-	Items                []*Schema
-	Properties           map[string]*Schema
+	AllOf                []*SchemaProxy
+	OneOf                []*SchemaProxy
+	AnyOf                []*SchemaProxy
+	Not                  []*SchemaProxy
+	Items                []*SchemaProxy
+	Properties           map[string]*SchemaProxy
 	AdditionalProperties any
 	Description          string
 	Default              any
@@ -105,28 +105,32 @@ func NewSchema(schema *low.Schema) *Schema {
 
 	polyCompletedChan := make(chan bool)
 	propsChan := make(chan bool)
+	errChan := make(chan error)
 
 	// schema async
-	buildOutSchema := func(schemas []lowmodel.NodeReference[*low.Schema], items *[]*Schema, doneChan chan bool) {
-		bChan := make(chan *Schema)
+	buildOutSchema := func(schemas []lowmodel.ValueReference[*low.SchemaProxy], items *[]*SchemaProxy,
+		doneChan chan bool, e chan error) {
+		bChan := make(chan *SchemaProxy)
+		eChan := make(chan error)
 
 		// for every item, build schema async
-		buildSchemaChild := func(sch lowmodel.NodeReference[*low.Schema], bChan chan *Schema) {
-			if ss := getSeenSchema(sch.GenerateMapKey()); ss != nil {
-				bChan <- ss
-				return
-			}
-			ns := NewSchema(sch.Value)
-			addSeenSchema(sch.GenerateMapKey(), ns)
-			bChan <- ns
+		buildSchemaChild := func(sch lowmodel.ValueReference[*low.SchemaProxy], bChan chan *SchemaProxy, e chan error) {
+			p := &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+				ValueNode: sch.ValueNode,
+				Value:     sch.Value,
+			}}
+			bChan <- p
 		}
 		totalSchemas := len(schemas)
 		for v := range schemas {
-			go buildSchemaChild(schemas[v], bChan)
+			go buildSchemaChild(schemas[v], bChan, eChan)
 		}
 		j := 0
 		for j < totalSchemas {
 			select {
+			case er := <-eChan:
+				e <- er
+				return
 			case t := <-bChan:
 				j++
 				*items = append(*items, t)
@@ -137,48 +141,45 @@ func NewSchema(schema *low.Schema) *Schema {
 
 	// props async
 	plock := sync.RWMutex{}
-	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*low.Schema], c chan bool,
-		props map[string]*Schema) {
-		if ss := getSeenSchema(v.GenerateMapKey()); ss != nil {
-			defer plock.Unlock()
-			plock.Lock()
-			props[k.Value] = ss
-
-		} else {
-			defer plock.Unlock()
-			plock.Lock()
-			props[k.Value] = NewSchema(v.Value)
-			addSeenSchema(k.GenerateMapKey(), props[k.Value])
+	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*low.SchemaProxy], c chan bool,
+		props map[string]*SchemaProxy) {
+		defer plock.Unlock()
+		plock.Lock()
+		props[k.Value] = &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+			Value:     v.Value,
+			KeyNode:   k.KeyNode,
+			ValueNode: v.ValueNode,
+		},
 		}
 		s.Properties = props
 		c <- true
 	}
 
-	props := make(map[string]*Schema)
+	props := make(map[string]*SchemaProxy)
 	for k, v := range schema.Properties.Value {
 		go buildProps(k, v, propsChan, props)
 	}
 
-	var allOf []*Schema
-	var oneOf []*Schema
-	var anyOf []*Schema
-	var not []*Schema
-	var items []*Schema
+	var allOf []*SchemaProxy
+	var oneOf []*SchemaProxy
+	var anyOf []*SchemaProxy
+	var not []*SchemaProxy
+	var items []*SchemaProxy
 
 	if !schema.AllOf.IsEmpty() {
-		go buildOutSchema(schema.AllOf.Value, &allOf, polyCompletedChan)
+		go buildOutSchema(schema.AllOf.Value, &allOf, polyCompletedChan, errChan)
 	}
 	if !schema.AnyOf.IsEmpty() {
-		go buildOutSchema(schema.AnyOf.Value, &anyOf, polyCompletedChan)
+		go buildOutSchema(schema.AnyOf.Value, &anyOf, polyCompletedChan, errChan)
 	}
 	if !schema.OneOf.IsEmpty() {
-		go buildOutSchema(schema.OneOf.Value, &oneOf, polyCompletedChan)
+		go buildOutSchema(schema.OneOf.Value, &oneOf, polyCompletedChan, errChan)
 	}
 	if !schema.Not.IsEmpty() {
-		go buildOutSchema(schema.Not.Value, &not, polyCompletedChan)
+		go buildOutSchema(schema.Not.Value, &not, polyCompletedChan, errChan)
 	}
 	if !schema.Items.IsEmpty() {
-		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan)
+		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan, errChan)
 	}
 
 	completeChildren := 0
