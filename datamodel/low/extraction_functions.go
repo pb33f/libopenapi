@@ -11,7 +11,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"strconv"
 	"strings"
-	"sync"
 )
 
 func FindItemInMap[T any](item string, collection map[KeyReference[string]]ValueReference[T]) *ValueReference[T] {
@@ -22,8 +21,6 @@ func FindItemInMap[T any](item string, collection map[KeyReference[string]]Value
 	}
 	return nil
 }
-
-var mapLock sync.Mutex
 
 func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 	if rf, _, rv := utils.IsNodeRefValue(root); rf {
@@ -80,7 +77,8 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) *yaml.Node {
 		cleaned := strings.ReplaceAll(rv, "#/paths/", "")
 		cleaned = strings.ReplaceAll(cleaned, "/", ".")
 		cleaned = strings.ReplaceAll(cleaned, "~1", "/")
-		path, err := yamlpath.NewPath(fmt.Sprintf("$.paths.%s", cleaned))
+		yamlPath := fmt.Sprintf("$.paths.%s", cleaned)
+		path, err := yamlpath.NewPath(yamlPath)
 		if err == nil {
 			nodes, fErr := path.Find(idx.GetRootNode())
 			if fErr == nil {

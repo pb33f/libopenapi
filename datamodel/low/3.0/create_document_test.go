@@ -316,9 +316,9 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	assert.NotNil(t, components)
 	assert.Len(t, components.Schemas.Value, 6)
 
-	burger := components.FindSchema("Burger")
-	assert.NotNil(t, burger.Value)
-	assert.Equal(t, "The tastiest food on the planet you would love to eat everyday", burger.Value.Schema().Description.Value)
+	burger := components.FindSchema("Burger").Value
+	assert.NotNil(t, burger)
+	assert.Equal(t, "The tastiest food on the planet you would love to eat everyday", burger.Schema().Description.Value)
 
 	er := components.FindSchema("Error")
 	assert.NotNil(t, er.Value)
