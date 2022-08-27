@@ -18,7 +18,7 @@ type Parameter struct {
 	Style           string
 	Explode         bool
 	AllowReserved   bool
-	Schema          *Schema
+	Schema          *SchemaProxy
 	Example         any
 	Examples        map[string]*Example
 	Content         map[string]*MediaType
@@ -37,14 +37,8 @@ func NewParameter(param *low.Parameter) *Parameter {
 	p.Style = param.Style.Value
 	p.Explode = param.Explode.Value
 	p.AllowReserved = param.AllowReserved.Value
-
 	if !param.Schema.IsEmpty() {
-		if v := getSeenSchema(param.Schema.GenerateMapKey()); v != nil {
-			p.Schema = v
-		} else {
-			p.Schema = NewSchema(param.Schema.Value)
-			addSeenSchema(param.Schema.GenerateMapKey(), p.Schema)
-		}
+		p.Schema = &SchemaProxy{schema: &param.Schema}
 	}
 	p.Required = param.Required.Value
 	p.Example = param.Example.Value

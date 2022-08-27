@@ -137,7 +137,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 					vn = ref
 				} else {
 					return NodeReference[T]{}, fmt.Errorf("object build failed: reference cannot be found: %s",
-						root.Content[1].Value)
+						vn.Content[1].Value)
 				}
 			}
 		}

@@ -40,12 +40,12 @@ type Schema struct {
 	Required             low.NodeReference[[]low.ValueReference[string]]
 	Enum                 low.NodeReference[[]low.ValueReference[string]]
 	Type                 low.NodeReference[string]
-	AllOf                low.NodeReference[[]low.NodeReference[*Schema]]
-	OneOf                low.NodeReference[[]low.NodeReference[*Schema]]
-	AnyOf                low.NodeReference[[]low.NodeReference[*Schema]]
-	Not                  low.NodeReference[[]low.NodeReference[*Schema]]
-	Items                low.NodeReference[[]low.NodeReference[*Schema]]
-	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]
+	AllOf                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	OneOf                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	AnyOf                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	Not                  low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	Items                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
 	Default              low.NodeReference[any]
@@ -60,8 +60,8 @@ type Schema struct {
 	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-func (s *Schema) FindProperty(name string) *low.ValueReference[*Schema] {
-	return low.FindItemInMap[*Schema](name, s.Properties.Value)
+func (s *Schema) FindProperty(name string) *low.ValueReference[*SchemaProxy] {
+	return low.FindItemInMap[*SchemaProxy](name, s.Properties.Value)
 }
 
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
@@ -83,7 +83,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 		if ref != nil {
 			root = ref
 		} else {
-			return fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+			return fmt.Errorf("build schema failed: reference cannot be found: '%s', line %d, col %d",
 				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
 		}
 	}
@@ -140,39 +140,16 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	}
 
 	// for property, build in a new thread!
-	bChan := make(chan schemaBuildResult)
-	eChan := make(chan error)
+	bChan := make(chan schemaProxyBuildResult)
 
-	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaBuildResult, ec chan<- error) {
-		// have we seen this before?
-		seen := getSeenSchema(fmt.Sprintf("%d:%d", value.Line, value.Column))
-		if seen != nil {
-			c <- schemaBuildResult{
-				k: low.KeyReference[string]{
-					KeyNode: label,
-					Value:   label.Value,
-				},
-				v: low.ValueReference[*Schema]{
-					Value:     seen,
-					ValueNode: value,
-				},
-			}
-			return
-		}
-		p := new(Schema)
-		_ = low.BuildModel(value, p)
-		err := p.BuildLevel(value, idx, level)
-		if err != nil {
-			ec <- err
-			return
-		}
-		c <- schemaBuildResult{
+	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult) {
+		c <- schemaProxyBuildResult{
 			k: low.KeyReference[string]{
 				KeyNode: label,
 				Value:   label.Value,
 			},
-			v: low.ValueReference[*Schema]{
-				Value:     p,
+			v: low.ValueReference[*SchemaProxy]{
+				Value:     &SchemaProxy{kn: label, vn: value, idx: idx},
 				ValueNode: value,
 			},
 		}
@@ -181,7 +158,7 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 	// handle properties
 	_, propLabel, propsNode := utils.FindKeyNodeFull(PropertiesLabel, root.Content)
 	if propsNode != nil {
-		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*Schema])
+		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*SchemaProxy])
 		var currentProp *yaml.Node
 		totalProps := 0
 		for i, prop := range propsNode.Content {
@@ -201,64 +178,106 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 				}
 			}
 			totalProps++
-			go buildProperty(currentProp, prop, bChan, eChan)
+			go buildProperty(currentProp, prop, bChan)
 		}
 		completedProps := 0
 		for completedProps < totalProps {
 			select {
-			case err := <-eChan:
-				return err
 			case res := <-bChan:
 				completedProps++
 				propertyMap[res.k] = res.v
 			}
 		}
-		s.Properties = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Schema]]{
+		s.Properties = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]{
 			Value:     propertyMap,
 			KeyNode:   propLabel,
 			ValueNode: propsNode,
 		}
 	}
 
-	// extract all sub-schemas
-	var errors []error
+	var allOf, anyOf, oneOf, not, items []low.ValueReference[*SchemaProxy]
 
-	var allOf, anyOf, oneOf, not, items []low.NodeReference[*Schema]
+	_, allOfLabel, allOfValue := utils.FindKeyNodeFull(AllOfLabel, root.Content)
+	_, anyOfLabel, anyOfValue := utils.FindKeyNodeFull(AnyOfLabel, root.Content)
+	_, oneOfLabel, oneOfValue := utils.FindKeyNodeFull(OneOfLabel, root.Content)
+	_, notLabel, notValue := utils.FindKeyNodeFull(NotLabel, root.Content)
+	_, itemsLabel, itemsValue := utils.FindKeyNodeFull(ItemsLabel, root.Content)
 
-	// make this async at some point to speed things up.
-	allOfLabel, allOfValue := buildSchema(&allOf, AllOfLabel, root, level, &errors, idx)
-	anyOfLabel, anyOfValue := buildSchema(&anyOf, AnyOfLabel, root, level, &errors, idx)
-	oneOfLabel, oneOfValue := buildSchema(&oneOf, OneOfLabel, root, level, &errors, idx)
-	notLabel, notValue := buildSchema(&not, NotLabel, root, level, &errors, idx)
-	itemsLabel, itemsValue := buildSchema(&items, ItemsLabel, root, level, &errors, idx)
+	errorChan := make(chan error)
+	allOfChan := make(chan schemaProxyBuildResult)
+	anyOfChan := make(chan schemaProxyBuildResult)
+	oneOfChan := make(chan schemaProxyBuildResult)
+	itemsChan := make(chan schemaProxyBuildResult)
+	notChan := make(chan schemaProxyBuildResult)
 
-	if len(errors) > 0 {
-		// todo fix this
-		return errors[0]
+	totalBuilds := countSubSchemaItems(allOfValue) +
+		countSubSchemaItems(anyOfValue) +
+		countSubSchemaItems(oneOfValue) +
+		countSubSchemaItems(notValue) +
+		countSubSchemaItems(itemsValue)
+
+	if allOfValue != nil {
+		go buildSchema(allOfChan, allOfLabel, allOfValue, errorChan, idx)
 	}
+	if anyOfValue != nil {
+		go buildSchema(anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
+	}
+	if oneOfValue != nil {
+		go buildSchema(oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
+	}
+	if itemsValue != nil {
+		go buildSchema(itemsChan, itemsLabel, itemsValue, errorChan, idx)
+	}
+	if notValue != nil {
+		go buildSchema(notChan, notLabel, notValue, errorChan, idx)
+	}
+
+	completeCount := 0
+	for completeCount < totalBuilds {
+		select {
+		case e := <-errorChan:
+			return e
+		case r := <-allOfChan:
+			completeCount++
+			allOf = append(allOf, r.v)
+		case r := <-anyOfChan:
+			completeCount++
+			anyOf = append(anyOf, r.v)
+		case r := <-oneOfChan:
+			completeCount++
+			oneOf = append(oneOf, r.v)
+		case r := <-itemsChan:
+			completeCount++
+			items = append(items, r.v)
+		case r := <-notChan:
+			completeCount++
+			not = append(not, r.v)
+		}
+	}
+
 	if len(anyOf) > 0 {
-		s.AnyOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+		s.AnyOf = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
 			Value:     anyOf,
 			KeyNode:   anyOfLabel,
 			ValueNode: anyOfValue,
 		}
 	}
 	if len(oneOf) > 0 {
-		s.OneOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+		s.OneOf = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
 			Value:     oneOf,
 			KeyNode:   oneOfLabel,
 			ValueNode: oneOfValue,
 		}
 	}
 	if len(allOf) > 0 {
-		s.AllOf = low.NodeReference[[]low.NodeReference[*Schema]]{
+		s.AllOf = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
 			Value:     allOf,
 			KeyNode:   allOfLabel,
 			ValueNode: allOfValue,
 		}
 	}
 	if len(not) > 0 {
-		s.Not = low.NodeReference[[]low.NodeReference[*Schema]]{
+		s.Not = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
 			Value:     not,
 			KeyNode:   notLabel,
 			ValueNode: notValue,
@@ -266,14 +285,23 @@ func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) er
 
 	}
 	if len(items) > 0 {
-		s.Items = low.NodeReference[[]low.NodeReference[*Schema]]{
+		s.Items = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
 			Value:     items,
 			KeyNode:   itemsLabel,
 			ValueNode: itemsValue,
 		}
 	}
-
 	return nil
+}
+
+func countSubSchemaItems(node *yaml.Node) int {
+	if utils.IsNodeMap(node) {
+		return 1
+	}
+	if utils.IsNodeArray(node) {
+		return len(node.Content)
+	}
+	return 0
 }
 
 type schemaBuildResult struct {
@@ -281,59 +309,50 @@ type schemaBuildResult struct {
 	v low.ValueReference[*Schema]
 }
 
+type schemaProxyBuildResult struct {
+	k low.KeyReference[string]
+	v low.ValueReference[*SchemaProxy]
+}
+
 func (s *Schema) extractExtensions(root *yaml.Node) {
 	s.Extensions = low.ExtractExtensions(root)
 }
 
-func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNode *yaml.Node, level int,
-	errors *[]error, idx *index.SpecIndex) (labelNode *yaml.Node, valueNode *yaml.Node) {
-
-	_, labelNode, valueNode = utils.FindKeyNodeFull(attribute, rootNode.Content)
-	//wg.Add(1)
-	if valueNode == nil {
-		return nil, nil
-	}
+func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
 
 	if valueNode != nil {
+		syncChan := make(chan *low.ValueReference[*SchemaProxy])
+		errorChan := make(chan error)
 
-		build := func(kn *yaml.Node, vn *yaml.Node) *low.NodeReference[*Schema] {
-			schema := new(Schema)
+		// build out a SchemaProxy for every sub-schema.
+		build := func(kn *yaml.Node, vn *yaml.Node, c chan *low.ValueReference[*SchemaProxy], e chan error) {
 			if h, _, _ := utils.IsNodeRefValue(vn); h {
 				ref := low.LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
 				} else {
-					*errors = append(*errors, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
-						vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column))
-					return nil
+					err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+						vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
+					e <- err
 				}
 			}
 
-			seen := getSeenSchema(fmt.Sprintf("%d:%d", vn.Line, vn.Column))
-			if seen != nil {
-				return &low.NodeReference[*Schema]{
-					Value:     seen,
-					KeyNode:   kn,
-					ValueNode: vn,
-				}
-			}
+			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
+			// take on circular references through polymorphism. Like the resolver, if we try and follow these
+			// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
+			// chasing down circles, that in turn spin up endless threads.
+			// In order to combat this, we need a schema proxy that will only resolve the schema when asked, and then
+			// it will only do it one level at a time.
+			sp := new(SchemaProxy)
+			sp.kn = kn
+			sp.vn = vn
+			sp.idx = idx
 
-			_ = low.BuildModel(vn, schema)
-
-			// add schema before we build, so it doesn't get stuck in an infinite loop.
-			addSeenSchema(fmt.Sprintf("%d:%d", vn.Line, vn.Column), schema)
-
-			err := schema.BuildLevel(vn, idx, level)
-			if err != nil {
-				*errors = append(*errors, err)
-				return nil
-			}
-
-			return &low.NodeReference[*Schema]{
-				Value:     schema,
-				KeyNode:   kn,
+			res := &low.ValueReference[*SchemaProxy]{
+				Value:     sp,
 				ValueNode: vn,
 			}
+			c <- res
 		}
 
 		if utils.IsNodeMap(valueNode) {
@@ -342,42 +361,66 @@ func buildSchema(schemas *[]low.NodeReference[*Schema], attribute string, rootNo
 				if ref != nil {
 					valueNode = ref
 				} else {
-					*errors = append(*errors, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
-						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column))
+					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
 					return
 				}
 			}
 
-			schema := build(labelNode, valueNode)
-			if schema != nil {
-				*schemas = append(*schemas, *schema)
+			// this only runs once, however to keep things consistent, it makes sense to use the same async method
+			// that arrays will use.
+			go build(labelNode, valueNode, syncChan, errorChan)
+			select {
+			case e := <-errorChan:
+				errors <- e
+				break
+			case r := <-syncChan:
+				schemas <- schemaProxyBuildResult{
+					k: low.KeyReference[string]{
+						KeyNode: labelNode,
+						Value:   labelNode.Value,
+					},
+					v: *r,
+				}
 			}
 		}
 		if utils.IsNodeArray(valueNode) {
-			//fmt.Println("polymorphic looping sucks dude.")
+			refBuilds := 0
 			for _, vn := range valueNode.Content {
 				if h, _, _ := utils.IsNodeRefValue(vn); h {
 					ref := low.LocateRefNode(vn, idx)
 					if ref != nil {
 						vn = ref
 					} else {
-						*errors = append(*errors, fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
-							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column))
+						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
+							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
+						errors <- err
+						return
 					}
 				}
-
-				schema := build(vn, vn)
-				if schema != nil {
-					*schemas = append(*schemas, *schema)
+				refBuilds++
+				go build(vn, vn, syncChan, errorChan)
+			}
+			completedBuilds := 0
+			for completedBuilds < refBuilds {
+				select {
+				case res := <-syncChan:
+					completedBuilds++
+					schemas <- schemaProxyBuildResult{
+						k: low.KeyReference[string]{
+							KeyNode: labelNode,
+							Value:   labelNode.Value,
+						},
+						v: *res,
+					}
 				}
 			}
 		}
 
 	}
-	return labelNode, valueNode
 }
 
-func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*Schema], error) {
+func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
 	var schLabel, schNode *yaml.Node
 	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
@@ -407,20 +450,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 
 	if schNode != nil {
 		// check if schema has already been built.
-		seen := getSeenSchema(fmt.Sprintf("%d:%d", schNode.Line, schNode.Column))
-		if seen != nil {
-			return &low.NodeReference[*Schema]{Value: seen, KeyNode: schLabel, ValueNode: schNode}, nil
-		}
-
-		var schema Schema
-		_ = low.BuildModel(schNode, &schema)
-		err := schema.Build(schNode, idx)
-		addSeenSchema(fmt.Sprintf("%d:%d", schNode.Line, schNode.Column), &schema)
-		if err != nil {
-			return nil, err
-		}
-
-		return &low.NodeReference[*Schema]{Value: &schema, KeyNode: schLabel, ValueNode: schNode}, nil
+		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx}
+		return &low.NodeReference[*SchemaProxy]{Value: schema, KeyNode: schLabel, ValueNode: schNode}, nil
 	}
 	return nil, nil
 }

@@ -22,7 +22,7 @@ type Header struct {
 	Style           low.NodeReference[string]
 	Explode         low.NodeReference[bool]
 	AllowReserved   low.NodeReference[bool]
-	Schema          low.NodeReference[*Schema]
+	Schema          low.NodeReference[*SchemaProxy]
 	Example         low.NodeReference[any]
 	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
 	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]

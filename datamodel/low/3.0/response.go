@@ -39,7 +39,7 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			r.Default = def
 		}
 	} else {
-		return fmt.Errorf("responses build failed: root node is not a map! line %d, col %d", root.Line, root.Column)
+		return fmt.Errorf("responses build failed: vn node is not a map! line %d, col %d", root.Line, root.Column)
 	}
 	return nil
 }

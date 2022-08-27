@@ -16,7 +16,7 @@ type Header struct {
 	Style           string
 	Explode         bool
 	AllowReserved   bool
-	Schema          *Schema
+	Schema          *SchemaProxy
 	Example         any
 	Examples        map[string]*Example
 	Content         map[string]*MediaType
@@ -35,13 +35,11 @@ func NewHeader(header *low.Header) *Header {
 	h.Explode = header.Explode.Value
 	h.AllowReserved = header.AllowReserved.Value
 	if !header.Schema.IsEmpty() {
-		// check if schema has been seen or not.
-		if v := getSeenSchema(header.Schema.GenerateMapKey()); v != nil {
-			h.Schema = v
-		} else {
-			h.Schema = NewSchema(header.Schema.Value)
-			addSeenSchema(header.Schema.GenerateMapKey(), h.Schema)
-		}
+		h.Schema = &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+			Value:     header.Schema.Value,
+			KeyNode:   header.Schema.KeyNode,
+			ValueNode: header.Schema.ValueNode,
+		}}
 	}
 	h.Content = ExtractContent(header.Content.Value)
 	h.Example = header.Example.Value

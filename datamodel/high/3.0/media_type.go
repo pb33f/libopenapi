@@ -10,7 +10,7 @@ import (
 )
 
 type MediaType struct {
-	Schema     *Schema
+	Schema     *SchemaProxy
 	Example    any
 	Examples   map[string]*Example
 	Encoding   map[string]*Encoding
@@ -22,13 +22,7 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 	m := new(MediaType)
 	m.low = mediaType
 	if !mediaType.Schema.IsEmpty() {
-		// check if schema has been seen or not.
-		if v := getSeenSchema(mediaType.Schema.GenerateMapKey()); v != nil {
-			m.Schema = v
-		} else {
-			m.Schema = NewSchema(mediaType.Schema.Value)
-			addSeenSchema(mediaType.Schema.GenerateMapKey(), m.Schema)
-		}
+		m.Schema = &SchemaProxy{schema: &mediaType.Schema}
 	}
 	m.Example = mediaType.Example
 	m.Examples = ExtractExamples(mediaType.Examples.Value)

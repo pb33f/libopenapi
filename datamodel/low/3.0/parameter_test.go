@@ -64,11 +64,11 @@ content:
 	assert.Equal(t, "happy", n.Name.Value)
 	assert.Equal(t, "path", n.In.Value)
 	assert.NotNil(t, n.Schema.Value)
-	assert.Equal(t, "my triple M, my loves", n.Schema.Value.Description.Value)
-	assert.NotNil(t, n.Schema.Value.Properties.Value)
-	assert.Equal(t, "she is my heart.", n.Schema.Value.FindProperty("michelle").Value.Description.Value)
-	assert.Equal(t, "she is my song.", n.Schema.Value.FindProperty("meddy").Value.Description.Value)
-	assert.Equal(t, "he is my champion.", n.Schema.Value.FindProperty("maddy").Value.Description.Value)
+	assert.Equal(t, "my triple M, my loves", n.Schema.Value.Schema().Description.Value)
+	assert.NotNil(t, n.Schema.Value.Schema().Properties.Value)
+	assert.Equal(t, "she is my heart.", n.Schema.Value.Schema().FindProperty("michelle").Value.Schema().Description.Value)
+	assert.Equal(t, "she is my song.", n.Schema.Value.Schema().FindProperty("meddy").Value.Schema().Description.Value)
+	assert.Equal(t, "he is my champion.", n.Schema.Value.Schema().FindProperty("maddy").Value.Schema().Description.Value)
 
 	if v, ok := n.Example.Value.(map[string]interface{}); ok {
 		assert.Equal(t, "my love.", v["michelle"])
@@ -80,7 +80,7 @@ content:
 
 	con := n.FindContent("family/love").Value
 	assert.NotNil(t, con)
-	assert.Equal(t, "family love.", con.Schema.Value.Description.Value)
+	assert.Equal(t, "family love.", con.Schema.Value.Schema().Description.Value)
 	assert.Nil(t, n.FindContent("unknown"))
 
 	ext := n.FindExtension("x-family-love").Value

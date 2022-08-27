@@ -123,3 +123,10 @@ value:
 	}
 
 }
+
+func TestExtractExampleValue(t *testing.T) {
+	assert.True(t, ExtractExampleValue(&yaml.Node{Tag: "!!bool", Value: "true"}).(bool))
+	assert.Equal(t, int64(10), ExtractExampleValue(&yaml.Node{Tag: "!!int", Value: "10"}).(int64))
+	assert.Equal(t, 33.2, ExtractExampleValue(&yaml.Node{Tag: "!!float", Value: "33.2"}).(float64))
+
+}

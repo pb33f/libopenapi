@@ -47,7 +47,7 @@ func getSeenSchema(key string) *Schema {
 }
 
 type Components struct {
-	Schemas         map[string]*Schema
+	Schemas         map[string]*SchemaProxy
 	Responses       map[string]*Response
 	Parameters      map[string]*Parameter
 	Examples        map[string]*Example
@@ -72,8 +72,8 @@ func NewComponents(comp *low.Components) *Components {
 	requestBodyMap := make(map[string]*RequestBody)
 	headerMap := make(map[string]*Header)
 	securitySchemeMap := make(map[string]*SecurityScheme)
-	schemas := make(map[string]*Schema)
-	schemaChan := make(chan componentResult[*Schema])
+	schemas := make(map[string]*SchemaProxy)
+	schemaChan := make(chan componentResult[*SchemaProxy])
 	cbChan := make(chan componentResult[*Callback])
 	linkChan := make(chan componentResult[*Link])
 	responseChan := make(chan componentResult[*Response])
@@ -173,15 +173,13 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
 }
 
-func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*low.Schema], c chan componentResult[*Schema]) {
-	var sch *Schema
-	if ss := getSeenSchema(orig.GenerateMapKey()); ss != nil {
-		sch = ss
-	} else {
-		sch = NewSchema(orig.Value)
-		addSeenSchema(orig.GenerateMapKey(), sch)
-	}
-	c <- componentResult[*Schema]{res: sch, key: key.Value}
+func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*low.SchemaProxy], c chan componentResult[*SchemaProxy]) {
+	var sch *SchemaProxy
+	sch = &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+		Value:     orig.Value,
+		ValueNode: orig.ValueNode,
+	}}
+	c <- componentResult[*SchemaProxy]{res: sch, key: key.Value}
 }
 
 func (c *Components) GoLow() *low.Components {

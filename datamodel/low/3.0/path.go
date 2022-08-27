@@ -30,9 +30,9 @@ type Paths struct {
 }
 
 func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
-	for k, p := range p.PathItems {
+	for k, j := range p.PathItems {
 		if k.Value == path {
-			return &p
+			return &j
 		}
 	}
 	return nil
