@@ -4,50 +4,52 @@
 package v3
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/low"
-    v3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
-    "testing"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+	"testing"
 )
 
-func TestNewSchema(t *testing.T) {
+func TestNewSchemaProxy(t *testing.T) {
 
-    // tests async schema lookup, by essentially running it twice, without a cache cleanup.
-    yml := `components:
-  schemas:
+	// check proxy
+	yml := `components:
+    schemas:
+     rice:
+       type: string
+     nice:
+       properties:
+         rice:
+           $ref: '#/components/schemas/rice'
+     ice:
+       properties:
+         rice:
+           $ref: '#/components/schemas/rice'`
+
+	var idxNode, compNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `properties:
     rice:
-      type: string
-    nice:
-      properties:
-        rice:
-          $ref: '#/components/schemas/rice'
-    ice: 
-      properties:
-        rice:
-          $ref: '#/components/schemas/rice'`
+     $ref: '#/components/schemas/I-do-not-exist'`
 
-    var idxNode, compNode yaml.Node
-    mErr := yaml.Unmarshal([]byte(yml), &idxNode)
-    assert.NoError(t, mErr)
-    idx := index.NewSpecIndex(&idxNode)
+	_ = yaml.Unmarshal([]byte(yml), &compNode)
 
-    yml = `properties:
-  rice:
-    $ref: '#/components/schemas/rice'`
+	sp := new(v3.SchemaProxy)
+	err := sp.Build(compNode.Content[0], idx)
+	assert.NoError(t, err)
 
-    var n v3.Schema
-    _ = yaml.Unmarshal([]byte(yml), &compNode)
-    err := low.BuildModel(&idxNode, &n)
-    assert.NoError(t, err)
+	lowproxy := low.NodeReference[*v3.SchemaProxy]{
+		Value:     sp,
+		ValueNode: idxNode.Content[0],
+	}
 
-    err = n.Build(idxNode.Content[0], idx)
-    assert.NoError(t, err)
-
-    sch1 := NewSchema(&n)
-    sch2 := NewSchema(&n)
-
-    assert.Equal(t, sch1, sch2)
+	sch1 := SchemaProxy{schema: &lowproxy}
+	assert.Nil(t, sch1.Schema())
+	assert.Error(t, sch1.GetBuildError())
 
 }

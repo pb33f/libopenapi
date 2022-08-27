@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"github.com/pb33f/libopenapi/index"
 )
 
 type Document struct {
@@ -18,14 +19,19 @@ type Document struct {
 	Tags         []*Tag
 	ExternalDocs *ExternalDoc
 	Extensions   map[string]any
+	Index        *index.SpecIndex
 	low          *low.Document
 }
 
 func NewDocument(document *low.Document) *Document {
 	d := new(Document)
 	d.low = document
-	d.Info = NewInfo(document.Info.Value)
-	d.Version = document.Version.Value
+	if !document.Info.IsEmpty() {
+		d.Info = NewInfo(document.Info.Value)
+	}
+	if !document.Version.IsEmpty() {
+		d.Version = document.Version.Value
+	}
 	var servers []*Server
 	for _, ser := range document.Servers.Value {
 		servers = append(servers, NewServer(ser.Value))
@@ -42,6 +48,7 @@ func NewDocument(document *low.Document) *Document {
 	d.Extensions = high.ExtractExtensions(document.Extensions)
 	d.Components = NewComponents(document.Components.Value)
 	d.Paths = NewPaths(document.Paths.Value)
+	d.Index = document.Index
 	return d
 }
 

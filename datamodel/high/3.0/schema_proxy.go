@@ -16,7 +16,7 @@ type SchemaProxy struct {
 func (sp *SchemaProxy) Schema() *Schema {
 	s := sp.schema.Value.Schema()
 	if s == nil {
-		sp.buildError = sp.GetBuildError()
+		sp.buildError = sp.schema.Value.GetBuildError()
 		return nil
 	}
 	return NewSchema(s)

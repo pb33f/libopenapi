@@ -18,16 +18,24 @@ type Info struct {
 func NewInfo(info *low.Info) *Info {
 	i := new(Info)
 	i.low = info
-	i.Title = info.Title.Value
-	i.Description = info.Description.Value
-	i.TermsOfService = info.TermsOfService.Value
+	if !info.Title.IsEmpty() {
+		i.Title = info.Title.Value
+	}
+	if !info.Description.IsEmpty() {
+		i.Description = info.Description.Value
+	}
+	if !info.TermsOfService.IsEmpty() {
+		i.TermsOfService = info.TermsOfService.Value
+	}
 	if !info.Contact.IsEmpty() {
 		i.Contact = NewContact(info.Contact.Value)
 	}
 	if !info.License.IsEmpty() {
 		i.License = NewLicense(info.License.Value)
 	}
-	i.Version = info.Version.Value
+	if !info.Version.IsEmpty() {
+		i.Version = info.Version.Value
+	}
 	return i
 }
 

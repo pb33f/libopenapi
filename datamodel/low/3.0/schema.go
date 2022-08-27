@@ -65,19 +65,6 @@ func (s *Schema) FindProperty(name string) *low.ValueReference[*SchemaProxy] {
 }
 
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	return s.BuildLevel(root, idx, 0)
-}
-
-func (s *Schema) BuildLevel(root *yaml.Node, idx *index.SpecIndex, level int) error {
-
-	if low.IsCircular(root, idx) {
-		return nil // circular references cannot be built.
-	}
-
-	if level > 30 {
-		return fmt.Errorf("schema is too nested to continue: %d levels deep, is too deep", level) // we're done, son! too fricken deep.
-	}
-	level++
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref := low.LocateRefNode(root, idx)
 		if ref != nil {
