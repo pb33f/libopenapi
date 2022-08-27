@@ -188,8 +188,8 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Len(t, burgerId.Value.Get.Value.Parameters.Value, 2)
 	param := burgerId.Value.Get.Value.Parameters.Value[1]
 	assert.Equal(t, "burgerHeader", param.Value.Name.Value)
-	prop := param.Value.Schema.Value.Schema().FindProperty("burgerTheme")
-	assert.Equal(t, "something about a theme?", prop.Value.Schema().Description.Value)
+	prop := param.Value.Schema.Value.Schema().FindProperty("burgerTheme").Value
+	assert.Equal(t, "something about a theme?", prop.Schema().Description.Value)
 	assert.Equal(t, "big-mac", param.Value.Example.Value)
 
 	// check content
@@ -500,6 +500,19 @@ func TestCreateDocument_Components_Error(t *testing.T) {
 	ob := doc.Components.Value.FindSchema("bork").Value
 	ob.Schema()
 	assert.Error(t, ob.GetBuildError())
+}
+
+func TestCreateDocument_Components_Error_Extract(t *testing.T) {
+	yml := `components:
+  parameters:
+    bork:
+      $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {

@@ -12,7 +12,6 @@ import (
 func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
 	// clean state
-	clearSchemas()
 	doc := Document{Version: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 
 	// build an index

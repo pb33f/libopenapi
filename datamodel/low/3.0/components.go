@@ -10,38 +10,12 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strings"
-	"sync"
 )
 
 const (
 	ComponentsLabel = "components"
 	SchemasLabel    = "schemas"
 )
-
-var seenSchemas map[string]*Schema
-
-func init() {
-	clearSchemas()
-}
-
-func clearSchemas() {
-	seenSchemas = make(map[string]*Schema)
-}
-
-var seenSchemaLock sync.RWMutex
-
-func addSeenSchema(key string, schema *Schema) {
-	defer seenSchemaLock.Unlock()
-	seenSchemaLock.Lock()
-	if seenSchemas[key] == nil {
-		seenSchemas[key] = schema
-	}
-}
-func getSeenSchema(key string) *Schema {
-	defer seenSchemaLock.Unlock()
-	seenSchemaLock.Lock()
-	return seenSchemas[key]
-}
 
 type Components struct {
 	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
@@ -161,12 +135,6 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	return nil
-}
-
-func cacheSchemas(sch map[low.KeyReference[string]]low.ValueReference[*Schema]) {
-	for _, v := range sch {
-		addSeenSchema(v.GenerateMapKey(), v.Value)
-	}
 }
 
 type componentBuildResult[T any] struct {

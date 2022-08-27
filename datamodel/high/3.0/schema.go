@@ -111,10 +111,9 @@ func NewSchema(schema *low.Schema) *Schema {
 	buildOutSchema := func(schemas []lowmodel.ValueReference[*low.SchemaProxy], items *[]*SchemaProxy,
 		doneChan chan bool, e chan error) {
 		bChan := make(chan *SchemaProxy)
-		eChan := make(chan error)
 
 		// for every item, build schema async
-		buildSchemaChild := func(sch lowmodel.ValueReference[*low.SchemaProxy], bChan chan *SchemaProxy, e chan error) {
+		buildSchemaChild := func(sch lowmodel.ValueReference[*low.SchemaProxy], bChan chan *SchemaProxy) {
 			p := &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
 				ValueNode: sch.ValueNode,
 				Value:     sch.Value,
@@ -123,14 +122,11 @@ func NewSchema(schema *low.Schema) *Schema {
 		}
 		totalSchemas := len(schemas)
 		for v := range schemas {
-			go buildSchemaChild(schemas[v], bChan, eChan)
+			go buildSchemaChild(schemas[v], bChan)
 		}
 		j := 0
 		for j < totalSchemas {
 			select {
-			case er := <-eChan:
-				e <- er
-				return
 			case t := <-bChan:
 				j++
 				*items = append(*items, t)

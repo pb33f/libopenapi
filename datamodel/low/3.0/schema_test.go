@@ -9,7 +9,6 @@ import (
 )
 
 func Test_Schema(t *testing.T) {
-	clearSchemas()
 	testSpec := `type: object
 description: something object
 discriminator:
@@ -225,7 +224,7 @@ additionalProperties: true      `
 }
 
 //func TestSchema_BuildLevel_TooDeep(t *testing.T) {
-//	clearSchemas()
+//
 //	// if you design data models like this, you're doing it fucking wrong. Seriously. why, what is so complex about a model
 //	// that it needs to be 30+ levels deep? I have seen this shit in the wild, it's unreadable, un-parsable garbage.
 //	yml := `type: object
@@ -343,7 +342,7 @@ additionalProperties: true      `
 //}
 
 func TestSchema_Build_ErrorAdditionalProps(t *testing.T) {
-	clearSchemas()
+
 	yml := `additionalProperties:
   $ref: #borko`
 
@@ -361,7 +360,7 @@ func TestSchema_Build_ErrorAdditionalProps(t *testing.T) {
 }
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
-	clearSchemas()
+
 	yml := `components:
   schemas:
     Something:
@@ -389,7 +388,7 @@ properties:
 }
 
 func TestSchema_Build_PropsLookup_Fail(t *testing.T) {
-	clearSchemas()
+
 	yml := `components:
   schemas:
     Something:
@@ -416,7 +415,7 @@ properties:
 }
 
 func Test_Schema_Polymorphism_Array_Ref(t *testing.T) {
-	clearSchemas()
+
 	yml := `components:
   schemas:
     Something:
@@ -464,7 +463,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
-	clearSchemas()
+
 	yml := `components:
   schemas:
     Something:
@@ -506,7 +505,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
-	clearSchemas()
+
 	yml := `components:
   schemas:
     Something:
@@ -554,7 +553,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
-	clearSchemas()
+
 	yml := `components:
   schemas:
     Something:
@@ -596,7 +595,6 @@ items:
 }
 
 func Test_Schema_Polymorphism_BorkParent(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -625,7 +623,6 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_BorkChild(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -654,7 +651,6 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_BorkChild_Array(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -687,7 +683,6 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -721,7 +716,6 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadnessBork(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -752,7 +746,6 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
-	clearSchemas()
 
 	// this does not work, but it won't error out.
 
@@ -783,7 +776,6 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
 }
 
 func TestExtractSchema(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -813,7 +805,6 @@ func TestExtractSchema(t *testing.T) {
 }
 
 func TestExtractSchema_Ref(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -839,7 +830,6 @@ func TestExtractSchema_Ref(t *testing.T) {
 }
 
 func TestExtractSchema_Ref_Fail(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -863,7 +853,6 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -888,7 +877,6 @@ func TestExtractSchema_RefRoot(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Fail(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -912,7 +900,6 @@ func TestExtractSchema_RefRoot_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
-	clearSchemas()
 
 	yml := `components:
   schemas:
@@ -939,8 +926,6 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 
 func TestExtractSchema_DoNothing(t *testing.T) {
 
-	clearSchemas()
-
 	yml := `components:
   schemas:
     Something:
@@ -963,8 +948,6 @@ func TestExtractSchema_DoNothing(t *testing.T) {
 }
 
 func TestExtractSchema_OneOfRef(t *testing.T) {
-
-	clearSchemas()
 
 	yml := `components:
   schemas:

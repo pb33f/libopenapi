@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
-	"sync"
 )
 
 const (
@@ -20,31 +19,6 @@ const (
 	links
 	callbacks
 )
-
-var seenSchemas map[string]*Schema
-
-func init() {
-	clearSchemas()
-}
-
-func clearSchemas() {
-	seenSchemas = make(map[string]*Schema)
-}
-
-var seenSchemaLock sync.RWMutex
-
-func addSeenSchema(key string, schema *Schema) {
-	defer seenSchemaLock.Unlock()
-	seenSchemaLock.Lock()
-	if seenSchemas[key] == nil {
-		seenSchemas[key] = schema
-	}
-}
-func getSeenSchema(key string) *Schema {
-	defer seenSchemaLock.Unlock()
-	seenSchemaLock.Lock()
-	return seenSchemas[key]
-}
 
 type Components struct {
 	Schemas         map[string]*SchemaProxy
@@ -110,7 +84,6 @@ func NewComponents(comp *low.Components) *Components {
 		go buildComponent[*SecurityScheme, *low.SecurityScheme](securitySchemes, k.Value, v.Value,
 			securitySchemeChan, NewSecurityScheme)
 	}
-
 	for k, v := range comp.Schemas.Value {
 		go buildSchema(k, v, schemaChan)
 	}
