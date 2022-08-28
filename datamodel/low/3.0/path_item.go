@@ -124,9 +124,14 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		wg.Add(1)
 
 		if ok, _, _ := utils.IsNodeRefValue(pathNode); ok {
-			r := low.LocateRefNode(pathNode, idx)
+			r, err := low.LocateRefNode(pathNode, idx)
 			if r != nil {
 				pathNode = r
+				if err != nil {
+					if !idx.AllowCircularReferenceResolving() {
+						return fmt.Errorf("build schema failed: %s", err.Error())
+					}
+				}
 			} else {
 				return fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
 					pathNode.Content[1].Value, pathNode.Content[1].Line, pathNode.Content[1].Column)
@@ -172,9 +177,14 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 		//build out the operation.
 		if ok, _, _ := utils.IsNodeRefValue(op.ValueNode); ok {
-			r := low.LocateRefNode(op.ValueNode, idx)
+			r, err := low.LocateRefNode(op.ValueNode, idx)
 			if r != nil {
 				op.ValueNode = r
+				if err != nil {
+					if !idx.AllowCircularReferenceResolving() {
+						errCh <- fmt.Errorf("build schema failed: %s", err.Error())
+					}
+				}
 			} else {
 				// any reference would be the second node.
 				errCh <- fmt.Errorf("cannot extract reference: %s", op.ValueNode.Content[1].Value)

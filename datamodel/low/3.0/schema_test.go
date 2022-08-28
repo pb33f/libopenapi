@@ -740,8 +740,8 @@ allOf:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	_ = sch.Build(idxNode.Content[0], idx)
-	assert.Nil(t, sch.AllOf.Value[0].Value.Schema())
+	err = sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
 
 }
 
@@ -916,12 +916,8 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	s, _ := ExtractSchema(idxNode.Content[0], idx)
-
-	b := s.Value.Schema()
-	assert.Nil(t, b)
-	assert.Error(t, s.Value.GetBuildError())
-
+	_, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.Error(t, err)
 }
 
 func TestExtractSchema_DoNothing(t *testing.T) {
