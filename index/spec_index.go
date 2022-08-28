@@ -138,6 +138,7 @@ type SpecIndex struct {
 	seenRemoteSources                   map[string]*yaml.Node
 	remoteLock                          sync.Mutex
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
+	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
 }
 
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the
@@ -501,6 +502,17 @@ func (index *SpecIndex) GetAllOperationsServers() map[string]map[string][]*Refer
 // GetAllExternalIndexes will return all indexes for external documents
 func (index *SpecIndex) GetAllExternalIndexes() map[string]*SpecIndex {
 	return index.externalSpecIndex
+}
+
+// SetAllowCircularReferenceResolving will flip a bit that can be used by any consumers to determine if they want
+// to allow or disallow circular references to be resolved or visited
+func (index *SpecIndex) SetAllowCircularReferenceResolving(allow bool) {
+	index.allowCircularReferences = allow
+}
+
+// AllowCircularReferenceResolving will return a bit that allows developers to determine what to do with circular refs.
+func (index *SpecIndex) AllowCircularReferenceResolving() bool {
+	return index.allowCircularReferences
 }
 
 func (index *SpecIndex) checkPolymorphicNode(name string) (bool, string) {

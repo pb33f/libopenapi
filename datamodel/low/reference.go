@@ -67,3 +67,16 @@ func IsCircular(node *yaml.Node, idx *index.SpecIndex) bool {
 	}
 	return false
 }
+
+func GetCircularReferenceResult(node *yaml.Node, idx *index.SpecIndex) *index.CircularReferenceResult {
+	if idx == nil {
+		return nil // no index! nothing we can do.
+	}
+	refs := idx.GetCircularReferences()
+	for i := range idx.GetCircularReferences() {
+		if refs[i].LoopPoint.Node == node {
+			return refs[i]
+		}
+	}
+	return nil
+}

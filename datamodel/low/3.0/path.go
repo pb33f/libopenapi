@@ -59,9 +59,14 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	eChan := make(chan error)
 	var buildPathItem = func(cNode, pNode *yaml.Node, b chan<- pathBuildResult, e chan<- error) {
 		if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
-			r := low.LocateRefNode(pNode, idx)
+			r, err := low.LocateRefNode(pNode, idx)
 			if r != nil {
 				pNode = r
+				if err != nil {
+					if !idx.AllowCircularReferenceResolving() {
+						e <- fmt.Errorf("path item build failed: %s", err.Error())
+					}
+				}
 			} else {
 				e <- fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
 					pNode.Content[1].Value, pNode.Content[1].Line, pNode.Content[1].Column)

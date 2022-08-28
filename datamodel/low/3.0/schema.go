@@ -66,9 +66,14 @@ func (s *Schema) FindProperty(name string) *low.ValueReference[*SchemaProxy] {
 
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if h, _, _ := utils.IsNodeRefValue(root); h {
-		ref := low.LocateRefNode(root, idx)
+		ref, err := low.LocateRefNode(root, idx)
 		if ref != nil {
 			root = ref
+			if err != nil {
+				if !idx.AllowCircularReferenceResolving() {
+					return fmt.Errorf("build schema failed: %s", err.Error())
+				}
+			}
 		} else {
 			return fmt.Errorf("build schema failed: reference cannot be found: '%s', line %d, col %d",
 				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
@@ -156,9 +161,14 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 			// check our prop isn't reference
 			if h, _, _ := utils.IsNodeRefValue(prop); h {
-				ref := low.LocateRefNode(prop, idx)
+				ref, err := low.LocateRefNode(prop, idx)
 				if ref != nil {
 					prop = ref
+					if err != nil {
+						if !idx.AllowCircularReferenceResolving() {
+							return fmt.Errorf("build schema failed: %s", err.Error())
+						}
+					}
 				} else {
 					return fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
@@ -291,11 +301,6 @@ func countSubSchemaItems(node *yaml.Node) int {
 	return 0
 }
 
-type schemaBuildResult struct {
-	k low.KeyReference[string]
-	v low.ValueReference[*Schema]
-}
-
 type schemaProxyBuildResult struct {
 	k low.KeyReference[string]
 	v low.ValueReference[*SchemaProxy]
@@ -314,9 +319,14 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 		// build out a SchemaProxy for every sub-schema.
 		build := func(kn *yaml.Node, vn *yaml.Node, c chan *low.ValueReference[*SchemaProxy], e chan error) {
 			if h, _, _ := utils.IsNodeRefValue(vn); h {
-				ref := low.LocateRefNode(vn, idx)
+				ref, cerr := low.LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
+					if cerr != nil {
+						if !idx.AllowCircularReferenceResolving() {
+							e <- fmt.Errorf("build schema failed: %s", cerr.Error())
+						}
+					}
 				} else {
 					err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
@@ -344,9 +354,14 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 		if utils.IsNodeMap(valueNode) {
 			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
-				ref := low.LocateRefNode(valueNode, idx)
+				ref, err := low.LocateRefNode(valueNode, idx)
 				if ref != nil {
 					valueNode = ref
+					if err != nil {
+						if !idx.AllowCircularReferenceResolving() {
+							errors <- fmt.Errorf("build schema failed: %s", err.Error())
+						}
+					}
 				} else {
 					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
@@ -375,9 +390,14 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			refBuilds := 0
 			for _, vn := range valueNode.Content {
 				if h, _, _ := utils.IsNodeRefValue(vn); h {
-					ref := low.LocateRefNode(vn, idx)
+					ref, err := low.LocateRefNode(vn, idx)
 					if ref != nil {
 						vn = ref
+						if err != nil {
+							if !idx.AllowCircularReferenceResolving() {
+								errors <- fmt.Errorf("build schema failed: %s", err.Error())
+							}
+						}
 					} else {
 						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
@@ -412,10 +432,15 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
-		ref := low.LocateRefNode(root, idx)
+		ref, err := low.LocateRefNode(root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
+			if err != nil {
+				if !idx.AllowCircularReferenceResolving() {
+					return nil, fmt.Errorf("build schema failed: %s", err.Error())
+				}
+			}
 		} else {
 			return nil, fmt.Errorf(errStr,
 				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
@@ -424,9 +449,14 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
 		if schNode != nil {
 			if h, _, _ := utils.IsNodeRefValue(schNode); h {
-				ref := low.LocateRefNode(schNode, idx)
+				ref, err := low.LocateRefNode(schNode, idx)
 				if ref != nil {
 					schNode = ref
+					if err != nil {
+						if !idx.AllowCircularReferenceResolving() {
+							return nil, fmt.Errorf("build schema failed: %s", err.Error())
+						}
+					}
 				} else {
 					return nil, fmt.Errorf(errStr,
 						schNode.Content[1].Value, schNode.Content[1].Line, schNode.Content[1].Column)
