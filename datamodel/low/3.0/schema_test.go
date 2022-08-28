@@ -3,6 +3,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -775,6 +776,74 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
 
 }
 
+func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
+
+	// this does not work, but it won't error out.
+
+	yml := `components:
+  schemas:
+    Something:
+      $ref: '#/components/schemas/Else'
+    Else:
+      $ref: '#/components/schemas/Something'`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
+func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
+
+	// this does not work, but it won't error out.
+
+	yml := `components:
+  schemas:
+    Something:
+      $ref: '#/components/schemas/Else'
+    Else:
+      $ref: '#/components/schemas/Something'`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: #BORKLE`
+
+	var sch Schema
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	err := low.BuildModel(&idxNode, &sch)
+	assert.NoError(t, err)
+
+	schErr := sch.Build(idxNode.Content[0], idx)
+	assert.Error(t, schErr)
+
+}
+
 func TestExtractSchema(t *testing.T) {
 
 	yml := `components:
@@ -850,6 +919,45 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 
 	_, err := ExtractSchema(idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, res.Value)
+
+	props := res.Value.Schema().FindProperty("nothing")
+	assert.NotNil(t, props)
+
+	//n := props.Value.Schema()
+	//assert.NotNil(t, n)
+	//assert.Equal(t, "this is something", res.Value.Schema().Description.Value)
 }
 
 func TestExtractSchema_RefRoot(t *testing.T) {
@@ -1059,3 +1167,44 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 		res.Value.Schema().OneOf.Value[0].Value.Schema().Description.Value)
 
 }
+
+//func TestExtractSchema_CircularRef(t *testing.T) {
+//
+//	yml := `components:
+//  schemas:
+//    Something:
+//      properties:
+//        nothing:
+//          $ref: '#/components/schemas/Nothing'
+//    Nothing:
+//      properties:
+//        something:
+//          $ref: '#/components/schemas/Something'`
+//
+//	var iNode yaml.Node
+//	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+//	assert.NoError(t, mErr)
+//	idx := index.NewSpecIndex(&iNode)
+//
+//	yml = `$ref: '#/components/schemas/Something'`
+//
+//	var idxNode yaml.Node
+//	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+//
+//	resolve := resolver.NewResolver(idx)
+//	errs := resolve.CheckForCircularReferences()
+//	assert.Len(t, errs, 1)
+//
+//	res, err := ExtractSchema(idxNode.Content[0], idx)
+//	assert.NotNil(t, res)
+//	assert.Nil(t, err)
+//
+//	k := res.Value
+//	prop := k.Schema().FindProperty("nothing").Value
+//
+//	propSch := prop
+//
+//	assert.Nil(t, propSch.Schema())
+//	assert.Error(t, propSch.GetBuildError())
+//
+//}

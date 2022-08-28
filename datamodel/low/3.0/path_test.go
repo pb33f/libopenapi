@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -302,17 +303,17 @@ func TestPathNoOps(t *testing.T) {
 func TestPathItem_Build_Using_Ref(t *testing.T) {
 
 	// first we need an index.
-	doc := `paths:
+	yml := `paths:
  '/something/here':
    post:
     description: there is something here!`
 
 	var idxNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(doc), &idxNode)
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&idxNode)
 
-	yml := `"/some/path":
+	yml = `"/some/path":
  description: this is some path
  get:
    $ref: '#/paths/~1something~1here/post'`
@@ -335,4 +336,95 @@ func TestPathItem_Build_Using_Ref(t *testing.T) {
 	assert.NotNil(t, somePath.Value)
 	assert.Equal(t, "this is some path", somePath.Value.Description.Value)
 	assert.Equal(t, "there is something here!", somePath.Value.Get.Value.Description.Value)
+}
+
+func TestPath_Build_Using_CircularRef(t *testing.T) {
+
+	// first we need an index.
+	yml := `paths:
+  '/something/here':
+    post:
+      $ref: '#/paths/~1something~1there/post'
+  '/something/there':
+    post:
+      $ref: '#/paths/~1something~1here/post'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `"/some/path":
+  $ref: '#/paths/~1something~1here/post'`
+
+	var rootNode yaml.Node
+	mErr = yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	var n Paths
+	err := low.BuildModel(rootNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(rootNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
+
+	// first we need an index.
+	yml := `paths:
+  '/something/here':
+    post:
+      $ref: '#/paths/~1something~1there/post'
+  '/something/there':
+    post:
+      $ref: '#/paths/~1something~1here/post'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `"/some/path":
+  post:
+    $ref: '#/paths/~1something~1here/post'`
+
+	var rootNode yaml.Node
+	mErr = yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	var n Paths
+	err := low.BuildModel(rootNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(rootNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestPaths_Build_BrokenOp(t *testing.T) {
+
+	yml := `"/some/path":
+  post:
+    externalDocs:
+      $ref: #bork`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Paths
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
 }
