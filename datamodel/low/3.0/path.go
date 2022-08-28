@@ -65,6 +65,7 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				if err != nil {
 					if !idx.AllowCircularReferenceResolving() {
 						e <- fmt.Errorf("path item build failed: %s", err.Error())
+						return
 					}
 				}
 			} else {

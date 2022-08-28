@@ -174,23 +174,6 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	opErrorChan := make(chan error)
 
 	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
-
-		//build out the operation.
-		if ok, _, _ := utils.IsNodeRefValue(op.ValueNode); ok {
-			r, err := low.LocateRefNode(op.ValueNode, idx)
-			if r != nil {
-				op.ValueNode = r
-				if err != nil {
-					if !idx.AllowCircularReferenceResolving() {
-						errCh <- fmt.Errorf("build schema failed: %s", err.Error())
-					}
-				}
-			} else {
-				// any reference would be the second node.
-				errCh <- fmt.Errorf("cannot extract reference: %s", op.ValueNode.Content[1].Value)
-			}
-		}
-
 		er := op.Value.Build(op.ValueNode, idx)
 		if er != nil {
 			errCh <- er

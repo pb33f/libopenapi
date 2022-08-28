@@ -107,6 +107,26 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 			nodes, fErr := path.Find(idx.GetRootNode())
 			if fErr == nil {
 				if len(nodes) > 0 {
+
+					if jh, _, _ := utils.IsNodeRefValue(nodes[0]); jh {
+						if !IsCircular(nodes[0], idx) {
+							return LocateRefNode(nodes[0], idx)
+						} else {
+							Log.Error("circular reference found during lookup, and will remain un-resolved.",
+								zap.Int("column", nodes[0].Column),
+								zap.String("reference", yamlPath),
+								zap.String("journey",
+									GetCircularReferenceResult(nodes[0], idx).GenerateJourneyPath()))
+							if !idx.AllowCircularReferenceResolving() {
+								return found[rv].Node, fmt.Errorf(
+									"circular reference '%s' found during lookup at line %d, column %d, "+
+										"It cannot be resolved",
+									GetCircularReferenceResult(nodes[0], idx).GenerateJourneyPath(),
+									nodes[0].Line,
+									nodes[0].Column)
+							}
+						}
+					}
 					return nodes[0], nil
 				}
 			}
