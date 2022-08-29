@@ -325,12 +325,20 @@ func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
 
 }
 
+type test_borked struct {
+	DontWork int
+}
+
+func (t test_borked) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	return fmt.Errorf("I am always going to fail, every thing")
+}
+
 type test_noGood struct {
 	DontWork int
 }
 
 func (t *test_noGood) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	return fmt.Errorf("I am always going to fail")
+	return fmt.Errorf("I am always going to fail a core build")
 }
 
 type test_almostGood struct {
@@ -338,7 +346,7 @@ type test_almostGood struct {
 }
 
 func (t *test_almostGood) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	return fmt.Errorf("I am always going to fail")
+	return fmt.Errorf("I am always going to fail a build out")
 }
 
 type test_Good struct {
@@ -866,4 +874,200 @@ func TestExtractArray_BadBuild(t *testing.T) {
 	things, _, _, err := ExtractArray[*test_noGood]("limes", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
+}
+
+func TestExtractExample_String(t *testing.T) {
+	yml := `hi`
+	var e yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &e)
+
+	exp := ExtractExample(e.Content[0], e.Content[0])
+	assert.NotNil(t, exp.Value)
+	assert.Equal(t, "hi", exp.Value)
+}
+func TestExtractExample_Map(t *testing.T) {
+	yml := `one: two`
+	var e yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &e)
+
+	exp := ExtractExample(e.Content[0], e.Content[0])
+	assert.NotNil(t, exp.Value)
+	if n, ok := exp.Value.(map[string]interface{}); ok {
+		assert.Equal(t, "two", n["one"])
+	} else {
+		panic("example unpacked incorrectly.")
+	}
+}
+
+func TestExtractExample_Array(t *testing.T) {
+	yml := `- hello`
+	var e yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &e)
+
+	exp := ExtractExample(e.Content[0], e.Content[0])
+	assert.NotNil(t, exp.Value)
+	if n, ok := exp.Value.([]interface{}); ok {
+		assert.Equal(t, "hello", n[0])
+	} else {
+		panic("example unpacked incorrectly.")
+	}
+}
+
+func TestExtractMapFlatNoLookup(t *testing.T) {
+
+	yml := `components:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  description: two`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+}
+
+func TestExtractMapFlatNoLookup_Ref(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: tasty!`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  $ref: '#/components/schemas/pizza'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+}
+
+func TestExtractMapFlatNoLookup_Ref_Bad(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: tasty!`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  $ref: '#/components/schemas/no-where-out-there'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+
+}
+
+func TestExtractMapFlatNoLookup_Ref_Circular(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      $ref: '#/components/schemas/things'
+    things:
+      $ref: '#/components/schemas/thongs'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `x-hey: you
+one:
+  $ref: '#/components/schemas/things'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 1)
+
+}
+
+func TestExtractMapFlatNoLookup_Ref_BadBuild(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      dontWork: 1`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+hello:
+  $ref: '#/components/schemas/pizza'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapFlatNoLookup[*test_noGood](cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+
+}
+
+func TestExtractMapFlatNoLookup_Ref_AlmostBuild(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: tasty!`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  $ref: '#/components/schemas/pizza'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapFlatNoLookup[*test_almostGood](cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+
 }
