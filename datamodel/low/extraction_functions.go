@@ -449,10 +449,10 @@ func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *
 				valueMap[res.k] = res.v
 			}
 		}
+		if circError != nil && !idx.AllowCircularReferenceResolving() {
+			return valueMap, labelNode, valueNode, circError
+		}
 		return valueMap, labelNode, valueNode, nil
-	}
-	if circError != nil && !idx.AllowCircularReferenceResolving() {
-		return nil, labelNode, valueNode, circError
 	}
 	return nil, labelNode, valueNode, nil
 }
