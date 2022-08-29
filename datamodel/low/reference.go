@@ -3,6 +3,7 @@ package low
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -65,6 +66,14 @@ func IsCircular(node *yaml.Node, idx *index.SpecIndex) bool {
 			return true
 		}
 	}
+	// check mapped references in case we didn't find it.
+	_, nv := utils.FindKeyNode("$ref", node.Content)
+	if nv != nil {
+		ref := idx.GetMappedReferences()[nv.Value]
+		if ref != nil {
+			return ref.Circular
+		}
+	}
 	return false
 }
 
@@ -73,10 +82,20 @@ func GetCircularReferenceResult(node *yaml.Node, idx *index.SpecIndex) *index.Ci
 		return nil // no index! nothing we can do.
 	}
 	refs := idx.GetCircularReferences()
-	for i := range idx.GetCircularReferences() {
+	for i := range refs {
 		if refs[i].LoopPoint.Node == node {
 			return refs[i]
 		}
 	}
+	// check mapped references in case we didn't find it.
+	_, nv := utils.FindKeyNode("$ref", node.Content)
+	if nv != nil {
+		for i := range refs {
+			if refs[i].LoopPoint.Definition == nv.Value {
+				return refs[i]
+			}
+		}
+	}
+
 	return nil
 }

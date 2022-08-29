@@ -23,24 +23,28 @@ func FindItemInMap[T any](item string, collection map[KeyReference[string]]Value
 	return nil
 }
 
+func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Reference {
+	return []func() map[string]*index.Reference{
+		idx.GetAllSchemas,
+		idx.GetMappedReferences,
+		idx.GetAllExternalDocuments,
+		idx.GetAllParameters,
+		idx.GetAllHeaders,
+		idx.GetAllCallbacks,
+		idx.GetAllLinks,
+		idx.GetAllExternalDocuments,
+		idx.GetAllExamples,
+		idx.GetAllRequestBodies,
+		idx.GetAllResponses,
+		idx.GetAllSecuritySchemes,
+	}
+}
+
 func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 	if rf, _, rv := utils.IsNodeRefValue(root); rf {
 		// run through everything and return as soon as we find a match.
 		// this operates as fast as possible as ever
-		collections := []func() map[string]*index.Reference{
-			idx.GetAllSchemas,
-			idx.GetMappedReferences,
-			idx.GetAllExternalDocuments,
-			idx.GetAllParameters,
-			idx.GetAllHeaders,
-			idx.GetAllCallbacks,
-			idx.GetAllLinks,
-			idx.GetAllExternalDocuments,
-			idx.GetAllExamples,
-			idx.GetAllRequestBodies,
-			idx.GetAllResponses,
-			idx.GetAllSecuritySchemes,
-		}
+		collections := generateIndexCollection(idx)
 
 		// if there are any external indexes being used by remote
 		// documents, then we need to search through them also.
@@ -48,20 +52,7 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 		if len(externalIndexes) > 0 {
 			var extCollection []func() map[string]*index.Reference
 			for _, extIndex := range externalIndexes {
-				extCollection = []func() map[string]*index.Reference{
-					extIndex.GetAllSchemas,
-					extIndex.GetMappedReferences,
-					extIndex.GetAllExternalDocuments,
-					extIndex.GetAllParameters,
-					extIndex.GetAllHeaders,
-					extIndex.GetAllCallbacks,
-					extIndex.GetAllLinks,
-					extIndex.GetAllExternalDocuments,
-					extIndex.GetAllExamples,
-					extIndex.GetAllRequestBodies,
-					extIndex.GetAllResponses,
-					extIndex.GetAllSecuritySchemes,
-				}
+				extCollection = generateIndexCollection(extIndex)
 				collections = append(collections, extCollection...)
 			}
 		}
@@ -107,26 +98,6 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 			nodes, fErr := path.Find(idx.GetRootNode())
 			if fErr == nil {
 				if len(nodes) > 0 {
-
-					if jh, _, _ := utils.IsNodeRefValue(nodes[0]); jh {
-						if !IsCircular(nodes[0], idx) {
-							return LocateRefNode(nodes[0], idx)
-						} else {
-							Log.Error("circular reference found during lookup, and will remain un-resolved.",
-								zap.Int("column", nodes[0].Column),
-								zap.String("reference", yamlPath),
-								zap.String("journey",
-									GetCircularReferenceResult(nodes[0], idx).GenerateJourneyPath()))
-							if !idx.AllowCircularReferenceResolving() {
-								return found[rv].Node, fmt.Errorf(
-									"circular reference '%s' found during lookup at line %d, column %d, "+
-										"It cannot be resolved",
-									GetCircularReferenceResult(nodes[0], idx).GenerateJourneyPath(),
-									nodes[0].Line,
-									nodes[0].Column)
-							}
-						}
-					}
 					return nodes[0], nil
 				}
 			}
@@ -218,7 +189,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 		ValueNode: vn,
 	}
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
-		return res, err
+		return res, circError
 	}
 	return res, nil
 }
