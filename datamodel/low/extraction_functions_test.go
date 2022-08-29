@@ -54,6 +54,31 @@ func TestLocateRefNode(t *testing.T) {
 
 }
 
+func TestLocateRefNode_BadNode(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    cake:
+      description: hello`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `yes: mate` // useless.
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	located, err := LocateRefNode(cNode.Content[0], idx)
+
+	// should both be empty.
+	assert.Nil(t, located)
+	assert.Nil(t, err)
+
+}
+
 func TestLocateRefNode_Path(t *testing.T) {
 
 	yml := `paths:
@@ -205,10 +230,8 @@ func TestExtractObject_DoubleRef_Circular(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err := ExtractObject[*pizza]("tags", &cNode, idx)
-	assert.NoError(t, err)
-	assert.NotNil(t, tag)
-	assert.Equal(t, "", tag.Value.Description.Value)
+	_, err := ExtractObject[*pizza]("tags", &cNode, idx)
+	assert.Error(t, err)
 	assert.Equal(t, "cake -> loopy -> cake", idx.GetCircularReferences()[0].GenerateJourneyPath())
 }
 
@@ -267,10 +290,8 @@ func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err := ExtractObject[*pizza]("tags", cNode.Content[0], idx)
-	assert.NoError(t, err)
-	assert.NotNil(t, tag)
-	assert.Equal(t, "", tag.Value.Description.Value)
+	_, err := ExtractObject[*pizza]("tags", cNode.Content[0], idx)
+	assert.Error(t, err)
 	assert.Equal(t, "cake -> loopy -> cake", idx.GetCircularReferences()[0].GenerateJourneyPath())
 }
 
@@ -318,6 +339,14 @@ type test_almostGood struct {
 
 func (t *test_almostGood) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return fmt.Errorf("I am always going to fail")
+}
+
+type test_Good struct {
+	AlmostWork NodeReference[int]
+}
+
+func (t *test_Good) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	return nil
 }
 
 func TestExtractObject_BadLowLevelModel(t *testing.T) {
@@ -382,4 +411,459 @@ func TestExtractObject_BadLabel(t *testing.T) {
 	assert.Nil(t, res.Value)
 	assert.NoError(t, err)
 
+}
+
+func TestExtractObject_PathIsCircular(t *testing.T) {
+
+	// first we need an index.
+	yml := `paths:
+  '/something/here':
+    post:
+      $ref: '#/paths/~1something~1there/post'
+  '/something/there':
+    post:
+      $ref: '#/paths/~1something~1here/post'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `thing:
+  $ref: '#/paths/~1something~1here/post'`
+
+	var rootNode yaml.Node
+	mErr = yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	res, err := ExtractObject[*test_Good]("thing", &rootNode, idx)
+	assert.NotNil(t, res.Value)
+	assert.Error(t, err) // circular error would have been thrown.
+
+}
+
+func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
+
+	// first we need an index.
+	yml := `paths:
+  '/something/here':
+    post:
+      $ref: '#/paths/~1something~1there/post'
+  '/something/there':
+    post:
+      $ref: '#/paths/~1something~1here/post'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	// disable circular ref checking.
+	idx.SetAllowCircularReferenceResolving(true)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `thing:
+  $ref: '#/paths/~1something~1here/post'`
+
+	var rootNode yaml.Node
+	mErr = yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	res, err := ExtractObject[*test_Good]("thing", &rootNode, idx)
+	assert.NotNil(t, res.Value)
+	assert.NoError(t, err) // circular error would have been thrown, but we're ignoring them.
+
+}
+
+func TestExtractObjectRaw(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: hello`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `description: hello pizza`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	tag, err := ExtractObjectRaw[*pizza](&cNode, idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, tag)
+	assert.Equal(t, "hello pizza", tag.Description.Value)
+}
+
+func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      $ref: '#/components/schemas/pie'
+    pie:
+      $ref: '#/components/schemas/pizza'`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `$ref: '#/components/schemas/pizza'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	tag, err := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.NotNil(t, tag)
+
+}
+
+func TestExtractObjectRaw_RefBroken(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: hey!`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `$ref: '#/components/schemas/lost-in-space'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	tag, err := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Nil(t, tag)
+
+}
+
+func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: hey!`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `dontWork: 1'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	_, err := ExtractObjectRaw[*test_noGood](cNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: hey!`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `almostWork: 1'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	_, err := ExtractObjectRaw[*test_almostGood](cNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestExtractArray(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: hello`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `things:
+  - description: one
+  - description: two
+  - description: three`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*pizza]("things", &cNode, idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, things)
+	assert.Equal(t, "one", things[0].Value.Description.Value)
+	assert.Equal(t, "two", things[1].Value.Description.Value)
+	assert.Equal(t, "three", things[2].Value.Description.Value)
+}
+
+func TestExtractArray_Ref(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    things:
+      - description: one
+      - description: two
+      - description: three`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `$ref: '#/components/schemas/things'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*pizza]("things", cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, things)
+	assert.Equal(t, "one", things[0].Value.Description.Value)
+	assert.Equal(t, "two", things[1].Value.Description.Value)
+	assert.Equal(t, "three", things[2].Value.Description.Value)
+}
+
+func TestExtractArray_Ref_Unbuildable(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    things:
+      - description: one
+      - description: two
+      - description: three`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `$ref: '#/components/schemas/things'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*test_noGood]("", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractArray_Ref_Circular(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      $ref: '#/components/schemas/things'
+    things:
+      $ref: '#/components/schemas/thongs'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `$ref: '#/components/schemas/things'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*test_Good]("", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractArray_Ref_Bad(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      $ref: '#/components/schemas/things'
+    things:
+      $ref: '#/components/schemas/thongs'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `$ref: '#/components/schemas/let-us-eat-cake'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*test_Good]("", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractArray_Ref_Nested(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      $ref: '#/components/schemas/things'
+    things:
+      $ref: '#/components/schemas/thongs'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `limes: 
+  $ref: '#/components/schemas/let-us-eat-cake'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*test_Good]("limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      $ref: '#/components/schemas/things'
+    things:
+      $ref: '#/components/schemas/thongs'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `limes: 
+  - $ref: '#/components/schemas/things'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	things, _, _, err := ExtractArray[*test_Good]("limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 1)
+}
+
+func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      allOf:
+        - $ref: '#/components/schemas/things'
+    things:
+      oneOf:
+        - type: string`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `limes: 
+  - $ref: '#/components/schemas/thangs'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+	things, _, _, err := ExtractArray[*test_Good]("limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:
+      $ref: '#/components/schemas/things'
+    things:
+      $ref: '#/components/schemas/thongs'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `limes: 
+  $ref: '#/components/schemas/things'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+	things, _, _, err := ExtractArray[*test_Good]("limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractArray_BadBuild(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    thongs:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `limes: 
+  - dontWork: 1`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+	things, _, _, err := ExtractArray[*test_noGood]("limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
 }
