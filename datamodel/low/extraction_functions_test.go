@@ -9,6 +9,8 @@ import (
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -1070,4 +1072,410 @@ one:
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
+}
+
+func TestExtractMapFlat(t *testing.T) {
+
+	yml := `components:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  description: two`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+}
+
+func TestExtractMapFlat_Ref(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stank:
+      things:
+        almostWork: 99`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  $ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+	for k := range things {
+		assert.Equal(t, 99, things[k].Value.AlmostWork.Value)
+	}
+
+}
+
+func TestExtractMapFlat_DoubleRef(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stank:
+      things:
+        almostWork: 99`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `one:
+  nice:
+    $ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+	for k := range things {
+		assert.Equal(t, 99, things[k].Value.AlmostWork.Value)
+	}
+}
+
+func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stank:
+      things:
+        almostWork: 99`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `one:
+  nice:
+    $ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_almostGood]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+
+}
+
+func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stank:
+      things:
+        almostWork: 99`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `one:
+  nice:
+    $ref: '#/components/schemas/stanky-panky'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_almostGood]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+
+}
+
+func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stonk:
+      $ref: '#/components/schemas/stank'
+    stank:
+      $ref: '#/components/schemas/stonk'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `one:
+  nice:
+    $ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 1)
+
+}
+
+func TestExtractMapFlat_Ref_Error(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stank:
+      x-smells: bad
+      things:
+        almostWork: 99`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `one:
+  $ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_almostGood]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+
+}
+
+func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stink:
+      $ref: '#/components/schemas/stank'
+    stank:
+      $ref: '#/components/schemas/stink'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `$ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 1)
+}
+
+func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stink:
+      $ref: '#/components/schemas/stank'
+    stank:
+      $ref: '#/components/schemas/stink'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `one:
+  $ref: '#/components/schemas/stank'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 1)
+}
+
+func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stink:
+      $ref: '#/components/schemas/stank'
+    stank:
+      $ref: '#/components/schemas/none'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `one:
+  $ref: '#/components/schemas/somewhere-else'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stink:
+      $ref: '#/components/schemas/stank'
+    stank:
+      $ref: '#/components/schemas/none'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `one:
+  $ref: '#/components/schemas/somewhere-else'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("not-even-there", cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestExtractMapFlat_Ref_Bad(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    stink:
+      $ref: '#/components/schemas/stank'
+    stank:
+      $ref: '#/components/schemas/none'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `$ref: '#/components/schemas/somewhere-else'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
+func TestLocateRefNode_RemoteFile(t *testing.T) {
+
+	ymlFile := fmt.Sprintf(`components:
+  schemas:
+    hey:
+      $ref: '%s#/components/schemas/hey'`, "remote.yaml")
+
+	ymlRemote := `components:
+  schemas:
+    hey:
+      AlmostWork: 999`
+
+	_ = ioutil.WriteFile("remote.yaml", []byte(ymlRemote), 0665)
+	defer os.Remove("remote.yaml")
+
+	ymlLocal := `$ref: '#/components/schemas/hey'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(ymlFile), &idxNode) // an empty index.
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(ymlLocal), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+}
+
+func TestExtractExtensions(t *testing.T) {
+
+	yml := `x-bing: ding
+x-bong: 1
+x-ling: true
+x-long: 0.99
+x-fish:
+  woo: yeah
+x-tacos: [1,2,3]`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	r := ExtractExtensions(idxNode.Content[0])
+	assert.Len(t, r, 6)
+	for i := range r {
+		switch i.Value {
+		case "x-bing":
+			assert.Equal(t, "ding", r[i].Value)
+		case "x-bong":
+			assert.Equal(t, int64(1), r[i].Value)
+		case "x-ling":
+			assert.Equal(t, true, r[i].Value)
+		case "x-long":
+			assert.Equal(t, 0.99, r[i].Value)
+		case "x-fish":
+			if a, ok := r[i].Value.(map[string]interface{}); ok {
+				assert.Equal(t, "yeah", a["woo"])
+			} else {
+				panic("should not fail casting")
+			}
+		case "x-tacos":
+			assert.Len(t, r[i].Value, 3)
+		}
+	}
 }
