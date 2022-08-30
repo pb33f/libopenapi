@@ -65,6 +65,11 @@ func IsCircular(node *yaml.Node, idx *index.SpecIndex) bool {
 		if refs[i].LoopPoint.Node == node {
 			return true
 		}
+		for k := range refs[i].Journey {
+			if refs[i].Journey[k].Node == node {
+				return true
+			}
+		}
 	}
 	// check mapped references in case we didn't find it.
 	_, nv := utils.FindKeyNode("$ref", node.Content)
@@ -85,6 +90,11 @@ func GetCircularReferenceResult(node *yaml.Node, idx *index.SpecIndex) *index.Ci
 	for i := range refs {
 		if refs[i].LoopPoint.Node == node {
 			return refs[i]
+		}
+		for k := range refs[i].Journey {
+			if refs[i].Journey[k].Node == node {
+				return refs[i]
+			}
 		}
 	}
 	// check mapped references in case we didn't find it.
