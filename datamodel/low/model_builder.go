@@ -83,10 +83,8 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 							continue
 						}
 						var decoded map[string]interface{}
-						err := sliceItem.Decode(&decoded)
-						if err != nil {
-							return err
-						}
+						// I cannot think of a way to make this error out by this point.
+						_ = sliceItem.Decode(&decoded)
 						items[currentLabel] = NodeReference[any]{
 							Value:     decoded,
 							ValueNode: sliceItem,
@@ -124,10 +122,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 	case reflect.TypeOf(NodeReference[any]{}):
 		if valueNode != nil {
 			var decoded interface{}
-			err := valueNode.Decode(&decoded)
-			if err != nil {
-				return err
-			}
+			_ = valueNode.Decode(&decoded)
 			if utils.IsNodeMap(valueNode) {
 				if field.CanSet() {
 					or := NodeReference[any]{Value: decoded, ValueNode: valueNode}

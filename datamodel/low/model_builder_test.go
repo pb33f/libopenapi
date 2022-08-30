@@ -3,6 +3,7 @@ package low
 import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"sync"
 	"testing"
 )
 
@@ -158,5 +159,211 @@ func TestBuildModel_UseUnsupportedPrimitive(t *testing.T) {
 	cErr := BuildModel(&rootNode, &ns)
 	assert.Error(t, cErr)
 	assert.Empty(t, ns.cake)
+
+}
+
+func TestBuildModel_UsingInternalConstructs(t *testing.T) {
+
+	type internal struct {
+		Extensions NodeReference[string]
+		PathItems  NodeReference[string]
+		Thing      NodeReference[string]
+	}
+
+	yml := `extensions: one
+pathItems: two
+thing: yeah`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	// try a null build
+	try := BuildModel(nil, ins)
+	assert.NoError(t, try)
+
+	cErr := BuildModel(&rootNode, ins)
+	assert.NoError(t, cErr)
+	assert.Empty(t, ins.PathItems.Value)
+	assert.Empty(t, ins.Extensions.Value)
+	assert.Equal(t, "yeah", ins.Thing.Value)
+}
+
+func TestSetField_NodeRefAny_Error(t *testing.T) {
+
+	type internal struct {
+		Thing []NodeReference[any]
+	}
+
+	yml := `thing:
+  - 999
+  - false`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(&rootNode, ins)
+	assert.Error(t, try)
+
+}
+
+func TestSetField_MapStringAny_Error(t *testing.T) {
+
+	type internal struct {
+		Thing map[string]NodeReference[any]
+	}
+
+	yml := `thing:
+  thang:
+    tang:
+      bang:`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(&rootNode, ins)
+	assert.Error(t, try)
+
+}
+
+func TestSetField_MapHelperWrapped(t *testing.T) {
+
+	type internal struct {
+		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
+	}
+
+	yml := `thing: 
+  what: not
+  chip: chop
+  lip: lop`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(&rootNode, ins)
+	assert.NoError(t, try)
+	assert.Len(t, ins.Thing.Value, 3)
+}
+
+func TestSetField_MapHelper(t *testing.T) {
+
+	type internal struct {
+		Thing map[KeyReference[string]]ValueReference[string]
+	}
+
+	yml := `thing: 
+  what: not
+  chip: chop
+  lip: lop`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(&rootNode, ins)
+	assert.NoError(t, try)
+	assert.Len(t, ins.Thing, 3)
+}
+
+func TestSetField_ArrayHelper(t *testing.T) {
+
+	type internal struct {
+		Thing NodeReference[[]ValueReference[string]]
+	}
+
+	yml := `thing: 
+  - nice
+  - rice
+  - slice`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(&rootNode, ins)
+	assert.NoError(t, try)
+	assert.Len(t, ins.Thing.Value, 3)
+}
+
+func TestSetField_Ignore(t *testing.T) {
+
+	type Complex struct {
+		name string
+	}
+	type internal struct {
+		Thing *Complex
+	}
+
+	yml := `thing: 
+  - nice
+  - rice
+  - slice`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(&rootNode, ins)
+	assert.NoError(t, try)
+	assert.Nil(t, ins.Thing)
+}
+
+func TestBuildModelAsync(t *testing.T) {
+
+	type internal struct {
+		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
+	}
+
+	yml := `thing: 
+  what: not
+  chip: chop
+  lip: lop`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	var wg sync.WaitGroup
+	var errors []error
+	wg.Add(1)
+	BuildModelAsync(&rootNode, ins, &wg, &errors)
+	wg.Wait()
+	assert.Len(t, ins.Thing.Value, 3)
+
+}
+
+func TestBuildModelAsync_Error(t *testing.T) {
+
+	type internal struct {
+		Thing []NodeReference[any]
+	}
+
+	yml := `thing:
+  - 999
+  - false`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	var wg sync.WaitGroup
+	var errors []error
+	wg.Add(1)
+	BuildModelAsync(&rootNode, ins, &wg, &errors)
+	wg.Wait()
+	assert.Len(t, errors, 1)
+	assert.Len(t, ins.Thing, 0)
 
 }
