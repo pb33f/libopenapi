@@ -676,13 +676,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				if n.Value == "summary" {
 
 					var b *yaml.Node
-
-					if len(node.Content) == i+1 {
-						b = node.Content[i]
-					} else {
-						b = node.Content[i+1]
-					}
-
+					b = node.Content[i+1]
 					ref := &DescriptionReference{
 						Content:   b.Value,
 						Path:      nodePath,
@@ -930,8 +924,9 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 						}
 						if len(index.callbacksRefs[path][m.Name]) > 0 {
 							index.callbacksRefs[path][m.Name] = append(index.callbacksRefs[path][m.Name], ref)
+						} else {
+							index.callbacksRefs[path][m.Name] = []*Reference{ref}
 						}
-						index.callbacksRefs[path][m.Name] = []*Reference{ref}
 						index.globalCallbacksCount++
 					}
 				}

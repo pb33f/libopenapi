@@ -39,6 +39,20 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.NotNil(t, index.GetRootServersNode())
 	assert.Len(t, index.GetAllRootServers(), 1)
 
+	// not required, but flip the circular result switch on and off.
+	assert.False(t, index.AllowCircularReferenceResolving())
+	index.SetAllowCircularReferenceResolving(true)
+	assert.True(t, index.AllowCircularReferenceResolving())
+
+	// simulate setting of circular references, also pointless but needed for coverage.
+	assert.Nil(t, index.GetCircularReferences())
+	index.SetCircularReferences([]*CircularReferenceResult{new(CircularReferenceResult)})
+	assert.Len(t, index.GetCircularReferences(), 1)
+
+	assert.Len(t, index.GetRefsByLine(), 537)
+	assert.Len(t, index.GetLinesWithReferences(), 1972)
+	assert.Len(t, index.GetAllExternalDocuments(), 0)
+	assert.Len(t, index.GetAllExternalIndexes(), 0)
 }
 
 func TestSpecIndex_Asana(t *testing.T) {
@@ -357,5 +371,64 @@ func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
 	assert.Len(t, index.refErrors, 7)
+
+}
+
+func TestTagsNoDescription(t *testing.T) {
+
+	yml := `tags:
+  - name: one
+  - name: two
+  - three: three`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Equal(t, 3, index.GetGlobalTagsCount())
+
+}
+
+func TestGlobalCallbacksNoIndexTest(t *testing.T) {
+	idx := new(SpecIndex)
+	assert.Equal(t, -1, idx.GetGlobalCallbacksCount())
+}
+
+func TestMultipleCallbacksPerOperationVerb(t *testing.T) {
+
+	yml := `components:
+  callbacks:  
+    callbackA:
+      "{$request.query.queryUrl}":
+        post:
+          description: callbackAPost
+        get:
+          description: callbackAGet
+    callbackB:
+      "{$request.query.queryUrl}":
+        post:
+          description: callbackBPost
+        get:
+          description: callbackBGet
+paths:
+  /pb33f/arriving-soon:
+    post:
+      callbacks:
+        callbackA:
+          $ref: '#/components/callbacks/CallbackA'
+        callbackB:
+          $ref: '#/components/callbacks/CallbackB'
+    get:
+      callbacks:
+        callbackB:
+          $ref: '#/components/callbacks/CallbackB'
+        callbackA:
+          $ref: '#/components/callbacks/CallbackA'`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Equal(t, 4, index.GetGlobalCallbacksCount())
 
 }
