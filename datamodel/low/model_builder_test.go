@@ -210,27 +210,6 @@ func TestSetField_NodeRefAny_Error(t *testing.T) {
 
 }
 
-func TestSetField_MapStringAny_Error(t *testing.T) {
-
-	type internal struct {
-		Thing map[string]NodeReference[any]
-	}
-
-	yml := `thing:
-  thang:
-    tang:
-      bang:`
-
-	ins := new(internal)
-	var rootNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
-	assert.NoError(t, mErr)
-
-	try := BuildModel(&rootNode, ins)
-	assert.Error(t, try)
-
-}
-
 func TestSetField_MapHelperWrapped(t *testing.T) {
 
 	type internal struct {

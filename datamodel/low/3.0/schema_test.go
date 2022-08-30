@@ -955,9 +955,6 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
 	props := res.Value.Schema().FindProperty("nothing")
 	assert.NotNil(t, props)
 
-	//n := props.Value.Schema()
-	//assert.NotNil(t, n)
-	//assert.Equal(t, "this is something", res.Value.Schema().Description.Value)
 }
 
 func TestExtractSchema_RefRoot(t *testing.T) {
