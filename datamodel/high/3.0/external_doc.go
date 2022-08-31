@@ -18,8 +18,12 @@ type ExternalDoc struct {
 func NewExternalDoc(extDoc *low.ExternalDoc) *ExternalDoc {
 	d := new(ExternalDoc)
 	d.low = extDoc
-	d.Description = extDoc.Description.Value
-	d.URL = extDoc.URL.Value
+	if !extDoc.Description.IsEmpty() {
+		d.Description = extDoc.Description.Value
+	}
+	if !extDoc.URL.IsEmpty() {
+		d.URL = extDoc.URL.Value
+	}
 	d.Extensions = high.ExtractExtensions(extDoc.Extensions)
 	return d
 }
