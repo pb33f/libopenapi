@@ -130,6 +130,10 @@ func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, utils.OpenApi3, r.SpecType)
 	assert.Equal(t, "3.0.1", r.Version)
+
+	<-r.JsonParsingChannel
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
+
 }
 
 func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
