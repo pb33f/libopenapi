@@ -30,6 +30,7 @@ const (
 	KebabCase
 	ScreamingKebabCase
 	RegularCase
+	UnknownCase
 )
 
 // FindNodes will find a node based on JSONPath, it accepts raw yaml/json as input.
@@ -169,7 +170,7 @@ func FindFirstKeyNode(key string, nodes []*yaml.Node, depth int) (keyNode *yaml.
 	for i, v := range nodes {
 		if key != "" && key == v.Value {
 			if i+1 >= len(nodes) {
-				return v, nodes[i] // next node is what we need.
+				return v, nodes[i] // this is the node we need.
 			}
 			return v, nodes[i+1] // next node is what we need.
 		}
@@ -239,21 +240,23 @@ func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode 
 	return nil, nil
 }
 
+// FindKeyNodeFull is an overloaded version of FindKeyNode. Thins version however returns keys, labels and values.
+// generally different things are required from different node trees, so depending on what this function is looking at
+// it will return different things.
 func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
-	for i, v := range nodes {
-		if i%2 == 0 && key == v.Value {
-			return v, nodes[i], nodes[i+1] // next node is what we need.
+	for i := range nodes {
+		if i%2 == 0 && key == nodes[i].Value {
+			return nodes[i], nodes[i], nodes[i+1] // next node is what we need.
 		}
 	}
 	for _, v := range nodes {
-		for x, j := range v.Content {
-			if key == j.Value {
+		for x := range v.Content {
+			if key == v.Content[x].Value {
 				if IsNodeMap(v) {
 					if x+1 == len(v.Content) {
 						return v, v.Content[x], v.Content[x]
 					}
-					return v, v.Content[x], v.Content[x+1] // next node is what we need.
-
+					return v, v.Content[x], v.Content[x+1]
 				}
 				if IsNodeArray(v) {
 					return v, v.Content[x], v.Content[x]
@@ -354,14 +357,6 @@ func IsNodeIntValue(node *yaml.Node) bool {
 		return false
 	}
 	return node.Tag == "!!int"
-}
-
-// IsNodeNullValue Checks of the input is null or not.
-func IsNodeNullValue(node *yaml.Node) bool {
-	if node == nil {
-		return false
-	}
-	return node.Tag == "!!null"
 }
 
 // IsNodeFloatValue will check is a node is a float value.
@@ -539,7 +534,7 @@ func ConvertCase(input string, convert Case) string {
 func DetectCase(input string) Case {
 	trim := strings.TrimSpace(input)
 	if trim == "" {
-		return -1
+		return UnknownCase
 	}
 
 	pascalCase := regexp.MustCompile("^[A-Z][a-z]+(?:[A-Z][a-z]+)*$")

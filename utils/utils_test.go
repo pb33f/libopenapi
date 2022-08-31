@@ -30,7 +30,15 @@ func TestRenderCodeSnippet(t *testing.T) {
 	}
 	rendered := RenderCodeSnippet(startNode, code, 1, 3)
 	assert.Equal(t, "hey\nho\nlet's\n", rendered)
+}
 
+func TestRenderCodeSnippet_BelowStart(t *testing.T) {
+	code := []string{"hey", "ho", "let's", "go!"}
+	startNode := &yaml.Node{
+		Line: 0,
+	}
+	rendered := RenderCodeSnippet(startNode, code, 1, 3)
+	assert.Equal(t, "hey\nho\nlet's\n", rendered)
 }
 
 func TestFindNodes(t *testing.T) {
@@ -221,6 +229,29 @@ func TestFindFirstKeyNode_NotFound(t *testing.T) {
 	assert.Nil(t, value)
 }
 
+func TestFindFirstKeyNode_TooDeep(t *testing.T) {
+	a, b := FindFirstKeyNode("", nil, 900)
+	assert.Nil(t, a)
+	assert.Nil(t, b)
+}
+
+func TestFindFirstKeyNode_ValueIsKey(t *testing.T) {
+
+	a := &yaml.Node{
+		Value: "chicken",
+	}
+
+	b := &yaml.Node{
+		Value:   "nuggets",
+		Content: []*yaml.Node{a},
+	}
+
+	c, d := FindFirstKeyNode("nuggets", []*yaml.Node{b}, 0)
+	assert.NotNil(t, c)
+	assert.NotNil(t, d)
+	assert.Equal(t, c, d)
+}
+
 func TestFindFirstKeyNode_Map(t *testing.T) {
 	nodes, _ := FindNodes(getPetstore(), "$")
 	key, value := FindFirstKeyNode("pet", nodes, 0)
@@ -250,6 +281,140 @@ func TestFindKeyNode(t *testing.T) {
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, 47, k.Line)
+}
+
+func TestFindKeyNode_ValueIsKey(t *testing.T) {
+
+	a := &yaml.Node{
+		Value: "chicken",
+	}
+
+	b := &yaml.Node{
+		Tag:     "!!map",
+		Value:   "nuggets",
+		Content: []*yaml.Node{a},
+	}
+
+	c, d := FindKeyNode("nuggets", []*yaml.Node{b, a})
+	assert.Equal(t, "nuggets", c.Value)
+	assert.Equal(t, "chicken", d.Value)
+
+	e := &yaml.Node{
+		Value: "pizza",
+	}
+	f := &yaml.Node{
+		Value: "pie",
+	}
+	b.Content = append(b.Content, e, f)
+
+	c, d = FindKeyNode("pie", []*yaml.Node{b, a})
+	assert.Equal(t, "nuggets", c.Value)
+	assert.Equal(t, "pie", d.Value)
+
+	b.Tag = "!!seq"
+
+	c, d = FindKeyNode("pie", []*yaml.Node{b, a})
+	assert.Equal(t, "nuggets", c.Value)
+	assert.Equal(t, "pie", d.Value)
+
+}
+
+func TestFindExtensionNodes(t *testing.T) {
+
+	a := &yaml.Node{
+		Value: "x-coffee",
+	}
+	b := &yaml.Node{
+		Value: "required",
+	}
+	c := &yaml.Node{
+		Content: []*yaml.Node{a, b},
+	}
+	exts := FindExtensionNodes(c.Content)
+	assert.Len(t, exts, 1)
+	assert.Equal(t, "required", exts[0].Value.Value)
+
+}
+
+func TestFindKeyNodeFull(t *testing.T) {
+
+	a := &yaml.Node{
+		Value: "fish",
+	}
+	b := &yaml.Node{
+		Value: "paste",
+	}
+
+	c, d, e := FindKeyNodeFull("fish", []*yaml.Node{a, b})
+	assert.Equal(t, "fish", c.Value)
+	assert.Equal(t, "fish", d.Value)
+	assert.Equal(t, "paste", e.Value)
+}
+
+func TestFindKeyNodeFull_MapValueIsLastNode(t *testing.T) {
+
+	f := &yaml.Node{
+		Value: "cheese",
+	}
+	h := &yaml.Node{
+		Tag:     "!!map",
+		Value:   "deserts", // this is invalid btw, but helps with mechanical understanding
+		Content: []*yaml.Node{f},
+	}
+
+	c, d, e := FindKeyNodeFull("cheese", []*yaml.Node{h})
+	assert.Equal(t, "deserts", c.Value)
+	assert.Equal(t, "cheese", d.Value)
+	assert.Equal(t, "cheese", e.Value)
+}
+
+func TestFindKeyNodeFull_Map(t *testing.T) {
+
+	f := &yaml.Node{
+		Value: "cheese",
+	}
+	g := &yaml.Node{
+		Value: "cake",
+	}
+	h := &yaml.Node{
+		Tag:     "!!map",
+		Value:   "deserts", // this is invalid btw, but helps with mechanical understanding
+		Content: []*yaml.Node{f, g},
+	}
+
+	c, d, e := FindKeyNodeFull("cheese", []*yaml.Node{h})
+	assert.Equal(t, "deserts", c.Value)
+	assert.Equal(t, "cheese", d.Value)
+	assert.Equal(t, "cake", e.Value)
+
+}
+
+func TestFindKeyNodeFull_Array(t *testing.T) {
+
+	f := &yaml.Node{
+		Value: "cheese",
+	}
+	g := &yaml.Node{
+		Value: "cake",
+	}
+	h := &yaml.Node{
+		Tag:     "!!seq",
+		Value:   "deserts", // this is invalid btw, but helps with mechanical understanding
+		Content: []*yaml.Node{f, g},
+	}
+
+	c, d, e := FindKeyNodeFull("cheese", []*yaml.Node{h})
+	assert.Equal(t, "deserts", c.Value)
+	assert.Equal(t, "cheese", d.Value)
+	assert.Equal(t, "cheese", e.Value)
+
+}
+
+func TestFindKeyNodeFull_Nothing(t *testing.T) {
+	c, d, e := FindKeyNodeFull("cheese", []*yaml.Node{})
+	assert.Nil(t, c)
+	assert.Nil(t, d)
+	assert.Nil(t, e)
 }
 
 func TestFindKeyNode_NotFound(t *testing.T) {
@@ -414,6 +579,12 @@ func TestConvertComponentIdIntoFriendlyPathSearch(t *testing.T) {
 	assert.Equal(t, "cake", segment)
 }
 
+func TestConvertComponentIdIntoFriendlyPathSearch_WithRootSymbol(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("/chicken/chips/pizza/cake")
+	assert.Equal(t, "$.chicken.chips.pizza['cake']", path)
+	assert.Equal(t, "cake", segment)
+}
+
 func TestConvertComponentIdIntoPath(t *testing.T) {
 	segment, path := ConvertComponentIdIntoPath("#/chicken/chips/pizza/cake")
 	assert.Equal(t, "$.chicken.chips.pizza.cake", path)
@@ -438,4 +609,53 @@ func TestConvertCase(t *testing.T) {
 	assert.Equal(t, str1, ConvertCase(str1, KebabCase))
 	assert.Equal(t, "CHICKEN-NUGGETS-CHICKEN-SOUP", ConvertCase(str1, ScreamingKebabCase))
 	assert.Equal(t, "CHICKEN_NUGGETS_CHICKEN_SOUP", ConvertCase(str1, ScreamingSnakeCase))
+}
+
+func TestConvertCase_NoInput(t *testing.T) {
+	assert.Empty(t, ConvertCase("", ScreamingKebabCase))
+}
+
+func TestDetectCase_NoInput(t *testing.T) {
+	assert.Equal(t, UnknownCase, DetectCase(""))
+}
+
+func TestIsNodeRefValue(t *testing.T) {
+
+	f := &yaml.Node{
+		Value: "$ref",
+	}
+	g := &yaml.Node{
+		Value: "'#/somewhere/out-there'",
+	}
+	h := &yaml.Node{
+		Tag:     "!!map",
+		Content: []*yaml.Node{f, g},
+	}
+
+	ref, node, val := IsNodeRefValue(h)
+
+	assert.True(t, ref)
+	assert.Equal(t, "$ref", node.Value)
+	assert.Equal(t, "'#/somewhere/out-there'", val)
+
+}
+
+func TestIsNodeRefValue_False(t *testing.T) {
+
+	f := &yaml.Node{
+		Value: "woof",
+	}
+	g := &yaml.Node{
+		Value: "dog",
+	}
+	h := &yaml.Node{
+		Tag:     "!!map",
+		Content: []*yaml.Node{f, g},
+	}
+
+	ref, node, val := IsNodeRefValue(h)
+
+	assert.False(t, ref)
+	assert.Nil(t, node)
+	assert.Empty(t, val)
 }

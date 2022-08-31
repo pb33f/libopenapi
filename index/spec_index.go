@@ -454,6 +454,11 @@ func (index *SpecIndex) GetParametersNode() *yaml.Node {
 	return index.parametersNode
 }
 
+// GetReferenceIndexErrors will return any errors that occurred when indexing references
+func (index *SpecIndex) GetReferenceIndexErrors() []*IndexingError {
+	return index.refErrors
+}
+
 // GetOperationParametersIndexErrors any errors that occurred when indexing operation parameters
 func (index *SpecIndex) GetOperationParametersIndexErrors() []*IndexingError {
 	return index.operationParamErrors
@@ -1687,49 +1692,51 @@ func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yam
 func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 	lookupFunction ExternalLookupFunction, parent *yaml.Node) *Reference {
 
-	externalSpecIndex := index.externalSpecIndex[uri[0]]
-	var foundNode *yaml.Node
-	if externalSpecIndex == nil {
+	if len(uri) > 0 {
+		externalSpecIndex := index.externalSpecIndex[uri[0]]
+		var foundNode *yaml.Node
+		if externalSpecIndex == nil {
 
-		n, newRoot, err := lookupFunction(componentId)
+			n, newRoot, err := lookupFunction(componentId)
 
-		if err != nil {
-			indexError := &IndexingError{
-				Error: err,
-				Node:  parent,
-				Path:  componentId,
+			if err != nil {
+				indexError := &IndexingError{
+					Error: err,
+					Node:  parent,
+					Path:  componentId,
+				}
+				index.refErrors = append(index.refErrors, indexError)
+				return nil
 			}
-			index.refErrors = append(index.refErrors, indexError)
-			return nil
+
+			if n != nil {
+				foundNode = n
+			}
+
+			// cool, cool, lets index this spec also. This is a recursive action and will keep going
+			// until all remote references have been found.
+			newIndex := NewSpecIndex(newRoot)
+			index.externalSpecIndex[uri[0]] = newIndex
+
+		} else {
+
+			foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
+			if foundRef != nil {
+				foundNode = foundRef.Node
+			}
 		}
 
-		if n != nil {
-			foundNode = n
+		if foundNode != nil {
+			nameSegs := strings.Split(uri[1], "/")
+			ref := &Reference{
+				Definition:     componentId,
+				Name:           nameSegs[len(nameSegs)-1],
+				Node:           foundNode,
+				IsRemote:       true,
+				RemoteLocation: componentId,
+			}
+			return ref
 		}
-
-		// cool, cool, lets index this spec also. This is a recursive action and will keep going
-		// until all remote references have been found.
-		newIndex := NewSpecIndex(newRoot)
-		index.externalSpecIndex[uri[0]] = newIndex
-
-	} else {
-
-		foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
-		if foundRef != nil {
-			foundNode = foundRef.Node
-		}
-	}
-
-	if foundNode != nil {
-		nameSegs := strings.Split(uri[1], "/")
-		ref := &Reference{
-			Definition:     componentId,
-			Name:           nameSegs[len(nameSegs)-1],
-			Node:           foundNode,
-			IsRemote:       true,
-			RemoteLocation: componentId,
-		}
-		return ref
 	}
 	return nil
 }
@@ -1895,10 +1902,6 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 		index.remoteLock.Unlock()
 	}
 
-	if parsedRemoteDocument == nil {
-		return nil, nil, fmt.Errorf("unable to parse remote reference: '%s'", uri[0])
-	}
-
 	// lookup item from reference by using a path query.
 	query := fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
 
@@ -1910,14 +1913,10 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 	if err != nil {
 		return nil, nil, err
 	}
-	result, err := path.Find(parsedRemoteDocument)
-	if err != nil {
-		return nil, nil, err
-	}
+	result, _ := path.Find(parsedRemoteDocument)
 	if len(result) == 1 {
 		return result[0], parsedRemoteDocument, nil
 	}
-
 	return nil, nil, nil
 }
 
@@ -1949,10 +1948,6 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 		}
 		parsedRemoteDocument = &remoteDoc
 		index.seenRemoteSources[file] = &remoteDoc
-	}
-
-	if parsedRemoteDocument == nil {
-		return nil, nil, fmt.Errorf("unable to parse file reference: '%s'", file)
 	}
 
 	// lookup item from reference by using a path query.
