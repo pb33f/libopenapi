@@ -1,9 +1,13 @@
+// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
 package index
 
 import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
+	"os"
 	"testing"
 )
 
@@ -430,5 +434,141 @@ paths:
 
 	index := NewSpecIndex(&rootNode)
 	assert.Equal(t, 4, index.GetGlobalCallbacksCount())
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
+	yml := `components:
+  schemas:
+    pizza:
+      properties:
+        something:
+          $ref: '#/components/\schemas/\something'
+    something:
+      description: something`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Len(t, index.GetReferenceIndexErrors(), 1)
+}
+
+func TestSpecIndex_FindComponent(t *testing.T) {
+	yml := `components:
+  schemas:
+    pizza:
+      properties:
+        something:
+          $ref: '#/components/schemas/something'
+    something:
+      description: something`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Nil(t, index.FindComponent("I-do-not-exist", nil))
+
+}
+
+func TestSpecIndex_performExternalLookup(t *testing.T) {
+	yml := `components:
+  schemas:
+    pizza:
+      properties:
+        something:
+          $ref: '#/components/schemas/something'
+    something:
+      description: something`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Nil(t, index.performExternalLookup(nil, "unknown", nil, nil))
+}
+
+func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_Error(t *testing.T) {
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
+	_, _, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/$.....#[;]something")
+	assert.Error(t, err)
+}
+
+func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing.T) {
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
+	a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
+	assert.NoError(t, err)
+	assert.Nil(t, a)
+	assert.Nil(t, b)
+
+}
+
+func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
+	index := new(SpecIndex)
+	a, b, err := index.lookupRemoteReference("https://google.com#/hey")
+	assert.Error(t, err)
+	assert.Nil(t, a)
+	assert.Nil(t, b)
+
+}
+
+func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
+	index := new(SpecIndex)
+	_, _, err := index.lookupFileReference("not-a-reference")
+	assert.Error(t, err)
+}
+
+func TestSpecIndex_lookupFileReference_SeenSourceSimulation_Error(t *testing.T) {
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	index.seenRemoteSources["magic-money-file.json"] = &yaml.Node{}
+	_, _, err := index.lookupFileReference("magic-money-file.json#something")
+	assert.Error(t, err)
+}
+
+func TestSpecIndex_lookupFileReference_BadFile(t *testing.T) {
+	index := new(SpecIndex)
+	_, _, err := index.lookupFileReference("chickers.json#no-rice")
+	assert.Error(t, err)
+}
+
+func TestSpecIndex_lookupFileReference_BadFileDataRead(t *testing.T) {
+
+	_ = ioutil.WriteFile("chickers.yaml", []byte("broke: the: thing: [again]"), 0664)
+	defer os.Remove("chickers.yaml")
+
+	index := new(SpecIndex)
+	_, _, err := index.lookupFileReference("chickers.yaml#no-rice")
+	assert.Error(t, err)
+}
+
+func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
+
+	_ = ioutil.WriteFile("embie.yaml", []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy"), 0664)
+	defer os.Remove("embie.yaml")
+
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	k, doc, err := index.lookupFileReference("embie.yaml#/.naughty")
+	assert.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.Nil(t, k)
+}
+
+func TestSpecIndex_lookupFileReference(t *testing.T) {
+
+	_ = ioutil.WriteFile("fox.yaml", []byte("good:\n - puppy: dog\n - puppy: forever-more"), 0664)
+	defer os.Remove("fox.yaml")
+
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	k, doc, err := index.lookupFileReference("fox.yaml#/good")
+	assert.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.NotNil(t, k)
 
 }
