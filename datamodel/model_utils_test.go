@@ -95,7 +95,9 @@ info:
   version: '0.1.0'`
 
 func TestExtractSpecInfo_ValidJSON(t *testing.T) {
-	_, e := ExtractSpecInfo([]byte(goodJSON))
+	r, e := ExtractSpecInfo([]byte(goodJSON))
+	<-r.JsonParsingChannel
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
 
@@ -110,7 +112,9 @@ func TestExtractSpecInfo_Nothing(t *testing.T) {
 }
 
 func TestExtractSpecInfo_ValidYAML(t *testing.T) {
-	_, e := ExtractSpecInfo([]byte(goodYAML))
+	r, e := ExtractSpecInfo([]byte(goodYAML))
+	<-r.JsonParsingChannel
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
 
@@ -157,6 +161,9 @@ func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi2, r.SpecType)
 	assert.Equal(t, "2.0.1", r.Version)
+
+	<-r.JsonParsingChannel
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 }
 
 func TestExtractSpecInfo_OpenAPI2_OddVersion(t *testing.T) {
@@ -173,6 +180,8 @@ func TestExtractSpecInfo_AsyncAPI(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, AsyncApi, r.SpecType)
 	assert.Equal(t, "2.0.0", r.Version)
+	<-r.JsonParsingChannel
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 }
 
 func TestExtractSpecInfo_AsyncAPI_OddVersion(t *testing.T) {
