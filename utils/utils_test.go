@@ -87,7 +87,7 @@ func TestBuildPath_WithTrailingPeriod(t *testing.T) {
 }
 
 func TestFindNodesWithoutDeserializing(t *testing.T) {
-	root, err := FindNodes(getPetstore(), "$")
+	root, _ := FindNodes(getPetstore(), "$")
 	nodes, err := FindNodesWithoutDeserializing(root[0], "$.info.contact")
 	assert.NoError(t, err)
 	assert.NotNil(t, nodes)
@@ -95,7 +95,7 @@ func TestFindNodesWithoutDeserializing(t *testing.T) {
 }
 
 func TestFindNodesWithoutDeserializing_InvalidPath(t *testing.T) {
-	root, err := FindNodes(getPetstore(), "$")
+	root, _ := FindNodes(getPetstore(), "$")
 	nodes, err := FindNodesWithoutDeserializing(root[0], "I love a good curry")
 	assert.Error(t, err)
 	assert.Nil(t, nodes)
