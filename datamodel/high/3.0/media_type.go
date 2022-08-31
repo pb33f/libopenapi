@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"sync"
 )
 
 type MediaType struct {
@@ -38,9 +39,13 @@ func (m *MediaType) GoLow() *low.MediaType {
 func ExtractContent(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.MediaType]) map[string]*MediaType {
 	// extract everything async
 	doneChan := make(chan bool)
+
+	var extLock sync.RWMutex
 	extractContentItem := func(k lowmodel.KeyReference[string],
 		v lowmodel.ValueReference[*low.MediaType], c chan bool, e map[string]*MediaType) {
+		extLock.Lock()
 		e[k.Value] = NewMediaType(v.Value)
+		extLock.Unlock()
 		c <- true
 	}
 	extracted := make(map[string]*MediaType)
