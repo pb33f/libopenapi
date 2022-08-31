@@ -350,6 +350,18 @@ func TestStripeAsDoc(t *testing.T) {
 	fmt.Println(d)
 }
 
+func TestAsanaAsDoc(t *testing.T) {
+	data, _ := ioutil.ReadFile("../../../test_specs/asana.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err []error
+	doc, err = lowv3.CreateDocument(info)
+	if err != nil {
+		panic("broken something")
+	}
+	d := NewDocument(doc)
+	fmt.Println(d)
+}
+
 func TestCircularReferencesDoc(t *testing.T) {
 	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)

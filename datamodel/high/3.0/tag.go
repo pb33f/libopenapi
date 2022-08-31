@@ -19,9 +19,15 @@ type Tag struct {
 func NewTag(tag *low.Tag) *Tag {
 	t := new(Tag)
 	t.low = tag
-	t.Name = tag.Name.Value
-	t.Description = tag.Description.Value
-	t.ExternalDocs = NewExternalDoc(tag.ExternalDocs.Value)
+	if !tag.Name.IsEmpty() {
+		t.Name = tag.Name.Value
+	}
+	if !tag.Description.IsEmpty() {
+		t.Description = tag.Description.Value
+	}
+	if !tag.ExternalDocs.IsEmpty() {
+		t.ExternalDocs = NewExternalDoc(tag.ExternalDocs.Value)
+	}
 	t.Extensions = high.ExtractExtensions(tag.Extensions)
 	return t
 }
