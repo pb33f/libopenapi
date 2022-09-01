@@ -2,7 +2,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low/shared"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
@@ -470,7 +470,7 @@ func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
 	components := doc.Components.Value
 	d := components.FindSchema("Dressing")
 	assert.NotNil(t, d.Value.Schema().AdditionalProperties.Value)
-	if n, ok := d.Value.Schema().AdditionalProperties.Value.(*shared.Schema); ok {
+	if n, ok := d.Value.Schema().AdditionalProperties.Value.(*base.Schema); ok {
 		assert.Equal(t, "something in here.", n.Description.Value)
 	} else {
 		assert.Fail(t, "should be a schema")

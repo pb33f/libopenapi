@@ -1,4 +1,4 @@
-package shared
+package base
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"

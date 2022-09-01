@@ -1,7 +1,7 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package v3
+package base
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -11,45 +11,46 @@ import (
 	"testing"
 )
 
-func TestExternalDoc_FindExtension(t *testing.T) {
+func TestTag_Build(t *testing.T) {
 
-	yml := `x-fish: cake`
+	yml := `name: a tag
+description: a description
+externalDocs: 
+  url: https://pb33f.io
+x-coffee: tasty`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 	idx := index.NewSpecIndex(&idxNode)
 
-	var n ExternalDoc
+	var n Tag
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Equal(t, "cake", n.FindExtension("x-fish").Value)
+	assert.Equal(t, "a tag", n.Name.Value)
+	assert.Equal(t, "a description", n.Description.Value)
+	assert.Equal(t, "https://pb33f.io", n.ExternalDocs.Value.URL.Value)
+	assert.Equal(t, "tasty", n.FindExtension("x-coffee").Value)
 
 }
 
-func TestExternalDoc_Build(t *testing.T) {
+func TestTag_Build_Error(t *testing.T) {
 
-	yml := `url: https://pb33f.io
-description: the ranch
-x-b33f: princess`
+	yml := `name: a tag
+description: a description
+externalDocs: 
+  $ref: #borko`
 
 	var idxNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
-	assert.NoError(t, mErr)
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 	idx := index.NewSpecIndex(&idxNode)
 
-	var n ExternalDoc
+	var n Tag
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
-	assert.NoError(t, err)
-	assert.Equal(t, "https://pb33f.io", n.URL.Value)
-	assert.Equal(t, "the ranch", n.Description.Value)
-	ext := n.FindExtension("x-b33f")
-	assert.NotNil(t, ext)
-	assert.Equal(t, "princess", ext.Value)
-
+	assert.Error(t, err)
 }

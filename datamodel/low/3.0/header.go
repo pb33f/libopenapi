@@ -5,7 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/shared"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -23,9 +23,9 @@ type Header struct {
 	Style           low.NodeReference[string]
 	Explode         low.NodeReference[bool]
 	AllowReserved   low.NodeReference[bool]
-	Schema          low.NodeReference[*shared.SchemaProxy]
+	Schema          low.NodeReference[*base.SchemaProxy]
 	Example         low.NodeReference[any]
-	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
+	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
 	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -34,8 +34,8 @@ func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, h.Extensions)
 }
 
-func (h *Header) FindExample(eType string) *low.ValueReference[*Example] {
-	return low.FindItemInMap[*Example](eType, h.Examples.Value)
+func (h *Header) FindExample(eType string) *low.ValueReference[*base.Example] {
+	return low.FindItemInMap[*base.Example](eType, h.Examples.Value)
 }
 
 func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
@@ -46,18 +46,18 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	h.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
+	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
 	if expNode != nil {
 		h.Example = low.ExtractExample(expNode, expLabel)
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMapFlat[*Example](ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMapFlat[*base.Example](base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
 	if exps != nil {
-		h.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]{
+		h.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]{
 			Value:     exps,
 			KeyNode:   expsL,
 			ValueNode: expsN,
@@ -65,7 +65,7 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle schema
-	sch, sErr := shared.ExtractSchema(root, idx)
+	sch, sErr := base.ExtractSchema(root, idx)
 	if sErr != nil {
 		return sErr
 	}

@@ -4,7 +4,7 @@
 package v3
 
 import (
-	low "github.com/pb33f/libopenapi/datamodel/low/shared"
+	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
 type License struct {

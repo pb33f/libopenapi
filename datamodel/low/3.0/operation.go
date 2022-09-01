@@ -5,6 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
 )
@@ -21,7 +22,7 @@ type Operation struct {
 	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]
 	Description  low.NodeReference[string]
-	ExternalDocs low.NodeReference[*ExternalDoc]
+	ExternalDocs low.NodeReference[*base.ExternalDoc]
 	OperationId  low.NodeReference[string]
 	Parameters   low.NodeReference[[]low.ValueReference[*Parameter]]
 	RequestBody  low.NodeReference[*RequestBody]
@@ -41,7 +42,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	o.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, dErr := low.ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
+	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, root, idx)
 	if dErr != nil {
 		return dErr
 	}

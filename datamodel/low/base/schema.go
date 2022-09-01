@@ -1,9 +1,8 @@
-package shared
+package base
 
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -20,6 +19,7 @@ const (
 	OneOfLabel                = "oneOf"
 	NotLabel                  = "not"
 	DiscriminatorLabel        = "discriminator"
+	SchemaLabel               = "schema"
 )
 
 type Schema struct {
@@ -51,11 +51,11 @@ type Schema struct {
 	Description          low.NodeReference[string]
 	Default              low.NodeReference[any]
 	Nullable             low.NodeReference[bool]
-	Discriminator        low.NodeReference[*v3.Discriminator]
+	Discriminator        low.NodeReference[*Discriminator]
 	ReadOnly             low.NodeReference[bool]
 	WriteOnly            low.NodeReference[bool]
-	XML                  low.NodeReference[*v3.XML]
-	ExternalDocs         low.NodeReference[*v3.ExternalDoc]
+	XML                  low.NodeReference[*XML]
+	ExternalDocs         low.NodeReference[*ExternalDoc]
 	Example              low.NodeReference[any]
 	Deprecated           low.NodeReference[bool]
 	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
@@ -84,9 +84,9 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	s.extractExtensions(root)
 
 	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(v3.ExampleLabel, root.Content)
+	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
 	if expNode != nil {
-		s.Example = low.NodeReference[any]{Value: v3.ExtractExampleValue(expNode), KeyNode: expLabel, ValueNode: expNode}
+		s.Example = low.NodeReference[any]{Value: ExtractExampleValue(expNode), KeyNode: expLabel, ValueNode: expNode}
 	}
 
 	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
@@ -108,28 +108,28 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// handle discriminator if set.
 	_, discLabel, discNode := utils.FindKeyNodeFull(DiscriminatorLabel, root.Content)
 	if discNode != nil {
-		var discriminator v3.Discriminator
+		var discriminator Discriminator
 		_ = low.BuildModel(discNode, &discriminator)
-		s.Discriminator = low.NodeReference[*v3.Discriminator]{Value: &discriminator, KeyNode: discLabel, ValueNode: discNode}
+		s.Discriminator = low.NodeReference[*Discriminator]{Value: &discriminator, KeyNode: discLabel, ValueNode: discNode}
 	}
 
 	// handle externalDocs if set.
-	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(v3.ExternalDocsLabel, root.Content)
+	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
 	if extDocNode != nil {
-		var exDoc v3.ExternalDoc
+		var exDoc ExternalDoc
 		_ = low.BuildModel(extDocNode, &exDoc)
 		_ = exDoc.Build(extDocNode, idx) // throws no errors, can't check for one.
-		s.ExternalDocs = low.NodeReference[*v3.ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
+		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
 	}
 
 	// handle xml if set.
 	_, xmlLabel, xmlNode := utils.FindKeyNodeFull(XMLLabel, root.Content)
 	if xmlNode != nil {
-		var xml v3.XML
+		var xml XML
 		_ = low.BuildModel(xmlNode, &xml)
 		// extract extensions if set.
 		_ = xml.Build(xmlNode) // returns no errors, can't check for one.
-		s.XML = low.NodeReference[*v3.XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
+		s.XML = low.NodeReference[*XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
 	}
 
 	// for property, build in a new thread!
@@ -406,7 +406,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
 		}
 	} else {
-		_, schLabel, schNode = utils.FindKeyNodeFull(v3.SchemaLabel, root.Content)
+		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
 		if schNode != nil {
 			if h, _, _ := utils.IsNodeRefValue(schNode); h {
 				ref, _ := low.LocateRefNode(schNode, idx)

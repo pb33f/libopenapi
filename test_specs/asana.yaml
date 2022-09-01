@@ -8729,7 +8729,7 @@ components:
               nullable: true
               type: string
             team:
-              description: "*Create-only*. The team that this project is shared with. This field only exists for projects in organizations."
+              description: "*Create-only*. The team that this project is base with. This field only exists for projects in organizations."
               example: "12345"
               type: string
           type: object
@@ -8800,7 +8800,7 @@ components:
             team:
               allOf:
                 - $ref: "#/components/schemas/TeamCompact"
-                - description: "*Create-only*. The team that this project is shared with. This field only exists for projects in organizations."
+                - description: "*Create-only*. The team that this project is base with. This field only exists for projects in organizations."
                   type: object
           type: object
     ProjectSectionInsertRequest:
