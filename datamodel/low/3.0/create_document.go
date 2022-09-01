@@ -3,7 +3,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/shared"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
@@ -57,12 +57,12 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(shared.InfoLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFull(base.InfoLabel, info.RootNode.Content)
 	if vn != nil {
-		ir := shared.Info{}
+		ir := base.Info{}
 		_ = low.BuildModel(vn, &ir)
 		_ = ir.Build(vn, idx)
-		nr := low.NodeReference[*shared.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
+		nr := low.NodeReference[*base.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
 	return nil
@@ -78,7 +78,7 @@ func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInd
 }
 
 func extractExternalDocs(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	extDocs, dErr := low.ExtractObject[*ExternalDoc](ExternalDocsLabel, info.RootNode, idx)
+	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode, idx)
 	if dErr != nil {
 		return dErr
 	}
@@ -128,24 +128,24 @@ func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInde
 }
 
 func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(TagsLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFull(base.TagsLabel, info.RootNode.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
-			var tags []low.ValueReference[*Tag]
+			var tags []low.ValueReference[*base.Tag]
 			for _, tagN := range vn.Content {
 				if utils.IsNodeMap(tagN) {
-					tag := Tag{}
+					tag := base.Tag{}
 					_ = low.BuildModel(tagN, &tag)
 					if err := tag.Build(tagN, idx); err != nil {
 						return err
 					}
-					tags = append(tags, low.ValueReference[*Tag]{
+					tags = append(tags, low.ValueReference[*base.Tag]{
 						Value:     &tag,
 						ValueNode: tagN,
 					})
 				}
 			}
-			doc.Tags = low.NodeReference[[]low.ValueReference[*Tag]]{
+			doc.Tags = low.NodeReference[[]low.ValueReference[*base.Tag]]{
 				Value:     tags,
 				KeyNode:   ln,
 				ValueNode: vn,

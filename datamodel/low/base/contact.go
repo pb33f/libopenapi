@@ -1,7 +1,7 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package shared
+package base
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -9,11 +9,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type License struct {
-	Name low.NodeReference[string]
-	URL  low.NodeReference[string]
+type Contact struct {
+	Name  low.NodeReference[string]
+	URL   low.NodeReference[string]
+	Email low.NodeReference[string]
 }
 
-func (l *License) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (c *Contact) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	// not implemented.
 	return nil
 }

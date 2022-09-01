@@ -1,4 +1,4 @@
-package v3
+package base
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"

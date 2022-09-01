@@ -5,14 +5,13 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/shared"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
 const (
-	SchemaLabel  = "schema"
 	ContentLabel = "content"
 )
 
@@ -26,9 +25,9 @@ type Parameter struct {
 	Style           low.NodeReference[string]
 	Explode         low.NodeReference[bool]
 	AllowReserved   low.NodeReference[bool]
-	Schema          low.NodeReference[*shared.SchemaProxy]
+	Schema          low.NodeReference[*base.SchemaProxy]
 	Example         low.NodeReference[any]
-	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
+	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
 	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -37,8 +36,8 @@ func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](cType, p.Content.Value)
 }
 
-func (p *Parameter) FindExample(eType string) *low.ValueReference[*Example] {
-	return low.FindItemInMap[*Example](eType, p.Examples.Value)
+func (p *Parameter) FindExample(eType string) *low.ValueReference[*base.Example] {
+	return low.FindItemInMap[*base.Example](eType, p.Examples.Value)
 }
 
 func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
@@ -49,13 +48,13 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
+	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
 	if expNode != nil {
 		p.Example = low.ExtractExample(expNode, expLabel)
 	}
 
 	// handle schema
-	sch, sErr := shared.ExtractSchema(root, idx)
+	sch, sErr := base.ExtractSchema(root, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -64,12 +63,12 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMapFlat[*Example](ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMapFlat[*base.Example](base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
 	if exps != nil {
-		p.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]{
+		p.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]{
 			Value:     exps,
 			KeyNode:   expsL,
 			ValueNode: expsN,

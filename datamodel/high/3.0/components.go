@@ -7,7 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
-	"github.com/pb33f/libopenapi/datamodel/low/shared"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
 const (
@@ -72,7 +72,7 @@ func NewComponents(comp *low.Components) *Components {
 		go buildComponent[*Parameter, *low.Parameter](parameters, k.Value, v.Value, paramChan, NewParameter)
 	}
 	for k, v := range comp.Examples.Value {
-		go buildComponent[*Example, *low.Example](parameters, k.Value, v.Value, exampleChan, NewExample)
+		go buildComponent[*Example, *base.Example](parameters, k.Value, v.Value, exampleChan, NewExample)
 	}
 	for k, v := range comp.RequestBodies.Value {
 		go buildComponent[*RequestBody, *low.RequestBody](requestBodies, k.Value, v.Value,
@@ -147,9 +147,9 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
 }
 
-func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*shared.SchemaProxy], c chan componentResult[*SchemaProxy]) {
+func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy], c chan componentResult[*SchemaProxy]) {
 	var sch *SchemaProxy
-	sch = &SchemaProxy{schema: &lowmodel.NodeReference[*shared.SchemaProxy]{
+	sch = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
 		Value:     orig.Value,
 		ValueNode: orig.ValueNode,
 	}}

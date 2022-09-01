@@ -3,7 +3,9 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+import (
+	low "github.com/pb33f/libopenapi/datamodel/low/base"
+)
 
 type Discriminator struct {
 	PropertyName string

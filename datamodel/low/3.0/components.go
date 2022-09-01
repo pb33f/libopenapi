@@ -6,7 +6,7 @@ package v3
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/shared"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -19,10 +19,10 @@ const (
 )
 
 type Components struct {
-	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*shared.SchemaProxy]]
+	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]]
 	Responses       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]]
 	Parameters      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]]
-	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
+	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
 	RequestBodies   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*RequestBody]]
 	Headers         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Header]]
 	SecuritySchemes low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SecurityScheme]]
@@ -35,8 +35,8 @@ func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, co.Extensions)
 }
 
-func (co *Components) FindSchema(schema string) *low.ValueReference[*shared.SchemaProxy] {
-	return low.FindItemInMap[*shared.SchemaProxy](schema, co.Schemas.Value)
+func (co *Components) FindSchema(schema string) *low.ValueReference[*base.SchemaProxy] {
+	return low.FindItemInMap[*base.SchemaProxy](schema, co.Schemas.Value)
 }
 
 func (co *Components) FindResponse(response string) *low.ValueReference[*Response] {
@@ -51,8 +51,8 @@ func (co *Components) FindSecurityScheme(sScheme string) *low.ValueReference[*Se
 	return low.FindItemInMap[*SecurityScheme](sScheme, co.SecuritySchemes.Value)
 }
 
-func (co *Components) FindExample(example string) *low.ValueReference[*Example] {
-	return low.FindItemInMap[*Example](example, co.Examples.Value)
+func (co *Components) FindExample(example string) *low.ValueReference[*base.Example] {
+	return low.FindItemInMap[*base.Example](example, co.Examples.Value)
 }
 
 func (co *Components) FindRequestBody(requestBody string) *low.ValueReference[*RequestBody] {
@@ -78,19 +78,19 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	skipChan := make(chan bool)
 	errorChan := make(chan error)
 	paramChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]])
-	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*shared.SchemaProxy]])
+	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]])
 	responsesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]])
-	examplesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]])
+	examplesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]])
 	requestBodiesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*RequestBody]])
 	headersChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Header]])
 	securitySchemesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SecurityScheme]])
 	linkChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]])
 	callbackChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]])
 
-	go extractComponentValues[*shared.SchemaProxy](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
+	go extractComponentValues[*base.SchemaProxy](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
 	go extractComponentValues[*Parameter](ParametersLabel, root, skipChan, errorChan, paramChan, idx)
 	go extractComponentValues[*Response](ResponsesLabel, root, skipChan, errorChan, responsesChan, idx)
-	go extractComponentValues[*Example](ExamplesLabel, root, skipChan, errorChan, examplesChan, idx)
+	go extractComponentValues[*base.Example](base.ExamplesLabel, root, skipChan, errorChan, examplesChan, idx)
 	go extractComponentValues[*RequestBody](RequestBodiesLabel, root, skipChan, errorChan, requestBodiesChan, idx)
 	go extractComponentValues[*Header](HeadersLabel, root, skipChan, errorChan, headersChan, idx)
 	go extractComponentValues[*SecurityScheme](SecuritySchemesLabel, root, skipChan, errorChan, securitySchemesChan, idx)

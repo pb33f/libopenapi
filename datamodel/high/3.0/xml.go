@@ -5,7 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
 type XML struct {
