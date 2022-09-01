@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 )
 
 const (
@@ -146,9 +147,9 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
 }
 
-func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*low.SchemaProxy], c chan componentResult[*SchemaProxy]) {
+func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*shared.SchemaProxy], c chan componentResult[*SchemaProxy]) {
 	var sch *SchemaProxy
-	sch = &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+	sch = &SchemaProxy{schema: &lowmodel.NodeReference[*shared.SchemaProxy]{
 		Value:     orig.Value,
 		ValueNode: orig.ValueNode,
 	}}

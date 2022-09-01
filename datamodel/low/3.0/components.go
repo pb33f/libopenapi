@@ -6,6 +6,7 @@ package v3
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -18,7 +19,7 @@ const (
 )
 
 type Components struct {
-	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
+	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*shared.SchemaProxy]]
 	Responses       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]]
 	Parameters      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]]
 	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
@@ -34,8 +35,8 @@ func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, co.Extensions)
 }
 
-func (co *Components) FindSchema(schema string) *low.ValueReference[*SchemaProxy] {
-	return low.FindItemInMap[*SchemaProxy](schema, co.Schemas.Value)
+func (co *Components) FindSchema(schema string) *low.ValueReference[*shared.SchemaProxy] {
+	return low.FindItemInMap[*shared.SchemaProxy](schema, co.Schemas.Value)
 }
 
 func (co *Components) FindResponse(response string) *low.ValueReference[*Response] {
@@ -77,7 +78,7 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	skipChan := make(chan bool)
 	errorChan := make(chan error)
 	paramChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]])
-	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]])
+	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*shared.SchemaProxy]])
 	responsesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]])
 	examplesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]])
 	requestBodiesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*RequestBody]])
@@ -86,7 +87,7 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	linkChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]])
 	callbackChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]])
 
-	go extractComponentValues[*SchemaProxy](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
+	go extractComponentValues[*shared.SchemaProxy](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
 	go extractComponentValues[*Parameter](ParametersLabel, root, skipChan, errorChan, paramChan, idx)
 	go extractComponentValues[*Response](ResponsesLabel, root, skipChan, errorChan, responsesChan, idx)
 	go extractComponentValues[*Example](ExamplesLabel, root, skipChan, errorChan, examplesChan, idx)

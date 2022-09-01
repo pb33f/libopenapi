@@ -6,7 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 	"sync"
 )
 
@@ -47,10 +47,10 @@ type Schema struct {
 	Example              any
 	Deprecated           bool
 	Extensions           map[string]any
-	low                  *low.Schema
+	low                  *shared.Schema
 }
 
-func NewSchema(schema *low.Schema) *Schema {
+func NewSchema(schema *shared.Schema) *Schema {
 	s := new(Schema)
 	s.low = schema
 	s.Title = schema.Title.Value
@@ -108,13 +108,13 @@ func NewSchema(schema *low.Schema) *Schema {
 	errChan := make(chan error)
 
 	// schema async
-	buildOutSchema := func(schemas []lowmodel.ValueReference[*low.SchemaProxy], items *[]*SchemaProxy,
+	buildOutSchema := func(schemas []lowmodel.ValueReference[*shared.SchemaProxy], items *[]*SchemaProxy,
 		doneChan chan bool, e chan error) {
 		bChan := make(chan *SchemaProxy)
 
 		// for every item, build schema async
-		buildSchemaChild := func(sch lowmodel.ValueReference[*low.SchemaProxy], bChan chan *SchemaProxy) {
-			p := &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+		buildSchemaChild := func(sch lowmodel.ValueReference[*shared.SchemaProxy], bChan chan *SchemaProxy) {
+			p := &SchemaProxy{schema: &lowmodel.NodeReference[*shared.SchemaProxy]{
 				ValueNode: sch.ValueNode,
 				Value:     sch.Value,
 			}}
@@ -137,11 +137,11 @@ func NewSchema(schema *low.Schema) *Schema {
 
 	// props async
 	plock := sync.RWMutex{}
-	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*low.SchemaProxy], c chan bool,
+	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*shared.SchemaProxy], c chan bool,
 		props map[string]*SchemaProxy) {
 		defer plock.Unlock()
 		plock.Lock()
-		props[k.Value] = &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+		props[k.Value] = &SchemaProxy{schema: &lowmodel.NodeReference[*shared.SchemaProxy]{
 			Value:     v.Value,
 			KeyNode:   k.KeyNode,
 			ValueNode: v.ValueNode,
@@ -208,6 +208,6 @@ func NewSchema(schema *low.Schema) *Schema {
 	return s
 }
 
-func (s *Schema) GoLow() *low.Schema {
+func (s *Schema) GoLow() *shared.Schema {
 	return s.low
 }

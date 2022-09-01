@@ -3,6 +3,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
@@ -56,12 +57,12 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(InfoLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFull(shared.InfoLabel, info.RootNode.Content)
 	if vn != nil {
-		ir := Info{}
+		ir := shared.Info{}
 		_ = low.BuildModel(vn, &ir)
 		_ = ir.Build(vn, idx)
-		nr := low.NodeReference[*Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
+		nr := low.NodeReference[*shared.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
 	return nil

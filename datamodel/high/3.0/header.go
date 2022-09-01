@@ -6,6 +6,7 @@ package v3
 import (
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 )
 
 type Header struct {
@@ -35,7 +36,7 @@ func NewHeader(header *low.Header) *Header {
 	h.Explode = header.Explode.Value
 	h.AllowReserved = header.AllowReserved.Value
 	if !header.Schema.IsEmpty() {
-		h.Schema = &SchemaProxy{schema: &lowmodel.NodeReference[*low.SchemaProxy]{
+		h.Schema = &SchemaProxy{schema: &lowmodel.NodeReference[*shared.SchemaProxy]{
 			Value:     header.Schema.Value,
 			KeyNode:   header.Schema.KeyNode,
 			ValueNode: header.Schema.ValueNode,
