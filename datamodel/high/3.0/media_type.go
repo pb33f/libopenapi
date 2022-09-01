@@ -47,6 +47,7 @@ func ExtractContent(elements map[lowmodel.KeyReference[string]]lowmodel.ValueRef
 		e[k.Value] = NewMediaType(v.Value)
 		extLock.Unlock()
 		c <- true
+
 	}
 	extracted := make(map[string]*MediaType)
 	for k, v := range elements {

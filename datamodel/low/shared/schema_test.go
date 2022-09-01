@@ -1,4 +1,4 @@
-package v3
+package shared
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -1164,44 +1164,3 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 		res.Value.Schema().OneOf.Value[0].Value.Schema().Description.Value)
 
 }
-
-//func TestExtractSchema_CircularRef(t *testing.T) {
-//
-//	yml := `components:
-//  schemas:
-//    Something:
-//      properties:
-//        nothing:
-//          $ref: '#/components/schemas/Nothing'
-//    Nothing:
-//      properties:
-//        something:
-//          $ref: '#/components/schemas/Something'`
-//
-//	var iNode yaml.Node
-//	mErr := yaml.Unmarshal([]byte(yml), &iNode)
-//	assert.NoError(t, mErr)
-//	idx := index.NewSpecIndex(&iNode)
-//
-//	yml = `$ref: '#/components/schemas/Something'`
-//
-//	var idxNode yaml.Node
-//	_ = yaml.Unmarshal([]byte(yml), &idxNode)
-//
-//	resolve := resolver.NewResolver(idx)
-//	errs := resolve.CheckForCircularReferences()
-//	assert.Len(t, errs, 1)
-//
-//	res, err := ExtractSchema(idxNode.Content[0], idx)
-//	assert.NotNil(t, res)
-//	assert.Nil(t, err)
-//
-//	k := res.Value
-//	prop := k.Schema().FindProperty("nothing").Value
-//
-//	propSch := prop
-//
-//	assert.Nil(t, propSch.Schema())
-//	assert.Error(t, propSch.GetBuildError())
-//
-//}

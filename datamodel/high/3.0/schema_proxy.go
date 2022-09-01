@@ -5,7 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/shared"
 )
 
 type SchemaProxy struct {

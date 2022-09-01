@@ -5,12 +5,13 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 	"github.com/pb33f/libopenapi/index"
 )
 
 type Document struct {
 	Version      low.ValueReference[string]
-	Info         low.NodeReference[*Info]
+	Info         low.NodeReference[*shared.Info]
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Paths        low.NodeReference[*Paths]
 	Components   low.NodeReference[*Components]

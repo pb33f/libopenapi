@@ -5,6 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -22,7 +23,7 @@ type Header struct {
 	Style           low.NodeReference[string]
 	Explode         low.NodeReference[bool]
 	AllowReserved   low.NodeReference[bool]
-	Schema          low.NodeReference[*SchemaProxy]
+	Schema          low.NodeReference[*shared.SchemaProxy]
 	Example         low.NodeReference[any]
 	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
 	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
@@ -64,7 +65,7 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle schema
-	sch, sErr := ExtractSchema(root, idx)
+	sch, sErr := shared.ExtractSchema(root, idx)
 	if sErr != nil {
 		return sErr
 	}

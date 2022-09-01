@@ -5,13 +5,14 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/shared"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
 type MediaType struct {
-	Schema     low.NodeReference[*SchemaProxy]
+	Schema     low.NodeReference[*shared.SchemaProxy]
 	Example    low.NodeReference[any]
 	Examples   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Example]]
 	Encoding   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Encoding]]
@@ -44,7 +45,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	//handle schema
-	sch, sErr := ExtractSchema(root, idx)
+	sch, sErr := shared.ExtractSchema(root, idx)
 	if sErr != nil {
 		return sErr
 	}
