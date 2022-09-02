@@ -5,8 +5,13 @@ package v2
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+)
+
+const (
+	ParametersLabel = "parameters"
 )
 
 type Parameter struct {
@@ -17,6 +22,7 @@ type Parameter struct {
 	Description      low.NodeReference[string]
 	Required         low.NodeReference[bool]
 	AllowEmptyValue  low.NodeReference[bool]
+	Schema           low.NodeReference[*base.SchemaProxy]
 	Items            low.NodeReference[*Items]
 	CollectionFormat low.NodeReference[string]
 	Default          low.NodeReference[any]
