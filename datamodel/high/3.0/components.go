@@ -38,7 +38,9 @@ type Components struct {
 func NewComponents(comp *low.Components) *Components {
 	c := new(Components)
 	c.low = comp
-	c.Extensions = high.ExtractExtensions(comp.Extensions)
+	if len(comp.Extensions) > 0 {
+		c.Extensions = high.ExtractExtensions(comp.Extensions)
+	}
 	cbMap := make(map[string]*Callback)
 	linkMap := make(map[string]*Link)
 	responseMap := make(map[string]*Response)
