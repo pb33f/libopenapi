@@ -35,7 +35,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 		}
 
 		// we need to find a matching field in the YAML, the cases may be off, so take no chances.
-		cases := []utils.Case{utils.PascalCase, utils.CamelCase, utils.ScreamingSnakeCase,
+		cases := []utils.Case{utils.CamelCase, utils.PascalCase, utils.ScreamingSnakeCase,
 			utils.SnakeCase, utils.KebabCase, utils.RegularCase}
 
 		var vn, kn *yaml.Node

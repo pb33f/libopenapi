@@ -6,6 +6,7 @@ package v2
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,8 +42,44 @@ func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	h.Extensions = low.ExtractExtensions(root)
+	items, err := low.ExtractObject[*Items](ItemsLabel, root, idx)
+	if err != nil {
+		return err
+	}
+	h.Items = items
 
-	// TODO: build items.
-
+	_, ln, vn := utils.FindKeyNodeFull(DefaultLabel, root.Content)
+	if vn != nil {
+		var n map[string]interface{}
+		err = vn.Decode(&n)
+		if err != nil {
+			// if not a map, then try an array
+			var k []interface{}
+			err = vn.Decode(&k)
+			if err != nil {
+				// lets just default to interface
+				var j interface{}
+				_ = vn.Decode(&j)
+				h.Default = low.NodeReference[any]{
+					Value:     j,
+					KeyNode:   ln,
+					ValueNode: vn,
+				}
+				return nil
+			}
+			h.Default = low.NodeReference[any]{
+				Value:     k,
+				KeyNode:   ln,
+				ValueNode: vn,
+			}
+			return nil
+		}
+		h.Default.Value = low.NodeReference[any]{
+			Value:     n,
+			KeyNode:   ln,
+			ValueNode: vn,
+		}
+		return nil
+	}
 	return nil
 }

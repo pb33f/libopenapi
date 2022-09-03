@@ -35,3 +35,20 @@ func NewTag(tag *low.Tag) *Tag {
 func (t *Tag) GoLow() *low.Tag {
 	return t.low
 }
+
+//func (t *Tag) MarshalYAML() (interface{}, error) {
+//	m := make(map[string]interface{})
+//	for i := range t.Extensions {
+//		m[i] = t.Extensions[i]
+//	}
+//	if t.Name != "" {
+//		m[NameLabel] = t.Name
+//	}
+//	if t.Description != "" {
+//		m[DescriptionLabel] = t.Description
+//	}
+//	if t.ExternalDocs != nil {
+//		m[ExternalDocsLabel] = t.ExternalDocs
+//	}
+//	return m, nil
+//}
