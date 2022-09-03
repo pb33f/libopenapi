@@ -62,6 +62,19 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			skip = true
 			continue
 		}
+		// because (for some reason) the spec for swagger docs allows for a '$ref' property for path items.
+		// this is kinda nuts, because '$ref' is a reserved keyword for JSON references, which is ALSO used
+		// in swagger. Why this choice was made, I do not know.
+		if strings.Contains(strings.ToLower(pathNode.Value), "$ref") {
+			rn := root.Content[i+1]
+			p.Ref = low.NodeReference[string]{
+				Value:     rn.Value,
+				ValueNode: rn,
+				KeyNode:   pathNode,
+			}
+			skip = true
+			continue
+		}
 		if skip {
 			skip = false
 			continue

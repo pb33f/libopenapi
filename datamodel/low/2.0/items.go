@@ -12,13 +12,14 @@ import (
 
 const (
 	DefaultLabel = "default"
+	ItemsLabel   = "items"
 )
 
 type Items struct {
 	Type             low.NodeReference[string]
 	Format           low.NodeReference[string]
 	CollectionFormat low.NodeReference[string]
-	Items            low.NodeReference[string]
+	Items            low.NodeReference[*Items]
 	Default          low.NodeReference[any]
 	Maximum          low.NodeReference[int]
 	ExclusiveMaximum low.NodeReference[bool]
@@ -35,6 +36,12 @@ type Items struct {
 }
 
 func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
+	if iErr != nil {
+		return iErr
+	}
+	i.Items = items
+
 	_, ln, vn := utils.FindKeyNodeFull(DefaultLabel, root.Content)
 	if vn != nil {
 		var n map[string]interface{}

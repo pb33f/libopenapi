@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	DefinitionsLabel = "definitions"
+	DefinitionsLabel         = "definitions"
+	SecurityDefinitionsLabel = "securityDefinitions"
 )
 
 type ParameterDefinitions struct {
@@ -42,13 +43,13 @@ func (r *ResponsesDefinitions) FindResponse(schema string) *low.ValueReference[*
 	return low.FindItemInMap[*Response](schema, r.Definitions)
 }
 
-func (s *SecurityDefinitions) FindSecurityScheme(schema string) *low.ValueReference[*SecurityScheme] {
+func (s *SecurityDefinitions) FindSecurityDefinition(schema string) *low.ValueReference[*SecurityScheme] {
 	return low.FindItemInMap[*SecurityScheme](schema, s.Definitions)
 }
 
 func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
-	resultChan := make(chan definitionResult)
+	resultChan := make(chan definitionResult[*base.SchemaProxy])
 	var defLabel *yaml.Node
 	totalDefinitions := 0
 	for i := range root.Content {
@@ -57,12 +58,12 @@ func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			continue
 		}
 		totalDefinitions++
-		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult, e chan error) {
+		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult[*base.SchemaProxy], e chan error) {
 			obj, err := low.ExtractObjectRaw[*base.SchemaProxy](value, idx)
 			if err != nil {
 				e <- err
 			}
-			r <- definitionResult{k: label, v: low.ValueReference[any]{Value: obj, ValueNode: value}}
+			r <- definitionResult[*base.SchemaProxy]{k: label, v: low.ValueReference[*base.SchemaProxy]{Value: obj, ValueNode: value}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
 	}
@@ -74,10 +75,11 @@ func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
+			completedDefs++
 			results[low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v.(low.ValueReference[*base.SchemaProxy])
+			}] = sch.v
 		}
 	}
 	d.Schemas = results
@@ -86,7 +88,7 @@ func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 func (pd *ParameterDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
-	resultChan := make(chan definitionResult)
+	resultChan := make(chan definitionResult[*Parameter])
 	var defLabel *yaml.Node
 	totalDefinitions := 0
 	for i := range root.Content {
@@ -95,12 +97,12 @@ func (pd *ParameterDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) err
 			continue
 		}
 		totalDefinitions++
-		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult, e chan error) {
+		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult[*Parameter], e chan error) {
 			obj, err := low.ExtractObjectRaw[*Parameter](value, idx)
 			if err != nil {
 				e <- err
 			}
-			r <- definitionResult{k: label, v: low.ValueReference[any]{Value: obj, ValueNode: value}}
+			r <- definitionResult[*Parameter]{k: label, v: low.ValueReference[*Parameter]{Value: obj, ValueNode: value}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
 	}
@@ -112,24 +114,25 @@ func (pd *ParameterDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) err
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
+			completedDefs++
 			results[low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v.(low.ValueReference[*Parameter])
+			}] = sch.v
 		}
 	}
 	pd.Definitions = results
 	return nil
 }
 
-type definitionResult struct {
+type definitionResult[T any] struct {
 	k *yaml.Node
-	v any
+	v low.ValueReference[T]
 }
 
 func (r *ResponsesDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
-	resultChan := make(chan definitionResult)
+	resultChan := make(chan definitionResult[*Response])
 	var defLabel *yaml.Node
 	totalDefinitions := 0
 	for i := range root.Content {
@@ -138,12 +141,12 @@ func (r *ResponsesDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) erro
 			continue
 		}
 		totalDefinitions++
-		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult, e chan error) {
+		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult[*Response], e chan error) {
 			obj, err := low.ExtractObjectRaw[*Response](value, idx)
 			if err != nil {
 				e <- err
 			}
-			r <- definitionResult{k: label, v: low.ValueReference[any]{Value: obj, ValueNode: value}}
+			r <- definitionResult[*Response]{k: label, v: low.ValueReference[*Response]{Value: obj, ValueNode: value}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
 	}
@@ -155,10 +158,11 @@ func (r *ResponsesDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) erro
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
+			completedDefs++
 			results[low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v.(low.ValueReference[*Response])
+			}] = sch.v
 		}
 	}
 	r.Definitions = results
@@ -167,7 +171,7 @@ func (r *ResponsesDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) erro
 
 func (s *SecurityDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
-	resultChan := make(chan definitionResult)
+	resultChan := make(chan definitionResult[*SecurityScheme])
 	var defLabel *yaml.Node
 	totalDefinitions := 0
 	for i := range root.Content {
@@ -176,12 +180,12 @@ func (s *SecurityDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) error
 			continue
 		}
 		totalDefinitions++
-		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult, e chan error) {
+		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex, r chan definitionResult[*SecurityScheme], e chan error) {
 			obj, err := low.ExtractObjectRaw[*SecurityScheme](value, idx)
 			if err != nil {
 				e <- err
 			}
-			r <- definitionResult{k: label, v: low.ValueReference[any]{Value: obj, ValueNode: value}}
+			r <- definitionResult[*SecurityScheme]{k: label, v: low.ValueReference[*SecurityScheme]{Value: obj, ValueNode: value}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
 	}
@@ -193,10 +197,11 @@ func (s *SecurityDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) error
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
+			completedDefs++
 			results[low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v.(low.ValueReference[*SecurityScheme])
+			}] = sch.v
 		}
 	}
 	s.Definitions = results

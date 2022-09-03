@@ -19,6 +19,9 @@ func FindItemInMap[T any](item string, collection map[KeyReference[string]]Value
 		if n.Value == item {
 			return &o
 		}
+		if strings.ToLower(n.Value) == strings.ToLower(item) {
+			return &o
+		}
 	}
 	return nil
 }
