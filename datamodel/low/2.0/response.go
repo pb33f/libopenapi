@@ -40,6 +40,13 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		r.Schema = *s
 	}
 
+	// extract examples
+	examples, expErr := low.ExtractObject[*Examples](ExamplesLabel, root, idx)
+	if expErr != nil {
+		return expErr
+	}
+	r.Examples = examples
+
 	//extract headers
 	headers, lN, kN, err := low.ExtractMapFlat[*Header](HeadersLabel, root, idx)
 	if err != nil {
