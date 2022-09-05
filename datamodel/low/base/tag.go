@@ -12,6 +12,8 @@ import (
 const (
 	TagsLabel         = "tags"
 	ExternalDocsLabel = "externalDocs"
+	NameLabel         = "name"
+	DescriptionLabel  = "description"
 )
 
 type Tag struct {
@@ -33,3 +35,24 @@ func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	t.ExternalDocs = extDocs
 	return err
 }
+
+//func (t *Tag) MarshalYAML() (interface{}, error) {
+//	m := make(map[string]interface{})
+//	for i := range t.Extensions {
+//		m[i.Value] = t.Extensions[i].Value
+//	}
+//	if t.Name.Value != "" {
+//		m[NameLabel] = t.Name.Value
+//	}
+//	if t.Description.Value != "" {
+//		m[DescriptionLabel] = t.Description.Value
+//	}
+//	if t.ExternalDocs.Value != nil {
+//		m[ExternalDocsLabel] = t.ExternalDocs.Value
+//	}
+//	return m, nil
+//}
+//
+//func NewTag() *Tag {
+//	return new(Tag)
+//}

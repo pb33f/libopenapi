@@ -21,3 +21,18 @@ type Document struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 	Index        *index.SpecIndex
 }
+
+//
+//func (d *Document) AddTag() *base.Tag {
+//	t := base.NewTag()
+//	//d.Tags.KeyNode
+//	t.Name.Value = "nice new tag"
+//
+//	dat, _ := yaml.Marshal(t)
+//	var inject yaml.Node
+//	_ = yaml.Unmarshal(dat, &inject)
+//
+//	d.Tags.ValueNode.Content = append(d.Tags.ValueNode.Content, inject.Content[0])
+//
+//	return t
+//}

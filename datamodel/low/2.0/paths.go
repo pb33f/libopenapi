@@ -4,10 +4,8 @@
 package v2
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strings"
 )
@@ -21,7 +19,6 @@ const (
 	DeleteLabel  = "delete"
 	OptionsLabel = "options"
 	HeadLabel    = "head"
-	TraceLabel   = "trace"
 )
 
 type Paths struct {
@@ -58,23 +55,6 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	bChan := make(chan pathBuildResult)
 	eChan := make(chan error)
 	var buildPathItem = func(cNode, pNode *yaml.Node, b chan<- pathBuildResult, e chan<- error) {
-		if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
-			r, err := low.LocateRefNode(pNode, idx)
-			if r != nil {
-				pNode = r
-				if err != nil {
-					if !idx.AllowCircularReferenceResolving() {
-						e <- fmt.Errorf("path item build failed: %s", err.Error())
-						return
-					}
-				}
-			} else {
-				e <- fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
-					pNode.Content[1].Value, pNode.Content[1].Line, pNode.Content[1].Column)
-				return
-			}
-		}
-
 		path := new(PathItem)
 		_ = low.BuildModel(pNode, path)
 		err := path.Build(pNode, idx)

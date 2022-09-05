@@ -90,6 +90,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 		case <-doneChan:
 			completedExtractions++
 		case e := <-errChan:
+			completedExtractions++
 			errors = append(errors, e)
 		}
 	}

@@ -68,7 +68,7 @@ func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			}
 			return nil
 		}
-		i.Default.Value = low.NodeReference[any]{
+		i.Default = low.NodeReference[any]{
 			Value:     n,
 			KeyNode:   ln,
 			ValueNode: vn,

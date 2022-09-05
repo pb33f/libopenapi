@@ -20,6 +20,7 @@ parameters:
     in: query
     name: simple
     type: string
+    x-chicken: nuggets
 tags:
   - name: pet
     description: Everything about your Pets
@@ -37,7 +38,9 @@ schemes:
   - https
   - http
 paths:
+  x-minty: fresh
   "/pet/{petId}/uploadImage":
+    x-potato: man
     post:
       tags:
         - pet
@@ -67,15 +70,6 @@ paths:
           type: file
       responses:
         '200':
-          headers:
-            myHeader:
-              type: array
-              description: myHeader
-              items:
-                type: string
-              collectionFormat: csv
-              default: [ one, two, three ]
-              enum: [99,100,101]
           description: successful operation
           schema:
             "$ref": "#/definitions/ApiResponse"
@@ -574,6 +568,28 @@ paths:
         default:
           description: successful operation
   "/user":
+    borked:
+      summary: not allowed
+    options:
+      summary: hola!
+      responses:
+        default:
+          description: hello there
+    delete:
+      summary: sup!
+      responses:
+        default:
+          description: hello there
+    head:
+      summary: yo!
+      responses:
+        default:
+          description: hello there
+    patch:
+      summary: hi!
+      responses:
+        default:
+          description: hello there
     post:
       tags:
         - user
@@ -595,6 +611,8 @@ paths:
       responses:
         default:
           description: successful operation
+  "/ref":
+    $ref: "#/externalPaths/test"
 securityDefinitions:
   api_key:
     type: apiKey
@@ -609,7 +627,46 @@ securityDefinitions:
       write:pets: modify pets in your account
 responses:
   "200":
+    x-coffee: morning
     description: OK
+    headers:
+      noHeader:
+        type: string
+        x-empty: true
+        items:
+          type: string
+      yourHeader:
+        type: string
+        default: yourHeader
+        items:
+          default: somethingSimple
+      ourHeader:
+        type: string
+        default:
+          funny: bunny
+      myHeader:
+        type: array
+        description: myHeader
+        items:
+          type: string
+          default:
+            something: here
+          items:
+            default:
+              - one
+              - two
+        collectionFormat: csv
+        default: [ one, two, three ]
+        enum: [ 99,100,101 ]
+    examples:
+      "application/json":
+        one: two
+        three: four
+      "text/xml":
+        - one
+        - two
+        - three
+      "text/plain": something else.
     schema:
       $ref: '#/definitions/ApiResponse'
   "500":
@@ -739,3 +796,7 @@ definitions:
 externalDocs:
   description: Find out more about Swagger
   url: http://swagger.io
+externalPaths:
+  # this is illegal
+  test:
+    - summary: this is illegal.
