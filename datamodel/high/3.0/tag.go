@@ -36,12 +36,12 @@ func (t *Tag) GoLow() *low.Tag {
 	return t.low
 }
 
-func (t *Tag) SetName(value string) {
-	t.GoLow().Name.ValueNode.Value = value
-}
-func (t *Tag) SetDescription(value string) {
-	t.GoLow().Description.ValueNode.Value = value
-}
+//func (t *Tag) SetName(value string) {
+//	t.GoLow().Name.ValueNode.Value = value
+//}
+//func (t *Tag) SetDescription(value string) {
+//	t.GoLow().Description.ValueNode.Value = value
+//}
 
 //func (t *Tag) MarshalYAML() (interface{}, error) {
 //	m := make(map[string]interface{})

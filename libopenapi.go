@@ -38,8 +38,8 @@ tags:
 	highDoc := high.NewDocument(lowDoc)
 
 	highDoc.Info.GoLow().Title.ValueNode.Value = "let's hack this"
-	highDoc.Tags[0].SetName("We are a new name now")
-	highDoc.Tags[0].SetDescription("and a new description")
+	//highDoc.Tags[0].SetName("We are a new name now")
+	//highDoc.Tags[0].SetDescription("and a new description")
 
 	//newTag := lowDoc.AddTag()
 	//fmt.Println(newTag)
