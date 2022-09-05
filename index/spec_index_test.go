@@ -509,11 +509,11 @@ func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing
 
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
 	index := new(SpecIndex)
-	a, b, err := index.lookupRemoteReference("https://google.com#/hey")
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	a, b, err := index.lookupRemoteReference("https://google.com//logos/doodles/2022/labor-day-2022-6753651837109490.3-l.png#/hey")
 	assert.Error(t, err)
 	assert.Nil(t, a)
 	assert.Nil(t, b)
-
 }
 
 func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
