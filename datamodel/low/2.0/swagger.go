@@ -52,10 +52,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 	var errors []error
 
 	// build out swagger scalar variables.
-	bErr := low.BuildModel(info.RootNode, &doc)
-	if bErr != nil {
-		errors = append(errors, bErr)
-	}
+	_ = low.BuildModel(info.RootNode, &doc)
 
 	// extract externalDocs
 	extDocs, err := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode, idx)

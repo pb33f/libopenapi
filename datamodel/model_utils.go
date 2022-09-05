@@ -91,7 +91,10 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	// check for specific keys
 	if openAPI3 != nil {
 		specVersion.SpecType = utils.OpenApi3
-		version, majorVersion := parseVersionTypeData(openAPI3.Value)
+		version, majorVersion, versionError := parseVersionTypeData(openAPI3.Value)
+		if versionError != nil {
+			return nil, versionError
+		}
 
 		// parse JSON
 		go parseJSON(spec, specVersion)
@@ -106,7 +109,10 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	}
 	if openAPI2 != nil {
 		specVersion.SpecType = utils.OpenApi2
-		version, majorVersion := parseVersionTypeData(openAPI2.Value)
+		version, majorVersion, versionError := parseVersionTypeData(openAPI2.Value)
+		if versionError != nil {
+			return nil, versionError
+		}
 
 		// parse JSON
 		go parseJSON(spec, specVersion)
@@ -121,7 +127,10 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	}
 	if asyncAPI != nil {
 		specVersion.SpecType = utils.AsyncApi
-		version, majorVersion := parseVersionTypeData(asyncAPI.Value)
+		version, majorVersion, versionErr := parseVersionTypeData(asyncAPI.Value)
+		if versionErr != nil {
+			return nil, versionErr
+		}
 
 		// parse JSON
 		go parseJSON(spec, specVersion)
@@ -148,9 +157,12 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	return specVersion, nil
 }
 
-func parseVersionTypeData(d interface{}) (string, int) {
+func parseVersionTypeData(d interface{}) (string, int, error) {
 	r := []rune(strings.TrimSpace(fmt.Sprintf("%v", d)))
-	return string(r), int(r[0]) - '0'
+	if len(r) <= 0 {
+		return "", 0, fmt.Errorf("unable to extract version from: %v", d)
+	}
+	return string(r), int(r[0]) - '0', nil
 }
 
 // AreValuesCorrectlyTyped will look through an array of unknown values and check they match
