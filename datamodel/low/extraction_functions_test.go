@@ -24,6 +24,16 @@ func TestFindItemInMap(t *testing.T) {
 	assert.Equal(t, "pie", FindItemInMap("pizza", v).Value)
 }
 
+func TestFindItemInMap_WrongCase(t *testing.T) {
+	v := make(map[KeyReference[string]]ValueReference[string])
+	v[KeyReference[string]{
+		Value: "pizza",
+	}] = ValueReference[string]{
+		Value: "pie",
+	}
+	assert.Equal(t, "pie", FindItemInMap("PIZZA", v).Value)
+}
+
 func TestFindItemInMap_Error(t *testing.T) {
 	v := make(map[KeyReference[string]]ValueReference[string])
 	v[KeyReference[string]{

@@ -245,3 +245,30 @@ func TestCheckEnumForDuplicates_FailMultiple(t *testing.T) {
 	yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 3)
 }
+
+func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
+
+	yml := `openapi:
+ should: fail`
+
+	_, err := ExtractSpecInfo([]byte(yml))
+	assert.Error(t, err)
+}
+
+func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
+
+	yml := `swagger:
+ should: fail`
+
+	_, err := ExtractSpecInfo([]byte(yml))
+	assert.Error(t, err)
+}
+
+func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
+
+	yml := `asyncapi:
+ should: fail`
+
+	_, err := ExtractSpecInfo([]byte(yml))
+	assert.Error(t, err)
+}
