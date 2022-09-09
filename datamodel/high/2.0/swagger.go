@@ -66,11 +66,20 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 		d.Produces = produces
 	}
 	// TODO: Paths
+	
+	if !document.Definitions.IsEmpty() {
+		d.Definitions = NewDefinitions(document.Definitions.Value)
+	}
+	if !document.Parameters.IsEmpty() {
+		d.Parameters = NewParametersDefinitions(document.Parameters.Value)
+	}
 
+	if !document.Responses.IsEmpty() {
+		d.Responses = NewResponsesDefinitions(document.Responses.Value)
+	}
 	if !document.SecurityDefinitions.IsEmpty() {
 		d.SecurityDefinitions = NewSecurityDefinitions(document.SecurityDefinitions.Value)
 	}
-
 	if !document.Security.IsEmpty() {
 		var security []*SecurityRequirement
 		for s := range document.Security.Value {

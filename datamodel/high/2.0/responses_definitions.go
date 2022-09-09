@@ -6,8 +6,8 @@ package v2
 import low "github.com/pb33f/libopenapi/datamodel/low/2.0"
 
 type ResponsesDefinitions struct {
-	Values map[string]*Response
-	low    *low.ResponsesDefinitions
+	Definitions map[string]*Response
+	low         *low.ResponsesDefinitions
 }
 
 func NewResponsesDefinitions(responsesDefinitions *low.ResponsesDefinitions) *ResponsesDefinitions {
@@ -17,6 +17,6 @@ func NewResponsesDefinitions(responsesDefinitions *low.ResponsesDefinitions) *Re
 	for k := range responsesDefinitions.Definitions {
 		responses[k.Value] = NewResponse(responsesDefinitions.Definitions[k].Value)
 	}
-	rd.Values = responses
+	rd.Definitions = responses
 	return rd
 }

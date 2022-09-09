@@ -5,15 +5,15 @@ package base
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
 type SchemaProxy struct {
-	schema     *low.NodeReference[*v3.SchemaProxy]
+	schema     *low.NodeReference[*base.SchemaProxy]
 	buildError error
 }
 
-func NewSchemaProxy(schema *low.NodeReference[*v3.SchemaProxy]) *SchemaProxy {
+func NewSchemaProxy(schema *low.NodeReference[*base.SchemaProxy]) *SchemaProxy {
 	return &SchemaProxy{schema: schema}
 }
 

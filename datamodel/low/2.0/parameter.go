@@ -47,5 +47,17 @@ func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
 
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
+	sch, sErr := base.ExtractSchema(root, idx)
+	if sErr != nil {
+		return sErr
+	}
+	if sch != nil {
+		p.Schema = *sch
+	}
+	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
+	if iErr != nil {
+		return iErr
+	}
+	p.Items = items
 	return nil
 }
