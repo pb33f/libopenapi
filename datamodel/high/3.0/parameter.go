@@ -5,6 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 )
 
@@ -18,9 +19,9 @@ type Parameter struct {
 	Style           string
 	Explode         bool
 	AllowReserved   bool
-	Schema          *SchemaProxy
+	Schema          *base.SchemaProxy
 	Example         any
-	Examples        map[string]*Example
+	Examples        map[string]*base.Example
 	Content         map[string]*MediaType
 	Extensions      map[string]any
 	low             *low.Parameter
@@ -38,11 +39,11 @@ func NewParameter(param *low.Parameter) *Parameter {
 	p.Explode = param.Explode.Value
 	p.AllowReserved = param.AllowReserved.Value
 	if !param.Schema.IsEmpty() {
-		p.Schema = &SchemaProxy{schema: &param.Schema}
+		p.Schema = base.NewSchemaProxy(&param.Schema)
 	}
 	p.Required = param.Required.Value
 	p.Example = param.Example.Value
-	p.Examples = ExtractExamples(param.Examples.Value)
+	p.Examples = base.ExtractExamples(param.Examples.Value)
 	p.Content = ExtractContent(param.Content.Value)
 	p.Extensions = high.ExtractExtensions(param.Extensions)
 	return p

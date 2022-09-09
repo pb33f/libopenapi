@@ -21,6 +21,10 @@ parameters:
     name: simple
     type: string
     x-chicken: nuggets
+security:
+  - global_auth:
+      - write:pets
+      - read:pets
 tags:
   - name: pet
     description: Everything about your Pets

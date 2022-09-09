@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 )
 
@@ -11,7 +12,7 @@ type Operation struct {
 	Tags         []string
 	Summary      string
 	Description  string
-	ExternalDocs *ExternalDoc
+	ExternalDocs *base.ExternalDoc
 	OperationId  string
 	Parameters   []*Parameter
 	RequestBody  *RequestBody
@@ -37,7 +38,7 @@ func NewOperation(operation *low.Operation) *Operation {
 	o.Summary = operation.Summary.Value
 	o.Description = operation.Description.Value
 	if !operation.ExternalDocs.IsEmpty() {
-		o.ExternalDocs = NewExternalDoc(operation.ExternalDocs.Value)
+		o.ExternalDocs = base.NewExternalDoc(operation.ExternalDocs.Value)
 	}
 	o.OperationId = operation.OperationId.Value
 	if !operation.Parameters.IsEmpty() {

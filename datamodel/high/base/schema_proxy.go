@@ -1,7 +1,7 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package v3
+package base
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -11,6 +11,10 @@ import (
 type SchemaProxy struct {
 	schema     *low.NodeReference[*v3.SchemaProxy]
 	buildError error
+}
+
+func NewSchemaProxy(schema *low.NodeReference[*v3.SchemaProxy]) *SchemaProxy {
+	return &SchemaProxy{schema: schema}
 }
 
 func (sp *SchemaProxy) Schema() *Schema {
