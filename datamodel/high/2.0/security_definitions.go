@@ -6,8 +6,8 @@ package v2
 import low "github.com/pb33f/libopenapi/datamodel/low/2.0"
 
 type SecurityDefinitions struct {
-	Values map[string]*SecurityScheme
-	low    *low.SecurityDefinitions
+	Definitions map[string]*SecurityScheme
+	low         *low.SecurityDefinitions
 }
 
 func NewSecurityDefinitions(definitions *low.SecurityDefinitions) *SecurityDefinitions {
@@ -17,7 +17,7 @@ func NewSecurityDefinitions(definitions *low.SecurityDefinitions) *SecurityDefin
 	for k := range definitions.Definitions {
 		schemes[k.Value] = NewSecurityScheme(definitions.Definitions[k].Value)
 	}
-	sd.Values = schemes
+	sd.Definitions = schemes
 	return sd
 }
 
