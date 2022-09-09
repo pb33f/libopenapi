@@ -8,7 +8,6 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 	"strconv"
 	"strings"
@@ -73,12 +72,12 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 					if !IsCircular(found[rv].Node, idx) {
 						return LocateRefNode(found[rv].Node, idx)
 					} else {
-						Log.Error("circular reference found during lookup, and will remain un-resolved.",
-							zap.Int("line", found[rv].Node.Line),
-							zap.Int("column", found[rv].Node.Column),
-							zap.String("reference", found[rv].Definition),
-							zap.String("journey",
-								GetCircularReferenceResult(found[rv].Node, idx).GenerateJourneyPath()))
+						//Log.Error("circular reference found during lookup, and will remain un-resolved.",
+						//	zap.Int("line", found[rv].Node.Line),
+						//	zap.Int("column", found[rv].Node.Column),
+						//	zap.String("reference", found[rv].Definition),
+						//	zap.String("journey",
+						//		GetCircularReferenceResult(found[rv].Node, idx).GenerateJourneyPath()))
 
 						return found[rv].Node, fmt.Errorf("circular reference '%s' found during lookup at line %d, column %d, "+
 							"It cannot be resolved",

@@ -5,15 +5,16 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"sync"
 )
 
 type MediaType struct {
-	Schema     *SchemaProxy
+	Schema     *base.SchemaProxy
 	Example    any
-	Examples   map[string]*Example
+	Examples   map[string]*base.Example
 	Encoding   map[string]*Encoding
 	Extensions map[string]any
 	low        *low.MediaType
@@ -23,10 +24,10 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 	m := new(MediaType)
 	m.low = mediaType
 	if !mediaType.Schema.IsEmpty() {
-		m.Schema = &SchemaProxy{schema: &mediaType.Schema}
+		m.Schema = base.NewSchemaProxy(&mediaType.Schema)
 	}
 	m.Example = mediaType.Example
-	m.Examples = ExtractExamples(mediaType.Examples.Value)
+	m.Examples = base.ExtractExamples(mediaType.Examples.Value)
 	m.Extensions = high.ExtractExtensions(mediaType.Extensions)
 	m.Encoding = ExtractEncoding(mediaType.Encoding.Value)
 	return m

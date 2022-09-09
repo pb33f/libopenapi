@@ -5,6 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -22,10 +23,10 @@ const (
 )
 
 type Components struct {
-	Schemas         map[string]*SchemaProxy
+	Schemas         map[string]*highbase.SchemaProxy
 	Responses       map[string]*Response
 	Parameters      map[string]*Parameter
-	Examples        map[string]*Example
+	Examples        map[string]*highbase.Example
 	RequestBodies   map[string]*RequestBody
 	Headers         map[string]*Header
 	SecuritySchemes map[string]*SecurityScheme
@@ -45,17 +46,17 @@ func NewComponents(comp *low.Components) *Components {
 	linkMap := make(map[string]*Link)
 	responseMap := make(map[string]*Response)
 	parameterMap := make(map[string]*Parameter)
-	exampleMap := make(map[string]*Example)
+	exampleMap := make(map[string]*highbase.Example)
 	requestBodyMap := make(map[string]*RequestBody)
 	headerMap := make(map[string]*Header)
 	securitySchemeMap := make(map[string]*SecurityScheme)
-	schemas := make(map[string]*SchemaProxy)
-	schemaChan := make(chan componentResult[*SchemaProxy])
+	schemas := make(map[string]*highbase.SchemaProxy)
+	schemaChan := make(chan componentResult[*highbase.SchemaProxy])
 	cbChan := make(chan componentResult[*Callback])
 	linkChan := make(chan componentResult[*Link])
 	responseChan := make(chan componentResult[*Response])
 	paramChan := make(chan componentResult[*Parameter])
-	exampleChan := make(chan componentResult[*Example])
+	exampleChan := make(chan componentResult[*highbase.Example])
 	requestBodyChan := make(chan componentResult[*RequestBody])
 	headerChan := make(chan componentResult[*Header])
 	securitySchemeChan := make(chan componentResult[*SecurityScheme])
@@ -74,7 +75,7 @@ func NewComponents(comp *low.Components) *Components {
 		go buildComponent[*Parameter, *low.Parameter](parameters, k.Value, v.Value, paramChan, NewParameter)
 	}
 	for k, v := range comp.Examples.Value {
-		go buildComponent[*Example, *base.Example](parameters, k.Value, v.Value, exampleChan, NewExample)
+		go buildComponent[*highbase.Example, *base.Example](parameters, k.Value, v.Value, exampleChan, highbase.NewExample)
 	}
 	for k, v := range comp.RequestBodies.Value {
 		go buildComponent[*RequestBody, *low.RequestBody](requestBodies, k.Value, v.Value,
@@ -149,13 +150,13 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
 }
 
-func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy], c chan componentResult[*SchemaProxy]) {
-	var sch *SchemaProxy
-	sch = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy], c chan componentResult[*highbase.SchemaProxy]) {
+	var sch *highbase.SchemaProxy
+	sch = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 		Value:     orig.Value,
 		ValueNode: orig.ValueNode,
-	}}
-	c <- componentResult[*SchemaProxy]{res: sch, key: key.Value}
+	})
+	c <- componentResult[*highbase.SchemaProxy]{res: sch, key: key.Value}
 }
 
 func (c *Components) GoLow() *low.Components {

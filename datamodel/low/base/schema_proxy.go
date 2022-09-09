@@ -6,7 +6,6 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -32,10 +31,10 @@ func (sp *SchemaProxy) Schema() *Schema {
 	_ = low.BuildModel(sp.vn, schema)
 	err := schema.Build(sp.vn, sp.idx)
 	if err != nil {
-		low.Log.Error("unable to build schema",
-			zap.Int("line", sp.vn.Line),
-			zap.Int("column", sp.vn.Column),
-			zap.String("error", err.Error()))
+		//low.Log.Error("unable to build schema",
+		//	zap.Int("line", sp.vn.Line),
+		//	zap.Int("column", sp.vn.Column),
+		//	zap.String("error", err.Error()))
 		sp.buildError = err
 		return nil
 	}

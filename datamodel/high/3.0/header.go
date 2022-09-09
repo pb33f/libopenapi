@@ -4,6 +4,7 @@
 package v3
 
 import (
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/3.0"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -17,9 +18,9 @@ type Header struct {
 	Style           string
 	Explode         bool
 	AllowReserved   bool
-	Schema          *SchemaProxy
+	Schema          *highbase.SchemaProxy
 	Example         any
-	Examples        map[string]*Example
+	Examples        map[string]*highbase.Example
 	Content         map[string]*MediaType
 	Extensions      map[string]any
 	low             *low.Header
@@ -36,15 +37,15 @@ func NewHeader(header *low.Header) *Header {
 	h.Explode = header.Explode.Value
 	h.AllowReserved = header.AllowReserved.Value
 	if !header.Schema.IsEmpty() {
-		h.Schema = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		h.Schema = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			Value:     header.Schema.Value,
 			KeyNode:   header.Schema.KeyNode,
 			ValueNode: header.Schema.ValueNode,
-		}}
+		})
 	}
 	h.Content = ExtractContent(header.Content.Value)
 	h.Example = header.Example.Value
-	h.Examples = ExtractExamples(header.Examples.Value)
+	h.Examples = highbase.ExtractExamples(header.Examples.Value)
 	return h
 }
 
