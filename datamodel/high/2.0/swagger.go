@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/2.0"
 )
@@ -31,6 +32,7 @@ type Swagger struct {
 func NewSwaggerDocument(document *low.Swagger) *Swagger {
 	d := new(Swagger)
 	d.low = document
+	d.Extensions = high.ExtractExtensions(document.Extensions)
 	if !document.Info.IsEmpty() {
 		d.Info = base.NewInfo(document.Info.Value)
 	}
