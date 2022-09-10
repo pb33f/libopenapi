@@ -14,8 +14,24 @@ func NewResponsesDefinitions(responsesDefinitions *low.ResponsesDefinitions) *Re
 	rd := new(ResponsesDefinitions)
 	rd.low = responsesDefinitions
 	responses := make(map[string]*Response)
+	var buildResp = func(name string, resp *low.Response, rChan chan<- asyncResult[*Response]) {
+		rChan <- asyncResult[*Response]{
+			key:    name,
+			result: NewResponse(resp),
+		}
+	}
+	resChan := make(chan asyncResult[*Response])
 	for k := range responsesDefinitions.Definitions {
-		responses[k.Value] = NewResponse(responsesDefinitions.Definitions[k].Value)
+		go buildResp(k.Value, responsesDefinitions.Definitions[k].Value, resChan)
+	}
+	totalResponses := len(responsesDefinitions.Definitions)
+	completedResponses := 0
+	for completedResponses < totalResponses {
+		select {
+		case r := <-resChan:
+			completedResponses++
+			responses[r.key] = r.result
+		}
 	}
 	rd.Definitions = responses
 	return rd

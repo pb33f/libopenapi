@@ -14,9 +14,29 @@ func NewParametersDefinitions(parametersDefinitions *low.ParameterDefinitions) *
 	pd := new(ParameterDefinitions)
 	pd.low = parametersDefinitions
 	params := make(map[string]*Parameter)
+	var buildParam = func(name string, param *low.Parameter, rChan chan<- asyncResult[*Parameter]) {
+		rChan <- asyncResult[*Parameter]{
+			key:    name,
+			result: NewParameter(param),
+		}
+	}
+	resChan := make(chan asyncResult[*Parameter])
 	for k := range parametersDefinitions.Definitions {
-		params[k.Value] = NewParameter(parametersDefinitions.Definitions[k].Value)
+		go buildParam(k.Value, parametersDefinitions.Definitions[k].Value, resChan)
+	}
+	totalParams := len(parametersDefinitions.Definitions)
+	completedParams := 0
+	for completedParams < totalParams {
+		select {
+		case r := <-resChan:
+			completedParams++
+			params[r.key] = r.result
+		}
 	}
 	pd.Definitions = params
 	return pd
+}
+
+func (p *ParameterDefinitions) GoLow() *low.ParameterDefinitions {
+	return p.low
 }
