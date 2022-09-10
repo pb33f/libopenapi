@@ -22,6 +22,9 @@ func NewResponse(response *low.Response) *Response {
 	r := new(Response)
 	r.low = response
 	r.Extensions = high.ExtractExtensions(response.Extensions)
+	if !response.Description.IsEmpty() {
+		r.Description = response.Description.Value
+	}
 	if !response.Schema.IsEmpty() {
 		r.Schema = base.NewSchemaProxy(&response.Schema)
 	}

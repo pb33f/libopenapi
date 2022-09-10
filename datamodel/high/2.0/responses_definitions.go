@@ -36,3 +36,7 @@ func NewResponsesDefinitions(responsesDefinitions *low.ResponsesDefinitions) *Re
 	rd.Definitions = responses
 	return rd
 }
+
+func (r *ResponsesDefinitions) GoLow() *low.ResponsesDefinitions {
+	return r.low
+}

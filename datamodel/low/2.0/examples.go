@@ -17,6 +17,10 @@ type Examples struct {
 	Values map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+func (e *Examples) FindExample(name string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](name, e.Values)
+}
+
 func (e *Examples) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	var keyNode, currNode *yaml.Node
 	var err error

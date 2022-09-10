@@ -107,3 +107,59 @@ func TestNewSwaggerDocument_Security(t *testing.T) {
     assert.Equal(t, 5, wentLow.Values.ValueNode.Column)
 
 }
+
+func TestNewSwaggerDocument_Definitions_Security(t *testing.T) {
+    initTest()
+    highDoc := NewSwaggerDocument(doc)
+    assert.Len(t, highDoc.SecurityDefinitions.Definitions, 3)
+    assert.Equal(t, "oauth2", highDoc.SecurityDefinitions.Definitions["petstore_auth"].Type)
+    assert.Equal(t, "https://petstore.swagger.io/oauth/authorize",
+        highDoc.SecurityDefinitions.Definitions["petstore_auth"].AuthorizationUrl)
+    assert.Equal(t, "implicit", highDoc.SecurityDefinitions.Definitions["petstore_auth"].Flow)
+    assert.Len(t, highDoc.SecurityDefinitions.Definitions["petstore_auth"].Scopes.Values, 2)
+
+    goLow := highDoc.SecurityDefinitions.GoLow()
+
+    assert.Equal(t, 637, goLow.FindSecurityDefinition("petstore_auth").ValueNode.Line)
+    assert.Equal(t, 5, goLow.FindSecurityDefinition("petstore_auth").ValueNode.Column)
+
+    goLower := highDoc.SecurityDefinitions.Definitions["petstore_auth"].GoLow()
+    assert.Equal(t, 640, goLower.Scopes.KeyNode.Line)
+    assert.Equal(t, 5, goLower.Scopes.KeyNode.Column)
+
+    goLowest := highDoc.SecurityDefinitions.Definitions["petstore_auth"].Scopes.GoLow()
+    assert.Equal(t, 641, goLowest.FindScope("read:pets").ValueNode.Line)
+    assert.Equal(t, 18, goLowest.FindScope("read:pets").ValueNode.Column)
+}
+
+func TestNewSwaggerDocument_Definitions_Responses(t *testing.T) {
+    initTest()
+    highDoc := NewSwaggerDocument(doc)
+    assert.Len(t, highDoc.Responses.Definitions, 2)
+
+    defs := highDoc.Responses.Definitions
+    assert.Equal(t, "morning", defs["200"].Extensions["x-coffee"])
+    assert.Equal(t, "OK", defs["200"].Description)
+    assert.Equal(t, "a generic API response object",
+        defs["200"].Schema.Schema().Description)
+    assert.Len(t, defs["200"].Examples.Values, 3)
+
+    exp := defs["200"].Examples.Values["application/json"]
+    assert.Len(t, exp.(map[string]interface{}), 2)
+    assert.Equal(t, "two", exp.(map[string]interface{})["one"])
+
+    exp = defs["200"].Examples.Values["text/xml"]
+    assert.Len(t, exp.([]interface{}), 3)
+    assert.Equal(t, "two", exp.([]interface{})[1])
+
+    exp = defs["200"].Examples.Values["text/plain"]
+    assert.Equal(t, "something else.", exp)
+
+    expWentLow := defs["200"].Examples.GoLow()
+    assert.Equal(t, 678, expWentLow.FindExample("application/json").ValueNode.Line)
+    assert.Equal(t, 9, expWentLow.FindExample("application/json").ValueNode.Column)
+
+    wentLow := highDoc.Responses.GoLow()
+    assert.Equal(t, 645, wentLow.FindResponse("200").ValueNode.Line)
+
+}

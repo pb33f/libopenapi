@@ -623,7 +623,13 @@ paths:
   "/ref":
     $ref: "#/externalPaths/test"
 securityDefinitions:
+  tokenKey:
+    description: this is a token key
+    type: oauth2
+    tokenUrl: https://petstore.swagger.io/oauth/token
+    flow: password
   api_key:
+    description: this is an API key
     type: apiKey
     name: api_key
     in: header
@@ -684,6 +690,7 @@ responses:
       $ref: '#/definitions/ApiResponse'
 definitions:
   ApiResponse:
+    description: a generic API response object
     type: object
     properties:
       code:
