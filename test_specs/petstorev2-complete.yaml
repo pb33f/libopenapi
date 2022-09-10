@@ -41,6 +41,11 @@ tags:
 schemes:
   - https
   - http
+consumes:
+  - application/json
+  - text/xml
+produces:
+  - application/json
 paths:
   x-minty: fresh
   "/pet/{petId}/uploadImage":
