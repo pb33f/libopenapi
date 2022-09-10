@@ -13,10 +13,10 @@ type Examples struct {
 func NewExamples(examples *low.Examples) *Examples {
 	e := new(Examples)
 	e.low = examples
-	if len(e.Values) > 0 {
+	if len(examples.Values) > 0 {
 		values := make(map[string]any)
-		for k := range e.Values {
-			values[k] = e.Values[k]
+		for k := range examples.Values {
+			values[k.Value] = examples.Values[k].Value
 		}
 		e.Values = values
 	}
