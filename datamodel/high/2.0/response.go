@@ -36,3 +36,7 @@ func NewResponse(response *low.Response) *Response {
 	}
 	return r
 }
+
+func (r *Response) GoLow() *low.Response {
+	return r.low
+}

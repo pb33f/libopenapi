@@ -45,8 +45,7 @@ func NewHeader(header *low.Header) *Header {
 		h.Description = header.Description.Value
 	}
 	if !header.Items.IsEmpty() {
-		// TODO: items
-		//h.Items =
+		h.Items = NewItems(header.Items.Value)
 	}
 	if !header.CollectionFormat.IsEmpty() {
 		h.CollectionFormat = header.CollectionFormat.Value
@@ -90,6 +89,9 @@ func NewHeader(header *low.Header) *Header {
 	if !header.MultipleOf.IsEmpty() {
 		h.MultipleOf = header.MultipleOf.Value
 	}
-
 	return h
+}
+
+func (h *Header) GoLow() *low.Header {
+	return h.low
 }

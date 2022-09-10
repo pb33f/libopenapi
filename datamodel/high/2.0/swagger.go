@@ -65,8 +65,9 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 		}
 		d.Produces = produces
 	}
-	// TODO: Paths
-	
+	if !document.Paths.IsEmpty() {
+		d.Paths = NewPaths(document.Paths.Value)
+	}
 	if !document.Definitions.IsEmpty() {
 		d.Definitions = NewDefinitions(document.Definitions.Value)
 	}
@@ -87,7 +88,6 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 		}
 		d.Security = security
 	}
-
 	if !document.Tags.IsEmpty() {
 		var tags []*base.Tag
 		for t := range document.Tags.Value {
@@ -95,10 +95,17 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 		}
 		d.Tags = tags
 	}
-
 	if !document.ExternalDocs.IsEmpty() {
 		d.ExternalDocs = base.NewExternalDoc(document.ExternalDocs.Value)
 	}
-
 	return d
+}
+
+func (s *Swagger) GoLow() *low.Swagger {
+	return s.low
+}
+
+type asyncResult[T any] struct {
+	key    string
+	result T
 }

@@ -51,3 +51,7 @@ func NewSecurityScheme(securityScheme *low.SecurityScheme) *SecurityScheme {
 	}
 	return s
 }
+
+func (s *SecurityScheme) GoLow() *low.SecurityScheme {
+	return s.low
+}

@@ -110,6 +110,9 @@ func NewParameter(parameter *low.Parameter) *Parameter {
 	if !parameter.MultipleOf.IsEmpty() {
 		p.MultipleOf = parameter.MultipleOf.Value
 	}
-
 	return p
+}
+
+func (p *Parameter) GoLow() *low.Parameter {
+	return p.low
 }
