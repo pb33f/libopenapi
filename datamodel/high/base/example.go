@@ -23,7 +23,7 @@ func NewExample(example *low.Example) *Example {
 	e.low = example
 	e.Summary = example.Summary.Value
 	e.Description = example.Description.Value
-	e.Value = example.Value
+	e.Value = example.Value.Value
 	e.ExternalValue = example.ExternalValue.Value
 	e.Extensions = high.ExtractExtensions(example.Extensions)
 	return e
