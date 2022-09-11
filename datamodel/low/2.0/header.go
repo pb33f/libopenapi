@@ -31,7 +31,7 @@ type Header struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]string]
+	Enum             low.NodeReference[[]low.ValueReference[string]]
 	MultipleOf       low.NodeReference[int]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -74,7 +74,7 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			}
 			return nil
 		}
-		h.Default.Value = low.NodeReference[any]{
+		h.Default = low.NodeReference[any]{
 			Value:     n,
 			KeyNode:   ln,
 			ValueNode: vn,

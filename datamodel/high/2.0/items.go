@@ -33,7 +33,7 @@ func NewItems(items *low.Items) *Items {
 		i.Type = items.Type.Value
 	}
 	if !items.Format.IsEmpty() {
-		i.Format = items.Type.Value
+		i.Format = items.Format.Value
 	}
 	if !items.Items.IsEmpty() {
 		i.Items = NewItems(items.Items.Value)
@@ -53,7 +53,7 @@ func NewItems(items *low.Items) *Items {
 	if !items.Minimum.IsEmpty() {
 		i.Minimum = items.Minimum.Value
 	}
-	if !items.ExclusiveMinimum.Value {
+	if !items.ExclusiveMinimum.IsEmpty() {
 		i.ExclusiveMinimum = items.ExclusiveMinimum.Value
 	}
 	if !items.MaxLength.IsEmpty() {
@@ -72,10 +72,14 @@ func NewItems(items *low.Items) *Items {
 		i.MaxItems = items.MaxItems.Value
 	}
 	if !items.UniqueItems.IsEmpty() {
-		i.UniqueItems = items.UniqueItems.IsEmpty()
+		i.UniqueItems = items.UniqueItems.Value
 	}
 	if !items.Enum.IsEmpty() {
-		i.Enum = items.Enum.Value
+		var enums []string
+		for e := range items.Enum.Value {
+			enums = append(enums, items.Enum.Value[e].Value)
+		}
+		i.Enum = enums
 	}
 	if !items.MultipleOf.IsEmpty() {
 		i.MultipleOf = items.MultipleOf.Value

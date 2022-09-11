@@ -31,7 +31,7 @@ type Items struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]string]
+	Enum             low.NodeReference[[]low.ValueReference[string]]
 	MultipleOf       low.NodeReference[int]
 }
 

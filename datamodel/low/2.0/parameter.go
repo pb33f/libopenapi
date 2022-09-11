@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,7 +37,7 @@ type Parameter struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]string]
+	Enum             low.NodeReference[[]low.ValueReference[string]]
 	MultipleOf       low.NodeReference[int]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -59,5 +60,37 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		return iErr
 	}
 	p.Items = items
+
+	_, ln, vn := utils.FindKeyNodeFull(DefaultLabel, root.Content)
+	if vn != nil {
+		var n map[string]interface{}
+		err := vn.Decode(&n)
+		if err != nil {
+			var k []interface{}
+			err = vn.Decode(&k)
+			if err != nil {
+				var j interface{}
+				_ = vn.Decode(&j)
+				p.Default = low.NodeReference[any]{
+					Value:     j,
+					KeyNode:   ln,
+					ValueNode: vn,
+				}
+				return nil
+			}
+			p.Default = low.NodeReference[any]{
+				Value:     k,
+				KeyNode:   ln,
+				ValueNode: vn,
+			}
+			return nil
+		}
+		p.Default = low.NodeReference[any]{
+			Value:     n,
+			KeyNode:   ln,
+			ValueNode: vn,
+		}
+		return nil
+	}
 	return nil
 }

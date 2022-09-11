@@ -46,6 +46,7 @@ func NewResponses(responses *low.Responses) *Responses {
 				resp[res.key] = res.result
 			}
 		}
+		r.Codes = resp
 	}
 	return r
 }
