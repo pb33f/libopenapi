@@ -84,7 +84,11 @@ func NewHeader(header *low.Header) *Header {
 		h.UniqueItems = header.UniqueItems.IsEmpty()
 	}
 	if !header.Enum.IsEmpty() {
-		h.Enum = header.Enum.Value
+		var enums []string
+		for e := range header.Enum.Value {
+			enums = append(enums, header.Enum.Value[e].Value)
+		}
+		h.Enum = enums
 	}
 	if !header.MultipleOf.IsEmpty() {
 		h.MultipleOf = header.MultipleOf.Value

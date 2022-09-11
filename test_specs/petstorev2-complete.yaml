@@ -51,11 +51,14 @@ paths:
   "/pet/{petId}/uploadImage":
     x-potato: man
     post:
+      schemes: [ http, https]
       tags:
         - pet
       summary: uploads an image
-      description: ''
+      description: also, uploads an image - but this time with more details.
       operationId: uploadFile
+      externalDocs:
+        url: https://pb33f.io
       consumes:
         - multipart/form-data
       produces:
@@ -67,16 +70,37 @@ paths:
           required: true
           type: integer
           format: int64
+          exclusiveMaximum: true
+          exclusiveMinimum: true
+          maxLength: 2
+          minLength: 1
+          minimum: 1
+          maximum: 5
+          pattern: hi!
+          minItems: 1
+          maxItems: 20
+          uniqueItems: true
+          enum:
+            - hello
+            - there
+          default:
+            something: here
+          multipleOf: 2
         - name: additionalMetadata
           in: formData
           description: Additional data to pass to server
           required: false
           type: string
+          allowEmptyValue: true
+          default: something
         - name: file
           in: formData
           description: file to upload
           required: false
           type: file
+          default:
+            - one
+            - two
       responses:
         '200':
           description: successful operation
@@ -688,6 +712,29 @@ responses:
     description: Error
     schema:
       $ref: '#/definitions/ApiResponse'
+    headers:
+      someHeader:
+        type: array
+        enum: [one, two]
+        items:
+          format: something
+          type: array
+          collectionFormat: csv
+          default: cake
+          maximum: 10
+          exclusiveMaximum: true
+          minimum: 1
+          exclusiveMinimum: true
+          maxLength: 5
+          minLength: 1
+          pattern: hi!
+          minItems: 1
+          maxItems: 10
+          uniqueItems: true
+          enum:
+            - one
+            - two
+          multipleOf: 1
 definitions:
   ApiResponse:
     description: a generic API response object

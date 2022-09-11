@@ -51,7 +51,7 @@ func NewParameter(parameter *low.Parameter) *Parameter {
 		p.Type = parameter.Type.Value
 	}
 	if !parameter.Format.IsEmpty() {
-		p.Format = parameter.Type.Value
+		p.Format = parameter.Format.Value
 	}
 	if !parameter.Description.IsEmpty() {
 		p.Description = parameter.Description.Value
@@ -83,7 +83,7 @@ func NewParameter(parameter *low.Parameter) *Parameter {
 	if !parameter.Minimum.IsEmpty() {
 		p.Minimum = parameter.Minimum.Value
 	}
-	if !parameter.ExclusiveMinimum.Value {
+	if !parameter.ExclusiveMinimum.IsEmpty() {
 		p.ExclusiveMinimum = parameter.ExclusiveMinimum.Value
 	}
 	if !parameter.MaxLength.IsEmpty() {
@@ -102,10 +102,14 @@ func NewParameter(parameter *low.Parameter) *Parameter {
 		p.MaxItems = parameter.MaxItems.Value
 	}
 	if !parameter.UniqueItems.IsEmpty() {
-		p.UniqueItems = parameter.UniqueItems.IsEmpty()
+		p.UniqueItems = parameter.UniqueItems.Value
 	}
 	if !parameter.Enum.IsEmpty() {
-		p.Enum = parameter.Enum.Value
+		var enums []string
+		for e := range parameter.Enum.Value {
+			enums = append(enums, parameter.Enum.Value[e].Value)
+		}
+		p.Enum = enums
 	}
 	if !parameter.MultipleOf.IsEmpty() {
 		p.MultipleOf = parameter.MultipleOf.Value

@@ -40,6 +40,7 @@ func NewPaths(paths *low.Paths) *Paths {
 				pathItems[res.key] = res.result
 			}
 		}
+		p.PathItems = pathItems
 	}
 	return p
 }

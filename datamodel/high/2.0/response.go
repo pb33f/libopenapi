@@ -33,6 +33,7 @@ func NewResponse(response *low.Response) *Response {
 		for k := range response.Headers.Value {
 			headers[k.Value] = NewHeader(response.Headers.Value[k].Value)
 		}
+		r.Headers = headers
 	}
 	if !response.Examples.IsEmpty() {
 		r.Examples = NewExamples(response.Examples.Value)
