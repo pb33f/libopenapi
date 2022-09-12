@@ -109,7 +109,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 							continue
 						}
 						items[currentLabel] = NodeReference[string]{
-							Value:     sliceItem.Value,
+							Value:     fmt.Sprintf("%v", sliceItem.Value),
 							ValueNode: sliceItem,
 							KeyNode:   valueNode,
 						}
@@ -155,16 +155,15 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 		break
 	case reflect.TypeOf(NodeReference[string]{}):
 		if valueNode != nil {
-			if utils.IsNodeStringValue(valueNode) {
-				if field.CanSet() {
-					nr := NodeReference[string]{
-						Value:     valueNode.Value,
-						ValueNode: valueNode,
-						KeyNode:   keyNode,
-					}
-					field.Set(reflect.ValueOf(nr))
+			if field.CanSet() {
+				nr := NodeReference[string]{
+					Value:     fmt.Sprintf("%v", valueNode.Value),
+					ValueNode: valueNode,
+					KeyNode:   keyNode,
 				}
+				field.Set(reflect.ValueOf(nr))
 			}
+
 		}
 		break
 	case reflect.TypeOf(NodeReference[bool]{}):
