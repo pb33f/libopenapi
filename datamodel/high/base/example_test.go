@@ -39,3 +39,27 @@ x-hack: code`
 	assert.Equal(t, "a thing", highExample.Value)
 	assert.Equal(t, 4, highExample.GoLow().ExternalValue.ValueNode.Line)
 }
+
+func TestExtractExamples(t *testing.T) {
+	var cNode yaml.Node
+
+	yml := `summary: herbs`
+
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	// build low
+	var lowExample lowbase.Example
+	_ = lowmodel.BuildModel(&cNode, &lowExample)
+
+	_ = lowExample.Build(cNode.Content[0], nil)
+
+	examplesMap := make(map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*lowbase.Example])
+	examplesMap[lowmodel.KeyReference[string]{
+		Value: "green",
+	}] = lowmodel.ValueReference[*lowbase.Example]{
+		Value: &lowExample,
+	}
+
+	assert.Equal(t, "herbs", ExtractExamples(examplesMap)["green"].Summary)
+
+}
