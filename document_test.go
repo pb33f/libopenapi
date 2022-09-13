@@ -1,11 +1,13 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package main
+package libopenapi
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"testing"
 )
 
@@ -16,7 +18,7 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "2.0.1", doc.GetVersion())
 
-	v2Doc, docErr := doc.BuildV2Document()
+	v2Doc, docErr := doc.BuildV2Model()
 	assert.Len(t, docErr, 0)
 	assert.NotNil(t, v2Doc)
 	assert.NotNil(t, doc.GetSpecInfo())
@@ -31,7 +33,7 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
 
-	v2Doc, docErr := doc.BuildV3Document()
+	v2Doc, docErr := doc.BuildV3Model()
 	assert.Len(t, docErr, 1)
 	assert.Nil(t, v2Doc)
 }
@@ -45,7 +47,7 @@ definitions:
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
 
-	v2Doc, docErr := doc.BuildV2Document()
+	v2Doc, docErr := doc.BuildV2Model()
 	assert.Len(t, docErr, 1)
 	assert.Nil(t, v2Doc)
 }
@@ -56,22 +58,22 @@ func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
 
-	v2Doc, docErr := doc.BuildV2Document()
+	v2Doc, docErr := doc.BuildV2Model()
 	assert.Len(t, docErr, 1)
 	assert.Nil(t, v2Doc)
 }
 
 func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
 
-	doc := new(Document) // not how this should be instantiated.
-	_, err := doc.BuildV2Document()
+	doc := new(document) // not how this should be instantiated.
+	_, err := doc.BuildV2Model()
 	assert.Len(t, err, 1)
 }
 
 func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
 
-	doc := new(Document) // not how this should be instantiated.
-	_, err := doc.BuildV3Document()
+	doc := new(document) // not how this should be instantiated.
+	_, err := doc.BuildV3Model()
 	assert.Len(t, err, 1)
 }
 
@@ -88,7 +90,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "3.0.1", doc.GetVersion())
 
-	v3Doc, docErr := doc.BuildV3Document()
+	v3Doc, docErr := doc.BuildV3Model()
 	assert.Len(t, docErr, 0)
 	assert.NotNil(t, v3Doc)
 }
@@ -102,13 +104,13 @@ paths:
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
 
-	v3Doc, docErr := doc.BuildV3Document()
+	v3Doc, docErr := doc.BuildV3Model()
 	assert.Len(t, docErr, 1)
 	assert.Nil(t, v3Doc)
 }
 
 func TestDocument_Serialize_Error(t *testing.T) {
-	doc := new(Document) // not how this should be instantiated.
+	doc := new(document) // not how this should be instantiated.
 	_, err := doc.Serialize()
 	assert.Error(t, err)
 }
@@ -138,7 +140,7 @@ info:
 `
 	doc, _ := NewDocument([]byte(yml))
 
-	v3Doc, _ := doc.BuildV3Document()
+	v3Doc, _ := doc.BuildV3Model()
 
 	v3Doc.Model.Info.GoLow().Title.Mutate("The magic API - but now, altered!")
 
@@ -158,7 +160,7 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 	jsonModified := `{"info":{"title":"The magic API - but now, altered!"},"openapi":"3.0"}`
 	doc, _ := NewDocument([]byte(json))
 
-	v3Doc, _ := doc.BuildV3Document()
+	v3Doc, _ := doc.BuildV3Model()
 
 	// eventually this will be encapsulated up high.
 	// mutation does not replace low model, eventually pointers will be used.
@@ -170,4 +172,121 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 	serial, err := doc.Serialize()
 	assert.NoError(t, err)
 	assert.Equal(t, jsonModified, string(serial))
+}
+
+func ExampleNewDocument_fromOpenAPI3Document() {
+
+	// load an OpenAPI 3 specification from bytes
+	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+
+	// create a new document from specification bytes
+	document, err := NewDocument(petstore)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	v3Model, errors := document.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// get a count of the number of paths and schemas.
+	paths := len(v3Model.Model.Paths.PathItems)
+	schemas := len(v3Model.Model.Components.Schemas)
+
+	// print the number of paths and schemas in the document
+	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
+	// Output: There are 13 paths and 8 schemas in the document
+}
+
+func ExampleNewDocument_fromSwaggerDocument() {
+
+	// load a Swagger specification from bytes
+	petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
+
+	// create a new document from specification bytes
+	document, err := NewDocument(petstore)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v2 spec, we can build a ready to go model from it.
+	v2Model, errors := document.BuildV2Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// get a count of the number of paths and schemas.
+	paths := len(v2Model.Model.Paths.PathItems)
+	schemas := len(v2Model.Model.Definitions.Definitions)
+
+	// print the number of paths and schemas in the document
+	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
+	// Output: There are 14 paths and 6 schemas in the document
+}
+
+func ExampleNewDocument_fromUnknownVersion() {
+
+	// load an unknown version of an OpenAPI spec
+	petstore, _ := ioutil.ReadFile("test_specs/burgershop.openapi.yaml")
+
+	// create a new document from specification bytes
+	document, err := NewDocument(petstore)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	var paths, schemas int
+	var errors []error
+
+	// We don't know which type of document this is, so we can use the spec info to inform us
+	if document.GetSpecInfo().SpecType == utils.OpenApi3 {
+		v3Model, errs := document.BuildV3Model()
+		if len(errs) > 0 {
+			errors = errs
+		}
+		if len(errors) <= 0 {
+			paths = len(v3Model.Model.Paths.PathItems)
+			schemas = len(v3Model.Model.Components.Schemas)
+		}
+	}
+	if document.GetSpecInfo().SpecType == utils.OpenApi2 {
+		v2Model, errs := document.BuildV2Model()
+		if len(errs) > 0 {
+			errors = errs
+		}
+		if len(errors) <= 0 {
+			paths = len(v2Model.Model.Paths.PathItems)
+			schemas = len(v2Model.Model.Definitions.Definitions)
+		}
+	}
+
+	// if anything went wrong when building the model, report errors.
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// print the number of paths and schemas in the document
+	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
+	// Output: There are 5 paths and 6 schemas in the document
 }
