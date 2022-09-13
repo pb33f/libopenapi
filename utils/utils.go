@@ -563,3 +563,18 @@ func DetectCase(input string) Case {
 	}
 	return RegularCase
 }
+
+// CheckEnumForDuplicates will check an array of nodes to check if there are any duplicate values.
+func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
+	var res []*yaml.Node
+	seen := make(map[string]*yaml.Node)
+
+	for _, enum := range seq {
+		if seen[enum.Value] != nil {
+			res = append(res, enum)
+			continue
+		}
+		seen[enum.Value] = enum
+	}
+	return res
+}
