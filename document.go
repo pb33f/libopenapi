@@ -10,6 +10,8 @@ import (
 	v3high "github.com/pb33f/libopenapi/datamodel/high/3.0"
 	v2low "github.com/pb33f/libopenapi/datamodel/low/2.0"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 type Document struct {
@@ -38,6 +40,18 @@ func (d *Document) GetVersion() string {
 
 func (d *Document) GetSpecInfo() *datamodel.SpecInfo {
 	return d.info
+}
+
+func (d *Document) Serialize() ([]byte, error) {
+	if d.info == nil {
+		return nil, fmt.Errorf("unable to serialize, document has not yet been initialized")
+	}
+	if d.info.SpecFileType == datamodel.YAMLFileType {
+		return yaml.Marshal(d.info.RootNode)
+	} else {
+		yamlData, _ := yaml.Marshal(d.info.RootNode)
+		return utils.ConvertYAMLtoJSON(yamlData)
+	}
 }
 
 func (d *Document) BuildV2Document() (*DocumentModel[v2high.Swagger], []error) {

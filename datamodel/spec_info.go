@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	JSONFileType = "json"
+	YAMLFileType = "yaml"
+)
+
 // SpecInfo represents a 'ready-to-process' OpenAPI Document.
 type SpecInfo struct {
 	SpecType           string                  `json:"type"`
@@ -59,9 +64,9 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	}
 
 	if runes[0] == '{' && runes[len(runes)-1] == '}' {
-		specVersion.SpecFileType = "json"
+		specVersion.SpecFileType = JSONFileType
 	} else {
-		specVersion.SpecFileType = "yaml"
+		specVersion.SpecFileType = YAMLFileType
 	}
 
 	err := yaml.Unmarshal(spec, &parsedSpec)
