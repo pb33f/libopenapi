@@ -4,23 +4,105 @@
 package main
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
-func TestLoadDocument_Simple(t *testing.T) {
-	//
-	//yml := `openapi: 3.0.1`
-	//doc, err := LoadDocument([]byte(yml))
-	//assert.NoError(t, err)
-	//assert.Equal(t, "3.0.1", doc.GetVersion())
+func TestLoadDocument_Simple_V2(t *testing.T) {
+
+	yml := `swagger: 2.0.1`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
+	assert.Equal(t, "2.0.1", doc.GetVersion())
+
+	v2Doc, docErr := doc.BuildV2Document()
+	assert.Len(t, docErr, 0)
+	assert.NotNil(t, v2Doc)
+	assert.NotNil(t, doc.GetSpecInfo())
+
+	fmt.Print()
 
 }
 
-func TestLoadDocument_WithInfo(t *testing.T) {
+func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 
-	//yml := `openapi: 3.0.1`
-	//doc, err := LoadDocument([]byte(yml))
-	//assert.NoError(t, err)
-	//assert.Equal(t, "3.0.1", doc.GetVersion())
+	yml := `swagger: 2.0`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
 
+	v2Doc, docErr := doc.BuildV3Document()
+	assert.Len(t, docErr, 1)
+	assert.Nil(t, v2Doc)
+}
+
+func TestLoadDocument_Simple_V2_Error_BadSpec(t *testing.T) {
+
+	yml := `swagger: 2.0
+definitions:
+  thing:
+    $ref: bork`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
+
+	v2Doc, docErr := doc.BuildV2Document()
+	assert.Len(t, docErr, 1)
+	assert.Nil(t, v2Doc)
+}
+
+func TestLoadDocument_Simple_V3_Error(t *testing.T) {
+
+	yml := `openapi: 3.0.1`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
+
+	v2Doc, docErr := doc.BuildV2Document()
+	assert.Len(t, docErr, 1)
+	assert.Nil(t, v2Doc)
+}
+
+func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
+
+	doc := new(Document) // not how this should be instantiated.
+	_, err := doc.BuildV2Document()
+	assert.Len(t, err, 1)
+}
+
+func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
+
+	doc := new(Document) // not how this should be instantiated.
+	_, err := doc.BuildV3Document()
+	assert.Len(t, err, 1)
+}
+
+func TestLoadDocument_Empty(t *testing.T) {
+	yml := ``
+	_, err := NewDocument([]byte(yml))
+	assert.Error(t, err)
+}
+
+func TestLoadDocument_Simple_V3(t *testing.T) {
+
+	yml := `openapi: 3.0.1`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
+	assert.Equal(t, "3.0.1", doc.GetVersion())
+
+	v3Doc, docErr := doc.BuildV3Document()
+	assert.Len(t, docErr, 0)
+	assert.NotNil(t, v3Doc)
+}
+
+func TestLoadDocument_Simple_V3_Error_BadSpec(t *testing.T) {
+
+	yml := `openapi: 3.0
+paths:
+  "/some":
+    $ref: bork`
+	doc, err := NewDocument([]byte(yml))
+	assert.NoError(t, err)
+
+	v3Doc, docErr := doc.BuildV3Document()
+	assert.Len(t, docErr, 1)
+	assert.Nil(t, v3Doc)
 }

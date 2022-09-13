@@ -4,18 +4,23 @@
 package datamodel
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"time"
 )
 
-// SpecInfo represents information about a supplied specification.
+// SpecInfo represents a 'ready-to-process' OpenAPI Document.
 type SpecInfo struct {
 	SpecType           string                  `json:"type"`
 	Version            string                  `json:"version"`
 	SpecFormat         string                  `json:"format"`
 	SpecFileType       string                  `json:"fileType"`
+	SpecBytes          *[]byte                 `json:"bytes"` // the original byte array
 	RootNode           *yaml.Node              `json:"-"`     // reference to the root node of the spec.
-	SpecBytes          *[]byte                 `json:"bytes"` // the original bytes
 	SpecJSONBytes      *[]byte                 `json:"-"`     // original bytes converted to JSON
 	SpecJSON           *map[string]interface{} `json:"-"`     // standard JSON map of original bytes
 	Error              error                   `json:"-"`     // something go wrong?
@@ -25,7 +30,149 @@ type SpecInfo struct {
 }
 
 // GetJSONParsingChannel returns a channel that will close once async JSON parsing is completed.
-// This is required as rules may start executing before we're even done reading in the spec to JSON.
+// This is really useful if your application wants to analyze the JSON via SpecJSON. the library will
+// return *SpecInfo BEFORE the JSON is done parsing, so things are as fast as possible.
+//
+// If you want to know when parsing is done, listen on the channel for a bool.
 func (si SpecInfo) GetJSONParsingChannel() chan bool {
 	return si.JsonParsingChannel
+}
+
+// ExtractSpecInfo accepts an OpenAPI/Swagger specification that has been read into a byte array
+// and will return a *SpecInfo pointer, which contains details on the version and an un-marshaled
+// *yaml.Node root node tree. The root node tree is what's used by the library when building out models.
+//
+// If the spec cannot be parsed correctly then an error will be returned, otherwise the error is nil.
+func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
+
+	var parsedSpec yaml.Node
+
+	specVersion := &SpecInfo{}
+	specVersion.JsonParsingChannel = make(chan bool)
+
+	// set original bytes
+	specVersion.SpecBytes = &spec
+
+	runes := []rune(strings.TrimSpace(string(spec)))
+	if len(runes) <= 0 {
+		return specVersion, errors.New("there is nothing in the spec, it's empty - so there is nothing to be done")
+	}
+
+	if runes[0] == '{' && runes[len(runes)-1] == '}' {
+		specVersion.SpecFileType = "json"
+	} else {
+		specVersion.SpecFileType = "yaml"
+	}
+
+	err := yaml.Unmarshal(spec, &parsedSpec)
+	if err != nil {
+		return nil, fmt.Errorf("unable to parse specification: %s", err.Error())
+	}
+
+	specVersion.RootNode = &parsedSpec
+
+	_, openAPI3 := utils.FindKeyNode(utils.OpenApi3, parsedSpec.Content)
+	_, openAPI2 := utils.FindKeyNode(utils.OpenApi2, parsedSpec.Content)
+	_, asyncAPI := utils.FindKeyNode(utils.AsyncApi, parsedSpec.Content)
+
+	parseJSON := func(bytes []byte, spec *SpecInfo) {
+		var jsonSpec map[string]interface{}
+
+		// no point in worrying about errors here, extract JSON friendly format.
+		// run in a separate thread, don't block.
+
+		if spec.SpecType == utils.OpenApi3 {
+			spec.APISchema = OpenAPI3SchemaData
+		}
+		if spec.SpecType == utils.OpenApi2 {
+			spec.APISchema = OpenAPI2SchemaData
+		}
+
+		if utils.IsYAML(string(bytes)) {
+			_ = yaml.Unmarshal(bytes, &jsonSpec)
+			jsonData, _ := json.Marshal(jsonSpec)
+			spec.SpecJSONBytes = &jsonData
+			spec.SpecJSON = &jsonSpec
+		} else {
+			_ = json.Unmarshal(bytes, &jsonSpec)
+			spec.SpecJSONBytes = &bytes
+			spec.SpecJSON = &jsonSpec
+		}
+		spec.JsonParsingChannel <- true
+		close(spec.JsonParsingChannel)
+	}
+	// check for specific keys
+	if openAPI3 != nil {
+		specVersion.SpecType = utils.OpenApi3
+		version, majorVersion, versionError := parseVersionTypeData(openAPI3.Value)
+		if versionError != nil {
+			return nil, versionError
+		}
+
+		// parse JSON
+		go parseJSON(spec, specVersion)
+
+		// double check for the right version, people mix this up.
+		if majorVersion < 3 {
+			specVersion.Error = errors.New("spec is defined as an openapi spec, but is using a swagger (2.0), or unknown version")
+			return specVersion, specVersion.Error
+		}
+		specVersion.Version = version
+		specVersion.SpecFormat = OAS3
+	}
+	if openAPI2 != nil {
+		specVersion.SpecType = utils.OpenApi2
+		version, majorVersion, versionError := parseVersionTypeData(openAPI2.Value)
+		if versionError != nil {
+			return nil, versionError
+		}
+
+		// parse JSON
+		go parseJSON(spec, specVersion)
+
+		// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
+		if majorVersion > 2 {
+			specVersion.Error = errors.New("spec is defined as a swagger (openapi 2.0) spec, but is an openapi 3 or unknown version")
+			return specVersion, specVersion.Error
+		}
+		specVersion.Version = version
+		specVersion.SpecFormat = OAS2
+	}
+	if asyncAPI != nil {
+		specVersion.SpecType = utils.AsyncApi
+		version, majorVersion, versionErr := parseVersionTypeData(asyncAPI.Value)
+		if versionErr != nil {
+			return nil, versionErr
+		}
+
+		// parse JSON
+		go parseJSON(spec, specVersion)
+
+		// so far there is only 2 as a major release of AsyncAPI
+		if majorVersion > 2 {
+			specVersion.Error = errors.New("spec is defined as asyncapi, but has a major version that is invalid")
+			return specVersion, specVersion.Error
+		}
+		specVersion.Version = version
+		// TODO: format for AsyncAPI.
+
+	}
+
+	if specVersion.SpecType == "" {
+		// parse JSON
+		go parseJSON(spec, specVersion)
+
+		specVersion.Error = errors.New("spec type not supported by vacuum, sorry")
+		return specVersion, specVersion.Error
+	}
+	return specVersion, nil
+}
+
+// extract version number from specification
+func parseVersionTypeData(d interface{}) (string, int, error) {
+	r := []rune(strings.TrimSpace(fmt.Sprintf("%v", d)))
+	if len(r) <= 0 {
+		return "", 0, fmt.Errorf("unable to extract version from: %v", d)
+	}
+	return string(r), int(r[0]) - '0', nil
 }
