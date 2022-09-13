@@ -160,7 +160,12 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 
 	v3Doc, _ := doc.BuildV3Document()
 
-	v3Doc.Model.Info.GoLow().Title.Mutate("The magic API - but now, altered!")
+	// eventually this will be encapsulated up high.
+	// mutation does not replace low model, eventually pointers will be used.
+	newTitle := v3Doc.Model.Info.GoLow().Title.Mutate("The magic API - but now, altered!")
+	v3Doc.Model.Info.GoLow().Title = newTitle
+
+	assert.Equal(t, "The magic API - but now, altered!", v3Doc.Model.Info.GoLow().Title.Value)
 
 	serial, err := doc.Serialize()
 	assert.NoError(t, err)

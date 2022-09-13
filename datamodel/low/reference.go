@@ -40,8 +40,10 @@ func (n NodeReference[T]) GenerateMapKey() string {
 	return fmt.Sprintf("%d:%d", n.ValueNode.Line, n.ValueNode.Column)
 }
 
-func (n NodeReference[T]) Mutate(value T) {
+func (n NodeReference[T]) Mutate(value T) NodeReference[T] {
 	n.ValueNode.Value = fmt.Sprintf("%v", value)
+	n.Value = value
+	return n
 }
 
 func (n ValueReference[T]) IsEmpty() bool {
@@ -60,8 +62,10 @@ func (n KeyReference[T]) GenerateMapKey() string {
 	return fmt.Sprintf("%d:%d", n.KeyNode.Line, n.KeyNode.Column)
 }
 
-func (n ValueReference[T]) Mutate(value T) {
+func (n ValueReference[T]) Mutate(value T) ValueReference[T] {
 	n.ValueNode.Value = fmt.Sprintf("%v", value)
+	n.Value = value
+	return n
 }
 
 func IsCircular(node *yaml.Node, idx *index.SpecIndex) bool {
