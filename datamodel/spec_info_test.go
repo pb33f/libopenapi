@@ -4,8 +4,10 @@
 package datamodel
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
 	"testing"
 )
 
@@ -228,4 +230,22 @@ func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
+}
+
+func ExampleExtractSpecInfo() {
+
+	// load bytes from openapi spec file.
+	bytes, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+
+	// create a new *SpecInfo instance from loaded bytes
+	specInfo, err := ExtractSpecInfo(bytes)
+	if err != nil {
+		panic(fmt.Sprintf("cannot extract spec info: %e", err))
+	}
+
+	// print out the version, format and filetype
+	fmt.Printf("the version of the spec is %s, the format is %s and the file type is %s",
+		specInfo.Version, specInfo.SpecFormat, specInfo.SpecFileType)
+
+	// Output: the version of the spec is 3.0.2, the format is oas3 and the file type is json
 }

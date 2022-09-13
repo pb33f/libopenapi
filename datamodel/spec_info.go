@@ -18,7 +18,8 @@ const (
 	YAMLFileType = "yaml"
 )
 
-// SpecInfo represents a 'ready-to-process' OpenAPI Document.
+// SpecInfo represents a 'ready-to-process' OpenAPI Document. The RootNode is the most important property
+// used by the library, this contains the top of the document tree that every single low model is based off.
 type SpecInfo struct {
 	SpecType           string                  `json:"type"`
 	Version            string                  `json:"version"`
@@ -44,7 +45,7 @@ func (si SpecInfo) GetJSONParsingChannel() chan bool {
 }
 
 // ExtractSpecInfo accepts an OpenAPI/Swagger specification that has been read into a byte array
-// and will return a *SpecInfo pointer, which contains details on the version and an un-marshaled
+// and will return a SpecInfo pointer, which contains details on the version and an un-marshaled
 // *yaml.Node root node tree. The root node tree is what's used by the library when building out models.
 //
 // If the spec cannot be parsed correctly then an error will be returned, otherwise the error is nil.
