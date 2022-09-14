@@ -101,7 +101,7 @@ func TestCreateDocument_Definitions(t *testing.T) {
 	apiResp := doc.Definitions.Value.FindSchema("ApiResponse").Value.Schema()
 	assert.NotNil(t, apiResp)
 	assert.Len(t, apiResp.Properties.Value, 3)
-	assert.Equal(t, "integer", apiResp.FindProperty("code").Value.Schema().Type.Value)
+	assert.Equal(t, "integer", apiResp.FindProperty("code").Value.Schema().Type.Value.A)
 
 	pet := doc.Definitions.Value.FindSchema("Pet").Value.Schema()
 	assert.NotNil(t, pet)

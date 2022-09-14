@@ -36,7 +36,7 @@ x-rock: and roll`
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "and roll", n.FindExtension("x-rock").Value)
-	assert.Equal(t, "string", n.Schema.Value.Schema().Type.Value)
+	assert.Equal(t, "string", n.Schema.Value.Schema().Type.Value.A)
 	assert.Equal(t, "hello", n.Example.Value)
 	assert.Equal(t, "why?", n.FindExample("what").Value.Value.Value)
 	assert.Equal(t, "there?", n.FindExample("where").Value.Value.Value)

@@ -239,7 +239,7 @@ func TestNewDocument_Components_Responses(t *testing.T) {
 	h := NewDocument(doc)
 	assert.Len(t, h.Components.Responses, 1)
 	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses["DressingResponse"].Description)
-	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Schema().Type)
+	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Schema().Type[0])
 	assert.Equal(t, 347, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Line)
 	assert.Equal(t, 7, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Column)
 }

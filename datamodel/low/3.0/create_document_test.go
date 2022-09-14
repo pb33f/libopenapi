@@ -204,7 +204,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	header := encoding.Value.FindHeader("someHeader")
 	assert.NotNil(t, header.Value)
 	assert.Equal(t, "this is a header", header.Value.Description.Value)
-	assert.Equal(t, "string", header.Value.Schema.Value.Schema().Type.Value)
+	assert.Equal(t, "string", header.Value.Schema.Value.Schema().Type.Value.A)
 
 	// check request body on operation
 	burgers := doc.Paths.Value.FindPath("/burgers")
@@ -411,7 +411,7 @@ func TestCreateDocument_Components_Headers(t *testing.T) {
 	useOil := components.FindHeader("UseOil")
 	assert.NotNil(t, useOil.Value)
 	assert.Equal(t, "this is a header", useOil.Value.Description.Value)
-	assert.Equal(t, "string", useOil.Value.Schema.Value.Schema().Type.Value)
+	assert.Equal(t, "string", useOil.Value.Schema.Value.Schema().Type.Value.A)
 }
 
 func TestCreateDocument_Components_Links(t *testing.T) {

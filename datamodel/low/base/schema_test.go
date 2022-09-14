@@ -84,6 +84,8 @@ properties:
     example: 2
   somethingB:
     type: object
+    exclusiveMinimum: true
+    exclusiveMaximum: true
     description: an object
     externalDocs:
       description: the best docs
@@ -123,6 +125,9 @@ additionalProperties: true      `
 
 	assert.Equal(t, "https://pb33f.io", v.Value.Schema().ExternalDocs.Value.URL.Value)
 	assert.Equal(t, "the best docs", v.Value.Schema().ExternalDocs.Value.Description.Value)
+
+	assert.True(t, v.Value.Schema().ExclusiveMinimum.Value.A)
+	assert.True(t, v.Value.Schema().ExclusiveMaximum.Value.A)
 
 	j := v.Value.Schema().FindProperty("somethingBProp").Value.Schema()
 	assert.NotNil(t, j)
@@ -222,6 +227,45 @@ additionalProperties: true      `
 	assert.Equal(t, "cat", mv.Value)
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")
 	assert.Equal(t, "party", mv.Value)
+}
+
+func Test_Schema_31(t *testing.T) {
+	testSpec := `$schema: https://something
+type:
+  - object
+  - null
+description: something object
+exclusiveMinimum: 12
+exclusiveMaximum: 13
+contentEncoding: fish64
+contentMediaType: fish/paste
+examples:
+  - testing`
+
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
+	assert.NoError(t, mErr)
+
+	sch := Schema{}
+	mbErr := low.BuildModel(&rootNode, &sch)
+	assert.NoError(t, mbErr)
+
+	schErr := sch.Build(rootNode.Content[0], nil)
+	assert.NoError(t, schErr)
+	assert.Equal(t, "something object", sch.Description.Value)
+	assert.Len(t, sch.Type.Value.B, 2)
+	assert.True(t, sch.Type.Value.IsB())
+	assert.Equal(t, "object", sch.Type.Value.B[0].Value)
+	assert.True(t, sch.ExclusiveMinimum.Value.IsB())
+	assert.False(t, sch.ExclusiveMinimum.Value.IsA())
+	assert.True(t, sch.ExclusiveMaximum.Value.IsB())
+	assert.Equal(t, int64(12), sch.ExclusiveMinimum.Value.B)
+	assert.Equal(t, int64(13), sch.ExclusiveMaximum.Value.B)
+	assert.Len(t, sch.Examples.Value, 1)
+	assert.Equal(t, "testing", sch.Examples.Value[0].Value)
+	assert.Equal(t, "fish64", sch.ContentEncoding.Value)
+	assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
+
 }
 
 //func TestSchema_BuildLevel_TooDeep(t *testing.T) {
