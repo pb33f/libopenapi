@@ -10,25 +10,29 @@ import (
 	"sync"
 )
 
+// Schema represents a
 type Schema struct {
+	SchemaTypeRef        string
 	Title                string
-	MultipleOf           int
-	Maximum              int
-	ExclusiveMaximum     int
-	Minimum              int
-	ExclusiveMinimum     int
-	MaxLength            int
-	MinLength            int
+	MultipleOf           int64
+	Maximum              int64
+	ExclusiveMaximumBool bool
+	ExclusiveMaximum     int64
+	Minimum              int64
+	ExclusiveMinimum     int64
+	ExclusiveMinimumBool bool
+	MaxLength            int64
+	MinLength            int64
 	Pattern              string
 	Format               string
-	MaxItems             int
-	MinItems             int
-	UniqueItems          int
-	MaxProperties        int
-	MinProperties        int
+	MaxItems             int64
+	MinItems             int64
+	UniqueItems          int64
+	MaxProperties        int64
+	MinProperties        int64
 	Required             []string
 	Enum                 []string
-	Type                 string
+	Type                 []string
 	AllOf                []*SchemaProxy
 	OneOf                []*SchemaProxy
 	AnyOf                []*SchemaProxy
@@ -45,6 +49,7 @@ type Schema struct {
 	XML                  *XML
 	ExternalDocs         *ExternalDoc
 	Example              any
+	Examples             []any
 	Deprecated           bool
 	Extensions           map[string]any
 	low                  *base.Schema
@@ -56,9 +61,23 @@ func NewSchema(schema *base.Schema) *Schema {
 	s.Title = schema.Title.Value
 	s.MultipleOf = schema.MultipleOf.Value
 	s.Maximum = schema.Maximum.Value
-	s.ExclusiveMaximum = schema.ExclusiveMaximum.Value
 	s.Minimum = schema.Minimum.Value
-	s.ExclusiveMinimum = schema.ExclusiveMinimum.Value
+	// if we're dealing with a 3.0 spec using a bool
+	if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsA() {
+		s.ExclusiveMaximumBool = schema.ExclusiveMaximum.Value.A
+	}
+	// if we're dealing with a 3.1 spec using an int
+	if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsB() {
+		s.ExclusiveMaximum = schema.ExclusiveMaximum.Value.B
+	}
+	// if we're dealing with a 3.0 spec using a bool
+	if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsA() {
+		s.ExclusiveMinimumBool = schema.ExclusiveMinimum.Value.A
+	}
+	// if we're dealing with a 3.1 spec, using an int
+	if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsB() {
+		s.ExclusiveMinimum = schema.ExclusiveMinimum.Value.B
+	}
 	s.MaxLength = schema.MaxLength.Value
 	s.MinLength = schema.MinLength.Value
 	s.Pattern = schema.Pattern.Value
@@ -67,7 +86,17 @@ func NewSchema(schema *base.Schema) *Schema {
 	s.MinItems = schema.MinItems.Value
 	s.MaxProperties = schema.MaxProperties.Value
 	s.MinProperties = schema.MinProperties.Value
-	s.Type = schema.Type.Value
+
+	// 3.0 spec is a single value
+	if !schema.Type.IsEmpty() && schema.Type.Value.IsA() {
+		s.Type = []string{schema.Type.Value.A}
+	}
+	// 3.1 spec may have multiple values
+	if !schema.Type.IsEmpty() && schema.Type.Value.IsB() {
+		for i := range schema.Type.Value.B {
+			s.Type = append(s.Type, schema.Type.Value.B[i].Value)
+		}
+	}
 	s.AdditionalProperties = schema.AdditionalProperties.Value
 	s.Description = schema.Description.Value
 	s.Default = schema.Default.Value

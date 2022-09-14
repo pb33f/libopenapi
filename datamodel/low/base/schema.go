@@ -18,29 +18,47 @@ const (
 	AnyOfLabel                = "anyOf"
 	OneOfLabel                = "oneOf"
 	NotLabel                  = "not"
+	TypeLabel                 = "type"
 	DiscriminatorLabel        = "discriminator"
+	ExclusiveMinimumLabel     = "exclusiveMinimum"
+	ExclusiveMaximumLabel     = "exclusiveMaximum"
 	SchemaLabel               = "schema"
+	SchemaTypeLabel           = "$schema"
 )
 
+type SchemaDynamicValue[A any, B any] struct {
+	N int // 0 == A, 1 == B
+	A A
+	B B
+}
+
+func (s SchemaDynamicValue[A, B]) IsA() bool {
+	return s.N == 0
+}
+func (s SchemaDynamicValue[A, B]) IsB() bool {
+	return s.N == 1
+}
+
 type Schema struct {
+	SchemaTypeRef        low.NodeReference[string]
 	Title                low.NodeReference[string]
-	MultipleOf           low.NodeReference[int]
-	Maximum              low.NodeReference[int]
-	ExclusiveMaximum     low.NodeReference[int]
-	Minimum              low.NodeReference[int]
-	ExclusiveMinimum     low.NodeReference[int]
-	MaxLength            low.NodeReference[int]
-	MinLength            low.NodeReference[int]
+	MultipleOf           low.NodeReference[int64]
+	Maximum              low.NodeReference[int64]
+	ExclusiveMaximum     low.NodeReference[SchemaDynamicValue[bool, int64]]
+	Minimum              low.NodeReference[int64]
+	ExclusiveMinimum     low.NodeReference[SchemaDynamicValue[bool, int64]]
+	MaxLength            low.NodeReference[int64]
+	MinLength            low.NodeReference[int64]
 	Pattern              low.NodeReference[string]
 	Format               low.NodeReference[string]
-	MaxItems             low.NodeReference[int]
-	MinItems             low.NodeReference[int]
-	UniqueItems          low.NodeReference[int]
-	MaxProperties        low.NodeReference[int]
-	MinProperties        low.NodeReference[int]
+	MaxItems             low.NodeReference[int64]
+	MinItems             low.NodeReference[int64]
+	UniqueItems          low.NodeReference[int64]
+	MaxProperties        low.NodeReference[int64]
+	MinProperties        low.NodeReference[int64]
 	Required             low.NodeReference[[]low.ValueReference[string]]
 	Enum                 low.NodeReference[[]low.ValueReference[string]]
-	Type                 low.NodeReference[string]
+	Type                 low.NodeReference[SchemaDynamicValue[string, []low.ValueReference[string]]]
 	AllOf                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
 	OneOf                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
 	AnyOf                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
@@ -49,6 +67,8 @@ type Schema struct {
 	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
+	ContentEncoding      low.NodeReference[string]
+	ContentMediaType     low.NodeReference[string]
 	Default              low.NodeReference[any]
 	Nullable             low.NodeReference[bool]
 	Discriminator        low.NodeReference[*Discriminator]
@@ -57,6 +77,7 @@ type Schema struct {
 	XML                  low.NodeReference[*XML]
 	ExternalDocs         low.NodeReference[*ExternalDoc]
 	Example              low.NodeReference[any]
+	Examples             low.NodeReference[[]low.ValueReference[any]]
 	Deprecated           low.NodeReference[bool]
 	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -83,10 +104,102 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	s.extractExtensions(root)
 
-	// handle example if set.
+	// determine schema type, singular (3.0) or multiple (3.1), use a variable value
+	_, typeLabel, typeValue := utils.FindKeyNodeFull(TypeLabel, root.Content)
+	if typeValue != nil {
+		if utils.IsNodeStringValue(typeValue) {
+			s.Type = low.NodeReference[SchemaDynamicValue[string, []low.ValueReference[string]]]{
+				KeyNode:   typeLabel,
+				ValueNode: typeValue,
+				Value:     SchemaDynamicValue[string, []low.ValueReference[string]]{N: 0, A: typeValue.Value},
+			}
+		}
+		if utils.IsNodeArray(typeValue) {
+
+			var refs []low.ValueReference[string]
+			for r := range typeValue.Content {
+				refs = append(refs, low.ValueReference[string]{
+					Value:     typeValue.Content[r].Value,
+					ValueNode: typeValue.Content[r],
+				})
+			}
+			s.Type = low.NodeReference[SchemaDynamicValue[string, []low.ValueReference[string]]]{
+				KeyNode:   typeLabel,
+				ValueNode: typeValue,
+				Value:     SchemaDynamicValue[string, []low.ValueReference[string]]{N: 1, B: refs},
+			}
+		}
+	}
+
+	// determine exclusive minimum type, bool (3.0) or int (3.1)
+	_, exMinLabel, exMinValue := utils.FindKeyNodeFull(ExclusiveMinimumLabel, root.Content)
+	if exMinValue != nil {
+		if utils.IsNodeBoolValue(exMinValue) {
+			val, _ := strconv.ParseBool(exMinValue.Value)
+			s.ExclusiveMinimum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+				KeyNode:   exMinLabel,
+				ValueNode: exMinValue,
+				Value:     SchemaDynamicValue[bool, int64]{N: 0, A: val},
+			}
+		}
+		if utils.IsNodeIntValue(exMinValue) {
+			val, _ := strconv.ParseInt(exMinValue.Value, 10, 64)
+			s.ExclusiveMinimum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+				KeyNode:   exMinLabel,
+				ValueNode: exMinValue,
+				Value:     SchemaDynamicValue[bool, int64]{N: 1, B: val},
+			}
+		}
+	}
+
+	// determine exclusive maximum type, bool (3.0) or int (3.1)
+	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFull(ExclusiveMaximumLabel, root.Content)
+	if exMaxValue != nil {
+		if utils.IsNodeBoolValue(exMaxValue) {
+			val, _ := strconv.ParseBool(exMaxValue.Value)
+			s.ExclusiveMaximum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+				KeyNode:   exMaxLabel,
+				ValueNode: exMaxValue,
+				Value:     SchemaDynamicValue[bool, int64]{N: 0, A: val},
+			}
+		}
+		if utils.IsNodeIntValue(exMaxValue) {
+			val, _ := strconv.ParseInt(exMaxValue.Value, 10, 64)
+			s.ExclusiveMaximum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+				KeyNode:   exMaxLabel,
+				ValueNode: exMaxValue,
+				Value:     SchemaDynamicValue[bool, int64]{N: 1, B: val},
+			}
+		}
+	}
+
+	// handle schema reference type if set. (3.1)
+	_, schemaRefLabel, schemaRefNode := utils.FindKeyNodeFull(SchemaTypeLabel, root.Content)
+	if schemaRefNode != nil {
+		s.SchemaTypeRef = low.NodeReference[string]{
+			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefLabel}
+	}
+
+	// handle example if set. (3.0)
 	_, expLabel, expNode := utils.FindKeyNodeFull(ExampleLabel, root.Content)
 	if expNode != nil {
 		s.Example = low.NodeReference[any]{Value: ExtractExampleValue(expNode), KeyNode: expLabel, ValueNode: expNode}
+	}
+
+	// handle examples if set.(3.1)
+	_, expArrLabel, expArrNode := utils.FindKeyNodeFull(ExamplesLabel, root.Content)
+	if expArrNode != nil {
+		if utils.IsNodeArray(expArrNode) {
+			var examples []low.ValueReference[any]
+			for i := range expArrNode.Content {
+				examples = append(examples, low.ValueReference[any]{Value: ExtractExampleValue(expArrNode.Content[i]), ValueNode: expArrNode.Content[i]})
+			}
+			s.Examples = low.NodeReference[[]low.ValueReference[any]]{
+				Value:     examples,
+				ValueNode: expArrNode,
+				KeyNode:   expArrLabel,
+			}
+		}
 	}
 
 	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
