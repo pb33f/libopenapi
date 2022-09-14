@@ -4,6 +4,7 @@
 package base
 
 import (
+	"fmt"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
@@ -33,4 +34,25 @@ email: buckaroo@pb33f.io`
 	assert.Equal(t, "buckaroo@pb33f.io", highContact.Email)
 	assert.Equal(t, 1, highContact.GoLow().Name.KeyNode.Line)
 
+}
+
+func ExampleNewContact() {
+
+	// define a Contact using yaml (or JSON, it doesn't matter)
+	yml := `name: Buckaroo
+url: https://pb33f.io
+email: buckaroo@pb33f.io`
+
+	// unmarshal yaml into a *yaml.Node instance
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	// build low
+	var lowContact lowbase.Contact
+	_ = lowmodel.BuildModel(&cNode, &lowContact)
+
+	// build high
+	highContact := NewContact(&lowContact)
+	fmt.Print(highContact.Name)
+	// Output: Buckaroo
 }

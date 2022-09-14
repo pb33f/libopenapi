@@ -8,6 +8,9 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
+// ExternalDoc represents an External Documentation object as defined by OpenAPI 2 and 3
+//  v2 - https://swagger.io/specification/v2/#externalDocumentationObject
+//  v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
 type ExternalDoc struct {
 	Description string
 	URL         string
@@ -15,6 +18,7 @@ type ExternalDoc struct {
 	low         *low.ExternalDoc
 }
 
+// NewExternalDoc will create a new high-level External Documentation object from a low-level one.
 func NewExternalDoc(extDoc *low.ExternalDoc) *ExternalDoc {
 	d := new(ExternalDoc)
 	d.low = extDoc
@@ -28,6 +32,7 @@ func NewExternalDoc(extDoc *low.ExternalDoc) *ExternalDoc {
 	return d
 }
 
+// GoLow returns the low-level ExternalDoc instance used to create the high-level one.
 func (e *ExternalDoc) GoLow() *low.ExternalDoc {
 	return e.low
 }

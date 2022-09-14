@@ -4,6 +4,7 @@
 package base
 
 import (
+	"fmt"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
@@ -34,4 +35,31 @@ x-hack: code`
 
 	wentLow := highExt.GoLow()
 	assert.Equal(t, 2, wentLow.URL.ValueNode.Line)
+}
+
+func ExampleNewExternalDoc() {
+
+	// create a new external documentation spec reference
+	// this can be YAML or JSON.
+	yml := `description: hack code docs
+url: https://pb33f.io/docs
+x-hack: code`
+
+	// unmarshal the raw bytes into a *yaml.Node
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	// build low-level ExternalDoc
+	var lowExt lowbase.ExternalDoc
+	_ = lowmodel.BuildModel(&node, &lowExt)
+
+	// build out low-level properties (like extensions)
+	_ = lowExt.Build(node.Content[0], nil)
+
+	// create new high-level ExternalDoc
+	highExt := NewExternalDoc(&lowExt)
+
+	// print out a extension
+	fmt.Print(highExt.Extensions["x-hack"])
+	// Output: code
 }
