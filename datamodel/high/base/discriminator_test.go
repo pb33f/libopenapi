@@ -4,6 +4,7 @@
 package base
 
 import (
+    "fmt"
     lowmodel "github.com/pb33f/libopenapi/datamodel/low"
     lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
     "github.com/stretchr/testify/assert"
@@ -32,4 +33,27 @@ mapping:
     assert.Equal(t, "in the morning", highDiscriminator.Mapping["fogCleaner"])
     assert.Equal(t, 3, highDiscriminator.GoLow().FindMappingValue("fogCleaner").ValueNode.Line)
 
+}
+
+func ExampleNewDiscriminator() {
+
+    // create a yaml representation of a discriminator (can be JSON, doesn't matter)
+    yml := `propertyName: coffee
+mapping:
+  coffee: in the morning`
+
+    // unmarshal into a *yaml.Node
+    var node yaml.Node
+    _ = yaml.Unmarshal([]byte(yml), &node)
+
+    // build low-level model
+    var lowDiscriminator lowbase.Discriminator
+    _ = lowmodel.BuildModel(&node, &lowDiscriminator)
+
+    // build high-level model
+    highDiscriminator := NewDiscriminator(&lowDiscriminator)
+
+    // print out a mapping defined for the discriminator.
+    fmt.Print(highDiscriminator.Mapping["coffee"])
+    // Output: in the morning
 }

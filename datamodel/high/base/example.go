@@ -9,6 +9,8 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
+// Example represents an Example object as defined by OpenAPI 3+
+//  v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
 	Summary       string
 	Description   string
@@ -18,6 +20,7 @@ type Example struct {
 	low           *low.Example
 }
 
+// NewExample will create a new instance of an Example, using a low-level Example.
 func NewExample(example *low.Example) *Example {
 	e := new(Example)
 	e.low = example
@@ -29,10 +32,13 @@ func NewExample(example *low.Example) *Example {
 	return e
 }
 
+// GoLow will return the low-level Example used to build the high level one.
 func (e *Example) GoLow() *low.Example {
 	return e.low
 }
 
+// ExtractExamples will convert a low-level example map, into a high level one that is simple to navigate.
+// no fidelity is lost, everything is still available via GoLow()
 func ExtractExamples(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Example]) map[string]*Example {
 	extracted := make(map[string]*Example)
 	for k, v := range elements {

@@ -7,6 +7,9 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
+// Info represents an Info object as defined by both OpenAPI 2 and OpenAPI 3.
+//  v2 - https://swagger.io/specification/v2/#infoObject
+//  v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
 	Title          string
 	Description    string
@@ -17,6 +20,7 @@ type Info struct {
 	low            *low.Info
 }
 
+// NewInfo will create a new high-level Info instance from a low-level one.
 func NewInfo(info *low.Info) *Info {
 	i := new(Info)
 	i.low = info
@@ -41,6 +45,7 @@ func NewInfo(info *low.Info) *Info {
 	return i
 }
 
+// GoLow will return the low-level Info instance that was used to create the high-level one.
 func (i *Info) GoLow() *low.Info {
 	return i.low
 }

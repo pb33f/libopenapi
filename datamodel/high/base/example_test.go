@@ -4,6 +4,7 @@
 package base
 
 import (
+	"fmt"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
@@ -61,5 +62,32 @@ func TestExtractExamples(t *testing.T) {
 	}
 
 	assert.Equal(t, "herbs", ExtractExamples(examplesMap)["green"].Summary)
+
+}
+
+func ExampleNewExample() {
+
+	// create some example yaml (or can be JSON, it does not matter)
+	yml := `summary: something interesting
+description: something more interesting with detail
+externalValue: https://pb33f.io
+x-hack: code`
+
+	// unmarshal into a *yaml.Node
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	// build low-level example
+	var lowExample lowbase.Example
+	_ = lowmodel.BuildModel(&node, &lowExample)
+
+	// build out low-level example
+	_ = lowExample.Build(node.Content[0], nil)
+
+	// create a new high-level example
+	highExample := NewExample(&lowExample)
+
+	fmt.Print(highExample.ExternalValue)
+	// Output: https://pb33f.io
 
 }
