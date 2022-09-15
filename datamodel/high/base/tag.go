@@ -4,38 +4,44 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/base"
+    "github.com/pb33f/libopenapi/datamodel/high"
+    low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
+// Tag represents a high-level Tag instance that is backed by a low-level one.
+//  - v2: https://swagger.io/specification/v2/#tagObject
+//  - v3: https://swagger.io/specification/#tag-object
 type Tag struct {
-	Name         string
-	Description  string
-	ExternalDocs *ExternalDoc
-	Extensions   map[string]any
-	low          *low.Tag
+    Name         string
+    Description  string
+    ExternalDocs *ExternalDoc
+    Extensions   map[string]any
+    low          *low.Tag
 }
 
+// NewTag creates a new high-level Tag instance that is backed by a low-level one.
 func NewTag(tag *low.Tag) *Tag {
-	t := new(Tag)
-	t.low = tag
-	if !tag.Name.IsEmpty() {
-		t.Name = tag.Name.Value
-	}
-	if !tag.Description.IsEmpty() {
-		t.Description = tag.Description.Value
-	}
-	if !tag.ExternalDocs.IsEmpty() {
-		t.ExternalDocs = NewExternalDoc(tag.ExternalDocs.Value)
-	}
-	t.Extensions = high.ExtractExtensions(tag.Extensions)
-	return t
+    t := new(Tag)
+    t.low = tag
+    if !tag.Name.IsEmpty() {
+        t.Name = tag.Name.Value
+    }
+    if !tag.Description.IsEmpty() {
+        t.Description = tag.Description.Value
+    }
+    if !tag.ExternalDocs.IsEmpty() {
+        t.ExternalDocs = NewExternalDoc(tag.ExternalDocs.Value)
+    }
+    t.Extensions = high.ExtractExtensions(tag.Extensions)
+    return t
 }
 
+// GoLow returns the low-level Tag instance used to create the high-level one.
 func (t *Tag) GoLow() *low.Tag {
-	return t.low
+    return t.low
 }
 
+// Experimental mutation API.
 //func (t *Tag) SetName(value string) {
 //	t.GoLow().Name.ValueNode.Value = value
 //}
