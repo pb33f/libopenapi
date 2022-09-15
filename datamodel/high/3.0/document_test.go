@@ -55,6 +55,7 @@ func TestNewDocument_Info(t *testing.T) {
 	assert.Equal(t, "pb33f", highDoc.Info.License.Name)
 	assert.Equal(t, "https://pb33f.io/made-up", highDoc.Info.License.URL)
 	assert.Equal(t, "1.2", highDoc.Info.Version)
+	assert.Equal(t, "https://pb33f.io/schema", highDoc.JsonSchemaDialect)
 
 	wentLow := highDoc.GoLow()
 	assert.Equal(t, 1, wentLow.Version.ValueNode.Line)
@@ -126,6 +127,13 @@ func TestNewDocument_Tags(t *testing.T) {
 	wentLower := h.Tags[0].ExternalDocs.GoLow()
 	assert.Equal(t, 23, wentLower.Description.ValueNode.Line)
 	assert.Equal(t, 20, wentLower.Description.ValueNode.Column)
+}
+
+func TestNewDocument_Webhooks(t *testing.T) {
+	initTest()
+	h := NewDocument(doc)
+	assert.Len(t, h.Webhooks, 1)
+	assert.Equal(t, "Information about a new burger", h.Webhooks["someHook"].Post.RequestBody.Description)
 }
 
 func TestNewDocument_Components_Links(t *testing.T) {
