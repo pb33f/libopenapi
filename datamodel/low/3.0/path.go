@@ -13,15 +13,17 @@ import (
 )
 
 const (
-	PathsLabel   = "paths"
-	GetLabel     = "get"
-	PostLabel    = "post"
-	PatchLabel   = "patch"
-	PutLabel     = "put"
-	DeleteLabel  = "delete"
-	OptionsLabel = "options"
-	HeadLabel    = "head"
-	TraceLabel   = "trace"
+	PathsLabel             = "paths"
+	WebhooksLabel          = "webhooks"
+	JSONSchemaDialectLabel = "jsonSchemaDialect"
+	GetLabel               = "get"
+	PostLabel              = "post"
+	PatchLabel             = "patch"
+	PutLabel               = "put"
+	DeleteLabel            = "delete"
+	OptionsLabel           = "options"
+	HeadLabel              = "head"
+	TraceLabel             = "trace"
 )
 
 type Paths struct {

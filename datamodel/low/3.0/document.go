@@ -10,16 +10,18 @@ import (
 )
 
 type Document struct {
-	Version      low.ValueReference[string]
-	Info         low.NodeReference[*base.Info]
-	Servers      low.NodeReference[[]low.ValueReference[*Server]]
-	Paths        low.NodeReference[*Paths]
-	Components   low.NodeReference[*Components]
-	Security     low.NodeReference[*SecurityRequirement]
-	Tags         low.NodeReference[[]low.ValueReference[*base.Tag]]
-	ExternalDocs low.NodeReference[*base.ExternalDoc]
-	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
-	Index        *index.SpecIndex
+	Version           low.ValueReference[string]
+	Info              low.NodeReference[*base.Info]
+	JsonSchemaDialect low.NodeReference[string]                                                     // 3.1
+	Webhooks          low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]] // 3.1
+	Servers           low.NodeReference[[]low.ValueReference[*Server]]
+	Paths             low.NodeReference[*Paths]
+	Components        low.NodeReference[*Components]
+	Security          low.NodeReference[*SecurityRequirement]
+	Tags              low.NodeReference[[]low.ValueReference[*base.Tag]]
+	ExternalDocs      low.NodeReference[*base.ExternalDoc]
+	Extensions        map[low.KeyReference[string]]low.ValueReference[any]
+	Index             *index.SpecIndex
 }
 
 //

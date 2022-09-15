@@ -1,4 +1,4 @@
-openapi: 3.0.1
+openapi: 3.1.0
 info:
   title: Burger Shop
   description: |
@@ -533,3 +533,16 @@ x-something-something: darkside
 externalDocs:
   description: "Find out more information about our products)"
   url: "https://pb33f.io"
+jsonSchemaDialect: https://pb33f.io/schema
+webhooks:
+  someHook:
+    post:
+      requestBody:
+        description: Information about a new burger
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Burger"
+      responses:
+        "200":
+          description: the hook is good! you have a new burger.

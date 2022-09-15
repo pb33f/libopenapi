@@ -27,6 +27,13 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
 	doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])
 
+	// if set, extract jsonSchemaDialect (3.1)
+	_, dialectLabel, dialectNode := utils.FindKeyNodeFull(JSONSchemaDialectLabel, info.RootNode.Content)
+	if dialectNode != nil {
+		doc.JsonSchemaDialect = low.NodeReference[string]{
+			Value: dialectNode.Value, KeyNode: dialectLabel, ValueNode: dialectLabel}
+	}
+
 	var runExtraction = func(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex,
 		runFunc func(i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error,
 		ers *[]error,
@@ -45,6 +52,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 		extractSecurity,
 		extractExternalDocs,
 		extractPaths,
+		extractWebhooks,
 	}
 
 	wg.Add(len(extractionFuncs))
@@ -164,6 +172,21 @@ func extractPaths(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex)
 		}
 		nr := low.NodeReference[*Paths]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Paths = nr
+	}
+	return nil
+}
+
+func extractWebhooks(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+	hooks, hooksL, hooksN, eErr := low.ExtractMapFlat[*PathItem](WebhooksLabel, info.RootNode, idx)
+	if eErr != nil {
+		return eErr
+	}
+	if hooks != nil {
+		doc.Webhooks = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]{
+			Value:     hooks,
+			KeyNode:   hooksL,
+			ValueNode: hooksN,
+		}
 	}
 	return nil
 }
