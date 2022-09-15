@@ -121,6 +121,16 @@ func TestCreateDocument_WebHooks(t *testing.T) {
 	}
 }
 
+func TestCreateDocument_WebHooks_Error(t *testing.T) {
+	yml := `webhooks:
+      $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	_, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+}
+
 func TestCreateDocument_Servers(t *testing.T) {
 	initTest()
 	assert.Len(t, doc.Servers.Value, 2)
@@ -522,7 +532,7 @@ func TestCreateDocument_Components_Error_Extract(t *testing.T) {
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	_, err = CreateDocument(info)
 	assert.Len(t, err, 1)
 
 }
@@ -534,7 +544,7 @@ func TestCreateDocument_Paths_Errors(t *testing.T) {
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	_, err = CreateDocument(info)
 	assert.Len(t, err, 1)
 }
 
@@ -544,7 +554,7 @@ func TestCreateDocument_Tags_Errors(t *testing.T) {
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	_, err = CreateDocument(info)
 	assert.Len(t, err, 1)
 }
 
@@ -554,7 +564,7 @@ func TestCreateDocument_Security_Error(t *testing.T) {
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	_, err = CreateDocument(info)
 	assert.Len(t, err, 1)
 }
 
@@ -564,6 +574,6 @@ func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	_, err = CreateDocument(info)
 	assert.Len(t, err, 1)
 }

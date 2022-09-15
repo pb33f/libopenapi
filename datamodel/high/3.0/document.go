@@ -11,22 +11,25 @@ import (
 )
 
 type Document struct {
-	Version      string
-	Info         *base.Info
-	Servers      []*Server
-	Paths        *Paths
-	Components   *Components
-	Security     *SecurityRequirement
-	Tags         []*base.Tag
-	ExternalDocs *base.ExternalDoc
-	Extensions   map[string]any
-	Index        *index.SpecIndex
-	low          *low.Document
+	Version           string
+	Info              *base.Info
+	Servers           []*Server
+	Paths             *Paths
+	Components        *Components
+	Security          *SecurityRequirement
+	Tags              []*base.Tag
+	ExternalDocs      *base.ExternalDoc
+	Extensions        map[string]any
+	Index             *index.SpecIndex
+	JsonSchemaDialect string
+	Webhooks          map[string]*PathItem
+	low               *low.Document
 }
 
 func NewDocument(document *low.Document) *Document {
 	d := new(Document)
 	d.low = document
+	d.Index = document.Index
 	if !document.Info.IsEmpty() {
 		d.Info = base.NewInfo(document.Info.Value)
 	}
@@ -55,7 +58,16 @@ func NewDocument(document *low.Document) *Document {
 	if !document.Paths.IsEmpty() {
 		d.Paths = NewPaths(document.Paths.Value)
 	}
-	d.Index = document.Index
+	if !document.JsonSchemaDialect.IsEmpty() {
+		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
+	}
+	if !document.Webhooks.IsEmpty() {
+		hooks := make(map[string]*PathItem)
+		for h := range document.Webhooks.Value {
+			hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
+		}
+		d.Webhooks = hooks
+	}
 	return d
 }
 

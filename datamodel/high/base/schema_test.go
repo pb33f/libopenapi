@@ -258,6 +258,8 @@ items:
       example: 'itemsBExp'
 properties:
   somethingB:
+    exclusiveMinimum: 123
+    exclusiveMaximum: 334
     type: object
     description: an object
     externalDocs:
@@ -265,7 +267,11 @@ properties:
       url: https://pb33f.io
     properties:
       somethingBProp:
-        type: string
+        exclusiveMinimum: 3
+        exclusiveMaximum: 120
+        type: 
+         - string
+         - null
         description: something b subprop
         example: picnics are nice.
         xml:
@@ -279,6 +285,8 @@ properties:
         why: yes
         thatIs: true    
 additionalProperties: true
+exclusiveMaximum: true
+exclusiveMinimum: false
 xml:
   name: XML Thing
 externalDocs:
@@ -304,11 +312,17 @@ required: [cake, fish]`
 	assert.NotNil(t, compiled)
 	assert.Nil(t, schemaProxy.GetBuildError())
 
+	assert.True(t, compiled.ExclusiveMaximumBool)
+	assert.False(t, compiled.ExclusiveMinimumBool)
+	assert.Equal(t, int64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum)
+	assert.Equal(t, int64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum)
+	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
+
 	wentLow := compiled.GoLow()
-	assert.Equal(t, 90, wentLow.AdditionalProperties.ValueNode.Line)
-	assert.Equal(t, 92, wentLow.XML.ValueNode.Line)
+	assert.Equal(t, 96, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.Equal(t, 100, wentLow.XML.ValueNode.Line)
 
 	wentLower := compiled.XML.GoLow()
-	assert.Equal(t, 92, wentLower.Name.ValueNode.Line)
+	assert.Equal(t, 100, wentLower.Name.ValueNode.Line)
 
 }
