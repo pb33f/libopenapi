@@ -95,9 +95,10 @@ func TestCreateDocumentStripe(t *testing.T) {
 
 func TestCreateDocument(t *testing.T) {
 	initTest()
-	assert.Equal(t, "3.0.1", doc.Version.Value)
+	assert.Equal(t, "3.1.0", doc.Version.Value)
 	assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)
 	assert.NotEmpty(t, doc.Info.Value.Title.Value)
+	assert.Equal(t, "https://pb33f.io/schema", doc.JsonSchemaDialect.Value)
 }
 
 func TestCreateDocument_Info(t *testing.T) {
@@ -108,6 +109,16 @@ func TestCreateDocument_Info(t *testing.T) {
 	assert.Equal(t, "https://pb33f.io", doc.Info.Value.Contact.Value.URL.Value)
 	assert.Equal(t, "pb33f", doc.Info.Value.License.Value.Name.Value)
 	assert.Equal(t, "https://pb33f.io/made-up", doc.Info.Value.License.Value.URL.Value)
+}
+
+func TestCreateDocument_WebHooks(t *testing.T) {
+	initTest()
+	assert.Len(t, doc.Webhooks.Value, 1)
+	for i := range doc.Webhooks.Value {
+		// a nice deep model should be available for us.
+		assert.Equal(t, "Information about a new burger",
+			doc.Webhooks.Value[i].Value.Post.Value.RequestBody.Value.Description.Value)
+	}
 }
 
 func TestCreateDocument_Servers(t *testing.T) {

@@ -46,7 +46,7 @@ func TestNewDocument_ExternalDocs(t *testing.T) {
 func TestNewDocument_Info(t *testing.T) {
 	initTest()
 	highDoc := NewDocument(doc)
-	assert.Equal(t, "3.0.1", highDoc.Version)
+	assert.Equal(t, "3.1.0", highDoc.Version)
 	assert.Equal(t, "Burger Shop", highDoc.Info.Title)
 	assert.Equal(t, "https://pb33f.io", highDoc.Info.TermsOfService)
 	assert.Equal(t, "pb33f", highDoc.Info.Contact.Name)
