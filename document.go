@@ -16,10 +16,10 @@ package libopenapi
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
-	v2high "github.com/pb33f/libopenapi/datamodel/high/2.0"
-	v3high "github.com/pb33f/libopenapi/datamodel/high/3.0"
-	v2low "github.com/pb33f/libopenapi/datamodel/low/2.0"
-	v3low "github.com/pb33f/libopenapi/datamodel/low/3.0"
+	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
+	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
