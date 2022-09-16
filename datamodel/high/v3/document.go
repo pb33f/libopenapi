@@ -116,6 +116,7 @@ func NewDocument(document *low.Document) *Document {
 	return d
 }
 
+// GoLow returns the low-level Document that was used to create the high level one.
 func (d *Document) GoLow() *low.Document {
 	return d.low
 }

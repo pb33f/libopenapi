@@ -21,8 +21,13 @@ import (
 
 // Constants used by utilities to determine the version of OpenAPI that we're referring to.
 const (
-	OAS2  = "oas2"
-	OAS3  = "oas3"
+	// OAS2 represents Swagger Documents
+	OAS2 = "oas2"
+
+	// OAS3 represents OpenAPI 3.0+ Documents
+	OAS3 = "oas3"
+
+	// OAS31 represents OpenAPI 3.1+ Documents
 	OAS31 = "oas3_1"
 )
 
