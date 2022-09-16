@@ -10,6 +10,8 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Header represents a high-level OpenAPI 3+ Header object that is backed by a low-level one.
+//  - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
 	Description     string
 	Required        bool
@@ -26,6 +28,7 @@ type Header struct {
 	low             *low.Header
 }
 
+// NewHeader creates a new high-level Header instance from a low-level one.
 func NewHeader(header *low.Header) *Header {
 	h := new(Header)
 	h.low = header
@@ -49,10 +52,12 @@ func NewHeader(header *low.Header) *Header {
 	return h
 }
 
+// GoLow returns the low-level Header instance used to create the high-level one.
 func (h *Header) GoLow() *low.Header {
 	return h.low
 }
 
+// ExtractHeaders will extract a hard to navigate low-level Header map, into simple high-level one.
 func ExtractHeaders(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Header]) map[string]*Header {
 	extracted := make(map[string]*Header)
 	for k, v := range elements {

@@ -11,6 +11,8 @@ import (
 	"sync"
 )
 
+// MediaType represents a high-level OpenAPI MediaType object that is backed by a low-level one.
+//  - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
 	Schema     *base.SchemaProxy
 	Example    any

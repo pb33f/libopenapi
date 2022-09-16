@@ -9,7 +9,7 @@ import (
 )
 
 // Encoding represents an OpenAPI 3+ Encoding object
-// - https://spec.openapis.org/oas/v3.1.0#encoding-object
+//  - https://spec.openapis.org/oas/v3.1.0#encoding-object
 type Encoding struct {
 	ContentType   string
 	Headers       map[string]*Header

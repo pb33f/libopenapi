@@ -8,6 +8,8 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Link represents an OpenAPI 3+ Link object that is backed by a low-level one.
+//  - https://spec.openapis.org/oas/v3.1.0#link-object
 type Link struct {
 	OperationRef string
 	OperationId  string
@@ -19,6 +21,7 @@ type Link struct {
 	low          *low.Link
 }
 
+// NewLink will create a new high-level Link instance from a low-level one.
 func NewLink(link *low.Link) *Link {
 	l := new(Link)
 	l.low = link
@@ -38,6 +41,7 @@ func NewLink(link *low.Link) *Link {
 	return l
 }
 
+// GoLow will return the low-level Link instance used to create the high-level one.
 func (l *Link) GoLow() *low.Link {
 	return l.low
 }
