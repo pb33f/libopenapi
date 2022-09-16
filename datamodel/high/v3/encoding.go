@@ -8,6 +8,8 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Encoding represents an OpenAPI 3+ Encoding object
+// - https://spec.openapis.org/oas/v3.1.0#encoding-object
 type Encoding struct {
 	ContentType   string
 	Headers       map[string]*Header
@@ -17,6 +19,7 @@ type Encoding struct {
 	low           *low.Encoding
 }
 
+// NewEncoding creates a new instance of Encoding from a low-level one.
 func NewEncoding(encoding *low.Encoding) *Encoding {
 	e := new(Encoding)
 	e.low = encoding
@@ -28,10 +31,12 @@ func NewEncoding(encoding *low.Encoding) *Encoding {
 	return e
 }
 
+// GoLow returns the low-level Encoding instance used to create the high-level one.
 func (e *Encoding) GoLow() *low.Encoding {
 	return e.low
 }
 
+// ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into high-level simple map
 func ExtractEncoding(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Encoding]) map[string]*Encoding {
 	extracted := make(map[string]*Encoding)
 	for k, v := range elements {

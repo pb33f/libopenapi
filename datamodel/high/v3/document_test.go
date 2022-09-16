@@ -12,13 +12,13 @@ import (
 	"testing"
 )
 
-var doc *lowv3.Document
+var lowDoc *lowv3.Document
 
 func initTest() {
 	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	doc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocument(info)
 	if err != nil {
 		panic("broken something")
 	}
@@ -27,25 +27,25 @@ func initTest() {
 func BenchmarkNewDocument(b *testing.B) {
 	initTest()
 	for i := 0; i < b.N; i++ {
-		_ = NewDocument(doc)
+		_ = NewDocument(lowDoc)
 	}
 }
 
 func TestNewDocument_Extensions(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Equal(t, "darkside", h.Extensions["x-something-something"])
 }
 
 func TestNewDocument_ExternalDocs(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Equal(t, "https://pb33f.io", h.ExternalDocs.URL)
 }
 
 func TestNewDocument_Info(t *testing.T) {
 	initTest()
-	highDoc := NewDocument(doc)
+	highDoc := NewDocument(lowDoc)
 	assert.Equal(t, "3.1.0", highDoc.Version)
 	assert.Equal(t, "Burger Shop", highDoc.Info.Title)
 	assert.Equal(t, "https://pb33f.io", highDoc.Info.TermsOfService)
@@ -77,7 +77,7 @@ func TestNewDocument_Info(t *testing.T) {
 
 func TestNewDocument_Servers(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Servers, 2)
 	assert.Equal(t, "{scheme}://api.pb33f.io", h.Servers[0].URL)
 	assert.Equal(t, "this is our main API server, for all fun API things.", h.Servers[0].Description)
@@ -109,7 +109,7 @@ func TestNewDocument_Servers(t *testing.T) {
 
 func TestNewDocument_Tags(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Tags, 2)
 	assert.Equal(t, "Burgers", h.Tags[0].Name)
 	assert.Equal(t, "All kinds of yummy burgers.", h.Tags[0].Description)
@@ -131,14 +131,14 @@ func TestNewDocument_Tags(t *testing.T) {
 
 func TestNewDocument_Webhooks(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Webhooks, 1)
 	assert.Equal(t, "Information about a new burger", h.Webhooks["someHook"].Post.RequestBody.Description)
 }
 
 func TestNewDocument_Components_Links(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Links, 2)
 	assert.Equal(t, "locateBurger", h.Components.Links["LocateBurger"].OperationId)
 	assert.Equal(t, "$response.body#/id", h.Components.Links["LocateBurger"].Parameters["burgerId"])
@@ -151,7 +151,7 @@ func TestNewDocument_Components_Links(t *testing.T) {
 
 func TestNewDocument_Components_Callbacks(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Callbacks, 1)
 	assert.Equal(t, "Callback payload",
 		h.Components.Callbacks["BurgerCallback"].Expression["{$request.query.queryUrl}"].Post.RequestBody.Description)
@@ -173,7 +173,7 @@ func TestNewDocument_Components_Callbacks(t *testing.T) {
 
 func TestNewDocument_Components_Schemas(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Schemas, 6)
 
 	goLow := h.Components.GoLow()
@@ -215,7 +215,7 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 
 func TestNewDocument_Components_Headers(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Headers, 1)
 	assert.Equal(t, "this is a header", h.Components.Headers["UseOil"].Description)
 	assert.Equal(t, 318, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Line)
@@ -224,7 +224,7 @@ func TestNewDocument_Components_Headers(t *testing.T) {
 
 func TestNewDocument_Components_RequestBodies(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.RequestBodies, 1)
 	assert.Equal(t, "Give us the new burger!", h.Components.RequestBodies["BurgerRequest"].Description)
 	assert.Equal(t, 323, h.Components.RequestBodies["BurgerRequest"].GoLow().Description.ValueNode.Line)
@@ -234,7 +234,7 @@ func TestNewDocument_Components_RequestBodies(t *testing.T) {
 
 func TestNewDocument_Components_Examples(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Examples, 1)
 	assert.Equal(t, "A juicy two hander sammich", h.Components.Examples["QuarterPounder"].Summary)
 	assert.Equal(t, 341, h.Components.Examples["QuarterPounder"].GoLow().Summary.ValueNode.Line)
@@ -244,7 +244,7 @@ func TestNewDocument_Components_Examples(t *testing.T) {
 
 func TestNewDocument_Components_Responses(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Responses, 1)
 	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses["DressingResponse"].Description)
 	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Schema().Type[0])
@@ -254,7 +254,7 @@ func TestNewDocument_Components_Responses(t *testing.T) {
 
 func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.SecuritySchemes, 3)
 
 	api := h.Components.SecuritySchemes["APIKeyScheme"]
@@ -285,7 +285,7 @@ func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 
 func TestNewDocument_Components_Parameters(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Parameters, 2)
 	bh := h.Components.Parameters["BurgerHeader"]
 	assert.Equal(t, "burgerHeader", bh.Name)
@@ -302,7 +302,7 @@ func TestNewDocument_Components_Parameters(t *testing.T) {
 
 func TestNewDocument_Paths(t *testing.T) {
 	initTest()
-	h := NewDocument(doc)
+	h := NewDocument(lowDoc)
 	assert.Len(t, h.Paths.PathItems, 5)
 
 	burgersOp := h.Paths.PathItems["/burgers"]
@@ -350,11 +350,11 @@ func TestStripeAsDoc(t *testing.T) {
 	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	doc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocument(info)
 	if err != nil {
 		panic("broken something")
 	}
-	d := NewDocument(doc)
+	d := NewDocument(lowDoc)
 	fmt.Println(d)
 }
 
@@ -362,11 +362,11 @@ func TestAsanaAsDoc(t *testing.T) {
 	data, _ := ioutil.ReadFile("../../../test_specs/asana.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	doc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocument(info)
 	if err != nil {
 		panic("broken something")
 	}
-	d := NewDocument(doc)
+	d := NewDocument(lowDoc)
 	fmt.Println(d)
 }
 
@@ -374,11 +374,11 @@ func TestPetstoreAsDoc(t *testing.T) {
 	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	doc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocument(info)
 	if err != nil {
 		panic("broken something")
 	}
-	d := NewDocument(doc)
+	d := NewDocument(lowDoc)
 	fmt.Println(d)
 }
 
@@ -386,11 +386,11 @@ func TestCircularReferencesDoc(t *testing.T) {
 	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	doc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocument(info)
 	if err != nil {
 		panic("broken something")
 	}
-	d := NewDocument(doc)
+	d := NewDocument(lowDoc)
 	assert.Len(t, d.Components.Schemas, 9)
 	assert.Len(t, d.Index.GetCircularReferences(), 3)
 }
