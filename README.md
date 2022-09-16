@@ -29,7 +29,7 @@ libopenapi has been designed to retain all of that really low-level detail about
 original AST structure - everything you could need.
 
 libopenapi has a **porcelain** (high-level) and a **plumbing** (low-level) API. Every high level struct, has the 
-ability to '**GoLow**' and dive from the high-level model, down to the low-level model and look-up any detail about the 
+ability to `GoLow` and dive from the high-level model, down to the low-level model and look-up any detail about the 
 underlying raw data backing that model.
 
 This library exists because this very need existed inside [VMware](https://vmware.com), we built our own internal 
@@ -132,7 +132,7 @@ There are 14 paths and 6 schemas in the document
 ### Dropping down from the high-level API to the low-level one
 
 This example shows how after loading an OpenAPI spec into a document, navigating to an Operation is pretty simple. 
-It then shows how to _drop-down_ to the low-level API and query the line and start column of the RequestBody description.
+It then shows how to _drop-down_ (using `GoLow())` to the low-level API and query the line and start column of the RequestBody description.
 
 ```go
 // load an OpenAPI 3 specification from bytes
@@ -156,3 +156,8 @@ fmt.Printf("value is %s, the value is on line %d, starting column %d, the key is
     lowReqBody.Description.KeyNode.Line, lowReqBody.KeyNode.Column)
 
 ```
+
+The library heavily depends on the fantastic (yet hard to get used to) [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node).
+This is what is exposed by the `GoLow` API. It does not matter if the input material is JSON or YAML, the yaml.Node API
+creates a great way to navigate the AST of the document.
+
