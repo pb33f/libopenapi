@@ -5,12 +5,15 @@ package v3
 
 import low "github.com/pb33f/libopenapi/datamodel/low/v3"
 
+// Callback represents a high-level Callback object for OpenAPI 3+.
+//  - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
 	Expression map[string]*PathItem
 	Extensions map[string]any
 	low        *low.Callback
 }
 
+// NewCallback creates a new high-level callback from a low-level one.
 func NewCallback(lowCallback *low.Callback) *Callback {
 	n := new(Callback)
 	n.low = lowCallback
@@ -25,6 +28,7 @@ func NewCallback(lowCallback *low.Callback) *Callback {
 	return n
 }
 
+// GoLow returns the low-level Callback instance used to create the high-level one.
 func (c *Callback) GoLow() *low.Callback {
 	return c.low
 }
