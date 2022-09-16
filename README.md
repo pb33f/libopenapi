@@ -51,6 +51,12 @@ Need a way to 'resolve' OpenAPI documents that are exploded out across multiple 
 
 ## Some examples to get you started.
 
+Grab the latest release of **libopenapi**
+
+```
+go get github.com/pb33f/libopenapi
+```
+
 ### Load an OpenAPI 3+ spec into a model
 
 ```go
@@ -138,10 +144,12 @@ It then shows how to _drop-down_ (using `GoLow())` to the low-level API and quer
 // load an OpenAPI 3 specification from bytes
 petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
 
-// create a new document from specification bytes (ignore errors for the same of the example)
+// create a new document from specification bytes 
+// (ignore errors for the same of the example)
 document, _ := NewDocument(petstore)
 
-// because we know this is a v3 spec, we can build a ready to go model from it (ignoring errors for the example)
+// because we know this is a v3 spec, we can build a ready to go model from it 
+// (ignoring errors for the example)
 v3Model, _ := document.BuildV3Model()
 
 // extract the RequestBody from the 'put' operation under the /pet path
@@ -150,11 +158,15 @@ reqBody := h.Paths.PathItems["/pet"].Put.RequestBody
 // dropdown to the low-level API for RequestBody
 lowReqBody := reqBody.GoLow() 
 
-// print out the value, the line it appears on and the start columns for the key and value of the nodes.
-fmt.Printf("value is %s, the value is on line %d, starting column %d, the key is on line %d, column %d", 
-    reqBody.Description, lowReqBody.Description.ValueNode.Line, lowReqBody.Description.ValueNode.Column,
-    lowReqBody.Description.KeyNode.Line, lowReqBody.KeyNode.Column)
-
+// print out the value, the line it appears on and the 
+// start columns for the key and value of the nodes.
+fmt.Printf("value is %s, the value is on line %d, " + 
+    "starting column %d, the key is on line %d, column %d", 
+    reqBody.Description, 
+    lowReqBody.Description.ValueNode.Line, 
+    lowReqBody.Description.ValueNode.Column,
+    lowReqBody.Description.KeyNode.Line, 
+    lowReqBody.KeyNode.Column)
 ```
 
 The library heavily depends on the fantastic (yet hard to get used to) [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node).
