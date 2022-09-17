@@ -19,6 +19,12 @@ const (
 	trace
 )
 
+// PathItem represents a high-level OpenAPI 3+ PathItem object backed by a low-level one.
+//
+// Describes the operations available on a single path. A Path Item MAY be empty, due to ACL constraints.
+// The path itself is still exposed to the documentation viewer but they will not know which operations and parameters
+// are available.
+//  - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
 	Description string
 	Summary     string
@@ -36,6 +42,7 @@ type PathItem struct {
 	low         *low.PathItem
 }
 
+// NewPathItem creates a new high-level PathItem instance from a low-level one.
 func NewPathItem(pathItem *low.PathItem) *PathItem {
 	pi := new(PathItem)
 	pi.low = pathItem
@@ -111,6 +118,7 @@ func NewPathItem(pathItem *low.PathItem) *PathItem {
 	return pi
 }
 
+// GoLow returns the low level instance of PathItem, used to build the high-level one.
 func (p *PathItem) GoLow() *low.PathItem {
 	return p.low
 }

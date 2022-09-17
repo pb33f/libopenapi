@@ -8,6 +8,8 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// OAuthFlow represents a high-level OpenAPI 3+ OAuthFlow object that is backed by a low-level one.
+//  - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
 type OAuthFlow struct {
 	AuthorizationUrl string
 	TokenUrl         string
@@ -17,6 +19,7 @@ type OAuthFlow struct {
 	low              *low.OAuthFlow
 }
 
+// NewOAuthFlow creates a new high-level OAuthFlow instance from a low-level one.
 func NewOAuthFlow(flow *low.OAuthFlow) *OAuthFlow {
 	o := new(OAuthFlow)
 	o.low = flow
@@ -32,6 +35,7 @@ func NewOAuthFlow(flow *low.OAuthFlow) *OAuthFlow {
 	return o
 }
 
+// GoLow returns the low-level OAuthFlow instance used to create the high-level one.
 func (o *OAuthFlow) GoLow() *low.OAuthFlow {
 	return o.low
 }

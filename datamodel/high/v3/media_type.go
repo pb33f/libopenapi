@@ -12,6 +12,8 @@ import (
 )
 
 // MediaType represents a high-level OpenAPI MediaType object that is backed by a low-level one.
+//
+// Each Media Type Object provides schema and examples for the media type identified by its key.
 //  - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
 	Schema     *base.SchemaProxy
@@ -22,6 +24,7 @@ type MediaType struct {
 	low        *low.MediaType
 }
 
+// NewMediaType will create a new high-level MediaType instance from a low-level one.
 func NewMediaType(mediaType *low.MediaType) *MediaType {
 	m := new(MediaType)
 	m.low = mediaType
@@ -35,10 +38,13 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 	return m
 }
 
+// GoLow will return the low-level instance of MediaType used to create the high-level one.
 func (m *MediaType) GoLow() *low.MediaType {
 	return m.low
 }
 
+// ExtractContent takes in a complex and hard to navigate low-level content map, and converts it in to a much simpler
+// and easier to navigate high-level one.
 func ExtractContent(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.MediaType]) map[string]*MediaType {
 	// extract everything async
 	doneChan := make(chan bool)

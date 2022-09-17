@@ -36,7 +36,7 @@ func (e *Encoding) GoLow() *low.Encoding {
 	return e.low
 }
 
-// ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into high-level simple map
+// ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into a high-level simple map
 func ExtractEncoding(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Encoding]) map[string]*Encoding {
 	extracted := make(map[string]*Encoding)
 	for k, v := range elements {

@@ -8,6 +8,10 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Operation is a high-level representation of an OpenAPI 3+ Operation object, backed by a low-level one.
+// An Operation is perhaps the most important object of the entire specification. Everything of value
+// happens here. The entire being for existence of this library and the specification, is this Operation.
+//  - https://spec.openapis.org/oas/v3.1.0#operation-object
 type Operation struct {
 	Tags         []string
 	Summary      string
@@ -25,6 +29,7 @@ type Operation struct {
 	low          *low.Operation
 }
 
+// NewOperation will create a new Operation instance from a low-level one.
 func NewOperation(operation *low.Operation) *Operation {
 	o := new(Operation)
 	o.low = operation
@@ -65,6 +70,7 @@ func NewOperation(operation *low.Operation) *Operation {
 	return o
 }
 
+// GoLow will return the low-level Operation instance that was used to create the high-level one.
 func (o *Operation) GoLow() *low.Operation {
 	return o.low
 }

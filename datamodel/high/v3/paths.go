@@ -8,12 +8,19 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Paths represents a high-level OpenAPI 3+ Paths object, that is backed by a low-level one.
+//
+// Holds the relative paths to the individual endpoints and their operations. The path is appended to the URL from the
+// Server Object in order to construct the full URL. The Paths MAY be empty, due to Access Control List (ACL)
+// constraints.
+//  - https://spec.openapis.org/oas/v3.1.0#paths-object
 type Paths struct {
 	PathItems  map[string]*PathItem
 	Extensions map[string]any
 	low        *low.Paths
 }
 
+// NewPaths creates a new high-level instance of Paths from a low-level one.
 func NewPaths(paths *low.Paths) *Paths {
 	p := new(Paths)
 	p.low = paths
@@ -44,6 +51,7 @@ func NewPaths(paths *low.Paths) *Paths {
 	return p
 }
 
+// GoLow returns the low-level Paths instance used to create the high-level one.
 func (p *Paths) GoLow() *low.Paths {
 	return p.low
 }
