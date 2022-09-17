@@ -14,7 +14,7 @@ There is already a great OpenAPI library for golang, it's called [kin-openapi](h
 
 [kin-openapi](https://github.com/getkin/kin-openapi) is great, and you should use it. 
 
-**However, it's missing one critical feature**
+>  **_However, kin-openapi missing one critical feature_**... It's so important, this library exists because of it.
 
 When building tooling that needs to analyze OpenAPI specifications at a *low* level, [kin-openapi](https://github.com/getkin/kin-openapi)
 **runs out of power** when you need to know the original line numbers and columns, or comments within all keys and values in the spec.
@@ -22,6 +22,8 @@ When building tooling that needs to analyze OpenAPI specifications at a *low* le
 All that data is **lost** when the spec is loaded in by [kin-openapi](https://github.com/getkin/kin-openapi). It's mainly
 because the library will unmarshal data directly into structs, which works great - if you don't need access to the original 
 specification low level details.
+
+Want to build a linter? Analysis tool? Renderer that retains original positions? 
 
 ## libopenapi retains _everything_.
 
@@ -32,11 +34,11 @@ libopenapi has a **porcelain** (high-level) and a **plumbing** (low-level) API. 
 ability to `GoLow` and dive from the high-level model, down to the low-level model and look-up any detail about the 
 underlying raw data backing that model.
 
-This library exists because this very need existed inside [VMware](https://vmware.com), we built our own internal 
-version of libopenapi, which isn't something that can be released as it's bespoke.
+This library exists because this very need existed inside [VMware](https://vmware.com). The company built an internal 
+version of libopenapi, which isn't something that can be released as it's customized for VMware (and it's incomplete).
 
-libopenapi is the result of years of learning and battle testing OpenAPI in golang. This library represents what we
-would have created, if we knew then - what we know now.
+libopenapi is the result of years of learning and battle testing OpenAPI in golang. This library represents what would
+have been created, if we knew then - what we know now.
 
 > If you need to know which line, or column a key or value for something is? **libopenapi has you covered**
 
@@ -153,7 +155,7 @@ document, _ := NewDocument(petstore)
 v3Model, _ := document.BuildV3Model()
 
 // extract the RequestBody from the 'put' operation under the /pet path
-reqBody := h.Paths.PathItems["/pet"].Put.RequestBody
+reqBody := document.Paths.PathItems["/pet"].Put.RequestBody
 
 // dropdown to the low-level API for RequestBody
 lowReqBody := reqBody.GoLow() 

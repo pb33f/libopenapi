@@ -8,6 +8,11 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Response represents a high-level OpenAPI 3+ Response object that is backed by a low-level one.
+//
+// Describes a single response from an API Operation, including design-time, static links to
+// operations based on the response.
+//  - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
 	Description string
 	Headers     map[string]*Header
@@ -17,6 +22,7 @@ type Response struct {
 	low         *low.Response
 }
 
+// NewResponse creates a new high-level Response object that is backed by a low-level one.
 func NewResponse(response *low.Response) *Response {
 	r := new(Response)
 	r.low = response
@@ -38,6 +44,7 @@ func NewResponse(response *low.Response) *Response {
 	return r
 }
 
+// GoLow returns the low-level Response object that was used to create the high-level one.
 func (r *Response) GoLow() *low.Response {
 	return r.low
 }

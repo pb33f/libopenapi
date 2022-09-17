@@ -8,12 +8,28 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Responses represents a high-level OpenAPI 3+ Responses object that is backed by a low-level one.
+//
+// It's a container for the expected responses of an operation. The container maps a HTTP response code to the
+// expected response.
+//
+// The specification is not necessarily expected to cover all possible HTTP response codes because they may not be
+// known in advance. However, documentation is expected to cover a successful operation response and any known errors.
+//
+// The default MAY be used as a default response object for all HTTP codes that are not covered individually by
+// the Responses Object.
+//
+// The Responses Object MUST contain at least one response code, and if only one response code is provided it SHOULD
+// be the response for a successful operation call.
+//  - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
 	Codes   map[string]*Response
 	Default *Response
 	low     *low.Responses
 }
 
+// NewResponses will create a new high-level Responses instance from a low-level one. It operates asynchronously
+// internally, as each response may be considerable in complexity.
 func NewResponses(response *low.Responses) *Responses {
 	r := new(Responses)
 	r.low = response
@@ -49,10 +65,12 @@ func NewResponses(response *low.Responses) *Responses {
 	return r
 }
 
+// FindResponseByCode is a shortcut for looking up code by an integer vs. a string
 func (r *Responses) FindResponseByCode(code int) *Response {
 	return r.Codes[fmt.Sprintf("%d", code)]
 }
 
+// GoLow returns the low-level Response object used to create the high-level one.
 func (r *Responses) GoLow() *low.Responses {
 	return r.low
 }

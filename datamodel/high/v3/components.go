@@ -11,6 +11,7 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// used for internal channel co-ordination for building out different component types.
 const (
 	responses = iota
 	parameters
@@ -22,6 +23,11 @@ const (
 	callbacks
 )
 
+// Components represents a high-level OpenAPI 3+ Components Object, that is backed by a low-level one.
+//
+// Holds a set of reusable objects for different aspects of the OAS. All objects defined within the components object
+// will have no effect on the API unless they are explicitly referenced from properties outside the components object.
+//  - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
 	Schemas         map[string]*highbase.SchemaProxy
 	Responses       map[string]*Response
@@ -36,6 +42,9 @@ type Components struct {
 	low             *low.Components
 }
 
+// NewComponents will create new high-level instance of Components from a low-level one. Components can be considerable
+// in scope, with a lot of different properties across different categories. All components are built asynchronously
+// in order to keep things fast.
 func NewComponents(comp *low.Components) *Components {
 	c := new(Components)
 	c.low = comp
@@ -140,16 +149,19 @@ func NewComponents(comp *low.Components) *Components {
 	return c
 }
 
+// contains a component build result.
 type componentResult[T any] struct {
 	res  T
 	key  string
 	comp int
 }
 
+// build out a component.
 func buildComponent[N any, O any](comp int, key string, orig O, c chan componentResult[N], f func(O) N) {
 	c <- componentResult[N]{comp: comp, res: f(orig), key: key}
 }
 
+// build out a schema
 func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy], c chan componentResult[*highbase.SchemaProxy]) {
 	var sch *highbase.SchemaProxy
 	sch = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
@@ -159,6 +171,7 @@ func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference
 	c <- componentResult[*highbase.SchemaProxy]{res: sch, key: key.Value}
 }
 
+// GoLow returns the low-level Components instance used to create the high-level one.
 func (c *Components) GoLow() *low.Components {
 	return c.low
 }

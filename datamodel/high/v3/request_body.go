@@ -8,6 +8,7 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// RequestBody represents a high-level OpenAPI 3+ RequestBody object,
 type RequestBody struct {
 	Description string
 	Content     map[string]*MediaType

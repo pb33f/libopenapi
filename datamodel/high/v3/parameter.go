@@ -9,6 +9,10 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
+//
+// A unique parameter is defined by a combination of a name and location.
+//  - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
 	Name            string
 	In              string
@@ -27,6 +31,7 @@ type Parameter struct {
 	low             *low.Parameter
 }
 
+// NewParameter will create a new high-level instance of a Parameter, using a low-level one.
 func NewParameter(param *low.Parameter) *Parameter {
 	p := new(Parameter)
 	p.low = param
@@ -49,6 +54,7 @@ func NewParameter(param *low.Parameter) *Parameter {
 	return p
 }
 
+// GoLow returns the low-level Parameter used to create the high-level one.
 func (p *Parameter) GoLow() *low.Parameter {
 	return p.low
 }

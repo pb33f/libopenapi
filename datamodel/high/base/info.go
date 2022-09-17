@@ -8,6 +8,10 @@ import (
 )
 
 // Info represents an Info object as defined by both OpenAPI 2 and OpenAPI 3.
+//
+// The object provides metadata about the API. The metadata MAY be used by the clients if needed, and MAY be presented
+// in editing or documentation generation tools for convenience.
+//
 //  v2 - https://swagger.io/specification/v2/#infoObject
 //  v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
