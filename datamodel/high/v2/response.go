@@ -13,7 +13,7 @@ type Response struct {
 	Description string
 	Schema      *base.SchemaProxy
 	Headers     map[string]*Header
-	Examples    *Examples
+	Examples    *Example
 	Extensions  map[string]any
 	low         *low.Response
 }
@@ -36,7 +36,7 @@ func NewResponse(response *low.Response) *Response {
 		r.Headers = headers
 	}
 	if !response.Examples.IsEmpty() {
-		r.Examples = NewExamples(response.Examples.Value)
+		r.Examples = NewExample(response.Examples.Value)
 	}
 	return r
 }

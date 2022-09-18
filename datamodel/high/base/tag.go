@@ -9,6 +9,9 @@ import (
 )
 
 // Tag represents a high-level Tag instance that is backed by a low-level one.
+//
+// Adds metadata to a single tag that is used by the Operation Object. It is not mandatory to have a Tag Object per
+// tag defined in the Operation Object instances.
 //  - v2: https://swagger.io/specification/v2/#tagObject
 //  - v3: https://swagger.io/specification/#tag-object
 type Tag struct {

@@ -10,11 +10,17 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Definitions is a high-level represents of a Swagger / OpenAPI 2 Definitions object, backed by a low-level one.
+//
+// An object to hold data types that can be consumed and produced by operations. These data types can be primitives,
+// arrays or models.
+//  - https://swagger.io/specification/v2/#definitionsObject
 type Definitions struct {
 	Definitions map[string]*highbase.SchemaProxy
 	low         *low.Definitions
 }
 
+// NewDefinitions will create a new high-level instance of a Definition from a low-level one.
 func NewDefinitions(definitions *low.Definitions) *Definitions {
 	rd := new(Definitions)
 	rd.low = definitions
@@ -28,6 +34,7 @@ func NewDefinitions(definitions *low.Definitions) *Definitions {
 	return rd
 }
 
+// GoLow returns the low-level Definitions object used to create the high-level one.
 func (d *Definitions) GoLow() *low.Definitions {
 	return d.low
 }

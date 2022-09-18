@@ -5,6 +5,10 @@ package v2
 
 import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 
+// Items is a high-level representation of a Swagger / OpenAPI 2 Items object, backed by a low level one.
+// Items is a limited subset of JSON-Schema's items object. It is used by parameter definitions that are not
+// located in "body"
+//  - https://swagger.io/specification/v2/#itemsObject
 type Items struct {
 	Type             string
 	Format           string
@@ -26,6 +30,7 @@ type Items struct {
 	low              *low.Items
 }
 
+// NewItems creates a new high-level Items instance from a low-level one.
 func NewItems(items *low.Items) *Items {
 	i := new(Items)
 	i.low = items
@@ -87,6 +92,7 @@ func NewItems(items *low.Items) *Items {
 	return i
 }
 
+// GoLow returns the low-level Items object that was used to create the high-level one.
 func (i *Items) GoLow() *low.Items {
 	return i.low
 }

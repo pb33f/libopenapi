@@ -5,13 +5,17 @@ package v2
 
 import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 
-type Examples struct {
+// Example represents a high-level Swagger / OpenAPI 2 Example object, backed by a low level one.
+// Allows sharing examples for operation responses
+//  - https://swagger.io/specification/v2/#exampleObject
+type Example struct {
 	Values map[string]any
 	low    *low.Examples
 }
 
-func NewExamples(examples *low.Examples) *Examples {
-	e := new(Examples)
+// NewExample creates a new high-level Example instance from a low-level one.
+func NewExample(examples *low.Examples) *Example {
+	e := new(Example)
 	e.low = examples
 	if len(examples.Values) > 0 {
 		values := make(map[string]any)
@@ -23,6 +27,7 @@ func NewExamples(examples *low.Examples) *Examples {
 	return e
 }
 
-func (e *Examples) GoLow() *low.Examples {
+// GoLow returns the low-level Example used to create the high-level one.
+func (e *Example) GoLow() *low.Examples {
 	return e.low
 }

@@ -8,6 +8,9 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Header Represents a high-level Swagger / OpenAPI 2 Header object, backed by a low-level one.
+// A Header is essentially identical to a Parameter, except it does not contain 'name' or 'in' properties.
+//  - https://swagger.io/specification/v2/#headerObject
 type Header struct {
 	Type             string
 	Format           string
@@ -31,6 +34,7 @@ type Header struct {
 	low              *low.Header
 }
 
+// NewHeader will create a new high-level Swagger / OpenAPI 2 Header instance, from a low-level one.
 func NewHeader(header *low.Header) *Header {
 	h := new(Header)
 	h.low = header
@@ -96,6 +100,7 @@ func NewHeader(header *low.Header) *Header {
 	return h
 }
 
+// GoLow returns the low-level header used to create the high-level one.
 func (h *Header) GoLow() *low.Header {
 	return h.low
 }
