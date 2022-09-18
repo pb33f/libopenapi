@@ -1,6 +1,14 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
+// Package v2 represents all Swagger / OpenAPI 2 high-level models. High-level models are easy to navigate
+// and simple to extract what ever is required from a specification.
+//
+// High-level models are backed by low-level ones. There is a 'GoLow()' method available on every high level
+// object. 'Going Low' allows engineers to transition from a high-level or 'porcelain' API, to a low-level 'plumbing'
+// API, which provides fine grain detail to the underlying AST powering the data, lines, columns, raw nodes etc.
+//
+// IMPORTANT: As a general rule, Swagger / OpenAPI 2 should be avoided for new projects.
 package v2
 
 import (
@@ -9,26 +17,84 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Swagger represents a high-level Swagger / OpenAPI 2 document. An instance of Swagger is the root of the specification.
 type Swagger struct {
-	Swagger             string
-	Info                *base.Info
-	Host                string
-	BasePath            string
-	Schemes             []string
-	Consumes            []string
-	Produces            []string
-	Paths               *Paths
-	Definitions         *Definitions
-	Parameters          *ParameterDefinitions
-	Responses           *ResponsesDefinitions
+
+	// Swagger is the version of Swagger / OpenAPI being used, extracted from the 'swagger: 2.x' definition.
+	Swagger string
+
+	// Info represents a specification Info definition.
+	// Provides metadata about the API. The metadata can be used by the clients if needed.
+	// - https://swagger.io/specification/v2/#infoObject
+	Info *base.Info
+
+	// Host is The host (name or ip) serving the API. This MUST be the host only and does not include the scheme nor
+	// sub-paths. It MAY include a port. If the host is not included, the host serving the documentation is to be used
+	// (including the port). The host does not support path templating.
+	Host string
+
+	// BasePath is The base path on which the API is served, which is relative to the host. If it is not included, the API is
+	// served directly under the host. The value MUST start with a leading slash (/).
+	// The basePath does not support path templating.
+	BasePath string
+
+	// Schemes represents the transfer protocol of the API. Values MUST be from the list: "http", "https", "ws", "wss".
+	// If the schemes is not included, the default scheme to be used is the one used to access
+	// the Swagger definition itself.
+	Schemes []string
+
+	// Consumes is a list of MIME types the APIs can consume. This is global to all APIs but can be overridden on
+	// specific API calls. Value MUST be as described under Mime Types.
+	Consumes []string
+
+	// Produces is a list of MIME types the APIs can produce. This is global to all APIs but can be overridden on
+	// specific API calls. Value MUST be as described under Mime Types.
+	Produces []string
+
+	// Paths are the paths and operations for the API. Perhaps the most important part of the specification.
+	//  - https://swagger.io/specification/v2/#pathsObject
+	Paths *Paths
+
+	// Definitions is an object to hold data types produced and consumed by operations. It's composed of Schema instances
+	//  - https://swagger.io/specification/v2/#definitionsObject
+	Definitions *Definitions
+
+	// Parameters is an object to hold parameters that can be used across operations.
+	// This property does not define global parameters for all operations.
+	//  - https://swagger.io/specification/v2/#parametersDefinitionsObject
+	Parameters *ParameterDefinitions
+
+	// Responses is an object to hold responses that can be used across operations.
+	// This property does not define global responses for all operations.
+	//  - https://swagger.io/specification/v2/#responsesDefinitionsObject
+	Responses *ResponsesDefinitions
+
+	// SecurityDefinitions represents security scheme definitions that can be used across the specification.
+	//  - https://swagger.io/specification/v2/#securityDefinitionsObject
 	SecurityDefinitions *SecurityDefinitions
-	Security            []*SecurityRequirement
-	Tags                []*base.Tag
-	ExternalDocs        *base.ExternalDoc
-	Extensions          map[string]any
-	low                 *low.Swagger
+
+	// Security is a declaration of which security schemes are applied for the API as a whole. The list of values
+	// describes alternative security schemes that can be used (that is, there is a logical OR between the security
+	// requirements). Individual operations can override this definition.
+	//  - https://swagger.io/specification/v2/#securityRequirementObject
+	Security []*SecurityRequirement
+
+	// Tags are A list of tags used by the specification with additional metadata.
+	// The order of the tags can be used to reflect on their order by the parsing tools. Not all tags that are used
+	// by the Operation Object must be declared. The tags that are not declared may be organized randomly or based
+	// on the tools' logic. Each tag name in the list MUST be unique.
+	//  - https://swagger.io/specification/v2/#tagObject
+	Tags []*base.Tag
+
+	// ExternalDocs is an instance of base.ExternalDoc for.. well, obvious really, innit.
+	ExternalDocs *base.ExternalDoc
+
+	// Extensions contains all custom extensions defined for the top-level document.
+	Extensions map[string]any
+	low        *low.Swagger
 }
 
+// NewSwaggerDocument will create a new high-level Swagger document from a low-level one.
 func NewSwaggerDocument(document *low.Swagger) *Swagger {
 	d := new(Swagger)
 	d.low = document
@@ -103,10 +169,12 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 	return d
 }
 
+// GoLow returns the low-level Swagger instance that was used to create the high-level one.
 func (s *Swagger) GoLow() *low.Swagger {
 	return s.low
 }
 
+// everything is build async, this little gem holds the results.
 type asyncResult[T any] struct {
 	key    string
 	result T

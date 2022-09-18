@@ -23,27 +23,38 @@ type Document struct {
 	// This is not a standard property of the OpenAPI model, it's a convenience mechanism only.
 	Version string
 
-	// Info presents a specification Info definitions
+	// Info represents a specification Info definitions
+	// Provides metadata about the API. The metadata MAY be used by tooling as required.
 	// - https://spec.openapis.org/oas/v3.1.0#info-object
 	Info *base.Info
 
-	// Servers is a slice of Server instances
+	// Servers is a slice of Server instances which provide connectivity information to a target server. If the servers
+	// property is not provided, or is an empty array, the default value would be a Server Object with a url value of /.
 	// - https://spec.openapis.org/oas/v3.1.0#server-object
 	Servers []*Server
 
 	// Paths contains all the PathItem definitions for the specification.
+	// The available paths and operations for the API, The most important part of ths spec.
 	// - https://spec.openapis.org/oas/v3.1.0#paths-object
 	Paths *Paths
 
-	// Components contains everything defined as a component (referenced by everything else)
+	// Components is an element to hold various schemas for the document.
 	// - https://spec.openapis.org/oas/v3.1.0#components-object
 	Components *Components
 
 	// Security contains global security requirements/roles for the specification
+	// A declaration of which security mechanisms can be used across the API. The list of values includes alternative
+	// security requirement objects that can be used. Only one of the security requirement objects need to be satisfied
+	// to authorize a request. Individual operations can override this definition. To make security optional,
+	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
 	Security *SecurityRequirement
 
 	// Tags is a slice of base.Tag instances defined by the specification
+	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on
+	// their order by the parsing tools. Not all tags that are used by the Operation Object must be declared.
+	// The tags that are not declared MAY be organized randomly or based on the tools’ logic.
+	// Each tag name in the list MUST be unique.
 	// - https://spec.openapis.org/oas/v3.1.0#tag-object
 	Tags []*base.Tag
 
@@ -55,10 +66,17 @@ type Document struct {
 	Extensions map[string]any
 
 	// JsonSchemaDialect is a 3.1+ property that sets the dialect to use for validating *base.Schema definitions
+	// The default value for the $schema keyword within Schema Objects contained within this OAS document.
+	// This MUST be in the form of a URI.
 	// - https://spec.openapis.org/oas/v3.1.0#schema-object
 	JsonSchemaDialect string
 
 	// Webhooks is a 3.1+ property that is similar to callbacks, except, this defines incoming webhooks.
+	// The incoming webhooks that MAY be received as part of this API and that the API consumer MAY choose to implement.
+	// Closely related to the callbacks feature, this section describes requests initiated other than by an API call,
+	// for example by an out-of-band registration. The key name is a unique string to refer to each webhook,
+	// while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider
+	// and the expected responses. An example is available.
 	Webhooks map[string]*PathItem
 
 	// Index is a reference to the *index.SpecIndex that was created for the document and used

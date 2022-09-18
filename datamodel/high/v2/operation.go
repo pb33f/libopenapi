@@ -9,6 +9,9 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Operation represents a high-level Swagger / OpenAPI 2 Operation object, backed by a low-level one.
+// It describes a single API operation on a path.
+//  - https://swagger.io/specification/v2/#operationObject
 type Operation struct {
 	Tags         []string
 	Summary      string
@@ -26,6 +29,7 @@ type Operation struct {
 	low          *low.Operation
 }
 
+// NewOperation creates a new high-level Operation instance from a low-level one.
 func NewOperation(operation *low.Operation) *Operation {
 	o := new(Operation)
 	o.low = operation
@@ -93,6 +97,7 @@ func NewOperation(operation *low.Operation) *Operation {
 	return o
 }
 
+// GoLow returns the low-level operation used to create the high-level one.
 func (o *Operation) GoLow() *low.Operation {
 	return o.low
 }

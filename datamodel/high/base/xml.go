@@ -10,6 +10,11 @@ import (
 
 // XML represents a high-level representation of an XML object defined by all versions of OpenAPI and backed by
 // low-level XML object.
+//
+// A metadata object that allows for more fine-tuned XML model definitions.
+//
+// When using arrays, XML element names are not inferred (for singular/plural forms) and the name property SHOULD be
+// used to add that information. See examples for expected behavior.
 //  v2 - https://swagger.io/specification/v2/#xmlObject
 //  v3 - https://swagger.io/specification/#xml-object
 type XML struct {
