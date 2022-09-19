@@ -1,7 +1,7 @@
 # libopenapi - enterprise grade OpenAPI tools for golang.
 
 ![Pipeline](https://github.com/pb33f/libopenapi/workflows/Build/badge.svg)
-![GoReportCard](https://goreportcard.com/badge/github.com/pb33f/libopenapi)
+[![GoReportCard](https://goreportcard.com/badge/github.com/pb33f/libopenapi)](https://goreportcard.com/report/github.com/pb33f/libopenapi)
 [![codecov](https://codecov.io/gh/pb33f/libopenapi/branch/main/graph/badge.svg?)](https://codecov.io/gh/pb33f/libopenapi)
 
 libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1.
