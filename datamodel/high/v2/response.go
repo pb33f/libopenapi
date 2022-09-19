@@ -9,6 +9,9 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
+// Response describes a single response from an API Operation
+//  - https://swagger.io/specification/v2/#responseObject
 type Response struct {
 	Description string
 	Schema      *base.SchemaProxy
@@ -18,6 +21,7 @@ type Response struct {
 	low         *low.Response
 }
 
+// NewResponse creates a new high-level instance of Response from a low level one.
 func NewResponse(response *low.Response) *Response {
 	r := new(Response)
 	r.low = response
@@ -41,6 +45,7 @@ func NewResponse(response *low.Response) *Response {
 	return r
 }
 
+// GoLow will return the low-level Response instance used to create the high level one.
 func (r *Response) GoLow() *low.Response {
 	return r.low
 }

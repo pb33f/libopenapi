@@ -8,6 +8,12 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// PathItem represents a high-level Swagger / OpenAPI 2 PathItem object backed by a low-level one.
+//
+// Describes the operations available on a single path. A Path Item may be empty, due to ACL constraints.
+// The path itself is still exposed to the tooling, but will not know which operations and parameters
+// are available.
+//  - https://swagger.io/specification/v2/#pathItemObject
 type PathItem struct {
 	Ref        string
 	Get        *Operation
@@ -22,6 +28,7 @@ type PathItem struct {
 	low        *low.PathItem
 }
 
+// NewPathItem will create a new high-level PathItem from a low-level one. All paths are built out asynchronously.
 func NewPathItem(pathItem *low.PathItem) *PathItem {
 	p := new(PathItem)
 	p.low = pathItem
@@ -101,6 +108,7 @@ func NewPathItem(pathItem *low.PathItem) *PathItem {
 	return p
 }
 
+// GoLow returns the low-level PathItem used to create the high-level one.
 func (p *PathItem) GoLow() *low.PathItem {
 	return p.low
 }

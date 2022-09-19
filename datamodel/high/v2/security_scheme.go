@@ -8,6 +8,13 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// SecurityScheme is a high-level representation of a Swagger / OpenAPI 2 SecurityScheme object
+// backed by a low-level one.
+//
+// SecurityScheme allows the definition of a security scheme that can be used by the operations. Supported schemes are
+// basic authentication, an API key (either as a header or as a query parameter) and OAuth2's common flows
+// (implicit, password, application and access code)
+//  - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityScheme struct {
 	Type             string
 	Description      string
@@ -21,6 +28,7 @@ type SecurityScheme struct {
 	low              *low.SecurityScheme
 }
 
+// NewSecurityScheme creates a new instance of SecurityScheme from a low-level one.
 func NewSecurityScheme(securityScheme *low.SecurityScheme) *SecurityScheme {
 	s := new(SecurityScheme)
 	s.low = securityScheme
@@ -52,6 +60,7 @@ func NewSecurityScheme(securityScheme *low.SecurityScheme) *SecurityScheme {
 	return s
 }
 
+// GoLow returns the low-level SecurityScheme that was used to create the high-level one.
 func (s *SecurityScheme) GoLow() *low.SecurityScheme {
 	return s.low
 }

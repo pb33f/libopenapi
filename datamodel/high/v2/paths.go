@@ -8,12 +8,14 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Paths represents a high-level Swagger / OpenAPI Paths object, backed by a low-level one.
 type Paths struct {
 	PathItems  map[string]*PathItem
 	Extensions map[string]any
 	low        *low.Paths
 }
 
+// NewPaths creates a new high-level instance of Paths from a low-level one.
 func NewPaths(paths *low.Paths) *Paths {
 	p := new(Paths)
 	p.low = paths
@@ -45,6 +47,7 @@ func NewPaths(paths *low.Paths) *Paths {
 	return p
 }
 
+// GoLow returns the low-level Paths instance that backs the high level one.
 func (p *Paths) GoLow() *low.Paths {
 	return p.low
 }
