@@ -8,6 +8,7 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
+// Responses is a high-level representation of a Swagger / OpenAPI 2 Responses object, backed by a low level one.
 type Responses struct {
 	Codes      map[string]*Response
 	Default    *Response
@@ -15,11 +16,13 @@ type Responses struct {
 	low        *low.Responses
 }
 
+// NewResponses will create a new high-level instance of Responses from a low-level one.
 func NewResponses(responses *low.Responses) *Responses {
 	r := new(Responses)
 	r.low = responses
 	r.Extensions = high.ExtractExtensions(responses.Extensions)
 
+	// async function.
 	var buildPath = func(code string, pi *low.Response, rChan chan<- asyncResult[*Response]) {
 		rChan <- asyncResult[*Response]{
 			key:    code,
@@ -31,6 +34,7 @@ func NewResponses(responses *low.Responses) *Responses {
 		r.Default = NewResponse(responses.Default.Value)
 	}
 
+	// run everything async. lots of responses with lots of data are possible.
 	if len(responses.Codes) > 0 {
 		resultChan := make(chan asyncResult[*Response])
 		for k := range responses.Codes {
@@ -51,6 +55,7 @@ func NewResponses(responses *low.Responses) *Responses {
 	return r
 }
 
+// GoLow will return the low-level object used to create the high-level one.
 func (r *Responses) GoLow() *low.Responses {
 	return r.low
 }
