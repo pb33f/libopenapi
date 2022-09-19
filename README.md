@@ -196,7 +196,7 @@ is no guarantee as to the order in which each component will be rendered. This w
 
 Then libopenpi provides a way to mutate the model, that keeps the original [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node)
 tree in-tact. It allows us to make changes to values in place, and serialize back to JSON or YAML without any changes to 
-other content order or positions.
+other content order.
 
 ```go
 	// create very small, and useless spec that does nothing useful, except showcase this feature.
