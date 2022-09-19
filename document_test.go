@@ -176,6 +176,8 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 
 func ExampleNewDocument_fromOpenAPI3Document() {
 
+	// How to read in an OpenAPI 3 Specification, into a Document.
+
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
 
@@ -208,6 +210,8 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 }
 
 func ExampleNewDocument_fromSwaggerDocument() {
+
+	// How to read in a Swagger / OpenAPI 2 Specification, into a Document.
 
 	// load a Swagger specification from bytes
 	petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
@@ -289,4 +293,70 @@ func ExampleNewDocument_fromUnknownVersion() {
 	// print the number of paths and schemas in the document
 	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
 	// Output: There are 5 paths and 6 schemas in the document
+}
+
+func ExampleNewDocument_mutateValuesAndSerialize() {
+
+	// How to mutate values in an OpenAPI Specification, without re-ordering original content.
+
+	// create very small, and useless spec that does nothing useful, except showcase this feature.
+	spec := `
+openapi: 3.1.0
+info:
+  title: This is a title
+  contact:
+    name: Some Person
+    email: some@emailaddress.com
+  license:
+    url: http://some-place-on-the-internet.com/license
+`
+	// create a new document from specification bytes
+	document, err := NewDocument([]byte(spec))
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	v3Model, errors := document.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// mutate the title, to do this we currently need to drop down to the low-level API.
+	v3Model.Model.GoLow().Info.Value.Title.Mutate("A new title for a useless spec")
+
+	// mutate the email address in the contact object.
+	v3Model.Model.GoLow().Info.Value.Contact.Value.Email.Mutate("buckaroo@pb33f.io")
+
+	// mutate the name in the contact object.
+	v3Model.Model.GoLow().Info.Value.Contact.Value.Name.Mutate("Buckaroo")
+
+	// mutate the URL for the license object.
+	v3Model.Model.GoLow().Info.Value.License.Value.URL.Mutate("https://pb33f.io/license")
+
+	// serialize the document back into the original YAML or JSON
+	mutatedSpec, serialError := document.Serialize()
+
+	// if something went wrong serializing
+	if serialError != nil {
+		panic(fmt.Sprintf("cannot serialize document: %e", serialError))
+	}
+
+	// print our modified spec!
+	fmt.Println(string(mutatedSpec))
+	// Output: openapi: 3.1.0
+	//info:
+	//     title: A new title for a useless spec
+	//     contact:
+	//         name: Buckaroo
+	//         email: buckaroo@pb33f.io
+	//     license:
+	//         url: https://pb33f.io/license
 }

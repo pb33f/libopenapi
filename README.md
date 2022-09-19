@@ -175,3 +175,99 @@ The library heavily depends on the fantastic (yet hard to get used to) [yaml.Nod
 This is what is exposed by the `GoLow` API. It does not matter if the input material is JSON or YAML, the yaml.Node API
 creates a great way to navigate the AST of the document.
 
+---
+
+## But wait, there's more!
+
+Having a read-only model is great, but what about when we want to modify the model and mutate values, or even add new
+content to the model? What if we also want to save that output as an updated specification - but we don't want to jumble up
+the original ordering of the source.
+
+### marshaling and unmarshalling to and from structs into JSON/YAML is not ideal.
+
+When we straight up use `json.Marshal` or `yaml.Marshal` to send structs to be rendered into the desired format, there
+is no guarantee as to the order in which each component will be rendered. This works great if...
+
+- We don't care about the spec being randomly ordered. 
+- We don't care about code-reviews.
+- We don't actually care about this very much.
+
+### But if we do care...
+
+Then libopenpi provides a way to mutate the model, that keeps the original [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node)
+tree in-tact. It allows us to make changes to values in place, and serialize back to JSON or YAML without any changes to 
+other content order or positions.
+
+```go
+	// create very small, and useless spec that does nothing useful, except showcase this feature.
+	spec := `
+openapi: 3.1.0
+info:
+  title: This is a title
+  contact:
+    name: Some Person
+    email: some@emailaddress.com
+  license:
+    url: http://some-place-on-the-internet.com/license
+`
+	// create a new document from specification bytes
+	document, err := NewDocument([]byte(spec))
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	v3Model, errors := document.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// mutate the title, to do this we currently need to drop down to the low-level API.
+	v3Model.Model.GoLow().Info.Value.Title.Mutate("A new title for a useless spec")
+
+	// mutate the email address in the contact object.
+	v3Model.Model.GoLow().Info.Value.Contact.Value.Email.Mutate("buckaroo@pb33f.io")
+
+	// mutate the name in the contact object.
+	v3Model.Model.GoLow().Info.Value.Contact.Value.Name.Mutate("Buckaroo")
+
+	// mutate the URL for the license object.
+	v3Model.Model.GoLow().Info.Value.License.Value.URL.Mutate("https://pb33f.io/license")
+
+	// serialize the document back into the original YAML or JSON
+	mutatedSpec, serialError := document.Serialize()
+
+	// if something went wrong serializing
+	if serialError != nil {
+		panic(fmt.Sprintf("cannot serialize document: %e", serialError))
+	}
+
+	// print our modified spec!
+	fmt.Println(string(mutatedSpec))
+
+```
+
+Which will output: 
+
+```yaml
+openapi: 3.1.0
+info:
+    title: A new title for a useless spec
+    contact:
+         name: Buckaroo
+         email: buckaroo@pb33f.io
+    license:
+         url: https://pb33f.io/license
+
+```
+
+The library heavily depends on the fantastic (yet hard to get used to) [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node).
+This is what is exposed by the `GoLow` API. It does not matter if the input material is JSON or YAML, the yaml.Node API
+creates a great way to navigate the AST of the document.
