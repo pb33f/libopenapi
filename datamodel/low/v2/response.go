@@ -48,7 +48,7 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Examples = examples
 
 	//extract headers
-	headers, lN, kN, err := low.ExtractMapFlat[*Header](HeadersLabel, root, idx)
+	headers, lN, kN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}

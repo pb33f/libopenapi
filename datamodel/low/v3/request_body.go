@@ -28,7 +28,7 @@ func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	rb.Extensions = low.ExtractExtensions(root)
 
 	// handle content, if set.
-	con, cL, cN, cErr := low.ExtractMapFlat[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

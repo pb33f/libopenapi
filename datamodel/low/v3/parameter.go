@@ -63,7 +63,7 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMapFlat[*base.Example](base.ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -76,7 +76,7 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle content, if set.
-	con, cL, cN, cErr := low.ExtractMapFlat[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

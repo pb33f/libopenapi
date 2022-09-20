@@ -12,6 +12,11 @@ import (
 	"sync"
 )
 
+// BuildModel accepts a yaml.Node pointer and a model, which can be any struct. Using reflection, the model is
+// analyzed and the names of all the properties are extracted from the model and subsequently looked up from within
+// the yaml.Node.Content value.
+//
+// BuildModel is non-recursive and will only build out a single layer of the node tree.
 func BuildModel(node *yaml.Node, model interface{}) error {
 	if node == nil {
 		return nil
@@ -35,6 +40,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 		}
 
 		// we need to find a matching field in the YAML, the cases may be off, so take no chances.
+		// TODO: investigate if a straight up to_lower will speed things up here, will it decrease or increase accuracy?
 		cases := []utils.Case{utils.CamelCase, utils.PascalCase, utils.ScreamingSnakeCase,
 			utils.SnakeCase, utils.KebabCase, utils.RegularCase}
 
@@ -68,6 +74,9 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 	return nil
 }
 
+// SetField accepts a field reflection value, a yaml.Node valueNode and a yaml.Node keyNode. Using reflection, the
+// function will attempt to set the value of the field based on the key and value nodes. This method is only useful
+// for low-level models, it has no value to high-level ones.
 func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) error {
 	switch field.Type() {
 
@@ -198,7 +207,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 		break
 	case reflect.TypeOf(NodeReference[int64]{}):
 		if valueNode != nil {
-			if utils.IsNodeIntValue(valueNode) || utils.IsNodeFloatValue(valueNode) { //
+			if utils.IsNodeIntValue(valueNode) || utils.IsNodeFloatValue(valueNode) {
 				if field.CanSet() {
 					fv, _ := strconv.ParseInt(valueNode.Value, 10, 64)
 					nr := NodeReference[int64]{
@@ -422,6 +431,7 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 	return nil
 }
 
+// BuildModelAsync is a convenience function for calling BuildModel from a goroutine, requires a sync.WaitGroup
 func BuildModelAsync(n *yaml.Node, model interface{}, lwg *sync.WaitGroup, errors *[]error) {
 	if n != nil {
 		err := BuildModel(n, model)

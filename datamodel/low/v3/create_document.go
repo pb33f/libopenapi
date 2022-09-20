@@ -177,7 +177,7 @@ func extractPaths(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex)
 }
 
 func extractWebhooks(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	hooks, hooksL, hooksN, eErr := low.ExtractMapFlat[*PathItem](WebhooksLabel, info.RootNode, idx)
+	hooks, hooksL, hooksN, eErr := low.ExtractMap[*PathItem](WebhooksLabel, info.RootNode, idx)
 	if eErr != nil {
 		return eErr
 	}

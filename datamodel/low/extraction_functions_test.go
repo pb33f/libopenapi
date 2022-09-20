@@ -942,7 +942,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
@@ -968,7 +968,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
@@ -994,7 +994,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
@@ -1026,7 +1026,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, err := ExtractMapFlatNoLookup[*test_Good](cNode.Content[0], idx)
+	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 1)
 
@@ -1052,7 +1052,7 @@ hello:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, err := ExtractMapFlatNoLookup[*test_noGood](cNode.Content[0], idx)
+	things, err := ExtractMapNoLookup[*test_noGood](cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
@@ -1078,7 +1078,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, err := ExtractMapFlatNoLookup[*test_almostGood](cNode.Content[0], idx)
+	things, err := ExtractMapNoLookup[*test_almostGood](cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
@@ -1101,7 +1101,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
@@ -1128,7 +1128,7 @@ one:
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
@@ -1159,7 +1159,7 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
@@ -1189,7 +1189,7 @@ func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_almostGood]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_almostGood]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
@@ -1216,7 +1216,7 @@ func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_almostGood]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_almostGood]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
@@ -1248,7 +1248,7 @@ func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 1)
 
@@ -1275,7 +1275,7 @@ func TestExtractMapFlat_Ref_Error(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_almostGood]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_almostGood]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 
@@ -1305,7 +1305,7 @@ func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 1)
 }
@@ -1335,7 +1335,7 @@ func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 1)
 }
@@ -1361,7 +1361,7 @@ func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 }
@@ -1387,7 +1387,7 @@ func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("not-even-there", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("not-even-there", cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 0)
 }
@@ -1416,7 +1416,7 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 	e := yaml.Unmarshal([]byte(yml), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 }
@@ -1447,7 +1447,7 @@ func TestLocateRefNode_RemoteFile(t *testing.T) {
 	e := yaml.Unmarshal([]byte(ymlLocal), &cNode)
 	assert.NoError(t, e)
 
-	things, _, _, err := ExtractMapFlat[*test_Good]("one", cNode.Content[0], idx)
+	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 

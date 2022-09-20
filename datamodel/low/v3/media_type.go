@@ -54,7 +54,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMapFlat[*base.Example](base.ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -67,7 +67,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle encoding
-	encs, encsL, encsN, encErr := low.ExtractMapFlat[*Encoding](EncodingLabel, root, idx)
+	encs, encsL, encsN, encErr := low.ExtractMap[*Encoding](EncodingLabel, root, idx)
 	if encErr != nil {
 		return encErr
 	}
