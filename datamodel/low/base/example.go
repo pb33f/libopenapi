@@ -11,12 +11,8 @@ import (
 	"strconv"
 )
 
-const (
-	ExamplesLabel = "examples"
-	ExampleLabel  = "example"
-	ValueLabel    = "value"
-)
-
+// Example represents a low-level Example object as defined by OpenAPI 3+
+//  v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
 	Summary       low.NodeReference[string]
 	Description   low.NodeReference[string]
@@ -25,10 +21,12 @@ type Example struct {
 	Extensions    map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension returns a ValueReference containing the extension value, if found.
 func (ex *Example) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, ex.Extensions)
 }
 
+// Build extracts extensions and example value
 func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	ex.Extensions = low.ExtractExtensions(root)
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
@@ -68,6 +66,7 @@ func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
+// ExtractExampleValue will extract a primitive example value (if possible), or just the raw Value property if not.
 func ExtractExampleValue(exp *yaml.Node) any {
 	if utils.IsNodeBoolValue(exp) {
 		v, _ := strconv.ParseBool(exp.Value)

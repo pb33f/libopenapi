@@ -9,12 +9,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	InfoLabel    = "info"
-	ContactLabel = "contact"
-	LicenseLabel = "license"
-)
-
+// Info represents a low-level Info object as defined by both OpenAPI 2 and OpenAPI 3.
+//
+// The object provides metadata about the API. The metadata MAY be used by the clients if needed, and MAY be presented
+// in editing or documentation generation tools for convenience.
+//
+//  v2 - https://swagger.io/specification/v2/#infoObject
+//  v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
 	Title          low.NodeReference[string]
 	Description    low.NodeReference[string]
@@ -24,6 +25,7 @@ type Info struct {
 	Version        low.NodeReference[string]
 }
 
+// Build will extract out the Contact and Info objects from the supplied root node.
 func (i *Info) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// extract contact
 	contact, _ := low.ExtractObject[*Contact](ContactLabel, root, idx)

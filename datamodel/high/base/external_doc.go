@@ -8,7 +8,7 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
-// ExternalDoc represents an External Documentation object as defined by OpenAPI 2 and 3
+// ExternalDoc represents a high-level External Documentation object as defined by OpenAPI 2 and 3
 //
 // Allows referencing an external resource for extended documentation.
 //  v2 - https://swagger.io/specification/v2/#externalDocumentationObject
