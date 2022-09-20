@@ -21,7 +21,7 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 
 	if utils.IsNodeMap(root) {
-		codes, err := low.ExtractMapFlatNoLookup[*Response](root, idx)
+		codes, err := low.ExtractMapNoLookup[*Response](root, idx)
 		if err != nil {
 			return err
 		}

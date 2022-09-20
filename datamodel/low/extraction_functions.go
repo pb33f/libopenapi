@@ -13,6 +13,8 @@ import (
 	"strings"
 )
 
+// FindItemInMap accepts a string key and a collection of KeyReference[string] and ValueReference[T]. Every
+// KeyReference will have its value checked against the string key and if there is a match, it will be returned.
 func FindItemInMap[T any](item string, collection map[KeyReference[string]]ValueReference[T]) *ValueReference[T] {
 	for n, o := range collection {
 		if n.Value == item {
@@ -25,6 +27,7 @@ func FindItemInMap[T any](item string, collection map[KeyReference[string]]Value
 	return nil
 }
 
+// helper function to generate a list of all the things an index should be searched for.
 func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Reference {
 	return []func() map[string]*index.Reference{
 		idx.GetAllSchemas,
@@ -42,6 +45,8 @@ func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Re
 	}
 }
 
+// LocateRefNode will perform a complete lookup for a $ref node. This function searches the entire index for
+// the reference being supplied. If there is a match found, the reference *yaml.Node is returned.
 func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 	if rf, _, rv := utils.IsNodeRefValue(root); rf {
 		// run through everything and return as soon as we find a match.
@@ -72,15 +77,8 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 					if !IsCircular(found[rv].Node, idx) {
 						return LocateRefNode(found[rv].Node, idx)
 					} else {
-						//Log.Error("circular reference found during lookup, and will remain un-resolved.",
-						//	zap.Int("line", found[rv].Node.Line),
-						//	zap.Int("column", found[rv].Node.Column),
-						//	zap.String("reference", found[rv].Definition),
-						//	zap.String("journey",
-						//		GetCircularReferenceResult(found[rv].Node, idx).GenerateJourneyPath()))
-
-						return found[rv].Node, fmt.Errorf("circular reference '%s' found during lookup at line %d, column %d, "+
-							"It cannot be resolved",
+						return found[rv].Node, fmt.Errorf("circular reference '%s' found during lookup at line "+
+							"%d, column %d, It cannot be resolved",
 							GetCircularReferenceResult(found[rv].Node, idx).GenerateJourneyPath(),
 							found[rv].Node.Line,
 							found[rv].Node.Column)
@@ -104,11 +102,14 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 				}
 			}
 		}
-		return nil, fmt.Errorf("reference '%s' at line %d, column %d was not found", root.Value, root.Line, root.Column)
+		return nil, fmt.Errorf("reference '%s' at line %d, column %d was not found",
+			root.Value, root.Line, root.Column)
 	}
 	return nil, nil
 }
 
+// ExtractObjectRaw will extract a typed Buildable[N] object from a root yaml.Node. The 'raw' aspect is
+// that there is no NodeReference wrapper around the result returned, just the raw object.
 func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error) {
 	var circError error
 	if h, _, _ := utils.IsNodeRefValue(root); h {
@@ -133,12 +134,15 @@ func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecInd
 	if err != nil {
 		return n, err
 	}
+	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
 		return n, circError
 	}
 	return n, nil
 }
 
+// ExtractObject will extract a typed Buildable[N] object from a root yaml.Node. The result is wrapped in a
+// NodeReference[T] that contains the key node found and value node found when looking up the reference.
 func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (NodeReference[T], error) {
 	var ln, vn *yaml.Node
 	var circError error
@@ -190,12 +194,15 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 		KeyNode:   ln,
 		ValueNode: vn,
 	}
+	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
 		return res, circError
 	}
 	return res, nil
 }
 
+// ExtractArray will extract a slice of []ValueReference[T] from a root yaml.Node that is defined as a sequence.
+// Used when the value being extracted is an array.
 func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) ([]ValueReference[T],
 	*yaml.Node, *yaml.Node, error) {
 	var ln, vn *yaml.Node
@@ -266,12 +273,15 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 			})
 		}
 	}
+	// include circular errors?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
 		return items, ln, vn, circError
 	}
 	return items, ln, vn, nil
 }
 
+// ExtractExample will extract a value supplied as an example into a NodeReference. Value can be anything.
+// the node value is untyped, so casting will be required when trying to use it.
 func ExtractExample(expNode, expLabel *yaml.Node) NodeReference[any] {
 	ref := NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
 	if utils.IsNodeMap(expNode) {
@@ -287,7 +297,15 @@ func ExtractExample(expNode, expLabel *yaml.Node) NodeReference[any] {
 	return ref
 }
 
-func ExtractMapFlatNoLookup[PT Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], error) {
+// ExtractMapNoLookup will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
+// refers to the fact that there is no key supplied as part of the extraction, there  is no lookup performed and the
+// root yaml.Node pointer is used directly.
+//
+// This is useful when the node to be extracted, is already known and does not require a search.
+func ExtractMapNoLookup[PT Buildable[N], N any](
+	root *yaml.Node,
+	idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], error) {
+
 	valueMap := make(map[KeyReference[string]]ValueReference[PT])
 	var circError error
 	if utils.IsNodeMap(root) {
@@ -350,7 +368,16 @@ type mappingResult[T any] struct {
 	v ValueReference[T]
 }
 
-func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
+// ExtractMap will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
+// used to locate the node to be extracted from the root node supplied.
+//
+// The second return value is the yaml.Node found for the 'label' and the third return value is the yaml.Node
+// found for the value extracted from the label node.
+func ExtractMap[PT Buildable[N], N any](
+	label string,
+	root *yaml.Node,
+	idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
+
 	var labelNode, valueNode *yaml.Node
 	var circError error
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
@@ -459,6 +486,14 @@ func ExtractMapFlat[PT Buildable[N], N any](label string, root *yaml.Node, idx *
 	return nil, labelNode, valueNode, nil
 }
 
+// ExtractExtensions will extract any 'x-' prefixed key nodes from a root node into a map. Values have been pre-cast:
+//
+// Maps
+//   map[string]interface{} for maps
+// Slices
+//   []interface{}
+// int, float, bool, string
+//   int64, float64, bool, string
 func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[any] {
 	extensions := utils.FindExtensionNodes(root.Content)
 	extensionMap := make(map[KeyReference[string]]ValueReference[any])

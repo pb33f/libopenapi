@@ -27,7 +27,7 @@ func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
 
 func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
-	headers, hL, hN, err := low.ExtractMapFlat[*Header](HeadersLabel, root, idx)
+	headers, hL, hN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}

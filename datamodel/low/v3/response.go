@@ -23,7 +23,7 @@ type Responses struct {
 
 func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if utils.IsNodeMap(root) {
-		codes, err := low.ExtractMapFlatNoLookup[*Response](root, idx)
+		codes, err := low.ExtractMapNoLookup[*Response](root, idx)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 
 	//extract headers
-	headers, lN, kN, err := low.ExtractMapFlat[*Header](HeadersLabel, root, idx)
+	headers, lN, kN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	con, clN, cN, cErr := low.ExtractMapFlat[*MediaType](ContentLabel, root, idx)
+	con, clN, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}
@@ -101,7 +101,7 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle links if set
-	links, linkLabel, linkValue, lErr := low.ExtractMapFlat[*Link](LinksLabel, root, idx)
+	links, linkLabel, linkValue, lErr := low.ExtractMap[*Link](LinksLabel, root, idx)
 	if lErr != nil {
 		return lErr
 	}

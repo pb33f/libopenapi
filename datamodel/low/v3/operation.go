@@ -76,7 +76,7 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	o.Responses = respBody
 
 	// extract callbacks
-	callbacks, cbL, cbN, cbErr := low.ExtractMapFlat[*Callback](CallbacksLabel, root, idx)
+	callbacks, cbL, cbN, cbErr := low.ExtractMap[*Callback](CallbacksLabel, root, idx)
 	if cbErr != nil {
 		return cbErr
 	}
