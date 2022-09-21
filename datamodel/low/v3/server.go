@@ -10,22 +10,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	VariablesLabel = "variables"
-	ServersLabel   = "servers"
-	ServerLabel    = "server"
-)
-
+// Server represents a low-level OpenAPI 3+ Server object.
+//  - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]
 	Variables   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]
 }
 
-func (s *Server) FindVariable(ext string) *low.ValueReference[*ServerVariable] {
-	return low.FindItemInMap[*ServerVariable](ext, s.Variables.Value)
+// FindVariable attempts to locate a ServerVariable instance using the supplied key.
+func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVariable] {
+	return low.FindItemInMap[*ServerVariable](serverVar, s.Variables.Value)
 }
 
+// Build will extract server variables from the supplied node.
 func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)
 	if vars == nil {

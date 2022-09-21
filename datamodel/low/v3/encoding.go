@@ -9,10 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	EncodingLabel = "encoding"
-)
-
+// Encoding represents a low-level OpenAPI 3+ Encoding object
+//  - https://spec.openapis.org/oas/v3.1.0#encoding-object
 type Encoding struct {
 	ContentType   low.NodeReference[string]
 	Headers       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Header]]
@@ -21,12 +19,13 @@ type Encoding struct {
 	AllowReserved low.NodeReference[bool]
 }
 
+// FindHeader attempts to locate a Header with the supplied name
 func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
 	return low.FindItemInMap[*Header](hType, en.Headers.Value)
 }
 
+// Build will extract all Header objects from supplied node.
 func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
-
 	headers, hL, hN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err
@@ -38,6 +37,5 @@ func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			ValueNode: hN,
 		}
 	}
-
 	return nil
 }

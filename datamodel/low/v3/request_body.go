@@ -9,6 +9,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// RequestBody represents a low-level OpenAPI 3+ RequestBody object.
+//  - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
 	Description low.NodeReference[string]
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
@@ -16,14 +18,17 @@ type RequestBody struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension attemps to locate an extension using the provided name.
 func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, rb.Extensions)
 }
 
+// FindContent attempts to find content/MediaType defined using a specified name.
 func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](cType, rb.Content.Value)
 }
 
+// Build will extract extensions and MediaType objects from the node.
 func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	rb.Extensions = low.ExtractExtensions(root)
 

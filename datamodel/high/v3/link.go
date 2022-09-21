@@ -8,7 +8,7 @@ import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
-// Link represents an OpenAPI 3+ Link object that is backed by a low-level one.
+// Link represents a high-level OpenAPI 3+ Link object that is backed by a low-level one.
 //
 // The Link object represents a possible design-time link for a response. The presence of a link does not guarantee the
 // caller’s ability to successfully invoke it, rather it provides a known relationship and traversal mechanism between

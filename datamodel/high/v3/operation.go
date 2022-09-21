@@ -9,6 +9,7 @@ import (
 )
 
 // Operation is a high-level representation of an OpenAPI 3+ Operation object, backed by a low-level one.
+//
 // An Operation is perhaps the most important object of the entire specification. Everything of value
 // happens here. The entire being for existence of this library and the specification, is this Operation.
 //  - https://spec.openapis.org/oas/v3.1.0#operation-object

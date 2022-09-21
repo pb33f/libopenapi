@@ -11,10 +11,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	ContentLabel = "content"
-)
-
+// Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
+//
+// A unique parameter is defined by a combination of a name and location.
+//  - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
 	Name            low.NodeReference[string]
 	In              low.NodeReference[string]
@@ -32,18 +32,22 @@ type Parameter struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindContent will attempt to locate a MediaType instance using the specified name.
 func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](cType, p.Content.Value)
 }
 
+// FindExample will attempt to locate a base.Example instance using the specified name.
 func (p *Parameter) FindExample(eType string) *low.ValueReference[*base.Example] {
 	return low.FindItemInMap[*base.Example](eType, p.Examples.Value)
 }
 
+// FindExtension attempts to locate an extension using the specified name.
 func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
 }
 
+// Build will extract examples, extensions and content/media types.
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
 

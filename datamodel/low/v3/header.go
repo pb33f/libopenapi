@@ -11,10 +11,8 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	HeadersLabel = "headers"
-)
-
+// Header represents a low-level OpenAPI 3+ Header object.
+//  - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
 	Description     low.NodeReference[string]
 	Required        low.NodeReference[bool]
@@ -30,18 +28,22 @@ type Header struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension will attempt to locate an extension with the supplied name
 func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, h.Extensions)
 }
 
+// FindExample will attempt to locate an Example with a specified name
 func (h *Header) FindExample(eType string) *low.ValueReference[*base.Example] {
 	return low.FindItemInMap[*base.Example](eType, h.Examples.Value)
 }
 
+// FindContent will attempt to locate a MediaType definition, with a specified name
 func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](ext, h.Content.Value)
 }
 
+// Build will extract extensions, examples, schema and content/media types from node.
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	h.Extensions = low.ExtractExtensions(root)
 
@@ -83,6 +85,5 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		KeyNode:   cL,
 		ValueNode: cN,
 	}
-
 	return nil
 }

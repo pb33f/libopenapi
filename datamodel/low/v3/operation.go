@@ -10,14 +10,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	ParametersLabel    = "parameters"
-	RequestBodyLabel   = "requestBody"
-	RequestBodiesLabel = "requestBodies"
-	ResponsesLabel     = "responses"
-	CallbacksLabel     = "callbacks"
-)
-
+// Operation is a low-level representation of an OpenAPI 3+ Operation object.
+//
+// An Operation is perhaps the most important object of the entire specification. Everything of value
+// happens here. The entire being for existence of this library and the specification, is this Operation.
+//  - https://spec.openapis.org/oas/v3.1.0#operation-object
 type Operation struct {
 	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]
@@ -34,10 +31,12 @@ type Operation struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindCallback will attempt to locate a Callback instance by the supplied name.
 func (o *Operation) FindCallback(callback string) *low.ValueReference[*Callback] {
 	return low.FindItemInMap[*Callback](callback, o.Callbacks.Value)
 }
 
+// Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	o.Extensions = low.ExtractExtensions(root)
 
