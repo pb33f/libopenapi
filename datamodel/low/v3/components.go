@@ -13,11 +13,11 @@ import (
 	"strings"
 )
 
-const (
-	ComponentsLabel = "components"
-	SchemasLabel    = "schemas"
-)
-
+// Components represents a low-level OpenAPI 3+ Components Object, that is backed by a low-level one.
+//
+// Holds a set of reusable objects for different aspects of the OAS. All objects defined within the components object
+// will have no effect on the API unless they are explicitly referenced from properties outside the components object.
+//  - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
 	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]]
 	Responses       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]]
@@ -31,26 +31,32 @@ type Components struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension attempts to locate an extension with the supplied key
 func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, co.Extensions)
 }
 
+// FindSchema attempts to locate a SchemaProxy from 'schemas' with a specific name
 func (co *Components) FindSchema(schema string) *low.ValueReference[*base.SchemaProxy] {
 	return low.FindItemInMap[*base.SchemaProxy](schema, co.Schemas.Value)
 }
 
+// FindResponse attempts to locate a Response from 'responses' with a specific name
 func (co *Components) FindResponse(response string) *low.ValueReference[*Response] {
 	return low.FindItemInMap[*Response](response, co.Responses.Value)
 }
 
+// FindParameter attempts to locate a Parameter from 'parameters' with a specific name
 func (co *Components) FindParameter(response string) *low.ValueReference[*Parameter] {
 	return low.FindItemInMap[*Parameter](response, co.Parameters.Value)
 }
 
+// FindSecurityScheme attempts to locate a SecurityScheme from 'securitySchemes' with a specific name
 func (co *Components) FindSecurityScheme(sScheme string) *low.ValueReference[*SecurityScheme] {
 	return low.FindItemInMap[*SecurityScheme](sScheme, co.SecuritySchemes.Value)
 }
 
+// FindExample attempts tp
 func (co *Components) FindExample(example string) *low.ValueReference[*base.Example] {
 	return low.FindItemInMap[*base.Example](example, co.Examples.Value)
 }

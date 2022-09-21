@@ -13,6 +13,12 @@ import (
 	"sync"
 )
 
+// PathItem represents a low-level OpenAPI 3+ PathItem object.
+//
+// Describes the operations available on a single path. A Path Item MAY be empty, due to ACL constraints.
+// The path itself is still exposed to the documentation viewer, but they will not know which operations and parameters
+// are available.
+//  - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
 	Description low.NodeReference[string]
 	Summary     low.NodeReference[string]
@@ -29,10 +35,13 @@ type PathItem struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension attempts to find an extension
 func (p *PathItem) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
 }
 
+// Build extracts extensions, parameters, servers and each http method defined.
+// everything is extracted asynchronously for speed.
 func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
@@ -204,6 +213,5 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if len(ops) > 0 {
 		wg.Wait()
 	}
-
 	return nil
 }

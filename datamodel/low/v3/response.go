@@ -11,16 +11,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	LinksLabel   = "links"
-	DefaultLabel = "default"
-)
-
+// Responses represents a low-level OpenAPI 3+ Responses object.
+//
+// It's a container for the expected responses of an operation. The container maps a HTTP response code to the
+// expected response.
+//
+// The specification is not necessarily expected to cover all possible HTTP response codes because they may not be
+// known in advance. However, documentation is expected to cover a successful operation response and any known errors.
+//
+// The default MAY be used as a default response object for all HTTP codes that are not covered individually by
+// the Responses Object.
+//
+// The Responses Object MUST contain at least one response code, and if only one response code is provided it SHOULD
+// be the response for a successful operation call.
+//  - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
 	Codes   map[low.KeyReference[string]]low.ValueReference[*Response]
 	Default low.NodeReference[*Response]
 }
 
+// Build will extract default response and all Response objects for each code
 func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if utils.IsNodeMap(root) {
 		codes, err := low.ExtractMapNoLookup[*Response](root, idx)
@@ -39,15 +49,22 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			r.Default = def
 		}
 	} else {
-		return fmt.Errorf("responses build failed: vn node is not a map! line %d, col %d", root.Line, root.Column)
+		return fmt.Errorf("responses build failed: vn node is not a map! line %d, col %d",
+			root.Line, root.Column)
 	}
 	return nil
 }
 
+// FindResponseByCode will attempt to locate a Response using an HTTP response code.
 func (r *Responses) FindResponseByCode(code string) *low.ValueReference[*Response] {
 	return low.FindItemInMap[*Response](code, r.Codes)
 }
 
+// Response represents a high-level OpenAPI 3+ Response object that is backed by a low-level one.
+//
+// Describes a single response from an API Operation, including design-time, static links to
+// operations based on the response.
+//  - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
 	Description low.NodeReference[string]
 	Headers     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Header]]
@@ -56,22 +73,27 @@ type Response struct {
 	Links       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]]
 }
 
+// FindExtension will attempt to locate an extension using the supplied key
 func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, r.Extensions)
 }
 
+// FindContent will attempt to locate a MediaType instance using the supplied key.
 func (r *Response) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](cType, r.Content.Value)
 }
 
+// FindHeader will attempt to locate a Header instance using the supplied key.
 func (r *Response) FindHeader(hType string) *low.ValueReference[*Header] {
 	return low.FindItemInMap[*Header](hType, r.Headers.Value)
 }
 
+// FindLink will attempt to locate a Link instance using the supplied key.
 func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 	return low.FindItemInMap[*Link](hType, r.Links.Value)
 }
 
+// Build will extract headers, extensions, content and links from node.
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 
