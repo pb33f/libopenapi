@@ -9,18 +9,19 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	ExamplesLabel = "examples"
-)
-
+// Examples represents a low-level Swagger / OpenAPI 2 Example object.
+// Allows sharing examples for operation responses
+//  - https://swagger.io/specification/v2/#exampleObject
 type Examples struct {
 	Values map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExample attempts to locate an example value, using a key label.
 func (e *Examples) FindExample(name string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](name, e.Values)
 }
 
+// Build will extract all examples and will attempt to unmarshal content into a map or slice based on type.
 func (e *Examples) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	var keyNode, currNode *yaml.Node
 	var err error

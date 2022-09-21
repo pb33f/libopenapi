@@ -10,6 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Operation represents a low-level Swagger / OpenAPI 2 Operation object.
+//
+// It describes a single API operation on a path.
+//  - https://swagger.io/specification/v2/#operationObject
 type Operation struct {
 	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]
@@ -26,6 +30,7 @@ type Operation struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// Build will extract external docs, extensions, parameters, responses and security requirements.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	o.Extensions = low.ExtractExtensions(root)
 

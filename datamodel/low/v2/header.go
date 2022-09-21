@@ -10,10 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	HeadersLabel = "headers"
-)
-
+// Header Represents a low-level Swagger / OpenAPI 2 Header object.
+//
+// A Header is essentially identical to a Parameter, except it does not contain 'name' or 'in' properties.
+//  - https://swagger.io/specification/v2/#headerObject
 type Header struct {
 	Type             low.NodeReference[string]
 	Format           low.NodeReference[string]
@@ -36,10 +36,12 @@ type Header struct {
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension will attempt to locate an extension value using a name lookup.
 func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, h.Extensions)
 }
 
+// Build will build out items, extensions and default value from the supplied node.
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	h.Extensions = low.ExtractExtensions(root)
 	items, err := low.ExtractObject[*Items](ItemsLabel, root, idx)

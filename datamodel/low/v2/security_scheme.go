@@ -9,10 +9,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	ScopesLabel = "scopes"
-)
-
+// SecurityScheme is a low-level representation of a Swagger / OpenAPI 2 SecurityScheme object.
+//
+// SecurityScheme allows the definition of a security scheme that can be used by the operations. Supported schemes are
+// basic authentication, an API key (either as a header or as a query parameter) and OAuth2's common flows
+// (implicit, password, application and access code)
+//  - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityScheme struct {
 	Type             low.NodeReference[string]
 	Description      low.NodeReference[string]
@@ -25,6 +27,7 @@ type SecurityScheme struct {
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// Build will extract extensions and scopes from the node.
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	ss.Extensions = low.ExtractExtensions(root)
 
