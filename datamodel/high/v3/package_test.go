@@ -10,8 +10,8 @@ import (
 	"io/ioutil"
 )
 
-// Creating a new high-level OpenAPI 3+ document from an OpenAPI specification.
-func Example() {
+// An example of how to create a new high-level OpenAPI 3+ document from an OpenAPI specification.
+func Example_createHighLevelOpenAPIDocument() {
 	// Load in an OpenAPI 3+ specification as a byte slice.
 	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
 

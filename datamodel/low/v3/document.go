@@ -1,7 +1,7 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-// Package v3 represents all OpenAPI 3+ low-level models. High-level models are more difficult to navigate
+// Package v3 represents all OpenAPI 3+ low-level models. Low-level models are more difficult to navigate
 // than higher-level models, however they are packed with all the raw AST and node data required to perform
 // any kind of analysis on the underlying data.
 //

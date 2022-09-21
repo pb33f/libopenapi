@@ -10,15 +10,21 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Scopes is a low-level representation of a Swagger / OpenAPI 2 OAuth2 Scopes object.
+//
+// Scopes lists the available scopes for an OAuth2 security scheme.
+//  - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
 	Values     map[low.KeyReference[string]]low.ValueReference[string]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindScope will attempt to locate a scope string using a key.
 func (s *Scopes) FindScope(scope string) *low.ValueReference[string] {
 	return low.FindItemInMap[string](scope, s.Values)
 }
 
+// Build will extract scope values and extensions from node.
 func (s *Scopes) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	s.Extensions = low.ExtractExtensions(root)
 	valueMap := make(map[low.KeyReference[string]]low.ValueReference[string])

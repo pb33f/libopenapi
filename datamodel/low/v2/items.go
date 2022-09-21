@@ -10,11 +10,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	DefaultLabel = "default"
-	ItemsLabel   = "items"
-)
-
+// Items is a low-level representation of a Swagger / OpenAPI 2 Items object.
+//
+// Items is a limited subset of JSON-Schema's items object. It is used by parameter definitions that are not
+// located in "body"
+//  - https://swagger.io/specification/v2/#itemsObject
 type Items struct {
 	Type             low.NodeReference[string]
 	Format           low.NodeReference[string]
@@ -35,6 +35,7 @@ type Items struct {
 	MultipleOf       low.NodeReference[int]
 }
 
+// Build will build out items and default value.
 func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
 	if iErr != nil {

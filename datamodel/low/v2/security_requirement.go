@@ -9,14 +9,18 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	SecurityLabel = "security"
-)
-
+// SecurityRequirement is a low-level representation of a Swagger / OpenAPI 2 SecurityRequirement object.
+//
+// SecurityRequirement lists the required security schemes to execute this operation. The object can have multiple
+// security schemes declared in it which are all required (that is, there is a logical AND between the schemes).
+//
+// The name used for each property MUST correspond to a security scheme declared in the Security Definitions
+//  - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
 	Values low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
 }
 
+// Build will extract security requirements from the node (the structure is odd, to be honest)
 func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	var labelNode *yaml.Node
 	var arr []low.ValueReference[string]

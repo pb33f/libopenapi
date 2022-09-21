@@ -10,10 +10,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const (
-	ResponsesLabel = "responses"
-)
-
+// Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
+//
+// Response describes a single response from an API Operation
+//  - https://swagger.io/specification/v2/#responseObject
 type Response struct {
 	Description low.NodeReference[string]
 	Schema      low.NodeReference[*base.SchemaProxy]
@@ -22,14 +22,17 @@ type Response struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindExtension will attempt to locate an extension value given a key to lookup.
 func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, r.Extensions)
 }
 
+// FindHeader will attempt to locate a Header value, given a key
 func (r *Response) FindHeader(hType string) *low.ValueReference[*Header] {
 	return low.FindItemInMap[*Header](hType, r.Headers.Value)
 }
 
+// Build will extract schema, extensions, examples and headers from node
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 	s, err := base.ExtractSchema(root, idx)

@@ -10,22 +10,13 @@ import (
 	"strings"
 )
 
-const (
-	PathsLabel   = "paths"
-	GetLabel     = "get"
-	PostLabel    = "post"
-	PatchLabel   = "patch"
-	PutLabel     = "put"
-	DeleteLabel  = "delete"
-	OptionsLabel = "options"
-	HeadLabel    = "head"
-)
-
+// Paths represents a low-level Swagger / OpenAPI Paths object.
 type Paths struct {
 	PathItems  map[low.KeyReference[string]]low.ValueReference[*PathItem]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// FindPath attempts to locate a PathItem instance, given a path key.
 func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 	for k, j := range p.PathItems {
 		if k.Value == path {
@@ -35,10 +26,12 @@ func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 	return nil
 }
 
+// FindExtension will attempt to locate an extension value given a name.
 func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
 }
 
+// Build will extract extensions and paths from node.
 func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false

@@ -9,7 +9,8 @@ import (
 	"io/ioutil"
 )
 
-func Example_createLowDocument() {
+// How to create a low-level OpenAPI 3+ Document from an OpenAPI specification
+func Example_createLowLevelOpenAPIDocument() {
 	// How to create a low-level OpenAPI 3 Document
 
 	// load petstore into bytes

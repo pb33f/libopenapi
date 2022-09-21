@@ -11,12 +11,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Responses is a low-level representation of a Swagger / OpenAPI 2 Responses object.
 type Responses struct {
 	Codes      map[low.KeyReference[string]]low.ValueReference[*Response]
 	Default    low.NodeReference[*Response]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// Build will extract default value and extensions from node.
 func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 
@@ -42,6 +44,7 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
+// FindResponseByCode will attempt to locate a Response instance using an HTTP response code string.
 func (r *Responses) FindResponseByCode(code string) *low.ValueReference[*Response] {
 	return low.FindItemInMap[*Response](code, r.Codes)
 }
