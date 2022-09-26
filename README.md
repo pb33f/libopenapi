@@ -10,46 +10,54 @@ libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1.
 
 ## Introduction - Why?
 
-There is already a great OpenAPI library for golang, it's called [kin-openapi](https://github.com/getkin/kin-openapi).
+There is already a really great OpenAPI library for golang, it's called [kin-openapi](https://github.com/getkin/kin-openapi).
 
-### So why does this exist?
+### Why does `libopenapi` exist?
 
-[kin-openapi](https://github.com/getkin/kin-openapi) is great, and you should use it. 
+[kin-openapi](https://github.com/getkin/kin-openapi) is great, and you should go and use it.
 
->  **_However, kin-openapi missing one critical feature_**... It's so important, this library exists because of it.
+#### If you're still reading, here is why `libopenapi` might be useful.
+
+>  **_kin-openapi missing a few critical features_**... They are so important, this entire toolset was created to address
+> those gaps.
 
 When building tooling that needs to analyze OpenAPI specifications at a *low* level, [kin-openapi](https://github.com/getkin/kin-openapi)
-**runs out of power** when you need to know the original line numbers and columns, or comments within all keys and values in the spec.
+**runs out of power** when you need to know the original line numbers and columns, or comments within all keys and values 
+in the specification.
 
-All that data is **lost** when the spec is loaded in by [kin-openapi](https://github.com/getkin/kin-openapi). It's mainly
-because the library will unmarshal data directly into structs, which works great - if you don't need access to the original 
-specification low level details.
+All that data is **lost** when the OpenAPI specification is loaded in by [kin-openapi](https://github.com/getkin/kin-openapi). 
+Mainly because the library will unmarshal data **directly into structs**, which works great - if you **_don't_** need 
+access to the original specification low level details.
 
-Want to build a linter? Analysis tool? Renderer that retains original positions? 
+### Why not just modify kin-openapi?
+
+It would require a fundamental re-build of the entire library, with a different design to expose the same functionality.
+
+---
 
 ## libopenapi retains _everything_.
 
-libopenapi has been designed to retain all of that really low-level detail about the AST, line numbers, column numbers, comments, 
-original AST structure - everything you could need.
+`libopenapi` has been designed to retain all of that really low-level detail about the AST, line numbers, column numbers, 
+comments, original AST structure - everything you could need.
 
-libopenapi has a **porcelain** (high-level) and a **plumbing** (low-level) API. Every high level struct, has the 
-ability to `GoLow` and dive from the high-level model, down to the low-level model and look-up any detail about the 
+`libopenapi` has a **porcelain** (high-level) and a **plumbing** (low-level) API. Every high level struct, has the 
+ability to `GoLow()` and dive from the high-level model, down to the low-level model and look-up any detail about the 
 underlying raw data backing that model.
 
 This library exists because this very need existed inside [VMware](https://vmware.com). The company built an internal 
-version of libopenapi, which isn't something that can be released as it's customized for VMware (and it's incomplete).
+version of `libopenapi`, which isn't something that can be released as it's customized for VMware (and it's incomplete).
 
-libopenapi is the result of years of learning and battle testing OpenAPI in golang. This library represents what would
+`libopenapi` is the result of years of learning and battle testing OpenAPI in golang. This library represents what would
 have been created, if we knew then - what we know now.
 
-> If you need to know which line, or column a key or value for something is? **libopenapi has you covered**
+> Need to know which **line**, or **column** number a key or value for something is? **`libopenapi` has you covered**.
 
 ## Comes with an Index and a Resolver
 
-Want a lightning fast way to look up any element in an OpenAPI swagger spec? **libopenapi has you covered**
+Want a lightning fast way to look up any element in an OpenAPI swagger spec? **`libopenapi` has you covered**.
 
 Need a way to 'resolve' OpenAPI documents that are exploded out across multiple files, remotely or locally? 
-**libopenapi has you covered**
+**`libopenapi` has you covered**.
 
 > **Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)**
 
