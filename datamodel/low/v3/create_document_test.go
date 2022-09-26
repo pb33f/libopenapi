@@ -212,7 +212,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	param := burgerId.Value.Get.Value.Parameters.Value[1]
 	assert.Equal(t, "burgerHeader", param.Value.Name.Value)
 	prop := param.Value.Schema.Value.Schema().FindProperty("burgerTheme").Value
-	assert.Equal(t, "something about a theme?", prop.Schema().Description.Value)
+	assert.Equal(t, "something about a theme goes in here?", prop.Schema().Description.Value)
 	assert.Equal(t, "big-mac", param.Value.Example.Value)
 
 	// check content
@@ -284,7 +284,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Len(t, okCode.Value.Headers.Value, 1)
 	okheader := okCode.Value.FindHeader("UseOil")
 	assert.NotNil(t, okheader.Value)
-	assert.Equal(t, "this is a header", okheader.Value.Description.Value)
+	assert.Equal(t, "this is a header example for UseOil", okheader.Value.Description.Value)
 
 	respContent := okCode.Value.FindContent("application/json").Value
 	assert.NotNil(t, respContent)
@@ -432,7 +432,7 @@ func TestCreateDocument_Components_Headers(t *testing.T) {
 
 	useOil := components.FindHeader("UseOil")
 	assert.NotNil(t, useOil.Value)
-	assert.Equal(t, "this is a header", useOil.Value.Description.Value)
+	assert.Equal(t, "this is a header example for UseOil", useOil.Value.Description.Value)
 	assert.Equal(t, "string", useOil.Value.Schema.Value.Schema().Type.Value.A)
 }
 

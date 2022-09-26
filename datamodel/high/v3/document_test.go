@@ -217,7 +217,7 @@ func TestNewDocument_Components_Headers(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
 	assert.Len(t, h.Components.Headers, 1)
-	assert.Equal(t, "this is a header", h.Components.Headers["UseOil"].Description)
+	assert.Equal(t, "this is a header example for UseOil", h.Components.Headers["UseOil"].Description)
 	assert.Equal(t, 318, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Column)
 }
