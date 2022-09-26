@@ -4,6 +4,7 @@
 package index
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"io/ioutil"
@@ -571,4 +572,40 @@ func TestSpecIndex_lookupFileReference(t *testing.T) {
 	assert.NotNil(t, doc)
 	assert.NotNil(t, k)
 
+}
+
+// Example of how to load in an OpenAPI Specification and index it.
+func ExampleNewSpecIndex() {
+
+	// define a rootNode to hold our raw spec AST.
+	var rootNode yaml.Node
+
+	// load in the stripe OpenAPI specification into bytes (it's pretty meaty)
+	stripeSpec, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+
+	// unmarshal spec into our rootNode
+	yaml.Unmarshal(stripeSpec, &rootNode)
+
+	// create a new specification index.
+	index := NewSpecIndex(&rootNode)
+
+	// print out some statistics
+	fmt.Printf("There are %d references\n"+
+		"%d paths\n"+
+		"%d operations\n"+
+		"%d schemas\n"+
+		"%d enums\n"+
+		"%d polymorphic references",
+		len(index.GetAllCombinedReferences()),
+		len(index.GetAllPaths()),
+		index.GetOperationCount(),
+		len(index.GetAllSchemas()),
+		len(index.GetAllEnums()),
+		len(index.GetPolyOneOfReferences())+len(index.GetPolyAnyOfReferences()))
+	// Output: There are 537 references
+	// 246 paths
+	// 402 operations
+	// 537 schemas
+	// 1516 enums
+	// 828 polymorphic references
 }
