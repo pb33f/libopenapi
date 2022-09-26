@@ -89,7 +89,8 @@ func readSpec() {
         for i := range errors {
             fmt.Printf("error: %e\n", errors[i])
         }
-        panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+        panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", 
+            len(errors)))
     }
     
     // get a count of the number of paths and schemas.
@@ -134,7 +135,8 @@ func readSpec() {
         for i := range errors {
             fmt.Printf("error: %e\n", errors[i])    
         }
-        panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+        panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", 
+            len(errors)))
     }
     
     // get a count of the number of paths and schemas.
@@ -155,7 +157,8 @@ There are 14 paths and 6 schemas in the document
 ### Dropping down from the high-level API to the low-level one
 
 This example shows how after loading an OpenAPI spec into a document, navigating to an Operation is pretty simple. 
-It then shows how to _drop-down_ (using `GoLow())` to the low-level API and query the line and start column of the RequestBody description.
+It then shows how to _drop-down_ (using `GoLow())` to the low-level API and query the line and start 
+column of the RequestBody description.
 
 ```go
 // load an OpenAPI 3 specification from bytes
@@ -190,8 +193,8 @@ fmt.Printf("value is %s, the value is on line %d, " +
 ## But wait, there's more - Mutating the model
 
 Having a read-only model is great, but what about when we want to modify the model and mutate values, or even add new
-content to the model? What if we also want to save that output as an updated specification - but we don't want to jumble up
-the original ordering of the source.
+content to the model? What if we also want to save that output as an updated specification - but we don't want to 
+jumble up the original ordering of the source.
 
 ### marshaling and unmarshalling to and from structs into JSON/YAML is not ideal.
 
@@ -380,13 +383,17 @@ index := index.NewSpecIndex(&rootNode)
 resolver := NewResolver(index)
 
 // resolve the document, if there are circular reference errors, they are returned/
-// WARNING: this is a destructive action and the rootNode will be PERMANENTLY altered and cannot be unresolved
+// WARNING: this is a destructive action and the rootNode will be 
+// PERMANENTLY altered and cannot be unresolved
 circularErrors := resolver.Resolve()
 
-// The Stripe API has a bunch of circular reference problems, mainly from polymorphism.
-// So let's print them out.
-fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
-len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
+// The Stripe API has a bunch of circular reference problems, 
+// mainly from polymorphism. So let's print them out.
+fmt.Printf("There are %d circular reference errors, " +
+    "%d of them are polymorphic errors, %d are not",
+    len(circularErrors), 
+    len(resolver.GetPolymorphicCircularErrors()), 
+    len(resolver.GetNonPolymorphicCircularErrors()))
 ```
 
 This will output: 
@@ -422,10 +429,13 @@ resolver := NewResolver(index)
 // extract circular reference errors without any changes to the original tree.
 circularErrors := resolver.CheckForCircularReferences()
 
-// The Stripe API has a bunch of circular reference problems, mainly from polymorphism.
-// So let's print them out.
-fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
-len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
+// The Stripe API has a bunch of circular reference problems, 
+// mainly from polymorphism. So let's print them out.
+fmt.Printf("There are %d circular reference errors, " +
+    "%d of them are polymorphic errors, %d are not",
+    len(circularErrors),
+    len(resolver.GetPolymorphicCircularErrors()),
+    len(resolver.GetNonPolymorphicCircularErrors()))
 ```
 
 ---
