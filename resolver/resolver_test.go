@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -172,4 +173,35 @@ func TestResolver_ResolveComponents_k8s(t *testing.T) {
 
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 1)
+}
+
+// Example of how to resolve the Stripe OpenAPI specification, and check for circular reference errors
+func ExampleNewResolver() {
+
+	// create a yaml.Node reference as a root node.
+	var rootNode yaml.Node
+
+	//  load in the Stripe OpenAPI spec (lots of polymorphic complexity in here)
+	stripeBytes, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+
+	// unmarshal bytes into our rootNode.
+	_ = yaml.Unmarshal(stripeBytes, &rootNode)
+
+	// create a new spec index (resolver depends on it)
+	index := index.NewSpecIndex(&rootNode)
+
+	// create a new resolver using the index.
+	resolver := NewResolver(index)
+
+	// resolve the document, if there are circular reference errors, they are returned/
+	// WARNING: this is a destructive action and the rootNode will be PERMANENTLY altered and cannot be unresolved
+	circularErrors := resolver.Resolve()
+
+	// The Stripe API has a bunch of circular reference problems, mainly from polymorphism.
+	// So let's print them out.
+	//
+	fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
+		len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
+	// Output: There are 21 circular reference errors, 19 of them are polymorphic errors, 2 are not
+
 }
