@@ -82,7 +82,7 @@ func readSpec() {
     petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
     
     // create a new document from specification bytes
-    document, err := NewDocument(petstore)
+    document, err := libopenapi.NewDocument(petstore)
     
     // if anything went wrong, an error is thrown
     if err != nil {
@@ -128,7 +128,7 @@ func readSpec() {
     petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
     
     // create a new document from specification bytes
-    document, err := NewDocument(petstore)
+    document, err := libeopnapi.NewDocument(petstore)
     
     // if anything went wrong, an error is thrown
     if err != nil {
@@ -174,7 +174,7 @@ petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
 
 // create a new document from specification bytes 
 // (ignore errors for the same of the example)
-document, _ := NewDocument(petstore)
+document, _ := libopenapi.NewDocument(petstore)
 
 // because we know this is a v3 spec, we can build a ready to go model from it 
 // (ignoring errors for the example)
@@ -232,7 +232,7 @@ info:
     url: http://some-place-on-the-internet.com/license
 `
 // create a new document from specification bytes
-document, err := NewDocument([]byte(spec))
+document, err := libopenapi.NewDocument([]byte(spec))
 
 // if anything went wrong, an error is thrown
 if err != nil {
@@ -308,7 +308,7 @@ stripeSpec, _ := ioutil.ReadFile("test_specs/stripe.yaml")
 yaml.Unmarshal(stripeSpec, &rootNode)
 
 // create a new specification index.
-index := NewSpecIndex(&rootNode)
+index := index.NewSpecIndex(&rootNode)
 
 // print out some statistics
 fmt.Printf("There are %d references\n"+
@@ -375,6 +375,11 @@ Using the Stripe API as an example, we can resolve all references, and then coun
 were found.
 
 ```go
+import (
+    "github.com/pb33f/libopenapi/index"
+    "github.com/pb33f/libopenapi/resolver"
+)
+
 // create a yaml.Node reference as a root node.
 var rootNode yaml.Node
 
@@ -388,7 +393,7 @@ _ = yaml.Unmarshal(stripeBytes, &rootNode)
 index := index.NewSpecIndex(&rootNode)
 
 // create a new resolver using the index.
-resolver := NewResolver(index)
+resolver := resolver.NewResolver(index)
 
 // resolve the document, if there are circular reference errors, they are returned/
 // WARNING: this is a destructive action and the rootNode will be 
@@ -419,6 +424,11 @@ The same code as `Resolve()` executes, except the tree is **not actually resolve
 occurs. A handy way to perform circular reference analysis on the specification, without permanently altering it.
 
 ```go
+import (
+    "github.com/pb33f/libopenapi/index" 
+    "github.com/pb33f/libopenapi/resolver"
+)
+
 // create a yaml.Node reference as a root node.
 var rootNode yaml.Node
 
@@ -432,7 +442,7 @@ _ = yaml.Unmarshal(stripeBytes, &rootNode)
 index := index.NewSpecIndex(&rootNode)
 
 // create a new resolver using the index.
-resolver := NewResolver(index)
+resolver := resolver.NewResolver(index)
 
 // extract circular reference errors without any changes to the original tree.
 circularErrors := resolver.CheckForCircularReferences()
