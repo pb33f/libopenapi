@@ -106,15 +106,17 @@ func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) erro
 						dat = keyValues
 					}
 				}
-				res[low.KeyReference[string]{
-					Value:   currSec.Value,
-					KeyNode: currSec,
-				}] = dat
-				requirements = append(requirements,
-					low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]{
-						Value:     res,
-						ValueNode: n,
-					})
+				if currSec != nil {
+					res[low.KeyReference[string]{
+						Value:   currSec.Value,
+						KeyNode: currSec,
+					}] = dat
+					requirements = append(requirements,
+						low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]{
+							Value:     res,
+							ValueNode: n,
+						})
+				}
 			}
 		}
 		sr.ValueRequirements = requirements
