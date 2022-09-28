@@ -38,4 +38,6 @@ const (
 	PasswordLabel          = "password"
 	ClientCredentialsLabel = "clientCredentials"
 	AuthorizationCodeLabel = "authorizationCode"
+	DescriptionLabel       = "description"
+	URLLabel               = "url"
 )
