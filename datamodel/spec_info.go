@@ -89,10 +89,10 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 
 		if spec.SpecType == utils.OpenApi3 {
 			switch spec.Version {
-			case "3.0.0", "3.0.1", "3.0", "3":
-				spec.APISchema = OpenAPI3SchemaData
-			case "3.1.0":
+			case "3.1.0", "3.1":
 				spec.APISchema = OpenAPI31SchemaData
+			default:
+				spec.APISchema = OpenAPI3SchemaData
 			}
 		}
 		if spec.SpecType == utils.OpenApi2 {
