@@ -37,20 +37,45 @@ func (c *ChangeContext) HasChanged() bool {
 	return c.NewLine != c.OrigLine || c.NewCol != c.OrigCol
 }
 
-type Change struct {
-	Context    *ChangeContext
-	ChangeType int
-	Property   string
-	Original   string
-	New        string
+type Change[T any] struct {
+	Context        *ChangeContext
+	ChangeType     int
+	Property       string
+	Original       string
+	New            string
+	Breaking       bool
+	OriginalObject T
+	NewObject      T
 }
 
-type PropertyChanges struct {
-	Changes []*Change
+type PropertyChanges[T any] struct {
+	Changes []*Change[T]
 }
 
 type Changes struct {
 	TagChanges *TagChanges
+}
+
+func CreateChange[T any](changes *[]*Change[T], changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
+	breaking bool, originalObject, newObject T) *[]*Change[T] {
+
+	ctx := CreateContext(leftValueNode, rightValueNode)
+	c := &Change[T]{
+		Context:    ctx,
+		ChangeType: changeType,
+		Property:   property,
+		Breaking:   breaking,
+	}
+	if leftValueNode != nil && leftValueNode.Value != "" {
+		c.Original = leftValueNode.Value
+	}
+	if rightValueNode != nil && rightValueNode.Value != "" {
+		c.New = rightValueNode.Value
+	}
+	c.OriginalObject = originalObject
+	c.NewObject = newObject
+	*changes = append(*changes, c)
+	return changes
 }
 
 //func WhatChangedBetweenDocuments(leftDocument, rightDocument *lowv3.Document) *WhatChanged {
@@ -80,93 +105,3 @@ func CreateContext(l, r *yaml.Node) *ChangeContext {
 	}
 	return ctx
 }
-
-//
-//func compareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
-//
-//	tc := new(TagChanges)
-//
-//	// look at the original and then look through the new.
-//	seenLeft := make(map[string]*low.ValueReference[*lowbase.Tag])
-//	seenRight := make(map[string]*low.ValueReference[*lowbase.Tag])
-//	for i := range l {
-//		seenLeft[strings.ToLower(l[i].Value.Name.Value)] = &l[i]
-//	}
-//	for i := range r {
-//		seenRight[strings.ToLower(l[i].Value.Name.Value)] = &l[i]
-//	}
-//
-//	for i := range seenLeft {
-//		if seenRight[i] == nil {
-//			// deleted
-//			//ctx := CreateContext(seenLeft[i].ValueNode, nil)
-//			//tc.Changes =
-//
-//		}
-//		if seenRight[i] != nil {
-//
-//			// potentially modified and or moved
-//		}
-//	}
-//
-//	for i := range seenRight {
-//		if seenLeft[i] == nil {
-//			// added
-//		}
-//	}
-//
-//	for i := range r {
-//		// if we find a match
-//		t := r[i]
-//		name := r[i].Value.Name.Value
-//		found := seenLeft[strings.ToLower(name)]
-//		if found.Value != nil {
-//
-//			// check values
-//			if found.Value.Description.Value != t.Value.Description.Value {
-//				ctx := CreateContext(found.ValueNode, t.ValueNode)
-//				changeType := Modified
-//				if ctx.HasChanged() {
-//					changeType = ModifiedAndMoved
-//				}
-//				tc.Changes = append(tc.Changes, &Change{
-//					Context:    ctx,
-//					ChangeType: changeType,
-//					Property:   lowv3.DescriptionLabel,
-//					Original:   found.Value.Description.Value,
-//					New:        t.Value.Description.Value,
-//				})
-//			}
-//
-//		} else {
-//
-//			// new stuff
-//
-//		}
-//
-//	}
-//
-//	// more tags in right hand-side
-//	if len(r) > len(l) {
-//
-//	}
-//
-//	// less tags in right hand-side
-//	if len(r) < len(l) {
-//
-//	}
-//
-//	//for i := range a {
-//	//	eq, l, c := comparePositions(a)
-//	//
-//	//}
-//
-//	return nil
-//}
-//
-//func comparePositions(left, right *yaml.Node) (bool, int, int) {
-//	if left.Line == right.Line && left.Column == right.Column {
-//		return true, 0, 0
-//	}
-//	return false, right.Line, right.Column
-//}

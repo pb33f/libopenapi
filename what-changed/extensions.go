@@ -4,13 +4,12 @@
 package what_changed
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"strings"
 )
 
 type ExtensionChanges struct {
-	PropertyChanges
+	PropertyChanges[any]
 }
 
 func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]) *ExtensionChanges {
@@ -27,24 +26,16 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 		seenRight[strings.ToLower(i.Value)] = &h
 	}
 
-	var changes []*Change
-	var changeType int
+	var changes []*Change[any]
 	for i := range seenLeft {
-		changeType = 0
 		if seenRight[i] == nil {
 			// deleted
-			changeType = PropertyRemoved
-			ctx := CreateContext(seenLeft[i].ValueNode, nil)
-			changes = append(changes, &Change{
-				Context:    ctx,
-				ChangeType: changeType,
-				Property:   i,
-				Original:   fmt.Sprintf("%v", seenLeft[i].Value),
-			})
+			CreateChange[any](&changes, PropertyRemoved, i, seenLeft[i].ValueNode, nil, false, l, nil)
 
 		}
 		if seenRight[i] != nil {
 			// potentially modified and or moved
+			var changeType int
 			ctx := CreateContext(seenLeft[i].ValueNode, seenRight[i].ValueNode)
 			if seenLeft[i].Value != seenRight[i].Value {
 				changeType = Modified
@@ -57,26 +48,14 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 				}
 			}
 			if changeType != 0 {
-				changes = append(changes, &Change{
-					Context:    ctx,
-					ChangeType: changeType,
-					Property:   i,
-					Original:   fmt.Sprintf("%v", seenLeft[i].Value),
-					New:        fmt.Sprintf("%v", seenRight[i].Value),
-				})
+				CreateChange[any](&changes, changeType, i, seenLeft[i].ValueNode, seenRight[i].ValueNode, false, l, r)
 			}
 		}
 	}
 	for i := range seenRight {
 		if seenLeft[i] == nil {
 			// added
-			ctx := CreateContext(nil, seenRight[i].ValueNode)
-			changes = append(changes, &Change{
-				Context:    ctx,
-				ChangeType: PropertyAdded,
-				Property:   i,
-				New:        fmt.Sprintf("%v", seenRight[i].Value),
-			})
+			CreateChange[any](&changes, PropertyAdded, i, nil, seenRight[i].ValueNode, false, nil, r)
 		}
 	}
 

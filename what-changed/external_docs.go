@@ -10,7 +10,7 @@ import (
 )
 
 type ExternalDocChanges struct {
-	PropertyChanges
+	PropertyChanges[*lowbase.ExternalDoc]
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -23,7 +23,7 @@ func (e *ExternalDocChanges) TotalChanges() int {
 }
 
 func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
-	var changes []*Change
+	var changes []*Change[*lowbase.ExternalDoc]
 	changeType := 0
 	if l != nil && r != nil && l.URL.Value != r.URL.Value {
 		changeType = Modified
@@ -31,13 +31,8 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 		if ctx.HasChanged() {
 			changeType = ModifiedAndMoved
 		}
-		changes = append(changes, &Change{
-			Context:    ctx,
-			ChangeType: changeType,
-			Property:   lowv3.URLLabel,
-			Original:   l.URL.Value,
-			New:        r.URL.Value,
-		})
+		CreateChange[*lowbase.ExternalDoc](&changes, changeType, lowv3.URLLabel, l.URL.ValueNode,
+			r.URL.ValueNode, false, l, r)
 	}
 	if l != nil && r != nil && l.Description.Value != r.Description.Value {
 		changeType = Modified
@@ -45,13 +40,8 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 		if ctx.HasChanged() {
 			changeType = ModifiedAndMoved
 		}
-		changes = append(changes, &Change{
-			Context:    ctx,
-			ChangeType: changeType,
-			Property:   lowv3.DescriptionLabel,
-			Original:   l.Description.Value,
-			New:        r.Description.Value,
-		})
+		CreateChange[*lowbase.ExternalDoc](&changes, changeType, lowv3.DescriptionLabel, l.Description.ValueNode,
+			r.Description.ValueNode, false, l, r)
 	}
 	if changeType == 0 {
 		// no change, return nothing.
