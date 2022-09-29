@@ -49,11 +49,6 @@ type PropertyChanges struct {
 	Changes []*Change
 }
 
-type TagChanges struct {
-	PropertyChanges
-	ExternalDocs *ExternalDocChanges
-}
-
 type Changes struct {
 	TagChanges *TagChanges
 }
