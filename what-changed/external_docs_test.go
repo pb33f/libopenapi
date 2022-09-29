@@ -38,6 +38,7 @@ x-testing: hiya!`
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Len(t, extChanges.ExtensionChanges.Changes, 1)
 	assert.Len(t, extChanges.Changes, 2)
+	assert.Equal(t, 3, extChanges.TotalChanges())
 
 	// validate property changes
 	urlChange := extChanges.Changes[0]

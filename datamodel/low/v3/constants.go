@@ -40,4 +40,5 @@ const (
 	AuthorizationCodeLabel = "authorizationCode"
 	DescriptionLabel       = "description"
 	URLLabel               = "url"
+	NameLabel              = "name"
 )

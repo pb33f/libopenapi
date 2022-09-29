@@ -14,6 +14,14 @@ type ExternalDocChanges struct {
 	ExtensionChanges *ExtensionChanges
 }
 
+func (e *ExternalDocChanges) TotalChanges() int {
+	c := len(e.Changes)
+	if e.ExtensionChanges != nil {
+		c += len(e.ExtensionChanges.Changes)
+	}
+	return c
+}
+
 func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 	var changes []*Change
 	changeType := 0

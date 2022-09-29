@@ -16,6 +16,19 @@ type Buildable[T any] interface {
 	*T
 }
 
+// HasValueNode is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
+type HasValueNode[T any] interface {
+	GetValueNode() *yaml.Node
+	*T
+}
+
+// HasValue is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
+type HasValue[T any] interface {
+	GetValue() T
+	GetValueNode() *yaml.Node
+	*T
+}
+
 // NodeReference is a low-level container for holding a Value of type T, as well as references to
 // a key yaml.Node that points to the key node that contains the value node, and the value node that contains
 // the actual value.
@@ -71,6 +84,16 @@ func (n NodeReference[T]) Mutate(value T) NodeReference[T] {
 	return n
 }
 
+// GetValueNode will return the yaml.Node containing the reference value node
+func (n NodeReference[T]) GetValueNode() *yaml.Node {
+	return n.ValueNode
+}
+
+// GetValue will return the  raw value of the node
+func (n NodeReference[T]) GetValue() T {
+	return n.Value
+}
+
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
 func (n ValueReference[T]) IsEmpty() bool {
 	return n.ValueNode == nil
@@ -79,6 +102,16 @@ func (n ValueReference[T]) IsEmpty() bool {
 // GenerateMapKey will return a string based on the line and column number of the node, e.g. 33:56 for line 33, col 56.
 func (n ValueReference[T]) GenerateMapKey() string {
 	return fmt.Sprintf("%d:%d", n.ValueNode.Line, n.ValueNode.Column)
+}
+
+// GetValueNode will return the yaml.Node containing the reference value node
+func (n ValueReference[T]) GetValueNode() *yaml.Node {
+	return n.ValueNode
+}
+
+// GetValue will return the  raw value of the node
+func (n ValueReference[T]) GetValue() T {
+	return n.Value
 }
 
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
