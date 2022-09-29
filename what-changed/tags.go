@@ -4,7 +4,6 @@
 package what_changed
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -12,7 +11,7 @@ import (
 )
 
 type TagChanges struct {
-	PropertyChanges
+	PropertyChanges[*lowbase.Tag]
 	ExternalDocs     *ExternalDocChanges
 	ExtensionChanges *ExtensionChanges
 }
@@ -43,22 +42,14 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 		seenRight[strings.ToLower(r[i].Value.Name.Value)] = &h
 	}
 
-	var changes []*Change
-	var changeType int
+	var changes []*Change[*lowbase.Tag]
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {
-		changeType = 0
 		if seenRight[i] == nil {
 			// deleted
-			changeType = ObjectRemoved
-			ctx := CreateContext(seenLeft[i].ValueNode, nil)
-			changes = append(changes, &Change{
-				Context:    ctx,
-				ChangeType: changeType,
-				Property:   i,
-				Original:   fmt.Sprintf("%v", seenLeft[i].Value),
-			})
+			CreateChange[*lowbase.Tag](&changes, ObjectRemoved, i, seenLeft[i].ValueNode, nil,
+				false, seenLeft[i].Value, nil)
 			continue
 		}
 
@@ -68,45 +59,32 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 			// check if name has moved
 			ctx := CreateContext(seenLeft[i].Value.Name.ValueNode, seenRight[i].Value.Name.ValueNode)
 			if ctx.HasChanged() {
-				changeType = Moved
-				changes = append(changes, &Change{
-					Context:    ctx,
-					ChangeType: changeType,
-					Property:   lowv3.NameLabel,
-					Original:   seenLeft[i].Value.Name.Value,
-					New:        seenRight[i].Value.Name.Value,
-				})
+				CreateChange[*lowbase.Tag](&changes, Moved, lowv3.NameLabel,
+					seenLeft[i].Value.Name.ValueNode, seenRight[i].Value.Name.ValueNode,
+					false, seenLeft[i].Value, seenRight[i].Value)
+
 			}
 
 			// check if description has been modified
 			if seenLeft[i].Value.Description.Value != seenRight[i].Value.Description.Value {
+				var changeType int
 				changeType = Modified
 				ctx = CreateContext(seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode)
 				if ctx.HasChanged() {
 					changeType = ModifiedAndMoved
 				}
-				changes = append(changes, &Change{
-					Context:    ctx,
-					ChangeType: changeType,
-					Property:   lowv3.DescriptionLabel,
-					Original:   seenLeft[i].Value.Description.Value,
-					New:        seenRight[i].Value.Description.Value,
-				})
-
+				CreateChange[*lowbase.Tag](&changes, changeType, lowv3.DescriptionLabel,
+					seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode,
+					false, seenLeft[i].Value, seenRight[i].Value)
 			}
 
 			// check if description has moved
 			if seenLeft[i].Value.Description.Value == seenRight[i].Value.Description.Value {
 				ctx = CreateContext(seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode)
 				if ctx.HasChanged() {
-					changeType = Moved
-					changes = append(changes, &Change{
-						Context:    ctx,
-						ChangeType: changeType,
-						Property:   lowv3.DescriptionLabel,
-						Original:   seenLeft[i].Value.Description.Value,
-						New:        seenRight[i].Value.Description.Value,
-					})
+					CreateChange[*lowbase.Tag](&changes, Moved, lowv3.DescriptionLabel,
+						seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode,
+						false, seenLeft[i].Value, seenRight[i].Value)
 				}
 			}
 
@@ -130,13 +108,9 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 	for i := range seenRight {
 		if seenLeft[i] == nil {
 			// added
-			ctx := CreateContext(nil, seenRight[i].ValueNode)
-			changes = append(changes, &Change{
-				Context:    ctx,
-				ChangeType: ObjectAdded,
-				Property:   i,
-				New:        fmt.Sprintf("%v", seenRight[i].Value),
-			})
+			CreateChange[*lowbase.Tag](&changes, ObjectAdded, i,
+				nil, seenRight[i].ValueNode,
+				false, nil, seenRight[i].Value)
 		}
 	}
 	if len(changes) <= 0 {
