@@ -153,3 +153,109 @@ x-testing: hello`
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
 }
+
+func TestCompareExternalDocs_DescriptionAdded(t *testing.T) {
+
+	left := `url: https://pb33f.io
+x-testing: hello`
+
+	right := `url: https://pb33f.io
+description: this is a test
+x-testing: hello`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc lowbase.ExternalDoc
+	var rDoc lowbase.ExternalDoc
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	// compare.
+	extChanges := CompareExternalDocs(&lDoc, &rDoc)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareExternalDocs_URLAdded(t *testing.T) {
+
+	left := `description: hi!`
+
+	right := `description: hi!
+url: https://pb33f.io`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc lowbase.ExternalDoc
+	var rDoc lowbase.ExternalDoc
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	// compare.
+	extChanges := CompareExternalDocs(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareExternalDocs_DescriptionRemoved(t *testing.T) {
+
+	left := `url: https://pb33f.io
+description: something`
+
+	right := `url: https://pb33f.io`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc lowbase.ExternalDoc
+	var rDoc lowbase.ExternalDoc
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	// compare.
+	extChanges := CompareExternalDocs(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareExternalDocs_URLRemoved(t *testing.T) {
+
+	left := `url: https://pb33f.io
+description: something`
+
+	right := `description: something`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc lowbase.ExternalDoc
+	var rDoc lowbase.ExternalDoc
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	// compare.
+	extChanges := CompareExternalDocs(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}

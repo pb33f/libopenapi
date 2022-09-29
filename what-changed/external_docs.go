@@ -24,8 +24,41 @@ func (e *ExternalDocChanges) TotalChanges() int {
 
 func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 	var changes []*Change[*lowbase.ExternalDoc]
-	changeType := 0
-	if l != nil && r != nil && l.URL.Value != r.URL.Value {
+
+	skipURL := false
+	skipDescription := false
+
+	// check if url was removed
+	if r.URL.Value == "" && l.URL.Value != "" {
+		CreateChange[*lowbase.ExternalDoc](&changes, PropertyRemoved, lowv3.URLLabel, l.URL.ValueNode,
+			nil, false, l, nil)
+		skipURL = true
+	}
+
+	// check if description was removed
+	if r.Description.Value == "" && l.Description.Value != "" {
+		CreateChange[*lowbase.ExternalDoc](&changes, PropertyRemoved, lowv3.DescriptionLabel, l.Description.ValueNode,
+			nil, false, l, nil)
+		skipDescription = true
+	}
+
+	// check if url was added
+	if r.URL.Value != "" && l.URL.Value == "" {
+		CreateChange[*lowbase.ExternalDoc](&changes, PropertyAdded, lowv3.URLLabel, nil,
+			r.URL.ValueNode, false, nil, r)
+		skipURL = true
+	}
+
+	// check if description was added
+	if r.Description.Value != "" && l.Description.Value == "" {
+		CreateChange[*lowbase.ExternalDoc](&changes, PropertyAdded, lowv3.DescriptionLabel, nil,
+			r.Description.ValueNode, false, nil, r)
+		skipDescription = true
+	}
+
+	// if left and right URLs are set but not equal
+	if !skipURL && l != nil && r != nil && l.URL.Value != r.URL.Value {
+		var changeType int
 		changeType = Modified
 		ctx := CreateContext(l.URL.ValueNode, r.URL.ValueNode)
 		if ctx.HasChanged() {
@@ -34,7 +67,10 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 		CreateChange[*lowbase.ExternalDoc](&changes, changeType, lowv3.URLLabel, l.URL.ValueNode,
 			r.URL.ValueNode, false, l, r)
 	}
-	if l != nil && r != nil && l.Description.Value != r.Description.Value {
+
+	// if left and right descriptions are set, but not equal
+	if !skipDescription && l != nil && r != nil && l.Description.Value != r.Description.Value {
+		var changeType int
 		changeType = Modified
 		ctx := CreateContext(l.Description.ValueNode, r.Description.ValueNode)
 		if ctx.HasChanged() {
@@ -42,10 +78,6 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 		}
 		CreateChange[*lowbase.ExternalDoc](&changes, changeType, lowv3.DescriptionLabel, l.Description.ValueNode,
 			r.Description.ValueNode, false, l, r)
-	}
-	if changeType == 0 {
-		// no change, return nothing.
-		return nil
 	}
 	dc := new(ExternalDocChanges)
 	dc.Changes = changes
@@ -57,5 +89,8 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 		rExt = r.Extensions
 	}
 	dc.ExtensionChanges = CompareExtensions(lExt, rExt)
+	if len(dc.Changes) <= 0 && dc.ExtensionChanges == nil {
+		return nil
+	}
 	return dc
 }
