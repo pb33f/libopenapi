@@ -202,7 +202,7 @@ tags:
 
 	// evaluate.
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 4, changes.TotalChanges())
 
 	nameChange := changes.Changes[0]
 	assert.Equal(t, Moved, nameChange.ChangeType)

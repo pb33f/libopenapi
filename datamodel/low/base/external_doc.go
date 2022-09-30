@@ -30,3 +30,10 @@ func (ex *ExternalDoc) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	ex.Extensions = low.ExtractExtensions(root)
 	return nil
 }
+
+func (ex *ExternalDoc) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	if ex == nil {
+		return nil
+	}
+	return ex.Extensions
+}
