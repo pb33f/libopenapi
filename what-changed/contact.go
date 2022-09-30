@@ -19,61 +19,49 @@ func (c *ContactChanges) TotalChanges() int {
 func CompareContact(l, r *lowbase.Contact) *ContactChanges {
 
 	var changes []*Change[*lowbase.Contact]
-	changeType := 0
+	var props []*PropertyCheck[*lowbase.Contact]
 
-	// check if the url was added
-	if l != nil && r != nil && l.URL.Value == "" && r.URL.Value != "" {
-		changeType = PropertyAdded
-		CreateChange[*lowbase.Contact](&changes, changeType, lowv3.URLLabel,
-			nil, r.Name.ValueNode, false, l, r)
-	}
+	// check URL
+	props = append(props, &PropertyCheck[*lowbase.Contact]{
+		LeftNode:  l.URL.ValueNode,
+		RightNode: r.URL.ValueNode,
+		Label:     lowv3.URLLabel,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
 
-	// check if the name was added
-	if l != nil && r != nil && l.Name.Value == "" && r.Name.Value != "" {
-		changeType = PropertyAdded
-		CreateChange[*lowbase.Contact](&changes, changeType, lowv3.NameLabel,
-			nil, r.Name.ValueNode, false, l, r)
-	}
+	// check name
+	props = append(props, &PropertyCheck[*lowbase.Contact]{
+		LeftNode:  l.Name.ValueNode,
+		RightNode: r.Name.ValueNode,
+		Label:     lowv3.NameLabel,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
 
-	// if both urls are set, but are different.
-	if l != nil && r != nil && l.URL.Value != r.URL.Value {
-		changeType = Modified
-		ctx := CreateContext(l.URL.ValueNode, r.URL.ValueNode)
-		if ctx.HasChanged() {
-			changeType = ModifiedAndMoved
-		}
-		CreateChange(&changes, changeType, lowv3.URLLabel,
-			l.URL.ValueNode, r.Name.ValueNode, false, l, r)
-	}
+	// check email
+	props = append(props, &PropertyCheck[*lowbase.Contact]{
+		LeftNode:  l.Email.ValueNode,
+		RightNode: r.Email.ValueNode,
+		Label:     lowv3.EmailLabel,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
 
-	// if both names are set, but are different.
-	if l != nil && r != nil && l.Name.Value != r.Name.Value {
-		changeType = Modified
-		ctx := CreateContext(l.Name.ValueNode, r.Name.ValueNode)
-		if ctx.HasChanged() {
-			changeType = ModifiedAndMoved
-		}
-		CreateChange[*lowbase.Contact](&changes, changeType, lowv3.NameLabel,
-			l.Name.ValueNode, r.Name.ValueNode, false, l, r)
-	}
+	// check everything.
+	CheckProperties(props)
 
-	// if both email addresses are set, but are different.
-	if l != nil && r != nil && l.Email.Value != r.Email.Value {
-		changeType = Modified
-		ctx := CreateContext(l.Email.ValueNode, r.Email.ValueNode)
-		if ctx.HasChanged() {
-			changeType = ModifiedAndMoved
-		}
-		CreateChange[*lowbase.Contact](&changes, changeType, lowv3.EmailLabel,
-			l.Email.ValueNode, r.Email.ValueNode, false, l, r)
-	}
-
-	if changeType == 0 {
-		// no change, return nothing.
-		return nil
-	}
 	dc := new(ContactChanges)
 	dc.Changes = changes
+	if len(changes) <= 0 {
+		return nil
+	}
 	return dc
-
 }
+

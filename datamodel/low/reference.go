@@ -22,6 +22,11 @@ type HasValueNode[T any] interface {
 	*T
 }
 
+// HasExtensions is implemented by any object that exposes extensions
+type HasExtensions[T any] interface {
+	GetExtensions() map[KeyReference[string]]ValueReference[any]
+}
+
 // HasValue is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
 type HasValue[T any] interface {
 	GetValue() T

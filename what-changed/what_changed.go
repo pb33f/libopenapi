@@ -4,6 +4,7 @@
 package what_changed
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
 )
 
@@ -78,15 +79,6 @@ func CreateChange[T any](changes *[]*Change[T], changeType int, property string,
 	return changes
 }
 
-//func WhatChangedBetweenDocuments(leftDocument, rightDocument *lowv3.Document) *WhatChanged {
-//
-//	// compare tags
-//	//leftTags := leftDocument.Tags.Value
-//	//rightTags := rightDocument.Tags.Value
-//
-//	return nil
-//}
-
 func CreateContext(l, r *yaml.Node) *ChangeContext {
 	ctx := new(ChangeContext)
 	if l != nil {
@@ -104,4 +96,71 @@ func CreateContext(l, r *yaml.Node) *ChangeContext {
 		ctx.NewCol = -1
 	}
 	return ctx
+}
+
+type PropertyCheck[T any] struct {
+	Original  T
+	New       T
+	Label     string
+	LeftNode  *yaml.Node
+	RightNode *yaml.Node
+	Breaking  bool
+	Changes   *[]*Change[T]
+}
+
+func CheckProperties[T any](properties []*PropertyCheck[T]) {
+	for _, n := range properties {
+		CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		CheckForMove(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+	}
+}
+
+func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
+	label string, changes *[]*Change[T], breaking bool, orig, new T) {
+	CheckForRemoval[T](l, r, label, changes, breaking, orig, new)
+	CheckForAddition[T](l, r, label, changes, breaking, orig, new)
+}
+
+func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+	if l != nil && l.Value != "" && (r == nil || r.Value == "") {
+		CreateChange[T](changes, PropertyRemoved, label, l, r, breaking, orig, new)
+	}
+}
+
+func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+	if (l == nil || l.Value == "") && r != nil && r.Value != "" {
+		CreateChange[T](changes, PropertyAdded, label, l, r, breaking, orig, new)
+	}
+}
+
+func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value {
+		changeType := Modified
+		ctx := CreateContext(l, r)
+		if ctx.HasChanged() {
+			changeType = ModifiedAndMoved
+		}
+		CreateChange[T](changes, changeType, label, l, r, breaking, orig, new)
+	}
+}
+
+func CheckForMove[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value == l.Value { // everything is equal
+		ctx := CreateContext(l, r)
+		if ctx.HasChanged() {
+			CreateChange[T](changes, Moved, label, l, r, breaking, orig, new)
+		}
+	}
+}
+
+func CheckExtensions[T low.HasExtensions[T]](l, r T) *ExtensionChanges {
+	var lExt, rExt map[low.KeyReference[string]]low.ValueReference[any]
+	if len(l.GetExtensions()) > 0 {
+		lExt = l.GetExtensions()
+	}
+	if len(r.GetExtensions()) > 0 {
+		rExt = r.GetExtensions()
+	}
+	return CompareExtensions(lExt, rExt)
 }

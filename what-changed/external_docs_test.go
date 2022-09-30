@@ -176,7 +176,6 @@ x-testing: hello`
 	_ = rDoc.Build(rNode.Content[0], nil)
 
 	// compare.
-	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
@@ -201,7 +200,6 @@ url: https://pb33f.io`
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
-	// compare.
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -228,7 +226,6 @@ description: something`
 	_ = rDoc.Build(rNode.Content[0], nil)
 
 	// compare.
-	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
@@ -236,8 +233,8 @@ description: something`
 
 func TestCompareExternalDocs_URLRemoved(t *testing.T) {
 
-	left := `url: https://pb33f.io
-description: something`
+	left := `description: something
+url: https://pb33f.io`
 
 	right := `description: something`
 
@@ -253,8 +250,7 @@ description: something`
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
-	// compare.
-	// compare.
+	// compare
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
