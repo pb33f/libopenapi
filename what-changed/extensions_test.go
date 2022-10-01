@@ -96,7 +96,7 @@ x-test: 1`
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Len(t, extChanges.Changes, 1)
-	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 2, extChanges.Changes[0].Context.OrigLine)
 	assert.Equal(t, -1, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
@@ -120,7 +120,7 @@ x-test: 1`
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Len(t, extChanges.Changes, 1)
-	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, -1, extChanges.Changes[0].Context.OrigLine)
 	assert.Equal(t, 2, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].New)
