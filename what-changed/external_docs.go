@@ -25,7 +25,7 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 	var changes []*Change[*lowbase.ExternalDoc]
 	var props []*PropertyCheck[*lowbase.ExternalDoc]
 
-	// check URL
+	// URL
 	props = append(props, &PropertyCheck[*lowbase.ExternalDoc]{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
@@ -36,6 +36,7 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 		New:       r,
 	})
 
+	// description.
 	props = append(props, &PropertyCheck[*lowbase.ExternalDoc]{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,

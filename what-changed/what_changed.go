@@ -108,6 +108,39 @@ type PropertyCheck[T any] struct {
 	Changes   *[]*Change[T]
 }
 
+func CheckForAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change[T],
+	breakingAdd, breakingRemove bool) {
+	var left, right T
+	if CheckObjectRemoved(l, r) {
+		left = l[label].GetValue()
+		CreateChange[T](changes, ObjectRemoved, label, l[label].GetValueNode(), nil,
+			breakingRemove, left, right)
+	}
+	if added, key := CheckObjectAdded(l, r); added {
+		right = r[key].GetValue()
+		CreateChange[T](changes, ObjectAdded, label, nil, r[key].GetValueNode(),
+			breakingAdd, left, right)
+	}
+}
+
+func CheckObjectRemoved[T any](l, r map[string]*T) bool {
+	for i := range l {
+		if r[i] == nil {
+			return true
+		}
+	}
+	return false
+}
+
+func CheckObjectAdded[T any](l, r map[string]*T) (bool, string) {
+	for i := range r {
+		if l[i] == nil {
+			return true, i
+		}
+	}
+	return false, ""
+}
+
 func CheckProperties[T any](properties []*PropertyCheck[T]) {
 	for _, n := range properties {
 		CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)

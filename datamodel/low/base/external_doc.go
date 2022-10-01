@@ -31,6 +31,7 @@ func (ex *ExternalDoc) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
+// GetExtensions returns all ExternalDoc extensions and satisfies the low.HasExtensions interface.
 func (ex *ExternalDoc) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
 	if ex == nil {
 		return nil
