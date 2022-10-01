@@ -46,57 +46,41 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {
-		if seenRight[i] == nil {
-			// deleted
-			CreateChange[*lowbase.Tag](&changes, ObjectRemoved, i, seenLeft[i].ValueNode, nil,
-				false, seenLeft[i].Value, nil)
-			continue
-		}
+
+		CheckForAdditionOrRemoval[*lowbase.Tag](seenLeft, seenRight, i, &changes, false, true)
 
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {
 
-			// check if name has moved
-			ctx := CreateContext(seenLeft[i].Value.Name.ValueNode, seenRight[i].Value.Name.ValueNode)
-			if ctx.HasChanged() {
-				CreateChange[*lowbase.Tag](&changes, Moved, lowv3.NameLabel,
-					seenLeft[i].Value.Name.ValueNode, seenRight[i].Value.Name.ValueNode,
-					false, seenLeft[i].Value, seenRight[i].Value)
+			var props []*PropertyCheck[*lowbase.Tag]
 
-			}
+			// Name
+			props = append(props, &PropertyCheck[*lowbase.Tag]{
+				LeftNode:  seenLeft[i].Value.Name.ValueNode,
+				RightNode: seenRight[i].Value.Name.ValueNode,
+				Label:     lowv3.NameLabel,
+				Changes:   &changes,
+				Breaking:  true,
+				Original:  seenLeft[i].Value,
+				New:       seenRight[i].Value,
+			})
 
-			// check if description has been modified
-			if seenLeft[i].Value.Description.Value != seenRight[i].Value.Description.Value {
-				var changeType int
-				changeType = Modified
-				ctx = CreateContext(seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode)
-				if ctx.HasChanged() {
-					changeType = ModifiedAndMoved
-				}
-				CreateChange[*lowbase.Tag](&changes, changeType, lowv3.DescriptionLabel,
-					seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode,
-					false, seenLeft[i].Value, seenRight[i].Value)
-			}
+			// Description
+			props = append(props, &PropertyCheck[*lowbase.Tag]{
+				LeftNode:  seenLeft[i].Value.Description.ValueNode,
+				RightNode: seenRight[i].Value.Description.ValueNode,
+				Label:     lowv3.DescriptionLabel,
+				Changes:   &changes,
+				Breaking:  true,
+				Original:  seenLeft[i].Value,
+				New:       seenRight[i].Value,
+			})
 
-			// check if description has moved
-			if seenLeft[i].Value.Description.Value == seenRight[i].Value.Description.Value {
-				ctx = CreateContext(seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode)
-				if ctx.HasChanged() {
-					CreateChange[*lowbase.Tag](&changes, Moved, lowv3.DescriptionLabel,
-						seenLeft[i].Value.Description.ValueNode, seenRight[i].Value.Description.ValueNode,
-						false, seenLeft[i].Value, seenRight[i].Value)
-				}
-			}
+			// check properties
+			CheckProperties(props)
 
-			// compare extensions
-			var lExt, rExt map[low.KeyReference[string]]low.ValueReference[any]
-			if l != nil && len(seenLeft[i].Value.Extensions) > 0 {
-				lExt = seenLeft[i].Value.Extensions
-			}
-			if r != nil && len(seenRight[i].Value.Extensions) > 0 {
-				rExt = seenRight[i].Value.Extensions
-			}
-			tc.ExtensionChanges = CompareExtensions(lExt, rExt)
+			// check extensions
+			tc.ExtensionChanges = CheckExtensions(seenLeft[i].GetValue(), seenRight[i].GetValue())
 
 			// compare external docs
 			tc.ExternalDocs = CompareExternalDocs(seenLeft[i].Value.ExternalDocs.Value,
@@ -104,15 +88,6 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 		}
 	}
 
-	// check for additions
-	for i := range seenRight {
-		if seenLeft[i] == nil {
-			// added
-			CreateChange[*lowbase.Tag](&changes, ObjectAdded, i,
-				nil, seenRight[i].ValueNode,
-				false, nil, seenRight[i].Value)
-		}
-	}
 	if len(changes) <= 0 {
 		return nil
 	}

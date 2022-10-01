@@ -37,6 +37,14 @@ func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return err
 }
 
+// GetExtensions returns all Tag extensions and satisfies the low.HasExtensions interface.
+func (t *Tag) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	if t == nil {
+		return nil
+	}
+	return t.Extensions
+}
+
 // TODO: future mutation API experiment code is here. this snippet is to re-marshal the object.
 //func (t *Tag) MarshalYAML() (interface{}, error) {
 //	m := make(map[string]interface{})
