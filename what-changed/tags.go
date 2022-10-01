@@ -47,7 +47,7 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 	// check for removals, modifications and moves
 	for i := range seenLeft {
 
-		CheckForAdditionOrRemoval[*lowbase.Tag](seenLeft, seenRight, i, &changes, false, true)
+		CheckForObjectAdditionOrRemoval[*lowbase.Tag](seenLeft, seenRight, i, &changes, false, true)
 
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {

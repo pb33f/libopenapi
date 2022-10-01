@@ -108,7 +108,7 @@ type PropertyCheck[T any] struct {
 	Changes   *[]*Change[T]
 }
 
-func CheckForAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change[T],
+func CheckForObjectAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change[T],
 	breakingAdd, breakingRemove bool) {
 	var left, right T
 	if CheckObjectRemoved(l, r) {

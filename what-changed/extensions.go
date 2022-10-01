@@ -28,37 +28,31 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 
 	var changes []*Change[any]
 	for i := range seenLeft {
-		if seenRight[i] == nil {
-			// deleted
-			CreateChange[any](&changes, PropertyRemoved, i, seenLeft[i].ValueNode, nil, false, l, nil)
 
-		}
+		CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
+
 		if seenRight[i] != nil {
-			// potentially modified and or moved
-			var changeType int
-			ctx := CreateContext(seenLeft[i].ValueNode, seenRight[i].ValueNode)
-			if seenLeft[i].Value != seenRight[i].Value {
-				changeType = Modified
-			}
-			if ctx.HasChanged() {
-				if changeType == Modified {
-					changeType = ModifiedAndMoved
-				} else {
-					changeType = Moved
-				}
-			}
-			if changeType != 0 {
-				CreateChange[any](&changes, changeType, i, seenLeft[i].ValueNode, seenRight[i].ValueNode, false, l, r)
-			}
+			var props []*PropertyCheck[any]
+
+			props = append(props, &PropertyCheck[any]{
+				LeftNode:  seenLeft[i].ValueNode,
+				RightNode: seenRight[i].ValueNode,
+				Label:     i,
+				Changes:   &changes,
+				Breaking:  false,
+				Original:  seenLeft[i].Value,
+				New:       seenRight[i].Value,
+			})
+
+			// check properties
+			CheckProperties(props)
 		}
 	}
 	for i := range seenRight {
 		if seenLeft[i] == nil {
-			// added
-			CreateChange[any](&changes, PropertyAdded, i, nil, seenRight[i].ValueNode, false, nil, r)
+			CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
 		}
 	}
-
 	if len(changes) <= 0 {
 		return nil
 	}
