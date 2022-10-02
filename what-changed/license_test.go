@@ -162,7 +162,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
-	assert.Equal(t, ModifiedAndMoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[1].ChangeType)
 }
 
