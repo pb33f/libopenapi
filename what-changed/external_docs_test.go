@@ -46,7 +46,7 @@ x-testing: hiya!`
 	assert.False(t, urlChange.Context.HasChanged())
 	assert.Equal(t, "https://pb33f.io", urlChange.Original)
 	assert.Equal(t, "https://quobix.com", urlChange.New)
-	assert.Equal(t, 1, urlChange.Context.OrigLine)
+	assert.Equal(t, 1, urlChange.Context.OriginalLine)
 	assert.Equal(t, lowv3.URLLabel, urlChange.Property)
 
 	descChange := extChanges.Changes[1]
@@ -54,8 +54,8 @@ x-testing: hiya!`
 	assert.False(t, descChange.Context.HasChanged())
 	assert.Equal(t, "this is another test", descChange.New)
 	assert.Equal(t, "this is a test", descChange.Original)
-	assert.Equal(t, 2, descChange.Context.OrigLine)
-	assert.Equal(t, 14, descChange.Context.OrigCol)
+	assert.Equal(t, 2, descChange.Context.OriginalLine)
+	assert.Equal(t, 14, descChange.Context.OriginalColumn)
 
 	// validate extensions
 	extChange := extChanges.ExtensionChanges.Changes[0]
@@ -63,8 +63,8 @@ x-testing: hiya!`
 	assert.False(t, extChange.Context.HasChanged())
 	assert.Equal(t, "hiya!", extChange.New)
 	assert.Equal(t, "hello", extChange.Original)
-	assert.Equal(t, 3, extChange.Context.OrigLine)
-	assert.Equal(t, 12, extChange.Context.OrigCol)
+	assert.Equal(t, 3, extChange.Context.OriginalLine)
+	assert.Equal(t, 12, extChange.Context.OriginalColumn)
 
 }
 
@@ -101,7 +101,7 @@ url: https://quobix.com`
 	assert.True(t, urlChange.Context.HasChanged())
 	assert.Equal(t, "https://pb33f.io", urlChange.Original)
 	assert.Equal(t, "https://quobix.com", urlChange.New)
-	assert.Equal(t, 1, urlChange.Context.OrigLine)
+	assert.Equal(t, 1, urlChange.Context.OriginalLine)
 	assert.Equal(t, 3, urlChange.Context.NewLine)
 	assert.Equal(t, lowv3.URLLabel, urlChange.Property)
 
@@ -110,10 +110,10 @@ url: https://quobix.com`
 	assert.True(t, descChange.Context.HasChanged())
 	assert.Equal(t, "this is another test", descChange.New)
 	assert.Equal(t, "this is a test", descChange.Original)
-	assert.Equal(t, 2, descChange.Context.OrigLine)
-	assert.Equal(t, 14, descChange.Context.OrigCol)
+	assert.Equal(t, 2, descChange.Context.OriginalLine)
+	assert.Equal(t, 14, descChange.Context.OriginalColumn)
 	assert.Equal(t, 1, descChange.Context.NewLine)
-	assert.Equal(t, 14, descChange.Context.NewCol)
+	assert.Equal(t, 14, descChange.Context.NewColumn)
 
 	// validate extensions
 	extChange := extChanges.ExtensionChanges.Changes[0]
@@ -121,10 +121,10 @@ url: https://quobix.com`
 	assert.True(t, extChange.Context.HasChanged())
 	assert.Equal(t, "hiya!", extChange.New)
 	assert.Equal(t, "hello", extChange.Original)
-	assert.Equal(t, 3, extChange.Context.OrigLine)
-	assert.Equal(t, 12, extChange.Context.OrigCol)
+	assert.Equal(t, 3, extChange.Context.OriginalLine)
+	assert.Equal(t, 12, extChange.Context.OriginalColumn)
 	assert.Equal(t, 2, extChange.Context.NewLine)
-	assert.Equal(t, 12, extChange.Context.NewCol)
+	assert.Equal(t, 12, extChange.Context.NewColumn)
 }
 
 func TestCompareExternalDocs_Identical(t *testing.T) {

@@ -49,7 +49,7 @@ x-test: 1`
 
 	assert.Len(t, extChanges.Changes, 1)
 	assert.Equal(t, Moved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, 2, extChanges.Changes[0].Context.OrigLine)
+	assert.Equal(t, 2, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, 1, extChanges.Changes[0].Context.NewLine)
 	assert.True(t, extChanges.Changes[0].Context.HasChanged())
 }
@@ -72,7 +72,7 @@ x-test: 1`
 
 	assert.Len(t, extChanges.Changes, 1)
 	assert.Equal(t, ModifiedAndMoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, 2, extChanges.Changes[0].Context.OrigLine)
+	assert.Equal(t, 2, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, 1, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
 	assert.Equal(t, "2", extChanges.Changes[0].New)
@@ -97,7 +97,7 @@ x-test: 1`
 
 	assert.Len(t, extChanges.Changes, 1)
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, 2, extChanges.Changes[0].Context.OrigLine)
+	assert.Equal(t, 2, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, -1, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
 	assert.True(t, extChanges.Changes[0].Context.HasChanged())
@@ -121,7 +121,7 @@ x-test: 1`
 
 	assert.Len(t, extChanges.Changes, 1)
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, -1, extChanges.Changes[0].Context.OrigLine)
+	assert.Equal(t, -1, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, 2, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].New)
 	assert.True(t, extChanges.Changes[0].Context.HasChanged())

@@ -8,11 +8,13 @@ import (
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// ExternalDocChanges represents changes made to any ExternalDoc object from an OpenAPI document.
 type ExternalDocChanges struct {
 	PropertyChanges[*lowbase.ExternalDoc]
 	ExtensionChanges *ExtensionChanges
 }
 
+// TotalChanges returns a count of everything that changed
 func (e *ExternalDocChanges) TotalChanges() int {
 	c := len(e.Changes)
 	if e.ExtensionChanges != nil {
@@ -21,6 +23,9 @@ func (e *ExternalDocChanges) TotalChanges() int {
 	return c
 }
 
+// CompareExternalDocs will compare a left (original) and a right (new) slice of ValueReference
+// nodes for any changes between them. If there are changes, then a pointer to ExternalDocChanges
+// is returned, otherwise if nothing changed - then nil is returned.
 func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 	var changes []*Change[*lowbase.ExternalDoc]
 	var props []*PropertyCheck[*lowbase.ExternalDoc]
