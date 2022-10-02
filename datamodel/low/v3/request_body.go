@@ -18,7 +18,7 @@ type RequestBody struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
-// FindExtension attemps to locate an extension using the provided name.
+// FindExtension attempts to locate an extension using the provided name.
 func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, rb.Extensions)
 }

@@ -5,14 +5,14 @@ package what_changed
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"strings"
 )
 
 // TagChanges represents changes made to the Tags object of an OpenAPI document.
 type TagChanges struct {
-	PropertyChanges[*lowbase.Tag]
+	PropertyChanges[*base.Tag]
 	ExternalDocs     *ExternalDocChanges
 	ExtensionChanges *ExtensionChanges
 }
@@ -32,12 +32,12 @@ func (t *TagChanges) TotalChanges() int {
 // CompareTags will compare a left (original) and a right (new) slice of ValueReference nodes for
 // any changes between them. If there are changes, a pointer to TagChanges is returned, if not then
 // nil is returned instead.
-func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
+func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 	tc := new(TagChanges)
 
 	// look at the original and then look through the new.
-	seenLeft := make(map[string]*low.ValueReference[*lowbase.Tag])
-	seenRight := make(map[string]*low.ValueReference[*lowbase.Tag])
+	seenLeft := make(map[string]*low.ValueReference[*base.Tag])
+	seenRight := make(map[string]*low.ValueReference[*base.Tag])
 	for i := range l {
 		h := l[i]
 		seenLeft[strings.ToLower(l[i].Value.Name.Value)] = &h
@@ -47,23 +47,23 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 		seenRight[strings.ToLower(r[i].Value.Name.Value)] = &h
 	}
 
-	var changes []*Change[*lowbase.Tag]
+	var changes []*Change[*base.Tag]
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {
 
-		CheckForObjectAdditionOrRemoval[*lowbase.Tag](seenLeft, seenRight, i, &changes, false, true)
+		CheckForObjectAdditionOrRemoval[*base.Tag](seenLeft, seenRight, i, &changes, false, true)
 
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {
 
-			var props []*PropertyCheck[*lowbase.Tag]
+			var props []*PropertyCheck[*base.Tag]
 
 			// Name
-			props = append(props, &PropertyCheck[*lowbase.Tag]{
+			props = append(props, &PropertyCheck[*base.Tag]{
 				LeftNode:  seenLeft[i].Value.Name.ValueNode,
 				RightNode: seenRight[i].Value.Name.ValueNode,
-				Label:     lowv3.NameLabel,
+				Label:     v3.NameLabel,
 				Changes:   &changes,
 				Breaking:  true,
 				Original:  seenLeft[i].Value,
@@ -71,10 +71,10 @@ func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 			})
 
 			// Description
-			props = append(props, &PropertyCheck[*lowbase.Tag]{
+			props = append(props, &PropertyCheck[*base.Tag]{
 				LeftNode:  seenLeft[i].Value.Description.ValueNode,
 				RightNode: seenRight[i].Value.Description.ValueNode,
-				Label:     lowv3.DescriptionLabel,
+				Label:     v3.DescriptionLabel,
 				Changes:   &changes,
 				Breaking:  true,
 				Original:  seenLeft[i].Value,
