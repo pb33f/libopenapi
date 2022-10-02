@@ -10,12 +10,14 @@ import (
 	"strings"
 )
 
+// TagChanges represents changes made to the Tags object of an OpenAPI document.
 type TagChanges struct {
 	PropertyChanges[*lowbase.Tag]
 	ExternalDocs     *ExternalDocChanges
 	ExtensionChanges *ExtensionChanges
 }
 
+// TotalChanges returns a count of everything that changed within tags.
 func (t *TagChanges) TotalChanges() int {
 	c := len(t.Changes)
 	if t.ExternalDocs != nil {
@@ -27,6 +29,9 @@ func (t *TagChanges) TotalChanges() int {
 	return c
 }
 
+// CompareTags will compare a left (original) and a right (new) slice of ValueReference nodes for
+// any changes between them. If there are changes, a pointer to TagChanges is returned, if not then
+// nil is returned instead.
 func CompareTags(l, r []low.ValueReference[*lowbase.Tag]) *TagChanges {
 	tc := new(TagChanges)
 

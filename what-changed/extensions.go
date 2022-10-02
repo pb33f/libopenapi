@@ -8,10 +8,17 @@ import (
 	"strings"
 )
 
+// ExtensionChanges represents any changes to custom extensions defined for an OpenAPI object.
 type ExtensionChanges struct {
 	PropertyChanges[any]
 }
 
+// CompareExtensions will compare a left and right map of Key/ValueReference models for any changes to
+// anything. This function does not try and cast the value of an extension to perform checks, it
+// will perform a basic value check.
+//
+// A current limitation relates to extensions being objects and a property of the object changes,
+// there is currently no support for knowing anything changed - so it is ignored.
 func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]) *ExtensionChanges {
 
 	// look at the original and then look through the new.

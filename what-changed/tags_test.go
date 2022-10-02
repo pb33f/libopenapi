@@ -159,13 +159,13 @@ tags:
 
 	nameChange := changes.Changes[0]
 	assert.Equal(t, Moved, nameChange.ChangeType)
-	assert.Equal(t, 4, nameChange.Context.OrigLine)
+	assert.Equal(t, 4, nameChange.Context.OriginalLine)
 	assert.Equal(t, 3, nameChange.Context.NewLine)
 	assert.True(t, nameChange.Context.HasChanged())
 
 	descChange := changes.Changes[1]
 	assert.Equal(t, Moved, descChange.ChangeType)
-	assert.Equal(t, 3, descChange.Context.OrigLine)
+	assert.Equal(t, 3, descChange.Context.OriginalLine)
 	assert.Equal(t, 5, descChange.Context.NewLine)
 	assert.True(t, descChange.Context.HasChanged())
 
@@ -206,7 +206,7 @@ tags:
 
 	nameChange := changes.Changes[0]
 	assert.Equal(t, Moved, nameChange.ChangeType)
-	assert.Equal(t, 4, nameChange.Context.OrigLine)
+	assert.Equal(t, 4, nameChange.Context.OriginalLine)
 	assert.Equal(t, 8, nameChange.Context.NewLine)
 	assert.True(t, nameChange.Context.HasChanged())
 }
@@ -246,7 +246,7 @@ tags:
 
 	descChange := changes.Changes[1]
 	assert.Equal(t, ModifiedAndMoved, descChange.ChangeType)
-	assert.Equal(t, 3, descChange.Context.OrigLine)
+	assert.Equal(t, 3, descChange.Context.OriginalLine)
 	assert.Equal(t, 5, descChange.Context.NewLine)
 	assert.Equal(t, "a lovelier tag description", descChange.Original)
 	assert.Equal(t, "a different tag description", descChange.New)

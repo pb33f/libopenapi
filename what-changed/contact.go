@@ -8,14 +8,19 @@ import (
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// ContactChanges Represent changes to a Contact object that is a child of Info, part of an OpenAPI document.
 type ContactChanges struct {
 	PropertyChanges[*lowbase.Contact]
 }
 
+// TotalChanges represents the total number of changes that have occurred to a Contact object
 func (c *ContactChanges) TotalChanges() int {
 	return len(c.Changes)
 }
 
+// CompareContact will check a left (original) and right (new) Contact object for any changes. If there
+// were any, a pointer to a ContactChanges object is returned, otherwise if nothing changed - the function
+// returns nil.
 func CompareContact(l, r *lowbase.Contact) *ContactChanges {
 
 	var changes []*Change[*lowbase.Contact]
@@ -64,4 +69,3 @@ func CompareContact(l, r *lowbase.Contact) *ContactChanges {
 	}
 	return dc
 }
-
