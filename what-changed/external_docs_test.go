@@ -97,34 +97,24 @@ url: https://quobix.com`
 
 	// validate property changes
 	urlChange := extChanges.Changes[0]
-	assert.Equal(t, ModifiedAndMoved, urlChange.ChangeType)
+	assert.Equal(t, Modified, urlChange.ChangeType)
 	assert.True(t, urlChange.Context.HasChanged())
 	assert.Equal(t, "https://pb33f.io", urlChange.Original)
 	assert.Equal(t, "https://quobix.com", urlChange.New)
-	assert.Equal(t, 1, urlChange.Context.OriginalLine)
-	assert.Equal(t, 3, urlChange.Context.NewLine)
 	assert.Equal(t, lowv3.URLLabel, urlChange.Property)
 
 	descChange := extChanges.Changes[1]
-	assert.Equal(t, ModifiedAndMoved, descChange.ChangeType)
+	assert.Equal(t, Modified, descChange.ChangeType)
 	assert.True(t, descChange.Context.HasChanged())
 	assert.Equal(t, "this is another test", descChange.New)
 	assert.Equal(t, "this is a test", descChange.Original)
-	assert.Equal(t, 2, descChange.Context.OriginalLine)
-	assert.Equal(t, 14, descChange.Context.OriginalColumn)
-	assert.Equal(t, 1, descChange.Context.NewLine)
-	assert.Equal(t, 14, descChange.Context.NewColumn)
 
 	// validate extensions
 	extChange := extChanges.ExtensionChanges.Changes[0]
-	assert.Equal(t, ModifiedAndMoved, extChange.ChangeType)
+	assert.Equal(t, Modified, extChange.ChangeType)
 	assert.True(t, extChange.Context.HasChanged())
 	assert.Equal(t, "hiya!", extChange.New)
 	assert.Equal(t, "hello", extChange.Original)
-	assert.Equal(t, 3, extChange.Context.OriginalLine)
-	assert.Equal(t, 12, extChange.Context.OriginalColumn)
-	assert.Equal(t, 2, extChange.Context.NewLine)
-	assert.Equal(t, 12, extChange.Context.NewColumn)
 }
 
 func TestCompareExternalDocs_Identical(t *testing.T) {
@@ -177,7 +167,7 @@ x-testing: hello`
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
-	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 

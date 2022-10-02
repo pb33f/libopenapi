@@ -4,15 +4,15 @@
 package what_changed
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/stretchr/testify/assert"
-	"testing"
+    "github.com/pb33f/libopenapi/datamodel"
+    lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+    "github.com/stretchr/testify/assert"
+    "testing"
 )
 
 func TestCompareTags(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - name: a tag
     description: a lovely tag
@@ -21,7 +21,7 @@ tags:
       url: https://quobix.com
       description: cool`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - name: a tag
     description: a lovelier tag description
@@ -30,31 +30,31 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Len(t, changes.Changes, 1)
-	assert.Len(t, changes.ExternalDocs.Changes, 2)
-	assert.Len(t, changes.ExtensionChanges.Changes, 1)
-	assert.Equal(t, 4, changes.TotalChanges())
+    // evaluate.
+    assert.Len(t, changes.Changes, 1)
+    assert.Len(t, changes.ExternalDocs.Changes, 2)
+    assert.Len(t, changes.ExtensionChanges.Changes, 1)
+    assert.Equal(t, 4, changes.TotalChanges())
 
-	descChange := changes.Changes[0]
-	assert.Equal(t, "a lovelier tag description", descChange.New)
-	assert.Equal(t, "a lovely tag", descChange.Original)
-	assert.Equal(t, Modified, descChange.ChangeType)
-	assert.False(t, descChange.Context.HasChanged())
+    descChange := changes.Changes[0]
+    assert.Equal(t, "a lovelier tag description", descChange.New)
+    assert.Equal(t, "a lovely tag", descChange.Original)
+    assert.Equal(t, Modified, descChange.ChangeType)
+    assert.False(t, descChange.Context.HasChanged())
 }
 
 func TestCompareTags_AddNewTag(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - name: a tag
     description: a lovelier tag description
@@ -63,7 +63,7 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - name: a tag
     description: a lovelier tag description
@@ -74,26 +74,26 @@ tags:
   - name: a new tag
     description: a cool new tag`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, 1, changes.TotalChanges())
+    // evaluate.
+    assert.Len(t, changes.Changes, 1)
+    assert.Equal(t, 1, changes.TotalChanges())
 
-	descChange := changes.Changes[0]
-	assert.Equal(t, ObjectAdded, descChange.ChangeType)
+    descChange := changes.Changes[0]
+    assert.Equal(t, ObjectAdded, descChange.ChangeType)
 }
 
 func TestCompareTags_AddDeleteTag(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - name: a tag
     description: a lovelier tag description
@@ -102,31 +102,31 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - name: a new tag
     description: a cool new tag`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Len(t, changes.Changes, 2)
-	assert.Equal(t, 2, changes.TotalChanges())
+    // evaluate.
+    assert.Len(t, changes.Changes, 2)
+    assert.Equal(t, 2, changes.TotalChanges())
 
-	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, ObjectAdded, changes.Changes[1].ChangeType)
+    assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+    assert.Equal(t, ObjectAdded, changes.Changes[1].ChangeType)
 }
 
 func TestCompareTags_DescriptionMoved(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
     name: a tag
@@ -135,7 +135,7 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - name: a tag
     x-tag: something else
@@ -144,36 +144,23 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Len(t, changes.Changes, 2)
-	assert.Equal(t, 3, changes.TotalChanges())
-
-	nameChange := changes.Changes[0]
-	assert.Equal(t, Moved, nameChange.ChangeType)
-	assert.Equal(t, 4, nameChange.Context.OriginalLine)
-	assert.Equal(t, 3, nameChange.Context.NewLine)
-	assert.True(t, nameChange.Context.HasChanged())
-
-	descChange := changes.Changes[1]
-	assert.Equal(t, Moved, descChange.ChangeType)
-	assert.Equal(t, 3, descChange.Context.OriginalLine)
-	assert.Equal(t, 5, descChange.Context.NewLine)
-	assert.True(t, descChange.Context.HasChanged())
+    // evaluate.
+    assert.Nil(t, changes)
 
 }
 
 func TestCompareTags_NameMoved(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
     name: a tag
@@ -182,7 +169,7 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
     x-tag: something else
@@ -191,29 +178,22 @@ tags:
       description: cooler
     name: a tag`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, 4, changes.TotalChanges())
-
-	nameChange := changes.Changes[0]
-	assert.Equal(t, Moved, nameChange.ChangeType)
-	assert.Equal(t, 4, nameChange.Context.OriginalLine)
-	assert.Equal(t, 8, nameChange.Context.NewLine)
-	assert.True(t, nameChange.Context.HasChanged())
+    // evaluate.
+    assert.Nil(t, changes)
 }
 
 func TestCompareTags_ModifiedAndMoved(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
     name: a tag
@@ -222,7 +202,7 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - name: a tag
     x-tag: something else
@@ -231,31 +211,29 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Len(t, changes.Changes, 2)
-	assert.Equal(t, 3, changes.TotalChanges())
+    // evaluate.
+    assert.Len(t, changes.Changes, 1)
+    assert.Equal(t, 1, changes.TotalChanges())
 
-	descChange := changes.Changes[1]
-	assert.Equal(t, ModifiedAndMoved, descChange.ChangeType)
-	assert.Equal(t, 3, descChange.Context.OriginalLine)
-	assert.Equal(t, 5, descChange.Context.NewLine)
-	assert.Equal(t, "a lovelier tag description", descChange.Original)
-	assert.Equal(t, "a different tag description", descChange.New)
-	assert.True(t, descChange.Context.HasChanged())
+    descChange := changes.Changes[0]
+    assert.Equal(t, Modified, descChange.ChangeType)
+    assert.Equal(t, "a lovelier tag description", descChange.Original)
+    assert.Equal(t, "a different tag description", descChange.New)
+    assert.True(t, descChange.Context.HasChanged())
 }
 
 func TestCompareTags_Identical(t *testing.T) {
 
-	left := `openapi: 3.0.1
+    left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
     name: a tag
@@ -264,7 +242,7 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	right := `openapi: 3.0.1
+    right := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
     name: a tag
@@ -273,16 +251,16 @@ tags:
       url: https://pb33f.io
       description: cooler`
 
-	// create document (which will create our correct tags low level structures)
-	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
-	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+    // create document (which will create our correct tags low level structures)
+    lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+    rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+    lDoc, _ := lowv3.CreateDocument(lInfo)
+    rDoc, _ := lowv3.CreateDocument(rInfo)
 
-	// compare.
-	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+    // compare.
+    changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
-	// evaluate.
-	assert.Nil(t, changes)
+    // evaluate.
+    assert.Nil(t, changes)
 
 }

@@ -105,12 +105,10 @@ func CheckObjectAdded[T any](l, r map[string]*T) (bool, string) {
 // for running checks on the following methods in order:
 //   CheckPropertyAdditionOrRemoval
 //   CheckForModification
-//   CheckForMove
 func CheckProperties[T any](properties []*PropertyCheck[T]) {
 	for _, n := range properties {
 		CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
 		CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
-		CheckForMove(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
 	}
 }
 
@@ -146,32 +144,14 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change[T
 }
 
 // CheckForModification will check left and right yaml.Node instances for changes. Anything that is found in both
-// sides, but vary in value is considered a modification. CheckForModification will also check if the position of the
-// value has changed in the source documents.
+// sides, but vary in value is considered a modification.
 //
-// If there is no change to position, but in value the function adds a change type of Modified, if there is both a change
-// in value and a change in position, then it will be set to ModifiedAndMoved
+// If there is a change in value the function adds a change type of Modified.
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value {
-		changeType := Modified
-		ctx := CreateContext(l, r)
-		if ctx.HasChanged() {
-			changeType = ModifiedAndMoved
-		}
-		CreateChange[T](changes, changeType, label, l, r, breaking, orig, new)
-	}
-}
-
-// CheckForMove will check if left and right yaml.Node instances have moved position, but not changed in value. A change
-// of type Moved is created and added to changes.
-func CheckForMove[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
-	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value == l.Value { // everything is equal
-		ctx := CreateContext(l, r)
-		if ctx.HasChanged() {
-			CreateChange[T](changes, Moved, label, l, r, breaking, orig, new)
-		}
+		CreateChange[T](changes, Modified, label, l, r, breaking, orig, new)
 	}
 }
 

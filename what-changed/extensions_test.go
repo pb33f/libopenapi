@@ -31,54 +31,6 @@ func TestCompareExtensions(t *testing.T) {
 	assert.False(t, extChanges.Changes[0].Context.HasChanged())
 }
 
-func TestCompareExtensions_Moved(t *testing.T) {
-
-	left := `pizza: pie
-x-test: 1`
-
-	right := `x-test: 1`
-
-	var lNode, rNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-	_ = yaml.Unmarshal([]byte(right), &rNode)
-
-	lExt := low.ExtractExtensions(lNode.Content[0])
-	rExt := low.ExtractExtensions(rNode.Content[0])
-
-	extChanges := CompareExtensions(lExt, rExt)
-
-	assert.Len(t, extChanges.Changes, 1)
-	assert.Equal(t, Moved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, 2, extChanges.Changes[0].Context.OriginalLine)
-	assert.Equal(t, 1, extChanges.Changes[0].Context.NewLine)
-	assert.True(t, extChanges.Changes[0].Context.HasChanged())
-}
-
-func TestCompareExtensions_ModifiedAndMoved(t *testing.T) {
-
-	left := `pizza: pie
-x-test: 1`
-
-	right := `x-test: 2`
-
-	var lNode, rNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-	_ = yaml.Unmarshal([]byte(right), &rNode)
-
-	lExt := low.ExtractExtensions(lNode.Content[0])
-	rExt := low.ExtractExtensions(rNode.Content[0])
-
-	extChanges := CompareExtensions(lExt, rExt)
-
-	assert.Len(t, extChanges.Changes, 1)
-	assert.Equal(t, ModifiedAndMoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, 2, extChanges.Changes[0].Context.OriginalLine)
-	assert.Equal(t, 1, extChanges.Changes[0].Context.NewLine)
-	assert.Equal(t, "1", extChanges.Changes[0].Original)
-	assert.Equal(t, "2", extChanges.Changes[0].New)
-	assert.True(t, extChanges.Changes[0].Context.HasChanged())
-}
-
 func TestCompareExtensions_Removed(t *testing.T) {
 
 	left := `pizza: pie

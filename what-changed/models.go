@@ -22,12 +22,6 @@ const (
 
 	// PropertyRemoved means that a property of an object was removed
 	PropertyRemoved
-
-	// Moved means that a property or an object was moved, but unchanged (line/columns changed)
-	Moved
-
-	// ModifiedAndMoved means that a property was modified, and it was also moved.
-	ModifiedAndMoved
 )
 
 // WhatChanged is a summary object that contains a high level summary of everything changed.
@@ -50,6 +44,9 @@ type ChangeContext struct {
 }
 
 // HasChanged determines if the line and column numbers of the original and new values have changed.
+//
+// It's worth noting that there is no guarantee to the positions of anything in either left or right, so
+// considering these values as 'changes' is going to add a considerable amount of noise to results.
 func (c *ChangeContext) HasChanged() bool {
 	return c.NewLine != c.OriginalLine || c.NewColumn != c.OriginalColumn
 }
@@ -57,7 +54,9 @@ func (c *ChangeContext) HasChanged() bool {
 // Change represents a change between two different elements inside an OpenAPI specification.
 type Change[T any] struct {
 
-	// Context represents the lines and column numbers of the original and new changes.
+	// Context represents the lines and column numbers of the original and new values
+	// It's worth noting that these values may frequently be different and are not used to calculate
+	// a change. If the positions change, but values do not, then no change is recorded.
 	Context *ChangeContext
 
 	// ChangeType represents the type of change that occurred. stored as an integer, defined by constants above.
