@@ -4,13 +4,13 @@
 package what_changed
 
 import (
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 // ExternalDocChanges represents changes made to any ExternalDoc object from an OpenAPI document.
 type ExternalDocChanges struct {
-	PropertyChanges[*lowbase.ExternalDoc]
+	PropertyChanges[*base.ExternalDoc]
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -26,15 +26,15 @@ func (e *ExternalDocChanges) TotalChanges() int {
 // CompareExternalDocs will compare a left (original) and a right (new) slice of ValueReference
 // nodes for any changes between them. If there are changes, then a pointer to ExternalDocChanges
 // is returned, otherwise if nothing changed - then nil is returned.
-func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
-	var changes []*Change[*lowbase.ExternalDoc]
-	var props []*PropertyCheck[*lowbase.ExternalDoc]
+func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
+	var changes []*Change[*base.ExternalDoc]
+	var props []*PropertyCheck[*base.ExternalDoc]
 
 	// URL
-	props = append(props, &PropertyCheck[*lowbase.ExternalDoc]{
+	props = append(props, &PropertyCheck[*base.ExternalDoc]{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
-		Label:     lowv3.URLLabel,
+		Label:     v3.URLLabel,
 		Changes:   &changes,
 		Breaking:  false,
 		Original:  l,
@@ -42,10 +42,10 @@ func CompareExternalDocs(l, r *lowbase.ExternalDoc) *ExternalDocChanges {
 	})
 
 	// description.
-	props = append(props, &PropertyCheck[*lowbase.ExternalDoc]{
+	props = append(props, &PropertyCheck[*base.ExternalDoc]{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,
-		Label:     lowv3.DescriptionLabel,
+		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
 		Breaking:  false,
 		Original:  l,

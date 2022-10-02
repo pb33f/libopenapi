@@ -4,13 +4,13 @@
 package what_changed
 
 import (
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 // ContactChanges Represent changes to a Contact object that is a child of Info, part of an OpenAPI document.
 type ContactChanges struct {
-	PropertyChanges[*lowbase.Contact]
+	PropertyChanges[*base.Contact]
 }
 
 // TotalChanges represents the total number of changes that have occurred to a Contact object
@@ -21,16 +21,16 @@ func (c *ContactChanges) TotalChanges() int {
 // CompareContact will check a left (original) and right (new) Contact object for any changes. If there
 // were any, a pointer to a ContactChanges object is returned, otherwise if nothing changed - the function
 // returns nil.
-func CompareContact(l, r *lowbase.Contact) *ContactChanges {
+func CompareContact(l, r *base.Contact) *ContactChanges {
 
-	var changes []*Change[*lowbase.Contact]
-	var props []*PropertyCheck[*lowbase.Contact]
+	var changes []*Change[*base.Contact]
+	var props []*PropertyCheck[*base.Contact]
 
 	// check URL
-	props = append(props, &PropertyCheck[*lowbase.Contact]{
+	props = append(props, &PropertyCheck[*base.Contact]{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
-		Label:     lowv3.URLLabel,
+		Label:     v3.URLLabel,
 		Changes:   &changes,
 		Breaking:  false,
 		Original:  l,
@@ -38,10 +38,10 @@ func CompareContact(l, r *lowbase.Contact) *ContactChanges {
 	})
 
 	// check name
-	props = append(props, &PropertyCheck[*lowbase.Contact]{
+	props = append(props, &PropertyCheck[*base.Contact]{
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
-		Label:     lowv3.NameLabel,
+		Label:     v3.NameLabel,
 		Changes:   &changes,
 		Breaking:  false,
 		Original:  l,
@@ -49,10 +49,10 @@ func CompareContact(l, r *lowbase.Contact) *ContactChanges {
 	})
 
 	// check email
-	props = append(props, &PropertyCheck[*lowbase.Contact]{
+	props = append(props, &PropertyCheck[*base.Contact]{
 		LeftNode:  l.Email.ValueNode,
 		RightNode: r.Email.ValueNode,
-		Label:     lowv3.EmailLabel,
+		Label:     v3.EmailLabel,
 		Changes:   &changes,
 		Breaking:  false,
 		Original:  l,
