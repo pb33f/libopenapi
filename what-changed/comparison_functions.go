@@ -11,7 +11,7 @@ import (
 // CreateChange is a generic function that will create a Change of type T, populate all properties if set, and then
 // add a pointer to Change[T] in the slice of Change pointers provided
 func CreateChange[T any](changes *[]*Change[T], changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
-	breaking bool, originalObject, newObject T) *[]*Change[T] {
+	breaking bool, originalObject, newObject any) *[]*Change[T] {
 
 	// create a new context for the left and right nodes.
 	ctx := CreateContext(leftValueNode, rightValueNode)

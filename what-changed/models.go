@@ -75,10 +75,10 @@ type Change[T any] struct {
 	Breaking bool
 
 	// OriginalObject represents the original object that was changed.
-	OriginalObject T
+	OriginalObject any
 
 	// NewObject represents the new object that has been modified.
-	NewObject T
+	NewObject any
 }
 
 // PropertyChanges holds a slice of Change[T] change pointers

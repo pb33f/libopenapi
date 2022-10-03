@@ -42,4 +42,9 @@ const (
 	URLLabel               = "url"
 	NameLabel              = "name"
 	EmailLabel             = "email"
+	TitleLabel             = "title"
+	TermsOfServiceLabel    = "termsOfService"
+	VersionLabel           = "version"
+	LicenseLabel           = "license"
+	ContactLabel           = "contact"
 )
