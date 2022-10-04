@@ -84,12 +84,13 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 			// check properties
 			CheckProperties(props)
 
-			// check extensions
-			tc.ExtensionChanges = CheckExtensions(seenLeft[i].GetValue(), seenRight[i].GetValue())
-
 			// compare external docs
 			tc.ExternalDocs = CompareExternalDocs(seenLeft[i].Value.ExternalDocs.Value,
 				seenRight[i].Value.ExternalDocs.Value)
+
+			// check extensions
+			tc.ExtensionChanges = CheckExtensions(seenLeft[i].GetValue(), seenRight[i].GetValue())
+
 		}
 	}
 

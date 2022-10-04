@@ -28,3 +28,7 @@ func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	x.Extensions = low.ExtractExtensions(root)
 	return nil
 }
+
+func (x *XML) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return x.Extensions
+}
