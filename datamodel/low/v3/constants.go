@@ -47,4 +47,8 @@ const (
 	VersionLabel           = "version"
 	LicenseLabel           = "license"
 	ContactLabel           = "contact"
+	NamespaceLabel         = "namespace"
+	PrefixLabel            = "prefix"
+	AttributeLabel         = "attribute"
+	WrappedLabel           = "wrapped"
 )
