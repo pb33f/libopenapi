@@ -51,4 +51,5 @@ const (
 	PrefixLabel            = "prefix"
 	AttributeLabel         = "attribute"
 	WrappedLabel           = "wrapped"
+	PropertyNameLabel      = "propertyName"
 )
