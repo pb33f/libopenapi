@@ -18,6 +18,11 @@ func (l *LicenseChanges) TotalChanges() int {
 	return len(l.Changes)
 }
 
+// TotalBreakingChanges always returns 0 for License objects, they are non-binding.
+func (l *LicenseChanges) TotalBreakingChanges() int {
+	return 0
+}
+
 // CompareLicense will check a left (original) and right (new) License object for any changes. If there
 // were any, a pointer to a LicenseChanges object is returned, otherwise if nothing changed - the function
 // returns nil.

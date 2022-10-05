@@ -86,6 +86,16 @@ type PropertyChanges[T any] struct {
 	Changes []*Change[T]
 }
 
+// TotalChanges returns the total number of property changes made.
+func (p PropertyChanges[T]) TotalChanges() int {
+	return len(p.Changes)
+}
+
+// TotalBreakingChanges returns the total number of property breaking changes made.
+func (p PropertyChanges[T]) TotalBreakingChanges() int {
+	return CountBreakingChanges(p.Changes)
+}
+
 // PropertyCheck is used by functions to check the state of left and right values.
 type PropertyCheck[T any] struct {
 

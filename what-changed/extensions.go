@@ -13,6 +13,15 @@ type ExtensionChanges struct {
 	PropertyChanges[any]
 }
 
+func (e *ExtensionChanges) TotalChanges() int {
+	return len(e.Changes)
+}
+
+// TotalBreakingChanges always returns 0 for Extension objects, they are non-binding.
+func (e *ExtensionChanges) TotalBreakingChanges() int {
+	return 0
+}
+
 // CompareExtensions will compare a left and right map of Key/ValueReference models for any changes to
 // anything. This function does not try and cast the value of an extension to perform checks, it
 // will perform a basic value check.

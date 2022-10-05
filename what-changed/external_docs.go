@@ -23,6 +23,11 @@ func (e *ExternalDocChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges always returns 0 for ExternalDoc objects, they are non-binding.
+func (e *ExternalDocChanges) TotalBreakingChanges() int {
+	return 0
+}
+
 // CompareExternalDocs will compare a left (original) and a right (new) slice of ValueReference
 // nodes for any changes between them. If there are changes, then a pointer to ExternalDocChanges
 // is returned, otherwise if nothing changed - then nil is returned.

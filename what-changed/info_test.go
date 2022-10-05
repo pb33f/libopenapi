@@ -353,6 +353,7 @@ license:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, Modified, extChanges.ContactChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.NameLabel, extChanges.ContactChanges.Changes[0].Property)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareInfo_Equal(t *testing.T) {

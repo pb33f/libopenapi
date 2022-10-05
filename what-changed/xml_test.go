@@ -73,6 +73,7 @@ namespace: something`
 	extChanges := CompareXML(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 
 }
 

@@ -29,6 +29,11 @@ func (t *TagChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the number of breaking changes made by Tags
+func (t *TagChanges) TotalBreakingChanges() int {
+	return t.PropertyChanges.TotalBreakingChanges()
+}
+
 // CompareTags will compare a left (original) and a right (new) slice of ValueReference nodes for
 // any changes between them. If there are changes, a pointer to TagChanges is returned, if not then
 // nil is returned instead.

@@ -100,13 +100,16 @@ mapping:
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
-	assert.Equal(t, ObjectAdded, extChanges.MappingChanges[0].ChangeType)
-	assert.Equal(t, ObjectAdded, extChanges.MappingChanges[1].ChangeType)
-	assert.Equal(t, "chuffing", extChanges.MappingChanges[0].Property)
-	assert.Equal(t, "puffing", extChanges.MappingChanges[0].New)
-	assert.Equal(t, "hacking", extChanges.MappingChanges[1].Property)
-	assert.Equal(t, "coding", extChanges.MappingChanges[1].New)
 
+	for _, k := range extChanges.MappingChanges {
+		assert.Equal(t, ObjectAdded, k.ChangeType)
+		if k.Property == "chuffing" {
+			assert.Equal(t, "puffing", k.New)
+		}
+		if k.Property == "hacking" {
+			assert.Equal(t, "coding", k.New)
+		}
+	}
 }
 
 func TestCompareDiscriminator_MappingRemoved(t *testing.T) {
@@ -230,7 +233,7 @@ mapping:
 	assert.Equal(t, "puffing", extChanges.MappingChanges[0].Original)
 
 	// should be a single breaking change
-	assert.Equal(t, 1, CountBreakingChanges(extChanges.MappingChanges))
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 
 }
 
