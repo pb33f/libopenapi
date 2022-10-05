@@ -14,7 +14,7 @@ type ExtensionChanges struct {
 }
 
 func (e *ExtensionChanges) TotalChanges() int {
-	return len(e.Changes)
+	return e.PropertyChanges.TotalChanges()
 }
 
 // TotalBreakingChanges always returns 0 for Extension objects, they are non-binding.
@@ -69,10 +69,10 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 			CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
 		}
 	}
-	if len(changes) <= 0 {
-		return nil
-	}
 	ex := new(ExtensionChanges)
 	ex.Changes = changes
+	if ex.TotalChanges() <= 0 {
+		return nil
+	}
 	return ex
 }

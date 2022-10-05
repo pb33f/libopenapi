@@ -17,7 +17,7 @@ type InfoChanges struct {
 
 // TotalChanges represents the total number of changes made to an Info object.
 func (i *InfoChanges) TotalChanges() int {
-	t := len(i.Changes)
+	t := i.PropertyChanges.TotalChanges()
 	if i.ContactChanges != nil {
 		t += i.ContactChanges.TotalChanges()
 	}
@@ -32,6 +32,9 @@ func (i *InfoChanges) TotalBreakingChanges() int {
 	return 0
 }
 
+// CompareInfo will compare a left (original) and a right (new) Info object. Any changes
+// will be returned in a pointer to InfoChanges, otherwise if nothing is found, then nil is
+// returned instead.
 func CompareInfo(l, r *base.Info) *InfoChanges {
 
 	var changes []*Change[*base.Info]
@@ -113,9 +116,9 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 				l.License.ValueNode, nil, false, r.License.Value, nil)
 		}
 	}
-	if len(changes) <= 0 && i.ContactChanges == nil && i.LicenseChanges == nil {
+	i.Changes = changes
+	if i.TotalChanges() <= 0 {
 		return nil
 	}
-	i.Changes = changes
 	return i
 }

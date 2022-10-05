@@ -52,4 +52,7 @@ const (
 	AttributeLabel         = "attribute"
 	WrappedLabel           = "wrapped"
 	PropertyNameLabel      = "propertyName"
+	SummaryLabel           = "summary"
+	ValueLabel             = "value"
+	ExternalValue          = "externalValue"
 )

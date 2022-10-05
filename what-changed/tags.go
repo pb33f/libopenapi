@@ -19,12 +19,12 @@ type TagChanges struct {
 
 // TotalChanges returns a count of everything that changed within tags.
 func (t *TagChanges) TotalChanges() int {
-	c := len(t.Changes)
+	c := t.PropertyChanges.TotalChanges()
 	if t.ExternalDocs != nil {
 		c += t.ExternalDocs.TotalChanges()
 	}
 	if t.ExtensionChanges != nil {
-		c += len(t.ExtensionChanges.Changes)
+		c += t.ExtensionChanges.TotalChanges()
 	}
 	return c
 }
@@ -105,10 +105,9 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 				false, nil, seenRight[i].GetValue())
 		}
 	}
-
-	if len(changes) <= 0 {
+	tc.Changes = changes
+	if tc.TotalChanges() <= 0 {
 		return nil
 	}
-	tc.Changes = changes
 	return tc
 }

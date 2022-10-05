@@ -76,11 +76,11 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 		}
 	}
 
-	if len(changes) <= 0 && len(mapping) <= 0 {
-		return nil
-	}
 	dc.Changes = changes
 	dc.MappingChanges = mapping
+	if dc.TotalChanges() <= 0 {
+		return nil
+	}
 	return dc
 
 }

@@ -16,9 +16,9 @@ type ExternalDocChanges struct {
 
 // TotalChanges returns a count of everything that changed
 func (e *ExternalDocChanges) TotalChanges() int {
-	c := len(e.Changes)
+	c := e.PropertyChanges.TotalChanges()
 	if e.ExtensionChanges != nil {
-		c += len(e.ExtensionChanges.Changes)
+		c += e.ExtensionChanges.TotalChanges()
 	}
 	return c
 }
@@ -65,7 +65,7 @@ func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 
 	// check extensions
 	dc.ExtensionChanges = CheckExtensions(l, r)
-	if len(dc.Changes) <= 0 && dc.ExtensionChanges == nil {
+	if dc.TotalChanges() <= 0 {
 		return nil
 	}
 	return dc
