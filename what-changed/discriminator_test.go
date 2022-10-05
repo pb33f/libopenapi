@@ -197,11 +197,16 @@ mapping:
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Equal(t, ObjectAdded, extChanges.MappingChanges[0].ChangeType)
-	assert.Equal(t, "hacking", extChanges.MappingChanges[0].Property)
-	assert.Equal(t, "coding", extChanges.MappingChanges[0].New)
-	assert.Equal(t, "singing", extChanges.MappingChanges[1].Property)
-	assert.Equal(t, "dancing", extChanges.MappingChanges[1].New)
 
+	for _, k := range extChanges.MappingChanges {
+		assert.Equal(t, ObjectAdded, k.ChangeType)
+		if k.Property == "hacking" {
+			assert.Equal(t, "coding", k.New)
+		}
+		if k.Property == "singing" {
+			assert.Equal(t, "dancing", k.New)
+		}
+	}
 }
 
 func TestCompareDiscriminator_SingleMappingModified(t *testing.T) {
