@@ -59,6 +59,27 @@ func CreateContext(l, r *yaml.Node) *ChangeContext {
 	return ctx
 }
 
+func FlattenLowLevelMap[T any](
+	lowMap map[low.KeyReference[string]]low.ValueReference[T]) map[string]*low.ValueReference[T] {
+	flat := make(map[string]*low.ValueReference[T])
+	for i := range lowMap {
+		l := lowMap[i]
+		flat[i.Value] = &l
+	}
+	return flat
+}
+
+// CountBreakingChanges counts the number of changes in a slice that are breaking
+func CountBreakingChanges[T any](changes []*Change[T]) int {
+	b := 0
+	for i := range changes {
+		if changes[i].Breaking {
+			b++
+		}
+	}
+	return b
+}
+
 // CheckForObjectAdditionOrRemoval will check for the addition or removal of an object from left and right maps.
 // The label is the key to look for in the left and right maps.
 //
@@ -69,36 +90,26 @@ func CreateContext(l, r *yaml.Node) *ChangeContext {
 func CheckForObjectAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change[T],
 	breakingAdd, breakingRemove bool) {
 	var left, right T
-	if CheckObjectRemoved(l, r) {
+	if CheckSpecificObjectRemoved(l, r, label) {
 		left = l[label].GetValue()
 		CreateChange[T](changes, ObjectRemoved, label, l[label].GetValueNode(), nil,
 			breakingRemove, left, right)
 	}
-	if added, key := CheckObjectAdded(l, r); added {
-		right = r[key].GetValue()
-		CreateChange[T](changes, ObjectAdded, label, nil, r[key].GetValueNode(),
+	if CheckSpecificObjectAdded(l, r, label) {
+		right = r[label].GetValue()
+		CreateChange[T](changes, ObjectAdded, label, nil, r[label].GetValueNode(),
 			breakingAdd, left, right)
 	}
 }
 
-// CheckObjectRemoved returns true if a key/value in the left map is not present in the right.
-func CheckObjectRemoved[T any](l, r map[string]*T) bool {
-	for i := range l {
-		if r[i] == nil {
-			return true
-		}
-	}
-	return false
+// CheckSpecificObjectRemoved returns true if a specific value is not in both maps.
+func CheckSpecificObjectRemoved[T any](l, r map[string]*T, label string) bool {
+	return l[label] != nil && r[label] == nil
 }
 
-// CheckObjectAdded returns true if a key/value in the right map is not present in the left.
-func CheckObjectAdded[T any](l, r map[string]*T) (bool, string) {
-	for i := range r {
-		if l[i] == nil {
-			return true, i
-		}
-	}
-	return false, ""
+// CheckSpecificObjectAdded returns true if a specific value is not in both maps.
+func CheckSpecificObjectAdded[T any](l, r map[string]*T, label string) bool {
+	return l[label] == nil && r[label] != nil
 }
 
 // CheckProperties will iterate through a slice of PropertyCheck pointers of type T. The method is a convenience method

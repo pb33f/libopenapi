@@ -94,6 +94,13 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 		}
 	}
 
+	for i := range seenRight {
+		if seenLeft[i] == nil {
+			CreateChange[*base.Tag](&changes, ObjectAdded, i, nil, seenRight[i].GetValueNode(),
+				false, nil, seenRight[i].GetValue())
+		}
+	}
+
 	if len(changes) <= 0 {
 		return nil
 	}
