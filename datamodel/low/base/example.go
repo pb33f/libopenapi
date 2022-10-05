@@ -66,6 +66,11 @@ func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
+// GetExtensions will return Example extensions to satisfy the HasExtensions interface.
+func (ex *Example) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return ex.Extensions
+}
+
 // ExtractExampleValue will extract a primitive example value (if possible), or just the raw Value property if not.
 func ExtractExampleValue(exp *yaml.Node) any {
 	if utils.IsNodeBoolValue(exp) {

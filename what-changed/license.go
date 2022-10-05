@@ -15,7 +15,7 @@ type LicenseChanges struct {
 
 // TotalChanges represents the total number of changes made to a License instance.
 func (l *LicenseChanges) TotalChanges() int {
-	return len(l.Changes)
+	return l.PropertyChanges.TotalChanges()
 }
 
 // TotalBreakingChanges always returns 0 for License objects, they are non-binding.
@@ -58,7 +58,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 
 	lc := new(LicenseChanges)
 	lc.Changes = changes
-	if len(changes) <= 0 {
+	if lc.TotalChanges() <= 0 {
 		return nil
 	}
 	return lc

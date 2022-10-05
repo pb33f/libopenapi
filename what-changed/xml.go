@@ -16,9 +16,9 @@ type XMLChanges struct {
 
 // TotalChanges returns a count of everything that was changed within an XML object.
 func (x *XMLChanges) TotalChanges() int {
-	c := len(x.Changes)
+	c := x.PropertyChanges.TotalChanges()
 	if x.ExtensionChanges != nil {
-		c += len(x.ExtensionChanges.Changes)
+		c += x.ExtensionChanges.TotalChanges()
 	}
 	return c
 }
@@ -97,7 +97,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 	// check extensions
 	xc.ExtensionChanges = CheckExtensions(l, r)
 	xc.Changes = changes
-	if len(xc.Changes) <= 0 && xc.ExtensionChanges == nil {
+	if xc.TotalChanges() <= 0 {
 		return nil
 	}
 	return xc

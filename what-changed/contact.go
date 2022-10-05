@@ -15,7 +15,7 @@ type ContactChanges struct {
 
 // TotalChanges represents the total number of changes that have occurred to a Contact object
 func (c *ContactChanges) TotalChanges() int {
-	return len(c.Changes)
+	return c.PropertyChanges.TotalChanges()
 }
 
 // TotalBreakingChanges always returns 0 for Contact objects, they are non-binding.
@@ -69,7 +69,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 
 	dc := new(ContactChanges)
 	dc.Changes = changes
-	if len(changes) <= 0 {
+	if dc.TotalChanges() <= 0 {
 		return nil
 	}
 	return dc
