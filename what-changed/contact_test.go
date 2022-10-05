@@ -189,6 +189,7 @@ email: dave@quobix.com`
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareContact_EmailModifiedAndMoved(t *testing.T) {

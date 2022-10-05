@@ -18,6 +18,11 @@ func (c *ContactChanges) TotalChanges() int {
 	return len(c.Changes)
 }
 
+// TotalBreakingChanges always returns 0 for Contact objects, they are non-binding.
+func (c *ContactChanges) TotalBreakingChanges() int {
+	return 0
+}
+
 // CompareContact will check a left (original) and right (new) Contact object for any changes. If there
 // were any, a pointer to a ContactChanges object is returned, otherwise if nothing changed - the function
 // returns nil.

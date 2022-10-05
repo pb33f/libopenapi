@@ -27,6 +27,11 @@ func (i *InfoChanges) TotalChanges() int {
 	return t
 }
 
+// TotalBreakingChanges always returns 0 for Info objects, they are non-binding.
+func (i *InfoChanges) TotalBreakingChanges() int {
+	return 0
+}
+
 func CompareInfo(l, r *base.Info) *InfoChanges {
 
 	var changes []*Change[*base.Info]

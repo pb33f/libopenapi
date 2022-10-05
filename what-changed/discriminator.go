@@ -17,7 +17,7 @@ type DiscriminatorChanges struct {
 // TotalChanges returns a count of everything changed within the Discriminator object
 func (d *DiscriminatorChanges) TotalChanges() int {
 	l := 0
-	if k := len(d.Changes); k > 0 {
+	if k := d.PropertyChanges.TotalChanges(); k > 0 {
 		l += k
 	}
 	if k := len(d.MappingChanges); k > 0 {
@@ -26,6 +26,13 @@ func (d *DiscriminatorChanges) TotalChanges() int {
 	return l
 }
 
+// TotalBreakingChanges returns the number of breaking changes made by the Discriminator
+func (d *DiscriminatorChanges) TotalBreakingChanges() int {
+	return d.PropertyChanges.TotalBreakingChanges() + CountBreakingChanges(d.MappingChanges)
+}
+
+// CompareDiscriminator will check a left (original) and right (new) Discriminator object for changes
+// and will return a pointer to DiscriminatorChanges
 func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	dc := new(DiscriminatorChanges)
 	var changes []*Change[*base.Discriminator]

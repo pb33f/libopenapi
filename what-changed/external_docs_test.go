@@ -115,6 +115,7 @@ url: https://quobix.com`
 	assert.True(t, extChange.Context.HasChanged())
 	assert.Equal(t, "hiya!", extChange.New)
 	assert.Equal(t, "hello", extChange.Original)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareExternalDocs_Identical(t *testing.T) {

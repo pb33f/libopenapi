@@ -23,6 +23,11 @@ func (x *XMLChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the number of breaking changes made by the XML object.
+func (x *XMLChanges) TotalBreakingChanges() int {
+	return x.PropertyChanges.TotalBreakingChanges()
+}
+
 // CompareXML will compare a left (original) and a right (new) XML instance, and check for
 // any changes between them. If changes are found, the function returns a pointer to XMLChanges,
 // otherwise, if nothing changed - it will return nil

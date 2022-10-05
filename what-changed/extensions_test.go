@@ -24,11 +24,12 @@ func TestCompareExtensions(t *testing.T) {
 
 	extChanges := CompareExtensions(lExt, rExt)
 
-	assert.Len(t, extChanges.Changes, 1)
+	assert.Len(t, extChanges.TotalChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
 	assert.Equal(t, "2", extChanges.Changes[0].New)
 	assert.False(t, extChanges.Changes[0].Context.HasChanged())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareExtensions_Removed(t *testing.T) {
