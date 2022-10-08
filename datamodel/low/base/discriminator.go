@@ -4,7 +4,10 @@
 package base
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"sort"
+	"strings"
 )
 
 // Discriminator is only used by OpenAPI 3+ documents, it represents a polymorphic discriminator used for schemas
@@ -28,4 +31,22 @@ func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string]
 		}
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Discriminator object
+func (d *Discriminator) Hash() [32]byte {
+
+	// calculate a hash from every property.
+	f := []string{d.PropertyName.Value}
+
+	propertyKeys := make([]string, 0, len(d.Mapping))
+	for i := range d.Mapping {
+		propertyKeys = append(propertyKeys, i.Value)
+	}
+	sort.Strings(propertyKeys)
+	for k := range propertyKeys {
+		prop := d.FindMappingValue(propertyKeys[k])
+		f = append(f, prop.Value)
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
