@@ -42,11 +42,13 @@ import (
 // it's not actually JSONSchema until 3.1, so lots of times a bad schema will break parsing. Errors are only found
 // when a schema is needed, so the rest of the document is parsed and ready to use.
 type SchemaProxy struct {
-	kn         *yaml.Node
-	vn         *yaml.Node
-	idx        *index.SpecIndex
-	rendered   *Schema
-	buildError error
+	kn              *yaml.Node
+	vn              *yaml.Node
+	idx             *index.SpecIndex
+	rendered        *Schema
+	buildError      error
+	isReference     bool   // Is the schema underneath originally a $ref?
+	referenceLookup string // If the schema is a $ref, what's its name?
 }
 
 // Build will prepare the SchemaProxy for rendering, it does not build the Schema, only sets up internal state.
@@ -86,4 +88,19 @@ func (sp *SchemaProxy) Schema() *Schema {
 // there were no errors during build, then nil will be returned.
 func (sp *SchemaProxy) GetBuildError() error {
 	return sp.buildError
+}
+
+// IsSchemaReference returns true if the Schema that this SchemaProxy represents, is actually a reference to
+// a Schema contained within Components or Definitions. There is no difference in the mechanism used to resolve the
+// Schema when calling Schema(), however if we want to know if this schema was originally a reference, we won't
+// be able to determine that from the model, without this bit.
+func (sp *SchemaProxy) IsSchemaReference() bool {
+	return sp.isReference
+}
+
+// GetSchemaReference will return the lookup defined by the $ref that this schema points to. If the schema
+// is inline, and not a reference, then this method returns an empty string. Only useful when combined with
+// IsSchemaReference()
+func (sp *SchemaProxy) GetSchemaReference() string {
+	return sp.referenceLookup
 }

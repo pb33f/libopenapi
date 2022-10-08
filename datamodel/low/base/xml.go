@@ -1,9 +1,12 @@
 package base
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // XML represents a low-level representation of an XML object defined by all versions of OpenAPI.
@@ -31,4 +34,17 @@ func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
 
 func (x *XML) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
 	return x.Extensions
+}
+
+// Hash generates a SHA256 hash of the XML object using properties
+func (x *XML) Hash() [32]byte {
+	// calculate a hash from every property.
+	d := []string{
+		x.Name.Value,
+		x.Namespace.Value,
+		x.Prefix.Value,
+		fmt.Sprintf("%v", x.Attribute.Value),
+		fmt.Sprintf("%v", x.Wrapped.Value),
+	}
+	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }

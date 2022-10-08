@@ -1,12 +1,15 @@
 package base
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strconv"
+	"strings"
 )
 
 // SchemaDynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
@@ -100,6 +103,162 @@ type Schema struct {
 	Example              low.NodeReference[any]
 	Deprecated           low.NodeReference[bool]
 	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+// Hash will calculate a SHA256 hash from the values of the schema, This allows equality checking against
+// Schemas defined inside an OpenAPI document. The only way to know if a schema has changed, is to hash it.
+// Polymorphic items
+func (s *Schema) Hash() [32]byte {
+	// calculate a hash from every property in the schema.
+	v := "%v"
+	d := []string{
+		s.SchemaTypeRef.Value,
+		fmt.Sprintf(v, s.ExclusiveMaximum.Value),
+		fmt.Sprintf(v, s.ExclusiveMinimum.Value),
+		fmt.Sprintf(v, s.Type.Value),
+		fmt.Sprintf(v, s.Title.Value),
+		fmt.Sprintf(v, s.MultipleOf.Value),
+		fmt.Sprintf(v, s.Maximum.Value),
+		fmt.Sprintf(v, s.Minimum.Value),
+		fmt.Sprintf(v, s.MaxLength.Value),
+		fmt.Sprintf(v, s.MinLength.Value),
+		s.Pattern.Value,
+		s.Format.Value,
+		fmt.Sprintf(v, s.MaxItems.Value),
+		fmt.Sprintf(v, s.UniqueItems.Value),
+		fmt.Sprintf(v, s.MaxProperties.Value),
+		fmt.Sprintf(v, s.MinProperties.Value),
+		fmt.Sprintf(v, s.AdditionalProperties.Value),
+		s.Description.Value,
+		s.ContentEncoding.Value,
+		s.ContentMediaType.Value,
+		fmt.Sprintf(v, s.Default.Value),
+		fmt.Sprintf(v, s.Nullable.Value),
+		fmt.Sprintf(v, s.ReadOnly.Value),
+		fmt.Sprintf(v, s.WriteOnly.Value),
+		fmt.Sprintf(v, s.Deprecated.Value),
+	}
+
+	for i := range s.Required.Value {
+		d = append(d, s.Required.Value[i].Value)
+	}
+	for i := range s.Enum.Value {
+		d = append(d, s.Enum.Value[i].Value)
+	}
+	propertyKeys := make([]string, 0, len(s.Properties.Value))
+	for i := range s.Properties.Value {
+		propertyKeys = append(propertyKeys, i.Value)
+	}
+	sort.Strings(propertyKeys)
+	for k := range propertyKeys {
+		prop := s.FindProperty(propertyKeys[k]).Value
+		if !prop.IsSchemaReference() {
+			d = append(d, fmt.Sprintf("%x", prop.Schema().Hash()))
+		}
+	}
+	if s.XML.Value != nil {
+		d = append(d, fmt.Sprintf(v, s.XML.Value.Hash()))
+	}
+	if s.ExternalDocs.Value != nil {
+		d = append(d, fmt.Sprintf(v, s.ExternalDocs.Value.Hash()))
+	}
+	if s.Discriminator.Value != nil {
+		d = append(d, fmt.Sprintf(v, s.Discriminator.Value.Hash()))
+	}
+
+	x := "%x"
+
+	// hash polymorphic data
+	if len(s.OneOf.Value) > 0 {
+		oneOfKeys := make([]string, 0, len(s.OneOf.Value))
+		oneOfEntities := make(map[string]*Schema)
+		for i := range s.OneOf.Value {
+			g := s.OneOf.Value[i].Value
+			if !g.IsSchemaReference() {
+				k := g.Schema()
+				r := fmt.Sprintf(x, k.Hash())
+				oneOfEntities[r] = k
+				oneOfKeys = append(oneOfKeys, r)
+			}
+		}
+		sort.Strings(oneOfKeys)
+		for k := range oneOfKeys {
+			d = append(d, fmt.Sprintf(x, oneOfEntities[oneOfKeys[k]].Hash()))
+		}
+	}
+
+	if len(s.AllOf.Value) > 0 {
+		allOfKeys := make([]string, 0, len(s.AllOf.Value))
+		allOfEntities := make(map[string]*Schema)
+		for i := range s.AllOf.Value {
+			g := s.AllOf.Value[i].Value
+			if !g.IsSchemaReference() {
+				k := g.Schema()
+				r := fmt.Sprintf(x, k.Hash())
+				allOfEntities[r] = k
+				allOfKeys = append(allOfKeys, r)
+			}
+		}
+		sort.Strings(allOfKeys)
+		for k := range allOfKeys {
+			d = append(d, fmt.Sprintf(x, allOfEntities[allOfKeys[k]].Hash()))
+		}
+	}
+
+	if len(s.AnyOf.Value) > 0 {
+		anyOfKeys := make([]string, 0, len(s.AnyOf.Value))
+		anyOfEntities := make(map[string]*Schema)
+		for i := range s.AnyOf.Value {
+			g := s.AnyOf.Value[i].Value
+			if !g.IsSchemaReference() {
+				k := g.Schema()
+				r := fmt.Sprintf(x, k.Hash())
+				anyOfEntities[r] = k
+				anyOfKeys = append(anyOfKeys, r)
+			}
+		}
+		sort.Strings(anyOfKeys)
+		for k := range anyOfKeys {
+			d = append(d, fmt.Sprintf(x, anyOfEntities[anyOfKeys[k]].Hash()))
+		}
+	}
+
+	if len(s.Not.Value) > 0 {
+		notKeys := make([]string, 0, len(s.Not.Value))
+		notEntities := make(map[string]*Schema)
+		for i := range s.Not.Value {
+			g := s.Not.Value[i].Value
+			if !g.IsSchemaReference() {
+				k := g.Schema()
+				r := fmt.Sprintf(x, k.Hash())
+				notEntities[r] = k
+				notKeys = append(notKeys, r)
+			}
+		}
+		sort.Strings(notKeys)
+		for k := range notKeys {
+			d = append(d, fmt.Sprintf(x, notEntities[notKeys[k]].Hash()))
+		}
+	}
+
+	if len(s.Items.Value) > 0 {
+		itemsKeys := make([]string, 0, len(s.Items.Value))
+		itemsEntities := make(map[string]*Schema)
+		for i := range s.Items.Value {
+			g := s.Items.Value[i].Value
+			if !g.IsSchemaReference() {
+				k := g.Schema()
+				r := fmt.Sprintf(x, k.Hash())
+				itemsEntities[r] = k
+				itemsKeys = append(itemsKeys, r)
+			}
+		}
+		sort.Strings(itemsKeys)
+		for k := range itemsKeys {
+			d = append(d, fmt.Sprintf(x, itemsEntities[itemsKeys[k]].Hash()))
+		}
+	}
+	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }
 
 // FindProperty will return a ValueReference pointer containing a SchemaProxy pointer
@@ -465,7 +624,8 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 		syncChan := make(chan *low.ValueReference[*SchemaProxy])
 
 		// build out a SchemaProxy for every sub-schema.
-		build := func(kn *yaml.Node, vn *yaml.Node, c chan *low.ValueReference[*SchemaProxy]) {
+		build := func(kn *yaml.Node, vn *yaml.Node, c chan *low.ValueReference[*SchemaProxy],
+			isRef bool, refLocation string) {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
 			// take on circular references through polymorphism. Like the resolver, if we try and follow these
 			// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
@@ -476,7 +636,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			sp.kn = kn
 			sp.vn = vn
 			sp.idx = idx
-
+			if isRef {
+				sp.referenceLookup = refLocation
+				sp.isReference = true
+			}
 			res := &low.ValueReference[*SchemaProxy]{
 				Value:     sp,
 				ValueNode: vn,
@@ -484,8 +647,12 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			c <- res
 		}
 
+		isRef := false
+		refLocation := ""
 		if utils.IsNodeMap(valueNode) {
-			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
+			h := false
+			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
+				isRef = true
 				ref, _ := low.LocateRefNode(valueNode, idx)
 				if ref != nil {
 					valueNode = ref
@@ -497,7 +664,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
-			go build(labelNode, valueNode, syncChan)
+			go build(labelNode, valueNode, syncChan, isRef, refLocation)
 			select {
 			case r := <-syncChan:
 				schemas <- schemaProxyBuildResult{
@@ -512,7 +679,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 		if utils.IsNodeArray(valueNode) {
 			refBuilds := 0
 			for _, vn := range valueNode.Content {
-				if h, _, _ := utils.IsNodeRefValue(vn); h {
+				isRef = false
+				h := false
+				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
+					isRef = true
 					ref, _ := low.LocateRefNode(vn, idx)
 					if ref != nil {
 						vn = ref
@@ -524,7 +694,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					}
 				}
 				refBuilds++
-				go build(vn, vn, syncChan)
+				go build(vn, vn, syncChan, isRef, refLocation)
 			}
 			completedBuilds := 0
 			for completedBuilds < refBuilds {
@@ -551,8 +721,12 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
 	var schLabel, schNode *yaml.Node
 	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
+
+	isRef := false
+	refLocation := ""
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
+		isRef = true
 		ref, _ := low.LocateRefNode(root, idx)
 		if ref != nil {
 			schNode = ref
@@ -564,7 +738,9 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 	} else {
 		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
 		if schNode != nil {
-			if h, _, _ := utils.IsNodeRefValue(schNode); h {
+			h := false
+			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
+				isRef = true
 				ref, _ := low.LocateRefNode(schNode, idx)
 				if ref != nil {
 					schNode = ref
@@ -578,7 +754,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 
 	if schNode != nil {
 		// check if schema has already been built.
-		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx}
+		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, isReference: isRef, referenceLookup: refLocation}
 		return &low.NodeReference[*SchemaProxy]{Value: schema, KeyNode: schLabel, ValueNode: schNode}, nil
 	}
 	return nil, nil

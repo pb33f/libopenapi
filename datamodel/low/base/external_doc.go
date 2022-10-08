@@ -4,9 +4,11 @@
 package base
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // ExternalDoc represents a low-level External Documentation object as defined by OpenAPI 2 and 3
@@ -37,4 +39,13 @@ func (ex *ExternalDoc) GetExtensions() map[low.KeyReference[string]]low.ValueRef
 		return nil
 	}
 	return ex.Extensions
+}
+
+func (ex *ExternalDoc) Hash() [32]byte {
+	// calculate a hash from every property.
+	d := []string{
+		ex.Description.Value,
+		ex.URL.Value,
+	}
+	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }

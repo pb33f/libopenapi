@@ -22,6 +22,12 @@ type HasValueNode[T any] interface {
 	*T
 }
 
+// Hashable defines any struct that implements a Hash function that returns a 256SHA hash of the state of the
+// representative object. Great for equality checking!
+type Hashable interface {
+	Hash() [32]byte
+}
+
 // HasExtensions is implemented by any object that exposes extensions
 type HasExtensions[T any] interface {
 	GetExtensions() map[KeyReference[string]]ValueReference[any]
