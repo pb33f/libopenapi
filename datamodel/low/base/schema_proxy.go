@@ -104,3 +104,8 @@ func (sp *SchemaProxy) IsSchemaReference() bool {
 func (sp *SchemaProxy) GetSchemaReference() string {
 	return sp.referenceLookup
 }
+
+// GetValueNode will return the yaml.Node pointer used by the proxy to generate the Schema.
+func (sp *SchemaProxy) GetValueNode() *yaml.Node {
+	return sp.vn
+}
