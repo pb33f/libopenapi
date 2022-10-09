@@ -6,6 +6,7 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -55,6 +56,10 @@ type SchemaProxy struct {
 func (sp *SchemaProxy) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	sp.vn = root
 	sp.idx = idx
+	if rf, _, r := utils.IsNodeRefValue(root); rf {
+		sp.isReference = true
+		sp.referenceLookup = r
+	}
 	return nil
 }
 

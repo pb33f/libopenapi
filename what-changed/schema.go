@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"sort"
+	"sync"
 )
 
 type SchemaChanges struct {
@@ -146,24 +147,25 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			} else {
 				// references are different, that's all we care to know.
 				CreateChange[*base.Schema](&changes, Modified, v3.RefLabel,
-					nil, nil, true, l.GetSchemaReference(), r.GetSchemaReference())
+					l.GetValueNode().Content[1], r.GetValueNode().Content[1], true, l.GetSchemaReference(),
+					r.GetSchemaReference())
 				sc.Changes = changes
 				return sc
 			}
 		}
 
-		// changed from ref to inline
+		// changed from inline to ref
 		if !l.IsSchemaReference() && r.IsSchemaReference() {
 			CreateChange[*base.Schema](&changes, Modified, v3.RefLabel,
-				nil, nil, false, "", r.GetSchemaReference())
+				l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetSchemaReference())
 			sc.Changes = changes
 			return sc // we're done here
 		}
 
-		// changed from inline to ref
+		// changed from ref to inline
 		if l.IsSchemaReference() && !r.IsSchemaReference() {
 			CreateChange[*base.Schema](&changes, Modified, v3.RefLabel,
-				nil, nil, false, l.GetSchemaReference(), "")
+				l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetSchemaReference(), r)
 			sc.Changes = changes
 			return sc // done, nothing else to do.
 		}
@@ -332,17 +334,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			New:       rSchema,
 		})
 
-		// UniqueItems
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.UniqueItems.ValueNode,
-			RightNode: rSchema.UniqueItems.ValueNode,
-			Label:     v3.MinLengthLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
 		// MaxProperties
 		props = append(props, &PropertyCheck[*base.Schema]{
 			LeftNode:  lSchema.MaxProperties.ValueNode,
@@ -364,54 +355,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			Original:  lSchema,
 			New:       rSchema,
 		})
-
-		// Required
-		j := make(map[string]int)
-		k := make(map[string]int)
-		for i := range lSchema.Required.Value {
-			j[lSchema.Required.Value[i].Value] = i
-		}
-		for i := range rSchema.Required.Value {
-			k[rSchema.Required.Value[i].Value] = i
-		}
-		for g := range k {
-			if _, ok := j[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyAdded, v3.RequiredLabel,
-					nil, rSchema.Required.Value[k[g]].GetValueNode(), true, nil,
-					rSchema.Required.Value[k[g]].GetValue)
-			}
-		}
-		for g := range j {
-			if _, ok := k[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.RequiredLabel,
-					lSchema.Required.Value[j[g]].GetValueNode(), nil, true, lSchema.Required.Value[j[g]].GetValue,
-					nil)
-			}
-		}
-
-		// Enums
-		j = make(map[string]int)
-		k = make(map[string]int)
-		for i := range lSchema.Enum.Value {
-			j[lSchema.Enum.Value[i].Value] = i
-		}
-		for i := range rSchema.Enum.Value {
-			k[rSchema.Enum.Value[i].Value] = i
-		}
-		for g := range k {
-			if _, ok := j[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyAdded, v3.EnumLabel,
-					nil, rSchema.Enum.Value[k[g]].GetValueNode(), false, nil,
-					rSchema.Enum.Value[k[g]].GetValue)
-			}
-		}
-		for g := range j {
-			if _, ok := k[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.EnumLabel,
-					lSchema.Enum.Value[j[g]].GetValueNode(), nil, true, lSchema.Enum.Value[j[g]].GetValue,
-					nil)
-			}
-		}
 
 		// UniqueItems
 		props = append(props, &PropertyCheck[*base.Schema]{
@@ -439,7 +382,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		props = append(props, &PropertyCheck[*base.Schema]{
 			LeftNode:  lSchema.Description.ValueNode,
 			RightNode: rSchema.Description.ValueNode,
-			Label:     v3.MinLengthLabel,
+			Label:     v3.DescriptionLabel,
 			Changes:   &changes,
 			Breaking:  false,
 			Original:  lSchema,
@@ -534,15 +477,58 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			New:       rSchema,
 		})
 
+		// Required
+		j := make(map[string]int)
+		k := make(map[string]int)
+		for i := range lSchema.Required.Value {
+			j[lSchema.Required.Value[i].Value] = i
+		}
+		for i := range rSchema.Required.Value {
+			k[rSchema.Required.Value[i].Value] = i
+		}
+		for g := range k {
+			if _, ok := j[g]; !ok {
+				CreateChange[*base.Schema](&changes, PropertyAdded, v3.RequiredLabel,
+					nil, rSchema.Required.Value[k[g]].GetValueNode(), true, nil,
+					rSchema.Required.Value[k[g]].GetValue)
+			}
+		}
+		for g := range j {
+			if _, ok := k[g]; !ok {
+				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.RequiredLabel,
+					lSchema.Required.Value[j[g]].GetValueNode(), nil, true, lSchema.Required.Value[j[g]].GetValue,
+					nil)
+			}
+		}
+
+		// Enums
+		j = make(map[string]int)
+		k = make(map[string]int)
+		for i := range lSchema.Enum.Value {
+			j[lSchema.Enum.Value[i].Value] = i
+		}
+		for i := range rSchema.Enum.Value {
+			k[rSchema.Enum.Value[i].Value] = i
+		}
+		for g := range k {
+			if _, ok := j[g]; !ok {
+				CreateChange[*base.Schema](&changes, PropertyAdded, v3.EnumLabel,
+					nil, rSchema.Enum.Value[k[g]].GetValueNode(), false, nil,
+					rSchema.Enum.Value[k[g]].GetValue)
+			}
+		}
+		for g := range j {
+			if _, ok := k[g]; !ok {
+				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.EnumLabel,
+					lSchema.Enum.Value[j[g]].GetValueNode(), nil, true, lSchema.Enum.Value[j[g]].GetValue,
+					nil)
+			}
+		}
+
 		// check core properties
 		CheckProperties(props)
 
-		//propChanges := make(map[string]*SchemaChanges)
-
-		// extract left and right prop names
-		if len(lSchema.Properties.Value) == 0 && len(lSchema.Properties.Value) == 0 {
-			// do something here when extracting.
-		}
+		propChanges := make(map[string]*SchemaChanges)
 
 		lProps := make([]string, len(lSchema.Properties.Value))
 		lEntities := make(map[string]*base.SchemaProxy)
@@ -550,72 +536,112 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		rEntities := make(map[string]*base.SchemaProxy)
 
 		for w := range lSchema.Properties.Value {
-			lProps = append(lProps, w.Value)
-
-			// TODO: check for ref
-			lEntities[w.Value] = lSchema.Properties.Value[w].Value
+			if !lSchema.Properties.Value[w].Value.IsSchemaReference() {
+				lProps = append(lProps, w.Value)
+				lEntities[w.Value] = lSchema.Properties.Value[w].Value
+			}
 		}
 		for w := range rSchema.Properties.Value {
-			// TODO: check for ref.
-			rProps = append(rProps, w.Value)
-			rEntities[w.Value] = rSchema.Properties.Value[w].Value
+			if !rSchema.Properties.Value[w].Value.IsSchemaReference() {
+				rProps = append(rProps, w.Value)
+				rEntities[w.Value] = rSchema.Properties.Value[w].Value
+			}
 		}
 		sort.Strings(lProps)
 		sort.Strings(rProps)
 
+		var propLock sync.Mutex
+		checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
+			if lp != nil && rp != nil {
+				ls := lp.Schema()
+				rs := rp.Schema()
+				if low.AreEqual(ls, rs) {
+					done <- true
+					return
+				}
+				s := CompareSchemas(lp, rp)
+				propLock.Lock()
+				propChanges[key] = s
+				propLock.Unlock()
+				done <- true
+			}
+		}
+
+		doneChan := make(chan bool)
+		totalProperties := 0
 		if len(lProps) == len(rProps) {
 			for w := range lProps {
 				lp := lEntities[lProps[w]]
 				rp := rEntities[rProps[w]]
+				if lProps[w] == rProps[w] && lp != nil && rp != nil {
+					totalProperties++
+					go checkProperty(lProps[w], lp, rp, propChanges, doneChan)
+				}
 
-				if lp != nil && rp != nil {
-					ls := lp.Schema()
-					rs := rp.Schema()
-					if low.AreEqual(ls, rs) {
-						continue
-					}
-					//propChanges[w] = 
+				// keys do not match, even after sorting, means a like for like replacement.
+				if lProps[w] != rProps[w] {
 
+					// old removed, new added.
+					CreateChange[*base.Schema](&changes, ObjectAdded, v3.PropertiesLabel,
+						nil, rEntities[rProps[w]].GetValueNode(), false, nil, rEntities[rProps[w]])
+					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.PropertiesLabel,
+						lEntities[lProps[w]].GetValueNode(), nil, true, lEntities[lProps[w]], nil)
 				}
 
 			}
 		}
 
-		//for q := range lSchema.Properties.Value {
-		//	if _, ok := rSchema.Properties.Value[q]; ok {
-		//		// hash the schemas, if they match, skip, if not... then compare.
-		//		ls := lSchema.Properties.Value[q].Value.Schema()
-		//		rs := rSchema.Properties.Value[q].Value.Schema()
-		//		if low.AreEqual(ls, rs) {
-		//			continue
-		//		}
-		//		prop
-		//
-		//	}
-		//}
+		// something removed
+		if len(lProps) > len(rProps) {
+			for w := range lProps {
+				if w < len(rProps) {
+					totalProperties++
+					go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+				}
+				if w >= len(rProps) {
+					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.PropertiesLabel,
+						lEntities[lProps[w]].GetValueNode(), nil, true, lEntities[lProps[w]], nil)
+				}
+			}
+		}
+
+		// something added
+		if len(rProps) > len(lProps) {
+			for w := range rProps {
+				if w < len(lProps) {
+					totalProperties++
+					go checkProperty(rProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+				}
+				if w >= len(rProps) {
+					CreateChange[*base.Schema](&changes, ObjectAdded, v3.PropertiesLabel,
+						nil, rEntities[rProps[w]].GetValueNode(), false, nil, rEntities[rProps[w]])
+				}
+			}
+		}
+
+		sc.SchemaPropertyChanges = propChanges
 
 		// check polymorphic and multi-values async for speed.
-		done := make(chan bool)
 		go extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
-			&sc.OneOfChanges, &changes, done)
+			&sc.OneOfChanges, &changes, doneChan)
 
 		go extractSchemaChanges(lSchema.AllOf.Value, rSchema.AllOf.Value, v3.AllOfLabel,
-			&sc.AllOfChanges, &changes, done)
+			&sc.AllOfChanges, &changes, doneChan)
 
 		go extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
-			&sc.AnyOfChanges, &changes, done)
+			&sc.AnyOfChanges, &changes, doneChan)
 
 		go extractSchemaChanges(lSchema.Items.Value, rSchema.Items.Value, v3.ItemsLabel,
-			&sc.ItemsChanges, &changes, done)
+			&sc.ItemsChanges, &changes, doneChan)
 
 		go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.ItemsLabel,
-			&sc.ItemsChanges, &changes, done)
+			&sc.ItemsChanges, &changes, doneChan)
 
-		totalChecks := 5
+		totalChecks := totalProperties + 5
 		completedChecks := 0
 		for completedChecks < totalChecks {
 			select {
-			case <-done:
+			case <-doneChan:
 				completedChecks++
 			}
 		}
