@@ -111,7 +111,10 @@ paths:
               schema:
                 title: an OK message
                 allOf:
+                 - type: bool
+                oneOf:
                   - type: int
+                  - type: string
                 properties:
                   propA:
                     title: a proxy property
@@ -146,9 +149,9 @@ paths:
               schema:
                 title: an OK message that is different
                 allOf:
-                  - type: int
-                    description: oh my stars
-                  - $ref: '#/components/schemas/NoWay'
+                  - type: string
+                oneOf:
+                  - type: string
                 properties:
                   propA:
                     title: a proxy property

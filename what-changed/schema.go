@@ -5,17 +5,20 @@ package what_changed
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"sort"
 )
 
 type SchemaChanges struct {
 	PropertyChanges[*base.Schema]
 	DiscriminatorChanges  *DiscriminatorChanges
 	AllOfChanges          []*SchemaChanges
-	AnyOfChanges          *SchemaChanges
-	NotChanges            *SchemaChanges
-	ItemsChanges          *SchemaChanges
+	AnyOfChanges          []*SchemaChanges
+	OneOfChanges          []*SchemaChanges
+	NotChanges            []*SchemaChanges
+	ItemsChanges          []*SchemaChanges
 	SchemaPropertyChanges map[string]*SchemaChanges
 	ExternalDocChanges    *ExternalDocChanges
 	ExtensionChanges      *ExtensionChanges
@@ -31,14 +34,25 @@ func (s *SchemaChanges) TotalChanges() int {
 			t += s.AllOfChanges[n].TotalChanges()
 		}
 	}
-	if s.AnyOfChanges != nil {
-		t += s.AnyOfChanges.TotalChanges()
+	if len(s.AnyOfChanges) > 0 {
+		for n := range s.AnyOfChanges {
+			t += s.AnyOfChanges[n].TotalChanges()
+		}
 	}
-	if s.NotChanges != nil {
-		t += s.NotChanges.TotalChanges()
+	if len(s.OneOfChanges) > 0 {
+		for n := range s.OneOfChanges {
+			t += s.OneOfChanges[n].TotalChanges()
+		}
 	}
-	if s.ItemsChanges != nil {
-		t += s.ItemsChanges.TotalChanges()
+	if len(s.NotChanges) > 0 {
+		for n := range s.NotChanges {
+			t += s.NotChanges[n].TotalChanges()
+		}
+	}
+	if len(s.ItemsChanges) > 0 {
+		for n := range s.ItemsChanges {
+			t += s.ItemsChanges[n].TotalChanges()
+		}
 	}
 	if s.SchemaPropertyChanges != nil {
 		for n := range s.SchemaPropertyChanges {
@@ -64,14 +78,30 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 			t += s.AllOfChanges[n].TotalBreakingChanges()
 		}
 	}
-	if s.AnyOfChanges != nil {
-		t += s.AnyOfChanges.TotalBreakingChanges()
+	if len(s.AllOfChanges) > 0 {
+		for n := range s.AllOfChanges {
+			t += s.AllOfChanges[n].TotalBreakingChanges()
+		}
 	}
-	if s.NotChanges != nil {
-		t += s.NotChanges.TotalBreakingChanges()
+	if len(s.AnyOfChanges) > 0 {
+		for n := range s.AnyOfChanges {
+			t += s.AnyOfChanges[n].TotalBreakingChanges()
+		}
 	}
-	if s.ItemsChanges != nil {
-		t += s.ItemsChanges.TotalBreakingChanges()
+	if len(s.OneOfChanges) > 0 {
+		for n := range s.OneOfChanges {
+			t += s.OneOfChanges[n].TotalBreakingChanges()
+		}
+	}
+	if len(s.NotChanges) > 0 {
+		for n := range s.NotChanges {
+			t += s.NotChanges[n].TotalBreakingChanges()
+		}
+	}
+	if len(s.ItemsChanges) > 0 {
+		for n := range s.ItemsChanges {
+			t += s.ItemsChanges[n].TotalBreakingChanges()
+		}
 	}
 	if s.SchemaPropertyChanges != nil {
 		for n := range s.SchemaPropertyChanges {
@@ -141,10 +171,10 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		lSchema := l.Schema()
 		rSchema := r.Schema()
 
-		leftHash := lSchema.Hash()
-		rightHash := rSchema.Hash()
-
-		fmt.Printf("%v-%v", leftHash, rightHash)
+		if low.AreEqual(lSchema, rSchema) {
+			// there is no point going on, we know nothing changed!
+			return nil
+		}
 
 		var props []*PropertyCheck[*base.Schema]
 
@@ -175,17 +205,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			LeftNode:  lSchema.ExclusiveMinimum.ValueNode,
 			RightNode: rSchema.ExclusiveMinimum.ValueNode,
 			Label:     v3.ExclusiveMinimumLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Type
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Type.ValueNode,
-			RightNode: rSchema.Type.ValueNode,
-			Label:     v3.TypeLabel,
 			Changes:   &changes,
 			Breaking:  true,
 			Original:  lSchema,
@@ -355,8 +374,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		for i := range rSchema.Required.Value {
 			k[rSchema.Required.Value[i].Value] = i
 		}
-
-		// added
 		for g := range k {
 			if _, ok := j[g]; !ok {
 				CreateChange[*base.Schema](&changes, PropertyAdded, v3.RequiredLabel,
@@ -364,7 +381,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					rSchema.Required.Value[k[g]].GetValue)
 			}
 		}
-		// removed
 		for g := range j {
 			if _, ok := k[g]; !ok {
 				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.RequiredLabel,
@@ -382,8 +398,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		for i := range rSchema.Enum.Value {
 			k[rSchema.Enum.Value[i].Value] = i
 		}
-
-		// added
 		for g := range k {
 			if _, ok := j[g]; !ok {
 				CreateChange[*base.Schema](&changes, PropertyAdded, v3.EnumLabel,
@@ -391,7 +405,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					rSchema.Enum.Value[k[g]].GetValue)
 			}
 		}
-		// removed
 		for g := range j {
 			if _, ok := k[g]; !ok {
 				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.EnumLabel,
@@ -399,27 +412,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					nil)
 			}
 		}
-
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Required.ValueNode,
-			RightNode: rSchema.Required.ValueNode,
-			Label:     v3.RequiredLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Enum
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Enum.ValueNode,
-			RightNode: rSchema.Enum.ValueNode,
-			Label:     v3.EnumLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
 
 		// UniqueItems
 		props = append(props, &PropertyCheck[*base.Schema]{
@@ -431,7 +423,6 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			Original:  lSchema,
 			New:       rSchema,
 		})
-		// TODO: end of re-do
 
 		// AdditionalProperties
 		props = append(props, &PropertyCheck[*base.Schema]{
@@ -543,85 +534,91 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			New:       rSchema,
 		})
 
-		// check properties
+		// check core properties
 		CheckProperties(props)
 
-		// check objects.
-		// AllOf
-		// if both sides are equal
-		//if len(rSchema.AllOf.Value) == len(lSchema.AllOf.Value) {
-		var multiChange []*SchemaChanges
-		for d := range lSchema.AllOf.Value {
-			var lSch, rSch *base.SchemaProxy
-			lSch = lSchema.AllOf.Value[d].Value
+		//propChanges := make(map[string]*SchemaChanges)
 
-			if rSchema.AllOf.Value[d].Value != nil {
-				rSch = rSchema.AllOf.Value[d].Value
-			}
-			// if neither is a reference, build the schema and compare.
-			//if !lSch.IsSchemaReference() && !rSch.IsSchemaReference() {
-			multiChange = append(multiChange, CompareSchemas(lSch, rSch))
-			//}
-			// if the left is a reference and right is inline, log a modification, but no recursion.
-			//if lSch.IsSchemaReference() && !rSch.IsSchemaReference() {
-			//	CreateChange[*base.Schema](&changes, Modified, v3.AllOfLabel,
-			//		nil, nil, false, lSch.GetSchemaReference(), "")
-			//}
-			//
-			//// if the right is a reference and left is inline, log a modification, but no recursion.
-			//if !lSch.IsSchemaReference() && rSch.IsSchemaReference() {
-			//	CreateChange[*base.Schema](&changes, Modified, v3.AllOfLabel,
-			//		nil, nil, false, "", rSch.GetSchemaReference())
-			//}
-
+		// extract left and right prop names
+		if len(lSchema.Properties.Value) == 0 && len(lSchema.Properties.Value) == 0 {
+			// do something here when extracting.
 		}
 
-		//}
+		lProps := make([]string, len(lSchema.Properties.Value))
+		lEntities := make(map[string]*base.SchemaProxy)
+		rProps := make([]string, len(rSchema.Properties.Value))
+		rEntities := make(map[string]*base.SchemaProxy)
 
-		//check if the right is longer that the left (added)
-		if len(rSchema.AllOf.Value) > len(lSchema.AllOf.Value) {
-			y := len(lSchema.AllOf.Value)
-			if y < 0 {
-				y = 0
+		for w := range lSchema.Properties.Value {
+			lProps = append(lProps, w.Value)
+
+			// TODO: check for ref
+			lEntities[w.Value] = lSchema.Properties.Value[w].Value
+		}
+		for w := range rSchema.Properties.Value {
+			// TODO: check for ref.
+			rProps = append(rProps, w.Value)
+			rEntities[w.Value] = rSchema.Properties.Value[w].Value
+		}
+		sort.Strings(lProps)
+		sort.Strings(rProps)
+
+		if len(lProps) == len(rProps) {
+			for w := range lProps {
+				lp := lEntities[lProps[w]]
+				rp := rEntities[rProps[w]]
+
+				if lp != nil && rp != nil {
+					ls := lp.Schema()
+					rs := rp.Schema()
+					if low.AreEqual(ls, rs) {
+						continue
+					}
+					//propChanges[w] = 
+
+				}
+
 			}
-			for s := range rSchema.AllOf.Value[y:] {
-				rSch := rSchema.AllOf.Value[s].Value
-				multiChange = append(multiChange, CompareSchemas(nil, rSch))
-
-				//if !rSchema.AllOf.Value[s].Value.IsSchemaReference() {
-				//	CreateChange[*base.Schema](&changes, ObjectAdded, v3.AllOfLabel,
-				//		nil, rSchema.AllOf.Value[s].GetValueNode(), false, nil, rSchema.AllOf.Value[s].Value.Schema())
-				//} else {
-				//	CreateChange[*base.Schema](&changes, ObjectAdded, v3.AllOfLabel,
-				//		nil, rSchema.AllOf.Value[s].GetValueNode(), false, nil, rSchema.AllOf.Value[s].Value)
-				//}
-			}
-
 		}
 
-		if len(multiChange) > 0 {
-			sc.AllOfChanges = multiChange
-		}
-
+		//for q := range lSchema.Properties.Value {
+		//	if _, ok := rSchema.Properties.Value[q]; ok {
+		//		// hash the schemas, if they match, skip, if not... then compare.
+		//		ls := lSchema.Properties.Value[q].Value.Schema()
+		//		rs := rSchema.Properties.Value[q].Value.Schema()
+		//		if low.AreEqual(ls, rs) {
+		//			continue
+		//		}
+		//		prop
 		//
-		//// check if the left is longer that the right (removed)
-		//if len(lSchema.AllOf.Value) > len(rSchema.AllOf.Value) {
-		//	var multiChange []*SchemaChanges
-		//	for s := range lSchema.AllOf.Value[len(rSchema.AllOf.Value)-1:] {
-		//		lSch := lSchema.AllOf.Value[s].Value
-		//		multiChange = append(multiChange, CompareSchemas(lSch, nil))
-		//		//if !lSchema.AllOf.Value[s].Value.IsSchemaReference() {
-		//		//	CreateChange[*base.Schema](&changes, ObjectRemoved, v3.AllOfLabel,
-		//		//		lSchema.AllOf.Value[s].GetValueNode(), nil, false, lSchema.AllOf.Value[s].Value.Schema(), nil)
-		//		//} else {
-		//		//	CreateChange[*base.Schema](&changes, ObjectRemoved, v3.AllOfLabel,
-		//		//		lSchema.AllOf.Value[s].GetValueNode(), nil, false, lSchema.AllOf.Value[s].Value, nil)
-		//		//}
-		//	}
-		//	if len(multiChange) > 0 {
-		//		sc.AllOfChanges = multiChange
 		//	}
 		//}
+
+		// check polymorphic and multi-values async for speed.
+		done := make(chan bool)
+		go extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
+			&sc.OneOfChanges, &changes, done)
+
+		go extractSchemaChanges(lSchema.AllOf.Value, rSchema.AllOf.Value, v3.AllOfLabel,
+			&sc.AllOfChanges, &changes, done)
+
+		go extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
+			&sc.AnyOfChanges, &changes, done)
+
+		go extractSchemaChanges(lSchema.Items.Value, rSchema.Items.Value, v3.ItemsLabel,
+			&sc.ItemsChanges, &changes, done)
+
+		go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.ItemsLabel,
+			&sc.ItemsChanges, &changes, done)
+
+		totalChecks := 5
+		completedChecks := 0
+		for completedChecks < totalChecks {
+			select {
+			case <-done:
+				completedChecks++
+			}
+		}
 
 	}
 
@@ -632,4 +629,90 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 	}
 	return sc
 
+}
+
+func extractSchemaChanges(
+	lSchema []low.ValueReference[*base.SchemaProxy],
+	rSchema []low.ValueReference[*base.SchemaProxy],
+	label string,
+	sc *[]*SchemaChanges,
+	changes *[]*Change[*base.Schema],
+	done chan bool) {
+
+	// if there is nothing here, there is nothing to do.
+	if lSchema == nil && rSchema == nil {
+		done <- true
+		return
+	}
+
+	x := "%x"
+	// create hash key maps to check equality
+	lKeys := make([]string, 0, len(lSchema))
+	rKeys := make([]string, 0, len(rSchema))
+	lEntities := make(map[string]*base.SchemaProxy)
+	rEntities := make(map[string]*base.SchemaProxy)
+	for h := range lSchema {
+		q := lSchema[h].Value
+		if !q.IsSchemaReference() {
+			w := q.Schema()
+			z := fmt.Sprintf(x, w.Hash())
+			lKeys = append(lKeys, z)
+			lEntities[z] = q
+		}
+	}
+	for h := range rSchema {
+		q := rSchema[h].Value
+		if !q.IsSchemaReference() {
+			w := q.Schema()
+			z := fmt.Sprintf(x, w.Hash())
+			rKeys = append(rKeys, z)
+			rEntities[z] = q
+		}
+	}
+
+	if len(lKeys) <= 0 && len(rKeys) <= 0 {
+		done <- true
+		return
+	}
+
+	// sort slices so that like for like is all sequenced.
+	sort.Strings(lKeys)
+	sort.Strings(rKeys)
+
+	// check for identical lengths
+	if len(lKeys) == len(rKeys) {
+		for w := range lKeys {
+			// keys are different, which means there are changes.
+			if lKeys[w] != rKeys[w] {
+				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
+			}
+		}
+	}
+
+	// things were removed
+	if len(lKeys) > len(rKeys) {
+		for w := range lKeys {
+			if w < len(rKeys) && lKeys[w] != rKeys[w] {
+				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
+			}
+			if w >= len(rKeys) {
+				CreateChange[*base.Schema](changes, ObjectRemoved, label,
+					lEntities[lKeys[w]].GetValueNode(), nil, true, lEntities[lKeys[w]], nil)
+			}
+		}
+	}
+
+	// things were added
+	if len(rKeys) > len(lKeys) {
+		for w := range rKeys {
+			if w < len(lKeys) && rKeys[w] != lKeys[w] {
+				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
+			}
+			if w >= len(lKeys) {
+				CreateChange[*base.Schema](changes, ObjectAdded, label,
+					nil, rEntities[rKeys[w]].GetValueNode(), false, nil, rEntities[rKeys[w]])
+			}
+		}
+	}
+	done <- true
 }
