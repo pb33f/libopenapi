@@ -37,8 +37,10 @@ func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string]
 func (d *Discriminator) Hash() [32]byte {
 
 	// calculate a hash from every property.
-	f := []string{d.PropertyName.Value}
-
+	var f []string
+	if d.PropertyName.Value != "" {
+		f = append(f, d.PropertyName.Value)
+	}
 	propertyKeys := make([]string, 0, len(d.Mapping))
 	for i := range d.Mapping {
 		propertyKeys = append(propertyKeys, i.Value)

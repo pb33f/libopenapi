@@ -90,4 +90,6 @@ const (
 	DeprecatedLabel           = "deprecated"
 	ExampleLabel              = "example"
 	RefLabel                  = "$ref"
+	DiscriminatorLabel        = "discriminator"
+	ExternalDocsLabel         = "externalDocs"
 )

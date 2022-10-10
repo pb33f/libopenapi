@@ -240,7 +240,7 @@ func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode 
 	return nil, nil
 }
 
-// FindKeyNodeFull is an overloaded version of FindKeyNode. Thins version however returns keys, labels and values.
+// FindKeyNodeFull is an overloaded version of FindKeyNode. This version however returns keys, labels and values.
 // generally different things are required from different node trees, so depending on what this function is looking at
 // it will return different things.
 func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
@@ -261,6 +261,33 @@ func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelN
 				if IsNodeArray(v) {
 					return v, v.Content[x], v.Content[x]
 				}
+			}
+		}
+	}
+	return nil, nil, nil
+}
+
+// FindKeyNodeFullTop is an overloaded version of FindKeyNodeFull. This version only looks at the top
+// level of the node and not the children.
+func FindKeyNodeFullTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
+	for i := range nodes {
+		if i%2 == 0 && key == nodes[i].Value {
+			return nodes[i], nodes[i], nodes[i+1] // next node is what we need.
+		}
+	}
+	for q, v := range nodes {
+		if q%2 != 0 {
+			continue
+		}
+		if key == v.Value {
+			if IsNodeMap(v) {
+				if q+1 == len(v.Content) {
+					return v, v.Content[q], v.Content[q]
+				}
+				return v, v.Content[q], v.Content[q+1]
+			}
+			if IsNodeArray(v) {
+				return v, v.Content[q], v.Content[q]
 			}
 		}
 	}
