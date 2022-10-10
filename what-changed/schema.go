@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 	"sort"
 	"sync"
 )
@@ -108,12 +109,6 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 		for n := range s.SchemaPropertyChanges {
 			t += s.SchemaPropertyChanges[n].TotalBreakingChanges()
 		}
-	}
-	if s.ExternalDocChanges != nil {
-		t += s.ExternalDocChanges.TotalBreakingChanges()
-	}
-	if s.ExtensionChanges != nil {
-		t += s.ExtensionChanges.TotalBreakingChanges()
 	}
 	return t
 }
@@ -525,26 +520,69 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			}
 		}
 
+		// Discriminator
+		if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value != nil {
+			// check if hash matches, if not then compare.
+			if lSchema.Discriminator.Value.Hash() != rSchema.Discriminator.Value.Hash() {
+				sc.DiscriminatorChanges = CompareDiscriminator(lSchema.Discriminator.Value, rSchema.Discriminator.Value)
+			}
+		}
+		// added Discriminator
+		if lSchema.Discriminator.Value == nil && rSchema.Discriminator.Value != nil {
+			CreateChange[*base.Schema](&changes, ObjectAdded, v3.DiscriminatorLabel,
+				nil, rSchema.Discriminator.ValueNode, true, nil, rSchema.Discriminator.Value)
+		}
+		// removed Discriminator
+		if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value == nil {
+			CreateChange[*base.Schema](&changes, ObjectRemoved, v3.DiscriminatorLabel,
+				lSchema.Discriminator.ValueNode, nil, true, lSchema.Discriminator.Value, nil)
+		}
+
+		// ExternalDocs
+		if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value != nil {
+			// check if hash matches, if not then compare.
+			if lSchema.ExternalDocs.Value.Hash() != rSchema.ExternalDocs.Value.Hash() {
+				sc.ExternalDocChanges = CompareExternalDocs(lSchema.ExternalDocs.Value, rSchema.ExternalDocs.Value)
+			}
+		}
+		// added ExternalDocs
+		if lSchema.ExternalDocs.Value == nil && rSchema.ExternalDocs.Value != nil {
+			CreateChange[*base.Schema](&changes, ObjectAdded, v3.ExternalDocsLabel,
+				nil, rSchema.ExternalDocs.ValueNode, false, nil, rSchema.ExternalDocs.Value)
+		}
+		// removed ExternalDocs
+		if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value == nil {
+			CreateChange[*base.Schema](&changes, ObjectRemoved, v3.ExternalDocsLabel,
+				lSchema.ExternalDocs.ValueNode, nil, false, lSchema.ExternalDocs.Value, nil)
+		}
+
+		// check extensions
+		sc.ExtensionChanges = CompareExtensions(lSchema.Extensions, rSchema.Extensions)
+
 		// check core properties
 		CheckProperties(props)
 
 		propChanges := make(map[string]*SchemaChanges)
 
-		lProps := make([]string, len(lSchema.Properties.Value))
+		var lProps []string
 		lEntities := make(map[string]*base.SchemaProxy)
-		rProps := make([]string, len(rSchema.Properties.Value))
+		lKeyNodes := make(map[string]*yaml.Node)
+		var rProps []string
 		rEntities := make(map[string]*base.SchemaProxy)
+		rKeyNodes := make(map[string]*yaml.Node)
 
 		for w := range lSchema.Properties.Value {
 			if !lSchema.Properties.Value[w].Value.IsSchemaReference() {
 				lProps = append(lProps, w.Value)
 				lEntities[w.Value] = lSchema.Properties.Value[w].Value
+				lKeyNodes[w.Value] = w.KeyNode
 			}
 		}
 		for w := range rSchema.Properties.Value {
 			if !rSchema.Properties.Value[w].Value.IsSchemaReference() {
 				rProps = append(rProps, w.Value)
 				rEntities[w.Value] = rSchema.Properties.Value[w].Value
+				rKeyNodes[w.Value] = w.KeyNode
 			}
 		}
 		sort.Strings(lProps)
@@ -583,9 +621,10 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 					// old removed, new added.
 					CreateChange[*base.Schema](&changes, ObjectAdded, v3.PropertiesLabel,
-						nil, rEntities[rProps[w]].GetValueNode(), false, nil, rEntities[rProps[w]])
+						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+
 					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.PropertiesLabel,
-						lEntities[lProps[w]].GetValueNode(), nil, true, lEntities[lProps[w]], nil)
+						lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
 				}
 
 			}
@@ -600,7 +639,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				}
 				if w >= len(rProps) {
 					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.PropertiesLabel,
-						lEntities[lProps[w]].GetValueNode(), nil, true, lEntities[lProps[w]], nil)
+						lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
 				}
 			}
 		}
@@ -612,9 +651,9 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					totalProperties++
 					go checkProperty(rProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
 				}
-				if w >= len(rProps) {
+				if w >= len(lProps) {
 					CreateChange[*base.Schema](&changes, ObjectAdded, v3.PropertiesLabel,
-						nil, rEntities[rProps[w]].GetValueNode(), false, nil, rEntities[rProps[w]])
+						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
 				}
 			}
 		}
@@ -634,8 +673,8 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		go extractSchemaChanges(lSchema.Items.Value, rSchema.Items.Value, v3.ItemsLabel,
 			&sc.ItemsChanges, &changes, doneChan)
 
-		go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.ItemsLabel,
-			&sc.ItemsChanges, &changes, doneChan)
+		go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.NotLabel,
+			&sc.NotChanges, &changes, doneChan)
 
 		totalChecks := totalProperties + 5
 		completedChecks := 0
@@ -645,16 +684,12 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				completedChecks++
 			}
 		}
-
 	}
-
 	// done
-	sc.Changes = changes
-	if sc.TotalChanges() <= 0 {
-		return nil
+	if changes != nil {
+		sc.Changes = changes
 	}
 	return sc
-
 }
 
 func extractSchemaChanges(
@@ -694,11 +729,6 @@ func extractSchemaChanges(
 			rKeys = append(rKeys, z)
 			rEntities[z] = q
 		}
-	}
-
-	if len(lKeys) <= 0 && len(rKeys) <= 0 {
-		done <- true
-		return
 	}
 
 	// sort slices so that like for like is all sequenced.

@@ -198,3 +198,7 @@ func GetCircularReferenceResult(node *yaml.Node, idx *index.SpecIndex) *index.Ci
 	}
 	return nil
 }
+
+func HashToString(hash [32]byte) string {
+	return fmt.Sprintf("%x", hash)
+}

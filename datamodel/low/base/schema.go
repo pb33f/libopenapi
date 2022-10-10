@@ -258,6 +258,11 @@ func (s *Schema) Hash() [32]byte {
 			d = append(d, fmt.Sprintf(x, itemsEntities[itemsKeys[k]].Hash()))
 		}
 	}
+	// add extensions to hash
+	for k := range s.Extensions {
+		d = append(d, fmt.Sprintf("%v-%x", k.Value, s.Extensions[k].Value))
+	}
+
 	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }
 
@@ -300,7 +305,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	s.extractExtensions(root)
 
 	// determine schema type, singular (3.0) or multiple (3.1), use a variable value
-	_, typeLabel, typeValue := utils.FindKeyNodeFull(TypeLabel, root.Content)
+	_, typeLabel, typeValue := utils.FindKeyNodeFullTop(TypeLabel, root.Content)
 	if typeValue != nil {
 		if utils.IsNodeStringValue(typeValue) {
 			s.Type = low.NodeReference[SchemaDynamicValue[string, []low.ValueReference[string]]]{
@@ -327,7 +332,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// determine exclusive minimum type, bool (3.0) or int (3.1)
-	_, exMinLabel, exMinValue := utils.FindKeyNodeFull(ExclusiveMinimumLabel, root.Content)
+	_, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
 	if exMinValue != nil {
 		if utils.IsNodeBoolValue(exMinValue) {
 			val, _ := strconv.ParseBool(exMinValue.Value)
@@ -348,7 +353,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// determine exclusive maximum type, bool (3.0) or int (3.1)
-	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFull(ExclusiveMaximumLabel, root.Content)
+	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
 	if exMaxValue != nil {
 		if utils.IsNodeBoolValue(exMaxValue) {
 			val, _ := strconv.ParseBool(exMaxValue.Value)
@@ -369,7 +374,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle schema reference type if set. (3.1)
-	_, schemaRefLabel, schemaRefNode := utils.FindKeyNodeFull(SchemaTypeLabel, root.Content)
+	_, schemaRefLabel, schemaRefNode := utils.FindKeyNodeFullTop(SchemaTypeLabel, root.Content)
 	if schemaRefNode != nil {
 		s.SchemaTypeRef = low.NodeReference[string]{
 			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefLabel}
@@ -382,7 +387,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.(3.1)
-	_, expArrLabel, expArrNode := utils.FindKeyNodeFull(ExamplesLabel, root.Content)
+	_, expArrLabel, expArrNode := utils.FindKeyNodeFullTop(ExamplesLabel, root.Content)
 	if expArrNode != nil {
 		if utils.IsNodeArray(expArrNode) {
 			var examples []low.ValueReference[any]
@@ -397,7 +402,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	_, addPLabel, addPNode := utils.FindKeyNodeFull(AdditionalPropertiesLabel, root.Content)
+	_, addPLabel, addPNode := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
 	if addPNode != nil {
 		if utils.IsNodeMap(addPNode) {
 			schema, serr := low.ExtractObjectRaw[*Schema](addPNode, idx)
@@ -414,7 +419,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle discriminator if set.
-	_, discLabel, discNode := utils.FindKeyNodeFull(DiscriminatorLabel, root.Content)
+	_, discLabel, discNode := utils.FindKeyNodeFullTop(DiscriminatorLabel, root.Content)
 	if discNode != nil {
 		var discriminator Discriminator
 		_ = low.BuildModel(discNode, &discriminator)
@@ -422,7 +427,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle externalDocs if set.
-	_, extDocLabel, extDocNode := utils.FindKeyNodeFull(ExternalDocsLabel, root.Content)
+	_, extDocLabel, extDocNode := utils.FindKeyNodeFullTop(ExternalDocsLabel, root.Content)
 	if extDocNode != nil {
 		var exDoc ExternalDoc
 		_ = low.BuildModel(extDocNode, &exDoc)
@@ -431,7 +436,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle xml if set.
-	_, xmlLabel, xmlNode := utils.FindKeyNodeFull(XMLLabel, root.Content)
+	_, xmlLabel, xmlNode := utils.FindKeyNodeFullTop(XMLLabel, root.Content)
 	if xmlNode != nil {
 		var xml XML
 		_ = low.BuildModel(xmlNode, &xml)
@@ -457,7 +462,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle properties
-	_, propLabel, propsNode := utils.FindKeyNodeFull(PropertiesLabel, root.Content)
+	_, propLabel, propsNode := utils.FindKeyNodeFullTop(PropertiesLabel, root.Content)
 	if propsNode != nil {
 		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*SchemaProxy])
 		var currentProp *yaml.Node
@@ -498,11 +503,11 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	var allOf, anyOf, oneOf, not, items []low.ValueReference[*SchemaProxy]
 
-	_, allOfLabel, allOfValue := utils.FindKeyNodeFull(AllOfLabel, root.Content)
-	_, anyOfLabel, anyOfValue := utils.FindKeyNodeFull(AnyOfLabel, root.Content)
-	_, oneOfLabel, oneOfValue := utils.FindKeyNodeFull(OneOfLabel, root.Content)
-	_, notLabel, notValue := utils.FindKeyNodeFull(NotLabel, root.Content)
-	_, itemsLabel, itemsValue := utils.FindKeyNodeFull(ItemsLabel, root.Content)
+	_, allOfLabel, allOfValue := utils.FindKeyNodeFullTop(AllOfLabel, root.Content)
+	_, anyOfLabel, anyOfValue := utils.FindKeyNodeFullTop(AnyOfLabel, root.Content)
+	_, oneOfLabel, oneOfValue := utils.FindKeyNodeFullTop(OneOfLabel, root.Content)
+	_, notLabel, notValue := utils.FindKeyNodeFullTop(NotLabel, root.Content)
+	_, itemsLabel, itemsValue := utils.FindKeyNodeFullTop(ItemsLabel, root.Content)
 
 	errorChan := make(chan error)
 	allOfChan := make(chan schemaProxyBuildResult)
