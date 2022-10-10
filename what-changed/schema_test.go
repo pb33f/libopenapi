@@ -668,7 +668,7 @@ func TestCompareSchemas_AllOfModifyAndAddItem(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
-	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 2, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AllOfLabel, changes.Changes[0].Property)
 	assert.Equal(t, Modified, changes.AllOfChanges[0].Changes[0].ChangeType)
