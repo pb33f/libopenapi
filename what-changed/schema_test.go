@@ -1213,3 +1213,86 @@ func TestCompareSchemas_ExamplesRemoveAndModify(t *testing.T) {
 	assert.Equal(t, ObjectRemoved, changes.Changes[1].ChangeType)
 	assert.Equal(t, "seal pup", changes.Changes[1].Original)
 }
+
+func TestCompareSchemas_XMLChange(t *testing.T) {
+	left := `components:
+ schemas:
+   OK:
+     xml:
+       name: baby xml`
+
+	right := `components:
+ schemas:
+   OK:
+     xml:
+       name: big xml`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.NameLabel, changes.XMLChanges.Changes[0].Property)
+	assert.Equal(t, Modified, changes.XMLChanges.Changes[0].ChangeType)
+	assert.Equal(t, "big xml", changes.XMLChanges.Changes[0].New)
+	assert.Equal(t, "baby xml", changes.XMLChanges.Changes[0].Original)
+}
+
+func TestCompareSchemas_XMLAdd(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      description: OK`
+
+	right := `components:
+  schemas:
+    OK:
+      description: OK
+      xml:
+        name: big xml`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.XMLLabel, changes.Changes[0].Property)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, "big xml", changes.Changes[0].NewObject.(*base.XML).Name.Value)
+}
+
+func TestCompareSchemas_XMLRemove(t *testing.T) {
+	left := `components:
+ schemas:
+   OK:`
+
+	right := `components:
+ schemas:
+   OK:
+     xml:
+       name: big xml`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.XMLLabel, changes.Changes[0].Property)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, "big xml", changes.Changes[0].OriginalObject.(*base.XML).Name.Value)
+}

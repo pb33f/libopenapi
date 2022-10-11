@@ -3,7 +3,9 @@
 
 package what_changed
 
-import "gopkg.in/yaml.v3"
+import (
+	"gopkg.in/yaml.v3"
+)
 
 // Definitions of the possible changes between two items
 const (
@@ -95,6 +97,14 @@ func (p PropertyChanges[T]) TotalChanges() int {
 func (p PropertyChanges[T]) TotalBreakingChanges() int {
 	return CountBreakingChanges(p.Changes)
 }
+
+// SortByChangeType will order changes by the types of change they represent,
+// This is a destructive action and will permanently re-order Changes.
+//func (p PropertyChanges[T]) SortByChangeType() {
+//	sort.SliceStable(p.Changes, func(i, j int) bool {
+//		return p.Changes[i].ChangeType < p.Changes[j].ChangeType
+//	})
+//}
 
 // PropertyCheck is used by functions to check the state of left and right values.
 type PropertyCheck[T any] struct {
