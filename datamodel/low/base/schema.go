@@ -262,6 +262,12 @@ func (s *Schema) Hash() [32]byte {
 	for k := range s.Extensions {
 		d = append(d, fmt.Sprintf("%v-%x", k.Value, s.Extensions[k].Value))
 	}
+	if s.Example.Value != nil {
+		d = append(d, low.GenerateHashString(s.Example.Value))
+	}
+	for w := range s.Examples.Value {
+		d = append(d, low.GenerateHashString(s.Examples.Value[w]))
+	}
 
 	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }

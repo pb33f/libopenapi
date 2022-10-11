@@ -559,6 +559,89 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		// check extensions
 		sc.ExtensionChanges = CompareExtensions(lSchema.Extensions, rSchema.Extensions)
 
+		// check examples props.
+		var lExampKey, rExampKey []string
+		lExampVal := make(map[string]low.ValueReference[any])
+		rExampVal := make(map[string]low.ValueReference[any])
+
+		// create keys by hashing values
+		for i := range lSchema.Examples.Value {
+			key := low.GenerateHashString(lSchema.Examples.Value[i])
+			lExampKey = append(lExampKey, key)
+			lExampVal[key] = lSchema.Examples.Value[i]
+		}
+		for i := range rSchema.Examples.Value {
+			key := low.GenerateHashString(rSchema.Examples.Value[i])
+			rExampKey = append(rExampKey, key)
+			rExampVal[key] = rSchema.Examples.Value[i]
+		}
+
+		// sort examples keys.
+		sort.Strings(lExampKey)
+		sort.Strings(rExampKey)
+
+		// if examples equal lengths, check for equality
+		if len(lExampKey) == len(rExampKey) {
+			for i := range lExampKey {
+				if lExampKey[i] != rExampKey[i] {
+					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
+						lExampVal[lExampKey[i]].GetValueNode(), rExampVal[rExampKey[i]].GetValueNode(), false,
+						lExampVal[lExampKey[i]].GetValue(), rExampVal[rExampKey[i]].GetValue())
+				}
+			}
+		}
+		// examples were removed.
+		if len(lExampKey) > len(rExampKey) {
+			for i := range lExampKey {
+				if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
+					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
+						lExampVal[lExampKey[i]].GetValueNode(), rExampVal[rExampKey[i]].GetValueNode(), false,
+						lExampVal[lExampKey[i]].GetValue(), rExampVal[rExampKey[i]].GetValue())
+				}
+				if i >= len(rExampKey) {
+					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.ExamplesLabel,
+						lExampVal[lExampKey[i]].GetValueNode(), nil, false,
+						lExampVal[lExampKey[i]].GetValue(), nil)
+				}
+			}
+		}
+
+		// examples were added
+		if len(lExampKey) < len(rExampKey) {
+			for i := range rExampKey {
+				if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
+					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
+						lExampVal[lExampKey[i]].GetValueNode(), rExampVal[rExampKey[i]].GetValueNode(), false,
+						lExampVal[lExampKey[i]].GetValue(), rExampVal[rExampKey[i]].GetValue())
+				}
+				if i >= len(lExampKey) {
+					CreateChange[*base.Schema](&changes, ObjectAdded, v3.ExamplesLabel,
+						nil, rExampVal[rExampKey[i]].GetValueNode(), false,
+						nil, rExampVal[rExampKey[i]].GetValue())
+				}
+			}
+		}
+
+		//if lSchema.Example.Value != nil && rSchema.Example.Value != nil {
+		//	if low.GenerateHashString(lSchema.Example.Value) != low.GenerateHashString(lSchema.Example.Value) {
+		//		CreateChange[*base.Schema](&changes, Modified, v3.ExampleLabel,
+		//			lSchema.Example.GetValueNode(), rSchema.Example.GetValueNode(), false, lSchema.Example.GetValue,
+		//			rSchema.Example.GetValue)
+		//	}
+		//}
+		//// added example
+		//if lSchema.Example.Value == nil && rSchema.Example.Value != nil {
+		//	CreateChange[*base.Schema](&changes, PropertyAdded, v3.ExampleLabel,
+		//		nil, rSchema.Example.GetValueNode(), false, nil, rSchema.Example.GetValue)
+		//
+		//}
+		//// removed example
+		//if lSchema.Example.Value != nil && rSchema.Example.Value == nil {
+		//	CreateChange[*base.Schema](&changes, PropertyRemoved, v3.ExampleLabel,
+		//		lSchema.Example.GetValueNode(), nil, false, lSchema.Example.GetValue, nil)
+		//
+		//}
+
 		// check core properties
 		CheckProperties(props)
 

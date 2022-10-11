@@ -67,6 +67,7 @@ const (
 	PatternLabel              = "pattern"
 	FormatLabel               = "format"
 	MaxItemsLabel             = "maxItems"
+	ExamplesLabel             = "examples"
 	MinItemsLabel             = "minItems"
 	UniqueItemsLabel          = "uniqueItems"
 	MaxPropertiesLabel        = "maxProperties"
