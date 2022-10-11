@@ -4,6 +4,7 @@
 package low
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -548,4 +549,9 @@ func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[
 // AreEqual returns true if two Hashable objects are equal or not.
 func AreEqual(l, r Hashable) bool {
 	return l.Hash() == r.Hash()
+}
+
+// GenerateHashString will generate a SHA36 hash of any object passed in.
+func GenerateHashString(v any) string {
+	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(v))))
 }

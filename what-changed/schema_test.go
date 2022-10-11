@@ -977,3 +977,239 @@ func TestCompareSchemas_AddExtension(t *testing.T) {
 	assert.Equal(t, ObjectAdded, changes.ExtensionChanges.Changes[0].ChangeType)
 	assert.Equal(t, "song", changes.ExtensionChanges.Changes[0].New)
 }
+
+func TestCompareSchemas_ExampleChange(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      example: sausages`
+
+	right := `components:
+  schemas:
+    OK:
+      example: yellow boat`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].New)
+	assert.Equal(t, "sausages", changes.Changes[0].Original)
+}
+
+func TestCompareSchemas_ExampleAdd(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      example: yellow boat`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].New)
+}
+
+func TestCompareSchemas_ExampleRemove(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      example: yellow boat`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].Original)
+}
+
+func TestCompareSchemas_ExamplesChange(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+        - sausages`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+       - yellow boat`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].New)
+	assert.Equal(t, "sausages", changes.Changes[0].Original)
+}
+
+func TestCompareSchemas_ExamplesAdd(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+       - yellow boat`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].New)
+}
+
+func TestCompareSchemas_ExamplesAddAndModify(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+        - sausages`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+       - yellow boat
+       - seal pup`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].New)
+	assert.Equal(t, "sausages", changes.Changes[0].Original)
+	assert.Equal(t, ObjectAdded, changes.Changes[1].ChangeType)
+	assert.Equal(t, "seal pup", changes.Changes[1].New)
+}
+
+func TestCompareSchemas_ExamplesRemove(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+       - yellow boat`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].Original)
+}
+
+func TestCompareSchemas_ExamplesRemoveAndModify(t *testing.T) {
+	left := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+        - sausages`
+
+	right := `components:
+  schemas:
+    OK:
+      title: nice
+      examples:
+       - yellow boat
+       - seal pup`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, "yellow boat", changes.Changes[0].Original)
+	assert.Equal(t, "sausages", changes.Changes[0].New)
+	assert.Equal(t, ObjectRemoved, changes.Changes[1].ChangeType)
+	assert.Equal(t, "seal pup", changes.Changes[1].Original)
+}
