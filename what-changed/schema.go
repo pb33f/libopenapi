@@ -23,6 +23,7 @@ type SchemaChanges struct {
 	ItemsChanges          []*SchemaChanges
 	SchemaPropertyChanges map[string]*SchemaChanges
 	ExternalDocChanges    *ExternalDocChanges
+	XMLChanges            *XMLChanges
 	ExtensionChanges      *ExtensionChanges
 }
 
@@ -64,6 +65,9 @@ func (s *SchemaChanges) TotalChanges() int {
 	if s.ExternalDocChanges != nil {
 		t += s.ExternalDocChanges.TotalChanges()
 	}
+	if s.XMLChanges != nil {
+		t += s.XMLChanges.TotalChanges()
+	}
 	if s.ExtensionChanges != nil {
 		t += s.ExtensionChanges.TotalChanges()
 	}
@@ -104,6 +108,9 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 		for n := range s.ItemsChanges {
 			t += s.ItemsChanges[n].TotalBreakingChanges()
 		}
+	}
+	if s.XMLChanges != nil {
+		t += s.XMLChanges.TotalBreakingChanges()
 	}
 	if s.SchemaPropertyChanges != nil {
 		for n := range s.SchemaPropertyChanges {
@@ -561,32 +568,41 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// check examples props.
 		var lExampKey, rExampKey []string
-		lExampVal := make(map[string]low.ValueReference[any])
-		rExampVal := make(map[string]low.ValueReference[any])
+		lExampN := make(map[string]*yaml.Node)
+		rExampN := make(map[string]*yaml.Node)
+		lExampVal := make(map[string]any)
+		rExampVal := make(map[string]any)
 
 		// create keys by hashing values
-		for i := range lSchema.Examples.Value {
-			key := low.GenerateHashString(lSchema.Examples.Value[i])
-			lExampKey = append(lExampKey, key)
-			lExampVal[key] = lSchema.Examples.Value[i]
+		if lSchema.Examples.ValueNode != nil {
+			for i := range lSchema.Examples.ValueNode.Content {
+				key := low.GenerateHashString(lSchema.Examples.ValueNode.Content[i].Value)
+				lExampKey = append(lExampKey, key)
+				lExampVal[key] = lSchema.Examples.ValueNode.Content[i].Value
+				lExampN[key] = lSchema.Examples.ValueNode.Content[i]
+
+			}
 		}
-		for i := range rSchema.Examples.Value {
-			key := low.GenerateHashString(rSchema.Examples.Value[i])
-			rExampKey = append(rExampKey, key)
-			rExampVal[key] = rSchema.Examples.Value[i]
+		if rSchema.Examples.ValueNode != nil {
+			for i := range rSchema.Examples.ValueNode.Content {
+				key := low.GenerateHashString(rSchema.Examples.ValueNode.Content[i].Value)
+				rExampKey = append(rExampKey, key)
+				rExampVal[key] = rSchema.Examples.ValueNode.Content[i].Value
+				rExampN[key] = rSchema.Examples.ValueNode.Content[i]
+			}
 		}
 
 		// sort examples keys.
-		sort.Strings(lExampKey)
-		sort.Strings(rExampKey)
+		//sort.Strings(lExampKey)
+		//sort.Strings(rExampKey)
 
 		// if examples equal lengths, check for equality
 		if len(lExampKey) == len(rExampKey) {
 			for i := range lExampKey {
 				if lExampKey[i] != rExampKey[i] {
 					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
-						lExampVal[lExampKey[i]].GetValueNode(), rExampVal[rExampKey[i]].GetValueNode(), false,
-						lExampVal[lExampKey[i]].GetValue(), rExampVal[rExampKey[i]].GetValue())
+						lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+						lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 				}
 			}
 		}
@@ -595,13 +611,13 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			for i := range lExampKey {
 				if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
 					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
-						lExampVal[lExampKey[i]].GetValueNode(), rExampVal[rExampKey[i]].GetValueNode(), false,
-						lExampVal[lExampKey[i]].GetValue(), rExampVal[rExampKey[i]].GetValue())
+						lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+						lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 				}
 				if i >= len(rExampKey) {
 					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.ExamplesLabel,
-						lExampVal[lExampKey[i]].GetValueNode(), nil, false,
-						lExampVal[lExampKey[i]].GetValue(), nil)
+						lExampN[lExampKey[i]], nil, false,
+						lExampVal[lExampKey[i]], nil)
 				}
 			}
 		}
@@ -611,36 +627,16 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			for i := range rExampKey {
 				if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
 					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
-						lExampVal[lExampKey[i]].GetValueNode(), rExampVal[rExampKey[i]].GetValueNode(), false,
-						lExampVal[lExampKey[i]].GetValue(), rExampVal[rExampKey[i]].GetValue())
+						lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+						lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 				}
 				if i >= len(lExampKey) {
 					CreateChange[*base.Schema](&changes, ObjectAdded, v3.ExamplesLabel,
-						nil, rExampVal[rExampKey[i]].GetValueNode(), false,
-						nil, rExampVal[rExampKey[i]].GetValue())
+						nil, rExampN[rExampKey[i]], false,
+						nil, rExampVal[rExampKey[i]])
 				}
 			}
 		}
-
-		//if lSchema.Example.Value != nil && rSchema.Example.Value != nil {
-		//	if low.GenerateHashString(lSchema.Example.Value) != low.GenerateHashString(lSchema.Example.Value) {
-		//		CreateChange[*base.Schema](&changes, Modified, v3.ExampleLabel,
-		//			lSchema.Example.GetValueNode(), rSchema.Example.GetValueNode(), false, lSchema.Example.GetValue,
-		//			rSchema.Example.GetValue)
-		//	}
-		//}
-		//// added example
-		//if lSchema.Example.Value == nil && rSchema.Example.Value != nil {
-		//	CreateChange[*base.Schema](&changes, PropertyAdded, v3.ExampleLabel,
-		//		nil, rSchema.Example.GetValueNode(), false, nil, rSchema.Example.GetValue)
-		//
-		//}
-		//// removed example
-		//if lSchema.Example.Value != nil && rSchema.Example.Value == nil {
-		//	CreateChange[*base.Schema](&changes, PropertyRemoved, v3.ExampleLabel,
-		//		lSchema.Example.GetValueNode(), nil, false, lSchema.Example.GetValue, nil)
-		//
-		//}
 
 		// check core properties
 		CheckProperties(props)
@@ -742,6 +738,24 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		}
 
 		sc.SchemaPropertyChanges = propChanges
+
+		// XML removed
+		if lSchema.XML.Value != nil && rSchema.XML.Value == nil {
+			CreateChange[*base.Schema](&changes, ObjectRemoved, v3.XMLLabel,
+				lSchema.XML.GetValueNode(), nil, true, lSchema.XML.GetValue(), nil)
+		}
+		// XML added
+		if lSchema.XML.Value == nil && rSchema.XML.Value != nil {
+			CreateChange[*base.Schema](&changes, ObjectAdded, v3.XMLLabel,
+				nil, rSchema.XML.GetValueNode(), false, nil, rSchema.XML.GetValue())
+		}
+
+		// compare XML
+		if lSchema.XML.Value != nil && rSchema.XML.Value != nil {
+			if !low.AreEqual(lSchema.XML.Value, rSchema.XML.Value) {
+				sc.XMLChanges = CompareXML(lSchema.XML.Value, rSchema.XML.Value)
+			}
+		}
 
 		// check polymorphic and multi-values async for speed.
 		go extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
