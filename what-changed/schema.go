@@ -180,582 +180,19 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			return nil
 		}
 
-		var props []*PropertyCheck[*base.Schema]
+		// check XML
+		checkXML(lSchema, rSchema, &changes, sc)
 
-		// $schema (breaking change)
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.SchemaTypeRef.ValueNode,
-			RightNode: rSchema.SchemaTypeRef.ValueNode,
-			Label:     v3.SchemaDialectLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
+		// check examples
+		checkExamples(lSchema, rSchema, &changes)
 
-		// ExclusiveMaximum
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.ExclusiveMaximum.ValueNode,
-			RightNode: rSchema.ExclusiveMaximum.ValueNode,
-			Label:     v3.ExclusiveMaximumLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
+		// check schema core properties for changes.
+		checkSchemaPropertyChanges(lSchema, rSchema, &changes, sc)
 
-		// ExclusiveMinimum
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.ExclusiveMinimum.ValueNode,
-			RightNode: rSchema.ExclusiveMinimum.ValueNode,
-			Label:     v3.ExclusiveMinimumLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Type
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Type.ValueNode,
-			RightNode: rSchema.Type.ValueNode,
-			Label:     v3.TypeLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Title
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Title.ValueNode,
-			RightNode: rSchema.Title.ValueNode,
-			Label:     v3.TitleLabel,
-			Changes:   &changes,
-			Breaking:  false,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MultipleOf
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MultipleOf.ValueNode,
-			RightNode: rSchema.MultipleOf.ValueNode,
-			Label:     v3.MultipleOfLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Maximum
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Maximum.ValueNode,
-			RightNode: rSchema.Maximum.ValueNode,
-			Label:     v3.MaximumLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Minimum
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Minimum.ValueNode,
-			RightNode: rSchema.Minimum.ValueNode,
-			Label:     v3.MinimumLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MaxLength
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MaxLength.ValueNode,
-			RightNode: rSchema.MaxLength.ValueNode,
-			Label:     v3.MaxLengthLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MinLength
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MinLength.ValueNode,
-			RightNode: rSchema.MinLength.ValueNode,
-			Label:     v3.MinLengthLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Pattern
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Pattern.ValueNode,
-			RightNode: rSchema.Pattern.ValueNode,
-			Label:     v3.PatternLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Format
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Format.ValueNode,
-			RightNode: rSchema.Format.ValueNode,
-			Label:     v3.FormatLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MaxItems
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MaxItems.ValueNode,
-			RightNode: rSchema.MaxItems.ValueNode,
-			Label:     v3.MaxItemsLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MinItems
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MinItems.ValueNode,
-			RightNode: rSchema.MinItems.ValueNode,
-			Label:     v3.MinItemsLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MaxProperties
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MaxProperties.ValueNode,
-			RightNode: rSchema.MaxProperties.ValueNode,
-			Label:     v3.MaxPropertiesLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// MinProperties
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.MinProperties.ValueNode,
-			RightNode: rSchema.MinProperties.ValueNode,
-			Label:     v3.MinPropertiesLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// UniqueItems
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.UniqueItems.ValueNode,
-			RightNode: rSchema.UniqueItems.ValueNode,
-			Label:     v3.UniqueItemsLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// AdditionalProperties
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.AdditionalProperties.ValueNode,
-			RightNode: rSchema.AdditionalProperties.ValueNode,
-			Label:     v3.AdditionalPropertiesLabel,
-			Changes:   &changes,
-			Breaking:  false,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Description
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Description.ValueNode,
-			RightNode: rSchema.Description.ValueNode,
-			Label:     v3.DescriptionLabel,
-			Changes:   &changes,
-			Breaking:  false,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// ContentEncoding
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.ContentEncoding.ValueNode,
-			RightNode: rSchema.ContentEncoding.ValueNode,
-			Label:     v3.ContentEncodingLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// ContentMediaType
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.ContentMediaType.ValueNode,
-			RightNode: rSchema.ContentMediaType.ValueNode,
-			Label:     v3.ContentMediaType,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Default
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Default.ValueNode,
-			RightNode: rSchema.Default.ValueNode,
-			Label:     v3.DefaultLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Nullable
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Nullable.ValueNode,
-			RightNode: rSchema.Nullable.ValueNode,
-			Label:     v3.NullableLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// ReadOnly
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.ReadOnly.ValueNode,
-			RightNode: rSchema.ReadOnly.ValueNode,
-			Label:     v3.ReadOnlyLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// WriteOnly
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.WriteOnly.ValueNode,
-			RightNode: rSchema.WriteOnly.ValueNode,
-			Label:     v3.WriteOnlyLabel,
-			Changes:   &changes,
-			Breaking:  true,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Example
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Example.ValueNode,
-			RightNode: rSchema.Example.ValueNode,
-			Label:     v3.ExampleLabel,
-			Changes:   &changes,
-			Breaking:  false,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Deprecated
-		props = append(props, &PropertyCheck[*base.Schema]{
-			LeftNode:  lSchema.Deprecated.ValueNode,
-			RightNode: rSchema.Deprecated.ValueNode,
-			Label:     v3.DeprecatedLabel,
-			Changes:   &changes,
-			Breaking:  false,
-			Original:  lSchema,
-			New:       rSchema,
-		})
-
-		// Required
-		j := make(map[string]int)
-		k := make(map[string]int)
-		for i := range lSchema.Required.Value {
-			j[lSchema.Required.Value[i].Value] = i
-		}
-		for i := range rSchema.Required.Value {
-			k[rSchema.Required.Value[i].Value] = i
-		}
-		for g := range k {
-			if _, ok := j[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyAdded, v3.RequiredLabel,
-					nil, rSchema.Required.Value[k[g]].GetValueNode(), true, nil,
-					rSchema.Required.Value[k[g]].GetValue)
-			}
-		}
-		for g := range j {
-			if _, ok := k[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.RequiredLabel,
-					lSchema.Required.Value[j[g]].GetValueNode(), nil, true, lSchema.Required.Value[j[g]].GetValue,
-					nil)
-			}
-		}
-
-		// Enums
-		j = make(map[string]int)
-		k = make(map[string]int)
-		for i := range lSchema.Enum.Value {
-			j[lSchema.Enum.Value[i].Value] = i
-		}
-		for i := range rSchema.Enum.Value {
-			k[rSchema.Enum.Value[i].Value] = i
-		}
-		for g := range k {
-			if _, ok := j[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyAdded, v3.EnumLabel,
-					nil, rSchema.Enum.Value[k[g]].GetValueNode(), false, nil,
-					rSchema.Enum.Value[k[g]].GetValue)
-			}
-		}
-		for g := range j {
-			if _, ok := k[g]; !ok {
-				CreateChange[*base.Schema](&changes, PropertyRemoved, v3.EnumLabel,
-					lSchema.Enum.Value[j[g]].GetValueNode(), nil, true, lSchema.Enum.Value[j[g]].GetValue,
-					nil)
-			}
-		}
-
-		// Discriminator
-		if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value != nil {
-			// check if hash matches, if not then compare.
-			if lSchema.Discriminator.Value.Hash() != rSchema.Discriminator.Value.Hash() {
-				sc.DiscriminatorChanges = CompareDiscriminator(lSchema.Discriminator.Value, rSchema.Discriminator.Value)
-			}
-		}
-		// added Discriminator
-		if lSchema.Discriminator.Value == nil && rSchema.Discriminator.Value != nil {
-			CreateChange[*base.Schema](&changes, ObjectAdded, v3.DiscriminatorLabel,
-				nil, rSchema.Discriminator.ValueNode, true, nil, rSchema.Discriminator.Value)
-		}
-		// removed Discriminator
-		if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value == nil {
-			CreateChange[*base.Schema](&changes, ObjectRemoved, v3.DiscriminatorLabel,
-				lSchema.Discriminator.ValueNode, nil, true, lSchema.Discriminator.Value, nil)
-		}
-
-		// ExternalDocs
-		if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value != nil {
-			// check if hash matches, if not then compare.
-			if lSchema.ExternalDocs.Value.Hash() != rSchema.ExternalDocs.Value.Hash() {
-				sc.ExternalDocChanges = CompareExternalDocs(lSchema.ExternalDocs.Value, rSchema.ExternalDocs.Value)
-			}
-		}
-		// added ExternalDocs
-		if lSchema.ExternalDocs.Value == nil && rSchema.ExternalDocs.Value != nil {
-			CreateChange[*base.Schema](&changes, ObjectAdded, v3.ExternalDocsLabel,
-				nil, rSchema.ExternalDocs.ValueNode, false, nil, rSchema.ExternalDocs.Value)
-		}
-		// removed ExternalDocs
-		if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value == nil {
-			CreateChange[*base.Schema](&changes, ObjectRemoved, v3.ExternalDocsLabel,
-				lSchema.ExternalDocs.ValueNode, nil, false, lSchema.ExternalDocs.Value, nil)
-		}
-
-		// check extensions
-		sc.ExtensionChanges = CompareExtensions(lSchema.Extensions, rSchema.Extensions)
-
-		// check examples props.
-		var lExampKey, rExampKey []string
-		lExampN := make(map[string]*yaml.Node)
-		rExampN := make(map[string]*yaml.Node)
-		lExampVal := make(map[string]any)
-		rExampVal := make(map[string]any)
-
-		// create keys by hashing values
-		if lSchema.Examples.ValueNode != nil {
-			for i := range lSchema.Examples.ValueNode.Content {
-				key := low.GenerateHashString(lSchema.Examples.ValueNode.Content[i].Value)
-				lExampKey = append(lExampKey, key)
-				lExampVal[key] = lSchema.Examples.ValueNode.Content[i].Value
-				lExampN[key] = lSchema.Examples.ValueNode.Content[i]
-
-			}
-		}
-		if rSchema.Examples.ValueNode != nil {
-			for i := range rSchema.Examples.ValueNode.Content {
-				key := low.GenerateHashString(rSchema.Examples.ValueNode.Content[i].Value)
-				rExampKey = append(rExampKey, key)
-				rExampVal[key] = rSchema.Examples.ValueNode.Content[i].Value
-				rExampN[key] = rSchema.Examples.ValueNode.Content[i]
-			}
-		}
-
-		// sort examples keys.
-		//sort.Strings(lExampKey)
-		//sort.Strings(rExampKey)
-
-		// if examples equal lengths, check for equality
-		if len(lExampKey) == len(rExampKey) {
-			for i := range lExampKey {
-				if lExampKey[i] != rExampKey[i] {
-					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
-						lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
-						lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
-				}
-			}
-		}
-		// examples were removed.
-		if len(lExampKey) > len(rExampKey) {
-			for i := range lExampKey {
-				if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
-					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
-						lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
-						lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
-				}
-				if i >= len(rExampKey) {
-					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.ExamplesLabel,
-						lExampN[lExampKey[i]], nil, false,
-						lExampVal[lExampKey[i]], nil)
-				}
-			}
-		}
-
-		// examples were added
-		if len(lExampKey) < len(rExampKey) {
-			for i := range rExampKey {
-				if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
-					CreateChange[*base.Schema](&changes, Modified, v3.ExamplesLabel,
-						lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
-						lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
-				}
-				if i >= len(lExampKey) {
-					CreateChange[*base.Schema](&changes, ObjectAdded, v3.ExamplesLabel,
-						nil, rExampN[rExampKey[i]], false,
-						nil, rExampVal[rExampKey[i]])
-				}
-			}
-		}
-
-		// check core properties
-		CheckProperties(props)
-
-		propChanges := make(map[string]*SchemaChanges)
-
-		var lProps []string
-		lEntities := make(map[string]*base.SchemaProxy)
-		lKeyNodes := make(map[string]*yaml.Node)
-		var rProps []string
-		rEntities := make(map[string]*base.SchemaProxy)
-		rKeyNodes := make(map[string]*yaml.Node)
-
-		for w := range lSchema.Properties.Value {
-			if !lSchema.Properties.Value[w].Value.IsSchemaReference() {
-				lProps = append(lProps, w.Value)
-				lEntities[w.Value] = lSchema.Properties.Value[w].Value
-				lKeyNodes[w.Value] = w.KeyNode
-			}
-		}
-		for w := range rSchema.Properties.Value {
-			if !rSchema.Properties.Value[w].Value.IsSchemaReference() {
-				rProps = append(rProps, w.Value)
-				rEntities[w.Value] = rSchema.Properties.Value[w].Value
-				rKeyNodes[w.Value] = w.KeyNode
-			}
-		}
-		sort.Strings(lProps)
-		sort.Strings(rProps)
-
-		var propLock sync.Mutex
-		checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
-			if lp != nil && rp != nil {
-				ls := lp.Schema()
-				rs := rp.Schema()
-				if low.AreEqual(ls, rs) {
-					done <- true
-					return
-				}
-				s := CompareSchemas(lp, rp)
-				propLock.Lock()
-				propChanges[key] = s
-				propLock.Unlock()
-				done <- true
-			}
-		}
-
+		// now for the confusing part, there is also a schema's 'properties' property to parse.
+		// inception, eat your heart out.
 		doneChan := make(chan bool)
-		totalProperties := 0
-		if len(lProps) == len(rProps) {
-			for w := range lProps {
-				lp := lEntities[lProps[w]]
-				rp := rEntities[rProps[w]]
-				if lProps[w] == rProps[w] && lp != nil && rp != nil {
-					totalProperties++
-					go checkProperty(lProps[w], lp, rp, propChanges, doneChan)
-				}
-
-				// keys do not match, even after sorting, means a like for like replacement.
-				if lProps[w] != rProps[w] {
-
-					// old removed, new added.
-					CreateChange[*base.Schema](&changes, ObjectAdded, v3.PropertiesLabel,
-						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
-
-					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.PropertiesLabel,
-						lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
-				}
-
-			}
-		}
-
-		// something removed
-		if len(lProps) > len(rProps) {
-			for w := range lProps {
-				if w < len(rProps) {
-					totalProperties++
-					go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
-				}
-				if w >= len(rProps) {
-					CreateChange[*base.Schema](&changes, ObjectRemoved, v3.PropertiesLabel,
-						lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
-				}
-			}
-		}
-
-		// something added
-		if len(rProps) > len(lProps) {
-			for w := range rProps {
-				if w < len(lProps) {
-					totalProperties++
-					go checkProperty(rProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
-				}
-				if w >= len(lProps) {
-					CreateChange[*base.Schema](&changes, ObjectAdded, v3.PropertiesLabel,
-						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
-				}
-			}
-		}
-
-		sc.SchemaPropertyChanges = propChanges
-
-		// XML removed
-		if lSchema.XML.Value != nil && rSchema.XML.Value == nil {
-			CreateChange[*base.Schema](&changes, ObjectRemoved, v3.XMLLabel,
-				lSchema.XML.GetValueNode(), nil, true, lSchema.XML.GetValue(), nil)
-		}
-		// XML added
-		if lSchema.XML.Value == nil && rSchema.XML.Value != nil {
-			CreateChange[*base.Schema](&changes, ObjectAdded, v3.XMLLabel,
-				nil, rSchema.XML.GetValueNode(), false, nil, rSchema.XML.GetValue())
-		}
-
-		// compare XML
-		if lSchema.XML.Value != nil && rSchema.XML.Value != nil {
-			if !low.AreEqual(lSchema.XML.Value, rSchema.XML.Value) {
-				sc.XMLChanges = CompareXML(lSchema.XML.Value, rSchema.XML.Value)
-			}
-		}
+		totalProperties := checkPropertiesPropertyOfASchema(lSchema, rSchema, &changes, sc, doneChan)
 
 		// check polymorphic and multi-values async for speed.
 		go extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
@@ -787,6 +224,596 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		sc.Changes = changes
 	}
 	return sc
+}
+
+func checkXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change[*base.Schema], sc *SchemaChanges) {
+	// XML removed
+	if lSchema.XML.Value != nil && rSchema.XML.Value == nil {
+		CreateChange[*base.Schema](changes, ObjectRemoved, v3.XMLLabel,
+			lSchema.XML.GetValueNode(), nil, true, lSchema.XML.GetValue(), nil)
+	}
+	// XML added
+	if lSchema.XML.Value == nil && rSchema.XML.Value != nil {
+		CreateChange[*base.Schema](changes, ObjectAdded, v3.XMLLabel,
+			nil, rSchema.XML.GetValueNode(), false, nil, rSchema.XML.GetValue())
+	}
+
+	// compare XML
+	if lSchema.XML.Value != nil && rSchema.XML.Value != nil {
+		if !low.AreEqual(lSchema.XML.Value, rSchema.XML.Value) {
+			sc.XMLChanges = CompareXML(lSchema.XML.Value, rSchema.XML.Value)
+		}
+	}
+}
+
+func checkPropertiesPropertyOfASchema(
+	lSchema *base.Schema,
+	rSchema *base.Schema,
+	changes *[]*Change[*base.Schema],
+	sc *SchemaChanges,
+	doneChan chan bool) int {
+
+	propChanges := make(map[string]*SchemaChanges)
+
+	var lProps []string
+	lEntities := make(map[string]*base.SchemaProxy)
+	lKeyNodes := make(map[string]*yaml.Node)
+	var rProps []string
+	rEntities := make(map[string]*base.SchemaProxy)
+	rKeyNodes := make(map[string]*yaml.Node)
+
+	for w := range lSchema.Properties.Value {
+		if !lSchema.Properties.Value[w].Value.IsSchemaReference() {
+			lProps = append(lProps, w.Value)
+			lEntities[w.Value] = lSchema.Properties.Value[w].Value
+			lKeyNodes[w.Value] = w.KeyNode
+		}
+	}
+	for w := range rSchema.Properties.Value {
+		if !rSchema.Properties.Value[w].Value.IsSchemaReference() {
+			rProps = append(rProps, w.Value)
+			rEntities[w.Value] = rSchema.Properties.Value[w].Value
+			rKeyNodes[w.Value] = w.KeyNode
+		}
+	}
+	sort.Strings(lProps)
+	sort.Strings(rProps)
+
+	var propLock sync.Mutex
+	checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
+		if lp != nil && rp != nil {
+			ls := lp.Schema()
+			rs := rp.Schema()
+			if low.AreEqual(ls, rs) {
+				done <- true
+				return
+			}
+			s := CompareSchemas(lp, rp)
+			propLock.Lock()
+			propChanges[key] = s
+			propLock.Unlock()
+			done <- true
+		}
+	}
+
+	totalProperties := 0
+	if len(lProps) == len(rProps) {
+		for w := range lProps {
+			lp := lEntities[lProps[w]]
+			rp := rEntities[rProps[w]]
+			if lProps[w] == rProps[w] && lp != nil && rp != nil {
+				totalProperties++
+				go checkProperty(lProps[w], lp, rp, propChanges, doneChan)
+			}
+
+			// keys do not match, even after sorting, means a like for like replacement.
+			if lProps[w] != rProps[w] {
+
+				// old removed, new added.
+				CreateChange[*base.Schema](changes, ObjectAdded, v3.PropertiesLabel,
+					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+
+				CreateChange[*base.Schema](changes, ObjectRemoved, v3.PropertiesLabel,
+					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+			}
+
+		}
+	}
+
+	// something removed
+	if len(lProps) > len(rProps) {
+		for w := range lProps {
+			if w < len(rProps) {
+				totalProperties++
+				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+			}
+			if w >= len(rProps) {
+				CreateChange[*base.Schema](changes, ObjectRemoved, v3.PropertiesLabel,
+					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+			}
+		}
+	}
+
+	// something added
+	if len(rProps) > len(lProps) {
+		for w := range rProps {
+			if w < len(lProps) {
+				totalProperties++
+				go checkProperty(rProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+			}
+			if w >= len(lProps) {
+				CreateChange[*base.Schema](changes, ObjectAdded, v3.PropertiesLabel,
+					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+			}
+		}
+	}
+	sc.SchemaPropertyChanges = propChanges
+	return totalProperties
+}
+
+func checkSchemaPropertyChanges(
+	lSchema *base.Schema,
+	rSchema *base.Schema,
+	changes *[]*Change[*base.Schema], sc *SchemaChanges) {
+
+	var props []*PropertyCheck[*base.Schema]
+
+	// $schema (breaking change)
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.SchemaTypeRef.ValueNode,
+		RightNode: rSchema.SchemaTypeRef.ValueNode,
+		Label:     v3.SchemaDialectLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// ExclusiveMaximum
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.ExclusiveMaximum.ValueNode,
+		RightNode: rSchema.ExclusiveMaximum.ValueNode,
+		Label:     v3.ExclusiveMaximumLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// ExclusiveMinimum
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.ExclusiveMinimum.ValueNode,
+		RightNode: rSchema.ExclusiveMinimum.ValueNode,
+		Label:     v3.ExclusiveMinimumLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Type
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Type.ValueNode,
+		RightNode: rSchema.Type.ValueNode,
+		Label:     v3.TypeLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Title
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Title.ValueNode,
+		RightNode: rSchema.Title.ValueNode,
+		Label:     v3.TitleLabel,
+		Changes:   changes,
+		Breaking:  false,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MultipleOf
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MultipleOf.ValueNode,
+		RightNode: rSchema.MultipleOf.ValueNode,
+		Label:     v3.MultipleOfLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Maximum
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Maximum.ValueNode,
+		RightNode: rSchema.Maximum.ValueNode,
+		Label:     v3.MaximumLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Minimum
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Minimum.ValueNode,
+		RightNode: rSchema.Minimum.ValueNode,
+		Label:     v3.MinimumLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MaxLength
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MaxLength.ValueNode,
+		RightNode: rSchema.MaxLength.ValueNode,
+		Label:     v3.MaxLengthLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MinLength
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MinLength.ValueNode,
+		RightNode: rSchema.MinLength.ValueNode,
+		Label:     v3.MinLengthLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Pattern
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Pattern.ValueNode,
+		RightNode: rSchema.Pattern.ValueNode,
+		Label:     v3.PatternLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Format
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Format.ValueNode,
+		RightNode: rSchema.Format.ValueNode,
+		Label:     v3.FormatLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MaxItems
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MaxItems.ValueNode,
+		RightNode: rSchema.MaxItems.ValueNode,
+		Label:     v3.MaxItemsLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MinItems
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MinItems.ValueNode,
+		RightNode: rSchema.MinItems.ValueNode,
+		Label:     v3.MinItemsLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MaxProperties
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MaxProperties.ValueNode,
+		RightNode: rSchema.MaxProperties.ValueNode,
+		Label:     v3.MaxPropertiesLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// MinProperties
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.MinProperties.ValueNode,
+		RightNode: rSchema.MinProperties.ValueNode,
+		Label:     v3.MinPropertiesLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// UniqueItems
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.UniqueItems.ValueNode,
+		RightNode: rSchema.UniqueItems.ValueNode,
+		Label:     v3.UniqueItemsLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// AdditionalProperties
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.AdditionalProperties.ValueNode,
+		RightNode: rSchema.AdditionalProperties.ValueNode,
+		Label:     v3.AdditionalPropertiesLabel,
+		Changes:   changes,
+		Breaking:  false,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Description
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Description.ValueNode,
+		RightNode: rSchema.Description.ValueNode,
+		Label:     v3.DescriptionLabel,
+		Changes:   changes,
+		Breaking:  false,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// ContentEncoding
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.ContentEncoding.ValueNode,
+		RightNode: rSchema.ContentEncoding.ValueNode,
+		Label:     v3.ContentEncodingLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// ContentMediaType
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.ContentMediaType.ValueNode,
+		RightNode: rSchema.ContentMediaType.ValueNode,
+		Label:     v3.ContentMediaType,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Default
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Default.ValueNode,
+		RightNode: rSchema.Default.ValueNode,
+		Label:     v3.DefaultLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Nullable
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Nullable.ValueNode,
+		RightNode: rSchema.Nullable.ValueNode,
+		Label:     v3.NullableLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// ReadOnly
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.ReadOnly.ValueNode,
+		RightNode: rSchema.ReadOnly.ValueNode,
+		Label:     v3.ReadOnlyLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// WriteOnly
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.WriteOnly.ValueNode,
+		RightNode: rSchema.WriteOnly.ValueNode,
+		Label:     v3.WriteOnlyLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Example
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Example.ValueNode,
+		RightNode: rSchema.Example.ValueNode,
+		Label:     v3.ExampleLabel,
+		Changes:   changes,
+		Breaking:  false,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Deprecated
+	props = append(props, &PropertyCheck[*base.Schema]{
+		LeftNode:  lSchema.Deprecated.ValueNode,
+		RightNode: rSchema.Deprecated.ValueNode,
+		Label:     v3.DeprecatedLabel,
+		Changes:   changes,
+		Breaking:  false,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Required
+	j := make(map[string]int)
+	k := make(map[string]int)
+	for i := range lSchema.Required.Value {
+		j[lSchema.Required.Value[i].Value] = i
+	}
+	for i := range rSchema.Required.Value {
+		k[rSchema.Required.Value[i].Value] = i
+	}
+	for g := range k {
+		if _, ok := j[g]; !ok {
+			CreateChange[*base.Schema](changes, PropertyAdded, v3.RequiredLabel,
+				nil, rSchema.Required.Value[k[g]].GetValueNode(), true, nil,
+				rSchema.Required.Value[k[g]].GetValue)
+		}
+	}
+	for g := range j {
+		if _, ok := k[g]; !ok {
+			CreateChange[*base.Schema](changes, PropertyRemoved, v3.RequiredLabel,
+				lSchema.Required.Value[j[g]].GetValueNode(), nil, true, lSchema.Required.Value[j[g]].GetValue,
+				nil)
+		}
+	}
+
+	// Enums
+	j = make(map[string]int)
+	k = make(map[string]int)
+	for i := range lSchema.Enum.Value {
+		j[lSchema.Enum.Value[i].Value] = i
+	}
+	for i := range rSchema.Enum.Value {
+		k[rSchema.Enum.Value[i].Value] = i
+	}
+	for g := range k {
+		if _, ok := j[g]; !ok {
+			CreateChange[*base.Schema](changes, PropertyAdded, v3.EnumLabel,
+				nil, rSchema.Enum.Value[k[g]].GetValueNode(), false, nil,
+				rSchema.Enum.Value[k[g]].GetValue)
+		}
+	}
+	for g := range j {
+		if _, ok := k[g]; !ok {
+			CreateChange[*base.Schema](changes, PropertyRemoved, v3.EnumLabel,
+				lSchema.Enum.Value[j[g]].GetValueNode(), nil, true, lSchema.Enum.Value[j[g]].GetValue,
+				nil)
+		}
+	}
+
+	// Discriminator
+	if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value != nil {
+		// check if hash matches, if not then compare.
+		if lSchema.Discriminator.Value.Hash() != rSchema.Discriminator.Value.Hash() {
+			sc.DiscriminatorChanges = CompareDiscriminator(lSchema.Discriminator.Value, rSchema.Discriminator.Value)
+		}
+	}
+	// added Discriminator
+	if lSchema.Discriminator.Value == nil && rSchema.Discriminator.Value != nil {
+		CreateChange[*base.Schema](changes, ObjectAdded, v3.DiscriminatorLabel,
+			nil, rSchema.Discriminator.ValueNode, true, nil, rSchema.Discriminator.Value)
+	}
+	// removed Discriminator
+	if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value == nil {
+		CreateChange[*base.Schema](changes, ObjectRemoved, v3.DiscriminatorLabel,
+			lSchema.Discriminator.ValueNode, nil, true, lSchema.Discriminator.Value, nil)
+	}
+
+	// ExternalDocs
+	if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value != nil {
+		// check if hash matches, if not then compare.
+		if lSchema.ExternalDocs.Value.Hash() != rSchema.ExternalDocs.Value.Hash() {
+			sc.ExternalDocChanges = CompareExternalDocs(lSchema.ExternalDocs.Value, rSchema.ExternalDocs.Value)
+		}
+	}
+	// added ExternalDocs
+	if lSchema.ExternalDocs.Value == nil && rSchema.ExternalDocs.Value != nil {
+		CreateChange[*base.Schema](changes, ObjectAdded, v3.ExternalDocsLabel,
+			nil, rSchema.ExternalDocs.ValueNode, false, nil, rSchema.ExternalDocs.Value)
+	}
+	// removed ExternalDocs
+	if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value == nil {
+		CreateChange[*base.Schema](changes, ObjectRemoved, v3.ExternalDocsLabel,
+			lSchema.ExternalDocs.ValueNode, nil, false, lSchema.ExternalDocs.Value, nil)
+	}
+
+	// check extensions
+	sc.ExtensionChanges = CompareExtensions(lSchema.Extensions, rSchema.Extensions)
+
+	// check core properties
+	CheckProperties(props)
+}
+
+func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change[*base.Schema]) {
+	// check examples (3.1+)
+	var lExampKey, rExampKey []string
+	lExampN := make(map[string]*yaml.Node)
+	rExampN := make(map[string]*yaml.Node)
+	lExampVal := make(map[string]any)
+	rExampVal := make(map[string]any)
+
+	// create keys by hashing values
+	if lSchema.Examples.ValueNode != nil {
+		for i := range lSchema.Examples.ValueNode.Content {
+			key := low.GenerateHashString(lSchema.Examples.ValueNode.Content[i].Value)
+			lExampKey = append(lExampKey, key)
+			lExampVal[key] = lSchema.Examples.ValueNode.Content[i].Value
+			lExampN[key] = lSchema.Examples.ValueNode.Content[i]
+
+		}
+	}
+	if rSchema.Examples.ValueNode != nil {
+		for i := range rSchema.Examples.ValueNode.Content {
+			key := low.GenerateHashString(rSchema.Examples.ValueNode.Content[i].Value)
+			rExampKey = append(rExampKey, key)
+			rExampVal[key] = rSchema.Examples.ValueNode.Content[i].Value
+			rExampN[key] = rSchema.Examples.ValueNode.Content[i]
+		}
+	}
+
+	// if examples equal lengths, check for equality
+	if len(lExampKey) == len(rExampKey) {
+		for i := range lExampKey {
+			if lExampKey[i] != rExampKey[i] {
+				CreateChange[*base.Schema](changes, Modified, v3.ExamplesLabel,
+					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
+			}
+		}
+	}
+	// examples were removed.
+	if len(lExampKey) > len(rExampKey) {
+		for i := range lExampKey {
+			if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
+				CreateChange[*base.Schema](changes, Modified, v3.ExamplesLabel,
+					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
+			}
+			if i >= len(rExampKey) {
+				CreateChange[*base.Schema](changes, ObjectRemoved, v3.ExamplesLabel,
+					lExampN[lExampKey[i]], nil, false,
+					lExampVal[lExampKey[i]], nil)
+			}
+		}
+	}
+
+	// examples were added
+	if len(lExampKey) < len(rExampKey) {
+		for i := range rExampKey {
+			if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
+				CreateChange[*base.Schema](changes, Modified, v3.ExamplesLabel,
+					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
+			}
+			if i >= len(lExampKey) {
+				CreateChange[*base.Schema](changes, ObjectAdded, v3.ExamplesLabel,
+					nil, rExampN[rExampKey[i]], false,
+					nil, rExampVal[rExampKey[i]])
+			}
+		}
+	}
 }
 
 func extractSchemaChanges(
