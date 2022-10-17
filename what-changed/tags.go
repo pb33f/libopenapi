@@ -12,7 +12,7 @@ import (
 
 // TagChanges represents changes made to the Tags object of an OpenAPI document.
 type TagChanges struct {
-	PropertyChanges[*base.Tag]
+	PropertyChanges
 	ExternalDocs     *ExternalDocChanges
 	ExtensionChanges *ExtensionChanges
 }
@@ -52,7 +52,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 		seenRight[strings.ToLower(r[i].Value.Name.Value)] = &h
 	}
 
-	var changes []*Change[*base.Tag]
+	var changes []*Change
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {
@@ -62,10 +62,10 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {
 
-			var props []*PropertyCheck[*base.Tag]
+			var props []*PropertyCheck
 
 			// Name
-			props = append(props, &PropertyCheck[*base.Tag]{
+			props = append(props, &PropertyCheck{
 				LeftNode:  seenLeft[i].Value.Name.ValueNode,
 				RightNode: seenRight[i].Value.Name.ValueNode,
 				Label:     v3.NameLabel,
@@ -76,7 +76,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 			})
 
 			// Description
-			props = append(props, &PropertyCheck[*base.Tag]{
+			props = append(props, &PropertyCheck{
 				LeftNode:  seenLeft[i].Value.Description.ValueNode,
 				RightNode: seenRight[i].Value.Description.ValueNode,
 				Label:     v3.DescriptionLabel,
@@ -101,7 +101,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 
 	for i := range seenRight {
 		if seenLeft[i] == nil {
-			CreateChange[*base.Tag](&changes, ObjectAdded, i, nil, seenRight[i].GetValueNode(),
+			CreateChange(&changes, ObjectAdded, i, nil, seenRight[i].GetValueNode(),
 				false, nil, seenRight[i].GetValue())
 		}
 	}

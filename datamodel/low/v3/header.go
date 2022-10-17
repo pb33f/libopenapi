@@ -4,11 +4,14 @@
 package v3
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Header represents a low-level OpenAPI 3+ Header object.
@@ -41,6 +44,42 @@ func (h *Header) FindExample(eType string) *low.ValueReference[*base.Example] {
 // FindContent will attempt to locate a MediaType definition, with a specified name
 func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](ext, h.Content.Value)
+}
+
+// Hash will return a consistent SHA256 Hash of the Header object
+func (h *Header) Hash() [32]byte {
+	var f []string
+	if h.Description.Value != "" {
+		f = append(f, h.Description.Value)
+	}
+	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Required.Value)))))
+	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Deprecated.Value)))))
+	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.AllowEmptyValue.Value)))))
+	if h.Style.Value != "" {
+		f = append(f, h.Style.Value)
+	}
+	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Explode.Value)))))
+	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.AllowReserved.Value)))))
+	if h.Schema.Value != nil {
+		f = append(f, fmt.Sprint(h.Schema.Value.Schema().Hash()))
+	}
+	if h.Example.Value != nil {
+		f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Example.Value)))))
+	}
+	if len(h.Examples.Value) > 0 {
+		for k := range h.Examples.Value {
+			f = append(f, fmt.Sprintf("%s-%x", k.Value, h.Examples.Value[k].Value.Hash()))
+		}
+	}
+	if len(h.Content.Value) > 0 {
+		for k := range h.Content.Value {
+			f = append(f, fmt.Sprintf("%s-%x", k.Value, h.Content.Value[k].Value.Hash()))
+		}
+	}
+	for k := range h.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, h.Extensions[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // Build will extract extensions, examples, schema and content/media types from node.

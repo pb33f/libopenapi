@@ -10,12 +10,12 @@ import (
 
 // CreateChange is a generic function that will create a Change of type T, populate all properties if set, and then
 // add a pointer to Change[T] in the slice of Change pointers provided
-func CreateChange[T any](changes *[]*Change[T], changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
-	breaking bool, originalObject, newObject any) *[]*Change[T] {
+func CreateChange(changes *[]*Change, changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
+	breaking bool, originalObject, newObject any) *[]*Change {
 
 	// create a new context for the left and right nodes.
 	ctx := CreateContext(leftValueNode, rightValueNode)
-	c := &Change[T]{
+	c := &Change{
 		Context:    ctx,
 		ChangeType: changeType,
 		Property:   property,
@@ -70,7 +70,7 @@ func FlattenLowLevelMap[T any](
 }
 
 // CountBreakingChanges counts the number of changes in a slice that are breaking
-func CountBreakingChanges[T any](changes []*Change[T]) int {
+func CountBreakingChanges(changes []*Change) int {
 	b := 0
 	for i := range changes {
 		if changes[i].Breaking {
@@ -87,17 +87,17 @@ func CountBreakingChanges[T any](changes []*Change[T]) int {
 // scenarios that adding things should break anything). Removals are generally breaking, except for non contract
 // properties like descriptions, summaries and other non-binding values, so a breakingRemove value can be tuned for
 // these circumstances.
-func CheckForObjectAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change[T],
+func CheckForObjectAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change,
 	breakingAdd, breakingRemove bool) {
 	var left, right T
 	if CheckSpecificObjectRemoved(l, r, label) {
 		left = l[label].GetValue()
-		CreateChange[T](changes, ObjectRemoved, label, l[label].GetValueNode(), nil,
+		CreateChange(changes, ObjectRemoved, label, l[label].GetValueNode(), nil,
 			breakingRemove, left, right)
 	}
 	if CheckSpecificObjectAdded(l, r, label) {
 		right = r[label].GetValue()
-		CreateChange[T](changes, ObjectAdded, label, nil, r[label].GetValueNode(),
+		CreateChange(changes, ObjectAdded, label, nil, r[label].GetValueNode(),
 			breakingAdd, left, right)
 	}
 }
@@ -116,7 +116,7 @@ func CheckSpecificObjectAdded[T any](l, r map[string]*T, label string) bool {
 // for running checks on the following methods in order:
 //   CheckPropertyAdditionOrRemoval
 //   CheckForModification
-func CheckProperties[T any](properties []*PropertyCheck[T]) {
+func CheckProperties(properties []*PropertyCheck) {
 	for _, n := range properties {
 		CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
 		CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
@@ -125,7 +125,7 @@ func CheckProperties[T any](properties []*PropertyCheck[T]) {
 
 // CheckPropertyAdditionOrRemoval will run both CheckForRemoval (first) and CheckForAddition (second)
 func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
-	label string, changes *[]*Change[T], breaking bool, orig, new T) {
+	label string, changes *[]*Change, breaking bool, orig, new T) {
 	CheckForRemoval[T](l, r, label, changes, breaking, orig, new)
 	CheckForAddition[T](l, r, label, changes, breaking, orig, new)
 }
@@ -136,9 +136,9 @@ func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
 //  PropertyRemoved
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
-func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && (r == nil || r.Value == "") {
-		CreateChange[T](changes, PropertyRemoved, label, l, r, breaking, orig, new)
+		CreateChange(changes, PropertyRemoved, label, l, r, breaking, orig, new)
 	}
 }
 
@@ -148,9 +148,9 @@ func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change[T]
 //  PropertyAdded
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
-func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if (l == nil || l.Value == "") && r != nil && r.Value != "" {
-		CreateChange[T](changes, PropertyAdded, label, l, r, breaking, orig, new)
+		CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
 	}
 }
 
@@ -160,13 +160,13 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change[T
 // If there is a change in value the function adds a change type of Modified.
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
-func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change[T], breaking bool, orig, new T) {
+func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag == l.Tag {
-		CreateChange[T](changes, Modified, label, l, r, breaking, orig, new)
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
 	}
 	// the values may have not changed, but the tag (node type) type may have
 	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag != l.Tag {
-		CreateChange[T](changes, Modified, label, l, r, breaking, orig, new)
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
 	}
 }
 

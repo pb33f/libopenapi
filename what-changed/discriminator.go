@@ -10,8 +10,8 @@ import (
 
 // DiscriminatorChanges represents changes made to a Discriminator OpenAPI object
 type DiscriminatorChanges struct {
-	PropertyChanges[*base.Discriminator]
-	MappingChanges []*Change[string]
+	PropertyChanges
+	MappingChanges []*Change
 }
 
 // TotalChanges returns a count of everything changed within the Discriminator object
@@ -35,12 +35,12 @@ func (d *DiscriminatorChanges) TotalBreakingChanges() int {
 // and will return a pointer to DiscriminatorChanges
 func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	dc := new(DiscriminatorChanges)
-	var changes []*Change[*base.Discriminator]
-	var props []*PropertyCheck[*base.Discriminator]
-	var mapping []*Change[string]
+	var changes []*Change
+	var props []*PropertyCheck
+	var mapping []*Change
 
 	// Name (breaking change)
-	props = append(props, &PropertyCheck[*base.Discriminator]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.PropertyName.ValueNode,
 		RightNode: r.PropertyName.ValueNode,
 		Label:     v3.PropertyNameLabel,
@@ -63,7 +63,7 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 		// if the existing tag exists, let's check it.
 		if rMap[i] != nil {
 			if lMap[i].Value != rMap[i].Value {
-				CreateChange[string](&mapping, Modified, i, lMap[i].GetValueNode(),
+				CreateChange(&mapping, Modified, i, lMap[i].GetValueNode(),
 					rMap[i].GetValueNode(), true, lMap[i].GetValue(), rMap[i].GetValue())
 			}
 		}
@@ -71,7 +71,7 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 
 	for i := range rMap {
 		if lMap[i] == nil {
-			CreateChange[string](&mapping, ObjectAdded, i, nil,
+			CreateChange(&mapping, ObjectAdded, i, nil,
 				rMap[i].GetValueNode(), false, nil, rMap[i].GetValue())
 		}
 	}

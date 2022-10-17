@@ -10,7 +10,7 @@ import (
 
 // InfoChanges represents the number of changes to an Info object. Part of an OpenAPI document
 type InfoChanges struct {
-	PropertyChanges[*base.Info]
+	PropertyChanges
 	ContactChanges *ContactChanges
 	LicenseChanges *LicenseChanges
 }
@@ -37,11 +37,11 @@ func (i *InfoChanges) TotalBreakingChanges() int {
 // returned instead.
 func CompareInfo(l, r *base.Info) *InfoChanges {
 
-	var changes []*Change[*base.Info]
-	var props []*PropertyCheck[*base.Info]
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// Title
-	props = append(props, &PropertyCheck[*base.Info]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Title.ValueNode,
 		RightNode: r.Title.ValueNode,
 		Label:     v3.TitleLabel,
@@ -52,7 +52,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 	})
 
 	// Description
-	props = append(props, &PropertyCheck[*base.Info]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
@@ -63,7 +63,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 	})
 
 	// TermsOfService
-	props = append(props, &PropertyCheck[*base.Info]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.TermsOfService.ValueNode,
 		RightNode: r.TermsOfService.ValueNode,
 		Label:     v3.TermsOfServiceLabel,
@@ -74,7 +74,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 	})
 
 	// Version
-	props = append(props, &PropertyCheck[*base.Info]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Version.ValueNode,
 		RightNode: r.Version.ValueNode,
 		Label:     v3.VersionLabel,
@@ -94,11 +94,11 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		i.ContactChanges = CompareContact(l.Contact.Value, r.Contact.Value)
 	} else {
 		if l.Contact.Value == nil && r.Contact.Value != nil {
-			CreateChange[*base.Info](&changes, ObjectAdded, v3.ContactLabel,
+			CreateChange(&changes, ObjectAdded, v3.ContactLabel,
 				nil, r.Contact.ValueNode, false, nil, r.Contact.Value)
 		}
 		if l.Contact.Value != nil && r.Contact.Value == nil {
-			CreateChange[*base.Info](&changes, ObjectRemoved, v3.ContactLabel,
+			CreateChange(&changes, ObjectRemoved, v3.ContactLabel,
 				l.Contact.ValueNode, nil, false, l.Contact.Value, nil)
 		}
 	}
@@ -108,11 +108,11 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		i.LicenseChanges = CompareLicense(l.License.Value, r.License.Value)
 	} else {
 		if l.License.Value == nil && r.License.Value != nil {
-			CreateChange[*base.Info](&changes, ObjectAdded, v3.LicenseLabel,
+			CreateChange(&changes, ObjectAdded, v3.LicenseLabel,
 				nil, r.License.ValueNode, false, nil, r.License.Value)
 		}
 		if l.License.Value != nil && r.License.Value == nil {
-			CreateChange[*base.Info](&changes, ObjectRemoved, v3.LicenseLabel,
+			CreateChange(&changes, ObjectRemoved, v3.LicenseLabel,
 				l.License.ValueNode, nil, false, r.License.Value, nil)
 		}
 	}

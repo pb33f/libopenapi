@@ -10,7 +10,7 @@ import (
 
 // ContactChanges Represent changes to a Contact object that is a child of Info, part of an OpenAPI document.
 type ContactChanges struct {
-	PropertyChanges[*base.Contact]
+	PropertyChanges
 }
 
 // TotalChanges represents the total number of changes that have occurred to a Contact object
@@ -28,11 +28,11 @@ func (c *ContactChanges) TotalBreakingChanges() int {
 // returns nil.
 func CompareContact(l, r *base.Contact) *ContactChanges {
 
-	var changes []*Change[*base.Contact]
-	var props []*PropertyCheck[*base.Contact]
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// check URL
-	props = append(props, &PropertyCheck[*base.Contact]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
@@ -43,7 +43,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 	})
 
 	// check name
-	props = append(props, &PropertyCheck[*base.Contact]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
@@ -54,7 +54,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 	})
 
 	// check email
-	props = append(props, &PropertyCheck[*base.Contact]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Email.ValueNode,
 		RightNode: r.Email.ValueNode,
 		Label:     v3.EmailLabel,
