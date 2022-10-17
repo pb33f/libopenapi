@@ -4,11 +4,14 @@
 package base
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strconv"
+	"strings"
 )
 
 // Example represents a low-level Example object as defined by OpenAPI 3+
@@ -24,6 +27,28 @@ type Example struct {
 // FindExtension returns a ValueReference containing the extension value, if found.
 func (ex *Example) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, ex.Extensions)
+}
+
+// Hash will return a consistent SHA256 Hash of the Discriminator object
+func (ex *Example) Hash() [32]byte {
+	var f []string
+	if ex.Summary.Value != "" {
+		f = append(f, ex.Summary.Value)
+	}
+	if ex.Description.Value != "" {
+		f = append(f, ex.Description.Value)
+	}
+	if ex.Value.Value != "" {
+		// this could be anything!
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(ex.Value.Value)))))
+	}
+	if ex.ExternalValue.Value != "" {
+		f = append(f, ex.ExternalValue.Value)
+	}
+	for k := range ex.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(ex.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // Build extracts extensions and example value

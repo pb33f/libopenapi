@@ -10,7 +10,7 @@ import (
 
 // ExternalDocChanges represents changes made to any ExternalDoc object from an OpenAPI document.
 type ExternalDocChanges struct {
-	PropertyChanges[*base.ExternalDoc]
+	PropertyChanges
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -32,11 +32,11 @@ func (e *ExternalDocChanges) TotalBreakingChanges() int {
 // nodes for any changes between them. If there are changes, then a pointer to ExternalDocChanges
 // is returned, otherwise if nothing changed - then nil is returned.
 func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
-	var changes []*Change[*base.ExternalDoc]
-	var props []*PropertyCheck[*base.ExternalDoc]
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// URL
-	props = append(props, &PropertyCheck[*base.ExternalDoc]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
@@ -47,7 +47,7 @@ func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 	})
 
 	// description.
-	props = append(props, &PropertyCheck[*base.ExternalDoc]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,

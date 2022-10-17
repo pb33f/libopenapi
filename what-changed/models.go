@@ -54,7 +54,7 @@ func (c *ChangeContext) HasChanged() bool {
 }
 
 // Change represents a change between two different elements inside an OpenAPI specification.
-type Change[T any] struct {
+type Change struct {
 
 	// Context represents the lines and column numbers of the original and new values
 	// It's worth noting that these values may frequently be different and are not used to calculate
@@ -83,18 +83,18 @@ type Change[T any] struct {
 	NewObject any
 }
 
-// PropertyChanges holds a slice of Change[T] change pointers
-type PropertyChanges[T any] struct {
-	Changes []*Change[T]
+// PropertyChanges holds a slice of Change pointers
+type PropertyChanges struct {
+	Changes []*Change
 }
 
 // TotalChanges returns the total number of property changes made.
-func (p PropertyChanges[T]) TotalChanges() int {
+func (p PropertyChanges) TotalChanges() int {
 	return len(p.Changes)
 }
 
 // TotalBreakingChanges returns the total number of property breaking changes made.
-func (p PropertyChanges[T]) TotalBreakingChanges() int {
+func (p PropertyChanges) TotalBreakingChanges() int {
 	return CountBreakingChanges(p.Changes)
 }
 
@@ -107,13 +107,13 @@ func (p PropertyChanges[T]) TotalBreakingChanges() int {
 //}
 
 // PropertyCheck is used by functions to check the state of left and right values.
-type PropertyCheck[T any] struct {
+type PropertyCheck struct {
 
 	// Original is the property we're checking on the left
-	Original T
+	Original any
 
 	// New is s the property we're checking on the right
-	New T
+	New any
 
 	// Label is the identifier we're looking for on the left and right hand sides
 	Label string
@@ -128,7 +128,7 @@ type PropertyCheck[T any] struct {
 	Breaking bool
 
 	// Changes represents a pointer to the slice to contain all changes found.
-	Changes *[]*Change[T]
+	Changes *[]*Change
 }
 
 type Changes struct {

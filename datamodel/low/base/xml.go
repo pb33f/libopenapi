@@ -43,8 +43,12 @@ func (x *XML) Hash() [32]byte {
 		x.Name.Value,
 		x.Namespace.Value,
 		x.Prefix.Value,
-		fmt.Sprintf("%v", x.Attribute.Value),
-		fmt.Sprintf("%v", x.Wrapped.Value),
+		fmt.Sprint(x.Attribute.Value),
+		fmt.Sprint(x.Wrapped.Value),
+	}
+	// add extensions to hash
+	for k := range x.Extensions {
+		d = append(d, fmt.Sprintf("%v-%x", k.Value, x.Extensions[k].Value))
 	}
 	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }

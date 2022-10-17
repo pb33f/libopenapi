@@ -4,11 +4,14 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Parameter represents a low-level Swagger / OpenAPI 2 Parameter object.
@@ -122,4 +125,164 @@ func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		return nil
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Parameter object
+func (p *Parameter) Hash() [32]byte {
+	var f []string
+	if p.Name.Value != "" {
+		f = append(f, p.Name.Value)
+	}
+	if p.In.Value != "" {
+		f = append(f, p.In.Value)
+	}
+	if p.Type.Value != "" {
+		f = append(f, p.Type.Value)
+	}
+	if p.Format.Value != "" {
+		f = append(f, p.Format.Value)
+	}
+	if p.Description.Value != "" {
+		f = append(f, p.Description.Value)
+	}
+	f = append(f, fmt.Sprint(p.Required.Value))
+	f = append(f, fmt.Sprint(p.AllowEmptyValue.Value))
+	if p.Schema.Value != nil {
+		f = append(f, fmt.Sprintf("%x", p.Schema.Value.Schema().Hash()))
+	}
+	if p.CollectionFormat.Value != "" {
+		f = append(f, p.CollectionFormat.Value)
+	}
+	if p.Default.Value != "" {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(p.Default.Value)))))
+	}
+	f = append(f, fmt.Sprint(p.Maximum.Value))
+	f = append(f, fmt.Sprint(p.Minimum.Value))
+	f = append(f, fmt.Sprint(p.ExclusiveMinimum.Value))
+	f = append(f, fmt.Sprint(p.ExclusiveMaximum.Value))
+	f = append(f, fmt.Sprint(p.MinLength.Value))
+	f = append(f, fmt.Sprint(p.MaxLength.Value))
+	f = append(f, fmt.Sprint(p.MinItems.Value))
+	f = append(f, fmt.Sprint(p.MaxItems.Value))
+	f = append(f, fmt.Sprint(p.MultipleOf.Value))
+	f = append(f, fmt.Sprint(p.UniqueItems.Value))
+	if p.Pattern.Value != "" {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(p.Pattern.Value)))))
+	}
+	if len(p.Enum.Value) > 0 {
+		for k := range p.Enum.Value {
+			f = append(f, fmt.Sprint(p.Enum.Value[k].Value))
+		}
+	}
+	for k := range p.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+	}
+	if p.Items.Value != nil {
+		f = append(f, fmt.Sprintf("%x", p.Items.Value.Hash()))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
+// IsParameter compliance methods.
+
+func (p *Parameter) GetName() *low.NodeReference[string] {
+	return &p.Name
+}
+func (p *Parameter) GetIn() *low.NodeReference[string] {
+	return &p.In
+}
+func (p *Parameter) GetType() *low.NodeReference[string] {
+	return &p.Type
+}
+func (p *Parameter) GetDescription() *low.NodeReference[string] {
+	return &p.Description
+}
+func (p *Parameter) GetRequired() *low.NodeReference[bool] {
+	return &p.Required
+}
+func (p *Parameter) GetDeprecated() *low.NodeReference[bool] {
+	// not implemented.
+	return nil
+}
+func (p *Parameter) GetAllowEmptyValue() *low.NodeReference[bool] {
+	return &p.AllowEmptyValue
+}
+func (p *Parameter) GetSchema() *low.NodeReference[any] {
+	i := low.NodeReference[any]{
+		KeyNode:   p.Schema.KeyNode,
+		ValueNode: p.Schema.ValueNode,
+		Value:     p.Schema.KeyNode,
+	}
+	return &i
+}
+func (p *Parameter) GetFormat() *low.NodeReference[string] {
+	return &p.Format
+}
+func (p *Parameter) GetItems() *low.NodeReference[any] {
+	i := low.NodeReference[any]{
+		KeyNode:   p.Items.KeyNode,
+		ValueNode: p.Items.ValueNode,
+		Value:     p.Items.KeyNode,
+	}
+	return &i
+}
+func (p *Parameter) GetStyle() *low.NodeReference[string] {
+	return nil // not implemented
+}
+func (p *Parameter) GetCollectionFormat() *low.NodeReference[string] {
+	return &p.CollectionFormat
+}
+func (p *Parameter) GetDefault() *low.NodeReference[any] {
+	return &p.Default
+}
+func (p *Parameter) GetAllowReserved() *low.NodeReference[bool] {
+	return nil // not implemented
+}
+func (p *Parameter) GetExplode() *low.NodeReference[bool] {
+	return nil // not implemented
+}
+func (p *Parameter) GetMaximum() *low.NodeReference[int] {
+	return &p.Maximum
+}
+func (p *Parameter) GetExclusiveMaximum() *low.NodeReference[bool] {
+	return &p.ExclusiveMaximum
+}
+func (p *Parameter) GetMinimum() *low.NodeReference[int] {
+	return &p.Minimum
+}
+func (p *Parameter) GetExclusiveMinimum() *low.NodeReference[bool] {
+	return &p.ExclusiveMinimum
+}
+func (p *Parameter) GetMaxLength() *low.NodeReference[int] {
+	return &p.MaxLength
+}
+func (p *Parameter) GetMinLength() *low.NodeReference[int] {
+	return &p.MinLength
+}
+func (p *Parameter) GetPattern() *low.NodeReference[string] {
+	return &p.Pattern
+}
+func (p *Parameter) GetMaxItems() *low.NodeReference[int] {
+	return &p.MaxItems
+}
+func (p *Parameter) GetMinItems() *low.NodeReference[int] {
+	return &p.MaxItems
+}
+func (p *Parameter) GetUniqueItems() *low.NodeReference[bool] {
+	return &p.UniqueItems
+}
+func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
+	return &p.Enum
+}
+func (p *Parameter) GetMultipleOf() *low.NodeReference[int] {
+	return &p.MultipleOf
+}
+func (p *Parameter) GetExample() *low.NodeReference[any] {
+	return nil // not implemented
+}
+func (p *Parameter) GetExamples() *low.NodeReference[any] {
+	return nil // not implemented
+}
+func (p *Parameter) GetContent() *low.NodeReference[any] {
+	return nil // not implemented
 }

@@ -93,4 +93,10 @@ const (
 	RefLabel                  = "$ref"
 	DiscriminatorLabel        = "discriminator"
 	ExternalDocsLabel         = "externalDocs"
+	InLabel                   = "in"
+	AllowEmptyValueLabel      = "allowEmptyValue"
+	StyleLabel                = "style"
+	CollectionFormatLabel     = "collectionFormat"
+	AllowReservedLabel        = "allowReserved"
+	ExplodeLabel              = "explode"
 )

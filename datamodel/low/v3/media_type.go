@@ -4,11 +4,14 @@
 package v3
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // MediaType represents a low-level OpenAPI MediaType object.
@@ -88,4 +91,29 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the MediaType object
+func (mt *MediaType) Hash() [32]byte {
+	var f []string
+	if mt.Schema.Value != nil {
+		f = append(f, fmt.Sprintf("%x", mt.Schema.Value.Schema().Hash()))
+	}
+	if mt.Example.Value != nil {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(mt.Example.Value)))))
+	}
+	if len(mt.Examples.Value) > 0 {
+		for k := range mt.Examples.Value {
+			f = append(f, fmt.Sprintf("%s-%x", k.Value, mt.Examples.Value[k].Value.Hash()))
+		}
+	}
+	if len(mt.Encoding.Value) > 0 {
+		for k := range mt.Encoding.Value {
+			f = append(f, fmt.Sprintf("%s-%x", k.Value, mt.Encoding.Value[k].Value.Hash()))
+		}
+	}
+	for k := range mt.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, mt.Extensions[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

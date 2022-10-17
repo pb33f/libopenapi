@@ -10,7 +10,7 @@ import (
 
 // ExampleChanges represent changes to an Example object, part of an OpenAPI specification.
 type ExampleChanges struct {
-	PropertyChanges[*base.Example]
+	PropertyChanges
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -23,16 +23,25 @@ func (e *ExampleChanges) TotalChanges() int {
 	return l
 }
 
+// TotalBreakingChanges returns the total number of breaking changes made to Example
+func (e *ExampleChanges) TotalBreakingChanges() int {
+	l := e.PropertyChanges.TotalBreakingChanges()
+	if e.ExtensionChanges != nil {
+		l += e.ExtensionChanges.PropertyChanges.TotalBreakingChanges()
+	}
+	return l
+}
+
 // TotalChanges
 
 func CompareExamples(l, r *base.Example) *ExampleChanges {
 
 	ec := new(ExampleChanges)
-	var changes []*Change[*base.Example]
-	var props []*PropertyCheck[*base.Example]
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// Summary
-	props = append(props, &PropertyCheck[*base.Example]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Summary.ValueNode,
 		RightNode: r.Summary.ValueNode,
 		Label:     v3.SummaryLabel,
@@ -43,7 +52,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// Description
-	props = append(props, &PropertyCheck[*base.Example]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
@@ -54,7 +63,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// Value
-	props = append(props, &PropertyCheck[*base.Example]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Value.ValueNode,
 		RightNode: r.Value.ValueNode,
 		Label:     v3.ValueLabel,
@@ -65,7 +74,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// ExternalValue
-	props = append(props, &PropertyCheck[*base.Example]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.ExternalValue.ValueNode,
 		RightNode: r.ExternalValue.ValueNode,
 		Label:     v3.ExternalValue,

@@ -13,8 +13,14 @@ import (
 	"sync"
 )
 
+// SchemaChanges represent all changes to a base.Schema OpenAPI object. These changes are represented
+// by all versions of OpenAPI.
+//
+// Any additions or removals to slice based results will be recorded in the PropertyChanges of the parent
+// changes, and not the child for example, adding a new schema to `anyOf` will create a new change result in
+// PropertyChanges.Changes, and not in the AnyOfChanges property.
 type SchemaChanges struct {
-	PropertyChanges[*base.Schema]
+	PropertyChanges
 	DiscriminatorChanges  *DiscriminatorChanges
 	AllOfChanges          []*SchemaChanges
 	AnyOfChanges          []*SchemaChanges
@@ -27,6 +33,7 @@ type SchemaChanges struct {
 	ExtensionChanges      *ExtensionChanges
 }
 
+// TotalChanges returns a count of the total number of changes made to this schema and all sub-schemas
 func (s *SchemaChanges) TotalChanges() int {
 	t := s.PropertyChanges.TotalChanges()
 	if s.DiscriminatorChanges != nil {
@@ -74,6 +81,7 @@ func (s *SchemaChanges) TotalChanges() int {
 	return t
 }
 
+// TotalBreakingChanges returns the total number of breaking changes made to this schema and all sub-schemas.
 func (s *SchemaChanges) TotalBreakingChanges() int {
 	t := s.PropertyChanges.TotalBreakingChanges()
 	if s.DiscriminatorChanges != nil {
@@ -122,18 +130,18 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 
 func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 	sc := new(SchemaChanges)
-	var changes []*Change[*base.Schema]
+	var changes []*Change
 
 	// Added
 	if l == nil && r != nil {
-		CreateChange[*base.Schema](&changes, ObjectAdded, v3.SchemaLabel,
+		CreateChange(&changes, ObjectAdded, v3.SchemaLabel,
 			nil, nil, true, nil, r)
 		sc.Changes = changes
 	}
 
 	// Removed
 	if l != nil && r == nil {
-		CreateChange[*base.Schema](&changes, ObjectRemoved, v3.SchemaLabel,
+		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,
 			nil, nil, true, l, nil)
 		sc.Changes = changes
 	}
@@ -148,7 +156,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				return nil
 			} else {
 				// references are different, that's all we care to know.
-				CreateChange[*base.Schema](&changes, Modified, v3.RefLabel,
+				CreateChange(&changes, Modified, v3.RefLabel,
 					l.GetValueNode().Content[1], r.GetValueNode().Content[1], true, l.GetSchemaReference(),
 					r.GetSchemaReference())
 				sc.Changes = changes
@@ -158,7 +166,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// changed from inline to ref
 		if !l.IsSchemaReference() && r.IsSchemaReference() {
-			CreateChange[*base.Schema](&changes, Modified, v3.RefLabel,
+			CreateChange(&changes, Modified, v3.RefLabel,
 				l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetSchemaReference())
 			sc.Changes = changes
 			return sc // we're done here
@@ -166,7 +174,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// changed from ref to inline
 		if l.IsSchemaReference() && !r.IsSchemaReference() {
-			CreateChange[*base.Schema](&changes, Modified, v3.RefLabel,
+			CreateChange(&changes, Modified, v3.RefLabel,
 				l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetSchemaReference(), r)
 			sc.Changes = changes
 			return sc // done, nothing else to do.
@@ -181,7 +189,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		}
 
 		// check XML
-		checkXML(lSchema, rSchema, &changes, sc)
+		checkSchemaXML(lSchema, rSchema, &changes, sc)
 
 		// check examples
 		checkExamples(lSchema, rSchema, &changes)
@@ -226,15 +234,15 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 	return sc
 }
 
-func checkXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change[*base.Schema], sc *SchemaChanges) {
+func checkSchemaXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change, sc *SchemaChanges) {
 	// XML removed
 	if lSchema.XML.Value != nil && rSchema.XML.Value == nil {
-		CreateChange[*base.Schema](changes, ObjectRemoved, v3.XMLLabel,
+		CreateChange(changes, ObjectRemoved, v3.XMLLabel,
 			lSchema.XML.GetValueNode(), nil, true, lSchema.XML.GetValue(), nil)
 	}
 	// XML added
 	if lSchema.XML.Value == nil && rSchema.XML.Value != nil {
-		CreateChange[*base.Schema](changes, ObjectAdded, v3.XMLLabel,
+		CreateChange(changes, ObjectAdded, v3.XMLLabel,
 			nil, rSchema.XML.GetValueNode(), false, nil, rSchema.XML.GetValue())
 	}
 
@@ -249,7 +257,7 @@ func checkXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change[*ba
 func checkPropertiesPropertyOfASchema(
 	lSchema *base.Schema,
 	rSchema *base.Schema,
-	changes *[]*Change[*base.Schema],
+	changes *[]*Change,
 	sc *SchemaChanges,
 	doneChan chan bool) int {
 
@@ -310,10 +318,10 @@ func checkPropertiesPropertyOfASchema(
 			if lProps[w] != rProps[w] {
 
 				// old removed, new added.
-				CreateChange[*base.Schema](changes, ObjectAdded, v3.PropertiesLabel,
+				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
 					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
 
-				CreateChange[*base.Schema](changes, ObjectRemoved, v3.PropertiesLabel,
+				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
 					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
 			}
 
@@ -328,7 +336,7 @@ func checkPropertiesPropertyOfASchema(
 				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
 			}
 			if w >= len(rProps) {
-				CreateChange[*base.Schema](changes, ObjectRemoved, v3.PropertiesLabel,
+				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
 					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
 			}
 		}
@@ -342,7 +350,7 @@ func checkPropertiesPropertyOfASchema(
 				go checkProperty(rProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
 			}
 			if w >= len(lProps) {
-				CreateChange[*base.Schema](changes, ObjectAdded, v3.PropertiesLabel,
+				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
 					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
 			}
 		}
@@ -354,12 +362,12 @@ func checkPropertiesPropertyOfASchema(
 func checkSchemaPropertyChanges(
 	lSchema *base.Schema,
 	rSchema *base.Schema,
-	changes *[]*Change[*base.Schema], sc *SchemaChanges) {
+	changes *[]*Change, sc *SchemaChanges) {
 
-	var props []*PropertyCheck[*base.Schema]
+	var props []*PropertyCheck
 
 	// $schema (breaking change)
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.SchemaTypeRef.ValueNode,
 		RightNode: rSchema.SchemaTypeRef.ValueNode,
 		Label:     v3.SchemaDialectLabel,
@@ -370,7 +378,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// ExclusiveMaximum
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.ExclusiveMaximum.ValueNode,
 		RightNode: rSchema.ExclusiveMaximum.ValueNode,
 		Label:     v3.ExclusiveMaximumLabel,
@@ -381,7 +389,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// ExclusiveMinimum
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.ExclusiveMinimum.ValueNode,
 		RightNode: rSchema.ExclusiveMinimum.ValueNode,
 		Label:     v3.ExclusiveMinimumLabel,
@@ -392,7 +400,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Type
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Type.ValueNode,
 		RightNode: rSchema.Type.ValueNode,
 		Label:     v3.TypeLabel,
@@ -403,7 +411,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Title
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Title.ValueNode,
 		RightNode: rSchema.Title.ValueNode,
 		Label:     v3.TitleLabel,
@@ -414,7 +422,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MultipleOf
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MultipleOf.ValueNode,
 		RightNode: rSchema.MultipleOf.ValueNode,
 		Label:     v3.MultipleOfLabel,
@@ -425,7 +433,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Maximum
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Maximum.ValueNode,
 		RightNode: rSchema.Maximum.ValueNode,
 		Label:     v3.MaximumLabel,
@@ -436,7 +444,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Minimum
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Minimum.ValueNode,
 		RightNode: rSchema.Minimum.ValueNode,
 		Label:     v3.MinimumLabel,
@@ -447,7 +455,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MaxLength
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MaxLength.ValueNode,
 		RightNode: rSchema.MaxLength.ValueNode,
 		Label:     v3.MaxLengthLabel,
@@ -458,7 +466,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MinLength
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MinLength.ValueNode,
 		RightNode: rSchema.MinLength.ValueNode,
 		Label:     v3.MinLengthLabel,
@@ -469,7 +477,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Pattern
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Pattern.ValueNode,
 		RightNode: rSchema.Pattern.ValueNode,
 		Label:     v3.PatternLabel,
@@ -480,7 +488,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Format
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Format.ValueNode,
 		RightNode: rSchema.Format.ValueNode,
 		Label:     v3.FormatLabel,
@@ -491,7 +499,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MaxItems
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MaxItems.ValueNode,
 		RightNode: rSchema.MaxItems.ValueNode,
 		Label:     v3.MaxItemsLabel,
@@ -502,7 +510,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MinItems
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MinItems.ValueNode,
 		RightNode: rSchema.MinItems.ValueNode,
 		Label:     v3.MinItemsLabel,
@@ -513,7 +521,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MaxProperties
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MaxProperties.ValueNode,
 		RightNode: rSchema.MaxProperties.ValueNode,
 		Label:     v3.MaxPropertiesLabel,
@@ -524,7 +532,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// MinProperties
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.MinProperties.ValueNode,
 		RightNode: rSchema.MinProperties.ValueNode,
 		Label:     v3.MinPropertiesLabel,
@@ -535,7 +543,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// UniqueItems
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.UniqueItems.ValueNode,
 		RightNode: rSchema.UniqueItems.ValueNode,
 		Label:     v3.UniqueItemsLabel,
@@ -546,7 +554,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// AdditionalProperties
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.AdditionalProperties.ValueNode,
 		RightNode: rSchema.AdditionalProperties.ValueNode,
 		Label:     v3.AdditionalPropertiesLabel,
@@ -557,7 +565,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Description
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Description.ValueNode,
 		RightNode: rSchema.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
@@ -568,7 +576,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// ContentEncoding
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.ContentEncoding.ValueNode,
 		RightNode: rSchema.ContentEncoding.ValueNode,
 		Label:     v3.ContentEncodingLabel,
@@ -579,7 +587,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// ContentMediaType
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.ContentMediaType.ValueNode,
 		RightNode: rSchema.ContentMediaType.ValueNode,
 		Label:     v3.ContentMediaType,
@@ -590,7 +598,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Default
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Default.ValueNode,
 		RightNode: rSchema.Default.ValueNode,
 		Label:     v3.DefaultLabel,
@@ -601,7 +609,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Nullable
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Nullable.ValueNode,
 		RightNode: rSchema.Nullable.ValueNode,
 		Label:     v3.NullableLabel,
@@ -612,7 +620,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// ReadOnly
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.ReadOnly.ValueNode,
 		RightNode: rSchema.ReadOnly.ValueNode,
 		Label:     v3.ReadOnlyLabel,
@@ -623,7 +631,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// WriteOnly
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.WriteOnly.ValueNode,
 		RightNode: rSchema.WriteOnly.ValueNode,
 		Label:     v3.WriteOnlyLabel,
@@ -634,7 +642,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Example
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Example.ValueNode,
 		RightNode: rSchema.Example.ValueNode,
 		Label:     v3.ExampleLabel,
@@ -645,7 +653,7 @@ func checkSchemaPropertyChanges(
 	})
 
 	// Deprecated
-	props = append(props, &PropertyCheck[*base.Schema]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Deprecated.ValueNode,
 		RightNode: rSchema.Deprecated.ValueNode,
 		Label:     v3.DeprecatedLabel,
@@ -666,14 +674,14 @@ func checkSchemaPropertyChanges(
 	}
 	for g := range k {
 		if _, ok := j[g]; !ok {
-			CreateChange[*base.Schema](changes, PropertyAdded, v3.RequiredLabel,
+			CreateChange(changes, PropertyAdded, v3.RequiredLabel,
 				nil, rSchema.Required.Value[k[g]].GetValueNode(), true, nil,
 				rSchema.Required.Value[k[g]].GetValue)
 		}
 	}
 	for g := range j {
 		if _, ok := k[g]; !ok {
-			CreateChange[*base.Schema](changes, PropertyRemoved, v3.RequiredLabel,
+			CreateChange(changes, PropertyRemoved, v3.RequiredLabel,
 				lSchema.Required.Value[j[g]].GetValueNode(), nil, true, lSchema.Required.Value[j[g]].GetValue,
 				nil)
 		}
@@ -690,14 +698,14 @@ func checkSchemaPropertyChanges(
 	}
 	for g := range k {
 		if _, ok := j[g]; !ok {
-			CreateChange[*base.Schema](changes, PropertyAdded, v3.EnumLabel,
+			CreateChange(changes, PropertyAdded, v3.EnumLabel,
 				nil, rSchema.Enum.Value[k[g]].GetValueNode(), false, nil,
 				rSchema.Enum.Value[k[g]].GetValue)
 		}
 	}
 	for g := range j {
 		if _, ok := k[g]; !ok {
-			CreateChange[*base.Schema](changes, PropertyRemoved, v3.EnumLabel,
+			CreateChange(changes, PropertyRemoved, v3.EnumLabel,
 				lSchema.Enum.Value[j[g]].GetValueNode(), nil, true, lSchema.Enum.Value[j[g]].GetValue,
 				nil)
 		}
@@ -712,12 +720,12 @@ func checkSchemaPropertyChanges(
 	}
 	// added Discriminator
 	if lSchema.Discriminator.Value == nil && rSchema.Discriminator.Value != nil {
-		CreateChange[*base.Schema](changes, ObjectAdded, v3.DiscriminatorLabel,
+		CreateChange(changes, ObjectAdded, v3.DiscriminatorLabel,
 			nil, rSchema.Discriminator.ValueNode, true, nil, rSchema.Discriminator.Value)
 	}
 	// removed Discriminator
 	if lSchema.Discriminator.Value != nil && rSchema.Discriminator.Value == nil {
-		CreateChange[*base.Schema](changes, ObjectRemoved, v3.DiscriminatorLabel,
+		CreateChange(changes, ObjectRemoved, v3.DiscriminatorLabel,
 			lSchema.Discriminator.ValueNode, nil, true, lSchema.Discriminator.Value, nil)
 	}
 
@@ -730,12 +738,12 @@ func checkSchemaPropertyChanges(
 	}
 	// added ExternalDocs
 	if lSchema.ExternalDocs.Value == nil && rSchema.ExternalDocs.Value != nil {
-		CreateChange[*base.Schema](changes, ObjectAdded, v3.ExternalDocsLabel,
+		CreateChange(changes, ObjectAdded, v3.ExternalDocsLabel,
 			nil, rSchema.ExternalDocs.ValueNode, false, nil, rSchema.ExternalDocs.Value)
 	}
 	// removed ExternalDocs
 	if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value == nil {
-		CreateChange[*base.Schema](changes, ObjectRemoved, v3.ExternalDocsLabel,
+		CreateChange(changes, ObjectRemoved, v3.ExternalDocsLabel,
 			lSchema.ExternalDocs.ValueNode, nil, false, lSchema.ExternalDocs.Value, nil)
 	}
 
@@ -746,7 +754,7 @@ func checkSchemaPropertyChanges(
 	CheckProperties(props)
 }
 
-func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change[*base.Schema]) {
+func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change) {
 	// check examples (3.1+)
 	var lExampKey, rExampKey []string
 	lExampN := make(map[string]*yaml.Node)
@@ -777,7 +785,7 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) == len(rExampKey) {
 		for i := range lExampKey {
 			if lExampKey[i] != rExampKey[i] {
-				CreateChange[*base.Schema](changes, Modified, v3.ExamplesLabel,
+				CreateChange(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
@@ -787,12 +795,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) > len(rExampKey) {
 		for i := range lExampKey {
 			if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
-				CreateChange[*base.Schema](changes, Modified, v3.ExamplesLabel,
+				CreateChange(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(rExampKey) {
-				CreateChange[*base.Schema](changes, ObjectRemoved, v3.ExamplesLabel,
+				CreateChange(changes, ObjectRemoved, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], nil, false,
 					lExampVal[lExampKey[i]], nil)
 			}
@@ -803,12 +811,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) < len(rExampKey) {
 		for i := range rExampKey {
 			if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
-				CreateChange[*base.Schema](changes, Modified, v3.ExamplesLabel,
+				CreateChange(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(lExampKey) {
-				CreateChange[*base.Schema](changes, ObjectAdded, v3.ExamplesLabel,
+				CreateChange(changes, ObjectAdded, v3.ExamplesLabel,
 					nil, rExampN[rExampKey[i]], false,
 					nil, rExampVal[rExampKey[i]])
 			}
@@ -821,7 +829,7 @@ func extractSchemaChanges(
 	rSchema []low.ValueReference[*base.SchemaProxy],
 	label string,
 	sc *[]*SchemaChanges,
-	changes *[]*Change[*base.Schema],
+	changes *[]*Change,
 	done chan bool) {
 
 	// if there is nothing here, there is nothing to do.
@@ -876,7 +884,7 @@ func extractSchemaChanges(
 				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
 			}
 			if w >= len(rKeys) {
-				CreateChange[*base.Schema](changes, ObjectRemoved, label,
+				CreateChange(changes, ObjectRemoved, label,
 					lEntities[lKeys[w]].GetValueNode(), nil, true, lEntities[lKeys[w]], nil)
 			}
 		}
@@ -889,7 +897,7 @@ func extractSchemaChanges(
 				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
 			}
 			if w >= len(lKeys) {
-				CreateChange[*base.Schema](changes, ObjectAdded, label,
+				CreateChange(changes, ObjectAdded, label,
 					nil, rEntities[rKeys[w]].GetValueNode(), false, nil, rEntities[rKeys[w]])
 			}
 		}

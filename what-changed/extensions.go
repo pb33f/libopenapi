@@ -10,7 +10,7 @@ import (
 
 // ExtensionChanges represents any changes to custom extensions defined for an OpenAPI object.
 type ExtensionChanges struct {
-	PropertyChanges[any]
+	PropertyChanges
 }
 
 func (e *ExtensionChanges) TotalChanges() int {
@@ -42,15 +42,15 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 		seenRight[strings.ToLower(i.Value)] = &h
 	}
 
-	var changes []*Change[any]
+	var changes []*Change
 	for i := range seenLeft {
 
 		CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
 
 		if seenRight[i] != nil {
-			var props []*PropertyCheck[any]
+			var props []*PropertyCheck
 
-			props = append(props, &PropertyCheck[any]{
+			props = append(props, &PropertyCheck{
 				LeftNode:  seenLeft[i].ValueNode,
 				RightNode: seenRight[i].ValueNode,
 				Label:     i,

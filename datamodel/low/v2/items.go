@@ -4,10 +4,13 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Items is a low-level representation of a Swagger / OpenAPI 2 Items object.
@@ -33,6 +36,45 @@ type Items struct {
 	UniqueItems      low.NodeReference[bool]
 	Enum             low.NodeReference[[]low.ValueReference[string]]
 	MultipleOf       low.NodeReference[int]
+}
+
+// Hash will return a consistent SHA256 Hash of the Items object
+func (i *Items) Hash() [32]byte {
+	var f []string
+	if i.Type.Value != "" {
+		f = append(f, i.Type.Value)
+	}
+	if i.Format.Value != "" {
+		f = append(f, i.Format.Value)
+	}
+	if i.CollectionFormat.Value != "" {
+		f = append(f, i.CollectionFormat.Value)
+	}
+	if i.Default.Value != "" {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(i.Default.Value)))))
+	}
+	f = append(f, fmt.Sprint(i.Maximum.Value))
+	f = append(f, fmt.Sprint(i.Minimum.Value))
+	f = append(f, fmt.Sprint(i.ExclusiveMinimum.Value))
+	f = append(f, fmt.Sprint(i.ExclusiveMaximum.Value))
+	f = append(f, fmt.Sprint(i.MinLength.Value))
+	f = append(f, fmt.Sprint(i.MaxLength.Value))
+	f = append(f, fmt.Sprint(i.MinItems.Value))
+	f = append(f, fmt.Sprint(i.MaxItems.Value))
+	f = append(f, fmt.Sprint(i.MultipleOf.Value))
+	f = append(f, fmt.Sprint(i.UniqueItems.Value))
+	if i.Pattern.Value != "" {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(i.Pattern.Value)))))
+	}
+	if len(i.Enum.Value) > 0 {
+		for k := range i.Enum.Value {
+			f = append(f, fmt.Sprint(i.Enum.Value[k].Value))
+		}
+	}
+	if i.Items.Value != nil {
+		f = append(f, fmt.Sprintf("%x", i.Items.Value.Hash()))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // Build will build out items and default value.

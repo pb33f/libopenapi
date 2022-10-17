@@ -10,7 +10,7 @@ import (
 
 // LicenseChanges represent changes to a License object that is a child of Info object. Part of an OpenAPI document
 type LicenseChanges struct {
-	PropertyChanges[*base.License]
+	PropertyChanges
 }
 
 // TotalChanges represents the total number of changes made to a License instance.
@@ -28,11 +28,11 @@ func (l *LicenseChanges) TotalBreakingChanges() int {
 // returns nil.
 func CompareLicense(l, r *base.License) *LicenseChanges {
 
-	var changes []*Change[*base.License]
-	var props []*PropertyCheck[*base.License]
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// check URL
-	props = append(props, &PropertyCheck[*base.License]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
@@ -43,7 +43,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 	})
 
 	// check name
-	props = append(props, &PropertyCheck[*base.License]{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
