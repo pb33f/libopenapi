@@ -548,6 +548,9 @@ func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[
 
 // AreEqual returns true if two Hashable objects are equal or not.
 func AreEqual(l, r Hashable) bool {
+	if l == nil || r == nil {
+		return false
+	}
 	return l.Hash() == r.Hash()
 }
 
