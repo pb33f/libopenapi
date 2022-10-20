@@ -11,6 +11,8 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"gopkg.in/yaml.v3"
 	"reflect"
+	"sort"
+	"strings"
 )
 
 type ParameterChanges struct {
@@ -19,7 +21,7 @@ type ParameterChanges struct {
 	ExtensionChanges *ExtensionChanges
 
 	// V2 change types
-	// ItemsChanges
+	ItemsChanges *ItemsChanges
 
 	// v3 change types
 	ExampleChanges map[string]*ExampleChanges
@@ -83,6 +85,10 @@ func addOpenAPIParameterProperties(left, right low.IsParameter, changes *[]*Chan
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
 		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel, false)
+
+	// example
+	addPropertyCheck(&props, left.GetExample().ValueNode, right.GetExample().ValueNode,
+		left.GetExample(), right.GetExample(), changes, v3.ExampleLabel, false)
 
 	return props
 }
@@ -206,10 +212,46 @@ func CompareParameters(l, r any) *ParameterChanges {
 			rSchema = rParam.Schema.Value
 		}
 
-		// todo: items
-		// todo: default
-		// todo: enums
+		// items
+		if !lParam.Items.IsEmpty() && !rParam.Items.IsEmpty() {
+			if lParam.Items.Value.Hash() != rParam.Items.Value.Hash() {
+				pc.ItemsChanges = CompareItems(lParam.Items.Value, rParam.Items.Value)
+			}
+		}
+		if lParam.Items.IsEmpty() && !rParam.Items.IsEmpty() {
+			CreateChange(&changes, ObjectAdded, v3.ItemsLabel,
+				nil, rParam.Items.ValueNode, true, nil,
+				rParam.Items.Value)
+		}
+		if !lParam.Items.IsEmpty() && rParam.Items.IsEmpty() {
+			CreateChange(&changes, ObjectRemoved, v3.ItemsLabel,
+				lParam.Items.ValueNode, nil, true, lParam.Items.Value,
+				nil)
+		}
 
+		// default
+		if !lParam.Default.IsEmpty() && !rParam.Default.IsEmpty() {
+			if low.GenerateHashString(lParam.Default.Value) != low.GenerateHashString(lParam.Default.Value) {
+				CreateChange(&changes, Modified, v3.DefaultLabel,
+					lParam.Items.ValueNode, rParam.Items.ValueNode, true, lParam.Items.Value,
+					rParam.Items.ValueNode)
+			}
+		}
+		if lParam.Default.IsEmpty() && !rParam.Default.IsEmpty() {
+			CreateChange(&changes, ObjectAdded, v3.DefaultLabel,
+				nil, rParam.Default.ValueNode, true, nil,
+				rParam.Default.Value)
+		}
+		if !lParam.Default.IsEmpty() && rParam.Items.IsEmpty() {
+			CreateChange(&changes, ObjectRemoved, v3.ItemsLabel,
+				lParam.Items.ValueNode, nil, true, lParam.Items.Value,
+				nil)
+		}
+
+		// enum
+		if len(lParam.Enum.Value) > 0 || len(rParam.Enum.Value) > 0 {
+			ExtractStringValueSliceChanges(lParam.Enum.Value, rParam.Enum.Value, &changes, v3.EnumLabel)
+		}
 	}
 
 	// OpenAPI
@@ -235,28 +277,10 @@ func CompareParameters(l, r any) *ParameterChanges {
 		}
 
 		// example
-		if lParam.Example.Value != nil && rParam.Example.Value != nil {
-			if low.GenerateHashString(lParam.Example.Value) != low.GenerateHashString(rParam.Example.Value) {
-				CreateChange(&changes, Modified, v3.ExampleLabel,
-					lParam.Example.GetValueNode(), rParam.Example.GetValueNode(), false,
-					lParam.Example.GetValue(), rParam.Example.GetValue())
-			}
-		}
-		if lParam.Example.Value == nil && rParam.Example.Value != nil {
-			CreateChange(&changes, PropertyAdded, v3.ExampleLabel,
-				nil, rParam.Example.GetValueNode(), false,
-				nil, rParam.Example.GetValue())
-
-		}
-		if lParam.Example.Value != nil && rParam.Example.Value == nil {
-			CreateChange(&changes, PropertyRemoved, v3.ExampleLabel,
-				lParam.Example.GetValueNode(), nil, false,
-				lParam.Example.GetValue(), nil)
-
-		}
+		checkParameterExample(lParam.Example, rParam.Example, changes)
 
 		// examples
-		checkParameterExamples(lParam, rParam, changes, pc)
+		CheckMapForChanges(lParam.Examples.Value, rParam.Examples.Value, &changes, v3.ExamplesLabel, CompareExamples)
 
 		// todo: content
 
@@ -287,54 +311,125 @@ func CompareParameters(l, r any) *ParameterChanges {
 	return nil
 }
 
-func checkParameterExamples(lParam *v3.Parameter, rParam *v3.Parameter, changes []*Change, pc *ParameterChanges) {
-	lExpHashes := make(map[string]string)
-	rExpHashes := make(map[string]string)
-	lExpValues := make(map[string]low.ValueReference[*base.Example])
-	rExpValues := make(map[string]low.ValueReference[*base.Example])
-	if lParam != nil && lParam.Examples.Value != nil {
-		for k := range lParam.Examples.Value {
-			lExpHashes[k.Value] = fmt.Sprintf("%x", lParam.Examples.Value[k].Value.Hash())
-			lExpValues[k.Value] = lParam.Examples.Value[k]
+func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string], changes *[]*Change, label string) {
+	lKeys := make([]string, len(lParam))
+	rKeys := make([]string, len(rParam))
+	lValues := make(map[string]low.ValueReference[string])
+	rValues := make(map[string]low.ValueReference[string])
+	for i := range lParam {
+		lKeys[i] = strings.ToLower(lParam[i].Value)
+		lValues[lKeys[i]] = lParam[i]
+	}
+	for i := range rParam {
+		rKeys[i] = strings.ToLower(rParam[i].Value)
+		rValues[lKeys[i]] = rParam[i]
+	}
+	sort.Strings(lKeys)
+	sort.Strings(rKeys)
+
+	for i := range lKeys {
+		if i < len(rKeys) {
+			if lKeys[i] != rKeys[i] {
+				CreateChange(changes, Modified, label,
+					lValues[lKeys[i]].ValueNode,
+					rValues[rKeys[i]].ValueNode,
+					true,
+					lValues[lKeys[i]].Value,
+					rValues[rKeys[i]].ValueNode)
+			}
+			continue
+		}
+		if i >= len(rKeys) {
+			CreateChange(changes, PropertyRemoved, label,
+				lValues[lKeys[i]].ValueNode,
+				nil,
+				true,
+				lValues[lKeys[i]].Value,
+				nil)
 		}
 	}
-	if rParam != nil && rParam.Examples.Value != nil {
-		for k := range rParam.Examples.Value {
-			rExpHashes[k.Value] = fmt.Sprintf("%x", rParam.Examples.Value[k].Value.Hash())
-			rExpValues[k.Value] = rParam.Examples.Value[k]
+	for i := range rKeys {
+		if i >= len(lKeys) {
+			CreateChange(changes, PropertyAdded, label,
+				nil,
+				rValues[rKeys[i]].ValueNode,
+				false,
+				nil,
+				rValues[rKeys[i]].ValueNode)
 		}
 	}
-	expChanges := make(map[string]*ExampleChanges)
+}
+
+func checkParameterExample(expLeft, expRight low.NodeReference[any], changes []*Change) {
+	if !expLeft.IsEmpty() && !expRight.IsEmpty() {
+		if low.GenerateHashString(expLeft.GetValue()) != low.GenerateHashString(expRight.GetValue()) {
+			CreateChange(&changes, Modified, v3.ExampleLabel,
+				expLeft.GetValueNode(), expRight.GetValueNode(), false,
+				expLeft.GetValue(), expRight.GetValue())
+		}
+	}
+	if expLeft.Value == nil && expRight.Value != nil {
+		CreateChange(&changes, PropertyAdded, v3.ExampleLabel,
+			nil, expRight.GetValueNode(), false,
+			nil, expRight.GetValue())
+
+	}
+	if expLeft.Value != nil && expRight.Value == nil {
+		CreateChange(&changes, PropertyRemoved, v3.ExampleLabel,
+			expLeft.GetValueNode(), nil, false,
+			expLeft.GetValue(), nil)
+
+	}
+}
+
+func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+	changes *[]*Change, label string, compareFunc func(l, r T) R) map[string]R {
+
+	lHashes := make(map[string]string)
+	rHashes := make(map[string]string)
+	lValues := make(map[string]low.ValueReference[T])
+	rValues := make(map[string]low.ValueReference[T])
+
+	for k := range expLeft {
+		lHashes[k.Value] = fmt.Sprintf("%x", low.GenerateHashString(expLeft[k].Value))
+		lValues[k.Value] = expLeft[k]
+	}
+
+	for k := range expRight {
+		rHashes[k.Value] = fmt.Sprintf("%x", low.GenerateHashString(expRight[k].Value))
+		rValues[k.Value] = expRight[k]
+	}
+
+	expChanges := make(map[string]R)
 
 	// check left example hashes
-	for k := range lExpHashes {
-		rhash := rExpHashes[k]
+	for k := range lHashes {
+		rhash := rHashes[k]
 		if rhash == "" {
-			CreateChange(&changes, ObjectRemoved, v3.ExamplesLabel,
-				lExpValues[k].GetValueNode(), nil, false,
-				lExpValues[k].GetValue(), nil)
+			CreateChange(changes, ObjectRemoved, label,
+				lValues[k].GetValueNode(), nil, false,
+				lValues[k].GetValue(), nil)
 			continue
 		}
-		if lExpHashes[k] == rExpHashes[k] {
+		if lHashes[k] == rHashes[k] {
 			continue
 		}
-		expChanges[k] = CompareExamples(lExpValues[k].Value, rExpValues[k].Value)
+		// run comparison.
+		expChanges[k] = compareFunc(lValues[k].Value, rValues[k].Value)
 	}
 
 	//check right example hashes
-	for k := range rExpHashes {
-		lhash := lExpHashes[k]
+	for k := range rHashes {
+		lhash := lHashes[k]
 		if lhash == "" {
-			CreateChange(&changes, ObjectAdded, v3.ExamplesLabel,
-				nil, lExpValues[k].GetValueNode(), false,
-				nil, lExpValues[k].GetValue())
+			CreateChange(changes, ObjectAdded, v3.ExamplesLabel,
+				nil, lValues[k].GetValueNode(), false,
+				nil, lValues[k].GetValue())
 			continue
 		}
 	}
 
-	if len(expChanges) > 0 {
-		pc.ExampleChanges = expChanges
-	}
+	return expChanges
 }
 
 func checkParameterContent(lParam *v3.Parameter, rParam *v3.Parameter, changes []*Change, pc *ParameterChanges) {

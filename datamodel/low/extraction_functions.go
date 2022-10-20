@@ -104,7 +104,7 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 			}
 		}
 		return nil, fmt.Errorf("reference '%s' at line %d, column %d was not found",
-			root.Value, root.Line, root.Column)
+			rv, root.Line, root.Column)
 	}
 	return nil, nil
 }
@@ -122,7 +122,7 @@ func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecInd
 			}
 		} else {
 			if err != nil {
-				return nil, fmt.Errorf("object extraciton failed: %s", err.Error())
+				return nil, fmt.Errorf("object extraction failed: %s", err.Error())
 			}
 		}
 	}
@@ -157,7 +157,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 			}
 		} else {
 			if err != nil {
-				return NodeReference[T]{}, fmt.Errorf("object extraciton failed: %s", err.Error())
+				return NodeReference[T]{}, fmt.Errorf("object extraction failed: %s", err.Error())
 			}
 		}
 	} else {
@@ -172,7 +172,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 					}
 				} else {
 					if lerr != nil {
-						return NodeReference[T]{}, fmt.Errorf("object extraciton failed: %s", lerr.Error())
+						return NodeReference[T]{}, fmt.Errorf("object extraction failed: %s", lerr.Error())
 					}
 				}
 			}
@@ -554,7 +554,13 @@ func AreEqual(l, r Hashable) bool {
 	return l.Hash() == r.Hash()
 }
 
-// GenerateHashString will generate a SHA36 hash of any object passed in.
+// GenerateHashString will generate a SHA36 hash of any object passed in. If the object is Hashable
+// then the underlying Hash() method will be called.
 func GenerateHashString(v any) string {
+	if h, ok := v.(Hashable); ok {
+		if h != nil {
+			return fmt.Sprintf("%x", h.Hash())
+		}
+	}
 	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(v))))
 }

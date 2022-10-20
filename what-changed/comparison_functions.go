@@ -117,6 +117,8 @@ func CheckSpecificObjectAdded[T any](l, r map[string]*T, label string) bool {
 //   CheckPropertyAdditionOrRemoval
 //   CheckForModification
 func CheckProperties(properties []*PropertyCheck) {
+
+	// todo: make this async to really speed things up.
 	for _, n := range properties {
 		CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
 		CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)

@@ -82,6 +82,17 @@ func (n NodeReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil && n.ValueNode == nil
 }
 
+func (n NodeReference[T]) IsReferenceNode() bool {
+	for k := range n.KeyNode.Content {
+		if k%2 == 0 {
+			if n.KeyNode.Content[k].Value == "$ref" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // GenerateMapKey will return a string based on the line and column number of the node, e.g. 33:56 for line 33, col 56.
 func (n NodeReference[T]) GenerateMapKey() string {
 	return fmt.Sprintf("%d:%d", n.ValueNode.Line, n.ValueNode.Column)

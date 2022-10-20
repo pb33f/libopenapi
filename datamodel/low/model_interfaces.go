@@ -3,14 +3,10 @@
 
 package low
 
-type IsParameter interface {
-	GetName() *NodeReference[string]
-	GetIn() *NodeReference[string]
+type SharedParameters interface {
 	GetType() *NodeReference[string]
 	GetDescription() *NodeReference[string]
-	GetRequired() *NodeReference[bool]
 	GetDeprecated() *NodeReference[bool]
-	GetAllowEmptyValue() *NodeReference[bool]
 	GetFormat() *NodeReference[string]
 	GetStyle() *NodeReference[string]
 	GetCollectionFormat() *NodeReference[string]
@@ -30,8 +26,25 @@ type IsParameter interface {
 	GetEnum() *NodeReference[[]ValueReference[string]]
 	GetMultipleOf() *NodeReference[int]
 	GetExample() *NodeReference[any]
-	GetExamples() *NodeReference[any] // requires cast
 	GetSchema() *NodeReference[any]   // requires cast.
+	GetExamples() *NodeReference[any] // requires cast
 	GetContent() *NodeReference[any]  // requires cast.
 	GetItems() *NodeReference[any]    // requires cast.
+}
+
+type IsParameter interface {
+	GetName() *NodeReference[string]
+	GetIn() *NodeReference[string]
+	SharedParameterHeader
+	SharedParameters
+}
+
+type SharedParameterHeader interface {
+	GetRequired() *NodeReference[bool]
+	GetAllowEmptyValue() *NodeReference[bool]
+}
+
+type IsHeader interface {
+	SharedParameters
+	SharedParameterHeader
 }
