@@ -52,19 +52,19 @@ func (h *Header) Hash() [32]byte {
 	if h.Description.Value != "" {
 		f = append(f, h.Description.Value)
 	}
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Required.Value)))))
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Deprecated.Value)))))
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.AllowEmptyValue.Value)))))
+	f = append(f, fmt.Sprint(h.Required.Value))
+	f = append(f, fmt.Sprint(h.Deprecated.Value))
+	f = append(f, fmt.Sprint(h.AllowEmptyValue.Value))
 	if h.Style.Value != "" {
 		f = append(f, h.Style.Value)
 	}
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Explode.Value)))))
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.AllowReserved.Value)))))
+	f = append(f, fmt.Sprint(h.Explode.Value))
+	f = append(f, fmt.Sprint(h.AllowReserved.Value))
 	if h.Schema.Value != nil {
 		f = append(f, fmt.Sprint(h.Schema.Value.Schema().Hash()))
 	}
 	if h.Example.Value != nil {
-		f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(h.Example.Value)))))
+		f = append(f, fmt.Sprint(h.Example.Value))
 	}
 	if len(h.Examples.Value) > 0 {
 		for k := range h.Examples.Value {
@@ -125,4 +125,106 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		ValueNode: cN,
 	}
 	return nil
+}
+
+// IsHeader compliance methods.
+
+func (h *Header) GetType() *low.NodeReference[string] {
+	return nil // not implemented
+}
+func (h *Header) GetDescription() *low.NodeReference[string] {
+	return &h.Description
+}
+func (h *Header) GetRequired() *low.NodeReference[bool] {
+	return &h.Required
+}
+func (h *Header) GetDeprecated() *low.NodeReference[bool] {
+	return &h.Deprecated
+}
+func (h *Header) GetAllowEmptyValue() *low.NodeReference[bool] {
+	return &h.AllowEmptyValue
+}
+func (h *Header) GetSchema() *low.NodeReference[any] {
+	i := low.NodeReference[any]{
+		KeyNode:   h.Schema.KeyNode,
+		ValueNode: h.Schema.ValueNode,
+		Value:     h.Schema.KeyNode,
+	}
+	return &i
+}
+func (h *Header) GetFormat() *low.NodeReference[string] {
+	return nil
+}
+func (h *Header) GetItems() *low.NodeReference[any] {
+	return nil
+}
+func (h *Header) GetStyle() *low.NodeReference[string] {
+	return &h.Style
+}
+func (h *Header) GetCollectionFormat() *low.NodeReference[string] {
+	return nil
+}
+func (h *Header) GetDefault() *low.NodeReference[any] {
+	return nil
+}
+func (h *Header) GetAllowReserved() *low.NodeReference[bool] {
+	return &h.AllowReserved
+}
+func (h *Header) GetExplode() *low.NodeReference[bool] {
+	return &h.Explode
+}
+func (h *Header) GetMaximum() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetExclusiveMaximum() *low.NodeReference[bool] {
+	return nil
+}
+func (h *Header) GetMinimum() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetExclusiveMinimum() *low.NodeReference[bool] {
+	return nil
+}
+func (h *Header) GetMaxLength() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetMinLength() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetPattern() *low.NodeReference[string] {
+	return nil
+}
+func (h *Header) GetMaxItems() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetMinItems() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetUniqueItems() *low.NodeReference[bool] {
+	return nil
+}
+func (h *Header) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
+	return nil
+}
+func (h *Header) GetMultipleOf() *low.NodeReference[int] {
+	return nil
+}
+func (h *Header) GetExample() *low.NodeReference[any] {
+	return &h.Example
+}
+func (h *Header) GetExamples() *low.NodeReference[any] {
+	i := low.NodeReference[any]{
+		KeyNode:   h.Examples.KeyNode,
+		ValueNode: h.Examples.ValueNode,
+		Value:     h.Examples.KeyNode,
+	}
+	return &i
+}
+func (h *Header) GetContent() *low.NodeReference[any] {
+	c := low.NodeReference[any]{
+		KeyNode:   h.Content.KeyNode,
+		ValueNode: h.Content.ValueNode,
+		Value:     h.Content.Value,
+	}
+	return &c
 }

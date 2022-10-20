@@ -37,7 +37,7 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	dc := new(DiscriminatorChanges)
 	var changes []*Change
 	var props []*PropertyCheck
-	var mapping []*Change
+	var mappingChanges []*Change
 
 	// Name (breaking change)
 	props = append(props, &PropertyCheck{
@@ -59,11 +59,11 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 
 	// check for removals, modifications and moves
 	for i := range lMap {
-		CheckForObjectAdditionOrRemoval[string](lMap, rMap, i, &mapping, false, true)
+		CheckForObjectAdditionOrRemoval[string](lMap, rMap, i, &mappingChanges, false, true)
 		// if the existing tag exists, let's check it.
 		if rMap[i] != nil {
 			if lMap[i].Value != rMap[i].Value {
-				CreateChange(&mapping, Modified, i, lMap[i].GetValueNode(),
+				CreateChange(&mappingChanges, Modified, i, lMap[i].GetValueNode(),
 					rMap[i].GetValueNode(), true, lMap[i].GetValue(), rMap[i].GetValue())
 			}
 		}
@@ -71,13 +71,13 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 
 	for i := range rMap {
 		if lMap[i] == nil {
-			CreateChange(&mapping, ObjectAdded, i, nil,
+			CreateChange(&mappingChanges, ObjectAdded, i, nil,
 				rMap[i].GetValueNode(), false, nil, rMap[i].GetValue())
 		}
 	}
 
 	dc.Changes = changes
-	dc.MappingChanges = mapping
+	dc.MappingChanges = mappingChanges
 	if dc.TotalChanges() <= 0 {
 		return nil
 	}
