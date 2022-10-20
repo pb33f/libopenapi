@@ -99,4 +99,5 @@ const (
 	CollectionFormatLabel     = "collectionFormat"
 	AllowReservedLabel        = "allowReserved"
 	ExplodeLabel              = "explode"
+	ContentTypeLabel          = "contentType"
 )

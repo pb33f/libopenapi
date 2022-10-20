@@ -4,9 +4,11 @@
 package what_changed
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -147,6 +149,25 @@ func test_BuildDoc(l, r string) (*v3.Document, *v3.Document) {
 
 	leftDoc, _ := v3.CreateDocument(leftInfo)
 	rightDoc, _ := v3.CreateDocument(rightInfo)
+	return leftDoc, rightDoc
+}
+
+func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
+
+	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
+	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
+
+	var err []error
+	var leftDoc, rightDoc *v2.Swagger
+	leftDoc, err = v2.CreateDocument(leftInfo)
+	rightDoc, err = v2.CreateDocument(rightInfo)
+
+	if len(err) > 0 {
+		for i := range err {
+			fmt.Printf("error: %v\n", err[i])
+		}
+		panic("failed to create doc")
+	}
 	return leftDoc, rightDoc
 }
 

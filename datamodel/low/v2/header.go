@@ -85,3 +85,100 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	return nil
 }
+
+// IsHeader compliance methods
+
+func (h *Header) GetType() *low.NodeReference[string] {
+	return &h.Type
+}
+func (h *Header) GetDescription() *low.NodeReference[string] {
+	return &h.Description
+}
+
+func (h *Header) GetDeprecated() *low.NodeReference[bool] {
+	// not implemented.
+	return nil
+}
+func (h *Header) GetSchema() *low.NodeReference[any] {
+	// not implemented.
+	return &low.NodeReference[any]{}
+}
+func (h *Header) GetFormat() *low.NodeReference[string] {
+	return &h.Format
+}
+func (h *Header) GetItems() *low.NodeReference[any] {
+	i := low.NodeReference[any]{
+		KeyNode:   h.Items.KeyNode,
+		ValueNode: h.Items.ValueNode,
+		Value:     h.Items.KeyNode,
+	}
+	return &i
+}
+func (h *Header) GetStyle() *low.NodeReference[string] {
+	// not implemented.
+	return nil
+}
+func (h *Header) GetCollectionFormat() *low.NodeReference[string] {
+	return &h.CollectionFormat
+}
+func (h *Header) GetDefault() *low.NodeReference[any] {
+	return &h.Default
+}
+func (h *Header) GetAllowReserved() *low.NodeReference[bool] {
+	return nil // not implemented
+}
+func (h *Header) GetExplode() *low.NodeReference[bool] {
+	return nil // not implemented
+}
+func (h *Header) GetMaximum() *low.NodeReference[int] {
+	return &h.Maximum
+}
+func (h *Header) GetExclusiveMaximum() *low.NodeReference[bool] {
+	return &h.ExclusiveMaximum
+}
+func (h *Header) GetMinimum() *low.NodeReference[int] {
+	return &h.Minimum
+}
+func (h *Header) GetExclusiveMinimum() *low.NodeReference[bool] {
+	return &h.ExclusiveMinimum
+}
+func (h *Header) GetMaxLength() *low.NodeReference[int] {
+	return &h.MaxLength
+}
+func (h *Header) GetMinLength() *low.NodeReference[int] {
+	return &h.MinLength
+}
+func (h *Header) GetPattern() *low.NodeReference[string] {
+	return &h.Pattern
+}
+func (h *Header) GetMaxItems() *low.NodeReference[int] {
+	return &h.MaxItems
+}
+func (h *Header) GetMinItems() *low.NodeReference[int] {
+	return &h.MaxItems
+}
+func (h *Header) GetUniqueItems() *low.NodeReference[bool] {
+	return &h.UniqueItems
+}
+func (h *Header) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
+	return &h.Enum
+}
+func (h *Header) GetMultipleOf() *low.NodeReference[int] {
+	return &h.MultipleOf
+}
+func (h *Header) GetExample() *low.NodeReference[any] {
+	return nil // not implemented
+}
+func (h *Header) GetExamples() *low.NodeReference[any] {
+	return nil // not implemented
+}
+func (h *Header) GetContent() *low.NodeReference[any] {
+	return nil // not implemented
+}
+
+func (h *Header) GetRequired() *low.NodeReference[bool] {
+	return nil // not implemented
+}
+func (h *Header) GetAllowEmptyValue() *low.NodeReference[bool] {
+	return nil // not implemented
+}
