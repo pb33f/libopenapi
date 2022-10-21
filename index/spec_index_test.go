@@ -132,6 +132,7 @@ func TestSpecIndex_PetstoreV2(t *testing.T) {
 	assert.Equal(t, 5, index.componentsInlineParamDuplicateCount)
 	assert.Equal(t, 6, index.componentsInlineParamUniqueCount)
 	assert.Equal(t, 3, index.GetTotalTagsCount())
+	assert.Equal(t, 2, len(index.GetSecurityRequirementReferences()))
 }
 
 func TestSpecIndex_XSOAR(t *testing.T) {

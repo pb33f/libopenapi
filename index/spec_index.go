@@ -73,6 +73,7 @@ type SpecIndex struct {
 	responsesRefs                       map[string]*Reference                       // top level responses
 	headersRefs                         map[string]*Reference                       // top level responses
 	examplesRefs                        map[string]*Reference                       // top level examples
+	securityRequirementRefs             map[string]map[string][]*Reference          // (NOT $ref) but a name based lookup for requirements
 	callbacksRefs                       map[string]map[string][]*Reference          // all links
 	linksRefs                           map[string]map[string][]*Reference          // all  callbacks
 	operationTagsRefs                   map[string]map[string][]*Reference          // tags found in operations
@@ -226,6 +227,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.allLinks = make(map[string]*Reference)
 	index.allCallbacks = make(map[string]*Reference)
 	index.allExternalDocuments = make(map[string]*Reference)
+	index.securityRequirementRefs = make(map[string]map[string][]*Reference)
 	index.polymorphicRefs = make(map[string]*Reference)
 	index.refsWithSiblings = make(map[string]Reference)
 	index.seenRemoteSources = make(map[string]*yaml.Node)
@@ -494,6 +496,11 @@ func (index *SpecIndex) GetRootSecurityReferences() []*Reference {
 	return index.rootSecurity
 }
 
+// GetSecurityRequirementReferences will return all security requirement definitions found in the document
+func (index *SpecIndex) GetSecurityRequirementReferences() map[string]map[string][]*Reference {
+	return index.securityRequirementRefs
+}
+
 // GetRootSecurityNode will return the root security node
 func (index *SpecIndex) GetRootSecurityNode() *yaml.Node {
 	return index.rootSecurityNode
@@ -707,6 +714,52 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					index.summaryCount++
 				}
 
+				// capture security requirement references (these are not traditional references, but they
+				// are used as a look-up. This is the only exception to the design.
+				if n.Value == "security" {
+					var b *yaml.Node
+					if len(node.Content) == i+1 {
+						b = node.Content[i]
+					} else {
+						b = node.Content[i+1]
+					}
+					if utils.IsNodeArray(b) {
+						var secKey string
+						for k := range b.Content {
+							if utils.IsNodeMap(b.Content[k]) {
+								for g := range b.Content[k].Content {
+									if g%2 == 0 {
+										secKey = b.Content[k].Content[g].Value
+										continue
+									}
+									if utils.IsNodeArray(b.Content[k].Content[g]) {
+										var refMap map[string][]*Reference
+										if index.securityRequirementRefs[secKey] == nil {
+											index.securityRequirementRefs[secKey] = make(map[string][]*Reference)
+											refMap = index.securityRequirementRefs[secKey]
+										} else {
+											refMap = index.securityRequirementRefs[secKey]
+										}
+										for r := range b.Content[k].Content[g].Content {
+											var refs []*Reference
+											if refMap[b.Content[k].Content[g].Content[r].Value] != nil {
+												refs = refMap[b.Content[k].Content[g].Content[r].Value]
+											}
+
+											refs = append(refs, &Reference{
+												Definition: b.Content[k].Content[g].Content[r].Value,
+												Path:       fmt.Sprintf("%s.security[%d].%s[%d]", nodePath, k, secKey, r),
+												Node:       b.Content[k].Content[g].Content[r],
+											})
+
+											index.securityRequirementRefs[secKey][b.Content[k].Content[g].Content[r].Value] = refs
+										}
+									}
+								}
+							}
+						}
+					}
+				}
 				// capture enums
 				if n.Value == "enum" {
 
