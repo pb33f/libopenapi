@@ -26,9 +26,6 @@ func (e *ExampleChanges) TotalChanges() int {
 // TotalBreakingChanges returns the total number of breaking changes made to Example
 func (e *ExampleChanges) TotalBreakingChanges() int {
 	l := e.PropertyChanges.TotalBreakingChanges()
-	if e.ExtensionChanges != nil {
-		l += e.ExtensionChanges.PropertyChanges.TotalBreakingChanges()
-	}
 	return l
 }
 
