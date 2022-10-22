@@ -6,6 +6,13 @@ package what_changed
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
+	"sort"
+	"strings"
+)
+
+const (
+	HashPh    = "%x"
+	EMPTY_STR = ""
 )
 
 // CreateChange is a generic function that will create a Change of type T, populate all properties if set, and then
@@ -183,4 +190,105 @@ func CheckExtensions[T low.HasExtensions[T]](l, r T) *ExtensionChanges {
 		rExt = r.GetExtensions()
 	}
 	return CompareExtensions(lExt, rExt)
+}
+
+// CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to
+// values. The compareFunc argument should reference the correct comparison function for the generic type.
+func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+	changes *[]*Change, label string, compareFunc func(l, r T) R) map[string]R {
+
+	lHashes := make(map[string]string)
+	rHashes := make(map[string]string)
+	lValues := make(map[string]low.ValueReference[T])
+	rValues := make(map[string]low.ValueReference[T])
+
+	for k := range expLeft {
+		lHashes[k.Value] = low.GenerateHashString(expLeft[k].Value)
+		lValues[k.Value] = expLeft[k]
+	}
+
+	for k := range expRight {
+		rHashes[k.Value] = low.GenerateHashString(expRight[k].Value)
+		rValues[k.Value] = expRight[k]
+	}
+
+	expChanges := make(map[string]R)
+
+	// check left example hashes
+	for k := range lHashes {
+		rhash := rHashes[k]
+		if rhash == "" {
+			CreateChange(changes, ObjectRemoved, label,
+				lValues[k].GetValueNode(), nil, false,
+				lValues[k].GetValue(), nil)
+			continue
+		}
+		if lHashes[k] == rHashes[k] {
+			continue
+		}
+		// run comparison.
+		expChanges[k] = compareFunc(lValues[k].Value, rValues[k].Value)
+	}
+
+	//check right example hashes
+	for k := range rHashes {
+		lhash := lHashes[k]
+		if lhash == "" {
+			CreateChange(changes, ObjectAdded, label,
+				nil, lValues[k].GetValueNode(), false,
+				nil, lValues[k].GetValue())
+			continue
+		}
+	}
+	return expChanges
+}
+
+// ExtractStringValueSliceChanges will compare two low level string slices for changes.
+func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string], changes *[]*Change, label string) {
+	lKeys := make([]string, len(lParam))
+	rKeys := make([]string, len(rParam))
+	lValues := make(map[string]low.ValueReference[string])
+	rValues := make(map[string]low.ValueReference[string])
+	for i := range lParam {
+		lKeys[i] = strings.ToLower(lParam[i].Value)
+		lValues[lKeys[i]] = lParam[i]
+	}
+	for i := range rParam {
+		rKeys[i] = strings.ToLower(rParam[i].Value)
+		rValues[lKeys[i]] = rParam[i]
+	}
+	sort.Strings(lKeys)
+	sort.Strings(rKeys)
+
+	for i := range lKeys {
+		if i < len(rKeys) {
+			if lKeys[i] != rKeys[i] {
+				CreateChange(changes, Modified, label,
+					lValues[lKeys[i]].ValueNode,
+					rValues[rKeys[i]].ValueNode,
+					true,
+					lValues[lKeys[i]].Value,
+					rValues[rKeys[i]].ValueNode)
+			}
+			continue
+		}
+		if i >= len(rKeys) {
+			CreateChange(changes, PropertyRemoved, label,
+				lValues[lKeys[i]].ValueNode,
+				nil,
+				true,
+				lValues[lKeys[i]].Value,
+				nil)
+		}
+	}
+	for i := range rKeys {
+		if i >= len(lKeys) {
+			CreateChange(changes, PropertyAdded, label,
+				nil,
+				rValues[rKeys[i]].ValueNode,
+				false,
+				nil,
+				rValues[rKeys[i]].ValueNode)
+		}
+	}
 }

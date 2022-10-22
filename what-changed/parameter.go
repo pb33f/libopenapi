@@ -4,15 +4,12 @@
 package what_changed
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"gopkg.in/yaml.v3"
 	"reflect"
-	"sort"
-	"strings"
 )
 
 type ParameterChanges struct {
@@ -24,7 +21,8 @@ type ParameterChanges struct {
 	ItemsChanges *ItemsChanges
 
 	// v3 change types
-	ExampleChanges map[string]*ExampleChanges
+	ExamplesChanges map[string]*ExampleChanges
+	ContentChanges  map[string]*MediaTypeChanges
 }
 
 // TotalChanges returns a count of everything that changed
@@ -33,15 +31,18 @@ func (p *ParameterChanges) TotalChanges() int {
 	if p.SchemaChanges != nil {
 		c += p.SchemaChanges.TotalChanges()
 	}
-	if len(p.ExampleChanges) > 0 {
-		for i := range p.ExampleChanges {
-			c += p.ExampleChanges[i].TotalChanges()
-		}
+	for i := range p.ExamplesChanges {
+		c += p.ExamplesChanges[i].TotalChanges()
+	}
+	if p.ItemsChanges != nil {
+		c += p.ItemsChanges.TotalChanges()
 	}
 	if p.ExtensionChanges != nil {
 		c += p.ExtensionChanges.TotalChanges()
 	}
-
+	for i := range p.ContentChanges {
+		c += p.ContentChanges[i].TotalChanges()
+	}
 	return c
 }
 
@@ -50,6 +51,12 @@ func (p *ParameterChanges) TotalBreakingChanges() int {
 	c := p.PropertyChanges.TotalBreakingChanges()
 	if p.SchemaChanges != nil {
 		c += p.SchemaChanges.TotalBreakingChanges()
+	}
+	if p.ItemsChanges != nil {
+		c += p.ItemsChanges.TotalBreakingChanges()
+	}
+	for i := range p.ContentChanges {
+		c += p.ContentChanges[i].TotalBreakingChanges()
 	}
 	return c
 }
@@ -148,6 +155,10 @@ func addSwaggerParameterProperties(left, right low.IsParameter, changes *[]*Chan
 	addPropertyCheck(&props, left.GetUniqueItems().ValueNode, right.GetUniqueItems().ValueNode,
 		left.GetUniqueItems(), right.GetUniqueItems(), changes, v3.UniqueItemsLabel, true)
 
+	// default
+	addPropertyCheck(&props, left.GetDefault().ValueNode, right.GetDefault().ValueNode,
+		left.GetDefault(), right.GetDefault(), changes, v3.DefaultLabel, true)
+
 	// multiple of
 	addPropertyCheck(&props, left.GetMultipleOf().ValueNode, right.GetMultipleOf().ValueNode,
 		left.GetMultipleOf(), right.GetMultipleOf(), changes, v3.MultipleOfLabel, true)
@@ -229,25 +240,6 @@ func CompareParameters(l, r any) *ParameterChanges {
 				nil)
 		}
 
-		// default
-		if !lParam.Default.IsEmpty() && !rParam.Default.IsEmpty() {
-			if low.GenerateHashString(lParam.Default.Value) != low.GenerateHashString(lParam.Default.Value) {
-				CreateChange(&changes, Modified, v3.DefaultLabel,
-					lParam.Items.ValueNode, rParam.Items.ValueNode, true, lParam.Items.Value,
-					rParam.Items.ValueNode)
-			}
-		}
-		if lParam.Default.IsEmpty() && !rParam.Default.IsEmpty() {
-			CreateChange(&changes, ObjectAdded, v3.DefaultLabel,
-				nil, rParam.Default.ValueNode, true, nil,
-				rParam.Default.Value)
-		}
-		if !lParam.Default.IsEmpty() && rParam.Items.IsEmpty() {
-			CreateChange(&changes, ObjectRemoved, v3.ItemsLabel,
-				lParam.Items.ValueNode, nil, true, lParam.Items.Value,
-				nil)
-		}
-
 		// enum
 		if len(lParam.Enum.Value) > 0 || len(rParam.Enum.Value) > 0 {
 			ExtractStringValueSliceChanges(lParam.Enum.Value, rParam.Enum.Value, &changes, v3.EnumLabel)
@@ -280,10 +272,12 @@ func CompareParameters(l, r any) *ParameterChanges {
 		checkParameterExample(lParam.Example, rParam.Example, changes)
 
 		// examples
-		CheckMapForChanges(lParam.Examples.Value, rParam.Examples.Value, &changes, v3.ExamplesLabel, CompareExamples)
+		pc.ExamplesChanges = CheckMapForChanges(lParam.Examples.Value, rParam.Examples.Value,
+			&changes, v3.ExamplesLabel, CompareExamples)
 
-		// todo: content
-
+		// content
+		pc.ContentChanges = CheckMapForChanges(lParam.Content.Value, rParam.Content.Value,
+			&changes, v3.ContentLabel, CompareMediaTypes)
 	}
 	CheckProperties(props)
 
@@ -304,60 +298,10 @@ func CompareParameters(l, r any) *ParameterChanges {
 
 	pc.Changes = changes
 	pc.ExtensionChanges = CompareExtensions(lext, rext)
-
-	if pc.TotalChanges() > 0 {
-		return pc
+	if pc.TotalChanges() <= 0 {
+		return nil
 	}
-	return nil
-}
-
-func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string], changes *[]*Change, label string) {
-	lKeys := make([]string, len(lParam))
-	rKeys := make([]string, len(rParam))
-	lValues := make(map[string]low.ValueReference[string])
-	rValues := make(map[string]low.ValueReference[string])
-	for i := range lParam {
-		lKeys[i] = strings.ToLower(lParam[i].Value)
-		lValues[lKeys[i]] = lParam[i]
-	}
-	for i := range rParam {
-		rKeys[i] = strings.ToLower(rParam[i].Value)
-		rValues[lKeys[i]] = rParam[i]
-	}
-	sort.Strings(lKeys)
-	sort.Strings(rKeys)
-
-	for i := range lKeys {
-		if i < len(rKeys) {
-			if lKeys[i] != rKeys[i] {
-				CreateChange(changes, Modified, label,
-					lValues[lKeys[i]].ValueNode,
-					rValues[rKeys[i]].ValueNode,
-					true,
-					lValues[lKeys[i]].Value,
-					rValues[rKeys[i]].ValueNode)
-			}
-			continue
-		}
-		if i >= len(rKeys) {
-			CreateChange(changes, PropertyRemoved, label,
-				lValues[lKeys[i]].ValueNode,
-				nil,
-				true,
-				lValues[lKeys[i]].Value,
-				nil)
-		}
-	}
-	for i := range rKeys {
-		if i >= len(lKeys) {
-			CreateChange(changes, PropertyAdded, label,
-				nil,
-				rValues[rKeys[i]].ValueNode,
-				false,
-				nil,
-				rValues[rKeys[i]].ValueNode)
-		}
-	}
+	return pc
 }
 
 func checkParameterExample(expLeft, expRight low.NodeReference[any], changes []*Change) {
@@ -379,109 +323,5 @@ func checkParameterExample(expLeft, expRight low.NodeReference[any], changes []*
 			expLeft.GetValueNode(), nil, false,
 			expLeft.GetValue(), nil)
 
-	}
-}
-
-func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
-	changes *[]*Change, label string, compareFunc func(l, r T) R) map[string]R {
-
-	lHashes := make(map[string]string)
-	rHashes := make(map[string]string)
-	lValues := make(map[string]low.ValueReference[T])
-	rValues := make(map[string]low.ValueReference[T])
-
-	for k := range expLeft {
-		lHashes[k.Value] = fmt.Sprintf("%x", low.GenerateHashString(expLeft[k].Value))
-		lValues[k.Value] = expLeft[k]
-	}
-
-	for k := range expRight {
-		rHashes[k.Value] = fmt.Sprintf("%x", low.GenerateHashString(expRight[k].Value))
-		rValues[k.Value] = expRight[k]
-	}
-
-	expChanges := make(map[string]R)
-
-	// check left example hashes
-	for k := range lHashes {
-		rhash := rHashes[k]
-		if rhash == "" {
-			CreateChange(changes, ObjectRemoved, label,
-				lValues[k].GetValueNode(), nil, false,
-				lValues[k].GetValue(), nil)
-			continue
-		}
-		if lHashes[k] == rHashes[k] {
-			continue
-		}
-		// run comparison.
-		expChanges[k] = compareFunc(lValues[k].Value, rValues[k].Value)
-	}
-
-	//check right example hashes
-	for k := range rHashes {
-		lhash := lHashes[k]
-		if lhash == "" {
-			CreateChange(changes, ObjectAdded, v3.ExamplesLabel,
-				nil, lValues[k].GetValueNode(), false,
-				nil, lValues[k].GetValue())
-			continue
-		}
-	}
-
-	return expChanges
-}
-
-func checkParameterContent(lParam *v3.Parameter, rParam *v3.Parameter, changes []*Change, pc *ParameterChanges) {
-	lConHashes := make(map[string]string)
-	rConHashes := make(map[string]string)
-	lConValues := make(map[string]low.ValueReference[*v3.MediaType])
-	rConValues := make(map[string]low.ValueReference[*v3.MediaType])
-	if lParam != nil && lParam.Content.Value != nil {
-		for k := range lParam.Content.Value {
-			lConHashes[k.Value] = fmt.Sprintf("%x", lParam.Content.Value[k].Value.Hash())
-			lConValues[k.Value] = lParam.Content.Value[k]
-		}
-	}
-	if rParam != nil && rParam.Content.Value != nil {
-		for k := range rParam.Content.Value {
-			rConHashes[k.Value] = fmt.Sprintf("%x", rParam.Content.Value[k].Value.Hash())
-			rConValues[k.Value] = rParam.Content.Value[k]
-		}
-	}
-	expChanges := make(map[string]*ExampleChanges)
-
-	// check left example hashes
-	for k := range lConHashes {
-		rhash := rConHashes[k]
-		if rhash == "" {
-			CreateChange(&changes, ObjectRemoved, v3.ExamplesLabel,
-				lConValues[k].GetValueNode(), nil, false,
-				lConValues[k].GetValue(), nil)
-			continue
-		}
-		if lConHashes[k] == rConHashes[k] {
-			continue
-		}
-
-		// Compare media types.
-		//expChanges[k] = CompareM(lConValues[k].Value, rConValues[k].Value)
-		// todo: start here <--------
-
-	}
-
-	//check right example hashes
-	for k := range rConHashes {
-		lhash := lConHashes[k]
-		if lhash == "" {
-			CreateChange(&changes, ObjectAdded, v3.ExamplesLabel,
-				nil, lConValues[k].GetValueNode(), false,
-				nil, lConValues[k].GetValue())
-			continue
-		}
-	}
-
-	if len(expChanges) > 0 {
-		pc.ExampleChanges = expChanges
 	}
 }

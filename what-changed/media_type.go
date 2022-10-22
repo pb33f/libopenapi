@@ -62,7 +62,6 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 		l.Example.Value, r.Example.Value, &changes, v3.ExampleLabel, false)
 
 	CheckProperties(props)
-	mc.Changes = changes
 
 	// schema
 	if !l.Schema.IsEmpty() && !r.Schema.IsEmpty() {
@@ -84,6 +83,9 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	// encoding
 	mc.EncodingChanges = CheckMapForChanges(l.Encoding.Value, r.Encoding.Value,
 		&changes, v3.EncodingLabel, CompareEncoding)
+
+	mc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
+	mc.Changes = changes
 
 	if mc.TotalChanges() <= 0 {
 		return nil
