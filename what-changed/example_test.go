@@ -32,6 +32,7 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.SummaryLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, "magic herbs", extChanges.Changes[0].Original)
