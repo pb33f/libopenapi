@@ -7,6 +7,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	HASH = "%x"
+)
+
 // Buildable is an interface for any struct that can be 'built out'. This means that a struct can accept
 // a root node and a reference to the index that carries data about any references used.
 //

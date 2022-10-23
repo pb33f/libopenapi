@@ -5,6 +5,7 @@ package v3
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -66,12 +67,39 @@ func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if oa.Value != nil {
 		ss.Flows = oa
 	}
-
 	return nil
 }
 
+// Hash will return a consistent SHA256 Hash of the SecurityScheme object
 func (ss *SecurityScheme) Hash() [32]byte {
 	var f []string
+	if !ss.Type.IsEmpty() {
+		f = append(f, ss.Type.Value)
+	}
+	if !ss.Description.IsEmpty() {
+		f = append(f, ss.Description.Value)
+	}
+	if !ss.Name.IsEmpty() {
+		f = append(f, ss.Name.Value)
+	}
+	if !ss.In.IsEmpty() {
+		f = append(f, ss.In.Value)
+	}
+	if !ss.Scheme.IsEmpty() {
+		f = append(f, ss.Scheme.Value)
+	}
+	if !ss.BearerFormat.IsEmpty() {
+		f = append(f, ss.BearerFormat.Value)
+	}
+	if !ss.Flows.IsEmpty() {
+		f = append(f, low.GenerateHashString(ss.Flows.Value))
+	}
+	if !ss.OpenIdConnectUrl.IsEmpty() {
+		f = append(f, ss.OpenIdConnectUrl.Value)
+	}
+	for k := range ss.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, ss.Extensions[k].Value))
+	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
