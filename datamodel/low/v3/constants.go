@@ -100,4 +100,5 @@ const (
 	AllowReservedLabel        = "allowReserved"
 	ExplodeLabel              = "explode"
 	ContentTypeLabel          = "contentType"
+	SecurityDefinitionLabel   = "securityDefinition"
 )
