@@ -17,7 +17,7 @@ type ParameterChanges struct {
 	SchemaChanges    *SchemaChanges
 	ExtensionChanges *ExtensionChanges
 
-	// V2 change types
+	// v2 change types
 	ItemsChanges *ItemsChanges
 
 	// v3 change types
