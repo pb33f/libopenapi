@@ -377,5 +377,7 @@ biscuit:
 
 	// compare
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
-	assert.Nil(t, extChanges)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
