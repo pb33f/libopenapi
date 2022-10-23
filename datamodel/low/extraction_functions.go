@@ -559,8 +559,8 @@ func AreEqual(l, r Hashable) bool {
 func GenerateHashString(v any) string {
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
-			return fmt.Sprintf("%x", h.Hash())
+			return fmt.Sprintf(HASH, h.Hash())
 		}
 	}
-	return fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(v))))
+	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
 }

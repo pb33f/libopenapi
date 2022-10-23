@@ -4,9 +4,12 @@
 package v3
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // OAuthFlows represents a low-level OpenAPI 3+ OAuthFlows object.
@@ -52,7 +55,27 @@ func (o *OAuthFlows) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	o.AuthorizationCode = v
 	return nil
+}
 
+// Hash will return a consistent SHA256 Hash of the OAuthFlow object
+func (o *OAuthFlows) Hash() [32]byte {
+	var f []string
+	if !o.Implicit.IsEmpty() {
+		f = append(f, low.GenerateHashString(o.Implicit.Value))
+	}
+	if !o.Password.IsEmpty() {
+		f = append(f, low.GenerateHashString(o.Password.Value))
+	}
+	if !o.ClientCredentials.IsEmpty() {
+		f = append(f, low.GenerateHashString(o.ClientCredentials.Value))
+	}
+	if !o.AuthorizationCode.IsEmpty() {
+		f = append(f, low.GenerateHashString(o.AuthorizationCode.Value))
+	}
+	for k := range o.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, o.Extensions[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // OAuthFlow represents a low-level OpenAPI 3+ OAuthFlow object.
@@ -79,4 +102,25 @@ func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[any] {
 func (o *OAuthFlow) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	o.Extensions = low.ExtractExtensions(root)
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the OAuthFlow object
+func (o *OAuthFlow) Hash() [32]byte {
+	var f []string
+	if !o.AuthorizationUrl.IsEmpty() {
+		f = append(f, o.AuthorizationUrl.Value)
+	}
+	if !o.TokenUrl.IsEmpty() {
+		f = append(f, o.TokenUrl.Value)
+	}
+	if !o.RefreshUrl.IsEmpty() {
+		f = append(f, o.RefreshUrl.Value)
+	}
+	for i := range o.Scopes.Value {
+		f = append(f, fmt.Sprintf("%s-%s", i.Value, o.Scopes.Value[i].Value))
+	}
+	for k := range o.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, o.Extensions[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

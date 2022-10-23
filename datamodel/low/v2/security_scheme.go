@@ -4,9 +4,12 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // SecurityScheme is a low-level representation of a Swagger / OpenAPI 2 SecurityScheme object.
@@ -37,4 +40,37 @@ func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	ss.Scopes = scopes
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the SecurityScheme object
+func (ss *SecurityScheme) Hash() [32]byte {
+	var f []string
+	if !ss.Type.IsEmpty() {
+		f = append(f, ss.Type.Value)
+	}
+	if !ss.Description.IsEmpty() {
+		f = append(f, ss.Description.Value)
+	}
+	if !ss.Name.IsEmpty() {
+		f = append(f, ss.Name.Value)
+	}
+	if !ss.In.IsEmpty() {
+		f = append(f, ss.In.Value)
+	}
+	if !ss.Flow.IsEmpty() {
+		f = append(f, ss.Flow.Value)
+	}
+	if !ss.AuthorizationUrl.IsEmpty() {
+		f = append(f, ss.AuthorizationUrl.Value)
+	}
+	if !ss.TokenUrl.IsEmpty() {
+		f = append(f, ss.TokenUrl.Value)
+	}
+	if !ss.Scopes.IsEmpty() {
+		f = append(f, low.GenerateHashString(ss.Scopes.Value))
+	}
+	for k := range ss.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, ss.Extensions[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

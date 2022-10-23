@@ -4,10 +4,13 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Scopes is a low-level representation of a Swagger / OpenAPI 2 OAuth2 Scopes object.
@@ -31,6 +34,9 @@ func (s *Scopes) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if utils.IsNodeMap(root) {
 		for k := range root.Content {
 			if k%2 == 0 {
+				if strings.Contains(root.Content[k].Value, "x-") {
+					continue
+				}
 				valueMap[low.KeyReference[string]{
 					Value:   root.Content[k].Value,
 					KeyNode: root.Content[k],
@@ -43,4 +49,16 @@ func (s *Scopes) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		s.Values = valueMap
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Scopes object
+func (s *Scopes) Hash() [32]byte {
+	var f []string
+	for i := range s.Values {
+		f = append(f, fmt.Sprintf("%s-%s", i.Value, s.Values[i].Value))
+	}
+	for k := range s.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, s.Extensions[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

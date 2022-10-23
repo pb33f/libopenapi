@@ -346,3 +346,36 @@ biscuit:
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "rich tea", extChanges.Changes[0].Original)
 }
+
+func TestCompareSecurityRequirement_Add(t *testing.T) {
+
+	left := `
+biscuit:
+  - biscotti
+  - rich tea`
+
+	right := `punch:
+  - nice
+cheese:
+  - pizza
+  - pie
+biscuit:
+  - biscotti
+  - rich tea`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v2.SecurityRequirement
+	var rDoc v2.SecurityRequirement
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Nil(t, extChanges)
+}
