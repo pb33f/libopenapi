@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -49,7 +48,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.DescriptionLabel, extChanges.Changes[0].Property)
 }
 
@@ -89,7 +88,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.TitleLabel, extChanges.Changes[0].Property)
 }
 
@@ -128,7 +127,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.VersionLabel, extChanges.Changes[0].Property)
 }
 
@@ -165,7 +164,7 @@ contact:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.LicenseLabel, extChanges.Changes[0].Property)
 }
 
@@ -202,7 +201,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.LicenseLabel, extChanges.Changes[0].Property)
 }
 
@@ -241,7 +240,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.LicenseChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.LicenseChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.NameLabel, extChanges.LicenseChanges.Changes[0].Property)
 }
 
@@ -277,7 +276,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ContactLabel, extChanges.Changes[0].Property)
 }
 
@@ -313,7 +312,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ContactLabel, extChanges.Changes[0].Property)
 }
 
@@ -352,7 +351,7 @@ license:
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.ContactChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.ContactChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.NameLabel, extChanges.ContactChanges.Changes[0].Property)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }

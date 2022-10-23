@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -49,7 +48,7 @@ tags:
 	descChange := changes.Changes[0]
 	assert.Equal(t, "a lovelier tag description", descChange.New)
 	assert.Equal(t, "a lovely tag", descChange.Original)
-	assert.Equal(t, core.Modified, descChange.ChangeType)
+	assert.Equal(t, Modified, descChange.ChangeType)
 	assert.False(t, descChange.Context.HasChanged())
 }
 
@@ -89,7 +88,7 @@ tags:
 	assert.Equal(t, 1, changes.TotalChanges())
 
 	descChange := changes.Changes[0]
-	assert.Equal(t, core.ObjectAdded, descChange.ChangeType)
+	assert.Equal(t, ObjectAdded, descChange.ChangeType)
 }
 
 func TestCompareTags_AddDeleteTag(t *testing.T) {
@@ -121,8 +120,8 @@ tags:
 	assert.Len(t, changes.Changes, 2)
 	assert.Equal(t, 2, changes.TotalChanges())
 
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[1].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[1].ChangeType)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
 
@@ -227,7 +226,7 @@ tags:
 	assert.Equal(t, 1, changes.TotalChanges())
 
 	descChange := changes.Changes[0]
-	assert.Equal(t, core.Modified, descChange.ChangeType)
+	assert.Equal(t, Modified, descChange.ChangeType)
 	assert.Equal(t, "a lovelier tag description", descChange.Original)
 	assert.Equal(t, "a different tag description", descChange.New)
 	assert.True(t, descChange.Context.HasChanged())

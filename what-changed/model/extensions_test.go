@@ -5,7 +5,6 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -26,7 +25,7 @@ func TestCompareExtensions(t *testing.T) {
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
 	assert.Equal(t, "2", extChanges.Changes[0].New)
 	assert.False(t, extChanges.Changes[0].Context.HasChanged())
@@ -50,7 +49,7 @@ x-test: 1`
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Len(t, extChanges.Changes, 1)
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 2, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, -1, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
@@ -74,7 +73,7 @@ x-test: 1`
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Len(t, extChanges.Changes, 1)
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, -1, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, 2, extChanges.Changes[0].Context.NewLine)
 	assert.Equal(t, "1", extChanges.Changes[0].New)

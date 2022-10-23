@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -34,7 +33,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 
 }
@@ -61,7 +60,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -87,7 +86,7 @@ name: buckaroo`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -113,7 +112,7 @@ name: buckaroo`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -138,7 +137,7 @@ func TestCompareLicense_URLModified(t *testing.T) {
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -164,8 +163,8 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[1].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[1].ChangeType)
 }
 
 func TestCompareLicense_Identical(t *testing.T) {

@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -96,7 +95,7 @@ items:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ItemsLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 }
 
 func TestCompareItems_RemoveItems(t *testing.T) {
@@ -125,7 +124,7 @@ items:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ItemsLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 }
 
 func TestCompareItems_RefVsInlineIdentical(t *testing.T) {
