@@ -5,13 +5,12 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"strings"
 )
 
 // ExtensionChanges represents any changes to custom extensions defined for an OpenAPI object.
 type ExtensionChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 }
 
 func (e *ExtensionChanges) TotalChanges() int {
@@ -43,15 +42,15 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 		seenRight[strings.ToLower(i.Value)] = &h
 	}
 
-	var changes []*core.Change
+	var changes []*Change
 	for i := range seenLeft {
 
-		core.CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
+		CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
 
 		if seenRight[i] != nil {
-			var props []*core.PropertyCheck
+			var props []*PropertyCheck
 
-			props = append(props, &core.PropertyCheck{
+			props = append(props, &PropertyCheck{
 				LeftNode:  seenLeft[i].ValueNode,
 				RightNode: seenRight[i].ValueNode,
 				Label:     i,
@@ -62,12 +61,12 @@ func CompareExtensions(l, r map[low.KeyReference[string]]low.ValueReference[any]
 			})
 
 			// check properties
-			core.CheckProperties(props)
+			CheckProperties(props)
 		}
 	}
 	for i := range seenRight {
 		if seenLeft[i] == nil {
-			core.CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
+			CheckForObjectAdditionOrRemoval[any](seenLeft, seenRight, i, &changes, false, true)
 		}
 	}
 	ex := new(ExtensionChanges)

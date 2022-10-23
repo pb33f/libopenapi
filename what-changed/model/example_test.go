@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -34,7 +33,7 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.SummaryLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, "magic herbs", extChanges.Changes[0].Original)
 	assert.Equal(t, "cure all", extChanges.Changes[0].New)
@@ -61,7 +60,7 @@ description: cure all`
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.DescriptionLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, "cure all", extChanges.Changes[0].New)
 }
@@ -87,7 +86,7 @@ x-herbs: cure all`
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
-	assert.Equal(t, core.ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
 	assert.Equal(t, "x-herbs", extChanges.ExtensionChanges.Changes[0].Property)
 	assert.Equal(t, "cure all", extChanges.ExtensionChanges.Changes[0].New)
 }

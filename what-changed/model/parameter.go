@@ -8,13 +8,12 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"gopkg.in/yaml.v3"
 	"reflect"
 )
 
 type ParameterChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	SchemaChanges    *SchemaChanges
 	ExtensionChanges *ExtensionChanges
 
@@ -62,9 +61,9 @@ func (p *ParameterChanges) TotalBreakingChanges() int {
 	return c
 }
 
-func addPropertyCheck(props *[]*core.PropertyCheck,
-	lvn, rvn *yaml.Node, lv, rv any, changes *[]*core.Change, label string, breaking bool) {
-	*props = append(*props, &core.PropertyCheck{
+func addPropertyCheck(props *[]*PropertyCheck,
+	lvn, rvn *yaml.Node, lv, rv any, changes *[]*Change, label string, breaking bool) {
+	*props = append(*props, &PropertyCheck{
 		LeftNode:  lvn,
 		RightNode: rvn,
 		Label:     label,
@@ -75,8 +74,8 @@ func addPropertyCheck(props *[]*core.PropertyCheck,
 	})
 }
 
-func addOpenAPIParameterProperties(left, right low.IsParameter, changes *[]*core.Change) []*core.PropertyCheck {
-	var props []*core.PropertyCheck
+func addOpenAPIParameterProperties(left, right low.IsParameter, changes *[]*Change) []*PropertyCheck {
+	var props []*PropertyCheck
 
 	// style
 	addPropertyCheck(&props, left.GetStyle().ValueNode, right.GetStyle().ValueNode,
@@ -101,8 +100,8 @@ func addOpenAPIParameterProperties(left, right low.IsParameter, changes *[]*core
 	return props
 }
 
-func addSwaggerParameterProperties(left, right low.IsParameter, changes *[]*core.Change) []*core.PropertyCheck {
-	var props []*core.PropertyCheck
+func addSwaggerParameterProperties(left, right low.IsParameter, changes *[]*Change) []*PropertyCheck {
+	var props []*PropertyCheck
 
 	// type
 	addPropertyCheck(&props, left.GetType().ValueNode, right.GetType().ValueNode,
@@ -167,8 +166,8 @@ func addSwaggerParameterProperties(left, right low.IsParameter, changes *[]*core
 	return props
 }
 
-func addCommonParameterProperties(left, right low.IsParameter, changes *[]*core.Change) []*core.PropertyCheck {
-	var props []*core.PropertyCheck
+func addCommonParameterProperties(left, right low.IsParameter, changes *[]*Change) []*PropertyCheck {
+	var props []*PropertyCheck
 
 	addPropertyCheck(&props, left.GetName().ValueNode, right.GetName().ValueNode,
 		left.GetName(), right.GetName(), changes, v3.NameLabel, true)
@@ -194,8 +193,8 @@ func addCommonParameterProperties(left, right low.IsParameter, changes *[]*core.
 
 func CompareParameters(l, r any) *ParameterChanges {
 
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	pc := new(ParameterChanges)
 	var lSchema *base.SchemaProxy
@@ -231,19 +230,19 @@ func CompareParameters(l, r any) *ParameterChanges {
 			}
 		}
 		if lParam.Items.IsEmpty() && !rParam.Items.IsEmpty() {
-			core.CreateChange(&changes, core.ObjectAdded, v3.ItemsLabel,
+			CreateChange(&changes, ObjectAdded, v3.ItemsLabel,
 				nil, rParam.Items.ValueNode, true, nil,
 				rParam.Items.Value)
 		}
 		if !lParam.Items.IsEmpty() && rParam.Items.IsEmpty() {
-			core.CreateChange(&changes, core.ObjectRemoved, v3.ItemsLabel,
+			CreateChange(&changes, ObjectRemoved, v3.ItemsLabel,
 				lParam.Items.ValueNode, nil, true, lParam.Items.Value,
 				nil)
 		}
 
 		// enum
 		if len(lParam.Enum.Value) > 0 || len(rParam.Enum.Value) > 0 {
-			core.ExtractStringValueSliceChanges(lParam.Enum.Value, rParam.Enum.Value, &changes, v3.EnumLabel)
+			ExtractStringValueSliceChanges(lParam.Enum.Value, rParam.Enum.Value, &changes, v3.EnumLabel)
 		}
 	}
 
@@ -273,26 +272,26 @@ func CompareParameters(l, r any) *ParameterChanges {
 		checkParameterExample(lParam.Example, rParam.Example, changes)
 
 		// examples
-		pc.ExamplesChanges = core.CheckMapForChanges(lParam.Examples.Value, rParam.Examples.Value,
+		pc.ExamplesChanges = CheckMapForChanges(lParam.Examples.Value, rParam.Examples.Value,
 			&changes, v3.ExamplesLabel, CompareExamples)
 
 		// content
-		pc.ContentChanges = core.CheckMapForChanges(lParam.Content.Value, rParam.Content.Value,
+		pc.ContentChanges = CheckMapForChanges(lParam.Content.Value, rParam.Content.Value,
 			&changes, v3.ContentLabel, CompareMediaTypes)
 	}
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	if lSchema != nil && rSchema != nil {
 		pc.SchemaChanges = CompareSchemas(lSchema, rSchema)
 	}
 	if lSchema != nil && rSchema == nil {
-		core.CreateChange(&changes, core.ObjectRemoved, v3.SchemaLabel,
+		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,
 			lSchema.GetValueNode(), nil, true, lSchema,
 			nil)
 	}
 
 	if lSchema == nil && rSchema != nil {
-		core.CreateChange(&changes, core.ObjectAdded, v3.SchemaLabel,
+		CreateChange(&changes, ObjectAdded, v3.SchemaLabel,
 			nil, rSchema.GetValueNode(), true, nil,
 			rSchema)
 	}
@@ -305,22 +304,22 @@ func CompareParameters(l, r any) *ParameterChanges {
 	return pc
 }
 
-func checkParameterExample(expLeft, expRight low.NodeReference[any], changes []*core.Change) {
+func checkParameterExample(expLeft, expRight low.NodeReference[any], changes []*Change) {
 	if !expLeft.IsEmpty() && !expRight.IsEmpty() {
 		if low.GenerateHashString(expLeft.GetValue()) != low.GenerateHashString(expRight.GetValue()) {
-			core.CreateChange(&changes, core.Modified, v3.ExampleLabel,
+			CreateChange(&changes, Modified, v3.ExampleLabel,
 				expLeft.GetValueNode(), expRight.GetValueNode(), false,
 				expLeft.GetValue(), expRight.GetValue())
 		}
 	}
 	if expLeft.Value == nil && expRight.Value != nil {
-		core.CreateChange(&changes, core.PropertyAdded, v3.ExampleLabel,
+		CreateChange(&changes, PropertyAdded, v3.ExampleLabel,
 			nil, expRight.GetValueNode(), false,
 			nil, expRight.GetValue())
 
 	}
 	if expLeft.Value != nil && expRight.Value == nil {
-		core.CreateChange(&changes, core.PropertyRemoved, v3.ExampleLabel,
+		CreateChange(&changes, PropertyRemoved, v3.ExampleLabel,
 			expLeft.GetValueNode(), nil, false,
 			expLeft.GetValue(), nil)
 

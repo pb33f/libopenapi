@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -168,7 +167,7 @@ x-beer: yummy`
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareHeaders_v2_removedItems(t *testing.T) {
@@ -212,7 +211,7 @@ x-beer: yummy`
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareHeaders_v2_ItemsModified(t *testing.T) {

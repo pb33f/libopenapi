@@ -6,12 +6,11 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 // XMLChanges represents changes made to the XML object of an OpenAPI document.
 type XMLChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -34,11 +33,11 @@ func (x *XMLChanges) TotalBreakingChanges() int {
 // otherwise, if nothing changed - it will return nil
 func CompareXML(l, r *base.XML) *XMLChanges {
 	xc := new(XMLChanges)
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// Name (breaking change)
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
@@ -49,7 +48,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 	})
 
 	// Namespace (breaking change)
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Namespace.ValueNode,
 		RightNode: r.Namespace.ValueNode,
 		Label:     v3.NamespaceLabel,
@@ -60,7 +59,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 	})
 
 	// Prefix (breaking change)
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Prefix.ValueNode,
 		RightNode: r.Prefix.ValueNode,
 		Label:     v3.PrefixLabel,
@@ -71,7 +70,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 	})
 
 	// Attribute (breaking change)
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Attribute.ValueNode,
 		RightNode: r.Attribute.ValueNode,
 		Label:     v3.AttributeLabel,
@@ -82,7 +81,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 	})
 
 	// Wrapped (breaking change)
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Wrapped.ValueNode,
 		RightNode: r.Wrapped.ValueNode,
 		Label:     v3.WrappedLabel,
@@ -93,7 +92,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 	})
 
 	// check properties
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	// check extensions
 	xc.ExtensionChanges = CheckExtensions(l, r)

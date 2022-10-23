@@ -6,12 +6,11 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 // ExampleChanges represent changes to an Example object, part of an OpenAPI specification.
 type ExampleChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -35,11 +34,11 @@ func (e *ExampleChanges) TotalBreakingChanges() int {
 func CompareExamples(l, r *base.Example) *ExampleChanges {
 
 	ec := new(ExampleChanges)
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// Summary
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Summary.ValueNode,
 		RightNode: r.Summary.ValueNode,
 		Label:     v3.SummaryLabel,
@@ -50,7 +49,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// Description
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
@@ -61,7 +60,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// Value
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Value.ValueNode,
 		RightNode: r.Value.ValueNode,
 		Label:     v3.ValueLabel,
@@ -72,7 +71,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// ExternalValue
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.ExternalValue.ValueNode,
 		RightNode: r.ExternalValue.ValueNode,
 		Label:     v3.ExternalValue,
@@ -83,7 +82,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	})
 
 	// check properties
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	// check extensions
 	ec.ExtensionChanges = CheckExtensions(l, r)

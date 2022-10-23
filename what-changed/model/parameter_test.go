@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -107,7 +106,7 @@ schema:
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -134,7 +133,7 @@ schema:
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -231,7 +230,7 @@ example: a string`
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V3_ExampleRemove(t *testing.T) {
@@ -256,7 +255,7 @@ example: a string`
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
@@ -284,7 +283,7 @@ func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.Modified, extChanges.ExamplesChanges["anExample"].Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.ExamplesChanges["anExample"].Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V3_ExamplesAdded(t *testing.T) {
@@ -315,7 +314,7 @@ func TestCompareParameters_V3_ExamplesAdded(t *testing.T) {
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
@@ -346,7 +345,7 @@ func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V3_ContentChanged(t *testing.T) {
@@ -377,7 +376,7 @@ func TestCompareParameters_V3_ContentChanged(t *testing.T) {
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.Modified,
+	assert.Equal(t, Modified,
 		extChanges.ContentChanges["application/json"].SchemaChanges.Changes[0].ChangeType)
 }
 
@@ -412,7 +411,7 @@ func TestCompareParameters_V3_ContentAdded(t *testing.T) {
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V2_DefaultChange(t *testing.T) {
@@ -511,7 +510,7 @@ example: a string`
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V2_Equal(t *testing.T) {
@@ -581,7 +580,7 @@ func TestCompareParameters_V2_ItemsChange(t *testing.T) {
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.Modified, extChanges.ItemsChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.ItemsChanges.Changes[0].ChangeType)
 
 }
 
@@ -608,7 +607,7 @@ items:
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V2_ItemsRemove(t *testing.T) {
@@ -634,7 +633,7 @@ items:
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareParameters_V2_Extensions(t *testing.T) {

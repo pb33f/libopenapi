@@ -4,10 +4,12 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // SecurityScheme represents a low-level OpenAPI 3+ SecurityScheme object.
@@ -66,6 +68,11 @@ func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	return nil
+}
+
+func (ss *SecurityScheme) Hash() [32]byte {
+	var f []string
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // FindRequirement will attempt to locate a security requirement string from a supplied name.

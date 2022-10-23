@@ -7,13 +7,12 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"strings"
 )
 
 // TagChanges represents changes made to the Tags object of an OpenAPI document.
 type TagChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	ExternalDocs     *ExternalDocChanges
 	ExtensionChanges *ExtensionChanges
 }
@@ -53,20 +52,20 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 		seenRight[strings.ToLower(r[i].Value.Name.Value)] = &h
 	}
 
-	var changes []*core.Change
+	var changes []*Change
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {
 
-		core.CheckForObjectAdditionOrRemoval[*base.Tag](seenLeft, seenRight, i, &changes, false, true)
+		CheckForObjectAdditionOrRemoval[*base.Tag](seenLeft, seenRight, i, &changes, false, true)
 
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {
 
-			var props []*core.PropertyCheck
+			var props []*PropertyCheck
 
 			// Name
-			props = append(props, &core.PropertyCheck{
+			props = append(props, &PropertyCheck{
 				LeftNode:  seenLeft[i].Value.Name.ValueNode,
 				RightNode: seenRight[i].Value.Name.ValueNode,
 				Label:     v3.NameLabel,
@@ -77,7 +76,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 			})
 
 			// Description
-			props = append(props, &core.PropertyCheck{
+			props = append(props, &PropertyCheck{
 				LeftNode:  seenLeft[i].Value.Description.ValueNode,
 				RightNode: seenRight[i].Value.Description.ValueNode,
 				Label:     v3.DescriptionLabel,
@@ -88,7 +87,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 			})
 
 			// check properties
-			core.CheckProperties(props)
+			CheckProperties(props)
 
 			// compare external docs
 			tc.ExternalDocs = CompareExternalDocs(seenLeft[i].Value.ExternalDocs.Value,
@@ -102,7 +101,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 
 	for i := range seenRight {
 		if seenLeft[i] == nil {
-			core.CreateChange(&changes, core.ObjectAdded, i, nil, seenRight[i].GetValueNode(),
+			CreateChange(&changes, ObjectAdded, i, nil, seenRight[i].GetValueNode(),
 				false, nil, seenRight[i].GetValue())
 		}
 	}

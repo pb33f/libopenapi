@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -34,7 +33,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -60,7 +59,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -86,7 +85,7 @@ name: buckaroo`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -112,7 +111,7 @@ name: buckaroo`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareContact_EmailAdded(t *testing.T) {
@@ -137,7 +136,7 @@ email: buckaroo@pb33f.io`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -163,7 +162,7 @@ email: buckaroo@pb33f.io`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareContact_EmailModified(t *testing.T) {
@@ -189,7 +188,7 @@ email: dave@quobix.com`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 

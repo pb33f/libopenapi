@@ -7,12 +7,11 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"reflect"
 )
 
 type HeaderChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	SchemaChanges    *SchemaChanges
 	ExamplesChanges  map[string]*ExampleChanges
 	ContentChanges   map[string]*MediaTypeChanges
@@ -56,8 +55,8 @@ func (h *HeaderChanges) TotalBreakingChanges() int {
 	return c
 }
 
-func addOpenAPIHeaderProperties(left, right low.IsHeader, changes *[]*core.Change) []*core.PropertyCheck {
-	var props []*core.PropertyCheck
+func addOpenAPIHeaderProperties(left, right low.IsHeader, changes *[]*Change) []*PropertyCheck {
+	var props []*PropertyCheck
 
 	// style
 	addPropertyCheck(&props, left.GetStyle().ValueNode, right.GetStyle().ValueNode,
@@ -90,8 +89,8 @@ func addOpenAPIHeaderProperties(left, right low.IsHeader, changes *[]*core.Chang
 	return props
 }
 
-func addSwaggerHeaderProperties(left, right low.IsHeader, changes *[]*core.Change) []*core.PropertyCheck {
-	var props []*core.PropertyCheck
+func addSwaggerHeaderProperties(left, right low.IsHeader, changes *[]*Change) []*PropertyCheck {
+	var props []*PropertyCheck
 
 	// type
 	addPropertyCheck(&props, left.GetType().ValueNode, right.GetType().ValueNode,
@@ -152,8 +151,8 @@ func addSwaggerHeaderProperties(left, right low.IsHeader, changes *[]*core.Chang
 	return props
 }
 
-func addCommonHeaderProperties(left, right low.IsHeader, changes *[]*core.Change) []*core.PropertyCheck {
-	var props []*core.PropertyCheck
+func addCommonHeaderProperties(left, right low.IsHeader, changes *[]*Change) []*PropertyCheck {
+	var props []*PropertyCheck
 
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
@@ -172,20 +171,26 @@ func CompareHeadersV3(l, r *v3.Header) *HeaderChanges {
 
 func CompareHeaders(l, r any) *HeaderChanges {
 
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 	hc := new(HeaderChanges)
 
 	// handle swagger.
 	if reflect.TypeOf(&v2.Header{}) == reflect.TypeOf(l) && reflect.TypeOf(&v2.Header{}) == reflect.TypeOf(r) {
 		lHeader := l.(*v2.Header)
 		rHeader := r.(*v2.Header)
+
+		// perform hash check to avoid further processing
+		if low.AreEqual(lHeader, rHeader) {
+			return nil
+		}
+
 		props = append(props, addCommonHeaderProperties(lHeader, rHeader, &changes)...)
 		props = append(props, addSwaggerHeaderProperties(lHeader, rHeader, &changes)...)
 
 		// enum
 		if len(lHeader.Enum.Value) > 0 || len(rHeader.Enum.Value) > 0 {
-			core.ExtractStringValueSliceChanges(lHeader.Enum.Value, rHeader.Enum.Value, &changes, v3.EnumLabel)
+			ExtractStringValueSliceChanges(lHeader.Enum.Value, rHeader.Enum.Value, &changes, v3.EnumLabel)
 		}
 
 		// items
@@ -195,11 +200,11 @@ func CompareHeaders(l, r any) *HeaderChanges {
 			}
 		}
 		if lHeader.Items.IsEmpty() && !rHeader.Items.IsEmpty() {
-			core.CreateChange(&changes, core.ObjectAdded, v3.ItemsLabel, nil,
+			CreateChange(&changes, ObjectAdded, v3.ItemsLabel, nil,
 				rHeader.Items.ValueNode, true, nil, rHeader.Items.Value)
 		}
 		if !lHeader.Items.IsEmpty() && rHeader.Items.IsEmpty() {
-			core.CreateChange(&changes, core.ObjectRemoved, v3.SchemaLabel, lHeader.Items.ValueNode,
+			CreateChange(&changes, ObjectRemoved, v3.SchemaLabel, lHeader.Items.ValueNode,
 				nil, true, lHeader.Items.Value, nil)
 		}
 		hc.ExtensionChanges = CompareExtensions(lHeader.Extensions, rHeader.Extensions)
@@ -209,6 +214,12 @@ func CompareHeaders(l, r any) *HeaderChanges {
 	if reflect.TypeOf(&v3.Header{}) == reflect.TypeOf(l) && reflect.TypeOf(&v3.Header{}) == reflect.TypeOf(r) {
 		lHeader := l.(*v3.Header)
 		rHeader := r.(*v3.Header)
+
+		// perform hash check to avoid further processing
+		if low.AreEqual(lHeader, rHeader) {
+			return nil
+		}
+
 		props = append(props, addCommonHeaderProperties(lHeader, rHeader, &changes)...)
 		props = append(props, addOpenAPIHeaderProperties(lHeader, rHeader, &changes)...)
 
@@ -218,17 +229,17 @@ func CompareHeaders(l, r any) *HeaderChanges {
 		}
 
 		// examples
-		hc.ExamplesChanges = core.CheckMapForChanges(lHeader.Examples.Value, rHeader.Examples.Value,
+		hc.ExamplesChanges = CheckMapForChanges(lHeader.Examples.Value, rHeader.Examples.Value,
 			&changes, v3.ExamplesLabel, CompareExamples)
 
 		// content
-		hc.ContentChanges = core.CheckMapForChanges(lHeader.Content.Value, rHeader.Content.Value,
+		hc.ContentChanges = CheckMapForChanges(lHeader.Content.Value, rHeader.Content.Value,
 			&changes, v3.ContentLabel, CompareMediaTypes)
 
 		hc.ExtensionChanges = CompareExtensions(lHeader.Extensions, rHeader.Extensions)
 
 	}
-	core.CheckProperties(props)
+	CheckProperties(props)
 	hc.Changes = changes
 	if hc.TotalChanges() <= 0 {
 		return nil

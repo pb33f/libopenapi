@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -43,7 +42,7 @@ x-testing: hiya!`
 
 	// validate property changes
 	urlChange := extChanges.Changes[0]
-	assert.Equal(t, core.Modified, urlChange.ChangeType)
+	assert.Equal(t, Modified, urlChange.ChangeType)
 	assert.False(t, urlChange.Context.HasChanged())
 	assert.Equal(t, "https://pb33f.io", urlChange.Original)
 	assert.Equal(t, "https://quobix.com", urlChange.New)
@@ -51,7 +50,7 @@ x-testing: hiya!`
 	assert.Equal(t, lowv3.URLLabel, urlChange.Property)
 
 	descChange := extChanges.Changes[1]
-	assert.Equal(t, core.Modified, descChange.ChangeType)
+	assert.Equal(t, Modified, descChange.ChangeType)
 	assert.False(t, descChange.Context.HasChanged())
 	assert.Equal(t, "this is another test", descChange.New)
 	assert.Equal(t, "this is a test", descChange.Original)
@@ -60,7 +59,7 @@ x-testing: hiya!`
 
 	// validate extensions
 	extChange := extChanges.ExtensionChanges.Changes[0]
-	assert.Equal(t, core.Modified, extChange.ChangeType)
+	assert.Equal(t, Modified, extChange.ChangeType)
 	assert.False(t, extChange.Context.HasChanged())
 	assert.Equal(t, "hiya!", extChange.New)
 	assert.Equal(t, "hello", extChange.Original)
@@ -98,21 +97,21 @@ url: https://quobix.com`
 
 	// validate property changes
 	urlChange := extChanges.Changes[0]
-	assert.Equal(t, core.Modified, urlChange.ChangeType)
+	assert.Equal(t, Modified, urlChange.ChangeType)
 	assert.True(t, urlChange.Context.HasChanged())
 	assert.Equal(t, "https://pb33f.io", urlChange.Original)
 	assert.Equal(t, "https://quobix.com", urlChange.New)
 	assert.Equal(t, lowv3.URLLabel, urlChange.Property)
 
 	descChange := extChanges.Changes[1]
-	assert.Equal(t, core.Modified, descChange.ChangeType)
+	assert.Equal(t, Modified, descChange.ChangeType)
 	assert.True(t, descChange.Context.HasChanged())
 	assert.Equal(t, "this is another test", descChange.New)
 	assert.Equal(t, "this is a test", descChange.Original)
 
 	// validate extensions
 	extChange := extChanges.ExtensionChanges.Changes[0]
-	assert.Equal(t, core.Modified, extChange.ChangeType)
+	assert.Equal(t, Modified, extChange.ChangeType)
 	assert.True(t, extChange.Context.HasChanged())
 	assert.Equal(t, "hiya!", extChange.New)
 	assert.Equal(t, "hello", extChange.Original)
@@ -170,7 +169,7 @@ x-testing: hello`
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareExternalDocs_URLAdded(t *testing.T) {
@@ -195,7 +194,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareExternalDocs_DescriptionRemoved(t *testing.T) {
@@ -220,7 +219,7 @@ description: something`
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareExternalDocs_URLRemoved(t *testing.T) {
@@ -245,5 +244,5 @@ url: https://pb33f.io`
 	// compare
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }

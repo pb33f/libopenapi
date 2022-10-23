@@ -10,7 +10,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
@@ -43,7 +42,7 @@ func TestCompareSchemas_PropertyModification(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "an OK message Changed", changes.Changes[0].New)
 }
 
@@ -68,7 +67,7 @@ func TestCompareSchemas_PropertyAdd(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "a thing", changes.Changes[0].New)
 	assert.Equal(t, v3.DescriptionLabel, changes.Changes[0].Property)
 }
@@ -94,7 +93,7 @@ func TestCompareSchemas_PropertyRemove(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "a thing", changes.Changes[0].Original)
 	assert.Equal(t, v3.DescriptionLabel, changes.Changes[0].Property)
 }
@@ -118,7 +117,7 @@ func TestCompareSchemas_Removed(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 }
 
 func TestCompareSchemas_Added(t *testing.T) {
@@ -140,7 +139,7 @@ func TestCompareSchemas_Added(t *testing.T) {
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 }
 
 func test_BuildDoc(l, r string) (*v3.Document, *v3.Document) {
@@ -221,7 +220,7 @@ func TestCompareSchemas_RefChanged(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "#/components/schemas/Woah", changes.Changes[0].New)
 }
 
@@ -249,7 +248,7 @@ func TestCompareSchemas_RefToInline(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/No", changes.Changes[0].Original)
 
@@ -279,7 +278,7 @@ func TestCompareSchemas_InlineToRef(t *testing.T) {
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/No", changes.Changes[0].New)
 
@@ -337,7 +336,7 @@ func TestCompareSchemas_RequiredAdded(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "two", changes.Changes[0].New)
 	assert.Equal(t, v3.RequiredLabel, changes.Changes[0].Property)
 }
@@ -365,7 +364,7 @@ func TestCompareSchemas_RequiredRemoved(t *testing.T) {
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "two", changes.Changes[0].Original)
 	assert.Equal(t, v3.RequiredLabel, changes.Changes[0].Property)
 }
@@ -390,7 +389,7 @@ func TestCompareSchemas_EnumAdded(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "d", changes.Changes[0].New)
 	assert.Equal(t, v3.EnumLabel, changes.Changes[0].Property)
 }
@@ -415,7 +414,7 @@ func TestCompareSchemas_EnumRemoved(t *testing.T) {
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "d", changes.Changes[0].Original)
 	assert.Equal(t, v3.EnumLabel, changes.Changes[0].Property)
 }
@@ -446,7 +445,7 @@ func TestCompareSchemas_PropertyAdded(t *testing.T) {
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "propB", changes.Changes[0].New)
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[0].Property)
 }
@@ -477,7 +476,7 @@ func TestCompareSchemas_PropertyRemoved(t *testing.T) {
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "propB", changes.Changes[0].Original)
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[0].Property)
 }
@@ -507,7 +506,7 @@ func TestCompareSchemas_PropertyChanged(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, core.Modified, changes.SchemaPropertyChanges["propA"].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.SchemaPropertyChanges["propA"].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.SchemaPropertyChanges["propA"].Changes[0].New)
 	assert.Equal(t, "int", changes.SchemaPropertyChanges["propA"].Changes[0].Original)
 }
@@ -537,10 +536,10 @@ func TestCompareSchemas_PropertySwap(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "propN", changes.Changes[0].New)
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[1].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[1].ChangeType)
 	assert.Equal(t, "propA", changes.Changes[1].Original)
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[1].Property)
 }
@@ -569,9 +568,9 @@ func TestCompareSchemas_AnyOfModifyAndAddItem(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AnyOfLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.AnyOfChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.AnyOfChanges[0].Changes[0].Original)
 }
@@ -600,9 +599,9 @@ func TestCompareSchemas_AnyOfModifyAndRemoveItem(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 2, changes.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AnyOfLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "bool", changes.AnyOfChanges[0].Changes[0].New)
 	assert.Equal(t, "string", changes.AnyOfChanges[0].Changes[0].Original)
 }
@@ -630,7 +629,7 @@ func TestCompareSchemas_AnyOfModified(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, core.Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.AnyOfChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.AnyOfChanges[0].Changes[0].Original)
 
@@ -660,9 +659,9 @@ func TestCompareSchemas_OneOfModifyAndAddItem(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.OneOfLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.OneOfChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.OneOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.OneOfChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.OneOfChanges[0].Changes[0].Original)
 }
@@ -691,9 +690,9 @@ func TestCompareSchemas_AllOfModifyAndAddItem(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 2, changes.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AllOfLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.AllOfChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.AllOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.AllOfChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.AllOfChanges[0].Changes[0].Original)
 }
@@ -724,7 +723,7 @@ func TestCompareSchemas_ItemsModifyAndAddItem(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges[0].Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.ItemsChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.ItemsChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.ItemsChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.ItemsChanges[0].Changes[0].Original)
 }
@@ -755,7 +754,7 @@ func TestCompareSchemas_ItemsModifyAndAddItemArray(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges[0].Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.ItemsChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.ItemsChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.ItemsChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.ItemsChanges[0].Changes[0].Original)
 }
@@ -786,7 +785,7 @@ func TestCompareSchemas_NotModifyAndAddItem(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.TypeLabel, changes.NotChanges[0].Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.NotChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.NotChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.NotChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.NotChanges[0].Changes[0].Original)
 }
@@ -817,7 +816,7 @@ func TestCompareSchemas_DiscriminatorChange(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.PropertyNameLabel, changes.DiscriminatorChanges.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.DiscriminatorChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.DiscriminatorChanges.Changes[0].ChangeType)
 	assert.Equal(t, "maddox", changes.DiscriminatorChanges.Changes[0].New)
 	assert.Equal(t, "melody", changes.DiscriminatorChanges.Changes[0].Original)
 }
@@ -846,7 +845,7 @@ func TestCompareSchemas_DiscriminatorAdd(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "0e563831440581c713657dd857a0ec3af1bd7308a43bd3cae9184f61d61b288f",
 		low.HashToString(changes.Changes[0].NewObject.(*base.Discriminator).Hash()))
 
@@ -876,7 +875,7 @@ func TestCompareSchemas_DiscriminatorRemove(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "0e563831440581c713657dd857a0ec3af1bd7308a43bd3cae9184f61d61b288f",
 		low.HashToString(changes.Changes[0].OriginalObject.(*base.Discriminator).Hash()))
 
@@ -908,7 +907,7 @@ func TestCompareSchemas_ExternalDocsChange(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.URLLabel, changes.ExternalDocChanges.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.ExternalDocChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.ExternalDocChanges.Changes[0].ChangeType)
 	assert.Equal(t, "https://pb33f.io/new", changes.ExternalDocChanges.Changes[0].New)
 	assert.Equal(t, "https://pb33f.io", changes.ExternalDocChanges.Changes[0].Original)
 }
@@ -937,7 +936,7 @@ func TestCompareSchemas_ExternalDocsAdd(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "2b7adf30f2ea3a7617ccf429a099617a9c03e8b5f3a23a89dba4b90f760010d7",
 		low.HashToString(changes.Changes[0].NewObject.(*base.ExternalDoc).Hash()))
 
@@ -967,7 +966,7 @@ func TestCompareSchemas_ExternalDocsRemove(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "2b7adf30f2ea3a7617ccf429a099617a9c03e8b5f3a23a89dba4b90f760010d7",
 		low.HashToString(changes.Changes[0].OriginalObject.(*base.ExternalDoc).Hash()))
 
@@ -996,7 +995,7 @@ func TestCompareSchemas_AddExtension(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, "x-melody", changes.ExtensionChanges.Changes[0].Property)
-	assert.Equal(t, core.ObjectAdded, changes.ExtensionChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.ExtensionChanges.Changes[0].ChangeType)
 	assert.Equal(t, "song", changes.ExtensionChanges.Changes[0].New)
 }
 
@@ -1022,7 +1021,7 @@ func TestCompareSchemas_ExampleChange(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].New)
 	assert.Equal(t, "sausages", changes.Changes[0].Original)
 }
@@ -1050,7 +1049,7 @@ func TestCompareSchemas_ExampleAdd(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].New)
 }
 
@@ -1077,7 +1076,7 @@ func TestCompareSchemas_ExampleRemove(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].Original)
 }
 
@@ -1107,7 +1106,7 @@ func TestCompareSchemas_ExamplesChange(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].New)
 	assert.Equal(t, "sausages", changes.Changes[0].Original)
 }
@@ -1136,7 +1135,7 @@ func TestCompareSchemas_ExamplesAdd(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].New)
 }
 
@@ -1167,10 +1166,10 @@ func TestCompareSchemas_ExamplesAddAndModify(t *testing.T) {
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].New)
 	assert.Equal(t, "sausages", changes.Changes[0].Original)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[1].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[1].ChangeType)
 	assert.Equal(t, "seal pup", changes.Changes[1].New)
 }
 
@@ -1198,7 +1197,7 @@ func TestCompareSchemas_ExamplesRemove(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].Original)
 }
 
@@ -1229,10 +1228,10 @@ func TestCompareSchemas_ExamplesRemoveAndModify(t *testing.T) {
 	assert.Equal(t, 2, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "yellow boat", changes.Changes[0].Original)
 	assert.Equal(t, "sausages", changes.Changes[0].New)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[1].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[1].ChangeType)
 	assert.Equal(t, "seal pup", changes.Changes[1].Original)
 }
 
@@ -1260,7 +1259,7 @@ func TestCompareSchemas_XMLChange(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.NameLabel, changes.XMLChanges.Changes[0].Property)
-	assert.Equal(t, core.Modified, changes.XMLChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, changes.XMLChanges.Changes[0].ChangeType)
 	assert.Equal(t, "big xml", changes.XMLChanges.Changes[0].New)
 	assert.Equal(t, "baby xml", changes.XMLChanges.Changes[0].Original)
 }
@@ -1289,7 +1288,7 @@ func TestCompareSchemas_XMLAdd(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.XMLLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "big xml", changes.Changes[0].NewObject.(*base.XML).Name.Value)
 }
 
@@ -1315,6 +1314,6 @@ func TestCompareSchemas_XMLRemove(t *testing.T) {
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.XMLLabel, changes.Changes[0].Property)
-	assert.Equal(t, core.ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "big xml", changes.Changes[0].OriginalObject.(*base.XML).Name.Value)
 }

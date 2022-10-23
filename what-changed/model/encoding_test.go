@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -116,7 +115,7 @@ allowReserved: true`
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.HeadersLabel, extChanges.Changes[0].Property)
 }
 

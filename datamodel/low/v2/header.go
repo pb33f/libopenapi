@@ -4,10 +4,13 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Header Represents a low-level Swagger / OpenAPI 2 Header object.
@@ -84,6 +87,51 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		return nil
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Header object
+func (h *Header) Hash() [32]byte {
+	var f []string
+	if h.Description.Value != "" {
+		f = append(f, h.Description.Value)
+	}
+	if h.Type.Value != "" {
+		f = append(f, h.Type.Value)
+	}
+	if h.Format.Value != "" {
+		f = append(f, h.Format.Value)
+	}
+	if h.CollectionFormat.Value != "" {
+		f = append(f, h.CollectionFormat.Value)
+	}
+	if h.Default.Value != "" {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(h.Default.Value)))))
+	}
+	f = append(f, fmt.Sprint(h.Maximum.Value))
+	f = append(f, fmt.Sprint(h.Minimum.Value))
+	f = append(f, fmt.Sprint(h.ExclusiveMinimum.Value))
+	f = append(f, fmt.Sprint(h.ExclusiveMaximum.Value))
+	f = append(f, fmt.Sprint(h.MinLength.Value))
+	f = append(f, fmt.Sprint(h.MaxLength.Value))
+	f = append(f, fmt.Sprint(h.MinItems.Value))
+	f = append(f, fmt.Sprint(h.MaxItems.Value))
+	f = append(f, fmt.Sprint(h.MultipleOf.Value))
+	f = append(f, fmt.Sprint(h.UniqueItems.Value))
+	if h.Pattern.Value != "" {
+		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(h.Pattern.Value)))))
+	}
+	if len(h.Enum.Value) > 0 {
+		for k := range h.Enum.Value {
+			f = append(f, fmt.Sprint(h.Enum.Value[k].Value))
+		}
+	}
+	for k := range h.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, h.Extensions[k].Value))
+	}
+	if h.Items.Value != nil {
+		f = append(f, fmt.Sprintf("%x", h.Items.Value.Hash()))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // IsHeader compliance methods

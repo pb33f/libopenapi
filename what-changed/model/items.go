@@ -6,11 +6,10 @@ package model
 import (
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 type ItemsChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	ItemsChanges *ItemsChanges
 }
 
@@ -32,14 +31,14 @@ func (i *ItemsChanges) TotalBreakingChanges() int {
 
 func CompareItems(l, r *v2.Items) *ItemsChanges {
 
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	ic := new(ItemsChanges)
 
 	// header is identical to items, except for a description.
 	props = append(props, addSwaggerHeaderProperties(l, r, &changes)...)
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	if !l.Items.IsEmpty() && !r.Items.IsEmpty() {
 		// inline, check hashes, if they don't match, compare.
@@ -51,12 +50,12 @@ func CompareItems(l, r *v2.Items) *ItemsChanges {
 	}
 	if l.Items.IsEmpty() && !r.Items.IsEmpty() {
 		// added items
-		core.CreateChange(&changes, core.PropertyAdded, v3.ItemsLabel,
+		CreateChange(&changes, PropertyAdded, v3.ItemsLabel,
 			nil, r.Items.GetValueNode(), true, nil, r.Items.GetValue())
 	}
 	if !l.Items.IsEmpty() && r.Items.IsEmpty() {
 		// removed items
-		core.CreateChange(&changes, core.PropertyRemoved, v3.ItemsLabel,
+		CreateChange(&changes, PropertyRemoved, v3.ItemsLabel,
 			l.Items.GetValueNode(), nil, true, l.Items.GetValue(),
 			nil)
 	}

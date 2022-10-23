@@ -5,11 +5,10 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 type MediaTypeChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	SchemaChanges    *SchemaChanges
 	ExtensionChanges *ExtensionChanges
 	ExampleChanges   map[string]*ExampleChanges
@@ -53,8 +52,8 @@ func (m *MediaTypeChanges) TotalBreakingChanges() int {
 
 func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
-	var props []*core.PropertyCheck
-	var changes []*core.Change
+	var props []*PropertyCheck
+	var changes []*Change
 
 	mc := new(MediaTypeChanges)
 
@@ -62,27 +61,27 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	addPropertyCheck(&props, l.Example.ValueNode, r.Example.ValueNode,
 		l.Example.Value, r.Example.Value, &changes, v3.ExampleLabel, false)
 
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	// schema
 	if !l.Schema.IsEmpty() && !r.Schema.IsEmpty() {
 		mc.SchemaChanges = CompareSchemas(l.Schema.Value, r.Schema.Value)
 	}
 	if !l.Schema.IsEmpty() && r.Schema.IsEmpty() {
-		core.CreateChange(&changes, core.ObjectRemoved, v3.SchemaLabel, l.Schema.ValueNode,
+		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel, l.Schema.ValueNode,
 			nil, true, l.Schema.Value, nil)
 	}
 	if l.Schema.IsEmpty() && !r.Schema.IsEmpty() {
-		core.CreateChange(&changes, core.ObjectAdded, v3.SchemaLabel, nil,
+		CreateChange(&changes, ObjectAdded, v3.SchemaLabel, nil,
 			r.Schema.ValueNode, true, nil, r.Schema.Value)
 	}
 
 	// examples
-	mc.ExampleChanges = core.CheckMapForChanges(l.Examples.Value, r.Examples.Value,
+	mc.ExampleChanges = CheckMapForChanges(l.Examples.Value, r.Examples.Value,
 		&changes, v3.ExamplesLabel, CompareExamples)
 
 	// encoding
-	mc.EncodingChanges = core.CheckMapForChanges(l.Encoding.Value, r.Encoding.Value,
+	mc.EncodingChanges = CheckMapForChanges(l.Encoding.Value, r.Encoding.Value,
 		&changes, v3.EncodingLabel, CompareEncoding)
 
 	mc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)

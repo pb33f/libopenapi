@@ -1,7 +1,7 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package core
+package model
 
 import (
 	"gopkg.in/yaml.v3"

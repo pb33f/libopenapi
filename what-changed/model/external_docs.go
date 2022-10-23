@@ -6,12 +6,11 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 // ExternalDocChanges represents changes made to any ExternalDoc object from an OpenAPI document.
 type ExternalDocChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 	ExtensionChanges *ExtensionChanges
 }
 
@@ -33,11 +32,11 @@ func (e *ExternalDocChanges) TotalBreakingChanges() int {
 // nodes for any changes between them. If there are changes, then a pointer to ExternalDocChanges
 // is returned, otherwise if nothing changed - then nil is returned.
 func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// URL
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
@@ -48,7 +47,7 @@ func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 	})
 
 	// description.
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Description.ValueNode,
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
@@ -59,7 +58,7 @@ func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 	})
 
 	// check everything.
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	dc := new(ExternalDocChanges)
 	dc.Changes = changes
