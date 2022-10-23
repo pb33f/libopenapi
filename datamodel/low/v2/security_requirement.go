@@ -4,9 +4,11 @@
 package v2
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // SecurityRequirement is a low-level representation of a Swagger / OpenAPI 2 SecurityRequirement object.
@@ -23,11 +25,12 @@ type SecurityRequirement struct {
 // Build will extract security requirements from the node (the structure is odd, to be honest)
 func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	var labelNode *yaml.Node
-	var arr []low.ValueReference[string]
 	valueMap := make(map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])
+	var arr []low.ValueReference[string]
 	for i := range root.Content {
 		if i%2 == 0 {
 			labelNode = root.Content[i]
+			arr = []low.ValueReference[string]{} // reset roles.
 			continue
 		}
 		for j := range root.Content[i].Content {
@@ -49,4 +52,15 @@ func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 		ValueNode: root,
 	}
 	return nil
+}
+
+func (s *SecurityRequirement) Hash() [32]byte {
+	var f []string
+	for k := range s.Values.Value {
+		for y := range s.Values.Value[k].Value {
+			f = append(f, s.Values.Value[k].Value[y].Value)
+			// lol, I know. -------^^^^^ <- this is the actual value.
+		}
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
