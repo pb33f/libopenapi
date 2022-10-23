@@ -6,12 +6,11 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 // ContactChanges Represent changes to a Contact object that is a child of Info, part of an OpenAPI document.
 type ContactChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 }
 
 // TotalChanges represents the total number of changes that have occurred to a Contact object
@@ -29,11 +28,11 @@ func (c *ContactChanges) TotalBreakingChanges() int {
 // returns nil.
 func CompareContact(l, r *base.Contact) *ContactChanges {
 
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// check URL
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
@@ -44,7 +43,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 	})
 
 	// check name
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
@@ -55,7 +54,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 	})
 
 	// check email
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Email.ValueNode,
 		RightNode: r.Email.ValueNode,
 		Label:     v3.EmailLabel,
@@ -66,7 +65,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 	})
 
 	// check everything.
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	dc := new(ContactChanges)
 	dc.Changes = changes

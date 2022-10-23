@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -41,7 +40,7 @@ wrapped: true`
 	// compare.
 	extChanges := CompareXML(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -73,7 +72,7 @@ namespace: something`
 	// compare.
 	extChanges := CompareXML(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 
 }
@@ -108,7 +107,7 @@ x-coffee: time`
 	// compare.
 	extChanges := CompareXML(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
 
 }
 

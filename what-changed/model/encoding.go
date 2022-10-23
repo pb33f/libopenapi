@@ -5,7 +5,6 @@ package model
 
 import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 type EncodingChanges struct {
@@ -35,11 +34,11 @@ func (e *EncodingChanges) TotalBreakingChanges() int {
 
 func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// ContentType
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.ContentType.ValueNode,
 		RightNode: r.ContentType.ValueNode,
 		Label:     v3.ContentTypeLabel,
@@ -50,7 +49,7 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 	})
 
 	// Explode
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Explode.ValueNode,
 		RightNode: r.Explode.ValueNode,
 		Label:     v3.ExplodeLabel,
@@ -61,7 +60,7 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 	})
 
 	// AllowReserved
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.AllowReserved.ValueNode,
 		RightNode: r.AllowReserved.ValueNode,
 		Label:     v3.AllowReservedLabel,
@@ -72,11 +71,11 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 	})
 
 	// check everything.
-	core.CheckProperties(props)
+	CheckProperties(props)
 	ec := new(EncodingChanges)
 
 	// headers
-	ec.HeaderChanges = core.CheckMapForChanges(l.Headers.Value, r.Headers.Value, &changes, v3.HeadersLabel, CompareHeadersV3)
+	ec.HeaderChanges = CheckMapForChanges(l.Headers.Value, r.Headers.Value, &changes, v3.HeadersLabel, CompareHeadersV3)
 	ec.Changes = changes
 	if ec.TotalChanges() <= 0 {
 		return nil

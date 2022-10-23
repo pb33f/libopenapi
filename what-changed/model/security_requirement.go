@@ -7,12 +7,11 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"gopkg.in/yaml.v3"
 )
 
 type SecurityRequirementChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 }
 
 func (s *SecurityRequirementChanges) TotalChanges() int {
@@ -27,7 +26,7 @@ func CompareSecurityRequirement(l, r *v2.SecurityRequirement) *SecurityRequireme
 	if low.AreEqual(l, r) {
 		return nil
 	}
-	var changes []*core.Change
+	var changes []*Change
 	lKeys := make([]string, len(l.Values.Value))
 	rKeys := make([]string, len(r.Values.Value))
 	lValues := make(map[string]low.ValueReference[[]low.ValueReference[string]])
@@ -44,12 +43,12 @@ func CompareSecurityRequirement(l, r *v2.SecurityRequirement) *SecurityRequireme
 		z++
 	}
 	removed := func(z int, vn *yaml.Node, name string) {
-		core.CreateChange(&changes, core.ObjectRemoved, v3.SecurityDefinitionLabel,
+		CreateChange(&changes, ObjectRemoved, v3.SecurityDefinitionLabel,
 			vn, nil, true, name, nil)
 	}
 
 	added := func(z int, vn *yaml.Node, name string) {
-		core.CreateChange(&changes, core.ObjectAdded, v3.SecurityDefinitionLabel,
+		CreateChange(&changes, ObjectAdded, v3.SecurityDefinitionLabel,
 			nil, vn, false, nil, name)
 	}
 

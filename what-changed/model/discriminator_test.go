@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -31,7 +30,7 @@ func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 
 }
 
@@ -54,7 +53,7 @@ func TestCompareDiscriminator_PropertyNameRemoved(t *testing.T) {
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareDiscriminator_PropertyNameAdded(t *testing.T) {
@@ -76,7 +75,7 @@ func TestCompareDiscriminator_PropertyNameAdded(t *testing.T) {
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareDiscriminator_MappingAdded(t *testing.T) {
@@ -103,7 +102,7 @@ mapping:
 	assert.Equal(t, 2, extChanges.TotalChanges())
 
 	for _, k := range extChanges.MappingChanges {
-		assert.Equal(t, core.ObjectAdded, k.ChangeType)
+		assert.Equal(t, ObjectAdded, k.ChangeType)
 		if k.Property == "chuffing" {
 			assert.Equal(t, "puffing", k.New)
 		}
@@ -137,7 +136,7 @@ mapping:
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.MappingChanges[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.MappingChanges[0].ChangeType)
 	assert.Equal(t, "chuffing", extChanges.MappingChanges[0].Property)
 	assert.Equal(t, "puffing", extChanges.MappingChanges[0].Original)
 }
@@ -166,7 +165,7 @@ mapping:
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.MappingChanges[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.MappingChanges[0].ChangeType)
 	assert.Equal(t, "hacking", extChanges.MappingChanges[0].Property)
 	assert.Equal(t, "coding", extChanges.MappingChanges[0].New)
 
@@ -197,10 +196,10 @@ mapping:
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.MappingChanges[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.MappingChanges[0].ChangeType)
 
 	for _, k := range extChanges.MappingChanges {
-		assert.Equal(t, core.ObjectAdded, k.ChangeType)
+		assert.Equal(t, ObjectAdded, k.ChangeType)
 		if k.Property == "hacking" {
 			assert.Equal(t, "coding", k.New)
 		}
@@ -233,7 +232,7 @@ mapping:
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, core.Modified, extChanges.MappingChanges[0].ChangeType)
+	assert.Equal(t, Modified, extChanges.MappingChanges[0].ChangeType)
 	assert.Equal(t, "chuffing", extChanges.MappingChanges[0].Property)
 	assert.Equal(t, "herbs", extChanges.MappingChanges[0].New)
 	assert.Equal(t, "puffing", extChanges.MappingChanges[0].Original)

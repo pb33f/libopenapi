@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/what-changed/core"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -71,7 +70,7 @@ biscuit:
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "biscuit", extChanges.Changes[0].NewObject)
 }
 
@@ -135,10 +134,10 @@ milk:
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[1].ChangeType)
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[2].ChangeType)
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[3].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[1].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[2].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[3].ChangeType)
 }
 
 func TestCompareSecurityRequirement_SwapLeft(t *testing.T) {
@@ -171,8 +170,8 @@ milk:
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[1].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[1].ChangeType)
 }
 
 func TestCompareSecurityRequirement_AddedRole(t *testing.T) {
@@ -206,7 +205,7 @@ biscuit:
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "rich tea", extChanges.Changes[0].New)
 }
 
@@ -244,7 +243,7 @@ biscuit:
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
 
 func TestCompareSecurityRequirement_ReplaceRole(t *testing.T) {
@@ -344,6 +343,6 @@ biscuit:
 	extChanges := CompareSecurityRequirement(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, core.ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "rich tea", extChanges.Changes[0].Original)
 }

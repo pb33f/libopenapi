@@ -6,12 +6,11 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/core"
 )
 
 // LicenseChanges represent changes to a License object that is a child of Info object. Part of an OpenAPI document
 type LicenseChanges struct {
-	core.PropertyChanges
+	PropertyChanges
 }
 
 // TotalChanges represents the total number of changes made to a License instance.
@@ -29,11 +28,11 @@ func (l *LicenseChanges) TotalBreakingChanges() int {
 // returns nil.
 func CompareLicense(l, r *base.License) *LicenseChanges {
 
-	var changes []*core.Change
-	var props []*core.PropertyCheck
+	var changes []*Change
+	var props []*PropertyCheck
 
 	// check URL
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
@@ -44,7 +43,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 	})
 
 	// check name
-	props = append(props, &core.PropertyCheck{
+	props = append(props, &PropertyCheck{
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
@@ -55,7 +54,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 	})
 
 	// check everything.
-	core.CheckProperties(props)
+	CheckProperties(props)
 
 	lc := new(LicenseChanges)
 	lc.Changes = changes
