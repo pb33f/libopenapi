@@ -230,6 +230,20 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 	return expChanges
 }
 
+//func CompareMapStrings(l, r low.ValueReference[string]) *Change {
+//
+//	if l.Value != r.Value {
+//		return &Change{
+//			Context:        CreateContext(l.ValueNode, r.ValueNode),
+//			ChangeType:     Modified,
+//			Original:       l.Value,
+//			New:            r.Value,
+//			Breaking:       false,
+//		}
+//	}
+//	return nil
+//}
+
 // ExtractStringValueSliceChanges will compare two low level string slices for changes.
 func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string], changes *[]*Change, label string) {
 	lKeys := make([]string, len(lParam))

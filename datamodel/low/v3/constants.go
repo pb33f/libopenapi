@@ -101,4 +101,5 @@ const (
 	ExplodeLabel              = "explode"
 	ContentTypeLabel          = "contentType"
 	SecurityDefinitionLabel   = "securityDefinition"
+	Scopes                    = "scopes"
 )
