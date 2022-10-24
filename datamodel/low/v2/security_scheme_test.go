@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestSecurityScheme_Build(t *testing.T) {
+func TestSecurityScheme_Build_Borked(t *testing.T) {
 
 	yml := `scopes:
   $ref: break`
@@ -27,5 +27,26 @@ func TestSecurityScheme_Build(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
+
+}
+
+func TestSecurityScheme_Build_Scopes(t *testing.T) {
+
+	yml := `scopes:
+  some:thing: here
+  something: there`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n SecurityScheme
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Len(t, n.Scopes.Value.Values, 2)
 
 }

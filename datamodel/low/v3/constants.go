@@ -102,4 +102,12 @@ const (
 	ContentTypeLabel          = "contentType"
 	SecurityDefinitionLabel   = "securityDefinition"
 	Scopes                    = "scopes"
+	AuthorizationUrlLabel     = "authorizationUrl"
+	TokenUrlLabel             = "tokenUrl"
+	RefreshUrlLabel           = "refreshUrl"
+	FlowLabel                 = "flow"
+	FlowsLabel                = "flows"
+	SchemeLabel               = "scheme"
+	OpenIdConnectUrlLabel     = "openIdConnectUrl"
+	ScopesLabel               = "scopes"
 )
