@@ -4,10 +4,12 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Server represents a low-level OpenAPI 3+ Server object.
@@ -56,4 +58,19 @@ func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Server object
+func (s *Server) Hash() [32]byte {
+	var f []string
+	for k := range s.Variables.Value {
+		f = append(f, low.GenerateHashString(s.Variables.Value[k].Value))
+	}
+	if !s.URL.IsEmpty() {
+		f = append(f, s.URL.Value)
+	}
+	if !s.Description.IsEmpty() {
+		f = append(f, s.Description.Value)
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

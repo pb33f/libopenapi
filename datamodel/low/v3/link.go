@@ -4,9 +4,12 @@
 package v3
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Link represents a low-level OpenAPI 3+ Link object.
@@ -52,4 +55,32 @@ func (l *Link) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	l.Server = ser
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Link object
+func (l *Link) Hash() [32]byte {
+	var f []string
+	if l.Description.Value != "" {
+		f = append(f, l.Description.Value)
+	}
+	if l.OperationRef.Value != "" {
+		f = append(f, l.OperationRef.Value)
+	}
+	if l.OperationId.Value != "" {
+		f = append(f, l.OperationId.Value)
+	}
+	if l.RequestBody.Value != "" {
+		f = append(f, l.RequestBody.Value)
+	}
+	if l.Server.Value != nil {
+		f = append(f, low.GenerateHashString(l.Server.Value))
+	}
+	for k := range l.Parameters.Value {
+		f = append(f, fmt.Sprintf("%s-%s", k.Value, l.Parameters.Value[k].Value))
+	}
+	for k := range l.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(l.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
