@@ -4,9 +4,12 @@
 package v3
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // RequestBody represents a low-level OpenAPI 3+ RequestBody object.
@@ -46,3 +49,23 @@ func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	return nil
 }
+
+// Hash will return a consistent SHA256 Hash of the RequestBody object
+func (rb *RequestBody) Hash() [32]byte {
+	var f []string
+	if rb.Description.Value != "" {
+		f = append(f, rb.Description.Value)
+	}
+	if !rb.Required.IsEmpty() {
+		f = append(f, fmt.Sprint(rb.Required.Value))
+	}
+	for k := range rb.Content.Value {
+		f = append(f, low.GenerateHashString(rb.Content.Value[k].Value))
+	}
+	for k := range rb.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(rb.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
