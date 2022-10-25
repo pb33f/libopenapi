@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Responses represents a low-level OpenAPI 3+ Responses object.
@@ -134,6 +136,27 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			ValueNode: linkValue,
 		}
 	}
-
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Response object
+func (r *Response) Hash() [32]byte {
+	var f []string
+	if r.Description.Value != "" {
+		f = append(f, r.Description.Value)
+	}
+	for k := range r.Headers.Value {
+		f = append(f, low.GenerateHashString(r.Headers.Value[k]))
+	}
+	for k := range r.Content.Value {
+		f = append(f, low.GenerateHashString(r.Content.Value[k]))
+	}
+	for k := range r.Links.Value {
+		f = append(f, low.GenerateHashString(r.Links.Value[k]))
+	}
+	for k := range r.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
