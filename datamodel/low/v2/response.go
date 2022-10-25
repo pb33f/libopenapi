@@ -4,10 +4,13 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
@@ -62,6 +65,24 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			ValueNode: kN,
 		}
 	}
-
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Response object
+func (r *Response) Hash() [32]byte {
+	var f []string
+	if r.Description.Value != "" {
+		f = append(f, r.Description.Value)
+	}
+	if !r.Schema.IsEmpty() {
+		f = append(f, low.GenerateHashString(r.Schema.Value.Schema()))
+	}
+	for k := range r.Examples.Value.Values {
+		f = append(f, low.GenerateHashString(r.Examples.Value.Values[k].Value))
+	}
+	for k := range r.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

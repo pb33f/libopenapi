@@ -4,9 +4,12 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Examples represents a low-level Swagger / OpenAPI 2 Example object.
@@ -69,4 +72,13 @@ func (e *Examples) Build(root *yaml.Node, _ *index.SpecIndex) error {
 
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Examples object
+func (e *Examples) Hash() [32]byte {
+	var f []string
+	for k := range e.Values {
+		f = append(f, fmt.Sprint(e.Values[k].Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
