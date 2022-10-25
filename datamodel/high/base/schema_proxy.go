@@ -67,3 +67,10 @@ func (sp *SchemaProxy) Schema() *Schema {
 func (sp *SchemaProxy) GetBuildError() error {
 	return sp.buildError
 }
+
+func (sp *SchemaProxy) GoLow() *base.SchemaProxy {
+	if sp.schema == nil {
+		return nil
+	}
+	return sp.schema.Value
+}
