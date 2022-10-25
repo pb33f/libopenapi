@@ -4,19 +4,19 @@
 package base
 
 import (
-    "fmt"
-    "github.com/pb33f/libopenapi/datamodel/low"
-    lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
-    "testing"
+	"fmt"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+	"testing"
 )
 
 func TestNewSchemaProxy(t *testing.T) {
 
-    // check proxy
-    yml := `components:
+	// check proxy
+	yml := `components:
     schemas:
      rice:
        type: string
@@ -29,34 +29,34 @@ func TestNewSchemaProxy(t *testing.T) {
          rice:
            $ref: '#/components/schemas/rice'`
 
-    var idxNode, compNode yaml.Node
-    mErr := yaml.Unmarshal([]byte(yml), &idxNode)
-    assert.NoError(t, mErr)
-    idx := index.NewSpecIndex(&idxNode)
+	var idxNode, compNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
 
-    yml = `properties:
+	yml = `properties:
     rice:
      $ref: '#/components/schemas/I-do-not-exist'`
 
-    _ = yaml.Unmarshal([]byte(yml), &compNode)
+	_ = yaml.Unmarshal([]byte(yml), &compNode)
 
-    sp := new(lowbase.SchemaProxy)
-    err := sp.Build(compNode.Content[0], idx)
-    assert.NoError(t, err)
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], idx)
+	assert.NoError(t, err)
 
-    lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
-        Value:     sp,
-        ValueNode: idxNode.Content[0],
-    }
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: idxNode.Content[0],
+	}
 
-    sch1 := SchemaProxy{schema: &lowproxy}
-    assert.Nil(t, sch1.Schema())
-    assert.Error(t, sch1.GetBuildError())
+	sch1 := SchemaProxy{schema: &lowproxy}
+	assert.Nil(t, sch1.Schema())
+	assert.Error(t, sch1.GetBuildError())
 }
 
 func TestNewSchemaProxy_WithObject(t *testing.T) {
 
-    testSpec := `type: object
+	testSpec := `type: object
 description: something object
 discriminator:
   propertyName: athing
@@ -165,32 +165,32 @@ externalDocs:
 enum: [fish, cake]
 required: [cake, fish]`
 
-    var compNode yaml.Node
-    _ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
 
-    sp := new(lowbase.SchemaProxy)
-    err := sp.Build(compNode.Content[0], nil)
-    assert.NoError(t, err)
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
 
-    lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
-        Value:     sp,
-        ValueNode: compNode.Content[0],
-    }
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
 
-    schemaProxy := NewSchemaProxy(&lowproxy)
-    compiled := schemaProxy.Schema()
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
 
-    assert.NotNil(t, compiled)
-    assert.Nil(t, schemaProxy.GetBuildError())
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
 
-    wentLow := compiled.GoLow()
-    assert.Equal(t, 102, wentLow.AdditionalProperties.ValueNode.Line)
+	wentLow := compiled.GoLow()
+	assert.Equal(t, 102, wentLow.AdditionalProperties.ValueNode.Line)
 
 }
 
 func TestNewSchemaProxy_WithObject_FinishPoly(t *testing.T) {
 
-    testSpec := `type: object
+	testSpec := `type: object
 description: something object
 discriminator:
   propertyName: athing
@@ -295,44 +295,44 @@ externalDocs:
 enum: [fish, cake]
 required: [cake, fish]`
 
-    var compNode yaml.Node
-    _ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
 
-    sp := new(lowbase.SchemaProxy)
-    err := sp.Build(compNode.Content[0], nil)
-    assert.NoError(t, err)
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
 
-    lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
-        Value:     sp,
-        ValueNode: compNode.Content[0],
-    }
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
 
-    schemaProxy := NewSchemaProxy(&lowproxy)
-    compiled := schemaProxy.Schema()
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
 
-    assert.NotNil(t, compiled)
-    assert.Nil(t, schemaProxy.GetBuildError())
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
 
-    assert.True(t, compiled.ExclusiveMaximumBool)
-    assert.False(t, compiled.ExclusiveMinimumBool)
-    assert.Equal(t, int64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum)
-    assert.Equal(t, int64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum)
-    assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
+	assert.True(t, *compiled.ExclusiveMaximumBool)
+	assert.False(t, *compiled.ExclusiveMinimumBool)
+	assert.Equal(t, int64(123), *compiled.Properties["somethingB"].Schema().ExclusiveMinimum)
+	assert.Equal(t, int64(334), *compiled.Properties["somethingB"].Schema().ExclusiveMaximum)
+	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
 
-    wentLow := compiled.GoLow()
-    assert.Equal(t, 96, wentLow.AdditionalProperties.ValueNode.Line)
-    assert.Equal(t, 100, wentLow.XML.ValueNode.Line)
+	wentLow := compiled.GoLow()
+	assert.Equal(t, 96, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.Equal(t, 100, wentLow.XML.ValueNode.Line)
 
-    wentLower := compiled.XML.GoLow()
-    assert.Equal(t, 100, wentLower.Name.ValueNode.Line)
+	wentLower := compiled.XML.GoLow()
+	assert.Equal(t, 100, wentLower.Name.ValueNode.Line)
 
 }
 
 func ExampleNewSchema() {
 
-    // create an example schema object
-    // this can be either JSON or YAML.
-    yml := `
+	// create an example schema object
+	// this can be either JSON or YAML.
+	yml := `
 title: this is a schema
 type: object
 properties:
@@ -341,29 +341,29 @@ properties:
     type: integer
     format: int64`
 
-    // unmarshal raw bytes
-    var node yaml.Node
-    _ = yaml.Unmarshal([]byte(yml), &node)
+	// unmarshal raw bytes
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
 
-    // build out the low-level model
-    var lowSchema lowbase.Schema
-    _ = low.BuildModel(&node, &lowSchema)
-    _ = lowSchema.Build(node.Content[0], nil)
+	// build out the low-level model
+	var lowSchema lowbase.Schema
+	_ = low.BuildModel(&node, &lowSchema)
+	_ = lowSchema.Build(node.Content[0], nil)
 
-    // build the high level model
-    highSchema := NewSchema(&lowSchema)
+	// build the high level model
+	highSchema := NewSchema(&lowSchema)
 
-    // print out the description of 'aProperty'
-    fmt.Print(highSchema.Properties["aProperty"].Schema().Description)
-    // Output: this is an integer property
+	// print out the description of 'aProperty'
+	fmt.Print(highSchema.Properties["aProperty"].Schema().Description)
+	// Output: this is an integer property
 
 }
 
 func ExampleNewSchemaProxy() {
 
-    // create an example schema object
-    // this can be either JSON or YAML.
-    yml := `
+	// create an example schema object
+	// this can be either JSON or YAML.
+	yml := `
 title: this is a schema
 type: object
 properties:
@@ -372,22 +372,22 @@ properties:
     type: integer
     format: int64`
 
-    // unmarshal raw bytes
-    var node yaml.Node
-    _ = yaml.Unmarshal([]byte(yml), &node)
+	// unmarshal raw bytes
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
 
-    // build out the low-level model
-    var lowSchema lowbase.SchemaProxy
-    _ = low.BuildModel(&node, &lowSchema)
-    _ = lowSchema.Build(node.Content[0], nil)
+	// build out the low-level model
+	var lowSchema lowbase.SchemaProxy
+	_ = low.BuildModel(&node, &lowSchema)
+	_ = lowSchema.Build(node.Content[0], nil)
 
-    // build the high level schema proxy
-    highSchema := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
-        Value: &lowSchema,
-    })
+	// build the high level schema proxy
+	highSchema := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value: &lowSchema,
+	})
 
-    // print out the description of 'aProperty'
-    fmt.Print(highSchema.Schema().Properties["aProperty"].Schema().Description)
-    // Output: this is an integer property
+	// print out the description of 'aProperty'
+	fmt.Print(highSchema.Schema().Properties["aProperty"].Schema().Description)
+	// Output: this is an integer property
 
 }
