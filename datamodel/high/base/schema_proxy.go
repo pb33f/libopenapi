@@ -67,8 +67,3 @@ func (sp *SchemaProxy) Schema() *Schema {
 func (sp *SchemaProxy) GetBuildError() error {
 	return sp.buildError
 }
-
-// GoLow returns the low-level SchemaProxy that was used to create the high-level one.
-func (sp *SchemaProxy) GoLow() *low.NodeReference[*base.SchemaProxy] {
-	return sp.schema
-}
