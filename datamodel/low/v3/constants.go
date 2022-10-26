@@ -110,4 +110,6 @@ const (
 	SchemeLabel               = "scheme"
 	OpenIdConnectUrlLabel     = "openIdConnectUrl"
 	ScopesLabel               = "scopes"
+	OperationRefLabel         = "operationRef"
+	OperationIdLabel          = "operationId"
 )
