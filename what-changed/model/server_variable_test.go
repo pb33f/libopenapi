@@ -106,12 +106,12 @@ enum:
 func TestCompareServerVariables_Added(t *testing.T) {
 
 	left := `description: hi
-default: hello
 enum:
   - one
   - two`
 
-	right := `description: hi
+	right := `default: hello
+description: hi
 enum:
   - one
   - two`
