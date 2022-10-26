@@ -5,12 +5,13 @@ package base
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestNewSchemaProxy(t *testing.T) {
@@ -326,6 +327,49 @@ required: [cake, fish]`
 	wentLower := compiled.XML.GoLow()
 	assert.Equal(t, 100, wentLower.Name.ValueNode.Line)
 
+}
+
+func TestSchemaProxy_GoLow(t *testing.T) {
+
+	const ymlComponents = `components:
+    schemas:
+     rice:
+       type: string
+     nice:
+       properties:
+         rice:
+           $ref: '#/components/schemas/rice'
+     ice:
+       properties:
+         rice:
+           $ref: '#/components/schemas/rice'`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndex(&idxNode)
+	}()
+
+	const ref = "#/components/schemas/nice"
+	const ymlSchema = `$ref: '` + ref + `'`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(node.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+	assert.Equal(t, lowProxy, sp.GoLow())
+	assert.Equal(t, ref, sp.GoLow().GetSchemaReference())
+
+	spNil := NewSchemaProxy(nil)
+	assert.Nil(t, spNil.GoLow())
 }
 
 func ExampleNewSchema() {
