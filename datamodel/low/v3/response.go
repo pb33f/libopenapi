@@ -146,13 +146,13 @@ func (r *Response) Hash() [32]byte {
 		f = append(f, r.Description.Value)
 	}
 	for k := range r.Headers.Value {
-		f = append(f, low.GenerateHashString(r.Headers.Value[k]))
+		f = append(f, low.GenerateHashString(r.Headers.Value[k].Value))
 	}
 	for k := range r.Content.Value {
-		f = append(f, low.GenerateHashString(r.Content.Value[k]))
+		f = append(f, low.GenerateHashString(r.Content.Value[k].Value))
 	}
 	for k := range r.Links.Value {
-		f = append(f, low.GenerateHashString(r.Links.Value[k]))
+		f = append(f, low.GenerateHashString(r.Links.Value[k].Value))
 	}
 	for k := range r.Extensions {
 		f = append(f, fmt.Sprintf("%s-%x", k.Value,
