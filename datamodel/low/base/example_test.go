@@ -124,9 +124,44 @@ value:
 
 }
 
+func TestExample_Hash(t *testing.T) {
+
+	left := `summary: hot
+description: cakes
+x-burger: nice
+externalValue: cake
+value:
+  pizza: oven
+  yummy: pizza`
+
+	right := `externalValue: cake
+summary: hot
+value:
+  pizza: oven
+  yummy: pizza
+description: cakes
+x-burger: nice`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc Example
+	var rDoc Example
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+	assert.Len(t, lDoc.GetExtensions(), 1)
+}
+
 func TestExtractExampleValue(t *testing.T) {
 	assert.True(t, ExtractExampleValue(&yaml.Node{Tag: "!!bool", Value: "true"}).(bool))
 	assert.Equal(t, int64(10), ExtractExampleValue(&yaml.Node{Tag: "!!int", Value: "10"}).(int64))
 	assert.Equal(t, 33.2, ExtractExampleValue(&yaml.Node{Tag: "!!float", Value: "33.2"}).(float64))
+	assert.Equal(t, "WHAT A NICE COW", ExtractExampleValue(&yaml.Node{Tag: "!!str", Value: "WHAT A NICE COW"}))
 
 }

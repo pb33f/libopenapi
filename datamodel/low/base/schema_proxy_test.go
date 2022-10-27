@@ -20,4 +20,7 @@ func TestSchemaProxy_Build(t *testing.T) {
 	err := sch.Build(&idxNode, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "something", sch.Schema().Description.Value)
+	assert.Empty(t, sch.GetSchemaReference())
+	assert.NotNil(t, sch.GetValueNode())
+	assert.False(t, sch.IsSchemaReference())
 }
