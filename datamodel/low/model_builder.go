@@ -424,6 +424,26 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 				}
 			}
 		}
+	case reflect.TypeOf(NodeReference[[]ValueReference[any]]{}):
+		if valueNode != nil {
+			if utils.IsNodeArray(valueNode) {
+				if field.CanSet() {
+					var items []ValueReference[any]
+					for _, sliceItem := range valueNode.Content {
+						items = append(items, ValueReference[any]{
+							Value:     sliceItem.Value,
+							ValueNode: sliceItem,
+						})
+					}
+					n := NodeReference[[]ValueReference[any]]{
+						Value:     items,
+						KeyNode:   keyNode,
+						ValueNode: valueNode,
+					}
+					field.Set(reflect.ValueOf(n))
+				}
+			}
+		}
 	default:
 		// we want to ignore everything else, each model handles its own complex types.
 		break
