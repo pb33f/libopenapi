@@ -9,8 +9,8 @@ import (
 	"testing"
 )
 
-func Test_Schema(t *testing.T) {
-	testSpec := `type: object
+func test_get_schema_blob() string {
+	return `type: object
 description: something object
 discriminator:
   propertyName: athing
@@ -105,7 +105,20 @@ properties:
     additionalProperties: 
         why: yes
         thatIs: true    
-additionalProperties: true      `
+additionalProperties: true
+required: 
+  - them
+enum:
+  - one
+  - two
+x-pizza: tasty
+examples:
+  - hey
+  - hi!`
+}
+
+func Test_Schema(t *testing.T) {
+	testSpec := test_get_schema_blob()
 
 	var rootNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
@@ -227,6 +240,26 @@ additionalProperties: true      `
 	assert.Equal(t, "cat", mv.Value)
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")
 	assert.Equal(t, "party", mv.Value)
+}
+
+func TestSchema_Hash(t *testing.T) {
+
+	//create two versions
+	testSpec := test_get_schema_blob()
+	var sc1n yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &sc1n)
+	sch1 := Schema{}
+	_ = low.BuildModel(&sc1n, &sch1)
+	_ = sch1.Build(sc1n.Content[0], nil)
+
+	var sc2n yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &sc2n)
+	sch2 := Schema{}
+	_ = low.BuildModel(&sc2n, &sch2)
+	_ = sch2.Build(sc2n.Content[0], nil)
+
+	assert.Equal(t, sch1.Hash(), sch2.Hash())
+
 }
 
 func Test_Schema_31(t *testing.T) {

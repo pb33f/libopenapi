@@ -26,3 +26,26 @@ mapping:
 	assert.Nil(t, n.FindMappingValue("freshCakes"))
 
 }
+
+func TestDiscriminator_Hash(t *testing.T) {
+
+	left := `propertyName: freshCakes
+mapping:
+  something: nothing`
+
+	right := `mapping:
+  something: nothing
+propertyName: freshCakes`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc Discriminator
+	var rDoc Discriminator
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+
+	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+}
