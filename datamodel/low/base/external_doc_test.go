@@ -53,3 +53,29 @@ x-b33f: princess`
 	assert.Equal(t, "princess", ext.Value)
 
 }
+
+func TestExternalDoc_Hash(t *testing.T) {
+
+	left := `url: https://pb33f.io
+description: the ranch
+x-b33f: princess`
+
+	right := `url: https://pb33f.io
+x-b33f: princess
+description: the ranch`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc ExternalDoc
+	var rDoc ExternalDoc
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+	assert.Len(t, lDoc.GetExtensions(), 1)
+}

@@ -107,7 +107,6 @@ type Schema struct {
 
 // Hash will calculate a SHA256 hash from the values of the schema, This allows equality checking against
 // Schemas defined inside an OpenAPI document. The only way to know if a schema has changed, is to hash it.
-// Polymorphic items
 func (s *Schema) Hash() [32]byte {
 	// calculate a hash from every property in the schema.
 	v := "%v"
@@ -265,10 +264,14 @@ func (s *Schema) Hash() [32]byte {
 	if s.Example.Value != nil {
 		d = append(d, low.GenerateHashString(s.Example.Value))
 	}
-	for w := range s.Examples.Value {
-		d = append(d, low.GenerateHashString(s.Examples.Value[w]))
+	if !s.Examples.IsEmpty() {
+		var xph []string
+		for w := range s.Examples.Value {
+			xph = append(xph, low.GenerateHashString(s.Examples.Value[w].Value))
+		}
+		sort.Strings(xph)
+		d = append(d, strings.Join(xph, "|"))
 	}
-
 	return sha256.Sum256([]byte(strings.Join(d, "|")))
 }
 

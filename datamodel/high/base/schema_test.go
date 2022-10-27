@@ -164,7 +164,17 @@ xml:
 externalDocs:
   url: https://pb33f.io/docs
 enum: [fish, cake]
-required: [cake, fish]`
+required: [cake, fish]
+maxLength: 10
+minLength: 1
+maxItems: 10
+minItems: 1
+maxProperties: 10
+minProperties: 1
+nullable: true
+readOnly: true
+writeOnly: false
+deprecated: true`
 
 	var compNode yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
