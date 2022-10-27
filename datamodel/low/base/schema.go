@@ -86,7 +86,7 @@ type Schema struct {
 	MaxProperties        low.NodeReference[int64]
 	MinProperties        low.NodeReference[int64]
 	Required             low.NodeReference[[]low.ValueReference[string]]
-	Enum                 low.NodeReference[[]low.ValueReference[string]]
+	Enum                 low.NodeReference[[]low.ValueReference[any]]
 	Not                  low.NodeReference[[]low.ValueReference[*SchemaProxy]]
 	Items                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
 	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
@@ -143,7 +143,7 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, s.Required.Value[i].Value)
 	}
 	for i := range s.Enum.Value {
-		d = append(d, s.Enum.Value[i].Value)
+		d = append(d, fmt.Sprint(s.Enum.Value[i].Value))
 	}
 	propertyKeys := make([]string, 0, len(s.Properties.Value))
 	for i := range s.Properties.Value {
