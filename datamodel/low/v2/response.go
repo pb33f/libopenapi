@@ -77,8 +77,10 @@ func (r *Response) Hash() [32]byte {
 	if !r.Schema.IsEmpty() {
 		f = append(f, low.GenerateHashString(r.Schema.Value.Schema()))
 	}
-	for k := range r.Examples.Value.Values {
-		f = append(f, low.GenerateHashString(r.Examples.Value.Values[k].Value))
+	if !r.Examples.IsEmpty() {
+		for k := range r.Examples.Value.Values {
+			f = append(f, low.GenerateHashString(r.Examples.Value.Values[k].Value))
+		}
 	}
 	for k := range r.Extensions {
 		f = append(f, fmt.Sprintf("%s-%x", k.Value,
