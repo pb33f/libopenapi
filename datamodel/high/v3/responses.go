@@ -5,6 +5,7 @@ package v3
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
@@ -23,18 +24,20 @@ import (
 // be the response for a successful operation call.
 //  - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
-	Codes   map[string]*Response
-	Default *Response
-	low     *low.Responses
+	Codes      map[string]*Response
+	Default    *Response
+	Extensions map[string]any
+	low        *low.Responses
 }
 
 // NewResponses will create a new high-level Responses instance from a low-level one. It operates asynchronously
 // internally, as each response may be considerable in complexity.
-func NewResponses(response *low.Responses) *Responses {
+func NewResponses(responses *low.Responses) *Responses {
 	r := new(Responses)
-	r.low = response
-	if !response.Default.IsEmpty() {
-		r.Default = NewResponse(response.Default.Value)
+	r.low = responses
+	r.Extensions = high.ExtractExtensions(responses.Extensions)
+	if !responses.Default.IsEmpty() {
+		r.Default = NewResponse(responses.Default.Value)
 	}
 	codes := make(map[string]*Response)
 
@@ -49,10 +52,10 @@ func NewResponses(response *low.Responses) *Responses {
 	var buildResponse = func(code string, resp *low.Response, c chan respRes) {
 		c <- respRes{code: code, resp: NewResponse(resp)}
 	}
-	for k, v := range response.Codes {
+	for k, v := range responses.Codes {
 		go buildResponse(k.Value, v.Value, rChan)
 	}
-	totalCodes := len(response.Codes)
+	totalCodes := len(responses.Codes)
 	codesParsed := 0
 	for codesParsed < totalCodes {
 		select {
