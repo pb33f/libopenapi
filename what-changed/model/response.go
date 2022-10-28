@@ -65,6 +65,14 @@ func (r *ResponseChanges) TotalBreakingChanges() int {
 	return c
 }
 
+func CompareResponseV2(l, r *v2.Response) *ResponseChanges {
+	return CompareResponse(l, r)
+}
+
+func CompareResponseV3(l, r *v3.Response) *ResponseChanges {
+	return CompareResponse(l, r)
+}
+
 func CompareResponse(l, r any) *ResponseChanges {
 
 	var changes []*Change

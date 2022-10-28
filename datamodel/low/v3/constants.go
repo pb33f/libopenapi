@@ -112,4 +112,5 @@ const (
 	ScopesLabel               = "scopes"
 	OperationRefLabel         = "operationRef"
 	OperationIdLabel          = "operationId"
+	CodesLabel                = "codes"
 )
