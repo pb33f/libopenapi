@@ -4,11 +4,13 @@
 package v2
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Responses is a low-level representation of a Swagger / OpenAPI 2 Responses object.
@@ -30,13 +32,13 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		if codes != nil {
 			r.Codes = codes
 		}
-
-		def, derr := low.ExtractObject[*Response](DefaultLabel, root, idx)
-		if derr != nil {
-			return derr
-		}
-		if def.Value != nil {
-			r.Default = def
+		if re := r.FindResponseByCode(DefaultLabel); re != nil {
+			r.Default = low.NodeReference[*Response]{
+				Value:     re.Value,
+				ValueNode: re.ValueNode,
+				KeyNode:   re.ValueNode,
+			}
+			r.deleteCode(DefaultLabel)
 		}
 	} else {
 		return fmt.Errorf("responses build failed: vn node is not a map! line %d, col %d", root.Line, root.Column)
@@ -44,7 +46,37 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
+func (r *Responses) deleteCode(code string) {
+	var key *low.KeyReference[string]
+	if r.Codes != nil {
+		for k := range r.Codes {
+			if k.Value == code {
+				key = &k
+			}
+		}
+	}
+	if key != nil {
+		delete(r.Codes, *key)
+	}
+}
+
 // FindResponseByCode will attempt to locate a Response instance using an HTTP response code string.
 func (r *Responses) FindResponseByCode(code string) *low.ValueReference[*Response] {
 	return low.FindItemInMap[*Response](code, r.Codes)
+}
+
+// Hash will return a consistent SHA256 Hash of the Examples object
+func (r *Responses) Hash() [32]byte {
+	var f []string
+	for k := range r.Codes {
+		f = append(f, low.GenerateHashString(r.Codes[k].Value))
+	}
+	if !r.Default.IsEmpty() {
+		f = append(f, low.GenerateHashString(r.Default.Value))
+	}
+	for k := range r.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
