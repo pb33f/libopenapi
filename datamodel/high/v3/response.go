@@ -35,11 +35,11 @@ func NewResponse(response *low.Response) *Response {
 		r.Content = ExtractContent(response.Content.Value)
 	}
 	if !response.Links.IsEmpty() {
-		lnks := make(map[string]*Link)
+		responseLinks := make(map[string]*Link)
 		for k, v := range response.Links.Value {
-			lnks[k.Value] = NewLink(v.Value)
+			responseLinks[k.Value] = NewLink(v.Value)
 		}
-		r.Links = lnks
+		r.Links = responseLinks
 	}
 	return r
 }
