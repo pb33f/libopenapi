@@ -92,7 +92,7 @@ func CompareResponse(l, r any) *ResponseChanges {
 
 		// description
 		addPropertyCheck(&props, lResponse.Description.ValueNode, rResponse.Description.ValueNode,
-			lResponse.Description.Value, lResponse.Description.Value, &changes, v3.DescriptionLabel, false)
+			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel, false)
 
 		if !lResponse.Schema.IsEmpty() && !rResponse.Schema.IsEmpty() {
 			rc.SchemaChanges = CompareSchemas(lResponse.Schema.Value, rResponse.Schema.Value)
@@ -105,7 +105,7 @@ func CompareResponse(l, r any) *ResponseChanges {
 		if lResponse.Schema.IsEmpty() && !rResponse.Schema.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.SchemaLabel,
 				nil, rResponse.Schema.ValueNode, true,
-				nil, lResponse.Schema.Value)
+				nil, rResponse.Schema.Value)
 		}
 
 		rc.HeadersChanges =

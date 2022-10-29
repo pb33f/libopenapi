@@ -22,8 +22,11 @@ func (r *ResponsesChanges) TotalChanges() int {
 	for k := range r.ResponseChanges {
 		c += r.ResponseChanges[k].TotalChanges()
 	}
+	if r.DefaultChanges != nil {
+		c += r.DefaultChanges.TotalChanges()
+	}
 	if r.ExtensionChanges != nil {
-		c += r.ExtensionChanges.TotalBreakingChanges()
+		c += r.ExtensionChanges.TotalChanges()
 	}
 	return c
 }
@@ -31,7 +34,10 @@ func (r *ResponsesChanges) TotalChanges() int {
 func (r *ResponsesChanges) TotalBreakingChanges() int {
 	c := r.PropertyChanges.TotalBreakingChanges()
 	for k := range r.ResponseChanges {
-		c += r.ResponseChanges[k].TotalChanges()
+		c += r.ResponseChanges[k].TotalBreakingChanges()
+	}
+	if r.DefaultChanges != nil {
+		c += r.DefaultChanges.TotalBreakingChanges()
 	}
 	return c
 }
@@ -42,7 +48,9 @@ func CompareResponses(l, r any) *ResponsesChanges {
 
 	rc := new(ResponsesChanges)
 
-	if reflect.TypeOf(&v2.Responses{}) == reflect.TypeOf(l) && reflect.TypeOf(&v2.Responses{}) == reflect.TypeOf(r) {
+	// swagger
+	if reflect.TypeOf(&v2.Responses{}) == reflect.TypeOf(l) &&
+		reflect.TypeOf(&v2.Responses{}) == reflect.TypeOf(r) {
 
 		lResponses := l.(*v2.Responses)
 		rResponses := r.(*v2.Responses)
@@ -72,7 +80,9 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		rc.ExtensionChanges = CompareExtensions(lResponses.Extensions, rResponses.Extensions)
 	}
 
-	if reflect.TypeOf(&v3.Responses{}) == reflect.TypeOf(l) && reflect.TypeOf(&v3.Responses{}) == reflect.TypeOf(r) {
+	// openapi
+	if reflect.TypeOf(&v3.Responses{}) == reflect.TypeOf(l) &&
+		reflect.TypeOf(&v3.Responses{}) == reflect.TypeOf(r) {
 
 		lResponses := l.(*v3.Responses)
 		rResponses := r.(*v3.Responses)
