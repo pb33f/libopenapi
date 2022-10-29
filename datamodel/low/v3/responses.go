@@ -10,12 +10,13 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
 // Responses represents a low-level OpenAPI 3+ Responses object.
 //
-// It's a container for the expected responses of an operation. The container maps a HTTP response code to the
+// It's a container for the expected responses of an operation. The container maps an HTTP response code to the
 // expected response.
 //
 // The specification is not necessarily expected to cover all possible HTTP response codes because they may not be
@@ -50,18 +51,40 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			r.Codes = codes
 		}
 
-		def, derr := low.ExtractObject[*Response](DefaultLabel, root, idx)
-		if derr != nil {
-			return derr
-		}
-		if def.Value != nil {
-			r.Default = def
+		def := r.FindResponseByCode(DefaultLabel)
+		if def != nil {
+			// default is bundled into codes, pull it out
+			// todo: the key node is being lost here, we need to bring it back in at some point.
+			r.Default = low.NodeReference[*Response]{
+				Value:     def.Value,
+				ValueNode: def.ValueNode,
+				KeyNode:   def.ValueNode,
+			}
+			// remove default from codes
+			r.deleteCode(DefaultLabel)
 		}
 	} else {
 		return fmt.Errorf("responses build failed: vn node is not a map! line %d, col %d",
 			root.Line, root.Column)
 	}
 	return nil
+}
+
+// used to remove default from codes extracted by Build()
+func (r *Responses) deleteCode(code string) {
+	var key *low.KeyReference[string]
+	if r.Codes != nil {
+		for k := range r.Codes {
+			if k.Value == code {
+				key = &k
+				break
+			}
+		}
+	}
+	// should never be nil, but, you never know... science and all that!
+	if key != nil {
+		delete(r.Codes, *key)
+	}
 }
 
 // FindResponseByCode will attempt to locate a Response using an HTTP response code.
@@ -72,8 +95,18 @@ func (r *Responses) FindResponseByCode(code string) *low.ValueReference[*Respons
 // Hash will return a consistent SHA256 Hash of the Examples object
 func (r *Responses) Hash() [32]byte {
 	var f []string
+	var keys []string
+	keys = make([]string, len(r.Codes))
+	cMap := make(map[string]*Response, len(keys))
+	z := 0
 	for k := range r.Codes {
-		f = append(f, low.GenerateHashString(r.Codes[k].Value))
+		keys[z] = k.Value
+		cMap[k.Value] = r.Codes[k].Value
+		z++
+	}
+	sort.Strings(keys)
+	for k := range keys {
+		f = append(f, low.GenerateHashString(cMap[keys[k]]))
 	}
 	if !r.Default.IsEmpty() {
 		f = append(f, low.GenerateHashString(r.Default.Value))
