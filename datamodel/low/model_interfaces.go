@@ -48,3 +48,28 @@ type IsHeader interface {
 	SharedParameters
 	SharedParameterHeader
 }
+
+type SharedOperations interface {
+	GetTags() NodeReference[[]ValueReference[string]]
+	GetSummary() NodeReference[string]
+	GetDescription() NodeReference[string]
+	GetDeprecated() NodeReference[bool]
+	GetExtensions() map[KeyReference[string]]ValueReference[any]
+	GetExternalDocs() NodeReference[any] // requires cast
+	GetResponses() NodeReference[any]    // requires cast
+	GetParameters() NodeReference[any]   // requires cast
+	GetSecurity() NodeReference[any]     // requires cast
+}
+
+type SwaggerOperations interface {
+	SharedOperations
+	GetConsumes() NodeReference[[]ValueReference[string]]
+	GetProduces() NodeReference[[]ValueReference[string]]
+	GetSchemes() NodeReference[[]ValueReference[string]]
+}
+
+type OpenAPIOperations interface {
+	SharedOperations
+	//GetCallbacks() NodeReference[map[KeyReference[string]]ValueReference[any]] // requires cast
+	GetServers() NodeReference[any] // requires cast
+}

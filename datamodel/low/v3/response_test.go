@@ -99,8 +99,7 @@ func TestResponses_Build_FailCodes(t *testing.T) {
 
 func TestResponses_Build_FailDefault(t *testing.T) {
 
-	yml := `default:
-$ref: borko`
+	yml := `- default`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)

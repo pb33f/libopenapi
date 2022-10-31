@@ -4,10 +4,14 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
+	"strings"
 )
 
 // Operation represents a low-level Swagger / OpenAPI 2 Operation object.
@@ -74,4 +78,147 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Operation object
+func (o *Operation) Hash() [32]byte {
+	var f []string
+	if !o.Summary.IsEmpty() {
+		f = append(f, o.Summary.Value)
+	}
+	if !o.Description.IsEmpty() {
+		f = append(f, o.Description.Value)
+	}
+	if !o.OperationId.IsEmpty() {
+		f = append(f, o.OperationId.Value)
+	}
+	if !o.Summary.IsEmpty() {
+		f = append(f, o.Summary.Value)
+	}
+	if !o.ExternalDocs.IsEmpty() {
+		f = append(f, low.GenerateHashString(o.ExternalDocs.Value))
+	}
+	if !o.Responses.IsEmpty() {
+		f = append(f, low.GenerateHashString(o.Responses.Value))
+	}
+	if !o.Deprecated.IsEmpty() {
+		f = append(f, fmt.Sprint(o.Deprecated.Value))
+	}
+	var keys []string
+	keys = make([]string, len(o.Tags.Value))
+	for k := range o.Tags.Value {
+		keys[k] = o.Tags.Value[k].Value
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(o.Consumes.Value))
+	for k := range o.Consumes.Value {
+		keys[k] = o.Consumes.Value[k].Value
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(o.Produces.Value))
+	for k := range o.Produces.Value {
+		keys[k] = o.Produces.Value[k].Value
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(o.Schemes.Value))
+	for k := range o.Schemes.Value {
+		keys[k] = o.Schemes.Value[k].Value
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(o.Parameters.Value))
+	for k := range o.Parameters.Value {
+		keys[k] = low.GenerateHashString(o.Parameters.Value[k].Value)
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(o.Security.Value))
+	for k := range o.Security.Value {
+		keys[k] = low.GenerateHashString(o.Security.Value[k].Value)
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	for k := range o.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(o.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
+// methods to satisfy swagger operations interface
+
+func (o *Operation) GetTags() low.NodeReference[[]low.ValueReference[string]] {
+	return o.Tags
+}
+
+func (o *Operation) GetSummary() low.NodeReference[string] {
+	return o.Summary
+}
+
+func (o *Operation) GetDescription() low.NodeReference[string] {
+	return o.Description
+}
+
+func (o *Operation) GetExternalDocs() low.NodeReference[any] {
+	return low.NodeReference[any]{
+		ValueNode: o.ExternalDocs.ValueNode,
+		KeyNode:   o.ExternalDocs.KeyNode,
+		Value:     o.ExternalDocs.Value,
+	}
+}
+
+func (o *Operation) GetOperationId() low.NodeReference[string] {
+	return o.OperationId
+}
+
+func (o *Operation) GetDeprecated() low.NodeReference[bool] {
+	return o.Deprecated
+}
+
+func (o *Operation) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return o.Extensions
+}
+
+func (o *Operation) GetResponses() low.NodeReference[any] {
+	return low.NodeReference[any]{
+		ValueNode: o.Responses.ValueNode,
+		KeyNode:   o.Responses.KeyNode,
+		Value:     o.Responses.Value,
+	}
+}
+
+func (o *Operation) GetParameters() low.NodeReference[any] {
+	return low.NodeReference[any]{
+		ValueNode: o.Parameters.ValueNode,
+		KeyNode:   o.Parameters.KeyNode,
+		Value:     o.Parameters.Value,
+	}
+}
+
+func (o *Operation) GetSecurity() low.NodeReference[any] {
+	return low.NodeReference[any]{
+		ValueNode: o.Security.ValueNode,
+		KeyNode:   o.Security.KeyNode,
+		Value:     o.Security.Value,
+	}
+}
+
+func (o *Operation) GetSchemes() low.NodeReference[[]low.ValueReference[string]] {
+	return o.Schemes
+}
+
+func (o *Operation) GetProduces() low.NodeReference[[]low.ValueReference[string]] {
+	return o.Produces
+}
+
+func (o *Operation) GetConsumes() low.NodeReference[[]low.ValueReference[string]] {
+	return o.Consumes
 }

@@ -75,6 +75,7 @@ func (l *Link) Hash() [32]byte {
 	if l.Server.Value != nil {
 		f = append(f, low.GenerateHashString(l.Server.Value))
 	}
+	// todo: needs ordering.
 	for k := range l.Parameters.Value {
 		f = append(f, fmt.Sprintf("%s-%s", k.Value, l.Parameters.Value[k].Value))
 	}

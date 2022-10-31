@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -54,8 +55,17 @@ func (s *Scopes) Build(root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the Scopes object
 func (s *Scopes) Hash() [32]byte {
 	var f []string
-	for i := range s.Values {
-		f = append(f, fmt.Sprintf("%s-%s", i.Value, s.Values[i].Value))
+	vals := make(map[string]low.ValueReference[string], len(s.Values))
+	keys := make([]string, len(s.Values))
+	z := 0
+	for k := range s.Values {
+		keys[z] = k.Value
+		vals[k.Value] = s.Values[k]
+		z++
+	}
+	sort.Strings(keys)
+	for k := range keys {
+		f = append(f, fmt.Sprintf("%s-%s", keys[k], vals[keys[k]].Value))
 	}
 	for k := range s.Extensions {
 		f = append(f, fmt.Sprintf("%s-%v", k.Value, s.Extensions[k].Value))

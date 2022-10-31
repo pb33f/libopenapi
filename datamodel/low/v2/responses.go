@@ -33,21 +33,36 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		if codes != nil {
 			r.Codes = codes
 		}
-		def := r.FindResponseByCode(DefaultLabel)
+		def := r.getDefault()
 		if def != nil {
 			// default is bundled into codes, pull it out
-			// todo: the key node is being lost here, we need to bring it back in at some point.
-			r.Default = low.NodeReference[*Response]{
-				Value:     def.Value,
-				ValueNode: def.ValueNode,
-				KeyNode:   def.ValueNode,
-			}
+			r.Default = *def
 			// remove default from codes
 			r.deleteCode(DefaultLabel)
 		}
 	} else {
 		return fmt.Errorf("responses build failed: vn node is not a map! line %d, col %d",
 			root.Line, root.Column)
+	}
+	return nil
+}
+
+func (r *Responses) getDefault() *low.NodeReference[*Response] {
+	for n, o := range r.Codes {
+		if n.Value == DefaultLabel {
+			return &low.NodeReference[*Response]{
+				ValueNode: o.ValueNode,
+				KeyNode:   n.KeyNode,
+				Value:     o.Value,
+			}
+		}
+		if strings.ToLower(n.Value) == DefaultLabel {
+			return &low.NodeReference[*Response]{
+				ValueNode: o.ValueNode,
+				KeyNode:   n.KeyNode,
+				Value:     o.Value,
+			}
+		}
 	}
 	return nil
 }
@@ -99,5 +114,3 @@ func (r *Responses) Hash() [32]byte {
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
-
-// TODO: start here and rebuild hash, it's no good.

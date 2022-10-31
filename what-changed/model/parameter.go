@@ -242,7 +242,7 @@ func CompareParameters(l, r any) *ParameterChanges {
 
 		// enum
 		if len(lParam.Enum.Value) > 0 || len(rParam.Enum.Value) > 0 {
-			ExtractStringValueSliceChanges(lParam.Enum.Value, rParam.Enum.Value, &changes, v3.EnumLabel)
+			ExtractStringValueSliceChanges(lParam.Enum.Value, rParam.Enum.Value, &changes, v3.EnumLabel, true)
 		}
 	}
 
