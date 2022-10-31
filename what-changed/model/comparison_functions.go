@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
-	"sort"
 	"strings"
 )
 
@@ -245,7 +244,8 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 //}
 
 // ExtractStringValueSliceChanges will compare two low level string slices for changes.
-func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string], changes *[]*Change, label string) {
+func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
+	changes *[]*Change, label string, breaking bool) {
 	lKeys := make([]string, len(lParam))
 	rKeys := make([]string, len(rParam))
 	lValues := make(map[string]low.ValueReference[string])
@@ -256,40 +256,26 @@ func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
 	}
 	for i := range rParam {
 		rKeys[i] = strings.ToLower(rParam[i].Value)
-		rValues[lKeys[i]] = rParam[i]
+		rValues[rKeys[i]] = rParam[i]
 	}
-	sort.Strings(lKeys)
-	sort.Strings(rKeys)
-
-	for i := range lKeys {
-		if i < len(rKeys) {
-			if lKeys[i] != rKeys[i] {
-				CreateChange(changes, Modified, label,
-					lValues[lKeys[i]].ValueNode,
-					rValues[rKeys[i]].ValueNode,
-					true,
-					lValues[lKeys[i]].Value,
-					rValues[rKeys[i]].ValueNode)
-			}
-			continue
-		}
-		if i >= len(rKeys) {
+	for i := range lValues {
+		if _, ok := rValues[i]; !ok {
 			CreateChange(changes, PropertyRemoved, label,
-				lValues[lKeys[i]].ValueNode,
+				lValues[i].ValueNode,
 				nil,
-				true,
-				lValues[lKeys[i]].Value,
+				breaking,
+				lValues[i].Value,
 				nil)
 		}
 	}
-	for i := range rKeys {
-		if i >= len(lKeys) {
+	for i := range rValues {
+		if _, ok := lValues[i]; !ok {
 			CreateChange(changes, PropertyAdded, label,
 				nil,
-				rValues[rKeys[i]].ValueNode,
+				rValues[i].ValueNode,
 				false,
 				nil,
-				rValues[rKeys[i]].ValueNode)
+				rValues[i].Value)
 		}
 	}
 }

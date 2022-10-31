@@ -59,6 +59,7 @@ const (
 	ExclusiveMaximumLabel     = "exclusiveMaximum"
 	ExclusiveMinimumLabel     = "exclusiveMinimum"
 	TypeLabel                 = "type"
+	TagsLabel                 = "tags"
 	MultipleOfLabel           = "multipleOf"
 	MaximumLabel              = "maximum"
 	MinimumLabel              = "minimum"

@@ -458,7 +458,7 @@ func TestCompareParameters_V2_EnumChange(t *testing.T) {
 
 	// compare.
 	extChanges := CompareParameters(&lDoc, &rDoc)
-	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 

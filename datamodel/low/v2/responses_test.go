@@ -13,7 +13,7 @@ import (
 
 func TestResponses_Build_Response(t *testing.T) {
 
-	yml := `$ref: break`
+	yml := `- $ref: break`
 
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
