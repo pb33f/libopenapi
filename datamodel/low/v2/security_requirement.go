@@ -5,9 +5,11 @@ package v2
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -54,13 +56,26 @@ func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	return nil
 }
 
+// Hash will return a consistent SHA256 Hash of the SecurityRequirement object
 func (s *SecurityRequirement) Hash() [32]byte {
 	var f []string
+	values := make(map[string][]string, len(s.Values.Value))
+	var valKeys []string
 	for k := range s.Values.Value {
+		var vals []string
 		for y := range s.Values.Value[k].Value {
-			f = append(f, s.Values.Value[k].Value[y].Value)
+			vals = append(vals, s.Values.Value[k].Value[y].Value)
 			// lol, I know. -------^^^^^ <- this is the actual value.
 		}
+		sort.Strings(vals)
+		valKeys = append(valKeys, k.Value)
+		if len(vals) > 0 {
+			values[k.Value] = vals
+		}
+	}
+	sort.Strings(valKeys)
+	for val := range valKeys {
+		f = append(f, fmt.Sprintf("%s-%s", valKeys[val], strings.Join(values[valKeys[val]], "|")))
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

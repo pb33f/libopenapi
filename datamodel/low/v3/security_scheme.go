@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -48,7 +49,9 @@ type SecurityScheme struct {
 // Security Requirement Objects in the list needs to be satisfied to authorize the request.
 //  - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
 type SecurityRequirement struct {
-	ValueRequirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+
+	// FYI, I hate this data structure. Even without the low level wrapping, it sucks.
+	ValueRequirements []low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
 }
 
 // FindExtension attempts to locate an extension using the supplied key.
@@ -108,7 +111,7 @@ func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference
 	for _, r := range sr.ValueRequirements {
 		for k, v := range r.Value {
 			if k.Value == name {
-				return v
+				return v.Value
 			}
 		}
 	}
@@ -116,13 +119,13 @@ func (sr *SecurityRequirement) FindRequirement(name string) []low.ValueReference
 }
 
 // Build will extract all security requirements
-func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (sr *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	if utils.IsNodeArray(root) {
-		var requirements []low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]
+		var requirements []low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
 		for _, n := range root.Content {
 			var currSec *yaml.Node
 			if utils.IsNodeMap(n) {
-				res := make(map[low.KeyReference[string]][]low.ValueReference[string])
+				res := make(map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])
 				var dat []low.ValueReference[string]
 				for i, r := range n.Content {
 					if i%2 == 0 {
@@ -145,9 +148,12 @@ func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) erro
 					res[low.KeyReference[string]{
 						Value:   currSec.Value,
 						KeyNode: currSec,
-					}] = dat
+					}] = low.ValueReference[[]low.ValueReference[string]]{
+						Value:     dat,
+						ValueNode: currSec,
+					}
 					requirements = append(requirements,
-						low.ValueReference[map[low.KeyReference[string]][]low.ValueReference[string]]{
+						low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]{
 							Value:     res,
 							ValueNode: n,
 						})
@@ -157,4 +163,31 @@ func (sr *SecurityRequirement) Build(root *yaml.Node, idx *index.SpecIndex) erro
 		sr.ValueRequirements = requirements
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the SecurityRequirement object
+func (sr *SecurityRequirement) Hash() [32]byte {
+	var f []string
+	for i := range sr.ValueRequirements {
+		req := sr.ValueRequirements[i].Value
+		values := make(map[string][]string, len(req))
+		var valKeys []string
+		for k := range req {
+			var vals []string
+			for y := range req[k].Value {
+				vals = append(vals, req[k].Value[y].Value)
+			}
+			sort.Strings(vals)
+			valKeys = append(valKeys, k.Value)
+			if len(vals) > 0 {
+				values[k.Value] = vals
+			}
+		}
+		sort.Strings(valKeys)
+		for val := range valKeys {
+			f = append(f, fmt.Sprintf("%s-%s", valKeys[val],
+				strings.Join(values[valKeys[val]], "|")))
+		}
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

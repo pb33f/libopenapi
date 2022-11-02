@@ -32,8 +32,8 @@ func NewSecurityRequirement(req *low.SecurityRequirement) *SecurityRequirement {
 		valmap := make(map[string][]string)
 		for k, v := range req.ValueRequirements[i].Value {
 			var mItems []string
-			for h := range v {
-				mItems = append(mItems, v[h].Value)
+			for h := range v.Value {
+				mItems = append(mItems, v.Value[h].Value)
 			}
 			valmap[k.Value] = mItems
 		}
