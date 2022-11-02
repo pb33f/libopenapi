@@ -114,4 +114,7 @@ const (
 	OperationRefLabel         = "operationRef"
 	OperationIdLabel          = "operationId"
 	CodesLabel                = "codes"
+	ProducesLabel             = "produces"
+	ConsumesLabel             = "consumes"
+	SchemesLabel              = "schemes"
 )
