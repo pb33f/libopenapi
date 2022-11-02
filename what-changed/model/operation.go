@@ -8,15 +8,22 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 	"reflect"
+	"sort"
+	"strings"
 )
 
 type OperationChanges struct {
 	PropertyChanges
-	ExternalDocChanges         *ExternalDocChanges
-	ParameterChanges           []*ParameterChanges
-	ResponsesChanges           *ResponsesChanges
-	SecurityRequirementChanges *SecurityRequirementChanges
+	ExternalDocChanges *ExternalDocChanges
+	ParameterChanges   []*ParameterChanges
+	ResponsesChanges   *ResponsesChanges
+
+	// SecurityRequirementChanges are defined differently between v2 and v3. Both are defined
+	// as the same data type, however the objects are structured differently. A slice is the cleanest
+	// way to compose both models.
+	SecurityRequirementChanges []*SecurityRequirementChanges
 
 	// v3
 	RequestBodyChanges *RequestBodyChanges
@@ -35,10 +42,10 @@ func (o *OperationChanges) TotalChanges() int {
 		c += o.ParameterChanges[k].TotalChanges()
 	}
 	if o.ResponsesChanges != nil {
-		c += o.RequestBodyChanges.TotalChanges()
+		c += o.ResponsesChanges.TotalChanges()
 	}
-	if o.SecurityRequirementChanges != nil {
-		c += o.SecurityRequirementChanges.TotalChanges()
+	for k := range o.SecurityRequirementChanges {
+		c += o.SecurityRequirementChanges[k].TotalChanges()
 	}
 	if o.RequestBodyChanges != nil {
 		c += o.RequestBodyChanges.TotalChanges()
@@ -62,10 +69,10 @@ func (o *OperationChanges) TotalBreakingChanges() int {
 		c += o.ParameterChanges[k].TotalBreakingChanges()
 	}
 	if o.ResponsesChanges != nil {
-		c += o.RequestBodyChanges.TotalBreakingChanges()
+		c += o.ResponsesChanges.TotalBreakingChanges()
 	}
-	if o.SecurityRequirementChanges != nil {
-		c += o.SecurityRequirementChanges.TotalBreakingChanges()
+	for k := range o.SecurityRequirementChanges {
+		c += o.SecurityRequirementChanges[k].TotalBreakingChanges()
 	}
 	if o.RequestBodyChanges != nil {
 		c += o.RequestBodyChanges.TotalBreakingChanges()
@@ -112,31 +119,30 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 		}
 	}
 	if l.GetExternalDocs().IsEmpty() && !r.GetExternalDocs().IsEmpty() {
-		CreateChange(changes, ObjectAdded, v3.ExternalDocsLabel,
+		CreateChange(changes, PropertyAdded, v3.ExternalDocsLabel,
 			nil, r.GetExternalDocs().ValueNode, false, nil,
 			r.GetExternalDocs().Value)
 	}
 	if !l.GetExternalDocs().IsEmpty() && r.GetExternalDocs().IsEmpty() {
-		CreateChange(changes, ObjectRemoved, v3.ExternalDocsLabel,
+		CreateChange(changes, PropertyRemoved, v3.ExternalDocsLabel,
 			l.GetExternalDocs().ValueNode, nil, false, l.GetExternalDocs().Value,
 			nil)
 	}
 
 	// responses
 	if !l.GetResponses().IsEmpty() && !r.GetResponses().IsEmpty() {
-		opChanges.ResponsesChanges = CompareResponses(l, r)
+		opChanges.ResponsesChanges = CompareResponses(l.GetResponses().Value, r.GetResponses().Value)
 	}
 	if l.GetResponses().IsEmpty() && !r.GetResponses().IsEmpty() {
-		CreateChange(changes, ObjectAdded, v3.ResponsesLabel,
+		CreateChange(changes, PropertyAdded, v3.ResponsesLabel,
 			nil, r.GetResponses().ValueNode, false, nil,
 			r.GetResponses().Value)
 	}
 	if !l.GetResponses().IsEmpty() && r.GetResponses().IsEmpty() {
-		CreateChange(changes, ObjectRemoved, v3.ResponsesLabel,
+		CreateChange(changes, PropertyRemoved, v3.ResponsesLabel,
 			l.GetResponses().ValueNode, nil, true, l.GetResponses().Value,
 			nil)
 	}
-
 }
 
 func CompareOperations(l, r any) *OperationChanges {
@@ -206,6 +212,40 @@ func CompareOperations(l, r any) *OperationChanges {
 			}
 			oc.ParameterChanges = paramChanges
 		}
+		if !lParamsUntyped.IsEmpty() && rParamsUntyped.IsEmpty() {
+			CreateChange(&changes, PropertyRemoved, v3.ParametersLabel,
+				lParamsUntyped.ValueNode, nil, true, lParamsUntyped.Value,
+				nil)
+		}
+		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
+			CreateChange(&changes, PropertyAdded, v3.ParametersLabel,
+				nil, rParamsUntyped.ValueNode, true, nil,
+				rParamsUntyped.Value)
+		}
+
+		// security
+		if !lOperation.Security.IsEmpty() && !lOperation.Security.IsEmpty() {
+			checkSecurity(lOperation.Security, rOperation.Security, &changes, oc)
+		}
+
+		// produces
+		if len(lOperation.Produces.Value) > 0 || len(rOperation.Produces.Value) > 0 {
+			ExtractStringValueSliceChanges(lOperation.Produces.Value, rOperation.Produces.Value,
+				&changes, v3.ProducesLabel, false)
+		}
+
+		// consumes
+		if len(lOperation.Consumes.Value) > 0 || len(rOperation.Consumes.Value) > 0 {
+			ExtractStringValueSliceChanges(lOperation.Consumes.Value, rOperation.Consumes.Value,
+				&changes, v3.ConsumesLabel, false)
+		}
+
+		// schemes
+		if len(lOperation.Schemes.Value) > 0 || len(rOperation.Schemes.Value) > 0 {
+			ExtractStringValueSliceChanges(lOperation.Schemes.Value, rOperation.Schemes.Value,
+				&changes, v3.SchemesLabel, true)
+		}
+
 	}
 
 	// OpenAPI
@@ -221,9 +261,139 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 
 		props = append(props, addSharedOperationProperties(lOperation, rOperation, &changes)...)
+		compareSharedOperationObjects(lOperation, rOperation, &changes, oc)
 
+		// parameters
+		lParamsUntyped := lOperation.GetParameters()
+		rParamsUntyped := rOperation.GetParameters()
+		if !lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
+			lParams := lParamsUntyped.Value.([]low.ValueReference[*v3.Parameter])
+			rParams := rParamsUntyped.Value.([]low.ValueReference[*v3.Parameter])
+
+			lv := make(map[string]*v3.Parameter, len(lParams))
+			rv := make(map[string]*v3.Parameter, len(rParams))
+
+			for i := range lParams {
+				s := lParams[i].Value.Name.Value
+				lv[s] = lParams[i].Value
+			}
+			for i := range rParams {
+				s := rParams[i].Value.Name.Value
+				rv[s] = rParams[i].Value
+			}
+
+			var paramChanges []*ParameterChanges
+			for n := range lv {
+				if _, ok := rv[n]; ok {
+					if !low.AreEqual(lv[n], rv[n]) {
+						ch := CompareParameters(lv[n], rv[n])
+						if ch != nil {
+							paramChanges = append(paramChanges, ch)
+						}
+					}
+					continue
+				}
+				CreateChange(&changes, ObjectRemoved, v3.ParametersLabel,
+					lv[n].Name.ValueNode, nil, true, lv[n].Name.Value,
+					nil)
+
+			}
+			for n := range rv {
+				if _, ok := lv[n]; !ok {
+					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
+						nil, rv[n].Name.ValueNode, true, nil,
+						rv[n].Name.Value)
+				}
+			}
+			oc.ParameterChanges = paramChanges
+		}
+		if !lParamsUntyped.IsEmpty() && rParamsUntyped.IsEmpty() {
+			CreateChange(&changes, PropertyRemoved, v3.ParametersLabel,
+				lParamsUntyped.ValueNode, nil, true, lParamsUntyped.Value,
+				nil)
+		}
+		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
+			CreateChange(&changes, PropertyAdded, v3.ParametersLabel,
+				nil, rParamsUntyped.ValueNode, true, nil,
+				rParamsUntyped.Value)
+		}
+
+		// security
+		if !lOperation.Security.IsEmpty() && !lOperation.Security.IsEmpty() {
+			checkSecurity(lOperation.Security, rOperation.Security, &changes, oc)
+		}
+
+		// request body
+		if !lOperation.RequestBody.IsEmpty() && !rOperation.RequestBody.IsEmpty() {
+			if !low.AreEqual(lOperation.RequestBody.Value, rOperation.RequestBody.Value) {
+				oc.RequestBodyChanges = CompareRequestBodies(lOperation.RequestBody.Value, rOperation.RequestBody.Value)
+			}
+		}
+		if !lOperation.RequestBody.IsEmpty() && rOperation.RequestBody.IsEmpty() {
+			CreateChange(&changes, PropertyRemoved, v3.RequestBodyLabel,
+				lOperation.RequestBody.ValueNode, nil, true, lOperation.RequestBody.Value,
+				nil)
+		}
+		if lOperation.RequestBody.IsEmpty() && !rOperation.RequestBody.IsEmpty() {
+			CreateChange(&changes, PropertyAdded, v3.RequestBodyLabel,
+				nil, rOperation.RequestBody.ValueNode, true, nil,
+				rOperation.RequestBody.Value)
+		}
+		
 	}
 	CheckProperties(props)
 	oc.Changes = changes
 	return oc
+}
+
+func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]],
+	changes *[]*Change, oc *OperationChanges) {
+
+	lv := make(map[string]*base.SecurityRequirement, len(lSecurity.Value))
+	rv := make(map[string]*base.SecurityRequirement, len(rSecurity.Value))
+	lvn := make(map[string]*yaml.Node, len(lSecurity.Value))
+	rvn := make(map[string]*yaml.Node, len(rSecurity.Value))
+
+	for i := range lSecurity.Value {
+		keys := lSecurity.Value[i].Value.GetKeys()
+		sort.Strings(keys)
+		s := strings.Join(keys, "|")
+		lv[s] = lSecurity.Value[i].Value
+		lvn[s] = lSecurity.Value[i].ValueNode
+
+	}
+	for i := range rSecurity.Value {
+		keys := rSecurity.Value[i].Value.GetKeys()
+		sort.Strings(keys)
+		s := strings.Join(keys, "|")
+		rv[s] = rSecurity.Value[i].Value
+		rvn[s] = rSecurity.Value[i].ValueNode
+	}
+
+	var secChanges []*SecurityRequirementChanges
+	for n := range lv {
+		if _, ok := rv[n]; ok {
+			if !low.AreEqual(lv[n], rv[n]) {
+				ch := CompareSecurityRequirement(lv[n], rv[n])
+				if ch != nil {
+					secChanges = append(secChanges, ch)
+				}
+			}
+			continue
+		}
+		lvn[n].Value = strings.Join(lv[n].GetKeys(), ", ")
+		CreateChange(changes, ObjectRemoved, v3.SecurityLabel,
+			lvn[n], nil, true, lv[n],
+			nil)
+
+	}
+	for n := range rv {
+		if _, ok := lv[n]; !ok {
+			rvn[n].Value = strings.Join(rv[n].GetKeys(), ", ")
+			CreateChange(changes, ObjectAdded, v3.SecurityLabel,
+				nil, rvn[n], false, nil,
+				rv[n])
+		}
+	}
+	oc.SecurityRequirementChanges = secChanges
 }
