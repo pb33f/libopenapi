@@ -487,7 +487,7 @@ func ExtractMap[PT Buildable[N], N any](
 	return nil, labelNode, valueNode, nil
 }
 
-// ExtractExtensions will extract any 'x-' prefixed key nodes from a root node into a map. Values have been pre-cast:
+// ExtractExtensions will extract any 'x-' prefixed key nodes from a root node into a map. Requirements have been pre-cast:
 //
 // Maps
 //   map[string]interface{} for maps

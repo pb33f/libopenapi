@@ -76,11 +76,15 @@ func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 }
 
 func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	sec, sErr := low.ExtractObject[*SecurityRequirement](SecurityLabel, info.RootNode, idx)
-	if sErr != nil {
-		return sErr
+	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, info.RootNode, idx)
+	if err != nil {
+		return err
 	}
-	doc.Security = sec
+	doc.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
+		Value:     sec,
+		KeyNode:   ln,
+		ValueNode: vn,
+	}
 	return nil
 }
 

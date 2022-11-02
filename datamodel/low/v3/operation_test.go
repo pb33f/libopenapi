@@ -65,10 +65,10 @@ servers:
 	assert.Equal(t, "a nice callback",
 		n.FindCallback("niceCallback").Value.FindExpression("ohISee").Value.Description.Value)
 	assert.True(t, n.Deprecated.Value)
-	assert.Len(t, n.Security.Value.ValueRequirements, 1)
-	assert.Len(t, n.Security.Value.FindRequirement("books"), 2)
-	assert.Equal(t, "read:books", n.Security.Value.FindRequirement("books")[0].Value)
-	assert.Equal(t, "write:books", n.Security.Value.FindRequirement("books")[1].Value)
+	assert.Len(t, n.Security.Value, 1)
+	assert.Len(t, n.FindSecurityRequirement("books"), 2)
+	assert.Equal(t, "read:books", n.FindSecurityRequirement("books")[0].Value)
+	assert.Equal(t, "write:books", n.FindSecurityRequirement("books")[1].Value)
 	assert.Len(t, n.Servers.Value, 1)
 	assert.Equal(t, "https://pb33f.io", n.Servers.Value[0].Value.URL.Value)
 }
