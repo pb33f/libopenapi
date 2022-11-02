@@ -67,6 +67,16 @@ func (s *SecurityRequirement) FindRequirement(name string) []low.ValueReference[
 	return nil
 }
 
+// GetKeys returns a string slice of all the keys used in the requirement.
+func (s *SecurityRequirement) GetKeys() []string {
+	keys := make([]string, len(s.Requirements.Value))
+	z := 0
+	for k := range s.Requirements.Value {
+		keys[z] = k.Value
+	}
+	return keys
+}
+
 // Hash will return a consistent SHA256 Hash of the SecurityRequirement object
 func (s *SecurityRequirement) Hash() [32]byte {
 	var f []string
