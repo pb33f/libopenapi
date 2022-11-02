@@ -48,7 +48,7 @@ type Document struct {
 	// to authorize a request. Individual operations can override this definition. To make security optional,
 	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
-	Security *SecurityRequirement
+	Security *base.SecurityRequirement
 
 	// Tags is a slice of base.Tag instances defined by the specification
 	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on

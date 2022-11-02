@@ -23,8 +23,8 @@ type Operation struct {
 	RequestBody  *RequestBody
 	Responses    *Responses
 	Callbacks    map[string]*Callback
-	Deprecated   bool
-	Security     *SecurityRequirement
+	Deprecated   *bool
+	Security     []*base.SecurityRequirement
 	Servers      []*Server
 	Extensions   map[string]any
 	low          *low.Operation
@@ -42,6 +42,7 @@ func NewOperation(operation *low.Operation) *Operation {
 	}
 	o.Tags = tags
 	o.Summary = operation.Summary.Value
+	o.Deprecated = &operation.Deprecated.Value
 	o.Description = operation.Description.Value
 	if !operation.ExternalDocs.IsEmpty() {
 		o.ExternalDocs = base.NewExternalDoc(operation.ExternalDocs.Value)
@@ -61,7 +62,11 @@ func NewOperation(operation *low.Operation) *Operation {
 		o.Responses = NewResponses(operation.Responses.Value)
 	}
 	if !operation.Security.IsEmpty() {
-		o.Security = NewSecurityRequirement(operation.Security.Value)
+		var sec []*base.SecurityRequirement
+		for s := range operation.Security.Value {
+			sec = append(sec, base.NewSecurityRequirement(operation.Security.Value[s].Value))
+		}
+		o.Security = sec
 	}
 	var servers []*Server
 	for i := range operation.Servers.Value {

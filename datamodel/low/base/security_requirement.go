@@ -1,7 +1,7 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package v2
+package base
 
 import (
 	"crypto/sha256"
@@ -13,15 +13,16 @@ import (
 	"strings"
 )
 
-// SecurityRequirement is a low-level representation of a Swagger / OpenAPI 2 SecurityRequirement object.
+// SecurityRequirement is a low-level representation of a Swagger / OpenAPI 3 SecurityRequirement object.
 //
 // SecurityRequirement lists the required security schemes to execute this operation. The object can have multiple
 // security schemes declared in it which are all required (that is, there is a logical AND between the schemes).
 //
 // The name used for each property MUST correspond to a security scheme declared in the Security Definitions
 //  - https://swagger.io/specification/v2/#securityDefinitionsObject
+//  - https://swagger.io/specification/#security-requirement-object
 type SecurityRequirement struct {
-	Values low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
+	Requirements low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
 }
 
 // Build will extract security requirements from the node (the structure is odd, to be honest)
@@ -49,9 +50,19 @@ func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 			ValueNode: root.Content[i],
 		}
 	}
-	s.Values = low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]{
+	s.Requirements = low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]{
 		Value:     valueMap,
 		ValueNode: root,
+	}
+	return nil
+}
+
+// FindRequirement will attempt to locate a security requirement string from a supplied name.
+func (s *SecurityRequirement) FindRequirement(name string) []low.ValueReference[string] {
+	for k := range s.Requirements.Value {
+		if k.Value == name {
+			return s.Requirements.Value[k].Value
+		}
 	}
 	return nil
 }
@@ -59,12 +70,12 @@ func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the SecurityRequirement object
 func (s *SecurityRequirement) Hash() [32]byte {
 	var f []string
-	values := make(map[string][]string, len(s.Values.Value))
+	values := make(map[string][]string, len(s.Requirements.Value))
 	var valKeys []string
-	for k := range s.Values.Value {
+	for k := range s.Requirements.Value {
 		var vals []string
-		for y := range s.Values.Value[k].Value {
-			vals = append(vals, s.Values.Value[k].Value[y].Value)
+		for y := range s.Requirements.Value[k].Value {
+			vals = append(vals, s.Requirements.Value[k].Value[y].Value)
 			// lol, I know. -------^^^^^ <- this is the actual value.
 		}
 		sort.Strings(vals)

@@ -30,7 +30,7 @@ type Operation struct {
 	Responses    low.NodeReference[*Responses]
 	Schemes      low.NodeReference[[]low.ValueReference[string]]
 	Deprecated   low.NodeReference[bool]
-	Security     low.NodeReference[[]low.ValueReference[*SecurityRequirement]]
+	Security     low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
@@ -65,13 +65,13 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	o.Responses = respBody
 
-	// extract parameters
-	sec, sln, svn, sErr := low.ExtractArray[*SecurityRequirement](SecurityLabel, root, idx)
+	// extract security
+	sec, sln, svn, sErr := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, root, idx)
 	if sErr != nil {
 		return sErr
 	}
 	if sec != nil {
-		o.Security = low.NodeReference[[]low.ValueReference[*SecurityRequirement]]{
+		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
 			Value:     sec,
 			KeyNode:   sln,
 			ValueNode: svn,

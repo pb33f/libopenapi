@@ -59,7 +59,7 @@ type Document struct {
 	// to authorize a request. Individual operations can override this definition. To make security optional,
 	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
-	Security low.NodeReference[*SecurityRequirement]
+	Security low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 
 	// Tags is a slice of base.Tag instances defined by the specification
 	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on
@@ -82,6 +82,18 @@ type Document struct {
 	//
 	// This property is not a part of the OpenAPI schema, this is custom to libopenapi.
 	Index *index.SpecIndex
+}
+
+// FindSecurityRequirement will attempt to locate a security requirement string from a supplied name.
+func (d *Document) FindSecurityRequirement(name string) []low.ValueReference[string] {
+	for k := range d.Security.Value {
+		for i := range d.Security.Value[k].Value.Requirements.Value {
+			if i.Value == name {
+				return d.Security.Value[k].Value.Requirements.Value[i].Value
+			}
+		}
+	}
+	return nil
 }
 
 // TODO: this is early prototype mutation/modification code, keeping it around for later.

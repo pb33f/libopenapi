@@ -30,7 +30,7 @@ type Operation struct {
 	Responses    low.NodeReference[*Responses]
 	Callbacks    low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]]
 	Deprecated   low.NodeReference[bool]
-	Security     low.NodeReference[*SecurityRequirement]
+	Security     low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -38,6 +38,18 @@ type Operation struct {
 // FindCallback will attempt to locate a Callback instance by the supplied name.
 func (o *Operation) FindCallback(callback string) *low.ValueReference[*Callback] {
 	return low.FindItemInMap[*Callback](callback, o.Callbacks.Value)
+}
+
+// FindSecurityRequirement will attempt to locate a security requirement string from a supplied name.
+func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[string] {
+	for k := range o.Security.Value {
+		for i := range o.Security.Value[k].Value.Requirements.Value {
+			if i.Value == name {
+				return o.Security.Value[k].Value.Requirements.Value[i].Value
+			}
+		}
+	}
+	return nil
 }
 
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
@@ -92,11 +104,17 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// extract security
-	sec, sErr := low.ExtractObject[*SecurityRequirement](SecurityLabel, root, idx)
+	sec, sln, svn, sErr := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, root, idx)
 	if sErr != nil {
 		return sErr
 	}
-	o.Security = sec
+	if sec != nil {
+		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
+			Value:     sec,
+			KeyNode:   sln,
+			ValueNode: svn,
+		}
+	}
 
 	// extract servers
 	servers, sl, sn, serErr := low.ExtractArray[*Server](ServersLabel, root, idx)

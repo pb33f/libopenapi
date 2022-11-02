@@ -38,7 +38,7 @@ type Swagger struct {
 	// The basePath does not support path templating.
 	BasePath string
 
-	// Schemes represents the transfer protocol of the API. Values MUST be from the list: "http", "https", "ws", "wss".
+	// Schemes represents the transfer protocol of the API. Requirements MUST be from the list: "http", "https", "ws", "wss".
 	// If the schemes is not included, the default scheme to be used is the one used to access
 	// the Swagger definition itself.
 	Schemes []string
@@ -77,7 +77,7 @@ type Swagger struct {
 	// describes alternative security schemes that can be used (that is, there is a logical OR between the security
 	// requirements). Individual operations can override this definition.
 	//  - https://swagger.io/specification/v2/#securityRequirementObject
-	Security []*SecurityRequirement
+	Security []*base.SecurityRequirement
 
 	// Tags are A list of tags used by the specification with additional metadata.
 	// The order of the tags can be used to reflect on their order by the parsing tools. Not all tags that are used
@@ -150,9 +150,9 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 		d.SecurityDefinitions = NewSecurityDefinitions(document.SecurityDefinitions.Value)
 	}
 	if !document.Security.IsEmpty() {
-		var security []*SecurityRequirement
+		var security []*base.SecurityRequirement
 		for s := range document.Security.Value {
-			security = append(security, NewSecurityRequirement(document.Security.Value[s].Value))
+			security = append(security, base.NewSecurityRequirement(document.Security.Value[s].Value))
 		}
 		d.Security = security
 	}

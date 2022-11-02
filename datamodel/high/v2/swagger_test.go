@@ -103,8 +103,8 @@ func TestNewSwaggerDocument_Security(t *testing.T) {
 	assert.Len(t, highDoc.Security[0].Requirements["global_auth"], 2)
 
 	wentLow := highDoc.Security[0].GoLow()
-	assert.Equal(t, 25, wentLow.Values.ValueNode.Line)
-	assert.Equal(t, 5, wentLow.Values.ValueNode.Column)
+	assert.Equal(t, 25, wentLow.Requirements.ValueNode.Line)
+	assert.Equal(t, 5, wentLow.Requirements.ValueNode.Column)
 
 }
 

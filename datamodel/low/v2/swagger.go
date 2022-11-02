@@ -44,7 +44,7 @@ type Swagger struct {
 	// The basePath does not support path templating.
 	BasePath low.NodeReference[string]
 
-	// Schemes represents the transfer protocol of the API. Values MUST be from the list: "http", "https", "ws", "wss".
+	// Schemes represents the transfer protocol of the API. Requirements MUST be from the list: "http", "https", "ws", "wss".
 	// If the schemes is not included, the default scheme to be used is the one used to access
 	// the Swagger definition itself.
 	Schemes low.NodeReference[[]low.ValueReference[string]]
@@ -83,7 +83,7 @@ type Swagger struct {
 	// describes alternative security schemes that can be used (that is, there is a logical OR between the security
 	// requirements). Individual operations can override this definition.
 	//  - https://swagger.io/specification/v2/#securityRequirementObject
-	Security low.NodeReference[[]low.ValueReference[*SecurityRequirement]]
+	Security low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 
 	// Tags are A list of tags used by the specification with additional metadata.
 	// The order of the tags can be used to reflect on their order by the parsing tools. Not all tags that are used
@@ -245,12 +245,12 @@ func extractTags(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- b
 }
 
 func extractSecurity(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	sec, ln, vn, err := low.ExtractArray[*SecurityRequirement](SecurityLabel, root, idx)
+	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
 	}
-	doc.Security = low.NodeReference[[]low.ValueReference[*SecurityRequirement]]{
+	doc.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
 		Value:     sec,
 		KeyNode:   ln,
 		ValueNode: vn,

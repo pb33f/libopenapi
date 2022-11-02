@@ -1,9 +1,11 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package v2
+package base
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v2"
+import (
+	"github.com/pb33f/libopenapi/datamodel/low/base"
+)
 
 // SecurityRequirement is a high-level representation of a Swagger / OpenAPI 2 SecurityRequirement object.
 //
@@ -14,19 +16,19 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 //  - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
 	Requirements map[string][]string
-	low          *low.SecurityRequirement
+	low          *base.SecurityRequirement
 }
 
 // NewSecurityRequirement creates a new high-level SecurityRequirement from a low-level one.
-func NewSecurityRequirement(req *low.SecurityRequirement) *SecurityRequirement {
+func NewSecurityRequirement(req *base.SecurityRequirement) *SecurityRequirement {
 	r := new(SecurityRequirement)
 	r.low = req
 	values := make(map[string][]string)
 	// to keep things fast, avoiding copying anything - makes it a little hard to read.
-	for reqK := range req.Values.Value {
+	for reqK := range req.Requirements.Value {
 		var vals []string
-		for valK := range req.Values.Value[reqK].Value {
-			vals = append(vals, req.Values.Value[reqK].Value[valK].Value)
+		for valK := range req.Requirements.Value[reqK].Value {
+			vals = append(vals, req.Requirements.Value[reqK].Value[valK].Value)
 		}
 		values[reqK.Value] = vals
 	}
@@ -35,6 +37,6 @@ func NewSecurityRequirement(req *low.SecurityRequirement) *SecurityRequirement {
 }
 
 // GoLow returns the low-level SecurityRequirement used to create the high-level one.
-func (s *SecurityRequirement) GoLow() *low.SecurityRequirement {
+func (s *SecurityRequirement) GoLow() *base.SecurityRequirement {
 	return s.low
 }

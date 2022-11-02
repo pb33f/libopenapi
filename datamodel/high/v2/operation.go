@@ -24,7 +24,7 @@ type Operation struct {
 	Responses    *Responses
 	Schemes      []string
 	Deprecated   bool
-	Security     []*SecurityRequirement
+	Security     []*base.SecurityRequirement
 	Extensions   map[string]any
 	low          *low.Operation
 }
@@ -88,9 +88,9 @@ func NewOperation(operation *low.Operation) *Operation {
 		o.Deprecated = operation.Deprecated.Value
 	}
 	if !operation.Security.IsEmpty() {
-		var sec []*SecurityRequirement
+		var sec []*base.SecurityRequirement
 		for s := range operation.Security.Value {
-			sec = append(sec, NewSecurityRequirement(operation.Security.Value[s].Value))
+			sec = append(sec, base.NewSecurityRequirement(operation.Security.Value[s].Value))
 		}
 		o.Security = sec
 	}

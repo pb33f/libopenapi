@@ -5,6 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestSecurityRequirement_Build(t *testing.T) {
-	yml := `- something:
+	yml := `something:
   - read:me
   - write:me`
 
@@ -20,13 +21,14 @@ func TestSecurityRequirement_Build(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 	idx := index.NewSpecIndex(&idxNode)
 
-	var n SecurityRequirement
+	var n base.SecurityRequirement
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
+
 	assert.NoError(t, err)
-	assert.Len(t, n.ValueRequirements, 1)
+	assert.Len(t, n.Requirements.Value, 1)
 	assert.Equal(t, "read:me", n.FindRequirement("something")[0].Value)
 	assert.Equal(t, "write:me", n.FindRequirement("something")[1].Value)
 	assert.Nil(t, n.FindRequirement("none"))

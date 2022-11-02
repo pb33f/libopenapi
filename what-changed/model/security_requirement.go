@@ -5,10 +5,9 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"gopkg.in/yaml.v3"
-	"reflect"
 )
 
 type SecurityRequirementChanges struct {
@@ -33,76 +32,15 @@ func addedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
 		nil, vn, false, nil, name)
 }
 
-func CompareSecurityRequirement(l, r any) *SecurityRequirementChanges {
+func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequirementChanges {
 
 	var changes []*Change
 	sc := new(SecurityRequirementChanges)
 
-	if reflect.TypeOf(&v2.SecurityRequirement{}) == reflect.TypeOf(l) &&
-		reflect.TypeOf(&v2.SecurityRequirement{}) == reflect.TypeOf(r) {
-
-		lSec := l.(*v2.SecurityRequirement)
-		rSec := r.(*v2.SecurityRequirement)
-
-		if low.AreEqual(lSec, rSec) {
-			return nil
-		}
-		checkSecurityRequirement(lSec.Values.Value, rSec.Values.Value, &changes)
-
+	if low.AreEqual(l, r) {
+		return nil
 	}
-
-	if reflect.TypeOf(&v3.SecurityRequirement{}) == reflect.TypeOf(l) &&
-		reflect.TypeOf(&v3.SecurityRequirement{}) == reflect.TypeOf(r) {
-
-		lSec := l.(*v3.SecurityRequirement)
-		rSec := r.(*v3.SecurityRequirement)
-
-		if low.AreEqual(lSec, rSec) {
-			return nil
-		}
-
-		// can we find anyone to dance with?
-		findPartner := func(key string,
-			search map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]) map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]] {
-			for k := range search {
-				if k.Value == key {
-					return search[k]
-				}
-			}
-			return nil
-		}
-
-		// Yes, this exists.
-		lValues := make(map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])
-		rValues := make(map[low.KeyReference[string]]map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])
-		for i := range lSec.ValueRequirements {
-			for k := range lSec.ValueRequirements[i].Value {
-				lValues[k] = lSec.ValueRequirements[i].Value
-			}
-		}
-		for i := range rSec.ValueRequirements {
-			for k := range rSec.ValueRequirements[i].Value {
-				rValues[k] = rSec.ValueRequirements[i].Value
-			}
-		}
-
-		// look through left and right slices to see if we recognize anything.
-		for k := range lValues {
-			if p := findPartner(k.Value, rValues); p != nil {
-				checkSecurityRequirement(lValues[k], p, &changes)
-				continue
-			}
-			CreateChange(&changes, ObjectRemoved, v3.SecurityLabel,
-				k.KeyNode, nil, true, lValues[k], nil)
-		}
-		for k := range rValues {
-			if ok := findPartner(k.Value, lValues); ok == nil {
-				CreateChange(&changes, ObjectAdded, v3.SecurityLabel,
-					nil, k.KeyNode, false, nil, rValues[k])
-			}
-		}
-	}
-
+	checkSecurityRequirement(l.Requirements.Value, r.Requirements.Value, &changes)
 	sc.Changes = changes
 	return sc
 }
@@ -198,12 +136,4 @@ func checkSecurityRequirement(lSec, rSec map[low.KeyReference[string]]low.ValueR
 			}
 		}
 	}
-}
-
-func CompareSecurityRequirementV3(l, r *v3.SecurityRequirement) *SecurityRequirementChanges {
-	return CompareSecurityRequirement(l, r)
-}
-
-func CompareSecurityRequirementV2(l, r *v2.SecurityRequirement) *SecurityRequirementChanges {
-	return CompareSecurityRequirement(l, r)
 }
