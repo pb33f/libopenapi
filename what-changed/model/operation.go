@@ -143,6 +143,7 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 			l.GetResponses().ValueNode, nil, true, l.GetResponses().Value,
 			nil)
 	}
+
 }
 
 func CompareOperations(l, r any) *OperationChanges {
@@ -246,6 +247,7 @@ func CompareOperations(l, r any) *OperationChanges {
 				&changes, v3.SchemesLabel, true)
 		}
 
+		oc.ExtensionChanges = CompareExtensions(lOperation.Extensions, rOperation.Extensions)
 	}
 
 	// OpenAPI
@@ -339,7 +341,66 @@ func CompareOperations(l, r any) *OperationChanges {
 				nil, rOperation.RequestBody.ValueNode, true, nil,
 				rOperation.RequestBody.Value)
 		}
+
+		// servers
+		if !lOperation.Servers.IsEmpty() && !rOperation.Servers.IsEmpty() {
+
+			lv := make(map[string]low.ValueReference[*v3.Server], len(lOperation.Servers.Value))
+			rv := make(map[string]low.ValueReference[*v3.Server], len(rOperation.Servers.Value))
+
+			for i := range lOperation.Servers.Value {
+				var s string
+				if !lOperation.Servers.Value[i].Value.URL.IsEmpty() {
+					s = lOperation.Servers.Value[i].Value.URL.Value
+				} else {
+					s = low.GenerateHashString(lOperation.Servers.Value[i].Value)
+				}
+				lv[s] = lOperation.Servers.Value[i]
+			}
+			for i := range rOperation.Servers.Value {
+				var s string
+				if !rOperation.Servers.Value[i].Value.URL.IsEmpty() {
+					s = rOperation.Servers.Value[i].Value.URL.Value
+				} else {
+					s = low.GenerateHashString(rOperation.Servers.Value[i].Value)
+				}
+				rv[s] = rOperation.Servers.Value[i]
+			}
+
+			var serverChanges []*ServerChanges
+			for k := range lv {
+				if _, ok := rv[k]; ok {
+					if !low.AreEqual(lv[k].Value, rv[k].Value) {
+						serverChanges = append(serverChanges, CompareServers(lv[k].Value, rv[k].Value))
+					}
+					continue
+				}
+				CreateChange(&changes, ObjectRemoved, v3.ServersLabel,
+					lv[k].ValueNode, nil, true, lv[k].Value.URL.Value,
+					nil)
+			}
+			oc.ServerChanges = serverChanges
+			for k := range rv {
+				if _, ok := lv[k]; !ok {
+					CreateChange(&changes, ObjectAdded, v3.ServersLabel,
+						rv[k].ValueNode, nil, false, rv[k].Value.URL.Value,
+						nil)
+				}
+			}
+		}
+		if !lOperation.Servers.IsEmpty() && rOperation.Servers.IsEmpty() {
+			CreateChange(&changes, PropertyRemoved, v3.ServersLabel,
+				lOperation.Servers.ValueNode, nil, true, lOperation.Servers.ValueNode,
+				nil)
+		}
+		if lOperation.Servers.IsEmpty() && !rOperation.Servers.IsEmpty() {
+			CreateChange(&changes, PropertyAdded, v3.ServersLabel,
+				nil, rOperation.Servers.ValueNode, false, nil,
+				rOperation.Servers.Value)
+		}
+		oc.ExtensionChanges = CompareExtensions(lOperation.Extensions, rOperation.Extensions)
 		
+		// todo: callbacks
 	}
 	CheckProperties(props)
 	oc.Changes = changes
