@@ -716,3 +716,484 @@ security:
 	assert.Equal(t, "thongs", extChanges.Changes[0].Original)
 
 }
+
+func TestCompareOperations_V3(t *testing.T) {
+
+	left := `tags:
+  - one
+  - two
+summary: hello
+description: hello there buddy.
+operationId: aTest
+requestBody:
+  description: a request
+  content:
+    fish/cake:
+      schema:
+        type: int
+responses:
+  "200":
+    description: OK
+security:
+  - beer:
+    - burgers
+    - chips
+    - beans
+parameters:
+  - name: honey
+  - name: bunny
+    in: fridge`
+
+	right := left
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Nil(t, extChanges)
+}
+
+func TestCompareOperations_V3_ModifyParam(t *testing.T) {
+
+	left := `parameters:
+  - name: honey
+  - name: bunny
+    in: fridge`
+
+	right := `parameters:
+  - name: honey
+  - name: bunny
+    in: attic`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, Modified, extChanges.ParameterChanges[0].Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddParam(t *testing.T) {
+
+	left := `parameters:
+  - name: honey
+  - name: bunny
+    in: fridge`
+
+	right := `parameters:
+  - name: honey
+  - name: bunny
+    in: fridge
+  - name: pb33f
+    in: the_ranch`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveParam(t *testing.T) {
+
+	left := `parameters:
+  - name: honey
+  - name: bunny
+    in: fridge`
+
+	right := `parameters:
+  - name: honey
+  - name: bunny
+    in: fridge
+  - name: pb33f
+    in: the_ranch`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveParams(t *testing.T) {
+
+	left := `operationId: ohNoes
+parameters:
+  - name: honey
+  - name: bunny
+    in: fridge`
+
+	right := `operationId: ohNoes`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddParams(t *testing.T) {
+
+	left := `operationId: ohNoes
+parameters:
+  - name: honey
+  - name: bunny
+    in: fridge`
+
+	right := `operationId: ohNoes`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_ModifyServers(t *testing.T) {
+
+	left := `servers:
+  - url: https://pb33f.io
+  - description: nourl!`
+
+	right := `servers:
+  - url: https://pb33f.io
+    description: new!
+  - description: nourl!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.ServerChanges[0].Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddServer(t *testing.T) {
+
+	left := `servers:
+  - url: https://pb33f.io`
+
+	right := `servers:
+  - url: https://pb33f.io
+  - url: https://quobix.com`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveServer(t *testing.T) {
+
+	left := `servers:
+  - url: https://pb33f.io`
+
+	right := `servers:
+  - url: https://pb33f.io
+  - url: https://quobix.com`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddServerToOp(t *testing.T) {
+
+	left := `operationId: noServers!`
+
+	right := `operationId: noServers!
+servers:
+  - url: https://pb33f.io
+  - url: https://quobix.com`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveServerFromOp(t *testing.T) {
+
+	left := `operationId: noServers!`
+
+	right := `operationId: noServers!
+servers:
+  - url: https://pb33f.io
+  - url: https://quobix.com`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_ModifySecurity(t *testing.T) {
+
+	left := `operationId: coldSecurity
+security:
+  - winter:
+    - cold`
+
+	right := `operationId: coldSecurity
+security:
+  - winter:
+    - cold
+    - brrr.`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
+
+	left := `requestBody:
+  description: jammy`
+
+	right := `requestBody:
+  description: gooey`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, Modified, extChanges.RequestBodyChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddRequestBody(t *testing.T) {
+
+	left := `operationId: noRequestBody`
+
+	right := `operationId: noRequestBody
+requestBody:
+  description: jammy`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_ModifyExtension(t *testing.T) {
+
+	left := `x-pizza: yummy`
+
+	right := `x-pizza: yammy!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, Modified, extChanges.ExtensionChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveRequestBody(t *testing.T) {
+
+	left := `operationId: noRequestBody`
+
+	right := `operationId: noRequestBody
+requestBody:
+  description: jammy`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(&lNode, &lDoc)
+	_ = low.BuildModel(&rNode, &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}

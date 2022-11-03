@@ -156,7 +156,9 @@ func (o *Operation) Hash() [32]byte {
 		f = append(f, low.GenerateHashString(o.Responses.Value))
 	}
 	if !o.Security.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.Security.Value))
+		for k := range o.Security.Value {
+			f = append(f, low.GenerateHashString(o.Security.Value[k].Value))
+		}
 	}
 	if !o.Deprecated.IsEmpty() {
 		f = append(f, fmt.Sprint(o.Deprecated.Value))
