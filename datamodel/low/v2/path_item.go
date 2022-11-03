@@ -4,9 +4,12 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -178,4 +181,44 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the PathItem object
+func (p *PathItem) Hash() [32]byte {
+	var f []string
+	if !p.Ref.IsEmpty() {
+		f = append(f, p.Ref.Value)
+	}
+	if !p.Get.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Get.Value))
+	}
+	if !p.Put.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Put.Value))
+	}
+	if !p.Post.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Post.Value))
+	}
+	if !p.Delete.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Delete.Value))
+	}
+	if !p.Options.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Options.Value))
+	}
+	if !p.Head.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Head.Value))
+	}
+	if !p.Patch.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Patch.Value))
+	}
+	keys := make([]string, len(p.Parameters.Value))
+	for k := range p.Parameters.Value {
+		keys[k] = low.GenerateHashString(p.Parameters.Value[k].Value)
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	for k := range p.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

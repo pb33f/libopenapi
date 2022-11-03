@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -33,6 +35,58 @@ type PathItem struct {
 	Servers     low.NodeReference[[]low.ValueReference[*Server]]
 	Parameters  low.NodeReference[[]low.ValueReference[*Parameter]]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+// Hash will return a consistent SHA256 Hash of the PathItem object
+func (p *PathItem) Hash() [32]byte {
+	var f []string
+	if !p.Description.IsEmpty() {
+		f = append(f, p.Description.Value)
+	}
+	if !p.Summary.IsEmpty() {
+		f = append(f, p.Summary.Value)
+	}
+	if !p.Get.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Get.Value))
+	}
+	if !p.Put.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Put.Value))
+	}
+	if !p.Post.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Post.Value))
+	}
+	if !p.Delete.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Delete.Value))
+	}
+	if !p.Options.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Options.Value))
+	}
+	if !p.Head.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Head.Value))
+	}
+	if !p.Patch.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Patch.Value))
+	}
+	if !p.Trace.IsEmpty() {
+		f = append(f, low.GenerateHashString(p.Trace.Value))
+	}
+	keys := make([]string, len(p.Parameters.Value))
+	for k := range p.Parameters.Value {
+		keys[k] = low.GenerateHashString(p.Parameters.Value[k].Value)
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(p.Servers.Value))
+	for k := range p.Servers.Value {
+		keys[k] = low.GenerateHashString(p.Servers.Value[k].Value)
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	for k := range p.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // FindExtension attempts to find an extension

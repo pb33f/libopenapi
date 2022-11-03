@@ -4,6 +4,7 @@
 package low
 
 type SharedParameters interface {
+	Hash() [32]byte
 	GetType() *NodeReference[string]
 	GetDescription() *NodeReference[string]
 	GetDeprecated() *NodeReference[bool]
