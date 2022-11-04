@@ -24,8 +24,8 @@ func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -36,9 +36,12 @@ func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
 
 func TestCompareDiscriminator_PropertyNameRemoved(t *testing.T) {
 
-	left := `propertyName: chicken`
+	left := `mapping:
+  cake: burger
+propertyName: chicken`
 
-	right := ``
+	right := `mapping:
+  cake: burger`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -47,8 +50,8 @@ func TestCompareDiscriminator_PropertyNameRemoved(t *testing.T) {
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -58,9 +61,12 @@ func TestCompareDiscriminator_PropertyNameRemoved(t *testing.T) {
 
 func TestCompareDiscriminator_PropertyNameAdded(t *testing.T) {
 
-	left := ``
+	left := `mapping:
+  cake: burger
+propertyName: chicken`
 
-	right := `propertyName: chicken`
+	right := `mapping:
+  cake: burger`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -69,11 +75,11 @@ func TestCompareDiscriminator_PropertyNameAdded(t *testing.T) {
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
-	extChanges := CompareDiscriminator(&lDoc, &rDoc)
+	extChanges := CompareDiscriminator(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -94,8 +100,8 @@ mapping:
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -130,8 +136,8 @@ mapping:
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -159,8 +165,8 @@ mapping:
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -190,8 +196,8 @@ mapping:
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -226,8 +232,8 @@ mapping:
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
@@ -255,8 +261,8 @@ func TestCompareDiscriminator_Identical(t *testing.T) {
 	// create low level objects
 	var lDoc base.Discriminator
 	var rDoc base.Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)

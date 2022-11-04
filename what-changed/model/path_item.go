@@ -162,7 +162,7 @@ func ComparePathItems(l, r any) *PathItemChanges {
 		compareOpenAPIPathItem(lPath, rPath, &changes, pc)
 	}
 
-	//CheckProperties(props)
+	CheckProperties(props)
 	pc.Changes = changes
 	return pc
 }

@@ -32,8 +32,8 @@ enum:
 	// create low level objects
 	var lDoc v3.ServerVariable
 	var rDoc v3.ServerVariable
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareServerVariables(&lDoc, &rDoc)
@@ -61,8 +61,8 @@ enum:
 	// create low level objects
 	var lDoc v3.ServerVariable
 	var rDoc v3.ServerVariable
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareServerVariables(&lDoc, &rDoc)
@@ -94,8 +94,8 @@ enum:
 	// create low level objects
 	var lDoc v3.ServerVariable
 	var rDoc v3.ServerVariable
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareServerVariables(&lDoc, &rDoc)
@@ -123,8 +123,8 @@ enum:
 	// create low level objects
 	var lDoc v3.ServerVariable
 	var rDoc v3.ServerVariable
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareServerVariables(&lDoc, &rDoc)
@@ -153,8 +153,8 @@ enum:
 	// create low level objects
 	var lDoc v3.ServerVariable
 	var rDoc v3.ServerVariable
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	// compare.
 	extChanges := CompareServerVariables(&rDoc, &lDoc)
