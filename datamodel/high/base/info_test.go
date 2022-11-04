@@ -31,7 +31,7 @@ x-cli-name: chicken cli`
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
 	var lowInfo lowbase.Info
-	_ = lowmodel.BuildModel(&cNode, &lowInfo)
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowInfo)
 	_ = lowInfo.Build(cNode.Content[0], nil)
 
 	highInfo := NewInfo(&lowInfo)
@@ -97,7 +97,7 @@ url: https://opensource.org/licenses/MIT`
 
 	// build out the low-level model
 	var lowLicense lowbase.License
-	_ = lowmodel.BuildModel(&node, &lowLicense)
+	_ = lowmodel.BuildModel(node.Content[0], &lowLicense)
 	_ = lowLicense.Build(node.Content[0], nil)
 
 	// build the high level model

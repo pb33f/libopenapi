@@ -36,7 +36,7 @@ links:
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n v3.Response
-	_ = low.BuildModel(&idxNode, &n)
+	_ = low.BuildModel(idxNode.Content[0], &n)
 	_ = n.Build(idxNode.Content[0], idx)
 
 	r := NewResponse(&n)
