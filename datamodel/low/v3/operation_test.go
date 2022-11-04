@@ -46,7 +46,7 @@ servers:
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Operation
-	err := low.BuildModel(&idxNode, &n)
+	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)

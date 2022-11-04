@@ -41,7 +41,7 @@ x-b33f: princess`
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n ExternalDoc
-	err := low.BuildModel(&idxNode, &n)
+	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)

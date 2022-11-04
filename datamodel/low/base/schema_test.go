@@ -125,7 +125,7 @@ func Test_Schema(t *testing.T) {
 	assert.NoError(t, mErr)
 
 	sch := Schema{}
-	mbErr := low.BuildModel(&rootNode, &sch)
+	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
 
 	schErr := sch.Build(rootNode.Content[0], nil)
@@ -280,7 +280,7 @@ examples:
 	assert.NoError(t, mErr)
 
 	sch := Schema{}
-	mbErr := low.BuildModel(&rootNode, &sch)
+	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
 
 	schErr := sch.Build(rootNode.Content[0], nil)

@@ -17,7 +17,7 @@ func TestSchemaProxy_Build(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(&idxNode, nil)
+	err := sch.Build(idxNode.Content[0], nil)
 	assert.NoError(t, err)
 	assert.Equal(t, "something", sch.Schema().Description.Value)
 	assert.Empty(t, sch.GetSchemaReference())
