@@ -23,7 +23,7 @@ x-hack: code`
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
 	var lowExt lowbase.ExternalDoc
-	_ = lowmodel.BuildModel(&cNode, &lowExt)
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowExt)
 
 	_ = lowExt.Build(cNode.Content[0], nil)
 
@@ -51,7 +51,7 @@ x-hack: code`
 
 	// build low-level ExternalDoc
 	var lowExt lowbase.ExternalDoc
-	_ = lowmodel.BuildModel(&node, &lowExt)
+	_ = lowmodel.BuildModel(node.Content[0], &lowExt)
 
 	// build out low-level properties (like extensions)
 	_ = lowExt.Build(node.Content[0], nil)

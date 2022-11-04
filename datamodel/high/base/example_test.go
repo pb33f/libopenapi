@@ -26,7 +26,7 @@ x-hack: code`
 
 	// build low
 	var lowExample lowbase.Example
-	_ = lowmodel.BuildModel(&cNode, &lowExample)
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowExample)
 
 	_ = lowExample.Build(cNode.Content[0], nil)
 
@@ -50,7 +50,7 @@ func TestExtractExamples(t *testing.T) {
 
 	// build low
 	var lowExample lowbase.Example
-	_ = lowmodel.BuildModel(&cNode, &lowExample)
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowExample)
 
 	_ = lowExample.Build(cNode.Content[0], nil)
 
@@ -79,7 +79,7 @@ x-hack: code`
 
 	// build low-level example
 	var lowExample lowbase.Example
-	_ = lowmodel.BuildModel(&node, &lowExample)
+	_ = lowmodel.BuildModel(node.Content[0], &lowExample)
 
 	// build out low-level example
 	_ = lowExample.Build(node.Content[0], nil)

@@ -104,7 +104,7 @@ there:
 	assert.NoError(t, mErr)
 
 	hd := hotdog{}
-	cErr := BuildModel(&rootNode, &hd)
+	cErr := BuildModel(rootNode.Content[0], &hd)
 	assert.Equal(t, 200, hd.Fat.Value)
 	assert.Equal(t, 3, hd.Fat.ValueNode.Line)
 	assert.Equal(t, true, hd.Grilled.Value)
@@ -156,7 +156,7 @@ func TestBuildModel_UseUnsupportedPrimitive(t *testing.T) {
 	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.NoError(t, mErr)
 
-	cErr := BuildModel(&rootNode, &ns)
+	cErr := BuildModel(rootNode.Content[0], &ns)
 	assert.Error(t, cErr)
 	assert.Empty(t, ns.cake)
 
@@ -183,7 +183,7 @@ thing: yeah`
 	try := BuildModel(nil, ins)
 	assert.NoError(t, try)
 
-	cErr := BuildModel(&rootNode, ins)
+	cErr := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, cErr)
 	assert.Empty(t, ins.PathItems.Value)
 	assert.Empty(t, ins.Extensions.Value)
@@ -205,7 +205,7 @@ func TestSetField_NodeRefAny_Error(t *testing.T) {
 	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.NoError(t, mErr)
 
-	try := BuildModel(&rootNode, ins)
+	try := BuildModel(rootNode.Content[0], ins)
 	assert.Error(t, try)
 
 }
@@ -226,7 +226,7 @@ func TestSetField_MapHelperWrapped(t *testing.T) {
 	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.NoError(t, mErr)
 
-	try := BuildModel(&rootNode, ins)
+	try := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, try)
 	assert.Len(t, ins.Thing.Value, 3)
 }
@@ -247,7 +247,7 @@ func TestSetField_MapHelper(t *testing.T) {
 	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.NoError(t, mErr)
 
-	try := BuildModel(&rootNode, ins)
+	try := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, try)
 	assert.Len(t, ins.Thing, 3)
 }
@@ -268,7 +268,7 @@ func TestSetField_ArrayHelper(t *testing.T) {
 	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.NoError(t, mErr)
 
-	try := BuildModel(&rootNode, ins)
+	try := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, try)
 	assert.Len(t, ins.Thing.Value, 3)
 }
@@ -316,7 +316,7 @@ func TestBuildModelAsync(t *testing.T) {
 	var wg sync.WaitGroup
 	var errors []error
 	wg.Add(1)
-	BuildModelAsync(&rootNode, ins, &wg, &errors)
+	BuildModelAsync(rootNode.Content[0], ins, &wg, &errors)
 	wg.Wait()
 	assert.Len(t, ins.Thing.Value, 3)
 
@@ -340,7 +340,7 @@ func TestBuildModelAsync_Error(t *testing.T) {
 	var wg sync.WaitGroup
 	var errors []error
 	wg.Add(1)
-	BuildModelAsync(&rootNode, ins, &wg, &errors)
+	BuildModelAsync(rootNode.Content[0], ins, &wg, &errors)
 	wg.Wait()
 	assert.Len(t, errors, 1)
 	assert.Len(t, ins.Thing, 0)

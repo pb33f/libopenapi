@@ -20,7 +20,7 @@ mapping:
 	assert.NoError(t, mErr)
 
 	var n Discriminator
-	err := low.BuildModel(&idxNode, &n)
+	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 	assert.Equal(t, "nothing", n.FindMappingValue("something").Value)
 	assert.Nil(t, n.FindMappingValue("freshCakes"))

@@ -111,7 +111,7 @@ type Swagger struct {
 	SpecInfo *datamodel.SpecInfo
 }
 
-// FindExte
+// FindExtension locates an extension from the root of the Swagger document.
 func (s *Swagger) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, s.Extensions)
 }
@@ -129,7 +129,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 	var errors []error
 
 	// build out swagger scalar variables.
-	_ = low.BuildModel(info.RootNode, &doc)
+	_ = low.BuildModel(info.RootNode.Content[0], &doc)
 
 	// extract externalDocs
 	extDocs, err := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode, idx)

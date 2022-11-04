@@ -137,10 +137,32 @@ func ComparePathItems(l, r any) *PathItemChanges {
 			return nil
 		}
 
-		props = append(props, compareOpenAPIPathItem(lPath, rPath, &changes, pc)...)
+		// description
+		props = append(props, &PropertyCheck{
+			LeftNode:  lPath.Description.ValueNode,
+			RightNode: rPath.Description.ValueNode,
+			Label:     v3.DescriptionLabel,
+			Changes:   &changes,
+			Breaking:  false,
+			Original:  lPath,
+			New:       lPath,
+		})
+
+		// summary
+		props = append(props, &PropertyCheck{
+			LeftNode:  lPath.Summary.ValueNode,
+			RightNode: rPath.Summary.ValueNode,
+			Label:     v3.SummaryLabel,
+			Changes:   &changes,
+			Breaking:  false,
+			Original:  lPath,
+			New:       lPath,
+		})
+
+		compareOpenAPIPathItem(lPath, rPath, &changes, pc)
 	}
 
-	CheckProperties(props)
+	//CheckProperties(props)
 	pc.Changes = changes
 	return pc
 }
@@ -380,31 +402,9 @@ func checkParameters(lParams, rParams []low.ValueReference[low.IsParameter], cha
 	pc.ParameterChanges = paramChanges
 }
 
-func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *PathItemChanges) []*PropertyCheck {
+func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *PathItemChanges) {
 
-	var props []*PropertyCheck
-
-	// description
-	props = append(props, &PropertyCheck{
-		LeftNode:  lPath.Description.ValueNode,
-		RightNode: rPath.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   changes,
-		Breaking:  false,
-		Original:  lPath,
-		New:       lPath,
-	})
-
-	// summary
-	props = append(props, &PropertyCheck{
-		LeftNode:  lPath.Summary.ValueNode,
-		RightNode: rPath.Summary.ValueNode,
-		Label:     v3.SummaryLabel,
-		Changes:   changes,
-		Breaking:  false,
-		Original:  lPath,
-		New:       lPath,
-	})
+	//var props []*PropertyCheck
 
 	totalOps := 0
 	opChan := make(chan opCheck)
@@ -578,7 +578,6 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 		}
 	}
 	pc.ExtensionChanges = CompareExtensions(lPath.Extensions, rPath.Extensions)
-	return props
 }
 
 func checkOperation(l, r any, done chan opCheck, method string) {

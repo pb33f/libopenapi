@@ -46,7 +46,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 
 		var vn, kn *yaml.Node
 		for _, tryCase := range cases {
-			kn, vn = utils.FindKeyNode(utils.ConvertCase(fName, tryCase), node.Content)
+			kn, vn = utils.FindKeyNodeTop(utils.ConvertCase(fName, tryCase), node.Content)
 			if vn != nil {
 				break
 			}

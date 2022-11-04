@@ -70,7 +70,7 @@ func TestComponents_Build_Success(t *testing.T) {
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Components
-	err := low.BuildModel(&idxNode, &n)
+	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
 	err = n.Build(idxNode.Content[0], idx)
@@ -93,9 +93,9 @@ func TestComponents_Build_Success(t *testing.T) {
 	assert.Equal(t, "fifteen of many", n.FindLink("fifteen").Value.Description.Value)
 	assert.Equal(t, "sixteen of many", n.FindLink("sixteen").Value.Description.Value)
 	assert.Equal(t, "seventeen of many",
-		n.FindCallback("seventeen").Value.FindExpression("{reference}").Value.Description.Value)
+		n.FindCallback("seventeen").Value.FindExpression("{reference}").Value.Post.Value.Description.Value)
 	assert.Equal(t, "eighteen of many",
-		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Description.Value)
+		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Post.Value.Description.Value)
 
 }
 

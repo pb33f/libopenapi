@@ -44,6 +44,7 @@ func BenchmarkCreateDocument(b *testing.B) {
 
 func TestCreateDocument(t *testing.T) {
 	initTest()
+	doc := doc
 	assert.Equal(t, "2.0", doc.SpecInfo.Version)
 	assert.Equal(t, "1.0.6", doc.Info.Value.Version.Value)
 	assert.Equal(t, "petstore.swagger.io", doc.Host.Value)

@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -121,4 +123,26 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	p.PathItems = pathsMap
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the PathItem object
+func (p *Paths) Hash() [32]byte {
+	var f []string
+	l := make([]string, len(p.PathItems))
+	keys := make(map[string]low.ValueReference[*PathItem])
+	z := 0
+	for k := range p.PathItems {
+		keys[k.Value] = p.PathItems[k]
+		l[z] = k.Value
+		z++
+	}
+	sort.Strings(l)
+	for k := range l {
+		f = append(f, low.GenerateHashString(keys[l[k]].Value))
+	}
+	for k := range p.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

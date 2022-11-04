@@ -519,7 +519,7 @@ func TestExtractObjectRaw(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err := ExtractObjectRaw[*pizza](&cNode, idx)
+	tag, err := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, tag)
 	assert.Equal(t, "hello pizza", tag.Description.Value)
@@ -1143,8 +1143,7 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 	yml := `components:
   schemas:
     stank:
-      things:
-        almostWork: 99`
+      almostWork: 99`
 
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)

@@ -4,9 +4,12 @@
 package v2
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -24,6 +27,16 @@ func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 		}
 	}
 	return nil
+}
+
+// FindPathAndKey attempts to locate a PathItem instance, given a path key.
+func (p *Paths) FindPathAndKey(path string) (*low.KeyReference[string], *low.ValueReference[*PathItem]) {
+	for k, j := range p.PathItems {
+		if k.Value == path {
+			return &k, &j
+		}
+	}
+	return nil, nil
 }
 
 // FindExtension will attempt to locate an extension value given a name.
@@ -95,4 +108,26 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	p.PathItems = pathsMap
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the PathItem object
+func (p *Paths) Hash() [32]byte {
+	var f []string
+	l := make([]string, len(p.PathItems))
+	keys := make(map[string]low.ValueReference[*PathItem])
+	z := 0
+	for k := range p.PathItems {
+		keys[k.Value] = p.PathItems[k]
+		l[z] = k.Value
+		z++
+	}
+	sort.Strings(l)
+	for k := range l {
+		f = append(f, low.GenerateHashString(keys[l[k]].Value))
+	}
+	for k := range p.Extensions {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value,
+			sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
