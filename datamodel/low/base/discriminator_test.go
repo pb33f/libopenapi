@@ -44,8 +44,8 @@ propertyName: freshCakes`
 	// create low level objects
 	var lDoc Discriminator
 	var rDoc Discriminator
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 }
