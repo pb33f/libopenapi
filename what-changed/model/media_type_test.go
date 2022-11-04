@@ -38,8 +38,8 @@ encoding:
 	// create low level objects
 	var lDoc v3.MediaType
 	var rDoc v3.MediaType
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -75,8 +75,8 @@ encoding:
 	// create low level objects
 	var lDoc v3.MediaType
 	var rDoc v3.MediaType
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -114,8 +114,8 @@ encoding:
 	// create low level objects
 	var lDoc v3.MediaType
 	var rDoc v3.MediaType
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -153,8 +153,8 @@ encoding:
 	// create low level objects
 	var lDoc v3.MediaType
 	var rDoc v3.MediaType
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -198,8 +198,8 @@ x-tea: cup`
 	// create low level objects
 	var lDoc v3.MediaType
 	var rDoc v3.MediaType
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 

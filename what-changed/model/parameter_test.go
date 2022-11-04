@@ -24,8 +24,8 @@ func TestCompareParameters(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -46,8 +46,8 @@ func TestCompareParameters_V3(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -70,8 +70,8 @@ func TestCompareParameters_V3_Schema(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -97,8 +97,8 @@ schema:
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -124,8 +124,8 @@ schema:
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -149,8 +149,8 @@ func TestCompareParameters_V3_Extensions(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -175,8 +175,8 @@ func TestCompareParameters_V3_ExampleChange(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -198,8 +198,8 @@ func TestCompareParameters_V3_ExampleEqual(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -221,8 +221,8 @@ example: a string`
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -246,8 +246,8 @@ example: a string`
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -274,8 +274,8 @@ func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -305,8 +305,8 @@ func TestCompareParameters_V3_ExamplesAdded(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -336,8 +336,8 @@ func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -367,8 +367,8 @@ func TestCompareParameters_V3_ContentChanged(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -402,8 +402,8 @@ func TestCompareParameters_V3_ContentAdded(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -426,8 +426,8 @@ func TestCompareParameters_V2_DefaultChange(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -451,8 +451,8 @@ func TestCompareParameters_V2_EnumChange(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -478,8 +478,8 @@ func TestCompareParameters_V2_EnumEqual_Reorder(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -501,8 +501,8 @@ example: a string`
 	// create low level objects
 	var lDoc v3.Parameter
 	var rDoc v3.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -525,8 +525,8 @@ func TestCompareParameters_V2_Equal(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -547,8 +547,8 @@ func TestCompareParameters_V2(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -571,8 +571,8 @@ func TestCompareParameters_V2_ItemsChange(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -598,8 +598,8 @@ items:
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -624,8 +624,8 @@ items:
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -648,8 +648,8 @@ func TestCompareParameters_V2_Extensions(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Parameter
 	var rDoc v2.Parameter
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 

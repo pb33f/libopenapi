@@ -28,8 +28,8 @@ func TestCompareSecurityRequirement_V2(t *testing.T) {
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -61,8 +61,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -93,8 +93,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -125,8 +125,8 @@ milk:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -161,8 +161,8 @@ milk:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -196,8 +196,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -234,8 +234,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -268,8 +268,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -302,8 +302,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -334,8 +334,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -370,8 +370,8 @@ biscuit:
 	// create low level objects
 	var lDoc base.SecurityRequirement
 	var rDoc base.SecurityRequirement
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -400,8 +400,8 @@ biscuit:
 //	// create low level objects
 //	var lDoc v3.SecurityRequirement
 //	var rDoc v3.SecurityRequirement
-//	_ = low.BuildModel(&lNode, &lDoc)
-//	_ = low.BuildModel(&rNode, &rDoc)
+//	_ = low.BuildModel(lNode.Content[0], &lDoc)
+//	_ = low.BuildModel(rNode.Content[0], &rDoc)
 //	_ = lDoc.Build(lNode.Content[0], nil)
 //	_ = rDoc.Build(rNode.Content[0], nil)
 //
@@ -428,8 +428,8 @@ biscuit:
 //	// create low level objects
 //	var lDoc v3.SecurityRequirement
 //	var rDoc v3.SecurityRequirement
-//	_ = low.BuildModel(&lNode, &lDoc)
-//	_ = low.BuildModel(&rNode, &rDoc)
+//	_ = low.BuildModel(lNode.Content[0], &lDoc)
+//	_ = low.BuildModel(rNode.Content[0], &rDoc)
 //	_ = lDoc.Build(lNode.Content[0], nil)
 //	_ = rDoc.Build(rNode.Content[0], nil)
 //
@@ -458,8 +458,8 @@ biscuit:
 //	// create low level objects
 //	var lDoc v3.SecurityRequirement
 //	var rDoc v3.SecurityRequirement
-//	_ = low.BuildModel(&lNode, &lDoc)
-//	_ = low.BuildModel(&rNode, &rDoc)
+//	_ = low.BuildModel(lNode.Content[0], &lDoc)
+//	_ = low.BuildModel(rNode.Content[0], &rDoc)
 //	_ = lDoc.Build(lNode.Content[0], nil)
 //	_ = rDoc.Build(rNode.Content[0], nil)
 //
@@ -490,8 +490,8 @@ biscuit:
 //	// create low level objects
 //	var lDoc v3.SecurityRequirement
 //	var rDoc v3.SecurityRequirement
-//	_ = low.BuildModel(&lNode, &lDoc)
-//	_ = low.BuildModel(&rNode, &rDoc)
+//	_ = low.BuildModel(lNode.Content[0], &lDoc)
+//	_ = low.BuildModel(rNode.Content[0], &rDoc)
 //	_ = lDoc.Build(lNode.Content[0], nil)
 //	_ = rDoc.Build(rNode.Content[0], nil)
 //
@@ -522,8 +522,8 @@ biscuit:
 //	// create low level objects
 //	var lDoc v3.SecurityRequirement
 //	var rDoc v3.SecurityRequirement
-//	_ = low.BuildModel(&lNode, &lDoc)
-//	_ = low.BuildModel(&rNode, &rDoc)
+//	_ = low.BuildModel(lNode.Content[0], &lDoc)
+//	_ = low.BuildModel(rNode.Content[0], &rDoc)
 //	_ = lDoc.Build(lNode.Content[0], nil)
 //	_ = rDoc.Build(rNode.Content[0], nil)
 //

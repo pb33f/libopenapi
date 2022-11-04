@@ -25,8 +25,8 @@ url: https://pb33f.io`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -51,8 +51,8 @@ url: https://pb33f.io`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -77,8 +77,8 @@ name: buckaroo`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -103,8 +103,8 @@ name: buckaroo`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -128,8 +128,8 @@ email: buckaroo@pb33f.io`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -154,8 +154,8 @@ email: buckaroo@pb33f.io`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -180,8 +180,8 @@ email: dave@quobix.com`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -207,8 +207,8 @@ email: dave@quobix.com`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -232,8 +232,8 @@ url: https://pb33f.io`
 	// create low level objects
 	var lDoc lowbase.Contact
 	var rDoc lowbase.Contact
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 

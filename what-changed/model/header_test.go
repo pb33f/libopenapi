@@ -71,8 +71,8 @@ func TestCompareHeaders_v2_identical(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Header
 	var rDoc v2.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -114,8 +114,8 @@ x-beer: really yummy`
 	// create low level objects
 	var lDoc v2.Header
 	var rDoc v2.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -157,8 +157,8 @@ x-beer: yummy`
 	// create low level objects
 	var lDoc v2.Header
 	var rDoc v2.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -201,8 +201,8 @@ x-beer: yummy`
 	// create low level objects
 	var lDoc v2.Header
 	var rDoc v2.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -227,8 +227,8 @@ func TestCompareHeaders_v2_ItemsModified(t *testing.T) {
 	// create low level objects
 	var lDoc v2.Header
 	var rDoc v2.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -250,8 +250,8 @@ func TestCompareHeaders_v3_identical(t *testing.T) {
 	// create low level objects
 	var lDoc v3.Header
 	var rDoc v3.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
@@ -292,8 +292,8 @@ x-beer: yummy`
 	// create low level objects
 	var lDoc v3.Header
 	var rDoc v3.Header
-	_ = low.BuildModel(&lNode, &lDoc)
-	_ = low.BuildModel(&rNode, &rDoc)
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(lNode.Content[0], nil)
 	_ = rDoc.Build(rNode.Content[0], nil)
 
