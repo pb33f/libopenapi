@@ -150,6 +150,7 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "a prefix", j.XML.Value.Prefix.Value)
 	assert.Equal(t, true, j.XML.Value.Attribute.Value)
 	assert.Len(t, j.XML.Value.Extensions, 1)
+	assert.Len(t, j.XML.Value.GetExtensions(), 1)
 
 	assert.NotNil(t, v.Value.Schema().AdditionalProperties.Value)
 
@@ -1246,17 +1247,25 @@ func TestSchema_Hash_Equal(t *testing.T) {
 
 	left := `schema:
   title: an OK message
+  required:
+    - propA
+  enum:
+    - one
   properties:
     propA:
       title: a proxy property
       type: string`
 
 	right := `schema:
+  enum:
+    - one
   title: an OK message
   properties:
     propA:
       title: a proxy property
-      type: string`
+      type: string
+  required:
+    - propA`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
