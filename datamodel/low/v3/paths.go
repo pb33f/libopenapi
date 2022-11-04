@@ -35,6 +35,16 @@ func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 	return nil
 }
 
+// FindPathAndKey attempts to locate a PathItem instance, given a path key.
+func (p *Paths) FindPathAndKey(path string) (*low.KeyReference[string], *low.ValueReference[*PathItem]) {
+	for k, j := range p.PathItems {
+		if k.Value == path {
+			return &k, &j
+		}
+	}
+	return nil, nil
+}
+
 // FindExtension will attempt to locate an extension using the specified string.
 func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
