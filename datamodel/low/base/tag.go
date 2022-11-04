@@ -39,9 +39,6 @@ func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 // GetExtensions returns all Tag extensions and satisfies the low.HasExtensions interface.
 func (t *Tag) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
-	if t == nil {
-		return nil
-	}
 	return t.Extensions
 }
 
