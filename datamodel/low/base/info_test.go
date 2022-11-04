@@ -4,11 +4,12 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestInfo_Build(t *testing.T) {
@@ -22,7 +23,8 @@ contact:
   email: buckaroo@pb33f.io
 license:
  name: magic
- url: https://pb33f.io/license`
+ url: https://pb33f.io/license
+x-cli-name: pizza cli`
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -49,6 +51,10 @@ license:
 	assert.NotNil(t, lic)
 	assert.Equal(t, "magic", lic.Name.Value)
 	assert.Equal(t, "https://pb33f.io/license", lic.URL.Value)
+
+	cliName := n.FindExtension("x-cli-name")
+	assert.NotNil(t, cliName)
+	assert.Equal(t, "pizza cli", cliName.Value)
 }
 
 func TestContact_Build(t *testing.T) {
