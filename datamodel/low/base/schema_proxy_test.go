@@ -24,3 +24,17 @@ func TestSchemaProxy_Build(t *testing.T) {
 	assert.NotNil(t, sch.GetValueNode())
 	assert.False(t, sch.IsSchemaReference())
 }
+
+func TestSchemaProxy_Build_CheckRef(t *testing.T) {
+
+	yml := `$ref: wat`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.True(t, sch.IsSchemaReference())
+	assert.Equal(t, "wat", sch.GetSchemaReference())
+}

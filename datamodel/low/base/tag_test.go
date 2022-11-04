@@ -33,6 +33,7 @@ x-coffee: tasty`
 	assert.Equal(t, "a description", n.Description.Value)
 	assert.Equal(t, "https://pb33f.io", n.ExternalDocs.Value.URL.Value)
 	assert.Equal(t, "tasty", n.FindExtension("x-coffee").Value)
+	assert.Len(t, n.GetExtensions(), 1)
 
 }
 
