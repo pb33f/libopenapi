@@ -5,15 +5,24 @@ package low
 
 type SharedParameters interface {
 	Hash() [32]byte
-	GetType() *NodeReference[string]
+	GetName() *NodeReference[string]
+	GetIn() *NodeReference[string]
 	GetDescription() *NodeReference[string]
-	GetDeprecated() *NodeReference[bool]
+	GetAllowEmptyValue() *NodeReference[bool]
+	GetRequired() *NodeReference[bool]
+	GetSchema() *NodeReference[any] // requires cast.
+}
+
+type HasDescription interface {
+	GetDescription() *NodeReference[string]
+}
+
+type SwaggerParameter interface {
+	SharedParameters
+	GetType() *NodeReference[string]
 	GetFormat() *NodeReference[string]
-	GetStyle() *NodeReference[string]
 	GetCollectionFormat() *NodeReference[string]
 	GetDefault() *NodeReference[any]
-	GetAllowReserved() *NodeReference[bool]
-	GetExplode() *NodeReference[bool]
 	GetMaximum() *NodeReference[int]
 	GetExclusiveMaximum() *NodeReference[bool]
 	GetMinimum() *NodeReference[int]
@@ -26,27 +35,6 @@ type SharedParameters interface {
 	GetUniqueItems() *NodeReference[bool]
 	GetEnum() *NodeReference[[]ValueReference[string]]
 	GetMultipleOf() *NodeReference[int]
-	GetExample() *NodeReference[any]
-	GetSchema() *NodeReference[any]   // requires cast.
-	GetExamples() *NodeReference[any] // requires cast
-	GetContent() *NodeReference[any]  // requires cast.
-	GetItems() *NodeReference[any]    // requires cast.
-}
-
-type IsParameter interface {
-	GetName() *NodeReference[string]
-	GetIn() *NodeReference[string]
-	SharedParameterHeader
-	SharedParameters
-}
-
-type SharedParameterHeader interface {
-	GetRequired() *NodeReference[bool]
-	GetAllowEmptyValue() *NodeReference[bool]
-}
-
-type HasDescription interface {
-	GetDescription() *NodeReference[string]
 }
 
 type SwaggerHeader interface {
@@ -82,7 +70,18 @@ type OpenAPIHeader interface {
 	GetRequired() *NodeReference[bool]
 	GetAllowEmptyValue() *NodeReference[bool]
 	GetSchema() *NodeReference[any]   // requires cast.
-	GetExamples() *NodeReference[any] // requires cast
+	GetExamples() *NodeReference[any] // requires cast.
+	GetContent() *NodeReference[any]  // requires cast.
+}
+
+type OpenAPIParameter interface {
+	SharedParameters
+	GetDeprecated() *NodeReference[bool]
+	GetStyle() *NodeReference[string]
+	GetAllowReserved() *NodeReference[bool]
+	GetExplode() *NodeReference[bool]
+	GetExample() *NodeReference[any]
+	GetExamples() *NodeReference[any] // requires cast.
 	GetContent() *NodeReference[any]  // requires cast.
 }
 
@@ -92,10 +91,10 @@ type SharedOperations interface {
 	GetDescription() NodeReference[string]
 	GetDeprecated() NodeReference[bool]
 	GetExtensions() map[KeyReference[string]]ValueReference[any]
-	GetExternalDocs() NodeReference[any] // requires cast
-	GetResponses() NodeReference[any]    // requires cast
-	GetParameters() NodeReference[any]   // requires cast
-	GetSecurity() NodeReference[any]     // requires cast
+	GetExternalDocs() NodeReference[any] // requires cast.
+	GetResponses() NodeReference[any]    // requires cast.
+	GetParameters() NodeReference[any]   // requires cast.
+	GetSecurity() NodeReference[any]     // requires cast.
 }
 
 type SwaggerOperations interface {
@@ -108,5 +107,5 @@ type SwaggerOperations interface {
 type OpenAPIOperations interface {
 	SharedOperations
 	//GetCallbacks() NodeReference[map[KeyReference[string]]ValueReference[any]] // requires cast
-	GetServers() NodeReference[any] // requires cast
+	GetServers() NodeReference[any] // requires cast.
 }

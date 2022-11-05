@@ -74,7 +74,7 @@ func addPropertyCheck(props *[]*PropertyCheck,
 	})
 }
 
-func addOpenAPIParameterProperties(left, right low.IsParameter, changes *[]*Change) []*PropertyCheck {
+func addOpenAPIParameterProperties(left, right low.OpenAPIParameter, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	// style
@@ -100,7 +100,7 @@ func addOpenAPIParameterProperties(left, right low.IsParameter, changes *[]*Chan
 	return props
 }
 
-func addSwaggerParameterProperties(left, right low.IsParameter, changes *[]*Change) []*PropertyCheck {
+func addSwaggerParameterProperties(left, right low.SwaggerParameter, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	// type
@@ -166,7 +166,7 @@ func addSwaggerParameterProperties(left, right low.IsParameter, changes *[]*Chan
 	return props
 }
 
-func addCommonParameterProperties(left, right low.IsParameter, changes *[]*Change) []*PropertyCheck {
+func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	addPropertyCheck(&props, left.GetName().ValueNode, right.GetName().ValueNode,
