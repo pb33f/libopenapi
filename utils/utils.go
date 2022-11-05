@@ -3,7 +3,6 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/iancoleman/strcase"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
 	"regexp"
@@ -206,7 +205,7 @@ type KeyNodeSearch struct {
 func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode *yaml.Node) {
 
 	for i, v := range nodes {
-		if key == v.Value {
+		if strings.ToLower(key) == strings.ToLower(v.Value) {
 			return v, nodes[i+1] // next node is what we need.
 		}
 	}
@@ -536,26 +535,6 @@ func RenderCodeSnippet(startNode *yaml.Node, specData []string, before, after in
 	}
 
 	return buf.String()
-}
-
-func ConvertCase(input string, convert Case) string {
-	if input == "" {
-		return ""
-	}
-	switch convert {
-	case PascalCase:
-		return strcase.ToCamel(input)
-	case CamelCase:
-		return strcase.ToLowerCamel(input)
-	case ScreamingKebabCase:
-		return strcase.ToScreamingKebab(input)
-	case ScreamingSnakeCase:
-		return strcase.ToScreamingSnake(input)
-	case SnakeCase:
-		return strcase.ToSnake(input)
-	default:
-		return input
-	}
 }
 
 func DetectCase(input string) Case {

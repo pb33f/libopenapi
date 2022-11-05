@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"reflect"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -39,19 +40,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 			continue // internal construct
 		}
 
-		// we need to find a matching field in the YAML, the cases may be off, so take no chances.
-		// TODO: investigate if a straight up to_lower will speed things up here, will it decrease or increase accuracy?
-		cases := []utils.Case{utils.CamelCase, utils.PascalCase, utils.ScreamingSnakeCase,
-			utils.SnakeCase, utils.KebabCase, utils.RegularCase}
-
-		var vn, kn *yaml.Node
-		for _, tryCase := range cases {
-			kn, vn = utils.FindKeyNodeTop(utils.ConvertCase(fName, tryCase), node.Content)
-			if vn != nil {
-				break
-			}
-		}
-
+		kn, vn := utils.FindKeyNodeTop(strings.ToLower(fName), node.Content)
 		if vn == nil {
 			// no point in going on.
 			continue
