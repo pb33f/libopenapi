@@ -114,7 +114,7 @@ security:
     - snow
 schemes:
   - ws
-  - http
+  - https
 responses:
   200:
     description: fruity
@@ -178,9 +178,9 @@ security:
 	assert.Len(t, n.GetSchemes().Value, 2)
 	assert.Len(t, n.GetProduces().Value, 2)
 	assert.Equal(t, "theMagicCastle", n.GetOperationId().Value)
-	assert.Len(t, n.GetParameters().Value, 2)
+	assert.Len(t, n.GetParameters().Value, 1)
 	assert.True(t, n.GetDeprecated().Value)
-	assert.Len(t, n.GetResponses(), 1)
-	assert.Len(t, n.GetSecurity(), 1)
+	assert.Len(t, n.GetResponses().Value.(*Responses).Codes, 1)
+	assert.Len(t, n.GetSecurity().Value, 1)
 	assert.Len(t, n.GetExtensions(), 1)
 }
