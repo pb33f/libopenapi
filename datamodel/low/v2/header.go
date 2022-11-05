@@ -134,21 +134,13 @@ func (h *Header) Hash() [32]byte {
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
-// IsHeader compliance methods
+// Getter methods to satisfy SwaggerHeader interface.
 
 func (h *Header) GetType() *low.NodeReference[string] {
 	return &h.Type
 }
 func (h *Header) GetDescription() *low.NodeReference[string] {
 	return &h.Description
-}
-func (h *Header) GetDeprecated() *low.NodeReference[bool] {
-	// not implemented.
-	return nil
-}
-func (h *Header) GetSchema() *low.NodeReference[any] {
-	// not implemented.
-	return nil
 }
 func (h *Header) GetFormat() *low.NodeReference[string] {
 	return &h.Format
@@ -161,21 +153,11 @@ func (h *Header) GetItems() *low.NodeReference[any] {
 	}
 	return &i
 }
-func (h *Header) GetStyle() *low.NodeReference[string] {
-	// not implemented.
-	return nil
-}
 func (h *Header) GetCollectionFormat() *low.NodeReference[string] {
 	return &h.CollectionFormat
 }
 func (h *Header) GetDefault() *low.NodeReference[any] {
 	return &h.Default
-}
-func (h *Header) GetAllowReserved() *low.NodeReference[bool] {
-	return nil // not implemented
-}
-func (h *Header) GetExplode() *low.NodeReference[bool] {
-	return nil // not implemented
 }
 func (h *Header) GetMaximum() *low.NodeReference[int] {
 	return &h.Maximum
@@ -212,19 +194,4 @@ func (h *Header) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
 }
 func (h *Header) GetMultipleOf() *low.NodeReference[int] {
 	return &h.MultipleOf
-}
-func (h *Header) GetExample() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (h *Header) GetExamples() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (h *Header) GetContent() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (h *Header) GetRequired() *low.NodeReference[bool] {
-	return nil // not implemented
-}
-func (h *Header) GetAllowEmptyValue() *low.NodeReference[bool] {
-	return nil // not implemented
 }

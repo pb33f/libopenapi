@@ -36,6 +36,12 @@ type Items struct {
 	UniqueItems      low.NodeReference[bool]
 	Enum             low.NodeReference[[]low.ValueReference[string]]
 	MultipleOf       low.NodeReference[int]
+	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+// FindExtension will attempt to locate an extension value using a name lookup.
+func (i *Items) FindExtension(ext string) *low.ValueReference[any] {
+	return low.FindItemInMap[any](ext, i.Extensions)
 }
 
 // Hash will return a consistent SHA256 Hash of the Items object
@@ -74,11 +80,15 @@ func (i *Items) Hash() [32]byte {
 	if i.Items.Value != nil {
 		f = append(f, fmt.Sprintf("%x", i.Items.Value.Hash()))
 	}
+	for k := range i.Extensions {
+		f = append(f, fmt.Sprintf("%s-%v", k.Value, i.Extensions[k].Value))
+	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // Build will build out items and default value.
 func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	i.Extensions = low.ExtractExtensions(root)
 	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
 	if iErr != nil {
 		return iErr
@@ -126,19 +136,6 @@ func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
 func (i *Items) GetType() *low.NodeReference[string] {
 	return &i.Type
 }
-func (i *Items) GetDescription() *low.NodeReference[string] {
-	// not implemented
-	return nil
-}
-
-func (i *Items) GetDeprecated() *low.NodeReference[bool] {
-	// not implemented.
-	return nil
-}
-func (i *Items) GetSchema() *low.NodeReference[any] {
-	// not implemented.
-	return &low.NodeReference[any]{}
-}
 func (i *Items) GetFormat() *low.NodeReference[string] {
 	return &i.Format
 }
@@ -146,25 +143,15 @@ func (i *Items) GetItems() *low.NodeReference[any] {
 	k := low.NodeReference[any]{
 		KeyNode:   i.Items.KeyNode,
 		ValueNode: i.Items.ValueNode,
-		Value:     i.Items.KeyNode,
+		Value:     i.Items.Value,
 	}
 	return &k
-}
-func (i *Items) GetStyle() *low.NodeReference[string] {
-	// not implemented.
-	return nil
 }
 func (i *Items) GetCollectionFormat() *low.NodeReference[string] {
 	return &i.CollectionFormat
 }
 func (i *Items) GetDefault() *low.NodeReference[any] {
 	return &i.Default
-}
-func (i *Items) GetAllowReserved() *low.NodeReference[bool] {
-	return nil // not implemented
-}
-func (i *Items) GetExplode() *low.NodeReference[bool] {
-	return nil // not implemented
 }
 func (i *Items) GetMaximum() *low.NodeReference[int] {
 	return &i.Maximum
@@ -191,7 +178,7 @@ func (i *Items) GetMaxItems() *low.NodeReference[int] {
 	return &i.MaxItems
 }
 func (i *Items) GetMinItems() *low.NodeReference[int] {
-	return &i.MaxItems
+	return &i.MinItems
 }
 func (i *Items) GetUniqueItems() *low.NodeReference[bool] {
 	return &i.UniqueItems
@@ -201,19 +188,4 @@ func (i *Items) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
 }
 func (i *Items) GetMultipleOf() *low.NodeReference[int] {
 	return &i.MultipleOf
-}
-func (i *Items) GetExample() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (i *Items) GetExamples() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (i *Items) GetContent() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (i *Items) GetAllowEmptyValue() *low.NodeReference[bool] {
-	return nil // not implemented, not even a property... damn you swagger.
-}
-func (i *Items) GetRequired() *low.NodeReference[bool] {
-	return nil // not implemented, not even a property... damn you swagger.
 }

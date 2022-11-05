@@ -127,11 +127,8 @@ func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
-// IsHeader compliance methods.
+// Getter methods to satisfy OpenAPIHeader interface.
 
-func (h *Header) GetType() *low.NodeReference[string] {
-	return nil // not implemented
-}
 func (h *Header) GetDescription() *low.NodeReference[string] {
 	return &h.Description
 }
@@ -152,62 +149,14 @@ func (h *Header) GetSchema() *low.NodeReference[any] {
 	}
 	return &i
 }
-func (h *Header) GetFormat() *low.NodeReference[string] {
-	return nil
-}
-func (h *Header) GetItems() *low.NodeReference[any] {
-	return nil
-}
 func (h *Header) GetStyle() *low.NodeReference[string] {
 	return &h.Style
-}
-func (h *Header) GetCollectionFormat() *low.NodeReference[string] {
-	return nil
-}
-func (h *Header) GetDefault() *low.NodeReference[any] {
-	return nil
 }
 func (h *Header) GetAllowReserved() *low.NodeReference[bool] {
 	return &h.AllowReserved
 }
 func (h *Header) GetExplode() *low.NodeReference[bool] {
 	return &h.Explode
-}
-func (h *Header) GetMaximum() *low.NodeReference[int] {
-	return nil
-}
-func (h *Header) GetExclusiveMaximum() *low.NodeReference[bool] {
-	return nil
-}
-func (h *Header) GetMinimum() *low.NodeReference[int] {
-	return nil
-}
-func (h *Header) GetExclusiveMinimum() *low.NodeReference[bool] {
-	return nil
-}
-func (h *Header) GetMaxLength() *low.NodeReference[int] {
-	return nil
-}
-func (h *Header) GetMinLength() *low.NodeReference[int] {
-	return nil
-}
-func (h *Header) GetPattern() *low.NodeReference[string] {
-	return nil
-}
-func (h *Header) GetMaxItems() *low.NodeReference[int] {
-	return nil
-}
-func (h *Header) GetMinItems() *low.NodeReference[int] {
-	return nil
-}
-func (h *Header) GetUniqueItems() *low.NodeReference[bool] {
-	return nil
-}
-func (h *Header) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
-	return nil
-}
-func (h *Header) GetMultipleOf() *low.NodeReference[int] {
-	return nil
 }
 func (h *Header) GetExample() *low.NodeReference[any] {
 	return &h.Example
