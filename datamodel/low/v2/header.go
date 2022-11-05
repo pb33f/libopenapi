@@ -142,14 +142,13 @@ func (h *Header) GetType() *low.NodeReference[string] {
 func (h *Header) GetDescription() *low.NodeReference[string] {
 	return &h.Description
 }
-
 func (h *Header) GetDeprecated() *low.NodeReference[bool] {
 	// not implemented.
 	return nil
 }
 func (h *Header) GetSchema() *low.NodeReference[any] {
 	// not implemented.
-	return &low.NodeReference[any]{}
+	return nil
 }
 func (h *Header) GetFormat() *low.NodeReference[string] {
 	return &h.Format
@@ -158,7 +157,7 @@ func (h *Header) GetItems() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   h.Items.KeyNode,
 		ValueNode: h.Items.ValueNode,
-		Value:     h.Items.KeyNode,
+		Value:     h.Items.Value,
 	}
 	return &i
 }
@@ -203,7 +202,7 @@ func (h *Header) GetMaxItems() *low.NodeReference[int] {
 	return &h.MaxItems
 }
 func (h *Header) GetMinItems() *low.NodeReference[int] {
-	return &h.MaxItems
+	return &h.MinItems
 }
 func (h *Header) GetUniqueItems() *low.NodeReference[bool] {
 	return &h.UniqueItems
@@ -223,7 +222,6 @@ func (h *Header) GetExamples() *low.NodeReference[any] {
 func (h *Header) GetContent() *low.NodeReference[any] {
 	return nil // not implemented
 }
-
 func (h *Header) GetRequired() *low.NodeReference[bool] {
 	return nil // not implemented
 }
