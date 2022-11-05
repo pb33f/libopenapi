@@ -324,18 +324,18 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	return props
 }
 
-func extractV2ParametersIntoInterface(l, r []low.ValueReference[*v2.Parameter]) ([]low.ValueReference[low.IsParameter],
-	[]low.ValueReference[low.IsParameter]) {
-	lp := make([]low.ValueReference[low.IsParameter], len(l))
-	rp := make([]low.ValueReference[low.IsParameter], len(r))
+func extractV2ParametersIntoInterface(l, r []low.ValueReference[*v2.Parameter]) ([]low.ValueReference[low.SharedParameters],
+	[]low.ValueReference[low.SharedParameters]) {
+	lp := make([]low.ValueReference[low.SharedParameters], len(l))
+	rp := make([]low.ValueReference[low.SharedParameters], len(r))
 	for i := range l {
-		lp[i] = low.ValueReference[low.IsParameter]{
+		lp[i] = low.ValueReference[low.SharedParameters]{
 			Value:     l[i].Value,
 			ValueNode: l[i].ValueNode,
 		}
 	}
 	for i := range r {
-		rp[i] = low.ValueReference[low.IsParameter]{
+		rp[i] = low.ValueReference[low.SharedParameters]{
 			Value:     r[i].Value,
 			ValueNode: r[i].ValueNode,
 		}
@@ -343,18 +343,18 @@ func extractV2ParametersIntoInterface(l, r []low.ValueReference[*v2.Parameter]) 
 	return lp, rp
 }
 
-func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) ([]low.ValueReference[low.IsParameter],
-	[]low.ValueReference[low.IsParameter]) {
-	lp := make([]low.ValueReference[low.IsParameter], len(l))
-	rp := make([]low.ValueReference[low.IsParameter], len(r))
+func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) ([]low.ValueReference[low.SharedParameters],
+	[]low.ValueReference[low.SharedParameters]) {
+	lp := make([]low.ValueReference[low.SharedParameters], len(l))
+	rp := make([]low.ValueReference[low.SharedParameters], len(r))
 	for i := range l {
-		lp[i] = low.ValueReference[low.IsParameter]{
+		lp[i] = low.ValueReference[low.SharedParameters]{
 			Value:     l[i].Value,
 			ValueNode: l[i].ValueNode,
 		}
 	}
 	for i := range r {
-		rp[i] = low.ValueReference[low.IsParameter]{
+		rp[i] = low.ValueReference[low.SharedParameters]{
 			Value:     r[i].Value,
 			ValueNode: r[i].ValueNode,
 		}
@@ -362,10 +362,10 @@ func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) 
 	return lp, rp
 }
 
-func checkParameters(lParams, rParams []low.ValueReference[low.IsParameter], changes *[]*Change, pc *PathItemChanges) {
+func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters], changes *[]*Change, pc *PathItemChanges) {
 
-	lv := make(map[string]low.IsParameter, len(lParams))
-	rv := make(map[string]low.IsParameter, len(rParams))
+	lv := make(map[string]low.SharedParameters, len(lParams))
+	rv := make(map[string]low.SharedParameters, len(rParams))
 
 	for i := range lParams {
 		s := lParams[i].Value.GetName().Value
