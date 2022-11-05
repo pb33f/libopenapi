@@ -601,24 +601,6 @@ func TestDetectCase(t *testing.T) {
 	assert.Equal(t, RegularCase, DetectCase("kebab-TimeIn_london-TOWN"))
 }
 
-func TestConvertCase(t *testing.T) {
-	str1 := "chicken-nuggets-chicken-soup"
-	assert.Equal(t, "chickenNuggetsChickenSoup", ConvertCase(str1, CamelCase))
-	assert.Equal(t, "ChickenNuggetsChickenSoup", ConvertCase(str1, PascalCase))
-	assert.Equal(t, "chicken_nuggets_chicken_soup", ConvertCase(str1, SnakeCase))
-	assert.Equal(t, str1, ConvertCase(str1, KebabCase))
-	assert.Equal(t, "CHICKEN-NUGGETS-CHICKEN-SOUP", ConvertCase(str1, ScreamingKebabCase))
-	assert.Equal(t, "CHICKEN_NUGGETS_CHICKEN_SOUP", ConvertCase(str1, ScreamingSnakeCase))
-}
-
-func TestConvertCase_NoInput(t *testing.T) {
-	assert.Empty(t, ConvertCase("", ScreamingKebabCase))
-}
-
-func TestDetectCase_NoInput(t *testing.T) {
-	assert.Equal(t, UnknownCase, DetectCase(""))
-}
-
 func TestIsNodeRefValue(t *testing.T) {
 
 	f := &yaml.Node{
