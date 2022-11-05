@@ -150,6 +150,9 @@ func (i *Items) GetItems() *low.NodeReference[any] {
 func (i *Items) GetCollectionFormat() *low.NodeReference[string] {
 	return &i.CollectionFormat
 }
+func (i *Items) GetDescription() *low.NodeReference[string] {
+	return nil // not implemented, but required to align with header contract
+}
 func (i *Items) GetDefault() *low.NodeReference[any] {
 	return &i.Default
 }
