@@ -55,7 +55,7 @@ func (h *HeaderChanges) TotalBreakingChanges() int {
 	return c
 }
 
-func addOpenAPIHeaderProperties(left, right low.IsHeader, changes *[]*Change) []*PropertyCheck {
+func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	// style
@@ -89,7 +89,7 @@ func addOpenAPIHeaderProperties(left, right low.IsHeader, changes *[]*Change) []
 	return props
 }
 
-func addSwaggerHeaderProperties(left, right low.IsHeader, changes *[]*Change) []*PropertyCheck {
+func addSwaggerHeaderProperties(left, right low.SwaggerHeader, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	// type
@@ -151,7 +151,7 @@ func addSwaggerHeaderProperties(left, right low.IsHeader, changes *[]*Change) []
 	return props
 }
 
-func addCommonHeaderProperties(left, right low.IsHeader, changes *[]*Change) []*PropertyCheck {
+func addCommonHeaderProperties(left, right low.HasDescription, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
 	// description
