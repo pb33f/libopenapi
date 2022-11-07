@@ -61,7 +61,7 @@ func (h *Header) Hash() [32]byte {
 	f = append(f, fmt.Sprint(h.Explode.Value))
 	f = append(f, fmt.Sprint(h.AllowReserved.Value))
 	if h.Schema.Value != nil {
-		f = append(f, fmt.Sprint(h.Schema.Value.Schema().Hash()))
+		f = append(f, low.GenerateHashString(h.Schema.Value.Schema()))
 	}
 	if h.Example.Value != nil {
 		f = append(f, fmt.Sprint(h.Example.Value))
@@ -145,7 +145,7 @@ func (h *Header) GetSchema() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   h.Schema.KeyNode,
 		ValueNode: h.Schema.ValueNode,
-		Value:     h.Schema.KeyNode,
+		Value:     h.Schema.Value,
 	}
 	return &i
 }
@@ -165,7 +165,7 @@ func (h *Header) GetExamples() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   h.Examples.KeyNode,
 		ValueNode: h.Examples.ValueNode,
-		Value:     h.Examples.KeyNode,
+		Value:     h.Examples.Value,
 	}
 	return &i
 }
