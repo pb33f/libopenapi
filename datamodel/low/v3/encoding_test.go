@@ -62,3 +62,43 @@ headers:
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+func TestEncoding_Hash(t *testing.T) {
+
+	yml := `contentType: application/waffle
+headers:
+  heady:
+    description: a header
+style: post modern
+explode: true
+allowReserved: true`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Encoding
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `explode: true
+contentType: application/waffle
+allowReserved: true
+headers:
+  heady:
+    description: a header
+style: post modern
+`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Encoding
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}
