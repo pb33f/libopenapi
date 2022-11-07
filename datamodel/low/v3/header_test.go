@@ -5,6 +5,7 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -162,4 +163,83 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
+}
+
+func TestEncoding_Hash_n_Grab(t *testing.T) {
+
+	yml := `description: heady
+required: true
+deprecated: true
+allowEmptyValue: true
+style: classy
+explode: true
+allowReserved: true
+schema:
+  type: 
+    - string    
+    - int
+example: what a good puppy
+examples:
+  pup1:
+    nice: puppy
+content:
+  application/json:
+    schema:
+      type: int
+x-mango: chutney`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Header
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `x-mango: chutney
+required: true
+description: heady
+content:
+  application/json:
+    schema:
+      type: int
+style: classy
+explode: true
+allowReserved: true
+deprecated: true
+allowEmptyValue: true
+example: what a good puppy
+examples:
+  pup1:
+    nice: puppy
+schema:
+  type: 
+    - int
+    - string`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Header
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+	// 'n grab
+	assert.Equal(t, "heady", n.GetDescription().Value)
+	assert.True(t, n.GetRequired().Value)
+	assert.True(t, n.GetDeprecated().Value)
+	assert.True(t, n.GetAllowEmptyValue().Value)
+	assert.Equal(t, "classy", n.GetStyle().Value)
+	assert.True(t, n.GetExplode().Value)
+	assert.True(t, n.GetAllowReserved().Value)
+	sch := n.GetSchema().Value.(*base.SchemaProxy).Schema()
+	assert.Len(t, sch.Type.Value.B, 2) // using multiple types for 3.1 testing.
+	assert.Equal(t, "what a good puppy", n.GetExample().Value)
+	assert.Len(t, n.GetExamples().Value, 1)
+	assert.Len(t, n.GetContent().Value.(map[low.KeyReference[string]]low.ValueReference[*MediaType]), 1)
+
 }
