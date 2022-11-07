@@ -109,33 +109,99 @@ type Schema struct {
 // Schemas defined inside an OpenAPI document. The only way to know if a schema has changed, is to hash it.
 func (s *Schema) Hash() [32]byte {
 	// calculate a hash from every property in the schema.
-	v := "%v"
-	d := []string{
-		s.SchemaTypeRef.Value,
-		fmt.Sprintf(v, s.ExclusiveMaximum.Value),
-		fmt.Sprintf(v, s.ExclusiveMinimum.Value),
-		fmt.Sprintf(v, s.Type.Value),
-		fmt.Sprintf(v, s.Title.Value),
-		fmt.Sprintf(v, s.MultipleOf.Value),
-		fmt.Sprintf(v, s.Maximum.Value),
-		fmt.Sprintf(v, s.Minimum.Value),
-		fmt.Sprintf(v, s.MaxLength.Value),
-		fmt.Sprintf(v, s.MinLength.Value),
-		s.Pattern.Value,
-		s.Format.Value,
-		fmt.Sprintf(v, s.MaxItems.Value),
-		fmt.Sprintf(v, s.UniqueItems.Value),
-		fmt.Sprintf(v, s.MaxProperties.Value),
-		fmt.Sprintf(v, s.MinProperties.Value),
-		fmt.Sprintf(v, s.AdditionalProperties.Value),
-		s.Description.Value,
-		s.ContentEncoding.Value,
-		s.ContentMediaType.Value,
-		fmt.Sprintf(v, s.Default.Value),
-		fmt.Sprintf(v, s.Nullable.Value),
-		fmt.Sprintf(v, s.ReadOnly.Value),
-		fmt.Sprintf(v, s.WriteOnly.Value),
-		fmt.Sprintf(v, s.Deprecated.Value),
+	var d []string
+	if !s.SchemaTypeRef.IsEmpty() {
+		d = append(d, fmt.Sprint(s.SchemaTypeRef.Value))
+	}
+	if !s.Title.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Title.Value))
+	}
+	if !s.MultipleOf.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MultipleOf.Value))
+	}
+	if !s.Maximum.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Maximum.Value))
+	}
+	if !s.Minimum.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Minimum.Value))
+	}
+	if !s.MaxLength.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MaxLength.Value))
+	}
+	if !s.MinLength.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MinLength.Value))
+	}
+	if !s.Pattern.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Pattern.Value))
+	}
+	if !s.Format.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Format.Value))
+	}
+	if !s.MaxItems.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MaxItems.Value))
+	}
+	if !s.MinItems.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MinItems.Value))
+	}
+	if !s.UniqueItems.IsEmpty() {
+		d = append(d, fmt.Sprint(s.UniqueItems.Value))
+	}
+	if !s.MaxProperties.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MaxProperties.Value))
+	}
+	if !s.MinProperties.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MinProperties.Value))
+	}
+	if !s.AdditionalProperties.IsEmpty() {
+		d = append(d, fmt.Sprint(s.AdditionalProperties.Value))
+	}
+	if !s.Description.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Description.Value))
+	}
+	if !s.ContentEncoding.IsEmpty() {
+		d = append(d, fmt.Sprint(s.ContentEncoding.Value))
+	}
+	if !s.ContentMediaType.IsEmpty() {
+		d = append(d, fmt.Sprint(s.ContentMediaType.Value))
+	}
+	if !s.Default.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.Default.Value))
+	}
+	if !s.Nullable.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Nullable.Value))
+	}
+	if !s.ReadOnly.IsEmpty() {
+		d = append(d, fmt.Sprint(s.ReadOnly.Value))
+	}
+	if !s.WriteOnly.IsEmpty() {
+		d = append(d, fmt.Sprint(s.WriteOnly.Value))
+	}
+	if !s.Deprecated.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Deprecated.Value))
+	}
+	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsA() {
+		d = append(d, fmt.Sprint(s.ExclusiveMaximum.Value.A))
+	}
+	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsB() {
+		d = append(d, fmt.Sprint(s.ExclusiveMaximum.Value.B))
+	}
+
+	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsA() {
+		d = append(d, fmt.Sprint(s.ExclusiveMinimum.Value.A))
+	}
+	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsB() {
+		d = append(d, fmt.Sprint(s.ExclusiveMinimum.Value.B))
+	}
+	if !s.Type.IsEmpty() && s.Type.Value.IsA() {
+		d = append(d, fmt.Sprint(s.Type.Value.A))
+	}
+	if !s.Type.IsEmpty() && s.Type.Value.IsB() {
+		j := make([]string, len(s.Type.Value.B))
+		for h := range s.Type.Value.B {
+			j[h] = s.Type.Value.B[h].Value
+		}
+		sort.Strings(j)
+		d = append(d, strings.Join(j, "|"))
 	}
 
 	for i := range s.Required.Value {
@@ -152,20 +218,18 @@ func (s *Schema) Hash() [32]byte {
 	for k := range propertyKeys {
 		prop := s.FindProperty(propertyKeys[k]).Value
 		if !prop.IsSchemaReference() {
-			d = append(d, fmt.Sprintf("%x", prop.Schema().Hash()))
+			d = append(d, low.GenerateHashString(prop.Schema()))
 		}
 	}
 	if s.XML.Value != nil {
-		d = append(d, fmt.Sprintf(v, s.XML.Value.Hash()))
+		d = append(d, low.GenerateHashString(s.XML.Value))
 	}
 	if s.ExternalDocs.Value != nil {
-		d = append(d, fmt.Sprintf(v, s.ExternalDocs.Value.Hash()))
+		d = append(d, low.GenerateHashString(s.ExternalDocs.Value))
 	}
 	if s.Discriminator.Value != nil {
-		d = append(d, fmt.Sprintf(v, s.Discriminator.Value.Hash()))
+		d = append(d, low.GenerateHashString(s.Discriminator.Value))
 	}
-
-	x := "%x"
 
 	// hash polymorphic data
 	if len(s.OneOf.Value) > 0 {
@@ -175,14 +239,14 @@ func (s *Schema) Hash() [32]byte {
 			g := s.OneOf.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
-				r := fmt.Sprintf(x, k.Hash())
+				r := low.GenerateHashString(k)
 				oneOfEntities[r] = k
 				oneOfKeys = append(oneOfKeys, r)
 			}
 		}
 		sort.Strings(oneOfKeys)
 		for k := range oneOfKeys {
-			d = append(d, fmt.Sprintf(x, oneOfEntities[oneOfKeys[k]].Hash()))
+			d = append(d, low.GenerateHashString(oneOfEntities[oneOfKeys[k]]))
 		}
 	}
 
@@ -193,14 +257,14 @@ func (s *Schema) Hash() [32]byte {
 			g := s.AllOf.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
-				r := fmt.Sprintf(x, k.Hash())
+				r := low.GenerateHashString(k)
 				allOfEntities[r] = k
 				allOfKeys = append(allOfKeys, r)
 			}
 		}
 		sort.Strings(allOfKeys)
 		for k := range allOfKeys {
-			d = append(d, fmt.Sprintf(x, allOfEntities[allOfKeys[k]].Hash()))
+			d = append(d, low.GenerateHashString(allOfEntities[allOfKeys[k]]))
 		}
 	}
 
@@ -211,14 +275,14 @@ func (s *Schema) Hash() [32]byte {
 			g := s.AnyOf.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
-				r := fmt.Sprintf(x, k.Hash())
+				r := low.GenerateHashString(k)
 				anyOfEntities[r] = k
 				anyOfKeys = append(anyOfKeys, r)
 			}
 		}
 		sort.Strings(anyOfKeys)
 		for k := range anyOfKeys {
-			d = append(d, fmt.Sprintf(x, anyOfEntities[anyOfKeys[k]].Hash()))
+			d = append(d, low.GenerateHashString(anyOfEntities[anyOfKeys[k]]))
 		}
 	}
 
@@ -229,14 +293,14 @@ func (s *Schema) Hash() [32]byte {
 			g := s.Not.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
-				r := fmt.Sprintf(x, k.Hash())
+				r := low.GenerateHashString(k)
 				notEntities[r] = k
 				notKeys = append(notKeys, r)
 			}
 		}
 		sort.Strings(notKeys)
 		for k := range notKeys {
-			d = append(d, fmt.Sprintf(x, notEntities[notKeys[k]].Hash()))
+			d = append(d, low.GenerateHashString(notEntities[notKeys[k]]))
 		}
 	}
 
@@ -247,14 +311,14 @@ func (s *Schema) Hash() [32]byte {
 			g := s.Items.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
-				r := fmt.Sprintf(x, k.Hash())
+				r := low.GenerateHashString(k)
 				itemsEntities[r] = k
 				itemsKeys = append(itemsKeys, r)
 			}
 		}
 		sort.Strings(itemsKeys)
 		for k := range itemsKeys {
-			d = append(d, fmt.Sprintf(x, itemsEntities[itemsKeys[k]].Hash()))
+			d = append(d, low.GenerateHashString(itemsEntities[itemsKeys[k]]))
 		}
 	}
 	// add extensions to hash
