@@ -361,11 +361,9 @@ info:
 	//         url: https://pb33f.io/license
 }
 
-func TestDocument_Panic(t *testing.T) {
+func TestDocument_Paths_As_Array(t *testing.T) {
 
-	// How to mutate values in an OpenAPI Specification, without re-ordering original content.
-
-	// create very small, and useless spec that does nothing useful, except showcase this feature.
+	// paths can now be wrapped in an array.
 	spec := `{
     "openapi": "3.1.0",
     "paths": [
@@ -382,8 +380,6 @@ func TestDocument_Panic(t *testing.T) {
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
-
-	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := doc.BuildV3Model()
-	fmt.Print(v3Model, errors)
+	v3Model, _ := doc.BuildV3Model()
+	assert.NotNil(t, v3Model)
 }
