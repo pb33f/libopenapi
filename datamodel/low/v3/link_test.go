@@ -78,3 +78,48 @@ server:
 	assert.Error(t, err)
 
 }
+
+func TestLink_Hash(t *testing.T) {
+
+	yml := `operationRef: something
+operationId: someWhere
+parameters:
+  fried: sausage
+  bacon: eggs
+requestBody: burgers please
+description: a useless and invalid link
+server:
+  url: https://pb33f.io
+x-mcdonalds: bigmac`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Link
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `parameters:
+  bacon: eggs
+  fried: sausage
+requestBody: burgers please
+operationId: someWhere
+operationRef: something
+description: a useless and invalid link
+x-mcdonalds: bigmac
+server:
+  url: https://pb33f.io`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Link
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}

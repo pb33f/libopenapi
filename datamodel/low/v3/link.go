@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -27,7 +28,7 @@ import (
 type Link struct {
 	OperationRef low.NodeReference[string]
 	OperationId  low.NodeReference[string]
-	Parameters   low.KeyReference[map[low.KeyReference[string]]low.ValueReference[string]]
+	Parameters   map[low.KeyReference[string]]low.ValueReference[string]
 	RequestBody  low.NodeReference[string]
 	Description  low.NodeReference[string]
 	Server       low.NodeReference[*Server]
@@ -36,7 +37,7 @@ type Link struct {
 
 // FindParameter will attempt to locate a parameter string value, using a parameter name input.
 func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
-	return low.FindItemInMap[string](pName, l.Parameters.Value)
+	return low.FindItemInMap[string](pName, l.Parameters)
 }
 
 // FindExtension will attempt to locate an extension with a specific key
@@ -47,7 +48,6 @@ func (l *Link) FindExtension(ext string) *low.ValueReference[any] {
 // Build will extract extensions and servers from the node.
 func (l *Link) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	l.Extensions = low.ExtractExtensions(root)
-
 	// extract server.
 	ser, sErr := low.ExtractObject[*Server](ServerLabel, root, idx)
 	if sErr != nil {
@@ -76,9 +76,15 @@ func (l *Link) Hash() [32]byte {
 		f = append(f, low.GenerateHashString(l.Server.Value))
 	}
 	// todo: needs ordering.
-	for k := range l.Parameters.Value {
-		f = append(f, fmt.Sprintf("%s-%s", k.Value, l.Parameters.Value[k].Value))
+
+	keys := make([]string, len(l.Parameters))
+	z := 0
+	for k := range l.Parameters {
+		keys[z] = l.Parameters[k].Value
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	for k := range l.Extensions {
 		f = append(f, fmt.Sprintf("%s-%x", k.Value,
 			sha256.Sum256([]byte(fmt.Sprint(l.Extensions[k].Value)))))
