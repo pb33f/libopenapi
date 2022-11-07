@@ -148,7 +148,7 @@ func (p *Parameter) Hash() [32]byte {
 	f = append(f, fmt.Sprint(p.Required.Value))
 	f = append(f, fmt.Sprint(p.AllowEmptyValue.Value))
 	if p.Schema.Value != nil {
-		f = append(f, fmt.Sprintf("%x", p.Schema.Value.Schema().Hash()))
+		f = append(f, low.GenerateHashString(p.Schema.Value.Schema()))
 	}
 	if p.CollectionFormat.Value != "" {
 		f = append(f, p.CollectionFormat.Value)
@@ -183,7 +183,7 @@ func (p *Parameter) Hash() [32]byte {
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
-// IsParameter compliance methods.
+// Getters used by what-changed feature to satisfy the SwaggerParameter interface.
 
 func (p *Parameter) GetName() *low.NodeReference[string] {
 	return &p.Name
@@ -200,10 +200,6 @@ func (p *Parameter) GetDescription() *low.NodeReference[string] {
 func (p *Parameter) GetRequired() *low.NodeReference[bool] {
 	return &p.Required
 }
-func (p *Parameter) GetDeprecated() *low.NodeReference[bool] {
-	// not implemented.
-	return nil
-}
 func (p *Parameter) GetAllowEmptyValue() *low.NodeReference[bool] {
 	return &p.AllowEmptyValue
 }
@@ -211,7 +207,7 @@ func (p *Parameter) GetSchema() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Schema.KeyNode,
 		ValueNode: p.Schema.ValueNode,
-		Value:     p.Schema.KeyNode,
+		Value:     p.Schema.Value,
 	}
 	return &i
 }
@@ -222,24 +218,15 @@ func (p *Parameter) GetItems() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Items.KeyNode,
 		ValueNode: p.Items.ValueNode,
-		Value:     p.Items.KeyNode,
+		Value:     p.Items.Value,
 	}
 	return &i
-}
-func (p *Parameter) GetStyle() *low.NodeReference[string] {
-	return nil // not implemented
 }
 func (p *Parameter) GetCollectionFormat() *low.NodeReference[string] {
 	return &p.CollectionFormat
 }
 func (p *Parameter) GetDefault() *low.NodeReference[any] {
 	return &p.Default
-}
-func (p *Parameter) GetAllowReserved() *low.NodeReference[bool] {
-	return nil // not implemented
-}
-func (p *Parameter) GetExplode() *low.NodeReference[bool] {
-	return nil // not implemented
 }
 func (p *Parameter) GetMaximum() *low.NodeReference[int] {
 	return &p.Maximum
@@ -266,7 +253,7 @@ func (p *Parameter) GetMaxItems() *low.NodeReference[int] {
 	return &p.MaxItems
 }
 func (p *Parameter) GetMinItems() *low.NodeReference[int] {
-	return &p.MaxItems
+	return &p.MinItems
 }
 func (p *Parameter) GetUniqueItems() *low.NodeReference[bool] {
 	return &p.UniqueItems
@@ -276,13 +263,4 @@ func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
 }
 func (p *Parameter) GetMultipleOf() *low.NodeReference[int] {
 	return &p.MultipleOf
-}
-func (p *Parameter) GetExample() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (p *Parameter) GetExamples() *low.NodeReference[any] {
-	return nil // not implemented
-}
-func (p *Parameter) GetContent() *low.NodeReference[any] {
-	return nil // not implemented
 }

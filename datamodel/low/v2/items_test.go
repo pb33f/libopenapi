@@ -150,5 +150,6 @@ pattern: wow
 	assert.Equal(t, "int", n.GetItems().Value.(*Items).Type.Value)
 	assert.Len(t, n.GetEnum().Value, 2)
 	assert.Equal(t, "large", n.FindExtension("x-belly").Value)
+	assert.Nil(t, n.GetDescription())
 
 }

@@ -48,3 +48,64 @@ func TestPathItem_Build_MethodFail(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestPathItem_Hash(t *testing.T) {
+
+	yml := `get:
+  description: get me up
+put:
+  description: put me out
+post:
+  description: post me there
+delete:
+  description: delete me please
+options:
+  description: whats on the menu
+parameters:
+  - name: fishy
+    location: sea
+head:
+  description: meta me up
+patch:
+  description: I got a boo boo
+x-winter: is coming`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `post:
+  description: post me there
+put:
+  description: put me out
+delete:
+  description: delete me please
+options:
+  description: whats on the menu
+patch:
+  description: I got a boo boo
+head:
+  description: meta me up
+x-winter: is coming
+get:
+  description: get me up
+parameters:
+  - name: fishy
+    location: sea`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 PathItem
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}

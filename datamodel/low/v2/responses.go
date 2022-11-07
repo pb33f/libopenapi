@@ -49,13 +49,6 @@ func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 func (r *Responses) getDefault() *low.NodeReference[*Response] {
 	for n, o := range r.Codes {
-		if n.Value == DefaultLabel {
-			return &low.NodeReference[*Response]{
-				ValueNode: o.ValueNode,
-				KeyNode:   n.KeyNode,
-				Value:     o.Value,
-			}
-		}
 		if strings.ToLower(n.Value) == DefaultLabel {
 			return &low.NodeReference[*Response]{
 				ValueNode: o.ValueNode,

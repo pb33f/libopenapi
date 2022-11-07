@@ -67,3 +67,47 @@ func TestResponse_Build_Headers(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestResponse_Hash(t *testing.T) {
+
+	yml := `description: your thing, sir.
+schema:
+  type: string
+headers:
+  heady:
+    description: heads up!
+examples:
+  noHerbs:
+    description: be strong
+x-herbs: missing`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Response
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `description: your thing, sir.
+examples:
+  noHerbs:
+    description: be strong
+schema:
+  type: string
+x-herbs: missing
+headers:
+  heady:
+    description: heads up!`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Response
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+}
