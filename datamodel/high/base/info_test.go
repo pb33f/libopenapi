@@ -5,11 +5,12 @@ package base
 
 import (
 	"fmt"
+	"testing"
+
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestNewInfo(t *testing.T) {
@@ -24,7 +25,8 @@ contact:
 license:
   name: pb33f
   url: https://pb33f.io
-version: 99.99`
+version: 99.99
+x-cli-name: chicken cli`
 
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
@@ -41,6 +43,7 @@ version: 99.99`
 	assert.Equal(t, "pb33f", highInfo.License.Name)
 	assert.Equal(t, "https://pb33f.io", highInfo.License.URL)
 	assert.Equal(t, "99.99", highInfo.Version)
+	assert.Equal(t, "chicken cli", highInfo.Extensions["x-cli-name"])
 
 	wentLow := highInfo.GoLow()
 	assert.Equal(t, 9, wentLow.Version.ValueNode.Line)

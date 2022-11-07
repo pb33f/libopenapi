@@ -4,6 +4,7 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
@@ -12,8 +13,8 @@ import (
 // The object provides metadata about the API. The metadata MAY be used by the clients if needed, and MAY be presented
 // in editing or documentation generation tools for convenience.
 //
-//  v2 - https://swagger.io/specification/v2/#infoObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#info-object
+//	v2 - https://swagger.io/specification/v2/#infoObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
 	Title          string
 	Description    string
@@ -21,6 +22,7 @@ type Info struct {
 	Contact        *Contact
 	License        *License
 	Version        string
+	Extensions     map[string]any
 	low            *low.Info
 }
 
@@ -45,6 +47,9 @@ func NewInfo(info *low.Info) *Info {
 	}
 	if !info.Version.IsEmpty() {
 		i.Version = info.Version.Value
+	}
+	if len(info.Extensions) > 0 {
+		i.Extensions = high.ExtractExtensions(info.Extensions)
 	}
 	return i
 }
