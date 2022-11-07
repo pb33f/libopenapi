@@ -31,7 +31,7 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 	if !mediaType.Schema.IsEmpty() {
 		m.Schema = base.NewSchemaProxy(&mediaType.Schema)
 	}
-	m.Example = mediaType.Example
+	m.Example = mediaType.Example.Value
 	m.Examples = base.ExtractExamples(mediaType.Examples.Value)
 	m.Extensions = high.ExtractExtensions(mediaType.Extensions)
 	m.Encoding = ExtractEncoding(mediaType.Encoding.Value)
