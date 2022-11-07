@@ -186,9 +186,6 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the PathItem object
 func (p *PathItem) Hash() [32]byte {
 	var f []string
-	if !p.Ref.IsEmpty() {
-		f = append(f, p.Ref.Value)
-	}
 	if !p.Get.IsEmpty() {
 		f = append(f, low.GenerateHashString(p.Get.Value))
 	}

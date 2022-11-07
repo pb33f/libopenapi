@@ -50,3 +50,49 @@ func TestSecurityScheme_Build_Scopes(t *testing.T) {
 	assert.Len(t, n.Scopes.Value.Values, 2)
 
 }
+
+func TestSecurityScheme_Hash(t *testing.T) {
+
+	yml := `type: secure
+description: a very secure thing
+name: securityPerson
+in: my heart
+flow: watery
+authorizationUrl: https://pb33f.io
+tokenUrl: https://pb33f.io/token
+scopes:
+  fish:monkey
+x-beer: not for a while`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n SecurityScheme
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `in: my heart
+scopes:
+  fish:monkey
+name: securityPerson
+type: secure
+flow: watery
+description: a very secure thing
+tokenUrl: https://pb33f.io/token
+x-beer: not for a while
+authorizationUrl: https://pb33f.io
+`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 SecurityScheme
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}
