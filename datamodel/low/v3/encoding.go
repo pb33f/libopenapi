@@ -34,6 +34,15 @@ func (en *Encoding) Hash() [32]byte {
 		f = append(f, en.ContentType.Value)
 	}
 	if len(en.Headers.Value) > 0 {
+		l := make([]string, len(en.Headers.Value))
+		keys := make(map[string]low.ValueReference[*Header])
+		z := 0
+		for k := range en.Headers.Value {
+			keys[k.Value] = en.Headers.Value[k]
+			l[z] = k.Value
+			z++
+		}
+
 		for k := range en.Headers.Value {
 			f = append(f, fmt.Sprintf("%s-%x", k.Value, en.Headers.Value[k].Value.Hash()))
 		}
