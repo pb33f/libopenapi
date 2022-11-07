@@ -1279,7 +1279,12 @@ func (index *SpecIndex) GetOperationCount() int {
 	for x, p := range index.pathsNode.Content {
 		if x%2 == 0 {
 
-			method := index.pathsNode.Content[x+1]
+			var method *yaml.Node
+			if utils.IsNodeArray(index.pathsNode) {
+				method = index.pathsNode.Content[x]
+			} else {
+				method = index.pathsNode.Content[x+1]
+			}
 
 			// extract methods for later use.
 			for y, m := range method.Content {
@@ -1339,7 +1344,12 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 	for x, pathItemNode := range index.pathsNode.Content {
 		if x%2 == 0 {
 
-			pathPropertyNode := index.pathsNode.Content[x+1]
+			var pathPropertyNode *yaml.Node
+			if utils.IsNodeArray(index.pathsNode) {
+				pathPropertyNode = index.pathsNode.Content[x]
+			} else {
+				pathPropertyNode = index.pathsNode.Content[x+1]
+			}
 
 			// extract methods for later use.
 			for y, prop := range pathPropertyNode.Content {

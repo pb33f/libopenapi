@@ -474,6 +474,22 @@ func TestSpecIndex_FindComponent(t *testing.T) {
 }
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {
+	yml := `{
+    "openapi": "3.1.0",
+    "paths": [
+        {"/": {
+            "get": {}
+        }}
+    ]
+}`
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Len(t, index.GetPathsNode().Content, 1)
+}
+
+func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 	yml := `components:
   schemas:
     pizza:

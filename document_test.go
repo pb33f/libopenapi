@@ -360,3 +360,30 @@ info:
 	//     license:
 	//         url: https://pb33f.io/license
 }
+
+func TestDocument_Panic(t *testing.T) {
+
+	// How to mutate values in an OpenAPI Specification, without re-ordering original content.
+
+	// create very small, and useless spec that does nothing useful, except showcase this feature.
+	spec := `{
+    "openapi": "3.1.0",
+    "paths": [
+        "/": {
+            "get": {}
+        }
+    ]
+}
+`
+	// create a new document from specification bytes
+	doc, err := NewDocument([]byte(spec))
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	v3Model, errors := doc.BuildV3Model()
+	fmt.Print(v3Model, errors)
+}
