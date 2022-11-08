@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -97,21 +98,26 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 func (mt *MediaType) Hash() [32]byte {
 	var f []string
 	if mt.Schema.Value != nil {
-		f = append(f, fmt.Sprintf("%x", mt.Schema.Value.Schema().Hash()))
+		f = append(f, low.GenerateHashString(mt.Schema.Value.Schema()))
 	}
 	if mt.Example.Value != nil {
 		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(mt.Example.Value)))))
 	}
-	if len(mt.Examples.Value) > 0 {
-		for k := range mt.Examples.Value {
-			f = append(f, fmt.Sprintf("%s-%x", k.Value, mt.Examples.Value[k].Value.Hash()))
-		}
+	keys := make([]string, len(mt.Examples.Value))
+	z := 0
+	for k := range mt.Examples.Value {
+		keys[z] = low.GenerateHashString(mt.Examples.Value[k].Value)
+		z++
 	}
-	if len(mt.Encoding.Value) > 0 {
-		for k := range mt.Encoding.Value {
-			f = append(f, fmt.Sprintf("%s-%x", k.Value, mt.Encoding.Value[k].Value.Hash()))
-		}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(mt.Encoding.Value))
+	z = 0
+	for k := range mt.Encoding.Value {
+		keys[z] = low.GenerateHashString(mt.Encoding.Value[k].Value)
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	for k := range mt.Extensions {
 		f = append(f, fmt.Sprintf("%s-%v", k.Value, mt.Extensions[k].Value))
 	}
