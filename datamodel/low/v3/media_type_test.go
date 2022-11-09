@@ -129,8 +129,7 @@ examples:
 schema:
   type: string
 x-done: for the day!
-example: a thing
-`
+example: a thing`
 
 	var idxNode2 yaml.Node
 	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
