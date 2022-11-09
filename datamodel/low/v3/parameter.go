@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -121,21 +122,30 @@ func (p *Parameter) Hash() [32]byte {
 	if p.Example.Value != nil {
 		f = append(f, fmt.Sprintf("%x", p.Example.Value))
 	}
-	if len(p.Examples.Value) > 0 {
-		for k := range p.Examples.Value {
-			f = append(f, fmt.Sprintf("%s-%x", k.Value, p.Examples.Value[k].Value.Hash()))
-		}
+
+	var keys []string
+	keys = make([]string, len(p.Examples.Value))
+	z := 0
+	for k := range p.Examples.Value {
+		keys[z] = low.GenerateHashString(p.Examples.Value[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(p.Content.Value))
+	z = 0
+	for k := range p.Content.Value {
+		keys[z] = low.GenerateHashString(p.Content.Value[k].Value)
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	if len(p.Extensions) > 0 {
 		for k := range p.Extensions {
 			f = append(f, fmt.Sprintf("%v-%x", k.Value, p.Extensions[k].Value))
 		}
 	}
-	if len(p.Content.Value) > 0 {
-		for k := range p.Content.Value {
-			f = append(f, fmt.Sprintf("%v-%x", k.Value, p.Content.Value[k].Value.Hash()))
-		}
-	}
+
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
@@ -146,9 +156,6 @@ func (p *Parameter) GetName() *low.NodeReference[string] {
 }
 func (p *Parameter) GetIn() *low.NodeReference[string] {
 	return &p.In
-}
-func (p *Parameter) GetType() *low.NodeReference[string] {
-	return nil // not implemented
 }
 func (p *Parameter) GetDescription() *low.NodeReference[string] {
 	return &p.Description
@@ -166,66 +173,18 @@ func (p *Parameter) GetSchema() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Schema.KeyNode,
 		ValueNode: p.Schema.ValueNode,
-		Value:     p.Schema.KeyNode,
+		Value:     p.Schema.Value,
 	}
 	return &i
 }
-func (p *Parameter) GetFormat() *low.NodeReference[string] {
-	return nil
-}
-func (p *Parameter) GetItems() *low.NodeReference[any] {
-	return nil
-}
 func (p *Parameter) GetStyle() *low.NodeReference[string] {
 	return &p.Style
-}
-func (p *Parameter) GetCollectionFormat() *low.NodeReference[string] {
-	return nil
-}
-func (p *Parameter) GetDefault() *low.NodeReference[any] {
-	return nil
 }
 func (p *Parameter) GetAllowReserved() *low.NodeReference[bool] {
 	return &p.AllowReserved
 }
 func (p *Parameter) GetExplode() *low.NodeReference[bool] {
 	return &p.Explode
-}
-func (p *Parameter) GetMaximum() *low.NodeReference[int] {
-	return nil
-}
-func (p *Parameter) GetExclusiveMaximum() *low.NodeReference[bool] {
-	return nil
-}
-func (p *Parameter) GetMinimum() *low.NodeReference[int] {
-	return nil
-}
-func (p *Parameter) GetExclusiveMinimum() *low.NodeReference[bool] {
-	return nil
-}
-func (p *Parameter) GetMaxLength() *low.NodeReference[int] {
-	return nil
-}
-func (p *Parameter) GetMinLength() *low.NodeReference[int] {
-	return nil
-}
-func (p *Parameter) GetPattern() *low.NodeReference[string] {
-	return nil
-}
-func (p *Parameter) GetMaxItems() *low.NodeReference[int] {
-	return nil
-}
-func (p *Parameter) GetMinItems() *low.NodeReference[int] {
-	return nil
-}
-func (p *Parameter) GetUniqueItems() *low.NodeReference[bool] {
-	return nil
-}
-func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
-	return nil
-}
-func (p *Parameter) GetMultipleOf() *low.NodeReference[int] {
-	return nil
 }
 func (p *Parameter) GetExample() *low.NodeReference[any] {
 	return &p.Example
@@ -234,7 +193,7 @@ func (p *Parameter) GetExamples() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Examples.KeyNode,
 		ValueNode: p.Examples.ValueNode,
-		Value:     p.Examples.KeyNode,
+		Value:     p.Examples.Value,
 	}
 	return &i
 }
