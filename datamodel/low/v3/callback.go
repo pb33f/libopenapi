@@ -4,9 +4,12 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
+	"strings"
 )
 
 // Callback represents a low-level Callback object for OpenAPI 3+.
@@ -58,4 +61,19 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Callback object
+func (cb *Callback) Hash() [32]byte {
+	var f []string
+	var keys []string
+	keys = make([]string, len(cb.Expression.Value))
+	z := 0
+	for k := range cb.Expression.Value {
+		keys[z] = low.GenerateHashString(cb.Expression.Value[k].Value)
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

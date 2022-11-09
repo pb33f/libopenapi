@@ -111,3 +111,44 @@ func TestCallback_Build_Using_InlineRef(t *testing.T) {
 	assert.Equal(t, "this is something", exp.Value.Post.Value.RequestBody.Value.Description.Value)
 
 }
+
+func TestCallback_Hash(t *testing.T) {
+
+	yml := `x-seed: grow
+pizza:
+  description: cheesy
+burgers:
+  description: tasty!
+beer:
+  description: fantastic
+x-weed: loved`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Callback
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `burgers:
+  description: tasty!
+pizza:
+  description: cheesy
+x-weed: loved
+x-seed: grow
+beer:
+  description: fantastic
+`
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Callback
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}

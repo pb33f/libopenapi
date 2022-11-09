@@ -109,11 +109,11 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	// parameters
 	lValues := make(map[string]low.ValueReference[string])
 	rValues := make(map[string]low.ValueReference[string])
-	for i := range l.Parameters.Value {
-		lValues[i.Value] = l.Parameters.Value[i]
+	for i := range l.Parameters {
+		lValues[i.Value] = l.Parameters[i]
 	}
-	for i := range r.Parameters.Value {
-		rValues[i.Value] = r.Parameters.Value[i]
+	for i := range r.Parameters {
+		rValues[i.Value] = r.Parameters[i]
 	}
 	for k := range lValues {
 		if _, ok := rValues[k]; !ok {
