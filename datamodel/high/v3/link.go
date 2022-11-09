@@ -38,7 +38,7 @@ func NewLink(link *low.Link) *Link {
 	l.OperationRef = link.OperationRef.Value
 	l.OperationId = link.OperationId.Value
 	params := make(map[string]string)
-	for k, v := range link.Parameters.Value {
+	for k, v := range link.Parameters {
 		params[k.Value] = v.Value
 	}
 	l.Parameters = params

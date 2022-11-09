@@ -141,5 +141,4 @@ example: a thing`
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-
 }
