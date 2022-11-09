@@ -180,3 +180,84 @@ func TestOAuthFlow_Build_AuthCode_Fail(t *testing.T) {
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+func TestOAuthFlow_Hash(t *testing.T) {
+
+	yml := `authorizationUrl: https://pb33f.io/auth
+tokenUrl: https://pb33f.io/token
+refreshUrl: https://pb33f.io/refresh
+scopes:
+  smoke: weed
+x-sleepy: tired`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n OAuthFlow
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `refreshUrl: https://pb33f.io/refresh
+tokenUrl: https://pb33f.io/token
+authorizationUrl: https://pb33f.io/auth
+x-sleepy: tired
+scopes:
+  smoke: weed`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 OAuthFlow
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}
+
+func TestOAuthFlows_Hash(t *testing.T) {
+
+	yml := `implicit:
+  authorizationUrl: https://pb33f.io/auth
+password:
+  authorizationUrl: https://pb33f.io/auth
+clientCredentials:
+  authorizationUrl: https://pb33f.io/auth
+authorizationCode:
+  authorizationUrl: https://pb33f.io/auth
+x-code: cody
+`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n OAuthFlows
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `authorizationCode:
+  authorizationUrl: https://pb33f.io/auth
+clientCredentials:
+  authorizationUrl: https://pb33f.io/auth
+x-code: cody
+implicit:
+  authorizationUrl: https://pb33f.io/auth
+password:
+  authorizationUrl: https://pb33f.io/auth
+`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 OAuthFlows
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+}
