@@ -125,9 +125,13 @@ func (p *Paths) Hash() [32]byte {
 	for k := range l {
 		f = append(f, low.GenerateHashString(keys[l[k]].Value))
 	}
+	ekeys := make([]string, len(p.Extensions))
+	z = 0
 	for k := range p.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value,
-			sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+		ekeys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(ekeys)
+	f = append(f, ekeys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

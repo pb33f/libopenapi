@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -116,11 +117,21 @@ func (o *OAuthFlow) Hash() [32]byte {
 	if !o.RefreshUrl.IsEmpty() {
 		f = append(f, o.RefreshUrl.Value)
 	}
-	for i := range o.Scopes.Value {
-		f = append(f, fmt.Sprintf("%s-%s", i.Value, o.Scopes.Value[i].Value))
+	keys := make([]string, len(o.Scopes.Value))
+	z := 0
+	for k := range o.Scopes.Value {
+		keys[z] = fmt.Sprintf("%s-%s", k.Value, sha256.Sum256([]byte(fmt.Sprint(o.Scopes.Value[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(o.Extensions))
+	z = 0
 	for k := range o.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, o.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(o.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

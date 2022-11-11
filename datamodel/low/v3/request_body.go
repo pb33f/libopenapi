@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -62,10 +63,15 @@ func (rb *RequestBody) Hash() [32]byte {
 	for k := range rb.Content.Value {
 		f = append(f, low.GenerateHashString(rb.Content.Value[k].Value))
 	}
+
+	keys := make([]string, len(rb.Extensions))
+	z := 0
 	for k := range rb.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value,
-			sha256.Sum256([]byte(fmt.Sprint(rb.Extensions[k].Value)))))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(rb.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
-

@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -169,14 +170,24 @@ func (p *Parameter) Hash() [32]byte {
 	if p.Pattern.Value != "" {
 		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(p.Pattern.Value)))))
 	}
-	if len(p.Enum.Value) > 0 {
-		for k := range p.Enum.Value {
-			f = append(f, fmt.Sprint(p.Enum.Value[k].Value))
-		}
+
+	keys := make([]string, len(p.Enum.Value))
+	z := 0
+	for k := range p.Enum.Value {
+		keys[z] = fmt.Sprint(p.Enum.Value[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(p.Extensions))
+	z = 0
 	for k := range p.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value)))))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	if p.Items.Value != nil {
 		f = append(f, fmt.Sprintf("%x", p.Items.Value.Hash()))
 	}

@@ -126,9 +126,13 @@ func (r *Responses) Hash() [32]byte {
 	if !r.Default.IsEmpty() {
 		f = append(f, low.GenerateHashString(r.Default.Value))
 	}
+	keys = make([]string, len(r.Extensions))
+	z = 0
 	for k := range r.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value,
-			sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value)))))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
