@@ -376,7 +376,7 @@ func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
-	assert.Len(t, index.refErrors, 7)
+	assert.Len(t, index.refErrors, 6)
 
 }
 
