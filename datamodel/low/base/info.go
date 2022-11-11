@@ -4,9 +4,13 @@
 package base
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
+	"strings"
 )
 
 // Info represents a low-level Info object as defined by both OpenAPI 2 and OpenAPI 3.
@@ -43,4 +47,37 @@ func (i *Info) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	lic, _ := low.ExtractObject[*License](LicenseLabel, root, idx)
 	i.License = lic
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Info object
+func (i *Info) Hash() [32]byte {
+	var f []string
+
+	if !i.Title.IsEmpty() {
+		f = append(f, i.Title.Value)
+	}
+	if !i.Description.IsEmpty() {
+		f = append(f, i.Description.Value)
+	}
+	if !i.TermsOfService.IsEmpty() {
+		f = append(f, i.TermsOfService.Value)
+	}
+	if !i.Contact.IsEmpty() {
+		f = append(f, low.GenerateHashString(i.Contact.Value))
+	}
+	if !i.License.IsEmpty() {
+		f = append(f, low.GenerateHashString(i.License.Value))
+	}
+	if !i.Version.IsEmpty() {
+		f = append(f, i.Version.Value)
+	}
+	keys := make([]string, len(i.Extensions))
+	z := 0
+	for k := range i.Extensions {
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(i.Extensions[k].Value))))
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

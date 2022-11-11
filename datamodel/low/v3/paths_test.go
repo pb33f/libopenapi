@@ -428,3 +428,49 @@ func TestPaths_Build_BrokenOp(t *testing.T) {
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+func TestPaths_Hash(t *testing.T) {
+
+	yml := `/french/toast:
+  description: toast
+/french/hen:
+  description: chicken
+/french/food:
+  description: the worst.
+x-france: french`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Paths
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `/french/toast:
+  description: toast
+/french/hen:
+  description: chicken
+/french/food:
+  description: the worst.
+x-france: french`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Paths
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+	a, b := n.FindPathAndKey("/french/toast")
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
+
+	a, b = n.FindPathAndKey("I do not exist")
+	assert.Nil(t, a)
+	assert.Nil(t, b)
+
+}

@@ -263,6 +263,28 @@ func TestSchema_Hash(t *testing.T) {
 
 }
 
+func BenchmarkSchema_Hash(b *testing.B) {
+
+	//create two versions
+	testSpec := test_get_schema_blob()
+	var sc1n yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &sc1n)
+	sch1 := Schema{}
+	_ = low.BuildModel(&sc1n, &sch1)
+	_ = sch1.Build(sc1n.Content[0], nil)
+
+	var sc2n yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &sc2n)
+	sch2 := Schema{}
+	_ = low.BuildModel(&sc2n, &sch2)
+	_ = sch2.Build(sc2n.Content[0], nil)
+
+	for i := 0; i < b.N; i++ {
+		assert.Equal(b, sch1.Hash(), sch2.Hash())
+	}
+
+}
+
 func Test_Schema_31(t *testing.T) {
 	testSpec := `$schema: https://something
 type:
@@ -1246,26 +1268,86 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 func TestSchema_Hash_Equal(t *testing.T) {
 
 	left := `schema:
+  $schema: https://athing.com
+  multipleOf: 1
+  maximum: 10
+  minimum: 1
+  maxLength: 10
+  minLength: 1
+  pattern: something
+  format: another
+  maxItems: 10
+  minItems: 1
+  uniqueItems: 1
+  maxProperties: 10
+  minProperties: 1
+  additionalProperties: anything
+  description: milky
+  contentEncoding: rubber shoes
+  contentMediaType: paper tiger
+  default:
+     type: jazz
+  nullable: true
+  readOnly: true
+  writeOnly: true
+  deprecated: true
+  exclusiveMaximum: 23
+  exclusiveMinimum: 10
+  type:
+    - int
+  x-coffee: black
+  enum:
+    - one
+    - two
+  x-toast: burned
   title: an OK message
   required:
     - propA
-  enum:
-    - one
   properties:
     propA:
       title: a proxy property
       type: string`
 
 	right := `schema:
+  $schema: https://athing.com
+  multipleOf: 1
+  maximum: 10
+  x-coffee: black
+  minimum: 1
+  maxLength: 10
+  minLength: 1
+  pattern: something
+  format: another
+  maxItems: 10
+  minItems: 1
+  uniqueItems: 1
+  maxProperties: 10
+  minProperties: 1
+  additionalProperties: anything
+  description: milky
+  contentEncoding: rubber shoes
+  contentMediaType: paper tiger
+  default:
+     type: jazz
+  nullable: true
+  readOnly: true
+  writeOnly: true
+  deprecated: true
+  exclusiveMaximum: 23
+  exclusiveMinimum: 10
+  type:
+    - int
   enum:
     - one
+    - two
+  x-toast: burned
   title: an OK message
+  required:
+    - propA
   properties:
     propA:
       title: a proxy property
-      type: string
-  required:
-    - propA`
+      type: string`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)

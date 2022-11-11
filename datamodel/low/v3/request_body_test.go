@@ -53,3 +53,49 @@ func TestRequestBody_Fail(t *testing.T) {
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+func TestRequestBody_Hash(t *testing.T) {
+
+	yml := `description: nice toast
+content:
+  jammy/toast:
+    schema:
+      type: int
+  honey/toast:
+    schema:
+      type: int
+required: true
+x-toast: nice
+`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n RequestBody
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `description: nice toast
+content:
+  jammy/toast:
+    schema:
+      type: int
+  honey/toast:
+    schema:
+      type: int
+required: true
+x-toast: nice`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 RequestBody
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}

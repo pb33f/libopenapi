@@ -5,9 +5,11 @@ package base
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -40,9 +42,17 @@ func (ex *ExternalDoc) GetExtensions() map[low.KeyReference[string]]low.ValueRef
 
 func (ex *ExternalDoc) Hash() [32]byte {
 	// calculate a hash from every property.
-	d := []string{
+	f := []string{
 		ex.Description.Value,
 		ex.URL.Value,
 	}
-	return sha256.Sum256([]byte(strings.Join(d, "|")))
+	keys := make([]string, len(ex.Extensions))
+	z := 0
+	for k := range ex.Extensions {
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(ex.Extensions[k].Value))))
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
