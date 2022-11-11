@@ -242,38 +242,43 @@ func NewSchema(schema *base.Schema) *Schema {
 	var not []*SchemaProxy
 	var items []*SchemaProxy
 
+	children := 0
 	if !schema.AllOf.IsEmpty() {
+		children++
 		go buildOutSchema(schema.AllOf.Value, &allOf, polyCompletedChan, errChan)
 	}
 	if !schema.AnyOf.IsEmpty() {
+		children++
 		go buildOutSchema(schema.AnyOf.Value, &anyOf, polyCompletedChan, errChan)
 	}
 	if !schema.OneOf.IsEmpty() {
+		children++
 		go buildOutSchema(schema.OneOf.Value, &oneOf, polyCompletedChan, errChan)
 	}
 	if !schema.Not.IsEmpty() {
+		children++
 		go buildOutSchema(schema.Not.Value, &not, polyCompletedChan, errChan)
 	}
 	if !schema.Items.IsEmpty() {
+		children++
 		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan, errChan)
 	}
 
 	completeChildren := 0
 	completedProps := 0
 	totalProps := len(schema.Properties.Value)
-	totalChildren := len(schema.AllOf.Value) + len(schema.OneOf.Value) + len(schema.AnyOf.Value) + len(schema.Items.Value) + len(schema.Not.Value)
-	if totalProps+totalChildren > 0 {
+	if totalProps+children > 0 {
 	allDone:
 		for true {
 			select {
 			case <-polyCompletedChan:
 				completeChildren++
-				if totalProps == completedProps && totalChildren == completeChildren {
+				if totalProps == completedProps && children == completeChildren {
 					break allDone
 				}
 			case <-propsChan:
 				completedProps++
-				if totalProps == completedProps && totalChildren == completeChildren {
+				if totalProps == completedProps && children == completeChildren {
 					break allDone
 				}
 			}
