@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -95,18 +96,38 @@ func (r *Response) Hash() [32]byte {
 	if r.Description.Value != "" {
 		f = append(f, r.Description.Value)
 	}
+
+	keys := make([]string, len(r.Headers.Value))
+	z := 0
 	for k := range r.Headers.Value {
-		f = append(f, low.GenerateHashString(r.Headers.Value[k].Value))
+		keys[z] = low.GenerateHashString(r.Headers.Value[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(r.Content.Value))
+	z = 0
 	for k := range r.Content.Value {
-		f = append(f, low.GenerateHashString(r.Content.Value[k].Value))
+		keys[z] = low.GenerateHashString(r.Content.Value[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(r.Links.Value))
+	z = 0
 	for k := range r.Links.Value {
-		f = append(f, low.GenerateHashString(r.Links.Value[k].Value))
+		keys[z] = low.GenerateHashString(r.Links.Value[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	keys = make([]string, len(r.Extensions))
+	z = 0
 	for k := range r.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value,
-			sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value)))))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

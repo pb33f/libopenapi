@@ -190,7 +190,7 @@ func CompareHeaders(l, r any) *HeaderChanges {
 
 		// enum
 		if len(lHeader.Enum.Value) > 0 || len(rHeader.Enum.Value) > 0 {
-			ExtractStringValueSliceChanges(lHeader.Enum.Value, rHeader.Enum.Value, &changes, v3.EnumLabel, true)
+			ExtractRawValueSliceChanges(lHeader.Enum.Value, rHeader.Enum.Value, &changes, v3.EnumLabel, true)
 		}
 
 		// items

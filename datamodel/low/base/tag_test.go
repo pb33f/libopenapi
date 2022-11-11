@@ -55,3 +55,33 @@ externalDocs:
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+func TestTag_Hash(t *testing.T) {
+
+	left := `name: melody
+description: my princess
+externalDocs:
+  url: https://pb33f.io
+x-b33f: princess`
+
+	right := `name: melody
+description: my princess
+externalDocs:
+  url: https://pb33f.io
+x-b33f: princess`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc Tag
+	var rDoc Tag
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+
+}

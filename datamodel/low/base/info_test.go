@@ -68,3 +68,45 @@ func TestLicense_Build(t *testing.T) {
 	k := n.Build(nil, nil)
 	assert.Nil(t, k)
 }
+
+func TestInfo_Hash(t *testing.T) {
+
+	left := `title: princess b33f
+description: a thing
+termsOfService: https://pb33f.io
+x-princess: b33f
+contact:
+  name: buckaroo
+  url: https://pb33f.io
+license:
+  name: magic beans
+version: 1.2.3
+x-b33f: princess`
+
+	right := `title: princess b33f
+description: a thing
+termsOfService: https://pb33f.io
+x-princess: b33f
+contact:
+  name: buckaroo
+  url: https://pb33f.io
+license:
+  name: magic beans
+version: 1.2.3
+x-b33f: princess`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc Info
+	var rDoc Info
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+
+}

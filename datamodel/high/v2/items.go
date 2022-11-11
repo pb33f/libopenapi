@@ -3,7 +3,9 @@
 
 package v2
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v2"
+import (
+	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+)
 
 // Items is a high-level representation of a Swagger / OpenAPI 2 Items object, backed by a low level one.
 // Items is a limited subset of JSON-Schema's items object. It is used by parameter definitions that are not
@@ -25,7 +27,7 @@ type Items struct {
 	MaxItems         int
 	MinItems         int
 	UniqueItems      bool
-	Enum             []string
+	Enum             []any
 	MultipleOf       int
 	low              *low.Items
 }
@@ -80,7 +82,7 @@ func NewItems(items *low.Items) *Items {
 		i.UniqueItems = items.UniqueItems.Value
 	}
 	if !items.Enum.IsEmpty() {
-		var enums []string
+		var enums []any
 		for e := range items.Enum.Value {
 			enums = append(enums, items.Enum.Value[e].Value)
 		}

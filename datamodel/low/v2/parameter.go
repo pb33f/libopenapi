@@ -67,7 +67,7 @@ type Parameter struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]low.ValueReference[string]]
+	Enum             low.NodeReference[[]low.ValueReference[any]]
 	MultipleOf       low.NodeReference[int]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -258,7 +258,7 @@ func (p *Parameter) GetMinItems() *low.NodeReference[int] {
 func (p *Parameter) GetUniqueItems() *low.NodeReference[bool] {
 	return &p.UniqueItems
 }
-func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
+func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[any]] {
 	return &p.Enum
 }
 func (p *Parameter) GetMultipleOf() *low.NodeReference[int] {

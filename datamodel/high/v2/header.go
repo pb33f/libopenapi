@@ -28,7 +28,7 @@ type Header struct {
 	MaxItems         int
 	MinItems         int
 	UniqueItems      bool
-	Enum             []string
+	Enum             []any
 	MultipleOf       int
 	Extensions       map[string]any
 	low              *low.Header
@@ -88,7 +88,7 @@ func NewHeader(header *low.Header) *Header {
 		h.UniqueItems = header.UniqueItems.IsEmpty()
 	}
 	if !header.Enum.IsEmpty() {
-		var enums []string
+		var enums []any
 		for e := range header.Enum.Value {
 			enums = append(enums, header.Enum.Value[e].Value)
 		}
