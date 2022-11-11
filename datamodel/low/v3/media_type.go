@@ -118,8 +118,13 @@ func (mt *MediaType) Hash() [32]byte {
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
+	keys = make([]string, len(mt.Extensions))
+	z = 0
 	for k := range mt.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, mt.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(mt.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

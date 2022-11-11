@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -76,9 +77,14 @@ func (h *Header) Hash() [32]byte {
 			f = append(f, fmt.Sprintf("%s-%x", k.Value, h.Content.Value[k].Value.Hash()))
 		}
 	}
+	keys := make([]string, len(h.Extensions))
+	z := 0
 	for k := range h.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, h.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(h.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 

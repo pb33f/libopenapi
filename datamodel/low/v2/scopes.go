@@ -67,8 +67,13 @@ func (s *Scopes) Hash() [32]byte {
 	for k := range keys {
 		f = append(f, fmt.Sprintf("%s-%s", keys[k], vals[keys[k]].Value))
 	}
+	keys = make([]string, len(s.Extensions))
+	z = 0
 	for k := range s.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, s.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(s.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

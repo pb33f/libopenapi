@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -98,8 +99,13 @@ func (ss *SecurityScheme) Hash() [32]byte {
 	if !ss.OpenIdConnectUrl.IsEmpty() {
 		f = append(f, ss.OpenIdConnectUrl.Value)
 	}
+	keys := make([]string, len(ss.Extensions))
+	z := 0
 	for k := range ss.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, ss.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(ss.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

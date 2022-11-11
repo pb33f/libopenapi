@@ -85,9 +85,13 @@ func (l *Link) Hash() [32]byte {
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
+	keys = make([]string, len(l.Extensions))
+	z = 0
 	for k := range l.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value,
-			sha256.Sum256([]byte(fmt.Sprint(l.Extensions[k].Value)))))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(l.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

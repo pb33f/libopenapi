@@ -5,6 +5,7 @@ package v3
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
@@ -75,5 +76,15 @@ func (cb *Callback) Hash() [32]byte {
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
+
+	keys = make([]string, len(cb.Extensions))
+	z = 0
+	for k := range cb.Extensions {
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(cb.Extensions[k].Value))))
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
