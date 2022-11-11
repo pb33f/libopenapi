@@ -4,9 +4,11 @@
 package base
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // License is a low-level representation of a License object as defined by OpenAPI 2 and OpenAPI 3
@@ -20,4 +22,16 @@ type License struct {
 // Build is not implemented for License (there is nothing to build)
 func (l *License) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the License object
+func (l *License) Hash() [32]byte {
+	var f []string
+	if !l.Name.IsEmpty() {
+		f = append(f, l.Name.Value)
+	}
+	if !l.URL.IsEmpty() {
+		f = append(f, l.URL.Value)
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

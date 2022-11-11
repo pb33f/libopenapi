@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strconv"
 	"strings"
 )
@@ -45,9 +46,14 @@ func (ex *Example) Hash() [32]byte {
 	if ex.ExternalValue.Value != "" {
 		f = append(f, ex.ExternalValue.Value)
 	}
+	keys := make([]string, len(ex.Extensions))
+	z := 0
 	for k := range ex.Extensions {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(ex.Extensions[k].Value)))))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(ex.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 

@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -34,7 +35,7 @@ type Header struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]low.ValueReference[string]]
+	Enum             low.NodeReference[[]low.ValueReference[any]]
 	MultipleOf       low.NodeReference[int]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -120,16 +121,26 @@ func (h *Header) Hash() [32]byte {
 	if h.Pattern.Value != "" {
 		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(h.Pattern.Value)))))
 	}
-	if len(h.Enum.Value) > 0 {
-		for k := range h.Enum.Value {
-			f = append(f, fmt.Sprint(h.Enum.Value[k].Value))
-		}
-	}
+
+	keys := make([]string, len(h.Extensions))
+	z := 0
 	for k := range h.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, h.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(h.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+
+	keys = make([]string, len(h.Enum.Value))
+	z = 0
+	for k := range h.Enum.Value {
+		keys[z] = fmt.Sprint(h.Enum.Value[k].Value)
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	if h.Items.Value != nil {
-		f = append(f, fmt.Sprintf("%x", h.Items.Value.Hash()))
+		f = append(f, low.GenerateHashString(h.Items.Value))
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
@@ -189,7 +200,7 @@ func (h *Header) GetMinItems() *low.NodeReference[int] {
 func (h *Header) GetUniqueItems() *low.NodeReference[bool] {
 	return &h.UniqueItems
 }
-func (h *Header) GetEnum() *low.NodeReference[[]low.ValueReference[string]] {
+func (h *Header) GetEnum() *low.NodeReference[[]low.ValueReference[any]] {
 	return &h.Enum
 }
 func (h *Header) GetMultipleOf() *low.NodeReference[int] {

@@ -4,9 +4,13 @@
 package base
 
 import (
+	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
+	"strings"
 )
 
 // Tag represents a low-level Tag instance that is backed by a low-level one.
@@ -40,6 +44,29 @@ func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
 // GetExtensions returns all Tag extensions and satisfies the low.HasExtensions interface.
 func (t *Tag) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
 	return t.Extensions
+}
+
+// Hash will return a consistent SHA256 Hash of the Info object
+func (t *Tag) Hash() [32]byte {
+	var f []string
+	if !t.Name.IsEmpty() {
+		f = append(f, t.Name.Value)
+	}
+	if !t.Description.IsEmpty() {
+		f = append(f, t.Description.Value)
+	}
+	if !t.ExternalDocs.IsEmpty() {
+		f = append(f, low.GenerateHashString(t.ExternalDocs.Value))
+	}
+	keys := make([]string, len(t.Extensions))
+	z := 0
+	for k := range t.Extensions {
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(t.Extensions[k].Value))))
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // TODO: future mutation API experiment code is here. this snippet is to re-marshal the object.

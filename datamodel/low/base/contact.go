@@ -4,9 +4,11 @@
 package base
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // Contact represents a low-level representation of the Contact definitions found at
@@ -22,4 +24,19 @@ type Contact struct {
 func (c *Contact) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// not implemented.
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Contact object
+func (c *Contact) Hash() [32]byte {
+	var f []string
+	if !c.Name.IsEmpty() {
+		f = append(f, c.Name.Value)
+	}
+	if !c.URL.IsEmpty() {
+		f = append(f, c.URL.Value)
+	}
+	if !c.Email.IsEmpty() {
+		f = append(f, c.Email.Value)
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

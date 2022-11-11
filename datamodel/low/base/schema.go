@@ -153,7 +153,7 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, fmt.Sprint(s.MinProperties.Value))
 	}
 	if !s.AdditionalProperties.IsEmpty() {
-		d = append(d, fmt.Sprint(s.AdditionalProperties.Value))
+		d = append(d, low.GenerateHashString(s.AdditionalProperties.Value))
 	}
 	if !s.Description.IsEmpty() {
 		d = append(d, fmt.Sprint(s.Description.Value))
@@ -185,7 +185,6 @@ func (s *Schema) Hash() [32]byte {
 	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsB() {
 		d = append(d, fmt.Sprint(s.ExclusiveMaximum.Value.B))
 	}
-
 	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsA() {
 		d = append(d, fmt.Sprint(s.ExclusiveMinimum.Value.A))
 	}
@@ -204,15 +203,28 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, strings.Join(j, "|"))
 	}
 
+	keys := make([]string, len(s.Required.Value))
 	for i := range s.Required.Value {
-		d = append(d, s.Required.Value[i].Value)
+		keys[i] = s.Required.Value[i].Value
 	}
+	sort.Strings(keys)
+	d = append(d, keys...)
+
+	keys = make([]string, len(s.Enum.Value))
+	for i := range s.Enum.Value {
+		keys[i] = fmt.Sprint(s.Enum.Value[i].Value)
+	}
+	sort.Strings(keys)
+	d = append(d, keys...)
+
 	for i := range s.Enum.Value {
 		d = append(d, fmt.Sprint(s.Enum.Value[i].Value))
 	}
-	propertyKeys := make([]string, 0, len(s.Properties.Value))
+	propertyKeys := make([]string, len(s.Properties.Value))
+	z := 0
 	for i := range s.Properties.Value {
-		propertyKeys = append(propertyKeys, i.Value)
+		propertyKeys[z] = i.Value
+		z++
 	}
 	sort.Strings(propertyKeys)
 	for k := range propertyKeys {
@@ -233,15 +245,17 @@ func (s *Schema) Hash() [32]byte {
 
 	// hash polymorphic data
 	if len(s.OneOf.Value) > 0 {
-		oneOfKeys := make([]string, 0, len(s.OneOf.Value))
+		oneOfKeys := make([]string, len(s.OneOf.Value))
 		oneOfEntities := make(map[string]*Schema)
+		z = 0
 		for i := range s.OneOf.Value {
 			g := s.OneOf.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
 				r := low.GenerateHashString(k)
 				oneOfEntities[r] = k
-				oneOfKeys = append(oneOfKeys, r)
+				oneOfKeys[z] = r
+				z++
 			}
 		}
 		sort.Strings(oneOfKeys)
@@ -251,15 +265,17 @@ func (s *Schema) Hash() [32]byte {
 	}
 
 	if len(s.AllOf.Value) > 0 {
-		allOfKeys := make([]string, 0, len(s.AllOf.Value))
+		allOfKeys := make([]string, len(s.AllOf.Value))
 		allOfEntities := make(map[string]*Schema)
+		z = 0
 		for i := range s.AllOf.Value {
 			g := s.AllOf.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
 				r := low.GenerateHashString(k)
 				allOfEntities[r] = k
-				allOfKeys = append(allOfKeys, r)
+				allOfKeys[z] = r
+				z++
 			}
 		}
 		sort.Strings(allOfKeys)
@@ -269,15 +285,17 @@ func (s *Schema) Hash() [32]byte {
 	}
 
 	if len(s.AnyOf.Value) > 0 {
-		anyOfKeys := make([]string, 0, len(s.AnyOf.Value))
+		anyOfKeys := make([]string, len(s.AnyOf.Value))
 		anyOfEntities := make(map[string]*Schema)
+		z = 0
 		for i := range s.AnyOf.Value {
 			g := s.AnyOf.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
 				r := low.GenerateHashString(k)
 				anyOfEntities[r] = k
-				anyOfKeys = append(anyOfKeys, r)
+				anyOfKeys[z] = r
+				z++
 			}
 		}
 		sort.Strings(anyOfKeys)
@@ -287,15 +305,17 @@ func (s *Schema) Hash() [32]byte {
 	}
 
 	if len(s.Not.Value) > 0 {
-		notKeys := make([]string, 0, len(s.Not.Value))
+		notKeys := make([]string, len(s.Not.Value))
 		notEntities := make(map[string]*Schema)
+		z = 0
 		for i := range s.Not.Value {
 			g := s.Not.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
 				r := low.GenerateHashString(k)
 				notEntities[r] = k
-				notKeys = append(notKeys, r)
+				notKeys[z] = r
+				z++
 			}
 		}
 		sort.Strings(notKeys)
@@ -305,15 +325,17 @@ func (s *Schema) Hash() [32]byte {
 	}
 
 	if len(s.Items.Value) > 0 {
-		itemsKeys := make([]string, 0, len(s.Items.Value))
+		itemsKeys := make([]string, len(s.Items.Value))
 		itemsEntities := make(map[string]*Schema)
+		z = 0
 		for i := range s.Items.Value {
 			g := s.Items.Value[i].Value
 			if !g.IsSchemaReference() {
 				k := g.Schema()
 				r := low.GenerateHashString(k)
 				itemsEntities[r] = k
-				itemsKeys = append(itemsKeys, r)
+				itemsKeys[z] = r
+				z++
 			}
 		}
 		sort.Strings(itemsKeys)
@@ -322,9 +344,14 @@ func (s *Schema) Hash() [32]byte {
 		}
 	}
 	// add extensions to hash
+	keys = make([]string, len(s.Extensions))
+	z = 0
 	for k := range s.Extensions {
-		d = append(d, fmt.Sprintf("%v-%x", k.Value, s.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(s.Extensions[k].Value))))
+		z++
 	}
+	sort.Strings(keys)
+	d = append(d, keys...)
 	if s.Example.Value != nil {
 		d = append(d, low.GenerateHashString(s.Example.Value))
 	}

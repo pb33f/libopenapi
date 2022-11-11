@@ -173,3 +173,64 @@ func TestResponses_Build_FailBadLinks(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestResponse_Hash(t *testing.T) {
+
+	yml := `description: nice toast
+headers:
+  heady:
+    description: a header
+  handy:
+    description: a handy
+content:
+  nice/toast:
+    schema: 
+      type: int
+  nice/roast:
+    schema: 
+      type: int
+x-jam: toast
+x-ham: jam
+links: 
+  linky:
+    operationId: one two toast`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Response
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	yml2 := `description: nice toast
+x-ham: jam
+headers:
+  heady:
+    description: a header
+  handy:
+    description: a handy
+content:
+  nice/toast:
+    schema: 
+      type: int
+  nice/roast:
+    schema: 
+      type: int
+x-jam: toast
+links: 
+  linky:
+    operationId: one two toast`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 Response
+	_ = low.BuildModel(idxNode2.Content[0], &n2)
+	_ = n2.Build(idxNode2.Content[0], idx2)
+
+	// hash
+	assert.Equal(t, n.Hash(), n2.Hash())
+
+}

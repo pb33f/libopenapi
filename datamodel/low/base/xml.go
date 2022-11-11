@@ -6,6 +6,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -38,17 +39,29 @@ func (x *XML) GetExtensions() map[low.KeyReference[string]]low.ValueReference[an
 
 // Hash generates a SHA256 hash of the XML object using properties
 func (x *XML) Hash() [32]byte {
-	// calculate a hash from every property.
-	d := []string{
-		x.Name.Value,
-		x.Namespace.Value,
-		x.Prefix.Value,
-		fmt.Sprint(x.Attribute.Value),
-		fmt.Sprint(x.Wrapped.Value),
+	var f []string
+	if !x.Name.IsEmpty() {
+		f = append(f, x.Name.Value)
 	}
-	// add extensions to hash
+	if !x.Namespace.IsEmpty() {
+		f = append(f, x.Namespace.Value)
+	}
+	if !x.Prefix.IsEmpty() {
+		f = append(f, x.Prefix.Value)
+	}
+	if !x.Attribute.IsEmpty() {
+		f = append(f, fmt.Sprint(x.Attribute.Value))
+	}
+	if !x.Wrapped.IsEmpty() {
+		f = append(f, fmt.Sprint(x.Wrapped.Value))
+	}
+	keys := make([]string, len(x.Extensions))
+	z := 0
 	for k := range x.Extensions {
-		d = append(d, fmt.Sprintf("%v-%x", k.Value, x.Extensions[k].Value))
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(x.Extensions[k].Value))))
+		z++
 	}
-	return sha256.Sum256([]byte(strings.Join(d, "|")))
+	sort.Strings(keys)
+	f = append(f, keys...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

@@ -4,6 +4,7 @@
 package model
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
 	"strings"
@@ -256,6 +257,43 @@ func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
 	}
 	for i := range rParam {
 		rKeys[i] = strings.ToLower(rParam[i].Value)
+		rValues[rKeys[i]] = rParam[i]
+	}
+	for i := range lValues {
+		if _, ok := rValues[i]; !ok {
+			CreateChange(changes, PropertyRemoved, label,
+				lValues[i].ValueNode,
+				nil,
+				breaking,
+				lValues[i].Value,
+				nil)
+		}
+	}
+	for i := range rValues {
+		if _, ok := lValues[i]; !ok {
+			CreateChange(changes, PropertyAdded, label,
+				nil,
+				rValues[i].ValueNode,
+				false,
+				nil,
+				rValues[i].Value)
+		}
+	}
+}
+
+// ExtractRawValueSliceChanges will compare two low level interface{} slices for changes.
+func ExtractRawValueSliceChanges(lParam, rParam []low.ValueReference[any],
+	changes *[]*Change, label string, breaking bool) {
+	lKeys := make([]string, len(lParam))
+	rKeys := make([]string, len(rParam))
+	lValues := make(map[string]low.ValueReference[any])
+	rValues := make(map[string]low.ValueReference[any])
+	for i := range lParam {
+		lKeys[i] = strings.ToLower(fmt.Sprint(lParam[i].Value))
+		lValues[lKeys[i]] = lParam[i]
+	}
+	for i := range rParam {
+		rKeys[i] = strings.ToLower(fmt.Sprint(rParam[i].Value))
 		rValues[rKeys[i]] = rParam[i]
 	}
 	for i := range lValues {

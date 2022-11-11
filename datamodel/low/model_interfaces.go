@@ -33,7 +33,7 @@ type SwaggerParameter interface {
 	GetMaxItems() *NodeReference[int]
 	GetMinItems() *NodeReference[int]
 	GetUniqueItems() *NodeReference[bool]
-	GetEnum() *NodeReference[[]ValueReference[string]]
+	GetEnum() *NodeReference[[]ValueReference[any]]
 	GetMultipleOf() *NodeReference[int]
 }
 
@@ -54,7 +54,7 @@ type SwaggerHeader interface {
 	GetMaxItems() *NodeReference[int]
 	GetMinItems() *NodeReference[int]
 	GetUniqueItems() *NodeReference[bool]
-	GetEnum() *NodeReference[[]ValueReference[string]]
+	GetEnum() *NodeReference[[]ValueReference[any]]
 	GetMultipleOf() *NodeReference[int]
 	GetItems() *NodeReference[any] // requires cast.
 }
