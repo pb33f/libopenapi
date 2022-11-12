@@ -201,33 +201,135 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 
 	expChanges := make(map[string]R)
 
-	// check left example hashes
-	for k := range lHashes {
-		rhash := rHashes[k]
+	checkLeft := func(k string, doneChan chan bool, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
+		rhash := g[k]
 		if rhash == "" {
+			if p[k].GetValueNode().Value == "" {
+				p[k].GetValueNode().Value = k
+			}
 			CreateChange(changes, ObjectRemoved, label,
-				lValues[k].GetValueNode(), nil, true,
-				lValues[k].GetValue(), nil)
-			continue
+				p[k].GetValueNode(), nil, true,
+				p[k].GetValue(), nil)
+			doneChan <- true
+			return
 		}
-		if lHashes[k] == rHashes[k] {
-			continue
+		if f[k] == g[k] {
+			doneChan <- true
+			return
 		}
 		// run comparison.
-		expChanges[k] = compareFunc(lValues[k].Value, rValues[k].Value)
+		expChanges[k] = compareFunc(p[k].Value, h[k].Value)
+		doneChan <- true
+	}
+
+	doneChan := make(chan bool)
+	count := 0
+
+	// check left example hashes
+	for k := range lHashes {
+		count++
+		go checkLeft(k, doneChan, lHashes, rHashes, lValues, rValues)
 	}
 
 	//check right example hashes
 	for k := range rHashes {
-		lhash := lHashes[k]
-		if lhash == "" {
-			CreateChange(changes, ObjectAdded, label,
-				nil, rValues[k].GetValueNode(), false,
-				nil, rValues[k].GetValue())
-			continue
+		count++
+		go checkRightValue(k, doneChan, lHashes, rValues, changes, label)
+	}
+
+	// wait for all done signals.
+	completed := 0
+	for completed < count {
+		select {
+		case <-doneChan:
+			completed++
 		}
 	}
 	return expChanges
+}
+
+// CheckMapForChangesUntyped checks a left and right low level map for any additions, subtractions or modifications to
+// values. The compareFunc  can be generic and accept any type
+func CheckMapForChangesUntyped[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+	changes *[]*Change, label string, compareFunc func(l, r any) R) map[string]R {
+
+	lHashes := make(map[string]string)
+	rHashes := make(map[string]string)
+	lValues := make(map[string]low.ValueReference[T])
+	rValues := make(map[string]low.ValueReference[T])
+
+	for k := range expLeft {
+		lHashes[k.Value] = low.GenerateHashString(expLeft[k].Value)
+		lValues[k.Value] = expLeft[k]
+	}
+
+	for k := range expRight {
+		rHashes[k.Value] = low.GenerateHashString(expRight[k].Value)
+		rValues[k.Value] = expRight[k]
+	}
+
+	expChanges := make(map[string]R)
+
+	checkLeft := func(k string, doneChan chan bool, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
+		rhash := g[k]
+		if rhash == "" {
+			if p[k].GetValueNode().Value == "" {
+				p[k].GetValueNode().Value = k
+			}
+			CreateChange(changes, ObjectRemoved, label,
+				p[k].GetValueNode(), nil, true,
+				p[k].GetValue(), nil)
+			doneChan <- true
+			return
+		}
+		if f[k] == g[k] {
+			doneChan <- true
+			return
+		}
+		// run comparison.
+		expChanges[k] = compareFunc(p[k].Value, h[k].Value)
+		doneChan <- true
+	}
+
+	doneChan := make(chan bool)
+	count := 0
+
+	// check left example hashes
+	for k := range lHashes {
+		count++
+		go checkLeft(k, doneChan, lHashes, rHashes, lValues, rValues)
+	}
+
+	//check right example hashes
+	for k := range rHashes {
+		count++
+		go checkRightValue(k, doneChan, lHashes, rValues, changes, label)
+	}
+
+	// wait for all done signals.
+	completed := 0
+	for completed < count {
+		select {
+		case <-doneChan:
+			completed++
+		}
+	}
+	return expChanges
+}
+
+func checkRightValue[T any](k string, doneChan chan bool, f map[string]string, p map[string]low.ValueReference[T],
+	changes *[]*Change, label string) {
+
+	lhash := f[k]
+	if lhash == "" {
+		if p[k].GetValueNode().Value == "" {
+			p[k].GetValueNode().Value = k
+		}
+		CreateChange(changes, ObjectAdded, label,
+			nil, p[k].GetValueNode(), false,
+			nil, p[k].GetValue())
+	}
+	doneChan <- true
 }
 
 // ExtractStringValueSliceChanges will compare two low level string slices for changes.
