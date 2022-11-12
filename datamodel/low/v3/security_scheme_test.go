@@ -57,6 +57,10 @@ x-milk: please`
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
+
+	assert.Equal(t, "0b5ee36519fdfc6383c7befd92294d77b5799cd115911ff8c3e194f345a8c103",
+		low.GenerateHashString(&n))
+
 	assert.Equal(t, "tea", n.Type.Value)
 	assert.Equal(t, "cake", n.Description.Value)
 	assert.Equal(t, "biscuit", n.Name.Value)

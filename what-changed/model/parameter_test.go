@@ -344,7 +344,7 @@ func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
 	// compare
 	extChanges := CompareParameters(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
 

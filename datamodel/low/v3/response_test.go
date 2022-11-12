@@ -27,6 +27,7 @@ func TestResponses_Build(t *testing.T) {
     someLink:
       description: a link
   x-gut: rot    
+x-shoes: old
 default:
   description: default response`
 
@@ -58,6 +59,44 @@ default:
 	link := ok.Value.FindLink("someLink")
 	assert.NotNil(t, link.Value)
 	assert.Equal(t, "a link", link.Value.Description.Value)
+
+	// check hash
+	assert.Equal(t, "4ab807033ce9ca57ab551d8569cc11da8722c4ae75c003bc23b495ab756f468a",
+		low.GenerateHashString(&n))
+
+}
+
+func TestResponses_NoDefault(t *testing.T) {
+
+	yml := `"200":
+  description: some response
+  headers:
+    header1: 
+      description: some header
+  content: 
+    nice/rice:
+      schema:
+        type: string
+        description: this is some content.
+  links:
+    someLink:
+      description: a link
+  x-gut: rot    
+x-shoes: old`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Responses
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+
+	// check hash
+	assert.Equal(t, "1b9161a7d31a9aa4580899f57092bcb6801b37045777bff28981bd2288c72b10",
+		low.GenerateHashString(&n))
 
 }
 
@@ -234,3 +273,54 @@ links:
 	assert.Equal(t, n.Hash(), n2.Hash())
 
 }
+
+//
+//func TestResponses_Default(t *testing.T) {
+//
+//	yml := `"200":
+//  description: some response
+//  headers:
+//    header1:
+//      description: some header
+//  content:
+//    nice/rice:
+//      schema:
+//        type: string
+//        description: this is some content.
+//  links:
+//    someLink:
+//      description: a link
+//  x-gut: rot
+//default:
+//  description: default response`
+//
+//	var idxNode yaml.Node
+//	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+//	idx := index.NewSpecIndex(&idxNode)
+//
+//	var n Responses
+//	err := low.BuildModel(&idxNode, &n)
+//	assert.NoError(t, err)
+//
+//	err = n.Build(idxNode.Content[0], idx)
+//	assert.NoError(t, err)
+//	assert.Equal(t, "default response", n.Default.Value.Description.Value)
+//
+//	ok := n.FindResponseByCode("200")
+//	assert.NotNil(t, ok.Value)
+//	assert.Equal(t, "some response", ok.Value.Description.Value)
+//	assert.Equal(t, "rot", ok.Value.FindExtension("x-gut").Value)
+//
+//	con := ok.Value.FindContent("nice/rice")
+//	assert.NotNil(t, con.Value)
+//	assert.Equal(t, "this is some content.", con.Value.Schema.Value.Schema().Description.Value)
+//
+//	head := ok.Value.FindHeader("header1")
+//	assert.NotNil(t, head.Value)
+//	assert.Equal(t, "some header", head.Value.Description.Value)
+//
+//	link := ok.Value.FindLink("someLink")
+//	assert.NotNil(t, link.Value)
+//	assert.Equal(t, "a link", link.Value.Description.Value)
+//
+//}

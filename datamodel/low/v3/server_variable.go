@@ -2,7 +2,9 @@ package v3
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"sort"
 	"strings"
 )
 
@@ -22,9 +24,14 @@ type ServerVariable struct {
 // Hash will return a consistent SHA256 Hash of the ServerVariable object
 func (s *ServerVariable) Hash() [32]byte {
 	var f []string
+	keys := make([]string, len(s.Enum))
+	z := 0
 	for k := range s.Enum {
-		f = append(f, s.Enum[k].Value)
+		keys[z] = fmt.Sprint(s.Enum[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	if !s.Default.IsEmpty() {
 		f = append(f, s.Default.Value)
 	}

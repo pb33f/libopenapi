@@ -206,7 +206,7 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 		rhash := rHashes[k]
 		if rhash == "" {
 			CreateChange(changes, ObjectRemoved, label,
-				lValues[k].GetValueNode(), nil, false,
+				lValues[k].GetValueNode(), nil, true,
 				lValues[k].GetValue(), nil)
 			continue
 		}
@@ -222,27 +222,13 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 		lhash := lHashes[k]
 		if lhash == "" {
 			CreateChange(changes, ObjectAdded, label,
-				nil, lValues[k].GetValueNode(), false,
-				nil, lValues[k].GetValue())
+				nil, rValues[k].GetValueNode(), false,
+				nil, rValues[k].GetValue())
 			continue
 		}
 	}
 	return expChanges
 }
-
-//func CompareMapStrings(l, r low.ValueReference[string]) *Change {
-//
-//	if l.Value != r.Value {
-//		return &Change{
-//			Context:        CreateContext(l.ValueNode, r.ValueNode),
-//			ChangeType:     Modified,
-//			Original:       l.Value,
-//			New:            r.Value,
-//			Breaking:       false,
-//		}
-//	}
-//	return nil
-//}
 
 // ExtractStringValueSliceChanges will compare two low level string slices for changes.
 func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
