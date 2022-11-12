@@ -114,3 +114,12 @@ func (sp *SchemaProxy) GetSchemaReference() string {
 func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 	return sp.vn
 }
+
+// Hash will return a consistent SHA256 Hash of the SchemaProxy object (it will resolve it)
+func (sp *SchemaProxy) Hash() [32]byte {
+	if sp.rendered != nil {
+		return sp.rendered.Hash()
+	} else {
+		return sp.Schema().Hash()
+	}
+}

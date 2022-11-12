@@ -4,10 +4,13 @@
 package v2
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
+	"sort"
+	"strings"
 )
 
 // ParameterDefinitions is a low-level representation of a Swagger / OpenAPI 2 Parameters Definitions object.
@@ -108,6 +111,22 @@ func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 	d.Schemas = results
 	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the Definitions object
+func (d *Definitions) Hash() [32]byte {
+	var f []string
+	keys := make([]string, len(d.Schemas))
+	z := 0
+	for k := range d.Schemas {
+		keys[z] = k.Value
+		z++
+	}
+	sort.Strings(keys)
+	for k := range keys {
+		f = append(f, low.GenerateHashString(d.FindSchema(keys[k]).Value))
+	}
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // Build will extract all ParameterDefinitions into Parameter instances.
