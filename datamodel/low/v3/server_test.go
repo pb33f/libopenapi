@@ -31,10 +31,19 @@ variables:
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
+
+	assert.Equal(t, "ec69dfcf68ad8988f3804e170ee6c4a7ad2e4ac51084796eea93168820827546",
+		low.GenerateHashString(&n))
+
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
 	assert.Equal(t, "high quality software for developers.", n.Description.Value)
 	assert.Equal(t, "hello", n.FindVariable("var1").Value.Default.Value)
 	assert.Equal(t, "a var", n.FindVariable("var1").Value.Description.Value)
+
+	// test var hash
+	s := n.FindVariable("var1")
+	assert.Equal(t, "00eef99ee4a7b746be7b4ccdece59c5a96222c6206f846fafed782c9f3f9b46b",
+		low.GenerateHashString(s.Value))
 
 }
 

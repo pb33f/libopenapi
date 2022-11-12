@@ -9,6 +9,7 @@ const (
 	SchemasLabel              = "schemas"
 	EncodingLabel             = "encoding"
 	HeadersLabel              = "headers"
+	ExpressionLabel           = "expression"
 	ParametersLabel           = "parameters"
 	RequestBodyLabel          = "requestBody"
 	RequestBodiesLabel        = "requestBodies"
