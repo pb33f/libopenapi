@@ -44,6 +44,14 @@ func (ss *SecuritySchemeChanges) TotalBreakingChanges() int {
 	return c
 }
 
+func CompareSecuritySchemesV2(l, r *v2.SecurityScheme) *SecuritySchemeChanges {
+	return CompareSecuritySchemes(l, r)
+}
+
+func CompareSecuritySchemesV3(l, r *v3.SecurityScheme) *SecuritySchemeChanges {
+	return CompareSecuritySchemes(l, r)
+}
+
 func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 
 	var props []*PropertyCheck
