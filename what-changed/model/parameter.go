@@ -191,6 +191,14 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 	return props
 }
 
+func CompareParametersV3(l, r *v3.Parameter) *ParameterChanges {
+	return CompareParameters(l, r)
+}
+
+func CompareParametersV2(l, r *v2.Parameter) *ParameterChanges {
+	return CompareParameters(l, r)
+}
+
 func CompareParameters(l, r any) *ParameterChanges {
 
 	var changes []*Change

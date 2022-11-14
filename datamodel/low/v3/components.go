@@ -39,6 +39,7 @@ func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
 // FindSchema attempts to locate a SchemaProxy from 'schemas' with a specific name
 func (co *Components) FindSchema(schema string) *low.ValueReference[*base.SchemaProxy] {
 	return low.FindItemInMap[*base.SchemaProxy](schema, co.Schemas.Value)
+
 }
 
 // FindResponse attempts to locate a Response from 'responses' with a specific name
