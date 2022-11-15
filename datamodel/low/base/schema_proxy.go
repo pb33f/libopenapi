@@ -4,6 +4,7 @@
 package base
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -120,6 +121,13 @@ func (sp *SchemaProxy) Hash() [32]byte {
 	if sp.rendered != nil {
 		return sp.rendered.Hash()
 	} else {
-		return sp.Schema().Hash()
+		if !sp.isReference {
+			// only resolve this proxy if it's not a ref.
+			sch := sp.Schema()
+			sp.rendered = sch
+			return sch.Hash()
+		}
 	}
+	// hash reference value only, do not resolve!
+	return sha256.Sum256([]byte(sp.referenceLookup))
 }
