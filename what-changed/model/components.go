@@ -5,8 +5,8 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"reflect"
 )
 
@@ -77,55 +77,55 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		comparisons := 0
 
 		// run as fast as we can, thread all the things.
-		if !lComponents.Schemas.IsEmpty() || rComponents.Schemas.IsEmpty() {
+		if !lComponents.Schemas.IsEmpty() || !rComponents.Schemas.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Schemas.Value, rComponents.Schemas.Value,
 				&changes, v3.SchemasLabel, CompareSchemas, doneChan)
 		}
 
-		if !lComponents.Responses.IsEmpty() || rComponents.Responses.IsEmpty() {
+		if !lComponents.Responses.IsEmpty() || !rComponents.Responses.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Responses.Value, rComponents.Responses.Value,
 				&changes, v3.ResponsesLabel, CompareResponseV3, doneChan)
 		}
 
-		if !lComponents.Parameters.IsEmpty() || rComponents.Parameters.IsEmpty() {
+		if !lComponents.Parameters.IsEmpty() || !rComponents.Parameters.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Parameters.Value, rComponents.Parameters.Value,
 				&changes, v3.ParametersLabel, CompareParametersV3, doneChan)
 		}
 
-		if !lComponents.Examples.IsEmpty() || rComponents.Examples.IsEmpty() {
+		if !lComponents.Examples.IsEmpty() || !rComponents.Examples.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Examples.Value, rComponents.Examples.Value,
 				&changes, v3.ExamplesLabel, CompareExamples, doneChan)
 		}
 
-		if !lComponents.RequestBodies.IsEmpty() || rComponents.RequestBodies.IsEmpty() {
+		if !lComponents.RequestBodies.IsEmpty() || !rComponents.RequestBodies.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.RequestBodies.Value, rComponents.RequestBodies.Value,
 				&changes, v3.RequestBodiesLabel, CompareRequestBodies, doneChan)
 		}
 
-		if !lComponents.Headers.IsEmpty() || rComponents.Headers.IsEmpty() {
+		if !lComponents.Headers.IsEmpty() || !rComponents.Headers.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Headers.Value, rComponents.Headers.Value,
 				&changes, v3.HeadersLabel, CompareHeadersV3, doneChan)
 		}
 
-		if !lComponents.SecuritySchemes.IsEmpty() || rComponents.SecuritySchemes.IsEmpty() {
+		if !lComponents.SecuritySchemes.IsEmpty() || !rComponents.SecuritySchemes.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.SecuritySchemes.Value, rComponents.SecuritySchemes.Value,
 				&changes, v3.SecuritySchemesLabel, CompareSecuritySchemesV3, doneChan)
 		}
 
-		if !lComponents.Links.IsEmpty() || rComponents.Links.IsEmpty() {
+		if !lComponents.Links.IsEmpty() || !rComponents.Links.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Links.Value, rComponents.Links.Value,
 				&changes, v3.LinksLabel, CompareLinks, doneChan)
 		}
 
-		if !lComponents.Callbacks.IsEmpty() || rComponents.Callbacks.IsEmpty() {
+		if !lComponents.Callbacks.IsEmpty() || !rComponents.Callbacks.IsEmpty() {
 			comparisons++
 			go runComparison(lComponents.Callbacks.Value, rComponents.Callbacks.Value,
 				&changes, v3.CallbacksLabel, CompareCallback, doneChan)
@@ -246,9 +246,6 @@ func (c *ComponentsChanges) TotalBreakingChanges() int {
 	for k := range c.ParameterChanges {
 		v += c.ParameterChanges[k].TotalBreakingChanges()
 	}
-	for k := range c.ExamplesChanges {
-		v += c.ExamplesChanges[k].TotalBreakingChanges()
-	}
 	for k := range c.RequestBodyChanges {
 		v += c.RequestBodyChanges[k].TotalBreakingChanges()
 	}
@@ -263,9 +260,6 @@ func (c *ComponentsChanges) TotalBreakingChanges() int {
 	}
 	for k := range c.CallbackChanges {
 		v += c.CallbackChanges[k].TotalBreakingChanges()
-	}
-	if c.ExtensionChanges != nil {
-		v += c.ExtensionChanges.TotalBreakingChanges()
 	}
 	return v
 }

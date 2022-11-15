@@ -224,7 +224,9 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 			return
 		}
 		// run comparison.
+		chLock.Lock()
 		expChanges[k] = compareFunc(p[k].Value, h[k].Value)
+		chLock.Unlock()
 		doneChan <- true
 	}
 

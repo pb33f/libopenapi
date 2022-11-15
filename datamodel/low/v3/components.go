@@ -39,7 +39,6 @@ func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
 // FindSchema attempts to locate a SchemaProxy from 'schemas' with a specific name
 func (co *Components) FindSchema(schema string) *low.ValueReference[*base.SchemaProxy] {
 	return low.FindItemInMap[*base.SchemaProxy](schema, co.Schemas.Value)
-
 }
 
 // FindResponse attempts to locate a Response from 'responses' with a specific name
@@ -169,8 +168,22 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	eChan := make(chan error)
 	var buildComponent = func(label *yaml.Node, value *yaml.Node, c chan componentBuildResult[T], ec chan<- error) {
 		var n T = new(N)
+
+		// if this is a reference, extract it (although components with references is an antipattern)
+		// If you're building components as references... pls... stop, this code should not need to be here.
+		// TODO: check circular crazy on this. It may explode
+		var err error
+		if h, _, _ := utils.IsNodeRefValue(value); h && label.Value != SchemasLabel {
+			value, err = low.LocateRefNode(value, idx)
+		}
+		if err != nil {
+			ec <- err
+			return
+		}
+
+		// build.
 		_ = low.BuildModel(value, n)
-		err := n.Build(value, idx)
+		err = n.Build(value, idx)
 		if err != nil {
 			ec <- err
 			return
