@@ -166,14 +166,14 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	// for every component, build in a new thread!
 	bChan := make(chan componentBuildResult[T])
 	eChan := make(chan error)
-	var buildComponent = func(label *yaml.Node, value *yaml.Node, c chan componentBuildResult[T], ec chan<- error) {
+	var buildComponent = func(parentLabel string, label *yaml.Node, value *yaml.Node, c chan componentBuildResult[T], ec chan<- error) {
 		var n T = new(N)
 
 		// if this is a reference, extract it (although components with references is an antipattern)
 		// If you're building components as references... pls... stop, this code should not need to be here.
 		// TODO: check circular crazy on this. It may explode
 		var err error
-		if h, _, _ := utils.IsNodeRefValue(value); h && label.Value != SchemasLabel {
+		if h, _, _ := utils.IsNodeRefValue(value); h && parentLabel != SchemasLabel {
 			value, err = low.LocateRefNode(value, idx)
 		}
 		if err != nil {
@@ -210,7 +210,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			continue
 		}
 		totalComponents++
-		go buildComponent(currentLabel, v, bChan, eChan)
+		go buildComponent(label, currentLabel, v, bChan, eChan)
 	}
 
 	completedComponents := 0

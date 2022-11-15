@@ -49,6 +49,26 @@ func TestDefinitions_Parameters_Build_Error(t *testing.T) {
 
 }
 
+func TestDefinitions_Hash(t *testing.T) {
+
+	yml := `nice:
+  description: rice`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Definitions
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	_ = n.Build(idxNode.Content[0], idx)
+	assert.Equal(t, "26d23786e6873e1a337f8e9be85f7de1490e4ff6cd303c3b15e593a25a6a149d",
+		low.GenerateHashString(&n))
+
+}
+
 func TestDefinitions_Responses_Build_Error(t *testing.T) {
 
 	yml := `gonna:

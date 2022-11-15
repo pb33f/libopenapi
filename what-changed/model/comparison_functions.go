@@ -175,9 +175,10 @@ func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Chan
 		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
 	}
 	// the values may have not changed, but the tag (node type) type may have
-	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag != l.Tag {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-	}
+	// todo: this is currently untestable, no a single test triggers it (yet)
+	//if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag != l.Tag {
+	//	CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+	//}
 }
 
 // CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to
@@ -227,6 +228,7 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 		chLock.Lock()
 		expChanges[k] = compareFunc(p[k].Value, h[k].Value)
 		chLock.Unlock()
+
 		doneChan <- true
 	}
 
@@ -255,75 +257,6 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 	}
 	return expChanges
 }
-
-//// CheckMapForChangesUntyped checks a left and right low level map for any additions, subtractions or modifications to
-//// values. The compareFunc  can be generic and accept any type
-//func CheckMapForChangesUntyped[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
-//	changes *[]*Change, label string, compareFunc func(l, r any) R) map[string]R {
-//
-//	lHashes := make(map[string]string)
-//	rHashes := make(map[string]string)
-//	lValues := make(map[string]low.ValueReference[T])
-//	rValues := make(map[string]low.ValueReference[T])
-//
-//	for k := range expLeft {
-//		lHashes[k.Value] = low.GenerateHashString(expLeft[k].Value)
-//		lValues[k.Value] = expLeft[k]
-//	}
-//
-//	for k := range expRight {
-//		rHashes[k.Value] = low.GenerateHashString(expRight[k].Value)
-//		rValues[k.Value] = expRight[k]
-//	}
-//
-//	expChanges := make(map[string]R)
-//
-//	checkLeft := func(k string, doneChan chan bool, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
-//		rhash := g[k]
-//		if rhash == "" {
-//			if p[k].GetValueNode().Value == "" {
-//				p[k].GetValueNode().Value = k // yes, a dirty thing, but it's clean for the consumer.
-//			}
-//			CreateChange(changes, ObjectRemoved, label,
-//				p[k].GetValueNode(), nil, true,
-//				p[k].GetValue(), nil)
-//			doneChan <- true
-//			return
-//		}
-//		if f[k] == g[k] {
-//			doneChan <- true
-//			return
-//		}
-//		// run comparison.
-//		expChanges[k] = compareFunc(p[k].Value, h[k].Value)
-//		doneChan <- true
-//	}
-//
-//	doneChan := make(chan bool)
-//	count := 0
-//
-//	// check left example hashes
-//	for k := range lHashes {
-//		count++
-//		go checkLeft(k, doneChan, lHashes, rHashes, lValues, rValues)
-//	}
-//
-//	//check right example hashes
-//	for k := range rHashes {
-//		count++
-//		go checkRightValue(k, doneChan, lHashes, rValues, changes, label)
-//	}
-//
-//	// wait for all done signals.
-//	completed := 0
-//	for completed < count {
-//		select {
-//		case <-doneChan:
-//			completed++
-//		}
-//	}
-//	return expChanges
-//}
 
 func checkRightValue[T any](k string, doneChan chan bool, f map[string]string, p map[string]low.ValueReference[T],
 	changes *[]*Change, label string, lock *sync.Mutex) {

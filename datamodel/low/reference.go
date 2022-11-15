@@ -87,10 +87,12 @@ func (n NodeReference[T]) IsEmpty() bool {
 }
 
 func (n NodeReference[T]) IsReferenceNode() bool {
-	for k := range n.KeyNode.Content {
-		if k%2 == 0 {
-			if n.KeyNode.Content[k].Value == "$ref" {
-				return true
+	if n.KeyNode != nil {
+		for k := range n.KeyNode.Content {
+			if k%2 == 0 {
+				if n.KeyNode.Content[k].Value == "$ref" {
+					return true
+				}
 			}
 		}
 	}

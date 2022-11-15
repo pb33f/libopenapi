@@ -273,6 +273,51 @@ func TestSetField_ArrayHelper(t *testing.T) {
 	assert.Len(t, ins.Thing.Value, 3)
 }
 
+func TestSetField_Enum_Helper(t *testing.T) {
+
+	type internal struct {
+		Thing NodeReference[[]ValueReference[any]]
+	}
+
+	yml := `thing: 
+  - nice
+  - rice
+  - slice`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(rootNode.Content[0], ins)
+	assert.NoError(t, try)
+	assert.Len(t, ins.Thing.Value, 3)
+}
+
+func TestSetField_Default_Helper(t *testing.T) {
+
+	type cake struct {
+		thing int
+	}
+
+	// this should be ignored, no custom objects in here my friend.
+	type internal struct {
+		Thing cake
+	}
+
+	yml := `thing: 
+  type: cake`
+
+	ins := new(internal)
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	try := BuildModel(rootNode.Content[0], ins)
+	assert.NoError(t, try)
+	assert.Equal(t, 0, ins.Thing.thing)
+}
+
 func TestSetField_Ignore(t *testing.T) {
 
 	type Complex struct {
