@@ -274,22 +274,6 @@ func FindKeyNodeFullTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, lab
 			return nodes[i], nodes[i], nodes[i+1] // next node is what we need.
 		}
 	}
-	for q, v := range nodes {
-		if q%2 != 0 {
-			continue
-		}
-		if key == v.Value {
-			if IsNodeMap(v) {
-				if q+1 == len(v.Content) {
-					return v, v.Content[q], v.Content[q]
-				}
-				return v, v.Content[q], v.Content[q+1]
-			}
-			if IsNodeArray(v) {
-				return v, v.Content[q], v.Content[q]
-			}
-		}
-	}
 	return nil, nil, nil
 }
 

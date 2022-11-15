@@ -424,6 +424,34 @@ func TestFindKeyNode_NotFound(t *testing.T) {
 	assert.Nil(t, v)
 }
 
+func TestFindKeyFullNodeTop(t *testing.T) {
+	a := &yaml.Node{
+		Value: "fish",
+	}
+	b := &yaml.Node{
+		Value: "paste",
+	}
+
+	c, d, e := FindKeyNodeFullTop("fish", []*yaml.Node{a, b})
+	assert.Equal(t, "fish", c.Value)
+	assert.Equal(t, "fish", d.Value)
+	assert.Equal(t, "paste", e.Value)
+}
+
+func TestFindKeyFullNode_NotFound(t *testing.T) {
+	a := &yaml.Node{
+		Value: "fish",
+	}
+	b := &yaml.Node{
+		Value: "paste",
+	}
+
+	c, d, e := FindKeyNodeFullTop("lemons", []*yaml.Node{a, b})
+	assert.Nil(t, c)
+	assert.Nil(t, d)
+	assert.Nil(t, e)
+}
+
 func TestMakeTagReadable(t *testing.T) {
 	n := &yaml.Node{
 		Tag: "!!map",
@@ -599,6 +627,8 @@ func TestDetectCase(t *testing.T) {
 	assert.Equal(t, SnakeCase, DetectCase("snakes_on_a_plane"))
 	assert.Equal(t, KebabCase, DetectCase("chicken-be-be-beef-or-pork"))
 	assert.Equal(t, RegularCase, DetectCase("kebab-TimeIn_london-TOWN"))
+	assert.Equal(t, UnknownCase, DetectCase(""))
+
 }
 
 func TestIsNodeRefValue(t *testing.T) {

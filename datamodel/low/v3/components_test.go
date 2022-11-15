@@ -138,6 +138,28 @@ func TestComponents_Build_Fail(t *testing.T) {
 
 }
 
+func TestComponents_Build_ParameterFail(t *testing.T) {
+
+	yml := `components:
+  parameters:
+    pizza:
+      schema:
+        $ref: '#/this is a problem.'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
 func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 
 	yml := `components:

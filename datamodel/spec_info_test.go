@@ -53,6 +53,12 @@ info:
 servers:
   - url: https://quobix.com/api`
 
+var OpenApi31 = `openapi: 3.1
+info:
+  title: Test API, valid, but not quite valid 
+servers:
+  - url: https://quobix.com/api`
+
 var OpenApiFalse = `openapi: false
 info:
   title: Test API version is a bool?
@@ -159,6 +165,14 @@ func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.2", r.Version)
+}
+
+func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
+
+	r, e := ExtractSpecInfo([]byte(OpenApi31))
+	assert.Nil(t, e)
+	assert.Equal(t, OpenApi3, r.SpecType)
+	assert.Equal(t, "3.1", r.Version)
 }
 
 func TestExtractSpecInfo_OpenAPIFalse(t *testing.T) {
