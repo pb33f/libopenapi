@@ -225,7 +225,7 @@ func TestCompareSchemas_RefChanged(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
-	assert.Equal(t, "string", changes.Changes[0].New)
+	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
 }
 
 func TestCompareSchemas_RefToInline(t *testing.T) {
@@ -253,8 +253,8 @@ func TestCompareSchemas_RefToInline(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
-	assert.Equal(t, v3.TypeLabel, changes.Changes[0].Property)
-	assert.Equal(t, "int", changes.Changes[0].Original)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].Original)
 
 }
 
@@ -283,8 +283,8 @@ func TestCompareSchemas_InlineToRef(t *testing.T) {
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
-	assert.Equal(t, v3.TypeLabel, changes.Changes[0].Property)
-	assert.Equal(t, "int", changes.Changes[0].New)
+	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
+	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
 
 }
 
@@ -302,6 +302,31 @@ func TestCompareSchemas_Identical(t *testing.T) {
       type: int
     OK:
       type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_Identical_Ref(t *testing.T) {
+	left := `components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	right := `components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+       $ref: '#/components/schemas/Yo'`
 
 	leftDoc, rightDoc := test_BuildDoc(left, right)
 

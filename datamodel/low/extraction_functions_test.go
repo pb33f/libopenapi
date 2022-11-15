@@ -4,6 +4,7 @@
 package low
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
@@ -1487,4 +1488,27 @@ x-tacos: [1,2,3]`
 			assert.Len(t, r[i].Value, 3)
 		}
 	}
+}
+
+type test_fresh struct {
+	val string
+}
+
+func (f test_fresh) Hash() [32]byte {
+	return sha256.Sum256([]byte(f.val))
+}
+func TestAreEqual(t *testing.T) {
+	assert.True(t, AreEqual(test_fresh{val: "hello"}, test_fresh{val: "hello"}))
+	assert.False(t, AreEqual(test_fresh{val: "hello"}, test_fresh{val: "goodbye"}))
+	assert.False(t, AreEqual(nil, nil))
+}
+
+func TestGenerateHashString(t *testing.T) {
+
+	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+		GenerateHashString(test_fresh{val: "hello"}))
+
+	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+		GenerateHashString("hello"))
+
 }

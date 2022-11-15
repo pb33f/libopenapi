@@ -714,6 +714,18 @@ responses:
       $ref: '#/definitions/ApiResponse'
     headers:
       someHeader:
+        format: something
+        pattern: a nice pattern
+        exclusiveMinimum: false
+        exclusiveMaximum: false
+        minimum: 1
+        maximum: 2
+        maxItems: 3
+        minItems: 1
+        minLength: 1
+        maxLength: 10
+        multipleOf: 20
+        uniqueItems: false
         type: array
         enum: [one, two]
         items:

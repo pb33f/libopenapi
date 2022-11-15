@@ -4,6 +4,7 @@
 package low
 
 import (
+	"crypto/sha256"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
@@ -31,9 +32,26 @@ func TestNodeReference_Mutate(t *testing.T) {
 		Line:   22,
 		Column: 23,
 	}
+	nr.KeyNode = &yaml.Node{
+		Line:   22,
+		Column: 23,
+	}
 	n := nr.Mutate("nice one!")
+	assert.NotNil(t, nr.GetValueNode())
+	assert.Empty(t, nr.GetValue())
+	assert.False(t, nr.IsReferenceNode())
 	assert.Equal(t, "nice one!", n.Value)
 	assert.Equal(t, "nice one!", nr.ValueNode.Value)
+}
+
+func TestNodeReference_RefNode(t *testing.T) {
+	nr := new(NodeReference[string])
+	nr.KeyNode = &yaml.Node{
+		Content: []*yaml.Node{&yaml.Node{
+			Value: "$ref",
+		}},
+	}
+	assert.True(t, nr.IsReferenceNode())
 }
 
 func TestValueReference_Mutate(t *testing.T) {
@@ -59,6 +77,8 @@ func TestValueReference_GenerateMapKey(t *testing.T) {
 		Column: 23,
 	}
 	assert.Equal(t, "22:23", nr.GenerateMapKey())
+	assert.NotNil(t, nr.GetValueNode())
+	assert.Empty(t, nr.GetValue())
 }
 
 func TestKeyReference_IsEmpty(t *testing.T) {
@@ -307,5 +327,10 @@ func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	assert.Nil(t, GetCircularReferenceResult(idxNode.Content[0], idx))
+}
+
+func TestHashToString(t *testing.T) {
+	assert.Equal(t, "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
+		HashToString(sha256.Sum256([]byte("12345"))))
 
 }

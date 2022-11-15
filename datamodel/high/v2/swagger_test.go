@@ -182,10 +182,10 @@ func TestNewSwaggerDocument_Definitions_Responses(t *testing.T) {
 	assert.Len(t, x.Enum, 2)
 
 	wentQuiteLow := y.GoLow()
-	assert.Equal(t, 717, wentQuiteLow.Type.KeyNode.Line)
+	assert.Equal(t, 729, wentQuiteLow.Type.KeyNode.Line)
 
 	wentLowest := x.GoLow()
-	assert.Equal(t, 733, wentLowest.UniqueItems.KeyNode.Line)
+	assert.Equal(t, 745, wentLowest.UniqueItems.KeyNode.Line)
 }
 
 func TestNewSwaggerDocument_Definitions(t *testing.T) {
@@ -195,7 +195,7 @@ func TestNewSwaggerDocument_Definitions(t *testing.T) {
 	assert.Len(t, highDoc.Definitions.Definitions, 6)
 
 	wentLow := highDoc.Definitions.GoLow()
-	assert.Equal(t, 836, wentLow.FindSchema("User").ValueNode.Line)
+	assert.Equal(t, 848, wentLow.FindSchema("User").ValueNode.Line)
 
 }
 

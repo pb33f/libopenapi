@@ -4,6 +4,7 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -19,10 +20,19 @@ func TestSchemaProxy_Build(t *testing.T) {
 
 	err := sch.Build(idxNode.Content[0], nil)
 	assert.NoError(t, err)
+
+	assert.Equal(t, "3fc9b689459d738f8c88a3a48aa9e33542016b7a4052e001aaa536fca74813cb",
+		low.GenerateHashString(&sch))
+
 	assert.Equal(t, "something", sch.Schema().Description.Value)
 	assert.Empty(t, sch.GetSchemaReference())
 	assert.NotNil(t, sch.GetValueNode())
 	assert.False(t, sch.IsSchemaReference())
+
+	// already rendered, should spit out the same
+	assert.Equal(t, "3fc9b689459d738f8c88a3a48aa9e33542016b7a4052e001aaa536fca74813cb",
+		low.GenerateHashString(&sch))
+
 }
 
 func TestSchemaProxy_Build_CheckRef(t *testing.T) {
@@ -37,4 +47,6 @@ func TestSchemaProxy_Build_CheckRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, sch.IsSchemaReference())
 	assert.Equal(t, "wat", sch.GetSchemaReference())
+	assert.Equal(t, "f00a787f7492a95e165b470702f4fe9373583fbdc025b2c8bdf0262cc48fcff4",
+		low.GenerateHashString(&sch))
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -770,6 +771,50 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_IdenticalRef(t *testing.T
 	assert.Nil(t, extChanges)
 }
 
+func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T) {
+	left := `components:
+  responses:
+    coffee:
+      $ref: '#/components/responses/tv'
+    tv:
+      $ref: '#/components/responses/coffee'`
+
+	right := `components:
+  responses:
+    coffee:
+      $ref: '#/components/responses/tv'
+    tv:
+      $ref: '#/components/responses/coffee'`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Components
+	var rDoc v3.Components
+
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+
+	idx := index.NewSpecIndex(&lNode)
+	idx2 := index.NewSpecIndex(&rNode)
+
+	// resolver required to check circular refs.
+	re1 := resolver.NewResolver(idx)
+	re2 := resolver.NewResolver(idx2)
+
+	re1.CheckForCircularReferences()
+	re2.CheckForCircularReferences()
+
+	_ = lDoc.Build(lNode.Content[0], idx)
+	_ = rDoc.Build(rNode.Content[0], idx2)
+
+	// compare.
+	extChanges := CompareComponents(&lDoc, &rDoc)
+	assert.Nil(t, extChanges)
+}
+
 func TestCompareComponents_OpenAPI_Responses_Modify(t *testing.T) {
 
 	left := `responses:
@@ -1203,6 +1248,38 @@ func TestCompareComponents_OpenAPI_SecuritySchemes_Equal(t *testing.T) {
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
+}
+
+func TestCompareComponents_OpenAPI_SecuritySchemes_Modified(t *testing.T) {
+
+	left := `securitySchemes:
+  scheme1:
+    description: a scheme
+  scheme2:
+    description: another scheme`
+
+	right := `securitySchemes:
+  scheme1:
+    description: a scheme that changed
+  scheme2:
+    description: another scheme that also changed`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Components
+	var rDoc v3.Components
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareComponents(&lDoc, &rDoc)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareComponents_OpenAPI_Links_Equal(t *testing.T) {
