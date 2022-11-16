@@ -225,7 +225,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 
 		// security
-		if !lOperation.Security.IsEmpty() && !lOperation.Security.IsEmpty() {
+		if !lOperation.Security.IsEmpty() || !rOperation.Security.IsEmpty() {
 			checkSecurity(lOperation.Security, rOperation.Security, &changes, oc)
 		}
 
@@ -415,7 +415,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 }
 
 func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]],
-	changes *[]*Change, oc *OperationChanges) {
+	changes *[]*Change, oc any) {
 
 	lv := make(map[string]*base.SecurityRequirement, len(lSecurity.Value))
 	rv := make(map[string]*base.SecurityRequirement, len(rSecurity.Value))
@@ -463,5 +463,12 @@ func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*
 				rv[n])
 		}
 	}
-	oc.SecurityRequirementChanges = secChanges
+
+	// handle different change types.
+	if reflect.TypeOf(&OperationChanges{}) == reflect.TypeOf(oc) {
+		oc.(*OperationChanges).SecurityRequirementChanges = secChanges
+	}
+	if reflect.TypeOf(&DocumentChanges{}) == reflect.TypeOf(oc) {
+		oc.(*DocumentChanges).SecurityRequirementChanges = secChanges
+	}
 }

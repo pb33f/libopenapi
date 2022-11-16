@@ -172,6 +172,14 @@ func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 	return &doc, errors
 }
 
+func (s *Swagger) GetExternalDocs() *low.NodeReference[any] {
+	return &low.NodeReference[any]{
+		KeyNode:   s.ExternalDocs.KeyNode,
+		ValueNode: s.ExternalDocs.ValueNode,
+		Value:     s.ExternalDocs.Value,
+	}
+}
+
 func extractInfo(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
 	info, err := low.ExtractObject[*base.Info](base.InfoLabel, root, idx)
 	if err != nil {
