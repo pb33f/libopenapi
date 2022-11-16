@@ -164,6 +164,18 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 
 		}
 		break
+	case reflect.TypeOf(ValueReference[string]{}):
+		if valueNode != nil {
+			if field.CanSet() {
+				nr := ValueReference[string]{
+					Value:     fmt.Sprintf("%v", valueNode.Value),
+					ValueNode: valueNode,
+				}
+				field.Set(reflect.ValueOf(nr))
+			}
+
+		}
+		break
 	case reflect.TypeOf(NodeReference[bool]{}):
 		if valueNode != nil {
 			if utils.IsNodeBoolValue(valueNode) {

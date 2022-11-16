@@ -4,17 +4,25 @@
 package low
 
 type SharedParameters interface {
+	HasDescription
 	Hash() [32]byte
 	GetName() *NodeReference[string]
 	GetIn() *NodeReference[string]
-	GetDescription() *NodeReference[string]
 	GetAllowEmptyValue() *NodeReference[bool]
 	GetRequired() *NodeReference[bool]
 	GetSchema() *NodeReference[any] // requires cast.
 }
 
+type HasExternalDocs interface {
+	GetExternalDocs() *NodeReference[any]
+}
+
 type HasDescription interface {
 	GetDescription() *NodeReference[string]
+}
+
+type HasInfo interface {
+	GetInfo() *NodeReference[any]
 }
 
 type SwaggerParameter interface {
@@ -38,9 +46,9 @@ type SwaggerParameter interface {
 }
 
 type SwaggerHeader interface {
+	HasDescription
 	Hash() [32]byte
 	GetType() *NodeReference[string]
-	GetDescription() *NodeReference[string]
 	GetFormat() *NodeReference[string]
 	GetCollectionFormat() *NodeReference[string]
 	GetDefault() *NodeReference[any]
@@ -60,8 +68,8 @@ type SwaggerHeader interface {
 }
 
 type OpenAPIHeader interface {
+	HasDescription
 	Hash() [32]byte
-	GetDescription() *NodeReference[string]
 	GetDeprecated() *NodeReference[bool]
 	GetStyle() *NodeReference[string]
 	GetAllowReserved() *NodeReference[bool]
@@ -85,16 +93,20 @@ type OpenAPIParameter interface {
 	GetContent() *NodeReference[any]  // requires cast.
 }
 
+//TODO: this needs to be fixed, move returns to pointers.
+
 type SharedOperations interface {
+	//HasDescription
+	//HasExternalDocs
+	GetExternalDocs() NodeReference[any]
+	GetDescription() NodeReference[string]
 	GetTags() NodeReference[[]ValueReference[string]]
 	GetSummary() NodeReference[string]
-	GetDescription() NodeReference[string]
 	GetDeprecated() NodeReference[bool]
 	GetExtensions() map[KeyReference[string]]ValueReference[any]
-	GetExternalDocs() NodeReference[any] // requires cast.
-	GetResponses() NodeReference[any]    // requires cast.
-	GetParameters() NodeReference[any]   // requires cast.
-	GetSecurity() NodeReference[any]     // requires cast.
+	GetResponses() NodeReference[any]  // requires cast.
+	GetParameters() NodeReference[any] // requires cast.
+	GetSecurity() NodeReference[any]   // requires cast.
 }
 
 type SwaggerOperations interface {
@@ -106,6 +118,6 @@ type SwaggerOperations interface {
 
 type OpenAPIOperations interface {
 	SharedOperations
-	//GetCallbacks() NodeReference[map[KeyReference[string]]ValueReference[any]] // requires cast
-	GetServers() NodeReference[any] // requires cast.
+	GetCallbacks() NodeReference[map[KeyReference[string]]ValueReference[any]] // requires cast
+	GetServers() NodeReference[any]                                            // requires cast.
 }

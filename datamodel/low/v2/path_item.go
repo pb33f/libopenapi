@@ -187,25 +187,25 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 func (p *PathItem) Hash() [32]byte {
 	var f []string
 	if !p.Get.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Get.Value))
+		f = append(f, fmt.Sprintf("%s-%s", GetLabel, low.GenerateHashString(p.Get.Value)))
 	}
 	if !p.Put.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Put.Value))
+		f = append(f, fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Put.Value)))
 	}
 	if !p.Post.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Post.Value))
+		f = append(f, fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Post.Value)))
 	}
 	if !p.Delete.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Delete.Value))
+		f = append(f, fmt.Sprintf("%s-%s", DeleteLabel, low.GenerateHashString(p.Delete.Value)))
 	}
 	if !p.Options.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Options.Value))
+		f = append(f, fmt.Sprintf("%s-%s", OptionsLabel, low.GenerateHashString(p.Options.Value)))
 	}
 	if !p.Head.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Head.Value))
+		f = append(f, fmt.Sprintf("%s-%s", HeadLabel, low.GenerateHashString(p.Head.Value)))
 	}
 	if !p.Patch.IsEmpty() {
-		f = append(f, low.GenerateHashString(p.Patch.Value))
+		f = append(f, fmt.Sprintf("%s-%s", PatchLabel, low.GenerateHashString(p.Patch.Value)))
 	}
 	keys := make([]string, len(p.Parameters.Value))
 	for k := range p.Parameters.Value {

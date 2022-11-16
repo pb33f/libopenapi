@@ -5,6 +5,7 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"reflect"
@@ -35,8 +36,14 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.ParameterDefinitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.ParameterDefinitions)
 		rDef := r.(*v2.ParameterDefinitions)
-		cc.ParameterChanges = CheckMapForChanges(lDef.Definitions, rDef.Definitions, &changes,
-			v3.ParametersLabel, CompareParametersV2)
+		var a, b map[low.KeyReference[string]]low.ValueReference[*v2.Parameter]
+		if lDef != nil {
+			a = lDef.Definitions
+		}
+		if rDef != nil {
+			b = rDef.Definitions
+		}
+		cc.ParameterChanges = CheckMapForChanges(a, b, &changes, v3.ParametersLabel, CompareParametersV2)
 	}
 
 	// Swagger Responses
@@ -44,8 +51,14 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.ResponsesDefinitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.ResponsesDefinitions)
 		rDef := r.(*v2.ResponsesDefinitions)
-		cc.ResponsesChanges = CheckMapForChanges(lDef.Definitions, rDef.Definitions, &changes,
-			v3.ResponsesLabel, CompareResponseV2)
+		var a, b map[low.KeyReference[string]]low.ValueReference[*v2.Response]
+		if lDef != nil {
+			a = lDef.Definitions
+		}
+		if rDef != nil {
+			b = rDef.Definitions
+		}
+		cc.ResponsesChanges = CheckMapForChanges(a, b, &changes, v3.ResponsesLabel, CompareResponseV2)
 	}
 
 	// Swagger Schemas
@@ -53,7 +66,14 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.Definitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.Definitions)
 		rDef := r.(*v2.Definitions)
-		cc.SchemaChanges = CheckMapForChanges(lDef.Schemas, rDef.Schemas, &changes,
+		var a, b map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]
+		if lDef != nil {
+			a = lDef.Schemas
+		}
+		if rDef != nil {
+			b = rDef.Schemas
+		}
+		cc.SchemaChanges = CheckMapForChanges(a, b, &changes,
 			v2.DefinitionsLabel, CompareSchemas)
 	}
 
@@ -62,7 +82,14 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.SecurityDefinitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.SecurityDefinitions)
 		rDef := r.(*v2.SecurityDefinitions)
-		cc.SecuritySchemeChanges = CheckMapForChanges(lDef.Definitions, rDef.Definitions, &changes,
+		var a, b map[low.KeyReference[string]]low.ValueReference[*v2.SecurityScheme]
+		if lDef != nil {
+			a = lDef.Definitions
+		}
+		if rDef != nil {
+			b = rDef.Definitions
+		}
+		cc.SecuritySchemeChanges = CheckMapForChanges(a, b, &changes,
 			v3.SecurityDefinitionLabel, CompareSecuritySchemesV2)
 	}
 
