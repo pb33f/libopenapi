@@ -40,7 +40,7 @@ type Document struct {
 	Webhooks low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]] // 3.1
 
 	// Servers is a slice of Server instances which provide connectivity information to a target server. If the servers
-	// property is not provided, or is an empty array, the default value would be a Server Object with a url value of /.
+	// property is not provided, or is an empty array, the default value would be a Server Object with an url value of /.
 	// - https://spec.openapis.org/oas/v3.1.0#server-object
 	Servers low.NodeReference[[]low.ValueReference[*Server]]
 
