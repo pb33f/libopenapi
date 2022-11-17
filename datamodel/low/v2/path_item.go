@@ -193,7 +193,7 @@ func (p *PathItem) Hash() [32]byte {
 		f = append(f, fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Put.Value)))
 	}
 	if !p.Post.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Post.Value)))
+		f = append(f, fmt.Sprintf("%s-%s", PostLabel, low.GenerateHashString(p.Post.Value)))
 	}
 	if !p.Delete.IsEmpty() {
 		f = append(f, fmt.Sprintf("%s-%s", DeleteLabel, low.GenerateHashString(p.Delete.Value)))

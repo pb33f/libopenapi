@@ -49,6 +49,7 @@ const (
 	TitleLabel                = "title"
 	TermsOfServiceLabel       = "termsOfService"
 	VersionLabel              = "version"
+	OpenAPILabel              = "openapi"
 	HostLabel                 = "host"
 	BasePathLabel             = "basePath"
 	LicenseLabel              = "license"

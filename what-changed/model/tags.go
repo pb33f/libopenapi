@@ -81,7 +81,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 				RightNode: seenRight[i].Value.Description.ValueNode,
 				Label:     v3.DescriptionLabel,
 				Changes:   &changes,
-				Breaking:  true,
+				Breaking:  false,
 				Original:  seenLeft[i].Value,
 				New:       seenRight[i].Value,
 			})
@@ -90,8 +90,18 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 			CheckProperties(props)
 
 			// compare external docs
-			tc.ExternalDocs = CompareExternalDocs(seenLeft[i].Value.ExternalDocs.Value,
-				seenRight[i].Value.ExternalDocs.Value)
+			if !seenLeft[i].Value.ExternalDocs.IsEmpty() && !seenRight[i].Value.ExternalDocs.IsEmpty() {
+				tc.ExternalDocs = CompareExternalDocs(seenLeft[i].Value.ExternalDocs.Value,
+					seenRight[i].Value.ExternalDocs.Value)
+			}
+			if seenLeft[i].Value.ExternalDocs.IsEmpty() && !seenRight[i].Value.ExternalDocs.IsEmpty() {
+				CreateChange(&changes, ObjectAdded, v3.ExternalDocsLabel, nil, seenRight[i].GetValueNode(),
+					false, nil, seenRight[i].Value.ExternalDocs.Value)
+			}
+			if !seenLeft[i].Value.ExternalDocs.IsEmpty() && seenRight[i].Value.ExternalDocs.IsEmpty() {
+				CreateChange(&changes, ObjectRemoved, v3.ExternalDocsLabel, seenLeft[i].GetValueNode(), nil,
+					false, seenLeft[i].Value.ExternalDocs.Value, nil)
+			}
 
 			// check extensions
 			tc.ExtensionChanges = CheckExtensions(seenLeft[i].GetValue(), seenRight[i].GetValue())

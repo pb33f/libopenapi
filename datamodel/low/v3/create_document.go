@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"errors"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -12,7 +13,13 @@ import (
 
 func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
-	doc := Document{Version: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
+	_, labelNode, versionNode := utils.FindKeyNodeFull(OpenAPILabel, info.RootNode.Content)
+	var version low.NodeReference[string]
+	if versionNode == nil {
+		return nil, []error{errors.New("no openapi version/tag found, cannot create document")}
+	}
+	version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
+	doc := Document{Version: version}
 
 	// build an index
 	idx := index.NewSpecIndex(info.RootNode)
@@ -31,7 +38,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 	_, dialectLabel, dialectNode := utils.FindKeyNodeFull(JSONSchemaDialectLabel, info.RootNode.Content)
 	if dialectNode != nil {
 		doc.JsonSchemaDialect = low.NodeReference[string]{
-			Value: dialectNode.Value, KeyNode: dialectLabel, ValueNode: dialectLabel}
+			Value: dialectNode.Value, KeyNode: dialectLabel, ValueNode: dialectNode}
 	}
 
 	var runExtraction = func(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex,

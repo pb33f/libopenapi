@@ -22,12 +22,14 @@ import (
 // in our model, components/definitions will be checked independently for changes
 // and references will be checked only for value changes (points to a different reference)
 func TestCompareSchemas_PropertyModification(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message Changed`
@@ -47,12 +49,14 @@ func TestCompareSchemas_PropertyModification(t *testing.T) {
 }
 
 func TestCompareSchemas_PropertyAdd(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message
@@ -73,13 +77,15 @@ func TestCompareSchemas_PropertyAdd(t *testing.T) {
 }
 
 func TestCompareSchemas_PropertyRemove(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message
       description: a thing`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message`
@@ -99,13 +105,15 @@ func TestCompareSchemas_PropertyRemove(t *testing.T) {
 }
 
 func TestCompareSchemas_Removed(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message
       description: a thing`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:`
 
 	leftDoc, _ := test_BuildDoc(left, right)
@@ -121,13 +129,15 @@ func TestCompareSchemas_Removed(t *testing.T) {
 }
 
 func TestCompareSchemas_Added(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message
       description: a thing`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:`
 
 	leftDoc, _ := test_BuildDoc(left, right)
@@ -172,14 +182,16 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 }
 
 func TestCompareSchemas_RefIgnore(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
     OK:
       $ref: '#/components/schemas/Yo'`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
@@ -197,7 +209,8 @@ func TestCompareSchemas_RefIgnore(t *testing.T) {
 }
 
 func TestCompareSchemas_RefChanged(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     Woah:
       type: int
@@ -206,7 +219,8 @@ func TestCompareSchemas_RefChanged(t *testing.T) {
     OK:
       $ref: '#/components/schemas/Woah'`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     Woah:
       type: int
@@ -229,14 +243,16 @@ func TestCompareSchemas_RefChanged(t *testing.T) {
 }
 
 func TestCompareSchemas_RefToInline(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
     OK:
       $ref: '#/components/schemas/Yo'`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
@@ -259,14 +275,16 @@ func TestCompareSchemas_RefToInline(t *testing.T) {
 }
 
 func TestCompareSchemas_InlineToRef(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
     OK:
       $ref: '#/components/schemas/Yo'`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
@@ -289,14 +307,16 @@ func TestCompareSchemas_InlineToRef(t *testing.T) {
 }
 
 func TestCompareSchemas_Identical(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
     OK:
       type: string`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
@@ -314,14 +334,16 @@ func TestCompareSchemas_Identical(t *testing.T) {
 }
 
 func TestCompareSchemas_Identical_Ref(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
     OK:
       $ref: '#/components/schemas/Yo'`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     Yo:
       type: int
@@ -339,7 +361,8 @@ func TestCompareSchemas_Identical_Ref(t *testing.T) {
 }
 
 func TestCompareSchemas_RequiredAdded(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message
@@ -347,7 +370,8 @@ func TestCompareSchemas_RequiredAdded(t *testing.T) {
       required:
         - one`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: an OK message
@@ -371,13 +395,15 @@ func TestCompareSchemas_RequiredAdded(t *testing.T) {
 }
 
 func TestCompareSchemas_RequiredRemoved(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       required:
         - one`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       required:
@@ -399,12 +425,14 @@ func TestCompareSchemas_RequiredRemoved(t *testing.T) {
 }
 
 func TestCompareSchemas_EnumAdded(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       enum: [a,b,c]`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       enum: [a,b,c,d]`
@@ -424,12 +452,14 @@ func TestCompareSchemas_EnumAdded(t *testing.T) {
 }
 
 func TestCompareSchemas_EnumRemoved(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       enum: [a,b,c]`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       enum: [a,b,c,d]`
@@ -449,14 +479,16 @@ func TestCompareSchemas_EnumRemoved(t *testing.T) {
 }
 
 func TestCompareSchemas_PropertyAdded(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
         propA:
           type: int`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
@@ -480,14 +512,16 @@ func TestCompareSchemas_PropertyAdded(t *testing.T) {
 }
 
 func TestCompareSchemas_PropertyRemoved(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
         propA:
           type: int`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
@@ -511,14 +545,16 @@ func TestCompareSchemas_PropertyRemoved(t *testing.T) {
 }
 
 func TestCompareSchemas_PropertyChanged(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
         propA:
           type: int`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
@@ -541,14 +577,16 @@ func TestCompareSchemas_PropertyChanged(t *testing.T) {
 }
 
 func TestCompareSchemas_PropertySwap(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
         propA:
           type: int`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       properties:
@@ -574,13 +612,15 @@ func TestCompareSchemas_PropertySwap(t *testing.T) {
 }
 
 func TestCompareSchemas_AnyOfModifyAndAddItem(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       anyOf:
         - type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       anyOf:
@@ -605,13 +645,15 @@ func TestCompareSchemas_AnyOfModifyAndAddItem(t *testing.T) {
 }
 
 func TestCompareSchemas_AnyOfModifyAndRemoveItem(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       anyOf:
         - type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       anyOf:
@@ -636,13 +678,15 @@ func TestCompareSchemas_AnyOfModifyAndRemoveItem(t *testing.T) {
 }
 
 func TestCompareSchemas_AnyOfModified(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       anyOf:
         - type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       anyOf:
@@ -665,13 +709,15 @@ func TestCompareSchemas_AnyOfModified(t *testing.T) {
 }
 
 func TestCompareSchemas_OneOfModifyAndAddItem(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       oneOf:
         - type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       oneOf:
@@ -696,13 +742,15 @@ func TestCompareSchemas_OneOfModifyAndAddItem(t *testing.T) {
 }
 
 func TestCompareSchemas_AllOfModifyAndAddItem(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       allOf:
         - type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       allOf:
@@ -727,14 +775,16 @@ func TestCompareSchemas_AllOfModifyAndAddItem(t *testing.T) {
 }
 
 func TestCompareSchemas_ItemsModifyAndAddItem(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
       items:
         type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -758,14 +808,16 @@ func TestCompareSchemas_ItemsModifyAndAddItem(t *testing.T) {
 }
 
 func TestCompareSchemas_ItemsModifyAndAddItemArray(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
       items:
         - type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -789,14 +841,16 @@ func TestCompareSchemas_ItemsModifyAndAddItemArray(t *testing.T) {
 }
 
 func TestCompareSchemas_NotModifyAndAddItem(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
       not:
         type: bool`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -820,14 +874,16 @@ func TestCompareSchemas_NotModifyAndAddItem(t *testing.T) {
 }
 
 func TestCompareSchemas_DiscriminatorChange(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
       discriminator:
         propertyName: melody`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -851,12 +907,14 @@ func TestCompareSchemas_DiscriminatorChange(t *testing.T) {
 }
 
 func TestCompareSchemas_DiscriminatorAdd(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -881,12 +939,14 @@ func TestCompareSchemas_DiscriminatorAdd(t *testing.T) {
 }
 
 func TestCompareSchemas_DiscriminatorRemove(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -911,14 +971,16 @@ func TestCompareSchemas_DiscriminatorRemove(t *testing.T) {
 }
 
 func TestCompareSchemas_ExternalDocsChange(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
       externalDocs:
         url: https://pb33f.io`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -942,12 +1004,14 @@ func TestCompareSchemas_ExternalDocsChange(t *testing.T) {
 }
 
 func TestCompareSchemas_ExternalDocsAdd(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -972,12 +1036,14 @@ func TestCompareSchemas_ExternalDocsAdd(t *testing.T) {
 }
 
 func TestCompareSchemas_ExternalDocsRemove(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -1002,12 +1068,14 @@ func TestCompareSchemas_ExternalDocsRemove(t *testing.T) {
 }
 
 func TestCompareSchemas_AddExtension(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       type: string
@@ -1029,12 +1097,14 @@ func TestCompareSchemas_AddExtension(t *testing.T) {
 }
 
 func TestCompareSchemas_ExampleChange(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       example: sausages`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       example: yellow boat`
@@ -1056,12 +1126,14 @@ func TestCompareSchemas_ExampleChange(t *testing.T) {
 }
 
 func TestCompareSchemas_ExampleAdd(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1083,12 +1155,14 @@ func TestCompareSchemas_ExampleAdd(t *testing.T) {
 }
 
 func TestCompareSchemas_ExampleRemove(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1110,14 +1184,16 @@ func TestCompareSchemas_ExampleRemove(t *testing.T) {
 }
 
 func TestCompareSchemas_ExamplesChange(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
       examples:
         - sausages`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1141,12 +1217,14 @@ func TestCompareSchemas_ExamplesChange(t *testing.T) {
 }
 
 func TestCompareSchemas_ExamplesAdd(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1169,14 +1247,16 @@ func TestCompareSchemas_ExamplesAdd(t *testing.T) {
 }
 
 func TestCompareSchemas_ExamplesAddAndModify(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
       examples:
         - sausages`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1203,12 +1283,14 @@ func TestCompareSchemas_ExamplesAddAndModify(t *testing.T) {
 }
 
 func TestCompareSchemas_ExamplesRemove(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1231,14 +1313,16 @@ func TestCompareSchemas_ExamplesRemove(t *testing.T) {
 }
 
 func TestCompareSchemas_ExamplesRemoveAndModify(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
       examples:
         - sausages`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       title: nice
@@ -1265,13 +1349,15 @@ func TestCompareSchemas_ExamplesRemoveAndModify(t *testing.T) {
 }
 
 func TestCompareSchemas_XMLChange(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
  schemas:
    OK:
      xml:
        name: baby xml`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
  schemas:
    OK:
      xml:
@@ -1294,12 +1380,14 @@ func TestCompareSchemas_XMLChange(t *testing.T) {
 }
 
 func TestCompareSchemas_XMLAdd(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
   schemas:
     OK:
       description: OK`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
   schemas:
     OK:
       description: OK
@@ -1322,11 +1410,13 @@ func TestCompareSchemas_XMLAdd(t *testing.T) {
 }
 
 func TestCompareSchemas_XMLRemove(t *testing.T) {
-	left := `components:
+	left := `openapi: 3.0
+components:
  schemas:
    OK:`
 
-	right := `components:
+	right := `openapi: 3.0
+components:
  schemas:
    OK:
      xml:
