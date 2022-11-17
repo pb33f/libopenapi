@@ -166,6 +166,54 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		}
 	}
 
+	if reflect.TypeOf(&v3.Document{}) == reflect.TypeOf(l) && reflect.TypeOf(&v3.Document{}) == reflect.TypeOf(r) {
+		lDoc := l.(*v3.Document)
+		rDoc := r.(*v3.Document)
+
+		// version
+		addPropertyCheck(&props, lDoc.Version.ValueNode, rDoc.Version.ValueNode,
+			lDoc.Version.Value, rDoc.Version.Value, &changes, v3.OpenAPILabel, true)
+
+		// schema dialect
+		addPropertyCheck(&props, lDoc.JsonSchemaDialect.ValueNode, rDoc.JsonSchemaDialect.ValueNode,
+			lDoc.JsonSchemaDialect.Value, rDoc.JsonSchemaDialect.Value, &changes, v3.JSONSchemaDialectLabel, true)
+
+		// tags
+		dc.TagChanges = CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+
+		// paths
+		if !lDoc.Paths.IsEmpty() || !rDoc.Paths.IsEmpty() {
+			dc.PathsChanges = ComparePaths(lDoc.Paths.Value, rDoc.Paths.Value)
+		}
+
+		// external docs
+		compareDocumentExternalDocs(lDoc, rDoc, dc, &changes)
+
+		// info
+		compareDocumentInfo(&lDoc.Info, &rDoc.Info, dc, &changes)
+
+		// security
+		if !lDoc.Security.IsEmpty() || !rDoc.Security.IsEmpty() {
+			checkSecurity(lDoc.Security, rDoc.Security, &changes, dc)
+		}
+
+		// compare components.
+		if !lDoc.Components.IsEmpty() && !rDoc.Components.IsEmpty() {
+			if n := CompareComponents(lDoc.Components.Value, rDoc.Components.Value); n != nil {
+				dc.ComponentsChanges = n
+			}
+		}
+
+		// compare servers
+		if n := checkServers(lDoc.Servers, rDoc.Servers, &changes); n != nil {
+			dc.ServerChanges = n
+		}
+
+		// compare webhooks
+		CheckMapForChanges(lDoc.Webhooks.Value, rDoc.Webhooks.Value, &changes, v3.WebhooksLabel, ComparePathItemsV3)
+		dc.ExtensionChanges = CompareExtensions(lDoc.Extensions, rDoc.Extensions)
+	}
+
 	CheckProperties(props)
 	dc.Changes = changes
 	if dc.TotalChanges() <= 0 {
