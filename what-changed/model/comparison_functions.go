@@ -173,12 +173,13 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, 
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag == l.Tag {
 		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
 	}
 	// the values may have not changed, but the tag (node type) type may have
-	// todo: this is currently untestable, no a single test triggers it (yet)
-	//if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag != l.Tag {
-	//	CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-	//}
+	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag != l.Tag {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
 }
 
 // CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to

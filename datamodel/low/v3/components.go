@@ -4,12 +4,14 @@
 package v3
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -29,6 +31,47 @@ type Components struct {
 	Links           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]]
 	Callbacks       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+// Hash will return a consistent SHA256 Hash of the Encoding object
+func (co *Components) Hash() [32]byte {
+	var f []string
+	generateHashForObjectMap(co.Schemas.Value, &f)
+	generateHashForObjectMap(co.Responses.Value, &f)
+	generateHashForObjectMap(co.Parameters.Value, &f)
+	generateHashForObjectMap(co.Examples.Value, &f)
+	generateHashForObjectMap(co.RequestBodies.Value, &f)
+	generateHashForObjectMap(co.Headers.Value, &f)
+	generateHashForObjectMap(co.SecuritySchemes.Value, &f)
+	generateHashForObjectMap(co.Links.Value, &f)
+	generateHashForObjectMap(co.Callbacks.Value, &f)
+	keys := make([]string, len(co.Extensions))
+	z := 0
+	for k := range co.Extensions {
+		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(co.Extensions[k].Value))))
+		z++
+	}
+	sort.Strings(keys)
+	f = append(f, keys...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
+func generateHashForObjectMap[T any](collection map[low.KeyReference[string]]low.ValueReference[T], hash *[]string) {
+	if collection == nil {
+		return
+	}
+	l := make([]string, len(collection))
+	keys := make(map[string]low.ValueReference[T])
+	z := 0
+	for k := range collection {
+		keys[k.Value] = collection[k]
+		l[z] = k.Value
+		z++
+	}
+	sort.Strings(l)
+	for k := range l {
+		*hash = append(*hash, low.GenerateHashString(keys[l[k]].Value))
+	}
 }
 
 // FindExtension attempts to locate an extension with the supplied key

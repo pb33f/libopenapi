@@ -100,6 +100,14 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		lComponents := l.(*v3.Components)
 		rComponents := r.(*v3.Components)
 
+		if lComponents == nil && rComponents == nil {
+			return nil
+		}
+
+		if low.AreEqual(lComponents, rComponents) {
+			return nil
+		}
+
 		doneChan := make(chan componentComparison)
 		comparisons := 0
 

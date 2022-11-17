@@ -500,7 +500,8 @@ func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Error(t *testing.T) {
-	yml := `components:
+	yml := `openapi: 3.0
+components:
   schemas:
     bork:
       properties:

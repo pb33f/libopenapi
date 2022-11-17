@@ -103,6 +103,10 @@ type opCheck struct {
 	changes *OperationChanges
 }
 
+func ComparePathItemsV3(l, r *v3.PathItem) *PathItemChanges {
+	return ComparePathItems(l, r)
+}
+
 func ComparePathItems(l, r any) *PathItemChanges {
 
 	var changes []*Change

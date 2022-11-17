@@ -18,7 +18,7 @@ type Document struct {
 
 	// Version is the version of OpenAPI being used, extracted from the 'openapi: x.x.x' definition.
 	// This is not a standard property of the OpenAPI model, it's a convenience mechanism only.
-	Version low.ValueReference[string]
+	Version low.NodeReference[string]
 
 	// Info represents a specification Info definitions
 	// Provides metadata about the API. The metadata MAY be used by tooling as required.
@@ -94,6 +94,14 @@ func (d *Document) FindSecurityRequirement(name string) []low.ValueReference[str
 		}
 	}
 	return nil
+}
+
+func (d *Document) GetExternalDocs() *low.NodeReference[any] {
+	return &low.NodeReference[any]{
+		KeyNode:   d.ExternalDocs.KeyNode,
+		ValueNode: d.ExternalDocs.ValueNode,
+		Value:     d.ExternalDocs.Value,
+	}
 }
 
 // TODO: this is early prototype mutation/modification code, keeping it around for later.

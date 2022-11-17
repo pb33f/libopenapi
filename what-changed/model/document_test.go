@@ -15,6 +15,7 @@ import (
 
 func TestCompareDocuments_Swagger_BaseProperties_Identical(t *testing.T) {
 	left := `swagger: 2.0
+x-diet: tough
 host: https://pb33f.io
 basePath: /api
 schemes: 
@@ -46,6 +47,7 @@ produces:
 
 func TestCompareDocuments_Swagger_BaseProperties_Modified(t *testing.T) {
 	left := `swagger: 2.0
+x-diet: coke
 host: https://pb33f.io
 basePath: /api
 schemes: 
@@ -58,7 +60,8 @@ produces:
   - application/json
   - fat/belly`
 
-	right := `swagger: 2.2
+	right := `swagger: 2.0.1
+x-diet: pepsi
 host: https://quobix.com
 basePath: /new-api
 schemes: 
@@ -71,19 +74,16 @@ produces:
   - application/json
   - very-fat/belly`
 
-	var lNode, rNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-	_ = yaml.Unmarshal([]byte(right), &rNode)
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
 
-	// create low level objects
-	var lDoc v2.Swagger
-	var rDoc v2.Swagger
-	_ = low.BuildModel(lNode.Content[0], &lDoc)
-	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
 
 	// compare.
-	extChanges := CompareDocuments(&lDoc, &rDoc)
-	assert.Equal(t, 9, extChanges.TotalChanges())
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 10, extChanges.TotalChanges())
 	assert.Equal(t, 6, extChanges.TotalBreakingChanges())
 }
 
@@ -580,34 +580,176 @@ paths:
 	assert.Nil(t, extChanges)
 }
 
-//func TestCompareDocuments_Swagger_Components_Paths_Changed(t *testing.T) {
-//	left := `swagger: 2.0
-//paths:
-//  /nice/rice:
-//    get:
-//      description: wow!
-//  /lovely/horse:
-//    put:
-//      description: what a lovely horse.`
-//
-//	right := `swagger: 2.0
-//paths:
-//  /lovely/horse:
-//    post:
-//      description: what a lovely horse.
-//  /nice/rice:
-//    get:
-//      description: nice rice?`
-//
-//	// have to build docs fully to get access to objects
-//	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
-//	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
-//
-//	lDoc, _ := v2.CreateDocument(siLeft)
-//	rDoc, _ := v2.CreateDocument(siRight)
-//
-//	// compare.
-//	extChanges := CompareDocuments(lDoc, rDoc)
-//	assert.Equal(t, 3, extChanges.TotalChanges())
-//	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-//}
+func TestCompareDocuments_Swagger_Components_Paths_Modified(t *testing.T) {
+	left := `swagger: 2.0
+paths:
+  /nice/rice:
+    get:
+      description: nice rice?
+  /lovely/horse:
+    post:
+      description: what a lovely horse.`
+
+	right := `swagger: 2.0
+paths:
+  /lovely/horse:
+    put:
+      description: what a lovely horse.
+  /nice/rice:
+    get:
+      description: nice rice, but changed`
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_Swagger_Components_Paths_Modified_AgainForFun(t *testing.T) {
+	left := `swagger: 2.0
+paths:
+  /nice/rice:
+    get:
+      description: nice rice?
+  /lovely/horse:
+    post:
+      description: what a lovely horse.`
+
+	right := `swagger: 2.0
+paths:
+  /lovely/horse:
+    put:
+      description: what a lovely horse, and shoes.
+  /nice/rice:
+    post:
+      description: nice rice, but changed`
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_Swagger_Components_Tags_Identical(t *testing.T) {
+	left := `swagger: 2.0
+tags:
+  - name: a tag
+    description: a nice tag
+  - name: another tag
+    description: this is another tag?`
+
+	right := `swagger: 2.0
+tags:
+  - name: another tag
+    description: this is another tag?
+  - name: a tag
+    description: a nice tag
+  `
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Nil(t, extChanges)
+}
+
+func TestCompareDocuments_Swagger_Components_Tags_Modified(t *testing.T) {
+	left := `swagger: 2.0
+tags:
+  - name: a tag
+    description: a nice tag
+  - name: another tag
+    description: this is another tag?`
+
+	right := `swagger: 2.0
+tags:
+  - name: another tag
+    externalDocs:
+      url: https://pb33f.io
+    description: this is another tag, that changed
+  - name: a tag
+    description: a nice tag, modified
+  `
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_OpenAPI_BaseProperties_Identical(t *testing.T) {
+	left := `openapi: 3.1
+x-diet: tough
+jsonSchemaDialect: https://pb33f.io/schema`
+
+	right := left
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(&lDoc, &rDoc)
+	assert.Nil(t, extChanges)
+}
+
+func TestCompareDocuments_OpenAPI_BaseProperties_Modified(t *testing.T) {
+
+	left := `openapi: 3.1
+x-diet: tough
+jsonSchemaDialect: https://pb33f.io/schema`
+
+	right := `openapi: 3.1.0
+x-diet: fat
+jsonSchemaDialect: https://pb33f.io/schema/changed`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
+}
