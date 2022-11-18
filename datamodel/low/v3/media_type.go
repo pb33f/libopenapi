@@ -98,7 +98,7 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 func (mt *MediaType) Hash() [32]byte {
 	var f []string
 	if mt.Schema.Value != nil {
-		f = append(f, low.GenerateHashString(mt.Schema.Value.Schema()))
+		f = append(f, low.GenerateHashString(mt.Schema.Value))
 	}
 	if mt.Example.Value != nil {
 		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(mt.Example.Value)))))
