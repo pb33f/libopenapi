@@ -203,6 +203,14 @@ func CompareDocuments(l, r any) *DocumentChanges {
 				dc.ComponentsChanges = n
 			}
 		}
+		if !lDoc.Components.IsEmpty() && rDoc.Components.IsEmpty() {
+			CreateChange(&changes, PropertyRemoved, v3.ComponentsLabel,
+				lDoc.Components.ValueNode, nil, true, lDoc.Components.Value, nil)
+		}
+		if lDoc.Components.IsEmpty() && !rDoc.Components.IsEmpty() {
+			CreateChange(&changes, PropertyAdded, v3.ComponentsLabel,
+				rDoc.Components.ValueNode, nil, false, nil, lDoc.Components.Value)
+		}
 
 		// compare servers
 		if n := checkServers(lDoc.Servers, rDoc.Servers, &changes); n != nil {
@@ -210,7 +218,10 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		}
 
 		// compare webhooks
-		CheckMapForChanges(lDoc.Webhooks.Value, rDoc.Webhooks.Value, &changes, v3.WebhooksLabel, ComparePathItemsV3)
+		dc.WebhookChanges = CheckMapForChanges(lDoc.Webhooks.Value, rDoc.Webhooks.Value, &changes,
+			v3.WebhooksLabel, ComparePathItemsV3)
+
+		// extensions
 		dc.ExtensionChanges = CompareExtensions(lDoc.Extensions, rDoc.Extensions)
 	}
 

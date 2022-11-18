@@ -477,6 +477,9 @@ func TestCreateDocument_Component_Discriminator(t *testing.T) {
 	assert.Equal(t, "drinkType", dsc.PropertyName.Value)
 	assert.Equal(t, "some value", dsc.FindMappingValue("drink").Value)
 	assert.Nil(t, dsc.FindMappingValue("don't exist"))
+	assert.NotNil(t, doc.GetExternalDocs())
+	assert.Nil(t, doc.FindSecurityRequirement("scooby doo"))
+
 }
 
 func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
@@ -518,8 +521,21 @@ components:
 	assert.Error(t, ob.GetBuildError())
 }
 
+func TestCreateDocument_Webhooks_Error(t *testing.T) {
+	yml := `openapi: 3.0
+webhooks:
+  aHook:
+    $ref: #bork`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	doc, err = CreateDocument(info)
+	assert.Len(t, err, 1)
+}
+
 func TestCreateDocument_Components_Error_Extract(t *testing.T) {
-	yml := `components:
+	yml := `openapi: 3.0
+components:
   parameters:
     bork:
       $ref: #bork`
@@ -532,7 +548,8 @@ func TestCreateDocument_Components_Error_Extract(t *testing.T) {
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {
-	yml := `paths:
+	yml := `openapi: 3.0
+paths:
   /p:
     $ref: #bork`
 
@@ -543,7 +560,8 @@ func TestCreateDocument_Paths_Errors(t *testing.T) {
 }
 
 func TestCreateDocument_Tags_Errors(t *testing.T) {
-	yml := `tags:
+	yml := `openapi: 3.0
+tags:
   - $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
@@ -553,7 +571,8 @@ func TestCreateDocument_Tags_Errors(t *testing.T) {
 }
 
 func TestCreateDocument_Security_Error(t *testing.T) {
-	yml := `security:
+	yml := `openapi: 3.0
+security:
   $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
@@ -563,7 +582,8 @@ func TestCreateDocument_Security_Error(t *testing.T) {
 }
 
 func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
-	yml := `externalDocs:
+	yml := `openapi: 3.0
+externalDocs:
   $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))

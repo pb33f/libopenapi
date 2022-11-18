@@ -59,6 +59,7 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, "http://swagger.io", doc.ExternalDocs.Value.URL.Value)
 	assert.Equal(t, true, doc.FindExtension("x-pet").Value)
 	assert.Equal(t, true, doc.FindExtension("X-Pet").Value)
+	assert.NotNil(t, doc.GetExternalDocs())
 }
 
 func TestCreateDocument_Info(t *testing.T) {

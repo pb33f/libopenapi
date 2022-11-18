@@ -31,7 +31,7 @@ components:
         yester:
           "$ref": "#/components/schemas/Seven"
     Four:
-      desription: "test four"
+      description: "test four"
       properties:
         lemons:
           "$ref": "#/components/schemas/Nine"

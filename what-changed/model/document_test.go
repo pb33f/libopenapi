@@ -216,6 +216,8 @@ externalDocs:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.NotNil(t, lDoc.GetExternalDocs())
+
 }
 
 func TestCompareDocuments_Swagger_ExternalDocs_Removed(t *testing.T) {
@@ -724,6 +726,8 @@ jsonSchemaDialect: https://pb33f.io/schema`
 	// compare.
 	extChanges := CompareDocuments(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
+	assert.NotNil(t, lDoc.GetExternalDocs())
+	assert.Nil(t, lDoc.FindSecurityRequirement("chewy")) // because why not.
 }
 
 func TestCompareDocuments_OpenAPI_BaseProperties_Modified(t *testing.T) {
@@ -752,4 +756,241 @@ jsonSchemaDialect: https://pb33f.io/schema/changed`
 
 	assert.Equal(t, 3, extChanges.TotalChanges())
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_OpenAPI_AddComponents(t *testing.T) {
+
+	left := `openapi: 3.1`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    thing:
+      type: int`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareDocuments_OpenAPI_Removed(t *testing.T) {
+
+	left := `openapi: 3.1`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    thing:
+      type: int`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(rDoc, lDoc)
+
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareDocuments_OpenAPI_ModifyPaths(t *testing.T) {
+
+	left := `openapi: 3.1
+paths:
+  /brown/cow:
+    get:
+      description: brown cow
+  /brown/hen:
+    get:
+      description: brown hen`
+
+	right := `openapi: 3.1
+paths:
+  /brown/cow:
+    get:
+      description: brown cow modified
+  /brown/hen:
+    get:
+      description: brown hen modified`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_OpenAPI_Identical_Security(t *testing.T) {
+
+	left := `openapi: 3.1
+security:
+  - cakes:
+    - chocolate
+    - vanilla
+  - shoes:
+    - white
+    - black`
+
+	right := `openapi: 3.1
+security:
+  - shoes:
+    - black
+    - white
+  - cakes:
+    - vanilla
+    - chocolate `
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Nil(t, extChanges)
+}
+
+func TestCompareDocuments_OpenAPI_ModifyComponents(t *testing.T) {
+
+	left := `openapi: 3.1
+components:
+  schemas:
+    athing:
+      description: a schema
+    nothing:
+      description: nothing`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    athing:
+      description: a schema that changed
+    nothing:
+      description: nothing with an update`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_OpenAPI_ModifyServers(t *testing.T) {
+
+	left := `openapi: 3.1
+servers:
+  - url: https://pb33f.io
+  - url: https://quobix.com`
+
+	right := `openapi: 3.1
+servers:
+  - url: https://pb33f.io
+    description: hello!
+  - url: https://api.pb33f.io`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_OpenAPI_ModifyWebhooks(t *testing.T) {
+
+	left := `openapi: 3.1
+webhooks:
+  bHook:
+    get:
+      description: coffee  
+  aHook:
+    get:
+      description: jazz`
+
+	right := `openapi: 3.1
+webhooks:
+  bHook:
+    get:
+      description: coffee in the morning
+  aHook:
+    get:
+      description: jazz in the evening`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
