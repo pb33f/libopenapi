@@ -265,3 +265,59 @@ tags:
 	assert.Nil(t, changes)
 
 }
+
+func TestCompareTags_AddExternalDocs(t *testing.T) {
+
+	left := `openapi: 3.0.1
+tags:
+  - name: something else`
+
+	right := `openapi: 3.0.1
+tags:
+  - name: something else
+    externalDocs:
+      url: https://pb33f.io
+      description: cooler`
+
+	// create document (which will create our correct tags low level structures)
+	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+	lDoc, _ := lowv3.CreateDocument(lInfo)
+	rDoc, _ := lowv3.CreateDocument(rInfo)
+
+	// compare.
+	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+
+	// evaluate.
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+
+}
+
+func TestCompareTags_RemoveExternalDocs(t *testing.T) {
+
+	left := `openapi: 3.0.1
+tags:
+  - name: something else`
+
+	right := `openapi: 3.0.1
+tags:
+  - name: something else
+    externalDocs:
+      url: https://pb33f.io
+      description: cooler`
+
+	// create document (which will create our correct tags low level structures)
+	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+	lDoc, _ := lowv3.CreateDocument(lInfo)
+	rDoc, _ := lowv3.CreateDocument(rInfo)
+
+	// compare.
+	changes := CompareTags(rDoc.Tags.Value, lDoc.Tags.Value)
+
+	// evaluate.
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+
+}

@@ -9,6 +9,7 @@ import (
 
 type hotdog struct {
 	Name            NodeReference[string]
+	ValueName       ValueReference[string]
 	Fat             NodeReference[int]
 	Ketchup         NodeReference[float32]
 	Mustard         NodeReference[float64]
@@ -46,6 +47,7 @@ func TestBuildModel_Mismatch(t *testing.T) {
 func TestBuildModel(t *testing.T) {
 
 	yml := `name: yummy
+valueName: yammy
 beef: true
 fat: 200
 ketchup: 200.45
@@ -106,9 +108,10 @@ there:
 	hd := hotdog{}
 	cErr := BuildModel(rootNode.Content[0], &hd)
 	assert.Equal(t, 200, hd.Fat.Value)
-	assert.Equal(t, 3, hd.Fat.ValueNode.Line)
+	assert.Equal(t, 4, hd.Fat.ValueNode.Line)
 	assert.Equal(t, true, hd.Grilled.Value)
 	assert.Equal(t, "yummy", hd.Name.Value)
+	assert.Equal(t, "yammy", hd.ValueName.Value)
 	assert.Equal(t, float32(200.45), hd.Ketchup.Value)
 	assert.Len(t, hd.Drinks, 3)
 	assert.Len(t, hd.Sides, 4)
@@ -119,7 +122,7 @@ there:
 	assert.Len(t, hd.MaxTempAlt, 5)
 	assert.Equal(t, int64(7392837462032342), hd.MaxTempHigh.Value)
 	assert.Equal(t, 2, hd.Temps[1].Value)
-	assert.Equal(t, 26, hd.Temps[1].ValueNode.Line)
+	assert.Equal(t, 27, hd.Temps[1].ValueNode.Line)
 	assert.Len(t, hd.UnknownElements.Value, 2)
 	assert.Len(t, hd.LotsOfUnknowns, 3)
 	assert.Len(t, hd.Where, 2)
