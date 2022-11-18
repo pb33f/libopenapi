@@ -411,6 +411,9 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 			nil, rServers.ValueNode, false, nil,
 			rServers.Value)
 	}
+	if len(serverChanges) <= 0 {
+		return nil
+	}
 	return serverChanges
 }
 

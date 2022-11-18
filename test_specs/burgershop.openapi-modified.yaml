@@ -102,7 +102,7 @@ paths:
                 unexpectedError:
                   summary: oh my goodness
                   value:
-                    message: something went terribly wrong my friend, no new burger for you.
+                    message: something went terribly wrong my friend, no new burger for you. mate.
         "422":
           description: Unprocessable entity
           content:

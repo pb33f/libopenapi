@@ -246,17 +246,15 @@ func (s *Schema) Hash() [32]byte {
 	// hash polymorphic data
 	if len(s.OneOf.Value) > 0 {
 		oneOfKeys := make([]string, len(s.OneOf.Value))
-		oneOfEntities := make(map[string]*Schema)
+		oneOfEntities := make(map[string]*SchemaProxy)
 		z = 0
 		for i := range s.OneOf.Value {
 			g := s.OneOf.Value[i].Value
-			if !g.IsSchemaReference() {
-				k := g.Schema()
-				r := low.GenerateHashString(k)
-				oneOfEntities[r] = k
-				oneOfKeys[z] = r
-				z++
-			}
+			r := low.GenerateHashString(g)
+			oneOfEntities[r] = g
+			oneOfKeys[z] = r
+			z++
+
 		}
 		sort.Strings(oneOfKeys)
 		for k := range oneOfKeys {
@@ -266,17 +264,15 @@ func (s *Schema) Hash() [32]byte {
 
 	if len(s.AllOf.Value) > 0 {
 		allOfKeys := make([]string, len(s.AllOf.Value))
-		allOfEntities := make(map[string]*Schema)
+		allOfEntities := make(map[string]*SchemaProxy)
 		z = 0
 		for i := range s.AllOf.Value {
 			g := s.AllOf.Value[i].Value
-			if !g.IsSchemaReference() {
-				k := g.Schema()
-				r := low.GenerateHashString(k)
-				allOfEntities[r] = k
-				allOfKeys[z] = r
-				z++
-			}
+			r := low.GenerateHashString(g)
+			allOfEntities[r] = g
+			allOfKeys[z] = r
+			z++
+
 		}
 		sort.Strings(allOfKeys)
 		for k := range allOfKeys {
@@ -286,17 +282,15 @@ func (s *Schema) Hash() [32]byte {
 
 	if len(s.AnyOf.Value) > 0 {
 		anyOfKeys := make([]string, len(s.AnyOf.Value))
-		anyOfEntities := make(map[string]*Schema)
+		anyOfEntities := make(map[string]*SchemaProxy)
 		z = 0
 		for i := range s.AnyOf.Value {
 			g := s.AnyOf.Value[i].Value
-			if !g.IsSchemaReference() {
-				k := g.Schema()
-				r := low.GenerateHashString(k)
-				anyOfEntities[r] = k
-				anyOfKeys[z] = r
-				z++
-			}
+			r := low.GenerateHashString(g)
+			anyOfEntities[r] = g
+			anyOfKeys[z] = r
+			z++
+
 		}
 		sort.Strings(anyOfKeys)
 		for k := range anyOfKeys {
@@ -306,17 +300,15 @@ func (s *Schema) Hash() [32]byte {
 
 	if len(s.Not.Value) > 0 {
 		notKeys := make([]string, len(s.Not.Value))
-		notEntities := make(map[string]*Schema)
+		notEntities := make(map[string]*SchemaProxy)
 		z = 0
 		for i := range s.Not.Value {
 			g := s.Not.Value[i].Value
-			if !g.IsSchemaReference() {
-				k := g.Schema()
-				r := low.GenerateHashString(k)
-				notEntities[r] = k
-				notKeys[z] = r
-				z++
-			}
+			r := low.GenerateHashString(g)
+			notEntities[r] = g
+			notKeys[z] = r
+			z++
+
 		}
 		sort.Strings(notKeys)
 		for k := range notKeys {
@@ -326,17 +318,14 @@ func (s *Schema) Hash() [32]byte {
 
 	if len(s.Items.Value) > 0 {
 		itemsKeys := make([]string, len(s.Items.Value))
-		itemsEntities := make(map[string]*Schema)
+		itemsEntities := make(map[string]*SchemaProxy)
 		z = 0
 		for i := range s.Items.Value {
 			g := s.Items.Value[i].Value
-			if !g.IsSchemaReference() {
-				k := g.Schema()
-				r := low.GenerateHashString(k)
-				itemsEntities[r] = k
-				itemsKeys[z] = r
-				z++
-			}
+			r := low.GenerateHashString(g)
+			itemsEntities[r] = g
+			itemsKeys[z] = r
+			z++
 		}
 		sort.Strings(itemsKeys)
 		for k := range itemsKeys {

@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sort"
 	"strings"
 )
 
@@ -63,9 +64,14 @@ func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the Server object
 func (s *Server) Hash() [32]byte {
 	var f []string
+	keys := make([]string, len(s.Variables.Value))
+	z := 0
 	for k := range s.Variables.Value {
-		f = append(f, low.GenerateHashString(s.Variables.Value[k].Value))
+		keys[z] = low.GenerateHashString(s.Variables.Value[k].Value)
+		z++
 	}
+	sort.Strings(keys)
+	f = append(f, keys...)
 	if !s.URL.IsEmpty() {
 		f = append(f, s.URL.Value)
 	}
