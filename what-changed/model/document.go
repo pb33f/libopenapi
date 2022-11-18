@@ -15,7 +15,7 @@ type DocumentChanges struct {
 	PropertyChanges
 	InfoChanges                *InfoChanges
 	PathsChanges               *PathsChanges
-	TagChanges                 *TagChanges
+	TagChanges                 []*TagChanges
 	ExternalDocChanges         *ExternalDocChanges
 	WebhookChanges             map[string]*PathItemChanges
 	ServerChanges              []*ServerChanges
@@ -32,8 +32,8 @@ func (d *DocumentChanges) TotalChanges() int {
 	if d.PathsChanges != nil {
 		c += d.PathsChanges.TotalChanges()
 	}
-	if d.TagChanges != nil {
-		c += d.TagChanges.TotalChanges()
+	for k := range d.TagChanges {
+		c += d.TagChanges[k].TotalChanges()
 	}
 	if d.ExternalDocChanges != nil {
 		c += d.ExternalDocChanges.TotalChanges()
@@ -64,8 +64,8 @@ func (d *DocumentChanges) TotalBreakingChanges() int {
 	if d.PathsChanges != nil {
 		c += d.PathsChanges.TotalBreakingChanges()
 	}
-	if d.TagChanges != nil {
-		c += d.TagChanges.TotalBreakingChanges()
+	for k := range d.TagChanges {
+		c += d.TagChanges[k].TotalBreakingChanges()
 	}
 	if d.ExternalDocChanges != nil {
 		c += d.ExternalDocChanges.TotalBreakingChanges()
@@ -213,7 +213,7 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		}
 
 		// compare servers
-		if n := checkServers(lDoc.Servers, rDoc.Servers, &changes); n != nil {
+		if n := checkServers(lDoc.Servers, rDoc.Servers); n != nil {
 			dc.ServerChanges = n
 		}
 

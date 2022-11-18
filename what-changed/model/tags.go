@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"strings"
 )
 
 // TagChanges represents changes made to the Tags object of an OpenAPI document.
@@ -37,25 +36,28 @@ func (t *TagChanges) TotalBreakingChanges() int {
 // CompareTags will compare a left (original) and a right (new) slice of ValueReference nodes for
 // any changes between them. If there are changes, a pointer to TagChanges is returned, if not then
 // nil is returned instead.
-func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
-	tc := new(TagChanges)
+func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
+
+	var tagResults []*TagChanges
 
 	// look at the original and then look through the new.
 	seenLeft := make(map[string]*low.ValueReference[*base.Tag])
 	seenRight := make(map[string]*low.ValueReference[*base.Tag])
 	for i := range l {
 		h := l[i]
-		seenLeft[strings.ToLower(l[i].Value.Name.Value)] = &h
+		seenLeft[l[i].Value.Name.Value] = &h
 	}
 	for i := range r {
 		h := r[i]
-		seenRight[strings.ToLower(r[i].Value.Name.Value)] = &h
+		seenRight[r[i].Value.Name.Value] = &h
 	}
 
-	var changes []*Change
+	//var changes []*Change
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {
+		tc := new(TagChanges)
+		var changes []*Change
 
 		CheckForObjectAdditionOrRemoval[*base.Tag](seenLeft, seenRight, i, &changes, false, true)
 
@@ -104,20 +106,32 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) *TagChanges {
 			}
 
 			// check extensions
-			tc.ExtensionChanges = CheckExtensions(seenLeft[i].GetValue(), seenRight[i].GetValue())
-
+			tc.ExtensionChanges = CompareExtensions(seenLeft[i].Value.Extensions, seenRight[i].Value.Extensions)
+			tc.Changes = changes
+			if tc.TotalChanges() > 0 {
+				tagResults = append(tagResults, tc)
+			}
+			continue
 		}
-	}
 
+		if len(changes) > 0 {
+			tc.Changes = changes
+			tagResults = append(tagResults, tc)
+		}
+
+	}
 	for i := range seenRight {
 		if seenLeft[i] == nil {
+			tc := new(TagChanges)
+			var changes []*Change
+
 			CreateChange(&changes, ObjectAdded, i, nil, seenRight[i].GetValueNode(),
 				false, nil, seenRight[i].GetValue())
+
+			tc.Changes = changes
+			tagResults = append(tagResults, tc)
+
 		}
 	}
-	tc.Changes = changes
-	if tc.TotalChanges() <= 0 {
-		return nil
-	}
-	return tc
+	return tagResults
 }

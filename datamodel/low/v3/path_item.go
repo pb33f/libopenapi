@@ -124,7 +124,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	_, ln, vn = utils.FindKeyNodeFull(ServersLabel, root.Content)
+	_, ln, vn = utils.FindKeyNodeFullTop(ServersLabel, root.Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
 			var servers []low.ValueReference[*Server]

@@ -526,7 +526,7 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 
 	// servers
-	pc.ServerChanges = checkServers(lPath.Servers, rPath.Servers, changes)
+	pc.ServerChanges = checkServers(lPath.Servers, rPath.Servers)
 
 	// parameters
 	if !lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {

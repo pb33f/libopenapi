@@ -9,22 +9,25 @@ info:
     email: buckaroo@pb33f.io
     url: https://pb33f.io
   license:
-    name: pb33f
+    name: pb33f-internal
     url: https://pb33f.io/made-up
   version: "1.2"
 security:
   - OAuthScheme:
       - read:burgers
       - write:burgers
+      - read:books
 tags:
+  - name: HotDogs
+    description: a new type of burger, its a thin round one in a bun.
   - name: "Burgers"
-    description: "All kinds of yummy burgers."
+    description: All kinds of yummy burgers, the very best in the world.
     externalDocs:
       description: "Find out more"
       url: "https://pb33f.io"
     x-internal-ting: somethingSpecial
     x-internal-tong: 1
-    x-internal-tang: 1.2
+    x-internal-tang: 1.2.3
     x-internal-tung: true
     x-internal-arr:
       - one
@@ -42,10 +45,10 @@ tags:
       url: "https://pb33f.io"
 servers:
   - url: "{scheme}://api.pb33f.io"
-    description: "this is our main API server, for all fun API things."
+    description: "this is our main API server, for all fun API things. updated"
     variables:
       scheme:
-        enum: [https, wss]
+        enum: [https]
         default: https
         description: this is a server variable for the scheme
   - url: "https://{domain}.{host}.com"
@@ -58,15 +61,16 @@ servers:
         default: "pb33f.io"
         description: the default host for this API is 'pb33f.io'
 paths:
-  x-milky-milk: milky
+  x-milky-milk: milky updated
   /burgers:
-    x-burger-meta: meaty
+    x-burger-meta: meaty pop
     post:
-      operationId: createBurger
+      operationId: createBurgerChanged
       tags:
         - "Burgers"
-      summary:  Create a new burger
-      description: A new burger for our menu, yummy yum yum.
+        - "HotDogs"
+      summary:  Create a new burger the changed
+      description: A new burger for our menu
       requestBody:
         $ref: '#/components/requestBodies/BurgerRequest'
       responses:
@@ -74,7 +78,7 @@ paths:
           headers:
             UseOil:
               $ref: '#/components/headers/UseOil'
-          description: A tasty burger for you to eat.
+          description: A tasty burger for you to eat. update
           content:
             application/json:
               schema:
@@ -83,11 +87,13 @@ paths:
                 quarterPounder:
                   $ref: '#/components/examples/QuarterPounder'
                 filetOFish:
-                  summary: a cripsy fish sammich filled with ocean goodness.
+                  summary: a cripsy fish sammich filled with ocean goodness. changed
                   value:
                     name: Filet-O-Fish
-                    numPatties: 1
+                    numPatties: 22
           links:
+            DuplicateLocateBurger:
+              $ref: '#/components/links/LocateBurger'
             LocateBurger:
               $ref: '#/components/links/LocateBurger'
             AnotherLocateBurger:
@@ -103,24 +109,16 @@ paths:
                   summary: oh my goodness
                   value:
                     message: something went terribly wrong my friend, no new burger for you. mate.
-        "422":
-          description: Unprocessable entity
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-              examples:
-                unexpectedError:
-                  summary: invalid request
-                  value:
-                    message: unable to accept this request, looks bad, missing something.
       security:
         - OAuthScheme:
             - read:burgers
             - write:burgers
+            - read:books
       servers:
         - url: https://pb33f.io
           description: this is an alternative server for this operation.
+        - url: https://pb33f.io/new
+          description: this is an alternative server, copy pasta.
   /burgers/{burgerId}:
     get:
       callbacks:

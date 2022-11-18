@@ -98,6 +98,7 @@ type OpenAPIParameter interface {
 type SharedOperations interface {
 	//HasDescription
 	//HasExternalDocs
+	GetOperationId() NodeReference[string]
 	GetExternalDocs() NodeReference[any]
 	GetDescription() NodeReference[string]
 	GetTags() NodeReference[[]ValueReference[string]]

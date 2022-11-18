@@ -40,12 +40,12 @@ tags:
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
 	// evaluate.
-	assert.Len(t, changes.Changes, 1)
-	assert.Len(t, changes.ExternalDocs.Changes, 2)
-	assert.Len(t, changes.ExtensionChanges.Changes, 1)
-	assert.Equal(t, 4, changes.TotalChanges())
+	assert.Len(t, changes[0].Changes, 1)
+	assert.Len(t, changes[0].ExternalDocs.Changes, 2)
+	assert.Len(t, changes[0].ExtensionChanges.Changes, 1)
+	assert.Equal(t, 4, changes[0].TotalChanges())
 
-	descChange := changes.Changes[0]
+	descChange := changes[0].Changes[0]
 	assert.Equal(t, "a lovelier tag description", descChange.New)
 	assert.Equal(t, "a lovely tag", descChange.Original)
 	assert.Equal(t, Modified, descChange.ChangeType)
@@ -84,10 +84,10 @@ tags:
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
 	// evaluate.
-	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes[0].Changes, 1)
+	assert.Equal(t, 1, changes[0].TotalChanges())
 
-	descChange := changes.Changes[0]
+	descChange := changes[0].Changes[0]
 	assert.Equal(t, ObjectAdded, descChange.ChangeType)
 }
 
@@ -117,12 +117,10 @@ tags:
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
 	// evaluate.
-	assert.Len(t, changes.Changes, 2)
-	assert.Equal(t, 2, changes.TotalChanges())
-
-	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, ObjectAdded, changes.Changes[1].ChangeType)
-	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Len(t, changes, 2)
+	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Equal(t, 1, changes[1].TotalChanges())
+	assert.Equal(t, 1, changes[0].TotalBreakingChanges())
 }
 
 func TestCompareTags_DescriptionMoved(t *testing.T) {
@@ -222,10 +220,10 @@ tags:
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
 	// evaluate.
-	assert.Len(t, changes.Changes, 1)
-	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes[0].Changes, 1)
+	assert.Equal(t, 1, changes[0].TotalChanges())
 
-	descChange := changes.Changes[0]
+	descChange := changes[0].Changes[0]
 	assert.Equal(t, Modified, descChange.ChangeType)
 	assert.Equal(t, "a lovelier tag description", descChange.Original)
 	assert.Equal(t, "a different tag description", descChange.New)
@@ -289,8 +287,8 @@ tags:
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
 	// evaluate.
-	assert.Equal(t, 1, changes.TotalChanges())
-	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Equal(t, ObjectAdded, changes[0].Changes[0].ChangeType)
 
 }
 
@@ -317,7 +315,7 @@ tags:
 	changes := CompareTags(rDoc.Tags.Value, lDoc.Tags.Value)
 
 	// evaluate.
-	assert.Equal(t, 1, changes.TotalChanges())
-	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Equal(t, ObjectRemoved, changes[0].Changes[0].ChangeType)
 
 }
