@@ -16,13 +16,9 @@ import (
 
 type OperationChanges struct {
 	PropertyChanges
-	ExternalDocChanges *ExternalDocChanges
-	ParameterChanges   []*ParameterChanges
-	ResponsesChanges   *ResponsesChanges
-
-	// SecurityRequirementChanges are defined differently between v2 and v3. Both are defined
-	// as the same data type, however the objects are structured differently. A slice is the cleanest
-	// way to compose both models.
+	ExternalDocChanges         *ExternalDocChanges
+	ParameterChanges           []*ParameterChanges
+	ResponsesChanges           *ResponsesChanges
 	SecurityRequirementChanges []*SecurityRequirementChanges
 
 	// v3
@@ -104,6 +100,10 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
 		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel, false)
+
+	// operation id
+	addPropertyCheck(&props, left.GetOperationId().ValueNode, right.GetOperationId().ValueNode,
+		left.GetOperationId(), right.GetOperationId(), changes, v3.OperationIdLabel, true)
 
 	return props
 }
@@ -343,7 +343,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 
 		// servers
-		oc.ServerChanges = checkServers(lOperation.Servers, rOperation.Servers, &changes)
+		oc.ServerChanges = checkServers(lOperation.Servers, rOperation.Servers)
 		oc.ExtensionChanges = CompareExtensions(lOperation.Extensions, rOperation.Extensions)
 
 		// todo: callbacks
@@ -353,8 +353,7 @@ func CompareOperations(l, r any) *OperationChanges {
 	return oc
 }
 
-func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.Server]],
-	changes *[]*Change) []*ServerChanges {
+func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.Server]]) []*ServerChanges {
 
 	var serverChanges []*ServerChanges
 
@@ -383,33 +382,57 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 		}
 
 		for k := range lv {
+
+			var changes []*Change
+
 			if _, ok := rv[k]; ok {
 				if !low.AreEqual(lv[k].Value, rv[k].Value) {
 					serverChanges = append(serverChanges, CompareServers(lv[k].Value, rv[k].Value))
 				}
 				continue
 			}
-			CreateChange(changes, ObjectRemoved, v3.ServersLabel,
+			lv[k].ValueNode.Value = lv[k].Value.URL.Value
+			CreateChange(&changes, ObjectRemoved, v3.ServersLabel,
 				lv[k].ValueNode, nil, true, lv[k].Value.URL.Value,
 				nil)
+			sc := new(ServerChanges)
+			sc.Changes = changes
+			serverChanges = append(serverChanges, sc)
+
 		}
+
 		for k := range rv {
+
 			if _, ok := lv[k]; !ok {
-				CreateChange(changes, ObjectAdded, v3.ServersLabel,
-					rv[k].ValueNode, nil, false, rv[k].Value.URL.Value,
-					nil)
+
+				var changes []*Change
+				rv[k].ValueNode.Value = rv[k].Value.URL.Value
+				CreateChange(&changes, ObjectAdded, v3.ServersLabel,
+					nil, rv[k].ValueNode, false, nil,
+					rv[k].Value.URL.Value)
+
+				sc := new(ServerChanges)
+				sc.Changes = changes
+				serverChanges = append(serverChanges, sc)
 			}
+
 		}
 	}
+	var changes []*Change
+	sc := new(ServerChanges)
 	if !lServers.IsEmpty() && rServers.IsEmpty() {
-		CreateChange(changes, PropertyRemoved, v3.ServersLabel,
-			lServers.ValueNode, nil, true, lServers.ValueNode,
+		CreateChange(&changes, PropertyRemoved, v3.ServersLabel,
+			lServers.ValueNode, nil, true, lServers.Value,
 			nil)
 	}
 	if lServers.IsEmpty() && !rServers.IsEmpty() {
-		CreateChange(changes, PropertyAdded, v3.ServersLabel,
+		CreateChange(&changes, PropertyAdded, v3.ServersLabel,
 			nil, rServers.ValueNode, false, nil,
 			rServers.Value)
+	}
+	sc.Changes = changes
+	if len(changes) > 0 {
+		serverChanges = append(serverChanges, sc)
 	}
 	if len(serverChanges) <= 0 {
 		return nil
