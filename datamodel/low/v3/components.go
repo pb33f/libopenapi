@@ -194,7 +194,7 @@ type componentBuildResult[T any] struct {
 
 func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node,
 	skip chan bool, errorChan chan<- error, resultChan chan<- low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]], idx *index.SpecIndex) {
-	_, nodeLabel, nodeValue := utils.FindKeyNodeFull(label, root.Content)
+	_, nodeLabel, nodeValue := utils.FindKeyNodeFullTop(label, root.Content)
 	if nodeValue == nil {
 		skip <- true
 		return

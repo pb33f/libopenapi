@@ -11,7 +11,8 @@ import (
 	"testing"
 )
 
-var testComponentsYaml = `components:
+var testComponentsYaml = `
+  x-pizza: crispy
   schemas:
     one:
       description: one of many
@@ -97,6 +98,9 @@ func TestComponents_Build_Success(t *testing.T) {
 	assert.Equal(t, "eighteen of many",
 		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Post.Value.Description.Value)
 
+	assert.Equal(t, "7add1a6c63a354b1a8ffe22552c213fe26d1229beb0b0cbe7c7ca06e63f9a364",
+		low.GenerateHashString(&n))
+
 }
 
 func TestComponents_Build_Success_Skip(t *testing.T) {
@@ -119,7 +123,7 @@ func TestComponents_Build_Success_Skip(t *testing.T) {
 
 func TestComponents_Build_Fail(t *testing.T) {
 
-	yml := `components:
+	yml := `
   parameters: 
     schema:
       $ref: '#/this is a problem.'`
@@ -140,7 +144,7 @@ func TestComponents_Build_Fail(t *testing.T) {
 
 func TestComponents_Build_ParameterFail(t *testing.T) {
 
-	yml := `components:
+	yml := `
   parameters:
     pizza:
       schema:
@@ -162,7 +166,7 @@ func TestComponents_Build_ParameterFail(t *testing.T) {
 
 func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 
-	yml := `components:
+	yml := `
   parameters: 
     - schema:
         $ref: #/this is a problem.`
@@ -178,7 +182,6 @@ func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestComponents_Build_ExtensionTest(t *testing.T) {
@@ -199,5 +202,27 @@ headers:
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "seagull", n.FindExtension("x-curry").Value)
+
+}
+
+func TestComponents_Build_HashEmpty(t *testing.T) {
+
+	yml := `x-curry: seagull`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "seagull", n.FindExtension("x-curry").Value)
+
+	assert.Equal(t, "9cf2c6ab3f9ff7e5231fcb391c8af5c47406711d2ca366533f21a8bb2f67edfe",
+		low.GenerateHashString(&n))
 
 }
