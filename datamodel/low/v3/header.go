@@ -62,7 +62,7 @@ func (h *Header) Hash() [32]byte {
 	f = append(f, fmt.Sprint(h.Explode.Value))
 	f = append(f, fmt.Sprint(h.AllowReserved.Value))
 	if h.Schema.Value != nil {
-		f = append(f, low.GenerateHashString(h.Schema.Value.Schema()))
+		f = append(f, low.GenerateHashString(h.Schema.Value))
 	}
 	if h.Example.Value != nil {
 		f = append(f, fmt.Sprint(h.Example.Value))
