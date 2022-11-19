@@ -119,7 +119,11 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 // Hash will return a consistent SHA256 Hash of the SchemaProxy object (it will resolve it)
 func (sp *SchemaProxy) Hash() [32]byte {
 	if sp.rendered != nil {
-		return sp.rendered.Hash()
+		if !sp.isReference {
+			return sp.rendered.Hash()
+		}
+		// we only hash inline schemas
+		return sha256.Sum256([]byte(sp.referenceLookup))
 	} else {
 		if !sp.isReference {
 			// only resolve this proxy if it's not a ref.

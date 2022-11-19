@@ -13,16 +13,19 @@ import (
 
 type ComponentsChanges struct {
 	PropertyChanges
-	SchemaChanges         map[string]*SchemaChanges
-	ResponsesChanges      map[string]*ResponseChanges
-	ParameterChanges      map[string]*ParameterChanges
-	ExamplesChanges       map[string]*ExampleChanges
-	RequestBodyChanges    map[string]*RequestBodyChanges
-	HeaderChanges         map[string]*HeaderChanges
+	SchemaChanges map[string]*SchemaChanges
+
+	// todo: disable these after cleaning up swagger code.
+	ResponsesChanges map[string]*ResponseChanges
+	ParameterChanges map[string]*ParameterChanges
+
+	//ExamplesChanges       map[string]*ExampleChanges
+	//RequestBodyChanges    map[string]*RequestBodyChanges
+	//HeaderChanges         map[string]*HeaderChanges
 	SecuritySchemeChanges map[string]*SecuritySchemeChanges
-	LinkChanges           map[string]*LinkChanges
-	CallbackChanges       map[string]*CallbackChanges
-	ExtensionChanges      *ExtensionChanges
+	//LinkChanges           map[string]*LinkChanges
+	//CallbackChanges       map[string]*CallbackChanges
+	ExtensionChanges *ExtensionChanges
 }
 
 func CompareComponents(l, r any) *ComponentsChanges {
@@ -43,7 +46,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if rDef != nil {
 			b = rDef.Definitions
 		}
-		cc.ParameterChanges = CheckMapForChanges(a, b, &changes, v3.ParametersLabel, CompareParametersV2)
+		CheckMapForAdditionRemoval(a, b, &changes, v3.ParametersLabel)
 	}
 
 	// Swagger Responses
@@ -58,7 +61,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if rDef != nil {
 			b = rDef.Definitions
 		}
-		cc.ResponsesChanges = CheckMapForChanges(a, b, &changes, v3.ResponsesLabel, CompareResponseV2)
+		CheckMapForAdditionRemoval(a, b, &changes, v3.ResponsesLabel)
 	}
 
 	// Swagger Schemas
@@ -73,8 +76,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		if rDef != nil {
 			b = rDef.Schemas
 		}
-		cc.SchemaChanges = CheckMapForChanges(a, b, &changes,
-			v2.DefinitionsLabel, CompareSchemas)
+		cc.SchemaChanges = CheckMapForChanges(a, b, &changes, v2.DefinitionsLabel, CompareSchemas)
 	}
 
 	// Swagger Security Definitions
@@ -100,9 +102,9 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		lComponents := l.(*v3.Components)
 		rComponents := r.(*v3.Components)
 
-		if low.AreEqual(lComponents, rComponents) {
-			return nil
-		}
+		//if low.AreEqual(lComponents, rComponents) {
+		//	return nil
+		//}
 
 		doneChan := make(chan componentComparison)
 		comparisons := 0
@@ -175,23 +177,23 @@ func CompareComponents(l, r any) *ComponentsChanges {
 					break
 				case v3.ResponsesLabel:
 					completedComponents++
-					cc.ResponsesChanges = res.result.(map[string]*ResponseChanges)
+					//cc.ResponsesChanges = res.result.(map[string]*ResponseChanges)
 					break
 				case v3.ParametersLabel:
 					completedComponents++
-					cc.ParameterChanges = res.result.(map[string]*ParameterChanges)
+					//cc.ParameterChanges = res.result.(map[string]*ParameterChanges)
 					break
 				case v3.ExamplesLabel:
 					completedComponents++
-					cc.ExamplesChanges = res.result.(map[string]*ExampleChanges)
+					//cc.ExamplesChanges = res.result.(map[string]*ExampleChanges)
 					break
 				case v3.RequestBodiesLabel:
 					completedComponents++
-					cc.RequestBodyChanges = res.result.(map[string]*RequestBodyChanges)
+					//cc.RequestBodyChanges = res.result.(map[string]*RequestBodyChanges)
 					break
 				case v3.HeadersLabel:
 					completedComponents++
-					cc.HeaderChanges = res.result.(map[string]*HeaderChanges)
+					//cc.HeaderChanges = res.result.(map[string]*HeaderChanges)
 					break
 				case v3.SecuritySchemesLabel:
 					completedComponents++
@@ -199,11 +201,11 @@ func CompareComponents(l, r any) *ComponentsChanges {
 					break
 				case v3.LinksLabel:
 					completedComponents++
-					cc.LinkChanges = res.result.(map[string]*LinkChanges)
+					//cc.LinkChanges = res.result.(map[string]*LinkChanges)
 					break
 				case v3.CallbacksLabel:
 					completedComponents++
-					cc.CallbackChanges = res.result.(map[string]*CallbackChanges)
+					//cc.CallbackChanges = res.result.(map[string]*CallbackChanges)
 					break
 				}
 			}
@@ -225,9 +227,19 @@ type componentComparison struct {
 // run a generic comparison in a thread which in turn splits checks into further threads.
 func runComparison[T any, R any](l, r map[low.KeyReference[string]]low.ValueReference[T],
 	changes *[]*Change, label string, compareFunc func(l, r T) R, doneChan chan componentComparison) {
-	doneChan <- componentComparison{
-		prop:   label,
-		result: CheckMapForChanges(l, r, changes, label, compareFunc),
+
+	// for schemas
+	if label == v3.SchemasLabel || label == v2.DefinitionsLabel || label == v3.SecuritySchemesLabel {
+		doneChan <- componentComparison{
+			prop:   label,
+			result: CheckMapForChanges(l, r, changes, label, compareFunc),
+		}
+		return
+	} else {
+		doneChan <- componentComparison{
+			prop:   label,
+			result: CheckMapForAdditionRemoval(l, r, changes, label),
+		}
 	}
 }
 
@@ -236,30 +248,30 @@ func (c *ComponentsChanges) TotalChanges() int {
 	for k := range c.SchemaChanges {
 		v += c.SchemaChanges[k].TotalChanges()
 	}
-	for k := range c.ResponsesChanges {
-		v += c.ResponsesChanges[k].TotalChanges()
-	}
-	for k := range c.ParameterChanges {
-		v += c.ParameterChanges[k].TotalChanges()
-	}
-	for k := range c.ExamplesChanges {
-		v += c.ExamplesChanges[k].TotalChanges()
-	}
-	for k := range c.RequestBodyChanges {
-		v += c.RequestBodyChanges[k].TotalChanges()
-	}
-	for k := range c.HeaderChanges {
-		v += c.HeaderChanges[k].TotalChanges()
-	}
+	//for k := range c.ResponsesChanges {
+	//	v += c.ResponsesChanges[k].TotalChanges()
+	//}
+	//for k := range c.ParameterChanges {
+	//	v += c.ParameterChanges[k].TotalChanges()
+	//}
+	//for k := range c.ExamplesChanges {
+	//	v += c.ExamplesChanges[k].TotalChanges()
+	//}
+	//for k := range c.RequestBodyChanges {
+	//	v += c.RequestBodyChanges[k].TotalChanges()
+	//}
+	//for k := range c.HeaderChanges {
+	//	v += c.HeaderChanges[k].TotalChanges()
+	//}
 	for k := range c.SecuritySchemeChanges {
 		v += c.SecuritySchemeChanges[k].TotalChanges()
 	}
-	for k := range c.LinkChanges {
-		v += c.LinkChanges[k].TotalChanges()
-	}
-	for k := range c.CallbackChanges {
-		v += c.CallbackChanges[k].TotalChanges()
-	}
+	//for k := range c.LinkChanges {
+	//	v += c.LinkChanges[k].TotalChanges()
+	//}
+	//for k := range c.CallbackChanges {
+	//	v += c.CallbackChanges[k].TotalChanges()
+	//}
 	if c.ExtensionChanges != nil {
 		v += c.ExtensionChanges.TotalChanges()
 	}
@@ -271,26 +283,26 @@ func (c *ComponentsChanges) TotalBreakingChanges() int {
 	for k := range c.SchemaChanges {
 		v += c.SchemaChanges[k].TotalBreakingChanges()
 	}
-	for k := range c.ResponsesChanges {
-		v += c.ResponsesChanges[k].TotalBreakingChanges()
-	}
-	for k := range c.ParameterChanges {
-		v += c.ParameterChanges[k].TotalBreakingChanges()
-	}
-	for k := range c.RequestBodyChanges {
-		v += c.RequestBodyChanges[k].TotalBreakingChanges()
-	}
-	for k := range c.HeaderChanges {
-		v += c.HeaderChanges[k].TotalBreakingChanges()
-	}
+	//for k := range c.ResponsesChanges {
+	//	v += c.ResponsesChanges[k].TotalBreakingChanges()
+	//}
+	//for k := range c.ParameterChanges {
+	//	v += c.ParameterChanges[k].TotalBreakingChanges()
+	//}
+	//for k := range c.RequestBodyChanges {
+	//	v += c.RequestBodyChanges[k].TotalBreakingChanges()
+	//}
+	//for k := range c.HeaderChanges {
+	//	v += c.HeaderChanges[k].TotalBreakingChanges()
+	//}
 	for k := range c.SecuritySchemeChanges {
 		v += c.SecuritySchemeChanges[k].TotalBreakingChanges()
 	}
-	for k := range c.LinkChanges {
-		v += c.LinkChanges[k].TotalBreakingChanges()
-	}
-	for k := range c.CallbackChanges {
-		v += c.CallbackChanges[k].TotalBreakingChanges()
-	}
+	//for k := range c.LinkChanges {
+	//	v += c.LinkChanges[k].TotalBreakingChanges()
+	//}
+	//for k := range c.CallbackChanges {
+	//	v += c.CallbackChanges[k].TotalBreakingChanges()
+	//}
 	return v
 }

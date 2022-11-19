@@ -494,13 +494,20 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	_, addPLabel, addPNode := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
 	if addPNode != nil {
 		if utils.IsNodeMap(addPNode) {
-			schema, serr := low.ExtractObjectRaw[*Schema](addPNode, idx)
-			if serr != nil {
-				return serr
+			// check if this is a reference, or an inline schema.
+			isRef, _, _ := utils.IsNodeRefValue(addPNode)
+			sp := &SchemaProxy{
+				kn:  addPLabel,
+				vn:  addPNode,
+				idx: idx,
 			}
-			s.AdditionalProperties = low.NodeReference[any]{Value: schema, KeyNode: addPLabel, ValueNode: addPNode}
+			if isRef {
+				sp.isReference = true
+				_, vn := utils.FindKeyNodeTop("$ref", addPNode.Content)
+				sp.referenceLookup = vn.Value
+			}
+			s.AdditionalProperties = low.NodeReference[any]{Value: sp, KeyNode: addPLabel, ValueNode: addPNode}
 		}
-
 		if utils.IsNodeBoolValue(addPNode) {
 			b, _ := strconv.ParseBool(addPNode.Value)
 			s.AdditionalProperties = low.NodeReference[any]{Value: b, KeyNode: addPLabel, ValueNode: addPNode}
@@ -537,14 +544,15 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// for property, build in a new thread!
 	bChan := make(chan schemaProxyBuildResult)
 
-	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult) {
+	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
+		refString string) {
 		c <- schemaProxyBuildResult{
 			k: low.KeyReference[string]{
 				KeyNode: label,
 				Value:   label.Value,
 			},
 			v: low.ValueReference[*SchemaProxy]{
-				Value:     &SchemaProxy{kn: label, vn: value, idx: idx},
+				Value:     &SchemaProxy{kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
 				ValueNode: value,
 			},
 		}
@@ -563,17 +571,21 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			}
 
 			// check our prop isn't reference
-			if h, _, _ := utils.IsNodeRefValue(prop); h {
+			isRef := false
+			refString := ""
+			if h, _, l := utils.IsNodeRefValue(prop); h {
 				ref, _ := low.LocateRefNode(prop, idx)
 				if ref != nil {
+					isRef = true
 					prop = ref
+					refString = l
 				} else {
 					return fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
 				}
 			}
 			totalProps++
-			go buildProperty(currentProp, prop, bChan)
+			go buildProperty(currentProp, prop, bChan, isRef, refString)
 		}
 		completedProps := 0
 		for completedProps < totalProps {

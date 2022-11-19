@@ -442,24 +442,6 @@ examples:
 //
 //}
 
-func TestSchema_Build_ErrorAdditionalProps(t *testing.T) {
-
-	yml := `additionalProperties:
-  $ref: #borko`
-
-	var idxNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &idxNode)
-	idx := index.NewSpecIndex(&idxNode)
-
-	var n Schema
-	err := low.BuildModel(&idxNode, &n)
-	assert.NoError(t, err)
-
-	err = n.Build(idxNode.Content[0], idx)
-	assert.Error(t, err)
-
-}
-
 func TestSchema_Build_PropsLookup(t *testing.T) {
 
 	yml := `components:

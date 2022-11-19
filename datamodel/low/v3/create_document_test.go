@@ -488,8 +488,8 @@ func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
 	components := doc.Components.Value
 	d := components.FindSchema("Dressing")
 	assert.NotNil(t, d.Value.Schema().AdditionalProperties.Value)
-	if n, ok := d.Value.Schema().AdditionalProperties.Value.(*base.Schema); ok {
-		assert.Equal(t, "something in here.", n.Description.Value)
+	if n, ok := d.Value.Schema().AdditionalProperties.Value.(*base.SchemaProxy); ok {
+		assert.Equal(t, "something in here.", n.Schema().Description.Value)
 	} else {
 		assert.Fail(t, "should be a schema")
 	}
