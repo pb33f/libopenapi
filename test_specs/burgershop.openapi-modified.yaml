@@ -122,6 +122,10 @@ paths:
   /burgers/{burgerId}:
     get:
       callbacks:
+        someCallback:
+          $ref: '#/components/callbacks/BurgerCallback'
+        niceCallback:
+          $ref: '#/components/callbacks/BurgerCallback'
         burgerCallback:
           $ref: '#/components/callbacks/BurgerCallback'
       operationId: locateBurger
@@ -136,6 +140,9 @@ paths:
         "200":
           description: A tasty burger for you to eat. Wide variety of products to choose from
           content:
+            application/xml:
+              schema:
+                type: int
             application/json:
               schema:
                 $ref: '#/components/schemas/Burger'
@@ -146,10 +153,10 @@ paths:
                   summary: A tasty treat from the sea
                   value:
                     name: Filet-O-Fish
-                    numPatties: 1
+                    numPatties: 2
           links:
             ListBurgerDressings:
-              operationId: listBurgerDressings
+              operationId: listBurgerDressingsOhMy
               parameters:
                 dressingId: 'something here'
               description: 'Try the ketchup!'
@@ -167,7 +174,7 @@ paths:
         "500":
           description: Unexpected error. Sorry.
           content:
-            application/json:
+            application/xml:
               schema:
                 $ref: '#/components/schemas/Error'
               examples:
