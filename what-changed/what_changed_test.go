@@ -22,8 +22,8 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 	modDoc, _ := v3.CreateDocument(infoMod)
 
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
-	assert.Equal(t, 30, changes.TotalChanges())
-	assert.Equal(t, 6, changes.TotalBreakingChanges())
+	assert.Equal(t, 67, changes.TotalChanges())
+	assert.Equal(t, 17, changes.TotalBreakingChanges())
 
 }
 

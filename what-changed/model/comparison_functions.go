@@ -186,6 +186,34 @@ func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Chan
 // values. The compareFunc argument should reference the correct comparison function for the generic type.
 func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
 	changes *[]*Change, label string, compareFunc func(l, r T) R) map[string]R {
+	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, compareFunc, true)
+}
+
+func CheckMapForAdditionRemoval[T any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+	changes *[]*Change, label string) any {
+	// do nothing
+	doNothing := func(l, r T) any {
+		return nil
+	}
+	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, doNothing, false)
+}
+
+//// CheckMapForAdditionRemoval checks a left and right low level map for any additions or subtractions, but not modifications
+//func CheckMapForAdditionRemoval[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+//	changes *[]*Change, label string) map[string]R {
+//
+//	// do nothing
+//	doNothing := func(l, r T) R {
+//		return nil
+//	}
+//	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, doNothing, false)
+//}
+
+// CheckMapForChangesWithComp checks a left and right low level map for any additions, subtractions or modifications to
+// values. The compareFunc argument should reference the correct comparison function for the generic type. The compare
+// bit determines if the comparison should be run or not.
+func CheckMapForChangesWithComp[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+	changes *[]*Change, label string, compareFunc func(l, r T) R, compare bool) map[string]R {
 
 	// stop concurrent threads screwing up changes.
 	var chLock sync.Mutex
@@ -226,10 +254,11 @@ func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[str
 			return
 		}
 		// run comparison.
-		chLock.Lock()
-		expChanges[k] = compareFunc(p[k].Value, h[k].Value)
-		chLock.Unlock()
-
+		if compare {
+			chLock.Lock()
+			expChanges[k] = compareFunc(p[k].Value, h[k].Value)
+			chLock.Unlock()
+		}
 		doneChan <- true
 	}
 
