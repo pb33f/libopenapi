@@ -221,7 +221,7 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 				root.Content[1].Value)
 		}
 	} else {
-		_, ln, vn = utils.FindKeyNodeFull(label, root.Content)
+		_, ln, vn = utils.FindKeyNodeFullTop(label, root.Content)
 		if vn != nil {
 			if h, _, _ := utils.IsNodeRefValue(vn); h {
 				ref, err := LocateRefNode(vn, idx)

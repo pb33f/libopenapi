@@ -156,7 +156,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 	doneChan := make(chan bool)
 	errChan := make(chan error)
 	for i := range extractionFuncs {
-		go extractionFuncs[i](info.RootNode, &doc, idx, doneChan, errChan)
+		go extractionFuncs[i](info.RootNode.Content[0], &doc, idx, doneChan, errChan)
 	}
 	completedExtractions := 0
 	for completedExtractions < len(extractionFuncs) {

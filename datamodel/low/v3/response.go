@@ -96,11 +96,10 @@ func (r *Response) Hash() [32]byte {
 	if r.Description.Value != "" {
 		f = append(f, r.Description.Value)
 	}
-
 	keys := make([]string, len(r.Headers.Value))
 	z := 0
 	for k := range r.Headers.Value {
-		keys[z] = low.GenerateHashString(r.Headers.Value[k].Value)
+		keys[z] = fmt.Sprintf("%s-%s", k.Value, low.GenerateHashString(r.Headers.Value[k].Value))
 		z++
 	}
 	sort.Strings(keys)
@@ -108,7 +107,7 @@ func (r *Response) Hash() [32]byte {
 	keys = make([]string, len(r.Content.Value))
 	z = 0
 	for k := range r.Content.Value {
-		keys[z] = low.GenerateHashString(r.Content.Value[k].Value)
+		keys[z] = fmt.Sprintf("%s-%s", k.Value, low.GenerateHashString(r.Content.Value[k].Value))
 		z++
 	}
 	sort.Strings(keys)
@@ -116,7 +115,7 @@ func (r *Response) Hash() [32]byte {
 	keys = make([]string, len(r.Links.Value))
 	z = 0
 	for k := range r.Links.Value {
-		keys[z] = low.GenerateHashString(r.Links.Value[k].Value)
+		keys[z] = fmt.Sprintf("%s-%s", k.Value, low.GenerateHashString(r.Links.Value[k].Value))
 		z++
 	}
 	sort.Strings(keys)
