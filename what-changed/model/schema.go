@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"sync"
@@ -290,9 +291,7 @@ func checkPropertiesPropertyOfASchema(
 	var propLock sync.Mutex
 	checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
 		if lp != nil && rp != nil {
-			ls := lp.Schema()
-			rs := rp.Schema()
-			if low.AreEqual(ls, rs) {
+			if low.AreEqual(lp, rp) {
 				done <- true
 				return
 			}
@@ -553,18 +552,21 @@ func checkSchemaPropertyChanges(
 		New:       rSchema,
 	})
 
-	// AdditionalProperties
-	props = append(props, &PropertyCheck{
-		LeftNode:  lSchema.AdditionalProperties.ValueNode,
-		RightNode: rSchema.AdditionalProperties.ValueNode,
-		Label:     v3.AdditionalPropertiesLabel,
-		Changes:   changes,
-		Breaking:  false,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	// AdditionalProperties (only if not an object)
+	if !utils.IsNodeMap(lSchema.AdditionalProperties.ValueNode) &&
+		!utils.IsNodeMap(rSchema.AdditionalProperties.ValueNode) {
+		props = append(props, &PropertyCheck{
+			LeftNode:  lSchema.AdditionalProperties.ValueNode,
+			RightNode: rSchema.AdditionalProperties.ValueNode,
+			Label:     v3.AdditionalPropertiesLabel,
+			Changes:   changes,
+			Breaking:  false,
+			Original:  lSchema,
+			New:       rSchema,
+		})
+	}
 
-	// Description
+	//Description
 	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Description.ValueNode,
 		RightNode: rSchema.Description.ValueNode,
@@ -750,6 +752,20 @@ func checkSchemaPropertyChanges(
 	// check extensions
 	sc.ExtensionChanges = CompareExtensions(lSchema.Extensions, rSchema.Extensions)
 
+	// if additional properties is an object, then hash it
+	// AdditionalProperties (only if not an object)
+	if utils.IsNodeMap(lSchema.AdditionalProperties.ValueNode) ||
+		utils.IsNodeMap(rSchema.AdditionalProperties.ValueNode) {
+
+		lHash := low.GenerateHashString(lSchema.AdditionalProperties.ValueNode)
+		rHash := low.GenerateHashString(rSchema.AdditionalProperties.ValueNode)
+		if lHash != rHash {
+			CreateChange(changes, Modified, v3.AdditionalPropertiesLabel,
+				lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, false,
+				lSchema.AdditionalProperties.Value, rSchema.AdditionalProperties.Value)
+		}
+	}
+
 	// check core properties
 	CheckProperties(props)
 }
@@ -846,21 +862,17 @@ func extractSchemaChanges(
 	rEntities := make(map[string]*base.SchemaProxy)
 	for h := range lSchema {
 		q := lSchema[h].Value
-		if !q.IsSchemaReference() {
-			w := q.Schema()
-			z := fmt.Sprintf(x, w.Hash())
-			lKeys = append(lKeys, z)
-			lEntities[z] = q
-		}
+		z := fmt.Sprintf(x, q.Hash())
+		lKeys = append(lKeys, z)
+		lEntities[z] = q
+
 	}
 	for h := range rSchema {
 		q := rSchema[h].Value
-		if !q.IsSchemaReference() {
-			w := q.Schema()
-			z := fmt.Sprintf(x, w.Hash())
-			rKeys = append(rKeys, z)
-			rEntities[z] = q
-		}
+		z := fmt.Sprintf(x, q.Hash())
+		rKeys = append(rKeys, z)
+		rEntities[z] = q
+
 	}
 
 	// sort slices so that like for like is all sequenced.

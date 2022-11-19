@@ -1436,3 +1436,105 @@ components:
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "big xml", changes.Changes[0].OriginalObject.(*base.XML).Name.Value)
 }
+
+func TestCompareSchemas_SchemaRefChecks(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Burger:
+      type: object
+      properties:
+        fries:
+          $ref: '#/components/schemas/Fries'
+    Fries:
+      type: object
+      required:
+        - potatoShape
+        - favoriteDrink
+        - seasoning`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Burger:
+      type: object
+      properties:
+        fries:
+          $ref: '#/components/schemas/Fries'
+    Fries:
+      type: object
+      required:
+        - potatoShape
+        - favoriteDrink`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_SchemaAdditionalPropertiesCheck(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Dressing:
+      type: object
+      additionalProperties:
+        type: object
+        description: something in here. please`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Dressing:
+      type: object
+      additionalProperties:
+        type: object
+        description: something in here. please, but changed`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_DeletePoly(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Drink:
+      type: int
+    SomePayload:
+      type: string
+      anyOf:
+        - $ref: '#/components/schemas/Drink'
+      allOf:
+        - $ref: '#/components/schemas/Drink'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Drink:
+      type: int
+    SomePayload:
+      type: string
+      anyOf:
+        - $ref: '#/components/schemas/Drink'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+
+}
