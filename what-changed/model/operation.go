@@ -25,8 +25,7 @@ type OperationChanges struct {
 	RequestBodyChanges *RequestBodyChanges
 	ServerChanges      []*ServerChanges
 	ExtensionChanges   *ExtensionChanges
-	// todo: callbacks need implementing.
-	//CallbackChanges map[string]*CallbackChanges
+	CallbackChanges    map[string]*CallbackChanges
 }
 
 func (o *OperationChanges) TotalChanges() int {
@@ -49,7 +48,9 @@ func (o *OperationChanges) TotalChanges() int {
 	for k := range o.ServerChanges {
 		c += o.ServerChanges[k].TotalChanges()
 	}
-	// todo: add callbacks in here.
+	for k := range o.CallbackChanges {
+		c += o.CallbackChanges[k].TotalChanges()
+	}
 	if o.ExtensionChanges != nil {
 		c += o.ExtensionChanges.TotalChanges()
 	}
@@ -69,6 +70,9 @@ func (o *OperationChanges) TotalBreakingChanges() int {
 	}
 	for k := range o.SecurityRequirementChanges {
 		c += o.SecurityRequirementChanges[k].TotalBreakingChanges()
+	}
+	for k := range o.CallbackChanges {
+		c += o.CallbackChanges[k].TotalBreakingChanges()
 	}
 	if o.RequestBodyChanges != nil {
 		c += o.RequestBodyChanges.TotalBreakingChanges()
@@ -340,6 +344,22 @@ func CompareOperations(l, r any) *OperationChanges {
 			CreateChange(&changes, PropertyAdded, v3.RequestBodyLabel,
 				nil, rOperation.RequestBody.ValueNode, true, nil,
 				rOperation.RequestBody.Value)
+		}
+
+		// callbacks
+		if !lOperation.GetCallbacks().IsEmpty() && !rOperation.GetCallbacks().IsEmpty() {
+			oc.CallbackChanges = CheckMapForChanges(lOperation.Callbacks.Value, rOperation.Callbacks.Value, &changes,
+				v3.CallbacksLabel, CompareCallback)
+		}
+		if !lOperation.GetCallbacks().IsEmpty() && rOperation.GetCallbacks().IsEmpty() {
+			CreateChange(&changes, PropertyRemoved, v3.CallbacksLabel,
+				lOperation.Callbacks.ValueNode, nil, true, lOperation.Callbacks.Value,
+				nil)
+		}
+		if lOperation.Callbacks.IsEmpty() && !rOperation.Callbacks.IsEmpty() {
+			CreateChange(&changes, PropertyAdded, v3.CallbacksLabel,
+				nil, rOperation.Callbacks.ValueNode, true, nil,
+				rOperation.Callbacks.Value)
 		}
 
 		// servers
