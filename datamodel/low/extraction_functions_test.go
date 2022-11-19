@@ -638,7 +638,7 @@ func TestExtractArray(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	things, _, _, err := ExtractArray[*pizza]("things", &cNode, idx)
+	things, _, _, err := ExtractArray[*pizza]("things", cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, things)
 	assert.Equal(t, "one", things[0].Value.Description.Value)

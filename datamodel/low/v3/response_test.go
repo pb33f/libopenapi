@@ -61,7 +61,7 @@ default:
 	assert.Equal(t, "a link", link.Value.Description.Value)
 
 	// check hash
-	assert.Equal(t, "4ab807033ce9ca57ab551d8569cc11da8722c4ae75c003bc23b495ab756f468a",
+	assert.Equal(t, "c009b2046101bc03df802b4cf23f78176931137e6115bf7b445ca46856c06b51",
 		low.GenerateHashString(&n))
 
 }
@@ -95,7 +95,7 @@ x-shoes: old`
 	err = n.Build(idxNode.Content[0], idx)
 
 	// check hash
-	assert.Equal(t, "1b9161a7d31a9aa4580899f57092bcb6801b37045777bff28981bd2288c72b10",
+	assert.Equal(t, "54ab66e6cb8bd226940f421c2387e45215b84c946182435dfe2a3036043fa07c",
 		low.GenerateHashString(&n))
 
 }

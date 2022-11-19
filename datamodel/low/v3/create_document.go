@@ -71,7 +71,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(base.InfoLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFullTop(base.InfoLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := base.Info{}
 		_ = low.BuildModel(vn, &ir)
@@ -83,7 +83,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 }
 
 func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, info.RootNode, idx)
+	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, info.RootNode.Content[0], idx)
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInd
 }
 
 func extractExternalDocs(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode, idx)
+	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode.Content[0], idx)
 	if dErr != nil {
 		return dErr
 	}
@@ -105,7 +105,7 @@ func extractExternalDocs(info *datamodel.SpecInfo, doc *Document, idx *index.Spe
 }
 
 func extractComponents(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(ComponentsLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFullTop(ComponentsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := Components{}
 		_ = low.BuildModel(vn, &ir)
@@ -120,7 +120,7 @@ func extractComponents(info *datamodel.SpecInfo, doc *Document, idx *index.SpecI
 }
 
 func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(ServersLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFull(ServersLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
 			var servers []low.ValueReference[*Server]
@@ -146,7 +146,7 @@ func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInde
 }
 
 func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(base.TagsLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFull(base.TagsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
 			var tags []low.ValueReference[*base.Tag]
@@ -174,7 +174,7 @@ func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 }
 
 func extractPaths(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	_, ln, vn := utils.FindKeyNodeFull(PathsLabel, info.RootNode.Content)
+	_, ln, vn := utils.FindKeyNodeFull(PathsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := Paths{}
 		err := ir.Build(vn, idx)

@@ -621,3 +621,35 @@ trace:
 	assert.Equal(t, 8, extChanges.TotalChanges())
 	assert.Equal(t, 8, extChanges.TotalBreakingChanges())
 }
+
+func TestComparePathItem_V3_ChangeParam(t *testing.T) {
+
+	left := `get:
+  operationId: listBurgerDressings
+  parameters:
+    - in: query
+      name: burgerId`
+
+	right := `get:
+  operationId: listBurgerDressings
+  parameters:
+    - in: head
+      name: burgerId`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}

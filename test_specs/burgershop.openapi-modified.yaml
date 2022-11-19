@@ -185,12 +185,10 @@ paths:
   /burgers/{burgerId}/dressings:
     get:
       operationId: listBurgerDressings
-      tags:
-        - "Dressing"
       summary:  Get a list of all dressings available
       description: Same as the summary, look up a tasty burger, by its ID - the burger identifier
       parameters:
-        - in: path
+        - in: query
           name: burgerId
           schema:
             type: string

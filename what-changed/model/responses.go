@@ -87,7 +87,7 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		lResponses := l.(*v3.Responses)
 		rResponses := r.(*v3.Responses)
 
-		// perform hash check to avoid further processing
+		//perform hash check to avoid further processing
 		if low.AreEqual(lResponses, rResponses) {
 			return nil
 		}

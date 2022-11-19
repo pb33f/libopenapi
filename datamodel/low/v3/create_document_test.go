@@ -449,7 +449,8 @@ func TestCreateDocument_Components_Links(t *testing.T) {
 
 func TestCreateDocument_Doc_Security(t *testing.T) {
 	initTest()
-	oAuth := doc.FindSecurityRequirement("OAuthScheme")
+	d := doc
+	oAuth := d.FindSecurityRequirement("OAuthScheme")
 	assert.Len(t, oAuth, 2)
 }
 
