@@ -322,6 +322,8 @@ parameters:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "jummy", extChanges.Changes[0].Original)
+
 }
 
 func TestCompareOperations_V2_ModifyTag(t *testing.T) {
@@ -468,7 +470,7 @@ schemes:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 6, extChanges.TotalChanges())
-	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 3, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareOperations_V2_Modify_ExtDocs_Responses(t *testing.T) {
@@ -505,6 +507,44 @@ responses:
 	assert.Equal(t, Modified, extChanges.ResponsesChanges.ResponseChanges["200"].Changes[0].ChangeType)
 	assert.Equal(t, Modified, extChanges.ExternalDocChanges.Changes[0].ChangeType)
 
+}
+
+func TestCompareOperations_V2_AddRemoveResponses(t *testing.T) {
+
+	left := `operationId: updatePet
+responses:
+  '400':
+    description: Invalid ID supplied
+  '404':
+    description: Pet not found
+  '405':
+    description: Validation exception`
+
+	right := `operationId: updatePet
+responses:
+  '401':
+    description: Invalid ID supplied
+  '404':
+    description: Pet not found
+  '405':
+    description: Validation exception`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v2.Operation
+	var rDoc v2.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareOperations_V2_Add_ExtDocs_Responses(t *testing.T) {

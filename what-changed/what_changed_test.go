@@ -5,6 +5,7 @@ package what_changed
 
 import (
 	"github.com/pb33f/libopenapi/datamodel"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
@@ -24,6 +25,22 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
 	assert.Equal(t, 67, changes.TotalChanges())
 	assert.Equal(t, 17, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSwaggerDocuments(t *testing.T) {
+
+	original, _ := ioutil.ReadFile("../test_specs/petstorev2-complete.yaml")
+	modified, _ := ioutil.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+
+	origDoc, _ := v2.CreateDocument(infoOrig)
+	modDoc, _ := v2.CreateDocument(infoMod)
+
+	changes := CompareSwaggerDocuments(origDoc, modDoc)
+	assert.Equal(t, 44, changes.TotalChanges())
+	assert.Equal(t, 20, changes.TotalBreakingChanges())
 
 }
 

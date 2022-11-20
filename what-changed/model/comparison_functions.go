@@ -149,6 +149,10 @@ func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
 func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && (r == nil || r.Value == "") {
 		CreateChange(changes, PropertyRemoved, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && r == nil {
+		CreateChange(changes, PropertyRemoved, label, l, nil, breaking, orig, nil)
 	}
 }
 

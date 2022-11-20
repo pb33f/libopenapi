@@ -96,7 +96,7 @@ func (r *Responses) Hash() [32]byte {
 	}
 	sort.Strings(keys)
 	for k := range keys {
-		f = append(f, low.GenerateHashString(cmap[keys[k]]))
+		f = append(f, fmt.Sprintf("%s-%s", keys[k], low.GenerateHashString(cmap[keys[k]])))
 	}
 	if !r.Default.IsEmpty() {
 		f = append(f, low.GenerateHashString(r.Default.Value))

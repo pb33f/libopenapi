@@ -236,13 +236,13 @@ func CompareOperations(l, r any) *OperationChanges {
 		// produces
 		if len(lOperation.Produces.Value) > 0 || len(rOperation.Produces.Value) > 0 {
 			ExtractStringValueSliceChanges(lOperation.Produces.Value, rOperation.Produces.Value,
-				&changes, v3.ProducesLabel, false)
+				&changes, v3.ProducesLabel, true)
 		}
 
 		// consumes
 		if len(lOperation.Consumes.Value) > 0 || len(rOperation.Consumes.Value) > 0 {
 			ExtractStringValueSliceChanges(lOperation.Consumes.Value, rOperation.Consumes.Value,
-				&changes, v3.ConsumesLabel, false)
+				&changes, v3.ConsumesLabel, true)
 		}
 
 		// schemes
