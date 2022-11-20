@@ -151,15 +151,15 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		if n := CompareComponents(lDoc.Definitions.Value, rDoc.Definitions.Value); n != nil {
 			cc.SchemaChanges = n.SchemaChanges
 		}
-		//if n := CompareComponents(lDoc.SecurityDefinitions.Value, rDoc.SecurityDefinitions.Value); n != nil {
-		//	cc.SecuritySchemeChanges = n.SecuritySchemeChanges
-		//}
-		//if n := CompareComponents(lDoc.Parameters.Value, rDoc.Parameters.Value); n != nil {
-		//	cc.ParameterChanges = n.ParameterChanges
-		//}
-		//if n := CompareComponents(lDoc.Responses.Value, rDoc.Responses.Value); n != nil {
-		//	cc.ResponsesChanges = n.ResponsesChanges
-		//}
+		if n := CompareComponents(lDoc.SecurityDefinitions.Value, rDoc.SecurityDefinitions.Value); n != nil {
+			cc.SecuritySchemeChanges = n.SecuritySchemeChanges
+		}
+		if n := CompareComponents(lDoc.Parameters.Value, rDoc.Parameters.Value); n != nil {
+			cc.Changes = append(cc.Changes, n.Changes...)
+		}
+		if n := CompareComponents(lDoc.Responses.Value, rDoc.Responses.Value); n != nil {
+			cc.Changes = append(cc.Changes, n.Changes...)
+		}
 		dc.ExtensionChanges = CompareExtensions(lDoc.Extensions, rDoc.Extensions)
 		if cc.TotalChanges() > 0 {
 			dc.ComponentsChanges = cc
