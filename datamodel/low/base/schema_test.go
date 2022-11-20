@@ -1130,6 +1130,36 @@ func TestExtractSchema_DoNothing(t *testing.T) {
 
 }
 
+func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    Nothing:
+      type: int
+    Something:
+      additionalProperties:
+        cake:
+          $ref: '#/components/schemas/Nothing'`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `schema:
+  type: int
+  additionalProperties:
+    $ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.(*SchemaProxy).Schema())
+	assert.Nil(t, err)
+
+}
+
 func TestExtractSchema_OneOfRef(t *testing.T) {
 
 	yml := `components:
