@@ -39,8 +39,11 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 	modDoc, _ := v2.CreateDocument(infoMod)
 
 	changes := CompareSwaggerDocuments(origDoc, modDoc)
-	assert.Equal(t, 44, changes.TotalChanges())
-	assert.Equal(t, 20, changes.TotalBreakingChanges())
+	assert.Equal(t, 52, changes.TotalChanges())
+	assert.Equal(t, 27, changes.TotalBreakingChanges())
+
+	//out, _ := json.MarshalIndent(changes, "", "  ")
+	//_ = ioutil.WriteFile("output.json", out, 0776)
 
 }
 
@@ -59,10 +62,55 @@ func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 	}
 }
 
+func Benchmark_CompareSwaggerDocuments(b *testing.B) {
+
+	original, _ := ioutil.ReadFile("../test_specs/petstorev2-complete.yaml")
+	modified, _ := ioutil.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+
+	origDoc, _ := v2.CreateDocument(infoOrig)
+	modDoc, _ := v2.CreateDocument(infoMod)
+
+	for i := 0; i < b.N; i++ {
+		CompareSwaggerDocuments(origDoc, modDoc)
+	}
+}
+
 func Benchmark_CompareOpenAPIDocuments_NoChange(b *testing.B) {
 
 	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
 	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+	origDoc, _ := v3.CreateDocument(infoOrig)
+	modDoc, _ := v3.CreateDocument(infoMod)
+
+	for i := 0; i < b.N; i++ {
+		CompareOpenAPIDocuments(origDoc, modDoc)
+	}
+}
+
+func Benchmark_CompareK8s(b *testing.B) {
+
+	original, _ := ioutil.ReadFile("../test_specs/k8s.json")
+	modified, _ := ioutil.ReadFile("../test_specs/k8s.json")
+
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+	origDoc, _ := v2.CreateDocument(infoOrig)
+	modDoc, _ := v2.CreateDocument(infoMod)
+
+	for i := 0; i < b.N; i++ {
+		CompareSwaggerDocuments(origDoc, modDoc)
+	}
+}
+
+func Benchmark_CompareStripe(b *testing.B) {
+
+	original, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	modified, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
 
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)

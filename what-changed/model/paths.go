@@ -13,8 +13,8 @@ import (
 
 type PathsChanges struct {
 	PropertyChanges
-	PathItemsChanges map[string]*PathItemChanges
-	ExtensionChanges *ExtensionChanges
+	PathItemsChanges map[string]*PathItemChanges `json:"pathItems,omitempty" yaml:"pathItems,omitempty"`
+	ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (p *PathsChanges) TotalChanges() int {

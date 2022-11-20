@@ -8,8 +8,8 @@ import (
 )
 
 type EncodingChanges struct {
-	ParameterChanges
-	HeaderChanges map[string]*HeaderChanges
+	PropertyChanges
+	HeaderChanges map[string]*HeaderChanges `json:"headers,omitempty" yaml:"headers,omitempty"`
 }
 
 func (e *EncodingChanges) TotalChanges() int {

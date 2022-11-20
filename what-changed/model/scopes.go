@@ -11,7 +11,7 @@ import (
 
 type ScopesChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (s *ScopesChanges) TotalChanges() int {

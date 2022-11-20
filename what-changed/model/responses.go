@@ -12,9 +12,9 @@ import (
 
 type ResponsesChanges struct {
 	PropertyChanges
-	ResponseChanges  map[string]*ResponseChanges
-	DefaultChanges   *ResponseChanges
-	ExtensionChanges *ExtensionChanges
+	ResponseChanges  map[string]*ResponseChanges `json:"response,omitempty" yaml:"response,omitempty"`
+	DefaultChanges   *ResponseChanges            `json:"default,omitempty" yaml:"default,omitempty"`
+	ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (r *ResponsesChanges) TotalChanges() int {

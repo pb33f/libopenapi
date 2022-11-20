@@ -11,7 +11,7 @@ import (
 // ExternalDocChanges represents changes made to any ExternalDoc object from an OpenAPI document.
 type ExternalDocChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // TotalChanges returns a count of everything that changed

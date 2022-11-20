@@ -10,8 +10,8 @@ import (
 
 type LinkChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
-	ServerChanges    *ServerChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	ServerChanges    *ServerChanges    `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
 func (l *LinkChanges) TotalChanges() int {

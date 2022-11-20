@@ -13,15 +13,15 @@ import (
 
 type DocumentChanges struct {
 	PropertyChanges
-	InfoChanges                *InfoChanges
-	PathsChanges               *PathsChanges
-	TagChanges                 []*TagChanges
-	ExternalDocChanges         *ExternalDocChanges
-	WebhookChanges             map[string]*PathItemChanges
-	ServerChanges              []*ServerChanges
-	SecurityRequirementChanges []*SecurityRequirementChanges
-	ComponentsChanges          *ComponentsChanges
-	ExtensionChanges           *ExtensionChanges
+	InfoChanges                *InfoChanges                  `json:"info,omitempty" yaml:"info,omitempty"`
+	PathsChanges               *PathsChanges                 `json:"paths,omitempty" yaml:"paths,omitempty"`
+	TagChanges                 []*TagChanges                 `json:"tags,omitempty" yaml:"tags,omitempty"`
+	ExternalDocChanges         *ExternalDocChanges           `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
+	WebhookChanges             map[string]*PathItemChanges   `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
+	ServerChanges              []*ServerChanges              `json:"servers,omitempty" yaml:"servers,omitempty"`
+	SecurityRequirementChanges []*SecurityRequirementChanges `json:"securityRequirements,omitempty" yaml:"securityRequirements,omitempty"`
+	ComponentsChanges          *ComponentsChanges            `json:"components,omitempty" yaml:"components,omitempty"`
+	ExtensionChanges           *ExtensionChanges             `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (d *DocumentChanges) TotalChanges() int {

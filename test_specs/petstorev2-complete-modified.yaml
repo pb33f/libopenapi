@@ -715,12 +715,8 @@ definitions:
     type: object
     properties:
       id:
-        type: integer
+        type: float
         format: int64
-      name:
-        type: string
-    xml:
-      name: Category
   Pet:
     type: object
     required:
@@ -728,7 +724,7 @@ definitions:
       - photoUrls
     properties:
       id:
-        type: integer
+        type: float
         format: int64
       category:
         "$ref": "#/definitions/Category"
@@ -768,8 +764,6 @@ definitions:
         format: int64
       name:
         type: string
-    xml:
-      name: Tag
   Order:
     type: object
     properties:
@@ -781,10 +775,10 @@ definitions:
         format: int64
       quantity:
         type: integer
-        format: int32
+        format: float
       shipDate:
         type: string
-        format: date-time
+        format: pizza
       status:
         type: string
         description: Order Status
@@ -821,7 +815,7 @@ definitions:
     xml:
       name: User
 externalDocs:
-  description: Find out more about Swagger
+  description: Find out more about Swagger updated!
   url: http://swagger.io
 externalPaths:
   # this is illegal
