@@ -76,7 +76,7 @@ func (r *Response) Hash() [32]byte {
 		f = append(f, r.Description.Value)
 	}
 	if !r.Schema.IsEmpty() {
-		f = append(f, low.GenerateHashString(r.Schema.Value.Schema()))
+		f = append(f, low.GenerateHashString(r.Schema.Value))
 	}
 	if !r.Examples.IsEmpty() {
 		for k := range r.Examples.Value.Values {
