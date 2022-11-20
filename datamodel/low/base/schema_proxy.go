@@ -122,8 +122,6 @@ func (sp *SchemaProxy) Hash() [32]byte {
 		if !sp.isReference {
 			return sp.rendered.Hash()
 		}
-		// we only hash inline schemas
-		return sha256.Sum256([]byte(sp.referenceLookup))
 	} else {
 		if !sp.isReference {
 			// only resolve this proxy if it's not a ref.
