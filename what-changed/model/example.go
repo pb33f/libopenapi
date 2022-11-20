@@ -14,7 +14,7 @@ import (
 // ExampleChanges represent changes to an Example object, part of an OpenAPI specification.
 type ExampleChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // TotalChanges returns the total number of changes made to Example

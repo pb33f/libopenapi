@@ -51,18 +51,12 @@ func CreateChange(changes *[]*Change, changeType int, property string, leftValue
 func CreateContext(l, r *yaml.Node) *ChangeContext {
 	ctx := new(ChangeContext)
 	if l != nil {
-		ctx.OriginalLine = l.Line
-		ctx.OriginalColumn = l.Column
-	} else {
-		ctx.OriginalLine = -1
-		ctx.OriginalColumn = -1
+		ctx.OriginalLine = &l.Line
+		ctx.OriginalColumn = &l.Column
 	}
 	if r != nil {
-		ctx.NewLine = r.Line
-		ctx.NewColumn = r.Column
-	} else {
-		ctx.NewLine = -1
-		ctx.NewColumn = -1
+		ctx.NewLine = &r.Line
+		ctx.NewColumn = &r.Column
 	}
 	return ctx
 }

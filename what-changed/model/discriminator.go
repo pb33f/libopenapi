@@ -11,7 +11,7 @@ import (
 // DiscriminatorChanges represents changes made to a Discriminator OpenAPI object
 type DiscriminatorChanges struct {
 	PropertyChanges
-	MappingChanges []*Change
+	MappingChanges []*Change `json:"mappings,omitempty" yaml:"mappings,omitempty"`
 }
 
 // TotalChanges returns a count of everything changed within the Discriminator object

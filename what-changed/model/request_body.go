@@ -10,8 +10,8 @@ import (
 
 type RequestBodyChanges struct {
 	PropertyChanges
-	ContentChanges   map[string]*MediaTypeChanges
-	ExtensionChanges *ExtensionChanges
+	ContentChanges   map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
+	ExtensionChanges *ExtensionChanges            `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (rb *RequestBodyChanges) TotalChanges() int {

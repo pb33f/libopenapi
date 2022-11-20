@@ -13,19 +13,14 @@ import (
 
 type ComponentsChanges struct {
 	PropertyChanges
-	SchemaChanges map[string]*SchemaChanges
-
-	// todo: disable these after cleaning up swagger code.
-	ResponsesChanges map[string]*ResponseChanges
-	ParameterChanges map[string]*ParameterChanges
-
+	SchemaChanges         map[string]*SchemaChanges         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	SecuritySchemeChanges map[string]*SecuritySchemeChanges `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	ExtensionChanges      *ExtensionChanges                 `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 	//ExamplesChanges       map[string]*ExampleChanges
 	//RequestBodyChanges    map[string]*RequestBodyChanges
 	//HeaderChanges         map[string]*HeaderChanges
-	SecuritySchemeChanges map[string]*SecuritySchemeChanges
 	//LinkChanges           map[string]*LinkChanges
 	//CallbackChanges       map[string]*CallbackChanges
-	ExtensionChanges *ExtensionChanges
 }
 
 func CompareComponents(l, r any) *ComponentsChanges {

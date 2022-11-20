@@ -12,8 +12,8 @@ import (
 // TagChanges represents changes made to the Tags object of an OpenAPI document.
 type TagChanges struct {
 	PropertyChanges
-	ExternalDocs     *ExternalDocChanges
-	ExtensionChanges *ExtensionChanges
+	ExternalDocs     *ExternalDocChanges `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // TotalChanges returns a count of everything that changed within tags.

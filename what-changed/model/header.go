@@ -12,13 +12,13 @@ import (
 
 type HeaderChanges struct {
 	PropertyChanges
-	SchemaChanges    *SchemaChanges
-	ExamplesChanges  map[string]*ExampleChanges
-	ContentChanges   map[string]*MediaTypeChanges
-	ExtensionChanges *ExtensionChanges
+	SchemaChanges    *SchemaChanges               `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	ExamplesChanges  map[string]*ExampleChanges   `json:"examples,omitempty" yaml:"examples,omitempty"`
+	ContentChanges   map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
+	ExtensionChanges *ExtensionChanges            `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 
 	// V2 changes
-	ItemsChanges *ItemsChanges
+	ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 func (h *HeaderChanges) TotalChanges() int {

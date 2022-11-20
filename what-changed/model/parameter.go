@@ -14,15 +14,15 @@ import (
 
 type ParameterChanges struct {
 	PropertyChanges
-	SchemaChanges    *SchemaChanges
-	ExtensionChanges *ExtensionChanges
+	SchemaChanges    *SchemaChanges    `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 
 	// v2 change types
-	ItemsChanges *ItemsChanges
+	ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 
 	// v3 change types
-	ExamplesChanges map[string]*ExampleChanges
-	ContentChanges  map[string]*MediaTypeChanges
+	ExamplesChanges map[string]*ExampleChanges   `json:"examples,omitempty" yaml:"examples,omitempty"`
+	ContentChanges  map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
 }
 
 // TotalChanges returns a count of everything that changed

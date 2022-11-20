@@ -12,17 +12,17 @@ import (
 
 type ResponseChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
-	HeadersChanges   map[string]*HeaderChanges
+	ExtensionChanges *ExtensionChanges         `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	HeadersChanges   map[string]*HeaderChanges `json:"headers,omitempty" yaml:"headers,omitempty"`
 
 	// v2
-	SchemaChanges   *SchemaChanges
-	ExamplesChanges *ExamplesChanges
+	SchemaChanges   *SchemaChanges   `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	ExamplesChanges *ExamplesChanges `json:"examples,omitempty" yaml:"examples,omitempty"`
 
 	// v3
-	ContentChanges map[string]*MediaTypeChanges
-	LinkChanges    map[string]*LinkChanges
-	ServerChanges  *ServerChanges
+	ContentChanges map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
+	LinkChanges    map[string]*LinkChanges      `json:"links,omitempty" yaml:"links,omitempty"`
+	ServerChanges  *ServerChanges               `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
 func (r *ResponseChanges) TotalChanges() int {

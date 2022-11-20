@@ -12,17 +12,17 @@ import (
 
 type PathItemChanges struct {
 	PropertyChanges
-	GetChanges       *OperationChanges
-	PutChanges       *OperationChanges
-	PostChanges      *OperationChanges
-	DeleteChanges    *OperationChanges
-	OptionsChanges   *OperationChanges
-	HeadChanges      *OperationChanges
-	PatchChanges     *OperationChanges
-	TraceChanges     *OperationChanges
-	ServerChanges    []*ServerChanges
-	ParameterChanges []*ParameterChanges
-	ExtensionChanges *ExtensionChanges
+	GetChanges       *OperationChanges   `json:"get,omitempty" yaml:"get,omitempty"`
+	PutChanges       *OperationChanges   `json:"put,omitempty" yaml:"put,omitempty"`
+	PostChanges      *OperationChanges   `json:"post,omitempty" yaml:"post,omitempty"`
+	DeleteChanges    *OperationChanges   `json:"delete,omitempty" yaml:"delete,omitempty"`
+	OptionsChanges   *OperationChanges   `json:"options,omitempty" yaml:"options,omitempty"`
+	HeadChanges      *OperationChanges   `json:"head,omitempty" yaml:"head,omitempty"`
+	PatchChanges     *OperationChanges   `json:"patch,omitempty" yaml:"patch,omitempty"`
+	TraceChanges     *OperationChanges   `json:"trace,omitempty" yaml:"trace,omitempty"`
+	ServerChanges    []*ServerChanges    `json:"servers,omitempty" yaml:"servers,omitempty"`
+	ParameterChanges []*ParameterChanges `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (p *PathItemChanges) TotalChanges() int {

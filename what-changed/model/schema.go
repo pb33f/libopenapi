@@ -22,16 +22,16 @@ import (
 // PropertyChanges.Changes, and not in the AnyOfChanges property.
 type SchemaChanges struct {
 	PropertyChanges
-	DiscriminatorChanges  *DiscriminatorChanges
-	AllOfChanges          []*SchemaChanges
-	AnyOfChanges          []*SchemaChanges
-	OneOfChanges          []*SchemaChanges
-	NotChanges            []*SchemaChanges
-	ItemsChanges          []*SchemaChanges
-	SchemaPropertyChanges map[string]*SchemaChanges
-	ExternalDocChanges    *ExternalDocChanges
-	XMLChanges            *XMLChanges
-	ExtensionChanges      *ExtensionChanges
+	DiscriminatorChanges  *DiscriminatorChanges     `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
+	AllOfChanges          []*SchemaChanges          `json:"allOf,omitempty" yaml:"allOf,omitempty"`
+	AnyOfChanges          []*SchemaChanges          `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
+	OneOfChanges          []*SchemaChanges          `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	NotChanges            []*SchemaChanges          `json:"not,omitempty" yaml:"not,omitempty"`
+	ItemsChanges          []*SchemaChanges          `json:"items,omitempty" yaml:"items,omitempty"`
+	SchemaPropertyChanges map[string]*SchemaChanges `json:"properties,omitempty" yaml:"properties,omitempty"`
+	ExternalDocChanges    *ExternalDocChanges       `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
+	XMLChanges            *XMLChanges               `json:"xml,omitempty" yaml:"xml,omitempty"`
+	ExtensionChanges      *ExtensionChanges         `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // TotalChanges returns a count of the total number of changes made to this schema and all sub-schemas

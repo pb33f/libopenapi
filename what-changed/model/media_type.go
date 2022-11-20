@@ -9,10 +9,10 @@ import (
 
 type MediaTypeChanges struct {
 	PropertyChanges
-	SchemaChanges    *SchemaChanges
-	ExtensionChanges *ExtensionChanges
-	ExampleChanges   map[string]*ExampleChanges
-	EncodingChanges  map[string]*EncodingChanges
+	SchemaChanges    *SchemaChanges              `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	ExampleChanges   map[string]*ExampleChanges  `json:"examples,omitempty" yaml:"examples,omitempty"`
+	EncodingChanges  map[string]*EncodingChanges `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 }
 
 func (m *MediaTypeChanges) TotalChanges() int {

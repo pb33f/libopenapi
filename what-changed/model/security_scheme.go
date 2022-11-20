@@ -12,11 +12,11 @@ import (
 
 type SecuritySchemeChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 	// v3
-	OAuthFlowChanges *OAuthFlowsChanges
+	OAuthFlowChanges *OAuthFlowsChanges `json:"oAuthFlow,omitempty" yaml:"oAuthFlow,omitempty"`
 	// v2
-	ScopesChanges *ScopesChanges
+	ScopesChanges *ScopesChanges `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
 func (ss *SecuritySchemeChanges) TotalChanges() int {

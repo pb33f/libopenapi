@@ -10,7 +10,7 @@ import (
 
 type ItemsChanges struct {
 	PropertyChanges
-	ItemsChanges *ItemsChanges
+	ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 func (i *ItemsChanges) TotalChanges() int {

@@ -16,16 +16,16 @@ import (
 
 type OperationChanges struct {
 	PropertyChanges
-	ExternalDocChanges         *ExternalDocChanges
-	ParameterChanges           []*ParameterChanges
-	ResponsesChanges           *ResponsesChanges
-	SecurityRequirementChanges []*SecurityRequirementChanges
+	ExternalDocChanges         *ExternalDocChanges           `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
+	ParameterChanges           []*ParameterChanges           `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	ResponsesChanges           *ResponsesChanges             `json:"responses,omitempty" yaml:"responses,omitempty"`
+	SecurityRequirementChanges []*SecurityRequirementChanges `json:"securityRequirements,omitempty" yaml:"securityRequirements,omitempty"`
 
 	// v3
-	RequestBodyChanges *RequestBodyChanges
-	ServerChanges      []*ServerChanges
-	ExtensionChanges   *ExtensionChanges
-	CallbackChanges    map[string]*CallbackChanges
+	RequestBodyChanges *RequestBodyChanges         `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	ServerChanges      []*ServerChanges            `json:"servers,omitempty" yaml:"servers,omitempty"`
+	ExtensionChanges   *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	CallbackChanges    map[string]*CallbackChanges `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 }
 
 func (o *OperationChanges) TotalChanges() int {
