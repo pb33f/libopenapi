@@ -28,21 +28,18 @@ const (
 
 // WhatChanged is a summary object that contains a high level summary of everything changed.
 type WhatChanged struct {
-	Added            int
-	Removed          int
-	ModifiedAndMoved int
-	Modified         int
-	Moved            int
-	TotalChanges     int
-	//Changes          *Changes
+	Added        int `json:"added,omitempty" yaml:"added,omitempty"`
+	Removed      int `json:"removed,omitempty" yaml:"removed,omitempty"`
+	Modified     int `json:"modified,omitempty" yaml:"modified,omitempty"`
+	TotalChanges int `json:"total,omitempty" yaml:"total,omitempty"`
 }
 
 // ChangeContext holds a reference to the line and column positions of original and new change.
 type ChangeContext struct {
-	OriginalLine   int
-	OriginalColumn int
-	NewLine        int
-	NewColumn      int
+	OriginalLine   *int `json:"originalLine,omitempty" yaml:"originalLine,omitempty"`
+	OriginalColumn *int `json:"originalColumn,omitempty" yaml:"originalColumn,omitempty"`
+	NewLine        *int `json:"newLine,omitempty" yaml:"newLine,omitempty"`
+	NewColumn      *int `json:"newColumn,omitempty" yaml:"newColumn,omitempty"`
 }
 
 // HasChanged determines if the line and column numbers of the original and new values have changed.
@@ -50,7 +47,19 @@ type ChangeContext struct {
 // It's worth noting that there is no guarantee to the positions of anything in either left or right, so
 // considering these values as 'changes' is going to add a considerable amount of noise to results.
 func (c *ChangeContext) HasChanged() bool {
-	return c.NewLine != c.OriginalLine || c.NewColumn != c.OriginalColumn
+	if c.NewLine != nil && c.OriginalLine != nil && *c.NewLine != *c.OriginalLine {
+		return true
+	}
+	if c.NewColumn != nil && c.OriginalColumn != nil && *c.NewColumn != *c.OriginalColumn {
+		return true
+	}
+	if (c.NewLine == nil && c.OriginalLine != nil) || (c.NewLine != nil && c.OriginalLine == nil) {
+		return true
+	}
+	if (c.NewColumn == nil && c.OriginalColumn != nil) || (c.NewColumn != nil && c.OriginalColumn == nil) {
+		return true
+	}
+	return false
 }
 
 // Change represents a change between two different elements inside an OpenAPI specification.
@@ -59,33 +68,33 @@ type Change struct {
 	// Context represents the lines and column numbers of the original and new values
 	// It's worth noting that these values may frequently be different and are not used to calculate
 	// a change. If the positions change, but values do not, then no change is recorded.
-	Context *ChangeContext
+	Context *ChangeContext `json:"context,omitempty" yaml:"context,omitempty"`
 
 	// ChangeType represents the type of change that occurred. stored as an integer, defined by constants above.
-	ChangeType int
+	ChangeType int `json:"change,omitempty" yaml:"change,omitempty"`
 
 	// Property is the property name key being changed.
-	Property string
+	Property string `json:"property,omitempty" yaml:"property,omitempty"`
 
 	// Original is the original value represented as a string.
-	Original string
+	Original string `json:"original,omitempty" yaml:"original,omitempty"`
 
 	// New is the new value represented as a string.
-	New string
+	New string `json:"new,omitempty" yaml:"new,omitempty"`
 
 	// Breaking determines if the change is a breaking one or not.
-	Breaking bool
+	Breaking bool `json:"breaking" yaml:"breaking"`
 
 	// OriginalObject represents the original object that was changed.
-	OriginalObject any
+	OriginalObject any `json:"-" yaml:"-"`
 
 	// NewObject represents the new object that has been modified.
-	NewObject any
+	NewObject any `json:"-" yaml:"-"`
 }
 
 // PropertyChanges holds a slice of Change pointers
 type PropertyChanges struct {
-	Changes []*Change
+	Changes []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
 }
 
 // TotalChanges returns the total number of property changes made.
@@ -130,7 +139,3 @@ type PropertyCheck struct {
 	// Changes represents a pointer to the slice to contain all changes found.
 	Changes *[]*Change
 }
-
-//type Changes struct {
-//	TagChanges *model.TagChanges
-//}

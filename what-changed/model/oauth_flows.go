@@ -5,16 +5,16 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 type OAuthFlowsChanges struct {
 	PropertyChanges
-	ImplicitChanges          *OAuthFlowChanges
-	PasswordChanges          *OAuthFlowChanges
-	ClientCredentialsChanges *OAuthFlowChanges
-	AuthorizationCodeChanges *OAuthFlowChanges
-	ExtensionChanges         *ExtensionChanges
+	ImplicitChanges          *OAuthFlowChanges `json:"implicit,omitempty" yaml:"implicit,omitempty"`
+	PasswordChanges          *OAuthFlowChanges `json:"password,omitempty" yaml:"password,omitempty"`
+	ClientCredentialsChanges *OAuthFlowChanges `json:"clientCredentials,omitempty" yaml:"clientCredentials,omitempty"`
+	AuthorizationCodeChanges *OAuthFlowChanges `json:"autCode,omitempty" yaml:"authCode,omitempty"`
+	ExtensionChanges         *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (o *OAuthFlowsChanges) TotalChanges() int {

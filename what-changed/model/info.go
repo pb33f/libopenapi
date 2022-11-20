@@ -11,8 +11,8 @@ import (
 // InfoChanges represents the number of changes to an Info object. Part of an OpenAPI document
 type InfoChanges struct {
 	PropertyChanges
-	ContactChanges *ContactChanges
-	LicenseChanges *LicenseChanges
+	ContactChanges *ContactChanges `json:"contact,omitempty" yaml:"contact,omitempty"`
+	LicenseChanges *LicenseChanges `json:"license,omitempty" yaml:"license,omitempty"`
 }
 
 // TotalChanges represents the total number of changes made to an Info object.

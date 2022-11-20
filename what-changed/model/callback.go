@@ -10,8 +10,8 @@ import (
 
 type CallbackChanges struct {
 	PropertyChanges
-	ExpressionChanges map[string]*PathItemChanges
-	ExtensionChanges  *ExtensionChanges
+	ExpressionChanges map[string]*PathItemChanges `json:"expressions,omitempty" yaml:"expressions,omitempty"`
+	ExtensionChanges  *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (c *CallbackChanges) TotalChanges() int {

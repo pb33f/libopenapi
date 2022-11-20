@@ -11,7 +11,7 @@ import (
 // XMLChanges represents changes made to the XML object of an OpenAPI document.
 type XMLChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // TotalChanges returns a count of everything that was changed within an XML object.
