@@ -41,3 +41,18 @@ func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 		CompareOpenAPIDocuments(origDoc, modDoc)
 	}
 }
+
+func Benchmark_CompareOpenAPIDocuments_NoChange(b *testing.B) {
+
+	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+	origDoc, _ := v3.CreateDocument(infoOrig)
+	modDoc, _ := v3.CreateDocument(infoMod)
+
+	for i := 0; i < b.N; i++ {
+		CompareOpenAPIDocuments(origDoc, modDoc)
+	}
+}

@@ -50,3 +50,19 @@ func TestSchemaProxy_Build_CheckRef(t *testing.T) {
 	assert.Equal(t, "f00a787f7492a95e165b470702f4fe9373583fbdc025b2c8bdf0262cc48fcff4",
 		low.GenerateHashString(&sch))
 }
+
+func TestSchemaProxy_Build_HashInline(t *testing.T) {
+
+	yml := `type: int`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.False(t, sch.IsSchemaReference())
+	assert.NotNil(t, sch.Schema())
+	assert.Equal(t, "6da88c34ba124c41f977db66a4fc5c1a951708d285c81bb0d47c3206f4c27ca8",
+		low.GenerateHashString(&sch))
+}
