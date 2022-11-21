@@ -8,10 +8,13 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// ServerVariableChanges represents changes found between two OpenAPI ServerVariable Objects
 type ServerVariableChanges struct {
 	PropertyChanges
 }
 
+// CompareServerVariables compares a left and right OpenAPI ServerVariable object for changes.
+// If anything is found, returns a pointer to a ServerVariableChanges instance, otherwise returns nil.
 func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 	if low.AreEqual(l, r) {
 		return nil

@@ -129,6 +129,8 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	return t
 }
 
+// CompareSchemas accepts a left and right SchemaProxy and checks for changes. If anything is found, returns
+// a pointer to SchemaChanges, otherwise returns nil
 func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 	sc := new(SchemaChanges)
 	var changes []*Change

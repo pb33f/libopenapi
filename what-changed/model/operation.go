@@ -14,6 +14,7 @@ import (
 	"strings"
 )
 
+// OperationChanges represent changes made between two Swagger or OpenAPI Operation objects.
 type OperationChanges struct {
 	PropertyChanges
 	ExternalDocChanges         *ExternalDocChanges           `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
@@ -21,13 +22,14 @@ type OperationChanges struct {
 	ResponsesChanges           *ResponsesChanges             `json:"responses,omitempty" yaml:"responses,omitempty"`
 	SecurityRequirementChanges []*SecurityRequirementChanges `json:"securityRequirements,omitempty" yaml:"securityRequirements,omitempty"`
 
-	// v3
+	// OpenAPI 3+ only changes
 	RequestBodyChanges *RequestBodyChanges         `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
 	ServerChanges      []*ServerChanges            `json:"servers,omitempty" yaml:"servers,omitempty"`
 	ExtensionChanges   *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 	CallbackChanges    map[string]*CallbackChanges `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 }
 
+// TotalChanges returns the total number of changes made between two Swagger or OpenAPI Operation objects.
 func (o *OperationChanges) TotalChanges() int {
 	c := o.PropertyChanges.TotalChanges()
 	if o.ExternalDocChanges != nil {
@@ -57,6 +59,8 @@ func (o *OperationChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes made between two Swagger
+// or OpenAPI Operation objects.
 func (o *OperationChanges) TotalBreakingChanges() int {
 	c := o.PropertyChanges.TotalBreakingChanges()
 	if o.ExternalDocChanges != nil {
@@ -84,6 +88,7 @@ func (o *OperationChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// check for properties shared between operations objects.
 func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
@@ -112,6 +117,7 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 	return props
 }
 
+// check shared objects
 func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change, opChanges *OperationChanges) {
 
 	// external docs
@@ -150,6 +156,8 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 
 }
 
+// CompareOperations compares a left and right Swagger or OpenAPI Operation object. If changes are found, returns
+// a pointer to an OperationChanges instance, or nil if nothing is found.
 func CompareOperations(l, r any) *OperationChanges {
 
 	var changes []*Change
@@ -373,6 +381,7 @@ func CompareOperations(l, r any) *OperationChanges {
 	return oc
 }
 
+// check servers property
 func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.Server]]) []*ServerChanges {
 
 	var serverChanges []*ServerChanges
@@ -460,6 +469,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 	return serverChanges
 }
 
+// check security property.
 func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]],
 	changes *[]*Change, oc any) {
 

@@ -8,12 +8,14 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// RequestBodyChanges represents changes made between two OpenAPI RequestBody Objects
 type RequestBodyChanges struct {
 	PropertyChanges
 	ContentChanges   map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
 	ExtensionChanges *ExtensionChanges            `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns the total number of changes found between two OpenAPI RequestBody objects
 func (rb *RequestBodyChanges) TotalChanges() int {
 	c := rb.PropertyChanges.TotalChanges()
 	for k := range rb.ContentChanges {
@@ -25,6 +27,7 @@ func (rb *RequestBodyChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes found between OpenAPI RequestBody objects
 func (rb *RequestBodyChanges) TotalBreakingChanges() int {
 	c := rb.PropertyChanges.TotalBreakingChanges()
 	for k := range rb.ContentChanges {
@@ -33,6 +36,8 @@ func (rb *RequestBodyChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareRequestBodies compares a left and right OpenAPI RequestBody object for changes. If found returns a pointer
+// to a RequestBodyChanges instance. Returns nil if nothing was found.
 func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 	if low.AreEqual(l, r) {
 		return nil

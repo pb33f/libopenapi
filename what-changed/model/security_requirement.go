@@ -10,28 +10,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// SecurityRequirementChanges represents changes found between two SecurityRequirement Objects.
 type SecurityRequirementChanges struct {
 	PropertyChanges
 }
 
+// TotalChanges returns the total number of changes between two SecurityRequirement Objects.
 func (s *SecurityRequirementChanges) TotalChanges() int {
 	return s.PropertyChanges.TotalChanges()
 }
 
+// TotalBreakingChanges returns the total number of breaking changes between two SecurityRequirement Objects.
 func (s *SecurityRequirementChanges) TotalBreakingChanges() int {
 	return s.PropertyChanges.TotalBreakingChanges()
 }
 
-func removedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
-	CreateChange(changes, ObjectRemoved, v3.SecurityLabel,
-		vn, nil, true, name, nil)
-}
-
-func addedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
-	CreateChange(changes, ObjectAdded, v3.SecurityLabel,
-		nil, vn, false, nil, name)
-}
-
+// CompareSecurityRequirement compares left and right SecurityRequirement objects for changes. If anything
+// is found, then a pointer to SecurityRequirementChanges is returned, otherwise nil.
 func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequirementChanges {
 
 	var changes []*Change
@@ -45,6 +40,17 @@ func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequire
 	return sc
 }
 
+func removedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
+	CreateChange(changes, ObjectRemoved, v3.SecurityLabel,
+		vn, nil, true, name, nil)
+}
+
+func addedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
+	CreateChange(changes, ObjectAdded, v3.SecurityLabel,
+		nil, vn, false, nil, name)
+}
+
+// tricky to do this correctly, this is my solution.
 func checkSecurityRequirement(lSec, rSec map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]],
 	changes *[]*Change) {
 

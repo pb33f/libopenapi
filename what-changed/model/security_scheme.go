@@ -10,15 +10,19 @@ import (
 	"reflect"
 )
 
+// SecuritySchemeChanges represents changes made between Swagger or OpenAPI SecurityScheme Objects.
 type SecuritySchemeChanges struct {
 	PropertyChanges
 	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
-	// v3
+
+	// OpenAPI Version
 	OAuthFlowChanges *OAuthFlowsChanges `json:"oAuthFlow,omitempty" yaml:"oAuthFlow,omitempty"`
-	// v2
+
+	// Swagger Version
 	ScopesChanges *ScopesChanges `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
+// TotalChanges represents total changes found between two Swagger or OpenAPI SecurityScheme instances.
 func (ss *SecuritySchemeChanges) TotalChanges() int {
 	c := ss.PropertyChanges.TotalChanges()
 	if ss.OAuthFlowChanges != nil {
@@ -33,6 +37,7 @@ func (ss *SecuritySchemeChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns total number of breaking changes between two SecurityScheme Objects.
 func (ss *SecuritySchemeChanges) TotalBreakingChanges() int {
 	c := ss.PropertyChanges.TotalBreakingChanges()
 	if ss.OAuthFlowChanges != nil {
@@ -44,14 +49,18 @@ func (ss *SecuritySchemeChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareSecuritySchemesV2 is a Swagger type safe proxy for CompareSecuritySchemes
 func CompareSecuritySchemesV2(l, r *v2.SecurityScheme) *SecuritySchemeChanges {
 	return CompareSecuritySchemes(l, r)
 }
 
+// CompareSecuritySchemesV3 is an OpenAPI type safe proxt for CompareSecuritySchemes
 func CompareSecuritySchemesV3(l, r *v3.SecurityScheme) *SecuritySchemeChanges {
 	return CompareSecuritySchemes(l, r)
 }
 
+// CompareSecuritySchemes compares left and right Swagger or OpenAPI Security Scheme objects for changes.
+// If anything is found, returns a pointer to *SecuritySchemeChanges or nil if nothing is found.
 func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 
 	var props []*PropertyCheck
