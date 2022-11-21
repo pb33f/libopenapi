@@ -25,6 +25,9 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
 	assert.Equal(t, 67, changes.TotalChanges())
 	assert.Equal(t, 17, changes.TotalBreakingChanges())
+	//
+	//out, _ := json.MarshalIndent(changes, "", "  ")
+	//_ = ioutil.WriteFile("outputv3.json", out, 0776)
 
 }
 

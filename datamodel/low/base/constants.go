@@ -17,6 +17,7 @@ const (
 	AdditionalPropertiesLabel = "additionalProperties"
 	XMLLabel                  = "xml"
 	ItemsLabel                = "items"
+	PrefixItemsLabel          = "prefixItems"
 	AllOfLabel                = "allOf"
 	AnyOfLabel                = "anyOf"
 	OneOfLabel                = "oneOf"

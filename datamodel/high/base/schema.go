@@ -52,6 +52,9 @@ type Schema struct {
 	// in 3.1 examples can be an array (which is recommended)
 	Examples []any
 
+	// in 3.1 prefixItems provides tuple validation support.
+	PrefixItems []*SchemaProxy
+
 	// Compatible with all versions
 	Not                  []*SchemaProxy
 	Items                []*SchemaProxy
@@ -216,17 +219,18 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	// props async
-	plock := sync.RWMutex{}
+	var plock sync.Mutex
 	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*base.SchemaProxy], c chan bool,
 		props map[string]*SchemaProxy) {
-		defer plock.Unlock()
 		plock.Lock()
-		props[k.Value] = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
-			Value:     v.Value,
-			KeyNode:   k.KeyNode,
-			ValueNode: v.ValueNode,
-		},
+		props[k.Value] = &SchemaProxy{
+			schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+				Value:     v.Value,
+				KeyNode:   k.KeyNode,
+				ValueNode: v.ValueNode,
+			},
 		}
+		plock.Unlock()
 		s.Properties = props
 		c <- true
 	}
@@ -241,6 +245,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	var anyOf []*SchemaProxy
 	var not []*SchemaProxy
 	var items []*SchemaProxy
+	var prefixItems []*SchemaProxy
 
 	children := 0
 	if !schema.AllOf.IsEmpty() {
@@ -262,6 +267,10 @@ func NewSchema(schema *base.Schema) *Schema {
 	if !schema.Items.IsEmpty() {
 		children++
 		go buildOutSchema(schema.Items.Value, &items, polyCompletedChan, errChan)
+	}
+	if !schema.PrefixItems.IsEmpty() {
+		children++
+		go buildOutSchema(schema.PrefixItems.Value, &prefixItems, polyCompletedChan, errChan)
 	}
 
 	completeChildren := 0
@@ -288,8 +297,8 @@ func NewSchema(schema *base.Schema) *Schema {
 	s.AnyOf = anyOf
 	s.AllOf = allOf
 	s.Items = items
+	s.PrefixItems = prefixItems
 	s.Not = not
-
 	return s
 }
 
