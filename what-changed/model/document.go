@@ -1,6 +1,13 @@
 // Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
+// Package model
+//
+// What-changed models are unified across OpenAPI and Swagger. Everything is kept flat for simplicity, so please
+// excuse the size of the package. There is a lot of data to crunch!
+//
+// Every model in here is either universal (works across both versions of OpenAPI) or is bound to a specific version
+// of OpenAPI. There is only a single model however - so version specific objects are marked accordingly.
 package model
 
 import (
@@ -11,6 +18,7 @@ import (
 	"reflect"
 )
 
+// DocumentChanges represents all the changes made to an OpenAPI document.
 type DocumentChanges struct {
 	PropertyChanges
 	InfoChanges                *InfoChanges                  `json:"info,omitempty" yaml:"info,omitempty"`
@@ -24,6 +32,7 @@ type DocumentChanges struct {
 	ExtensionChanges           *ExtensionChanges             `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns a total count of all changes made in the Document
 func (d *DocumentChanges) TotalChanges() int {
 	c := d.PropertyChanges.TotalChanges()
 	if d.InfoChanges != nil {
@@ -56,6 +65,7 @@ func (d *DocumentChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns a total count of all breaking changes made in the Document
 func (d *DocumentChanges) TotalBreakingChanges() int {
 	c := d.PropertyChanges.TotalBreakingChanges()
 	if d.InfoChanges != nil {
@@ -85,6 +95,8 @@ func (d *DocumentChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareDocuments will compare any two OpenAPI documents (either Swagger or OpenAPI) and return a pointer to
+// DocumentChanges that outlines everything that was found to have changed.
 func CompareDocuments(l, r any) *DocumentChanges {
 
 	var changes []*Change

@@ -8,19 +8,23 @@ import (
     v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
-// v2 Examples object.
+// ExamplesChanges represents changes made between Swagger Examples objects (Not OpenAPI 3).
 type ExamplesChanges struct {
     PropertyChanges
 }
 
+// TotalChanges represents the total number of changes made between Example instances.
 func (a *ExamplesChanges) TotalChanges() int {
     return a.PropertyChanges.TotalChanges()
 }
 
+// TotalBreakingChanges will always return 0. Examples cannot break a contract.
 func (a *ExamplesChanges) TotalBreakingChanges() int {
     return 0 // not supported.
 }
 
+// CompareExamplesV2 compares two Swagger Examples objects, returning a pointer to
+//ExamplesChanges if anything was found.
 func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
 
     lHashes := make(map[string]string)

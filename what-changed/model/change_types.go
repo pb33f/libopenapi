@@ -16,10 +16,10 @@ const (
 	// PropertyAdded means that a new property to an object was added
 	PropertyAdded
 
-	// ObjectAdded means that a new object was added
+	// ObjectAdded means that a new object was added to a parent object
 	ObjectAdded
 
-	// ObjectRemoved means that an object was removed
+	// ObjectRemoved means that an object was removed from a parent object
 	ObjectRemoved
 
 	// PropertyRemoved means that a property of an object was removed

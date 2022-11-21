@@ -8,12 +8,14 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// LinkChanges represent changes made between two OpenAPI Link Objects.
 type LinkChanges struct {
 	PropertyChanges
 	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 	ServerChanges    *ServerChanges    `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
+// TotalChanges returns the total changes made between OpenAPI Link objects
 func (l *LinkChanges) TotalChanges() int {
 	c := l.PropertyChanges.TotalChanges()
 	if l.ExtensionChanges != nil {
@@ -25,6 +27,7 @@ func (l *LinkChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the number of breaking changes made between two OpenAPI Link Objects
 func (l *LinkChanges) TotalBreakingChanges() int {
 	c := l.PropertyChanges.TotalBreakingChanges()
 	if l.ServerChanges != nil {
@@ -33,6 +36,8 @@ func (l *LinkChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareLinks checks a left and right OpenAPI Link for any changes. If they are found, returns a pointer to
+// LinkChanges, and returns nil if nothing is found.
 func CompareLinks(l, r *v3.Link) *LinkChanges {
 	if low.AreEqual(l, r) {
 		return nil

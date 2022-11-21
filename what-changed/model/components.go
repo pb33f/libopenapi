@@ -11,18 +11,38 @@ import (
 	"reflect"
 )
 
+// ComponentsChanges represents changes made to both OpenAPI and Swagger documents. This model is based on OpenAPI 3
+// components, however it's also used to contain Swagger definitions changes. Swagger for some reason decided to not
+// contain definitions inside a single parent like Components, and instead scattered them across the root of the
+// Swagger document, giving everything a `Definitions` postfix. This design attempts to unify those models into
+// a single entity that contains all changes.
+//
+// Schemas are treated differently from every other component / definition in this library. Schemas can be highly
+// recursive, and are not resolved by the model, every ref is recorded, but it's not looked at essentially. This means
+// that when what-changed performs a check, everything that is *not* a schema is checked *inline*, Those references are
+// resolved in place and a change is recorded in place. Schemas however are *not* resolved. which means no change
+// will be recorded in place for any object referencing it.
+//
+// That is why there is a separate SchemaChanges object in ComponentsChanges. Schemas are checked at the source, and
+// not inline when referenced. A schema change will only be found once, however a change to ANY other definition or
+// component, will be found inline (and will duplicate for every use).
+//
+// The other oddity here is SecuritySchemes. For some reason OpenAPI does not use a $ref for these entities, it
+// uses a name lookup, which means there are no direct links between any model and a security scheme reference.
+// So like Schemas, SecuritySchemes are treated differently and handled individually.
+//
+// An important note: Everything EXCEPT Schemas and SecuritySchemes is ONLY checked for additions or removals.
+// modifications are not checked, these checks occur in-place by implementing objects as they are autp-resolved
+// when the model is built.
 type ComponentsChanges struct {
 	PropertyChanges
 	SchemaChanges         map[string]*SchemaChanges         `json:"schemas,omitempty" yaml:"schemas,omitempty"`
 	SecuritySchemeChanges map[string]*SecuritySchemeChanges `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
 	ExtensionChanges      *ExtensionChanges                 `json:"extensions,omitempty" yaml:"extensions,omitempty"`
-	//ExamplesChanges       map[string]*ExampleChanges
-	//RequestBodyChanges    map[string]*RequestBodyChanges
-	//HeaderChanges         map[string]*HeaderChanges
-	//LinkChanges           map[string]*LinkChanges
-	//CallbackChanges       map[string]*CallbackChanges
 }
 
+// CompareComponents will compare OpenAPI components for any changes. Accepts Swagger Definition objects
+// like ParameterDefinitions or Definitions etc.
 func CompareComponents(l, r any) *ComponentsChanges {
 
 	var changes []*Change
@@ -170,37 +190,13 @@ func CompareComponents(l, r any) *ComponentsChanges {
 					completedComponents++
 					cc.SchemaChanges = res.result.(map[string]*SchemaChanges)
 					break
-				case v3.ResponsesLabel:
-					completedComponents++
-					//cc.ResponsesChanges = res.result.(map[string]*ResponseChanges)
-					break
-				case v3.ParametersLabel:
-					completedComponents++
-					//cc.ParameterChanges = res.result.(map[string]*ParameterChanges)
-					break
-				case v3.ExamplesLabel:
-					completedComponents++
-					//cc.ExamplesChanges = res.result.(map[string]*ExampleChanges)
-					break
-				case v3.RequestBodiesLabel:
-					completedComponents++
-					//cc.RequestBodyChanges = res.result.(map[string]*RequestBodyChanges)
-					break
-				case v3.HeadersLabel:
-					completedComponents++
-					//cc.HeaderChanges = res.result.(map[string]*HeaderChanges)
-					break
 				case v3.SecuritySchemesLabel:
 					completedComponents++
 					cc.SecuritySchemeChanges = res.result.(map[string]*SecuritySchemeChanges)
 					break
-				case v3.LinksLabel:
+				case v3.ResponsesLabel, v3.ParametersLabel, v3.ExamplesLabel, v3.RequestBodiesLabel, v3.HeadersLabel,
+					v3.LinksLabel, v3.CallbacksLabel:
 					completedComponents++
-					//cc.LinkChanges = res.result.(map[string]*LinkChanges)
-					break
-				case v3.CallbacksLabel:
-					completedComponents++
-					//cc.CallbackChanges = res.result.(map[string]*CallbackChanges)
 					break
 				}
 			}
@@ -238,66 +234,29 @@ func runComparison[T any, R any](l, r map[low.KeyReference[string]]low.ValueRefe
 	}
 }
 
+// TotalChanges returns total changes for all Components and Definitions
 func (c *ComponentsChanges) TotalChanges() int {
 	v := c.PropertyChanges.TotalChanges()
 	for k := range c.SchemaChanges {
 		v += c.SchemaChanges[k].TotalChanges()
 	}
-	//for k := range c.ResponsesChanges {
-	//	v += c.ResponsesChanges[k].TotalChanges()
-	//}
-	//for k := range c.ParameterChanges {
-	//	v += c.ParameterChanges[k].TotalChanges()
-	//}
-	//for k := range c.ExamplesChanges {
-	//	v += c.ExamplesChanges[k].TotalChanges()
-	//}
-	//for k := range c.RequestBodyChanges {
-	//	v += c.RequestBodyChanges[k].TotalChanges()
-	//}
-	//for k := range c.HeaderChanges {
-	//	v += c.HeaderChanges[k].TotalChanges()
-	//}
 	for k := range c.SecuritySchemeChanges {
 		v += c.SecuritySchemeChanges[k].TotalChanges()
 	}
-	//for k := range c.LinkChanges {
-	//	v += c.LinkChanges[k].TotalChanges()
-	//}
-	//for k := range c.CallbackChanges {
-	//	v += c.CallbackChanges[k].TotalChanges()
-	//}
 	if c.ExtensionChanges != nil {
 		v += c.ExtensionChanges.TotalChanges()
 	}
 	return v
 }
 
+// TotalBreakingChanges returns all breaking changes found for all Components and Definitions
 func (c *ComponentsChanges) TotalBreakingChanges() int {
 	v := c.PropertyChanges.TotalBreakingChanges()
 	for k := range c.SchemaChanges {
 		v += c.SchemaChanges[k].TotalBreakingChanges()
 	}
-	//for k := range c.ResponsesChanges {
-	//	v += c.ResponsesChanges[k].TotalBreakingChanges()
-	//}
-	//for k := range c.ParameterChanges {
-	//	v += c.ParameterChanges[k].TotalBreakingChanges()
-	//}
-	//for k := range c.RequestBodyChanges {
-	//	v += c.RequestBodyChanges[k].TotalBreakingChanges()
-	//}
-	//for k := range c.HeaderChanges {
-	//	v += c.HeaderChanges[k].TotalBreakingChanges()
-	//}
 	for k := range c.SecuritySchemeChanges {
 		v += c.SecuritySchemeChanges[k].TotalBreakingChanges()
 	}
-	//for k := range c.LinkChanges {
-	//	v += c.LinkChanges[k].TotalBreakingChanges()
-	//}
-	//for k := range c.CallbackChanges {
-	//	v += c.CallbackChanges[k].TotalBreakingChanges()
-	//}
 	return v
 }

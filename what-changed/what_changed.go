@@ -3,28 +3,34 @@
 
 // Package what_changed
 //
-// The low level (or plumbing) models are designed to capture every single detail about specification, including
-// all lines, columns, positions, tags, comments and essentially everything you would ever want to know.
-// Positions of every key, value and meta-data that is lost when blindly un-marshaling JSON/YAML into a struct.
+// what changed is a feature that performs an accurate and deep analysis of what has changed between two OpenAPI
+// documents. The report generated outlines every single change made between two specifications (left and right)
+// rendered in the document hierarchy, so exploring it is the same as exploring the document model.
 //
-// The high model (porcelain) is a much simpler representation of the low model, keys are simple strings and indices
-// are numbers. When developing consumers of the model, the high model is really what you want to use instead of the
-// low model, it's much easier to navigate and is designed for easy consumption.
+// There are two main functions, one of generating a report for Swagger documents (OpenAPI 2)
+// And OpenAPI 3+ documents.
 //
-// The high model requires the low model to be built. Every high model has a 'GoLow' method that allows the consumer
-// to 'drop down' from the porcelain API to the plumbing API, which gives instant access to everything low.
+// This package uses a combined model for OpenAPI and Swagger changes, it does not break them out into separate
+// versions like the datamodel package. The reason for this is to prevent sprawl across versions and to provide
+// a single API and model for any application that wants to use this feature.
 package what_changed
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what_changed/model"
+	"github.com/pb33f/libopenapi/what-changed/model"
 )
 
+// CompareOpenAPIDocuments will compare left (original) and right (updated) OpenAPI 3+ documents and extract every change
+// made across the entire specification. The report outlines every property changed, everything that was added,
+// or removed and which of those changes were breaking.
 func CompareOpenAPIDocuments(original, updated *v3.Document) *model.DocumentChanges {
 	return model.CompareDocuments(original, updated)
 }
 
+// CompareSwaggerDocuments will compare left (original) and a right (updated) Swagger documents and extract every change
+// made across the entire specification. The report outlines every property changes, everything that was added,
+// or removed and which of those changes were breaking.
 func CompareSwaggerDocuments(original, updated *v2.Swagger) *model.DocumentChanges {
 	return model.CompareDocuments(original, updated)
 }

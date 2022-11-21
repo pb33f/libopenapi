@@ -13,6 +13,7 @@ type ExtensionChanges struct {
 	PropertyChanges
 }
 
+// TotalChanges returns the total number of object extensions that were made.
 func (e *ExtensionChanges) TotalChanges() int {
 	return e.PropertyChanges.TotalChanges()
 }
