@@ -124,6 +124,18 @@ items:
       type: string
       description: itemsB description
       example: 'itemsBExp'
+prefixItems:
+  type: object
+  description: an items thing
+  properties:
+    itemsA:
+      type: string
+      description: itemsA description
+      example: 'itemsAExp'
+    itemsB:
+      type: string
+      description: itemsB description
+      example: 'itemsBExp'
 properties:
   somethingBee:
     type: number
@@ -195,7 +207,7 @@ deprecated: true`
 	assert.Nil(t, schemaProxy.GetBuildError())
 
 	wentLow := compiled.GoLow()
-	assert.Equal(t, 102, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)
 
 }
 

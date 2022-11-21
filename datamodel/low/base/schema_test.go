@@ -77,6 +77,18 @@ items:
       type: string
       description: itemsB description
       example: 'itemsBExp'
+prefixItems:
+  type: object
+  description: an items thing
+  properties:
+    itemsA:
+      type: string
+      description: itemsA description
+      example: 'itemsAExp'
+    itemsB:
+      type: string
+      description: itemsB description
+      example: 'itemsBExp'
 properties:
   somethingA:
     type: number
@@ -229,6 +241,20 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "itemsAExp", v.Value.Schema().Example.Value)
 
 	v = sch.Items.Value[0].Value.Schema().FindProperty("itemsB")
+	assert.NotNil(t, v)
+	assert.Equal(t, "itemsB description", v.Value.Schema().Description.Value)
+	assert.Equal(t, "itemsBExp", v.Value.Schema().Example.Value)
+
+	// check values PrefixItems
+	assert.Equal(t, "an items thing", sch.PrefixItems.Value[0].Value.Schema().Description.Value)
+	assert.Len(t, sch.PrefixItems.Value[0].Value.Schema().Properties.Value, 2)
+
+	v = sch.PrefixItems.Value[0].Value.Schema().FindProperty("itemsA")
+	assert.NotNil(t, v)
+	assert.Equal(t, "itemsA description", v.Value.Schema().Description.Value)
+	assert.Equal(t, "itemsAExp", v.Value.Schema().Example.Value)
+
+	v = sch.PrefixItems.Value[0].Value.Schema().FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Schema().Description.Value)
 	assert.Equal(t, "itemsBExp", v.Value.Schema().Example.Value)

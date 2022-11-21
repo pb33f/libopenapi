@@ -13,7 +13,7 @@ type OAuthFlowsChanges struct {
 	ImplicitChanges          *OAuthFlowChanges `json:"implicit,omitempty" yaml:"implicit,omitempty"`
 	PasswordChanges          *OAuthFlowChanges `json:"password,omitempty" yaml:"password,omitempty"`
 	ClientCredentialsChanges *OAuthFlowChanges `json:"clientCredentials,omitempty" yaml:"clientCredentials,omitempty"`
-	AuthorizationCodeChanges *OAuthFlowChanges `json:"autCode,omitempty" yaml:"authCode,omitempty"`
+	AuthorizationCodeChanges *OAuthFlowChanges `json:"authCode,omitempty" yaml:"authCode,omitempty"`
 	ExtensionChanges         *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
@@ -128,7 +128,7 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 
 type OAuthFlowChanges struct {
 	PropertyChanges
-	ExtensionChanges *ExtensionChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 func (o *OAuthFlowChanges) TotalChanges() int {
