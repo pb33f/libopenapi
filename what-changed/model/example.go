@@ -32,8 +32,8 @@ func (e *ExampleChanges) TotalBreakingChanges() int {
 	return l
 }
 
-// TotalChanges
-
+// CompareExamples returns a pointer to ExampleChanges that contains all changes made between
+// left and right Example instances.
 func CompareExamples(l, r *base.Example) *ExampleChanges {
 
 	ec := new(ExampleChanges)

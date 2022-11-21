@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// MediaTypeChanges represent changes made between two OpenAPI MediaType instances.
 type MediaTypeChanges struct {
 	PropertyChanges
 	SchemaChanges    *SchemaChanges              `json:"schemas,omitempty" yaml:"schemas,omitempty"`
@@ -15,6 +16,7 @@ type MediaTypeChanges struct {
 	EncodingChanges  map[string]*EncodingChanges `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 }
 
+// TotalChanges returns the total number of changes between two MediaType instances.
 func (m *MediaTypeChanges) TotalChanges() int {
 	c := m.PropertyChanges.TotalChanges()
 	for k := range m.ExampleChanges {
@@ -34,6 +36,7 @@ func (m *MediaTypeChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes made between two MediaType instances.
 func (m *MediaTypeChanges) TotalBreakingChanges() int {
 	c := m.PropertyChanges.TotalBreakingChanges()
 	for k := range m.ExampleChanges {
@@ -50,6 +53,8 @@ func (m *MediaTypeChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareMediaTypes compares a left and a right MediaType object for any changes. If found, a pointer to a
+// MediaTypeChanges instance is returned, otherwise nothing is returned.
 func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
 	var props []*PropertyCheck

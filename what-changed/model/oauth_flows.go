@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// OAuthFlowsChanges represents changes found between two OpenAPI OAuthFlows objects.
 type OAuthFlowsChanges struct {
 	PropertyChanges
 	ImplicitChanges          *OAuthFlowChanges `json:"implicit,omitempty" yaml:"implicit,omitempty"`
@@ -17,6 +18,7 @@ type OAuthFlowsChanges struct {
 	ExtensionChanges         *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns the number of changes made between two OAuthFlows instances.
 func (o *OAuthFlowsChanges) TotalChanges() int {
 	c := o.PropertyChanges.TotalChanges()
 	if o.ImplicitChanges != nil {
@@ -37,6 +39,7 @@ func (o *OAuthFlowsChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the number of breaking changes made between two OAuthFlows objects.
 func (o *OAuthFlowsChanges) TotalBreakingChanges() int {
 	c := o.PropertyChanges.TotalBreakingChanges()
 	if o.ImplicitChanges != nil {
@@ -54,6 +57,8 @@ func (o *OAuthFlowsChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareOAuthFlows compares a left and right OAuthFlows object. If changes are found a pointer to *OAuthFlowsChanges
+// is returned, otherwise nil is returned.
 func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	if low.AreEqual(l, r) {
 		return nil
@@ -126,11 +131,13 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	return oa
 }
 
+// OAuthFlowChanges represents an OpenAPI OAuthFlow object.
 type OAuthFlowChanges struct {
 	PropertyChanges
 	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns the total number of changes made between two OAuthFlow objects
 func (o *OAuthFlowChanges) TotalChanges() int {
 	c := o.PropertyChanges.TotalChanges()
 	if o.ExtensionChanges != nil {
@@ -139,10 +146,12 @@ func (o *OAuthFlowChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes made between two OAuthFlow objects
 func (o *OAuthFlowChanges) TotalBreakingChanges() int {
 	return o.PropertyChanges.TotalBreakingChanges()
 }
 
+// CompareOAuthFlow checks a left and a right OAuthFlow object
 func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 	if low.AreEqual(l, r) {
 		return nil

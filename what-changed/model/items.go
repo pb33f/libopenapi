@@ -8,11 +8,15 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
+// ItemsChanges represent changes found between a left (original) and right (modified) object. Items is only
+// used by Swagger documents.
 type ItemsChanges struct {
 	PropertyChanges
 	ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
+// TotalChanges returns the total number of changes found between two Items objects
+// This is a recursive function because Items can contain Items. Be careful!
 func (i *ItemsChanges) TotalChanges() int {
 	c := i.PropertyChanges.TotalChanges()
 	if i.ItemsChanges != nil {
@@ -21,6 +25,8 @@ func (i *ItemsChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes found between two Swagger Items objects
+// This is a recursive method, Items are recursive, be careful!
 func (i *ItemsChanges) TotalBreakingChanges() int {
 	c := i.PropertyChanges.TotalBreakingChanges()
 	if i.ItemsChanges != nil {
@@ -29,6 +35,11 @@ func (i *ItemsChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareItems compares two sets of Swagger Item objects. If there are any changes found then a pointer to
+// ItemsChanges will be returned, otherwise nil is returned.
+//
+// It is worth nothing that Items can contain Items. This means recursion is possible and has the potential for
+// runaway code if not using the resolver's circular reference checking.
 func CompareItems(l, r *v2.Items) *ItemsChanges {
 
 	var changes []*Change

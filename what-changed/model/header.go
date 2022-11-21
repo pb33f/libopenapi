@@ -10,6 +10,8 @@ import (
 	"reflect"
 )
 
+// HeaderChanges represents changes made between two Header objects. Supports both Swagger and OpenAPI header
+// objects, V2 only property Items is broken out into its own.
 type HeaderChanges struct {
 	PropertyChanges
 	SchemaChanges    *SchemaChanges               `json:"schemas,omitempty" yaml:"schemas,omitempty"`
@@ -17,10 +19,11 @@ type HeaderChanges struct {
 	ContentChanges   map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
 	ExtensionChanges *ExtensionChanges            `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 
-	// V2 changes
+	// Items only supported by Swagger (V2)
 	ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
+// TotalChanges returns the total number of changes made between two Header objects.
 func (h *HeaderChanges) TotalChanges() int {
 	c := h.PropertyChanges.TotalChanges()
 	for k := range h.ExamplesChanges {
@@ -41,6 +44,7 @@ func (h *HeaderChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes made between two Header instances.
 func (h *HeaderChanges) TotalBreakingChanges() int {
 	c := h.PropertyChanges.TotalBreakingChanges()
 	for k := range h.ContentChanges {
@@ -55,6 +59,7 @@ func (h *HeaderChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// shared header properties
 func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
@@ -89,6 +94,7 @@ func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Chang
 	return props
 }
 
+// swagger only properties
 func addSwaggerHeaderProperties(left, right low.SwaggerHeader, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
@@ -151,6 +157,7 @@ func addSwaggerHeaderProperties(left, right low.SwaggerHeader, changes *[]*Chang
 	return props
 }
 
+// common header properties
 func addCommonHeaderProperties(left, right low.HasDescription, changes *[]*Change) []*PropertyCheck {
 	var props []*PropertyCheck
 
@@ -161,14 +168,20 @@ func addCommonHeaderProperties(left, right low.HasDescription, changes *[]*Chang
 	return props
 }
 
+// CompareHeadersV2 is a Swagger compatible, typed signature used for other generic functions. It simply
+// wraps CompareHeaders and provides nothing other that a typed interface.
 func CompareHeadersV2(l, r *v2.Header) *HeaderChanges {
 	return CompareHeaders(l, r)
 }
 
+// CompareHeadersV3 is an OpenAPI 3+ compatible, typed signature used for other generic functions. It simply
+// wraps CompareHeaders and provides nothing other that a typed interface.
 func CompareHeadersV3(l, r *v3.Header) *HeaderChanges {
 	return CompareHeaders(l, r)
 }
 
+// CompareHeaders will compare left and right Header objects (any version of Swagger or OpenAPI) and return
+// a pointer to HeaderChanges with anything that has changed, or nil if nothing changed.
 func CompareHeaders(l, r any) *HeaderChanges {
 
 	var changes []*Change
