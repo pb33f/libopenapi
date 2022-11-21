@@ -50,6 +50,13 @@ version of `libopenapi`, which isn't something that can be released as it's cust
 `libopenapi` is the result of years of learning and battle testing OpenAPI in golang. This library represents what would
 have been created, if we knew then - what we know now.
 
+## what-changed: a complete diff engine
+
+Compare Swagger and OpenAPI documents for all changes made across the specification. Every detail is checked across
+all versions of OpenAPI and returns a simple to navigate report of every single change made. 
+
+Everything modified, added or removed is reported, complete with original/new values, line numbers and columns. 
+
 > Need to know which **line**, or **column** number a key or value for something is? **`libopenapi` has you covered**.
 
 ## Comes with an Index and a Resolver
@@ -196,6 +203,61 @@ fmt.Printf("value is %s, the value is on line %d, " +
     lowReqBody.Description.KeyNode.Line, 
     lowReqBody.KeyNode.Column)
 ```
+---
+
+## What changed?
+
+libopenapi comes with a complete **diff engine**
+
+Want to know what changed between two different OpenAPI or Swagger specifications? libopenapi makes this super, super easy.
+
+```go
+// How to compare two different OpenAPI specifications for changes between them.
+
+// load an original OpenAPI 3 specification from bytes
+burgerShopOriginal, _ := ioutil.ReadFile("test_specs/burgershop.openapi.yaml")
+
+// load an **updated** OpenAPI 3 specification from bytes
+burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
+
+// create a new document from original specification bytes
+originalDoc, err := NewDocument(burgerShopOriginal)
+
+// if anything went wrong, an error is thrown
+if err != nil {
+    panic(fmt.Sprintf("cannot create new document: %e", err))
+}
+
+// create a new document from updated specification bytes
+updatedDoc, err := NewDocument(burgerShopUpdated)
+
+// if anything went wrong, an error is thrown
+if err != nil {
+    panic(fmt.Sprintf("cannot create new document: %e", err))
+}
+
+// Compare documents for all changes made
+documentChanges, errs := CompareDocuments(originalDoc, updatedDoc)
+    
+// If anything went wrong when building models for documents.
+if len(errs) > 0 {
+    for i := range errs {
+        fmt.Printf("error: %e\n", errs[i])
+    }
+    panic(fmt.Sprintf("cannot compare documents: %d errors reported", len(errs)))
+}
+
+// Extract SchemaChanges from components changes.
+schemaChanges := documentChanges.ComponentsChanges.SchemaChanges
+
+// Print out some interesting stats about the OpenAPI document changes.
+fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
+    documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges))
+
+```
+
+Every change can be explored and navigated just like you would use the high or low level models.
+
 ---
 
 ## But wait, there's more - Mutating the model

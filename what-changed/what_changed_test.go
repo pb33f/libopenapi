@@ -4,6 +4,7 @@
 package what_changed
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -123,4 +124,32 @@ func Benchmark_CompareStripe(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		CompareOpenAPIDocuments(origDoc, modDoc)
 	}
+}
+
+func ExampleCompareOpenAPIDocuments() {
+
+	// Read in a 'left' (original) OpenAPI specification
+	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+
+	// Read in a 'right' (modified) OpenAPI specification
+	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
+
+	// Extract SpecInfo from bytes
+	infoOriginal, _ := datamodel.ExtractSpecInfo(original)
+	infoModified, _ := datamodel.ExtractSpecInfo(modified)
+
+	// Build OpenAPI Documents from SpecInfo
+	origDocument, _ := v3.CreateDocument(infoOriginal)
+	modDocDocument, _ := v3.CreateDocument(infoModified)
+
+	// Compare OpenAPI Documents and extract to *DocumentChanges
+	changes := CompareOpenAPIDocuments(origDocument, modDocDocument)
+
+	// Extract SchemaChanges from components changes.
+	schemaChanges := changes.ComponentsChanges.SchemaChanges
+
+	// Print out some interesting stats.
+	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
+		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
+	//Output: There are 67 changes, of which 17 are breaking. 5 schemas have changes.
 }
