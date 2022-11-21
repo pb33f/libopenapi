@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
@@ -12,7 +13,7 @@ import (
 //
 // An Operation is perhaps the most important object of the entire specification. Everything of value
 // happens here. The entire being for existence of this library and the specification, is this Operation.
-//  - https://spec.openapis.org/oas/v3.1.0#operation-object
+//   - https://spec.openapis.org/oas/v3.1.0#operation-object
 type Operation struct {
 	Tags         []string
 	Summary      string
@@ -73,6 +74,7 @@ func NewOperation(operation *low.Operation) *Operation {
 		servers = append(servers, NewServer(operation.Servers.Value[i].Value))
 	}
 	o.Servers = servers
+	o.Extensions = high.ExtractExtensions(operation.Extensions)
 	return o
 }
 
