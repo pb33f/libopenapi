@@ -21,6 +21,8 @@ import (
 	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
+	what_changed "github.com/pb33f/libopenapi/what-changed"
+	"github.com/pb33f/libopenapi/what-changed/model"
 	"gopkg.in/yaml.v3"
 )
 
@@ -143,4 +145,43 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	return &DocumentModel[v3high.Document]{
 		Model: *highDoc,
 	}, nil
+}
+
+// CompareDocuments will accept a left and right Document implementing struct, build a model for the correct
+// version and then compare model documents for changes.
+//
+// If there are any errors when building the models, those errors are returned with a nil pointer for the
+// model.DocumentChanges. If there are any changes found however between either Document, then a pointer to
+// model.DocumentChanges is returned containing every single change, broken down, model by model.
+func CompareDocuments(original, updated Document) (*model.DocumentChanges, []error) {
+	var errors []error
+	if original.GetSpecInfo().SpecType == utils.OpenApi3 && updated.GetSpecInfo().SpecType == utils.OpenApi3 {
+		v3ModelLeft, errs := original.BuildV3Model()
+		if len(errs) > 0 {
+			errors = errs
+		}
+		v3ModelRight, errs := updated.BuildV3Model()
+		if len(errs) > 0 {
+			errors = errs
+		}
+		if len(errors) > 0 {
+			return nil, errors
+		}
+		return what_changed.CompareOpenAPIDocuments(v3ModelLeft.Model.GoLow(), v3ModelRight.Model.GoLow()), nil
+	}
+	if original.GetSpecInfo().SpecType == utils.OpenApi2 && updated.GetSpecInfo().SpecType == utils.OpenApi2 {
+		v2ModelLeft, errs := original.BuildV2Model()
+		if len(errs) > 0 {
+			errors = errs
+		}
+		v2ModelRight, errs := updated.BuildV2Model()
+		if len(errs) > 0 {
+			errors = errs
+		}
+		if len(errors) > 0 {
+			return nil, errors
+		}
+		return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), nil
+	}
+	return nil, nil
 }
