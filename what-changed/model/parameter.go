@@ -12,15 +12,16 @@ import (
 	"reflect"
 )
 
+// ParameterChanges represents changes found between Swagger or OpenAPI Parameter objects.
 type ParameterChanges struct {
 	PropertyChanges
 	SchemaChanges    *SchemaChanges    `json:"schemas,omitempty" yaml:"schemas,omitempty"`
 	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 
-	// v2 change types
+	// Swagger supports Items.
 	ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 
-	// v3 change types
+	// OpenAPI supports examples and content types.
 	ExamplesChanges map[string]*ExampleChanges   `json:"examples,omitempty" yaml:"examples,omitempty"`
 	ContentChanges  map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
 }
@@ -191,14 +192,13 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 	return props
 }
 
+// CompareParametersV3 is amn OpenAPI type safe proxy for CompareParameters
 func CompareParametersV3(l, r *v3.Parameter) *ParameterChanges {
 	return CompareParameters(l, r)
 }
 
-func CompareParametersV2(l, r *v2.Parameter) *ParameterChanges {
-	return CompareParameters(l, r)
-}
-
+// CompareParameters compares a left and right Swagger or OpenAPI Parameter object for any changes. If found returns
+// a pointer to ParameterChanges. If nothing is found, returns nil.
 func CompareParameters(l, r any) *ParameterChanges {
 
 	var changes []*Change

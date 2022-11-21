@@ -10,6 +10,7 @@ import (
 	"reflect"
 )
 
+// PathItemChanges represents changes found between to Swagger or OpenAPI PathItem object.
 type PathItemChanges struct {
 	PropertyChanges
 	GetChanges       *OperationChanges   `json:"get,omitempty" yaml:"get,omitempty"`
@@ -25,6 +26,7 @@ type PathItemChanges struct {
 	ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns the total number of changes found between two Swagger or OpenAPI PathItems
 func (p *PathItemChanges) TotalChanges() int {
 	c := p.PropertyChanges.TotalChanges()
 	if p.GetChanges != nil {
@@ -63,6 +65,7 @@ func (p *PathItemChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes found between two Swagger or OpenAPI PathItems
 func (p *PathItemChanges) TotalBreakingChanges() int {
 	c := p.PropertyChanges.TotalBreakingChanges()
 	if p.GetChanges != nil {
@@ -103,10 +106,13 @@ type opCheck struct {
 	changes *OperationChanges
 }
 
+// ComparePathItemsV3 is an OpenAPI typesafe proxy method for ComparePathItems
 func ComparePathItemsV3(l, r *v3.PathItem) *PathItemChanges {
 	return ComparePathItems(l, r)
 }
 
+// ComparePathItems compare a left and right Swagger or OpenAPI PathItem object for changes. If found, returns
+// a pointer to PathItemChanges, or returns nil if nothing is found.
 func ComparePathItems(l, r any) *PathItemChanges {
 
 	var changes []*Change

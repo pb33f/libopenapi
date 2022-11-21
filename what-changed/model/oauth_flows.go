@@ -151,7 +151,8 @@ func (o *OAuthFlowChanges) TotalBreakingChanges() int {
 	return o.PropertyChanges.TotalBreakingChanges()
 }
 
-// CompareOAuthFlow checks a left and a right OAuthFlow object
+// CompareOAuthFlow checks a left and a right OAuthFlow object for changes. If found, returns a pointer to
+// an OAuthFlowChanges instance, or nil if nothing is found.
 func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 	if low.AreEqual(l, r) {
 		return nil

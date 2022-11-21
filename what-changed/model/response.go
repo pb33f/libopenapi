@@ -10,21 +10,23 @@ import (
 	"reflect"
 )
 
+// ResponseChanges represents changes found between two Swagger or OpenAPI Response objects.
 type ResponseChanges struct {
 	PropertyChanges
 	ExtensionChanges *ExtensionChanges         `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 	HeadersChanges   map[string]*HeaderChanges `json:"headers,omitempty" yaml:"headers,omitempty"`
 
-	// v2
+	// Swagger Response Properties.
 	SchemaChanges   *SchemaChanges   `json:"schemas,omitempty" yaml:"schemas,omitempty"`
 	ExamplesChanges *ExamplesChanges `json:"examples,omitempty" yaml:"examples,omitempty"`
 
-	// v3
+	// OpenAPI Response Properties.
 	ContentChanges map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
 	LinkChanges    map[string]*LinkChanges      `json:"links,omitempty" yaml:"links,omitempty"`
 	ServerChanges  *ServerChanges               `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
+// TotalChanges returns the total number of changes found between two Swagger or OpenAPI Response Objects
 func (r *ResponseChanges) TotalChanges() int {
 	c := r.PropertyChanges.TotalChanges()
 	if r.ExtensionChanges != nil {
@@ -48,6 +50,8 @@ func (r *ResponseChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of breaking changes found between two swagger or OpenAPI
+// Response Objects
 func (r *ResponseChanges) TotalBreakingChanges() int {
 	c := r.PropertyChanges.TotalBreakingChanges()
 	if r.SchemaChanges != nil {
@@ -65,14 +69,18 @@ func (r *ResponseChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareResponseV2 is a Swagger type safe proxy for CompareResponse
 func CompareResponseV2(l, r *v2.Response) *ResponseChanges {
 	return CompareResponse(l, r)
 }
 
+// CompareResponseV3 is an OpenAPI type safe proxy for CompareResponse
 func CompareResponseV3(l, r *v3.Response) *ResponseChanges {
 	return CompareResponse(l, r)
 }
 
+// CompareResponse compares a left and right Swagger or OpenAPI Response object. If anything is found
+// a pointer to a ResponseChanges is returned, otherwise it returns nil.
 func CompareResponse(l, r any) *ResponseChanges {
 
 	var changes []*Change

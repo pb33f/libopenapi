@@ -11,12 +11,14 @@ import (
 	"sync"
 )
 
+// PathsChanges represents changes found between two Swagger or OpenAPI Paths Objects.
 type PathsChanges struct {
 	PropertyChanges
 	PathItemsChanges map[string]*PathItemChanges `json:"pathItems,omitempty" yaml:"pathItems,omitempty"`
 	ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns the total number of changes between two Swagger or OpenAPI Paths Objects
 func (p *PathsChanges) TotalChanges() int {
 	c := p.PropertyChanges.TotalChanges()
 	for k := range p.PathItemsChanges {
@@ -28,6 +30,7 @@ func (p *PathsChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns tht total number of changes found between two Swagger or OpenAPI Path Objects
 func (p *PathsChanges) TotalBreakingChanges() int {
 	c := p.PropertyChanges.TotalBreakingChanges()
 	for k := range p.PathItemsChanges {
@@ -36,6 +39,8 @@ func (p *PathsChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// ComparePaths compares a left and right Swagger or OpenAPI Paths Object for changes. If found, returns a pointer
+// to a PathsChanges instance. Returns nil if nothing is found.
 func ComparePaths(l, r any) *PathsChanges {
 
 	var changes []*Change

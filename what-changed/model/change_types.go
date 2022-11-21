@@ -94,6 +94,8 @@ type Change struct {
 
 // PropertyChanges holds a slice of Change pointers
 type PropertyChanges struct {
+	//Total *int `json:"total,omitempty" yaml:"total,omitempty"`
+	//Breaking *int `json:"breaking,omitempty" yaml:"breaking,omitempty"`
 	Changes []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
 }
 

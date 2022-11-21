@@ -10,6 +10,7 @@ import (
 	"reflect"
 )
 
+// ResponsesChanges represents changes made between two Swagger or OpenAPI Responses objects.
 type ResponsesChanges struct {
 	PropertyChanges
 	ResponseChanges  map[string]*ResponseChanges `json:"response,omitempty" yaml:"response,omitempty"`
@@ -17,6 +18,7 @@ type ResponsesChanges struct {
 	ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// TotalChanges returns the total number of changes found between two Swagger or OpenAPI Responses objects
 func (r *ResponsesChanges) TotalChanges() int {
 	c := r.PropertyChanges.TotalChanges()
 	for k := range r.ResponseChanges {
@@ -31,6 +33,8 @@ func (r *ResponsesChanges) TotalChanges() int {
 	return c
 }
 
+// TotalBreakingChanges returns the total number of changes found between two Swagger or OpenAPI
+// Responses Objects
 func (r *ResponsesChanges) TotalBreakingChanges() int {
 	c := r.PropertyChanges.TotalBreakingChanges()
 	for k := range r.ResponseChanges {
@@ -42,6 +46,8 @@ func (r *ResponsesChanges) TotalBreakingChanges() int {
 	return c
 }
 
+// CompareResponses compares a left and right Swagger or OpenAPI Responses object for any changes. If found
+// returns a pointer to ResponsesChanges, or returns nil.
 func CompareResponses(l, r any) *ResponsesChanges {
 
 	var changes []*Change
