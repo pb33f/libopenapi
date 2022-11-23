@@ -13,7 +13,7 @@ import (
 
 // MediaTypeChanges represent changes made between two OpenAPI MediaType instances.
 type MediaTypeChanges struct {
-    PropertyChanges
+    *PropertyChanges
     SchemaChanges    *SchemaChanges              `json:"schemas,omitempty" yaml:"schemas,omitempty"`
     ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
     ExampleChanges   map[string]*ExampleChanges  `json:"examples,omitempty" yaml:"examples,omitempty"`
@@ -130,7 +130,7 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
         &changes, v3.EncodingLabel, CompareEncoding)
 
     mc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
-    mc.Changes = changes
+    mc.PropertyChanges = NewPropertyChanges(changes)
 
     if mc.TotalChanges() <= 0 {
         return nil

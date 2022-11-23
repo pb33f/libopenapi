@@ -10,7 +10,7 @@ import (
 
 // ExamplesChanges represents changes made between Swagger Examples objects (Not OpenAPI 3).
 type ExamplesChanges struct {
-    PropertyChanges
+    *PropertyChanges
 }
 
 // TotalChanges represents the total number of changes made between Example instances.
@@ -73,7 +73,7 @@ func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
     }
 
     ex := new(ExamplesChanges)
-    ex.Changes = changes
+    ex.PropertyChanges = NewPropertyChanges(changes)
     if ex.TotalChanges() <= 0 {
         return nil
     }
