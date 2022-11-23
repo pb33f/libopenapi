@@ -14,7 +14,7 @@ import (
 
 // ExampleChanges represent changes to an Example object, part of an OpenAPI specification.
 type ExampleChanges struct {
-    PropertyChanges
+    *PropertyChanges
     ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
@@ -174,7 +174,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 
     // check extensions
     ec.ExtensionChanges = CheckExtensions(l, r)
-    ec.Changes = changes
+    ec.PropertyChanges = NewPropertyChanges(changes)
     if ec.TotalChanges() <= 0 {
         return nil
     }
