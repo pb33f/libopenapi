@@ -93,9 +93,15 @@ func NewSchema(schema *base.Schema) *Schema {
 	s := new(Schema)
 	s.low = schema
 	s.Title = schema.Title.Value
-	s.MultipleOf = &schema.MultipleOf.Value
-	s.Maximum = &schema.Maximum.Value
-	s.Minimum = &schema.Minimum.Value
+	if !schema.MultipleOf.IsEmpty() {
+		s.MultipleOf = &schema.MultipleOf.Value
+	}
+	if !schema.Maximum.IsEmpty() {
+		s.Maximum = &schema.Maximum.Value
+	}
+	if !schema.Minimum.IsEmpty() {
+		s.Minimum = &schema.Minimum.Value
+	}
 	// if we're dealing with a 3.0 spec using a bool
 	if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsA() {
 		s.ExclusiveMaximumBool = &schema.ExclusiveMaximum.Value.A

@@ -394,6 +394,112 @@ func TestSchemaProxy_GoLow(t *testing.T) {
 	assert.Nil(t, spNil.GoLow())
 }
 
+func getHighSchema(t *testing.T, yml string) *Schema {
+	// unmarshal raw bytes
+	var node yaml.Node
+	assert.NoError(t, yaml.Unmarshal([]byte(yml), &node))
+
+	// build out the low-level model
+	var lowSchema lowbase.Schema
+	assert.NoError(t, low.BuildModel(node.Content[0], &lowSchema))
+	assert.NoError(t, lowSchema.Build(node.Content[0], nil))
+
+	// build the high level model
+	return NewSchema(&lowSchema)
+}
+
+func TestSchemaNumberNoValidation(t *testing.T) {
+	yml := `
+type: number
+`
+	highSchema := getHighSchema(t, yml)
+
+	assert.Nil(t, highSchema.MultipleOf)
+	assert.Nil(t, highSchema.Minimum)
+	assert.Nil(t, highSchema.ExclusiveMinimum)
+	assert.Nil(t, highSchema.ExclusiveMinimumBool)
+	assert.Nil(t, highSchema.Maximum)
+	assert.Nil(t, highSchema.ExclusiveMaximum)
+	assert.Nil(t, highSchema.ExclusiveMaximumBool)
+}
+
+func TestSchemaNumberMultipleOf(t *testing.T) {
+	yml := `
+type: number
+multipleOf: 5
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(5)
+	assert.EqualValues(t, &value, highSchema.MultipleOf)
+}
+
+func TestSchemaNumberMinimum(t *testing.T) {
+	yml := `
+type: number
+minimum: 5
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(5)
+	assert.EqualValues(t, &value, highSchema.Minimum)
+}
+
+func TestSchemaNumberMinimumZero(t *testing.T) {
+	yml := `
+type: number
+minimum: 0
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(0)
+	assert.EqualValues(t, &value, highSchema.Minimum)
+}
+
+func TestSchemaNumberExclusiveMinimum(t *testing.T) {
+	yml := `
+type: number
+exclusiveMinimum: 5
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(5)
+	assert.EqualValues(t, &value, highSchema.ExclusiveMinimum)
+}
+
+func TestSchemaNumberMaximum(t *testing.T) {
+	yml := `
+type: number
+maximum: 5
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(5)
+	assert.EqualValues(t, &value, highSchema.Maximum)
+}
+
+func TestSchemaNumberMaximumZero(t *testing.T) {
+	yml := `
+type: number
+maximum: 0
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(0)
+	assert.EqualValues(t, &value, highSchema.Maximum)
+}
+
+func TestSchemaNumberExclusiveMaximum(t *testing.T) {
+	yml := `
+type: number
+exclusiveMaximum: 5
+`
+	highSchema := getHighSchema(t, yml)
+
+	value := int64(5)
+	assert.EqualValues(t, &value, highSchema.ExclusiveMaximum)
+}
+
 func ExampleNewSchema() {
 
 	// create an example schema object
@@ -413,7 +519,7 @@ properties:
 
 	// build out the low-level model
 	var lowSchema lowbase.Schema
-	_ = low.BuildModel(&node, &lowSchema)
+	_ = low.BuildModel(node.Content[0], &lowSchema)
 	_ = lowSchema.Build(node.Content[0], nil)
 
 	// build the high level model
@@ -444,7 +550,7 @@ properties:
 
 	// build out the low-level model
 	var lowSchema lowbase.SchemaProxy
-	_ = low.BuildModel(&node, &lowSchema)
+	_ = low.BuildModel(node.Content[0], &lowSchema)
 	_ = lowSchema.Build(node.Content[0], nil)
 
 	// build the high level schema proxy
