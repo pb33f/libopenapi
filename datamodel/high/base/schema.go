@@ -165,6 +165,13 @@ func NewSchema(schema *base.Schema) *Schema {
 		s.Deprecated = &schema.Deprecated.Value
 	}
 	s.Example = schema.Example.Value
+	if len(schema.Examples.Value) > 0 {
+		examples := make([]any, len(schema.Examples.Value))
+		for i := 0; i < len(schema.Examples.Value); i++ {
+			examples[i] = schema.Examples.Value[i].Value
+		}
+		s.Examples = examples
+	}
 	s.Extensions = high.ExtractExtensions(schema.Extensions)
 	if !schema.Discriminator.IsEmpty() {
 		s.Discriminator = NewDiscriminator(schema.Discriminator.Value)
