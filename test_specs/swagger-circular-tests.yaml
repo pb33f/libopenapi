@@ -1,0 +1,51 @@
+swagger: "2.0"
+paths:
+  /burgers:
+    post:
+      responses:
+        200:
+          schema:
+            $ref: '#/definitions/Nine'
+definitions:
+  One:
+    description: "test one"
+    properties:
+      things:
+        "$ref": "#/definitions/Two"
+  Two:
+    description: "test two"
+    properties:
+      testThing:
+        "$ref": "#/definitions/One"
+  Three:
+    description: "test three"
+    properties:
+      tester:
+        "$ref": "#/definitions/Four"
+      bester:
+        "$ref": "#/definitions/Seven"
+      yester:
+        "$ref": "#/definitions/Seven"
+  Four:
+    description: "test four"
+    properties:
+      lemons:
+        "$ref": "#/definitions/Nine"
+  Five:
+    properties:
+      rice:
+        "$ref": "#/definitions/Six"
+  Six:
+    properties:
+      mints:
+        "$ref": "#/definitions/Nine"
+  Seven:
+    properties:
+      wow:
+        "$ref": "#/definitions/Three"
+  Nine:
+    description: done.
+  Ten:
+    properties:
+      yeah:
+        "$ref": "#/definitions/Ten"
