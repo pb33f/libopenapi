@@ -306,6 +306,8 @@ func TestNewDocument_Paths(t *testing.T) {
     assert.Len(t, h.Paths.PathItems, 5)
 
     burgersOp := h.Paths.PathItems["/burgers"]
+
+    assert.Len(t, burgersOp.GetOperations(), 1)
     assert.Equal(t, "meaty", burgersOp.Extensions["x-burger-meta"])
     assert.Nil(t, burgersOp.Get)
     assert.Nil(t, burgersOp.Put)
