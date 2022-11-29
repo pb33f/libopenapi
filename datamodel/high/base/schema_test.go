@@ -500,6 +500,18 @@ exclusiveMaximum: 5
 	assert.EqualValues(t, &value, highSchema.ExclusiveMaximum)
 }
 
+func TestSchemaExamples(t *testing.T) {
+	yml := `
+type: number
+examples:
+- 5
+- 10
+`
+	highSchema := getHighSchema(t, yml)
+
+	assert.Equal(t, []any{int64(5), int64(10)}, highSchema.Examples)
+}
+
 func ExampleNewSchema() {
 
 	// create an example schema object
