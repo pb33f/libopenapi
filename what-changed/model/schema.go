@@ -276,18 +276,14 @@ func checkPropertiesPropertyOfASchema(
     rKeyNodes := make(map[string]*yaml.Node)
 
     for w := range lSchema.Properties.Value {
-        if !lSchema.Properties.Value[w].Value.IsSchemaReference() {
-            lProps = append(lProps, w.Value)
-            lEntities[w.Value] = lSchema.Properties.Value[w].Value
-            lKeyNodes[w.Value] = w.KeyNode
-        }
+        lProps = append(lProps, w.Value)
+        lEntities[w.Value] = lSchema.Properties.Value[w].Value
+        lKeyNodes[w.Value] = w.KeyNode
     }
     for w := range rSchema.Properties.Value {
-        if !rSchema.Properties.Value[w].Value.IsSchemaReference() {
-            rProps = append(rProps, w.Value)
-            rEntities[w.Value] = rSchema.Properties.Value[w].Value
-            rKeyNodes[w.Value] = w.KeyNode
-        }
+        rProps = append(rProps, w.Value)
+        rEntities[w.Value] = rSchema.Properties.Value[w].Value
+        rKeyNodes[w.Value] = w.KeyNode
     }
     sort.Strings(lProps)
     sort.Strings(rProps)
@@ -334,13 +330,15 @@ func checkPropertiesPropertyOfASchema(
     // something removed
     if len(lProps) > len(rProps) {
         for w := range lProps {
-            if w < len(rProps) {
+
+            if rEntities[lProps[w]] != nil {
                 totalProperties++
-                go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
-            }
-            if w >= len(rProps) {
+                go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[lProps[w]], propChanges, doneChan)
+                continue
+            } else {
                 CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
                     lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+                continue
             }
         }
     }
@@ -348,16 +346,17 @@ func checkPropertiesPropertyOfASchema(
     // something added
     if len(rProps) > len(lProps) {
         for w := range rProps {
-            if w < len(lProps) {
+            if lEntities[rProps[w]] != nil {
                 totalProperties++
-                go checkProperty(rProps[w], lEntities[lProps[w]], rEntities[rProps[w]], propChanges, doneChan)
-            }
-            if w >= len(lProps) {
+                go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+            } else {
                 CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
                     nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+                continue
             }
         }
     }
+
     sc.SchemaPropertyChanges = propChanges
     return totalProperties
 }
