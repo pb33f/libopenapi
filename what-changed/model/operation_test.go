@@ -988,6 +988,184 @@ func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 	assert.Equal(t, PropertyAdded, extChanges.ServerChanges[0].Changes[0].ChangeType)
 }
 
+func TestCompareOperations_V3_ModifyCallback(t *testing.T) {
+
+	left := `callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old`
+
+	right := `callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something new!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, Modified, extChanges.
+		CallbackChanges["myCallback"].
+		ExpressionChanges["{$request.query.queryUrl}"].
+		PostChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddCallback(t *testing.T) {
+
+	left := `callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old`
+
+	right := `callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old
+  aNewCallback:
+    aLovelyHorse:
+      post:
+        description: something new!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddCallbacks(t *testing.T) {
+
+	left := `operationId: 123`
+
+	right := `operationId: 123
+callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old
+  aNewCallback:
+    aLovelyHorse:
+      post:
+        description: something new!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveCallbacks(t *testing.T) {
+
+	left := `operationId: 123`
+
+	right := `operationId: 123
+callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old
+  aNewCallback:
+    aLovelyHorse:
+      post:
+        description: something new!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
+
+	left := `callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old`
+
+	right := `callbacks:
+  myCallback:
+    '{$request.query.queryUrl}':
+      post:
+        description: something old
+  aNewCallback:
+    aLovelyHorse:
+      post:
+        description: something new!`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+}
+
 func TestCompareOperations_V3_AddServer(t *testing.T) {
 
 	left := `servers:

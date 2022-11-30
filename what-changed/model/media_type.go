@@ -4,7 +4,6 @@
 package model
 
 import (
-    "fmt"
     "github.com/pb33f/libopenapi/datamodel/low"
     "github.com/pb33f/libopenapi/datamodel/low/v3"
     "github.com/pb33f/libopenapi/utils"
@@ -74,14 +73,12 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
     if !l.Example.IsEmpty() && !r.Example.IsEmpty() {
         if (utils.IsNodeMap(l.Example.ValueNode) && utils.IsNodeMap(r.Example.ValueNode)) ||
             (utils.IsNodeArray(l.Example.ValueNode) && utils.IsNodeArray(r.Example.ValueNode)) {
-            render, err := yaml.Marshal(l.Example.ValueNode)
-            if err != nil {
-                l.Example.ValueNode.Value = fmt.Sprintf("%s", render)
-            }
-            render, err = yaml.Marshal(r.Example.ValueNode)
-            if err == nil {
-                r.Example.ValueNode.Value = fmt.Sprintf("%s", render)
-            }
+            render, _ := yaml.Marshal(l.Example.ValueNode)
+            render, _ = utils.ConvertYAMLtoJSON(render)
+            l.Example.ValueNode.Value = string(render)
+            render, _ = yaml.Marshal(r.Example.ValueNode)
+            render, _ = utils.ConvertYAMLtoJSON(render)
+            r.Example.ValueNode.Value = string(render)
         }
         addPropertyCheck(&props, l.Example.ValueNode, r.Example.ValueNode,
             l.Example.Value, r.Example.Value, &changes, v3.ExampleLabel, false)
@@ -89,17 +86,15 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
     } else {
 
         if utils.IsNodeMap(l.Example.ValueNode) || utils.IsNodeArray(l.Example.ValueNode) {
-            render, err := yaml.Marshal(l.Example.ValueNode)
-            if err != nil {
-                l.Example.ValueNode.Value = fmt.Sprint(render)
-            }
+            render, _ := yaml.Marshal(l.Example.ValueNode)
+            render, _ = utils.ConvertYAMLtoJSON(render)
+            l.Example.ValueNode.Value = string(render)
         }
 
         if utils.IsNodeMap(r.Example.ValueNode) || utils.IsNodeArray(r.Example.ValueNode) {
-            render, err := yaml.Marshal(r.Example.ValueNode)
-            if err == nil {
-                r.Example.ValueNode.Value = fmt.Sprintf("%s", render)
-            }
+            render, _ := yaml.Marshal(r.Example.ValueNode)
+            render, _ = utils.ConvertYAMLtoJSON(render)
+            r.Example.ValueNode.Value = string(render)
         }
 
         addPropertyCheck(&props, l.Example.ValueNode, r.Example.ValueNode,
@@ -131,9 +126,5 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
     mc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
     mc.PropertyChanges = NewPropertyChanges(changes)
-
-    if mc.TotalChanges() <= 0 {
-        return nil
-    }
     return mc
 }

@@ -89,6 +89,104 @@ encoding:
 	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
 }
 
+func TestCompareMediaTypes_Modify_Examples(t *testing.T) {
+
+	left := `schema:
+  type: string
+example:
+  smoke: and a pancake?`
+
+	right := `schema:
+  type: string
+example:
+  smoke: and a pancake?
+  pipe: pipe and a crepe?`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.MediaType
+	var rDoc v3.MediaType
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareMediaTypes(&lDoc, &rDoc)
+	assert.NotNil(t, extChanges)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
+}
+
+func TestCompareMediaTypes_ExampleChangedToMap(t *testing.T) {
+
+	left := `schema:
+  type: string`
+
+	right := `schema:
+  type: string
+example:
+  smoke: and a pancake?
+  pipe: pipe and a crepe?`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.MediaType
+	var rDoc v3.MediaType
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareMediaTypes(&lDoc, &rDoc)
+	assert.NotNil(t, extChanges)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
+}
+
+func TestCompareMediaTypes_ExampleMapRemoved(t *testing.T) {
+
+	left := `schema:
+  type: string`
+
+	right := `schema:
+  type: string
+example:
+  smoke: and a pancake?
+  pipe: pipe and a crepe?`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.MediaType
+	var rDoc v3.MediaType
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareMediaTypes(&rDoc, &lDoc)
+	assert.NotNil(t, extChanges)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
+}
+
 func TestCompareMediaTypes_AddSchema(t *testing.T) {
 
 	left := `example: tasty herbs in the morning
