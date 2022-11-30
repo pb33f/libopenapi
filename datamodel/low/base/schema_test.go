@@ -981,6 +981,23 @@ func TestExtractSchema(t *testing.T) {
 	assert.Equal(t, "this is something", aValue.Value.Schema().Description.Value)
 }
 
+func TestExtractSchema_DefaultPrimitive(t *testing.T) {
+
+	yml := `
+schema: 
+  type: object
+  default: 5`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, res.Value)
+	sch := res.Value.Schema()
+	assert.Equal(t, 5, sch.Default.Value)
+}
+
 func TestExtractSchema_Ref(t *testing.T) {
 
 	yml := `components:
