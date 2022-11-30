@@ -121,11 +121,9 @@ func SetField(field reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) err
 		if valueNode != nil {
 			var decoded interface{}
 			_ = valueNode.Decode(&decoded)
-			if utils.IsNodeMap(valueNode) {
-				if field.CanSet() {
-					or := NodeReference[any]{Value: decoded, ValueNode: valueNode}
-					field.Set(reflect.ValueOf(or))
-				}
+			if field.CanSet() {
+				or := NodeReference[any]{Value: decoded, ValueNode: valueNode, KeyNode: keyNode}
+				field.Set(reflect.ValueOf(or))
 			}
 		}
 		break
