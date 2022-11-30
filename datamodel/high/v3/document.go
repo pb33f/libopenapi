@@ -48,7 +48,7 @@ type Document struct {
 	// to authorize a request. Individual operations can override this definition. To make security optional,
 	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
-	Security *base.SecurityRequirement
+	Security []*base.SecurityRequirement
 
 	// Tags is a slice of base.Tag instances defined by the specification
 	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on
@@ -121,17 +121,24 @@ func NewDocument(document *low.Document) *Document {
 	if !document.Paths.IsEmpty() {
 		d.Paths = NewPaths(document.Paths.Value)
 	}
-	if !document.JsonSchemaDialect.IsEmpty() {
-		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
-	}
-	if !document.Webhooks.IsEmpty() {
-		hooks := make(map[string]*PathItem)
-		for h := range document.Webhooks.Value {
-			hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
-		}
-		d.Webhooks = hooks
-	}
-	return d
+    if !document.JsonSchemaDialect.IsEmpty() {
+        d.JsonSchemaDialect = document.JsonSchemaDialect.Value
+    }
+    if !document.Webhooks.IsEmpty() {
+        hooks := make(map[string]*PathItem)
+        for h := range document.Webhooks.Value {
+            hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
+        }
+        d.Webhooks = hooks
+    }
+    if !document.Security.IsEmpty() {
+        var security []*base.SecurityRequirement
+        for s := range document.Security.Value {
+            security = append(security, base.NewSecurityRequirement(document.Security.Value[s].Value))
+        }
+        d.Security = security
+    }
+    return d
 }
 
 // GoLow returns the low-level Document that was used to create the high level one.
