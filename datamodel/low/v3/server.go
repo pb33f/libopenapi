@@ -19,6 +19,7 @@ type Server struct {
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]
 	Variables   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]
+	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
 // FindVariable attempts to locate a ServerVariable instance using the supplied key.
@@ -28,6 +29,7 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 
 // Build will extract server variables from the supplied node.
 func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	s.Extensions = low.ExtractExtensions(root)
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)
 	if vars == nil {
 		return nil

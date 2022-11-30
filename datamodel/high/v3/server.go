@@ -3,7 +3,10 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v3"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+)
 
 // Server represents a high-level OpenAPI 3+ Server object, that is backed by a low level one.
 //  - https://spec.openapis.org/oas/v3.1.0#server-object
@@ -11,6 +14,7 @@ type Server struct {
 	URL         string
 	Description string
 	Variables   map[string]*ServerVariable
+	Extensions  map[string]any
 	low         *low.Server
 }
 
@@ -25,6 +29,7 @@ func NewServer(server *low.Server) *Server {
 		vars[k.Value] = NewServerVariable(val.Value)
 	}
 	s.Variables = vars
+	s.Extensions = high.ExtractExtensions(server.Extensions)
 	return s
 }
 
