@@ -365,7 +365,7 @@ func CompareOperations(l, r any) *OperationChanges {
         }
         if lOperation.Callbacks.IsEmpty() && !rOperation.Callbacks.IsEmpty() {
             CreateChange(&changes, PropertyAdded, v3.CallbacksLabel,
-                nil, rOperation.Callbacks.ValueNode, true, nil,
+                nil, rOperation.Callbacks.ValueNode, false, nil,
                 rOperation.Callbacks.Value)
         }
 
