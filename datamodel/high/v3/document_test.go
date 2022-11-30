@@ -43,6 +43,15 @@ func TestNewDocument_ExternalDocs(t *testing.T) {
     assert.Equal(t, "https://pb33f.io", h.ExternalDocs.URL)
 }
 
+func TestNewDocument_Security(t *testing.T) {
+    initTest()
+    h := NewDocument(lowDoc)
+    assert.Len(t, h.Security, 1)
+    assert.Len(t, h.Security[0].Requirements, 1)
+    assert.Len(t, h.Security[0].Requirements["OAuthScheme"], 2)
+
+}
+
 func TestNewDocument_Info(t *testing.T) {
     initTest()
     highDoc := NewDocument(lowDoc)
