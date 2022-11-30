@@ -54,7 +54,15 @@ func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
 	if expNode != nil {
-		mt.Example = low.NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
+		var value string
+		if utils.IsNodeMap(expNode) || utils.IsNodeArray(expNode) {
+			y, _ := yaml.Marshal(expNode)
+			z, _ := utils.ConvertYAMLtoJSON(y)
+			value = fmt.Sprintf("%s", z)
+		} else {
+			value = expNode.Value
+		}
+		mt.Example = low.NodeReference[any]{Value: value, KeyNode: expLabel, ValueNode: expNode}
 	}
 
 	//handle schema

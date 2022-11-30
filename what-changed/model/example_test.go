@@ -39,6 +39,91 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 	assert.Equal(t, "cure all", extChanges.Changes[0].New)
 }
 
+func TestCompareExamples_Map(t *testing.T) {
+
+	left := `value:
+  cheesy: bread
+  pasta: sauce`
+
+	right := `value:
+  cheesy: cakes
+  pasta: spicy`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Example
+	var rDoc base.Example
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	extChanges := CompareExamples(&lDoc, &rDoc)
+
+	assert.Equal(t, extChanges.TotalChanges(), 2)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareExamples_MapAdded(t *testing.T) {
+
+	left := `value:
+  cheesy: bread`
+
+	right := `value:
+  cheesy: bread
+  pasta: sauce`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Example
+	var rDoc base.Example
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	extChanges := CompareExamples(&lDoc, &rDoc)
+
+	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+}
+
+func TestCompareExamples_MapRemoved(t *testing.T) {
+
+	left := `value:
+  cheesy: bread`
+
+	right := `value:
+  cheesy: bread
+  pasta: sauce`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Example
+	var rDoc base.Example
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	extChanges := CompareExamples(&rDoc, &lDoc)
+
+	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+}
+
 func TestCompareExamples_SummaryAdded(t *testing.T) {
 
 	left := `summary: magic herbs`
