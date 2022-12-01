@@ -53,6 +53,11 @@ func TestNewSchemaProxy(t *testing.T) {
 	sch1 := SchemaProxy{schema: &lowproxy}
 	assert.Nil(t, sch1.Schema())
 	assert.Error(t, sch1.GetBuildError())
+
+	g, o := sch1.BuildSchema()
+	assert.Nil(t, g)
+	assert.Error(t, o)
+
 }
 
 func TestNewSchemaProxy_WithObject(t *testing.T) {
