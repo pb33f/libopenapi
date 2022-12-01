@@ -63,6 +63,13 @@ func (sp *SchemaProxy) Schema() *Schema {
 	return NewSchema(s)
 }
 
+// BuildSchema operates the same way as Schema, except it will return any error along with the *Schema
+func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
+	schema := sp.Schema()
+	er := sp.buildError
+	return schema, er
+}
+
 // GetBuildError returns any error that was thrown when calling Schema()
 func (sp *SchemaProxy) GetBuildError() error {
 	return sp.buildError
