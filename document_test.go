@@ -5,9 +5,11 @@ package libopenapi
 
 import (
     "fmt"
+    "github.com/pb33f/libopenapi/resolver"
     "github.com/pb33f/libopenapi/utils"
     "github.com/stretchr/testify/assert"
     "io/ioutil"
+    "strings"
     "testing"
 )
 
@@ -477,3 +479,58 @@ func TestDocument_Paths_As_Array(t *testing.T) {
     v3Model, _ := doc.BuildV3Model()
     assert.NotNil(t, v3Model)
 }
+
+// If you want to know more about circular references that have been found
+// during the parsing/indexing/building of a document, you can capture the
+// []errors thrown which are pointers to *resolver.ResolvingError
+func ExampleNewDocument_circular_references() {
+
+    // create a specification with an obvious and deliberate circular reference
+    spec := `openapi: "3.1"
+components:
+  schemas:
+    One:
+      description: "test one"
+      properties:
+        things:
+          "$ref": "#/components/schemas/Two"
+    Two:
+      description: "test two"
+      properties:
+        testThing:
+          "$ref": "#/components/schemas/One"
+`
+    // create a new document from specification bytes
+    doc, err := NewDocument([]byte(spec))
+
+    // if anything went wrong, an error is thrown
+    if err != nil {
+        panic(fmt.Sprintf("cannot create new document: %e", err))
+    }
+    _, errs := doc.BuildV3Model()
+
+    // extract resolving error
+    resolvingError := errs[0]
+
+    // resolving error is a pointer to *resolver.ResolvingError
+    // which provides access to rich details about the error.
+    circularReference := resolvingError.(*resolver.ResolvingError).CircularReference
+
+    // capture the journey with all details
+    var buf strings.Builder
+    for n := range circularReference.Journey {
+
+        // add the full definition name to the journey.
+        buf.WriteString(circularReference.Journey[n].Definition)
+        if n < len(circularReference.Journey)-1 {
+            buf.WriteString(" -> ")
+        }
+    }
+
+    // print out the journey and the loop point.
+    fmt.Printf("Journey: %s\n", buf.String())
+    fmt.Printf("Loop Point: %s", circularReference.LoopPoint.Definition)
+    // Output: Journey: #/components/schemas/Two -> #/components/schemas/One -> #/components/schemas/Two
+    // Loop Point: #/components/schemas/Two
+}
+

@@ -12,9 +12,22 @@ import (
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
 type ResolvingError struct {
-	Error error
-	Node  *yaml.Node
-	Path  string
+	// ErrorRef is the error thrown by the resolver
+	ErrorRef error
+
+	// Node is the *yaml.Node reference that contains the resolving error
+	Node *yaml.Node
+
+	// Path is the shortened journey taken by the resolver
+	Path string
+
+	// CircularReference is set if the error is a reference to the circular reference.
+	CircularReference *index.CircularReferenceResult
+}
+
+func (r *ResolvingError) Error() string {
+	return fmt.Sprintf("%s: %s [%d:%d]", r.ErrorRef.Error(),
+		r.Path, r.Node.Line, r.Node.Column)
 }
 
 // Resolver will use a *index.SpecIndex to stitch together a resolved root tree using all the discovered
@@ -106,9 +119,9 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 
 	for _, circRef := range resolver.circularReferences {
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			Error: fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
-			Node:  circRef.LoopPoint.Node,
-			Path:  circRef.GenerateJourneyPath(),
+			ErrorRef: fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
+			Node:     circRef.LoopPoint.Node,
+			Path:     circRef.GenerateJourneyPath(),
 		})
 	}
 
@@ -135,9 +148,10 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 	}
 	for _, circRef := range resolver.circularReferences {
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			Error: fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
-			Node:  circRef.LoopPoint.Node,
-			Path:  circRef.GenerateJourneyPath(),
+			ErrorRef:          fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
+			Node:              circRef.LoopPoint.Node,
+			Path:              circRef.GenerateJourneyPath(),
+			CircularReference: circRef,
 		})
 	}
 	// update our index with any circular refs we found.
@@ -231,9 +245,9 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 					// TODO handle error, missing ref, can't resolve.
 					_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(value)
 					err := &ResolvingError{
-						Error: fmt.Errorf("cannot resolve reference `%s`, it's missing", value),
-						Node:  n,
-						Path:  path,
+						ErrorRef: fmt.Errorf("cannot resolve reference `%s`, it's missing", value),
+						Node:     n,
+						Path:     path,
 					}
 					resolver.resolvingErrors = append(resolver.resolvingErrors, err)
 					continue

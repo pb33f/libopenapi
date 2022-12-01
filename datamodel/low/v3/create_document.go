@@ -2,7 +2,6 @@ package v3
 
 import (
     "errors"
-    "fmt"
     "github.com/pb33f/libopenapi/datamodel"
     "github.com/pb33f/libopenapi/datamodel/low"
     "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -34,9 +33,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
     if len(resolvingErrors) > 0 {
         for r := range resolvingErrors {
-            errors = append(errors,
-                fmt.Errorf("%s: %s [%d:%d]", resolvingErrors[r].Error.Error(),
-                    resolvingErrors[r].Path, resolvingErrors[r].Node.Line, resolvingErrors[r].Node.Column))
+           errors = append(errors, resolvingErrors[r])
         }
     }
 
