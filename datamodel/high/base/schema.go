@@ -78,8 +78,8 @@ type Schema struct {
 	Description          string
 	Default              any
 	Nullable             *bool
-	ReadOnly             *bool
-	WriteOnly            *bool
+	ReadOnly             bool // https://github.com/pb33f/libopenapi/issues/30
+	WriteOnly            bool // https://github.com/pb33f/libopenapi/issues/30
 	XML                  *XML
 	ExternalDocs         *ExternalDoc
 	Example              any
@@ -156,10 +156,10 @@ func NewSchema(schema *base.Schema) *Schema {
 		s.Nullable = &schema.Nullable.Value
 	}
 	if !schema.ReadOnly.IsEmpty() {
-		s.ReadOnly = &schema.ReadOnly.Value
+		s.ReadOnly = schema.ReadOnly.Value
 	}
 	if !schema.WriteOnly.IsEmpty() {
-		s.WriteOnly = &schema.WriteOnly.Value
+		s.WriteOnly = schema.WriteOnly.Value
 	}
 	if !schema.Deprecated.IsEmpty() {
 		s.Deprecated = &schema.Deprecated.Value
