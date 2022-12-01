@@ -21,7 +21,7 @@ type Parameter struct {
 	Deprecated      bool
 	AllowEmptyValue bool
 	Style           string
-	Explode         bool
+	Explode         *bool
 	AllowReserved   bool
 	Schema          *base.SchemaProxy
 	Example         any
@@ -41,7 +41,7 @@ func NewParameter(param *low.Parameter) *Parameter {
 	p.Deprecated = param.Deprecated.Value
 	p.AllowEmptyValue = param.AllowEmptyValue.Value
 	p.Style = param.Style.Value
-	p.Explode = param.Explode.Value
+	p.Explode = &param.Explode.Value
 	p.AllowReserved = param.AllowReserved.Value
 	if !param.Schema.IsEmpty() {
 		p.Schema = base.NewSchemaProxy(&param.Schema)
