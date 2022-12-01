@@ -462,7 +462,7 @@ func ExtractMap[PT Buildable[N], N any](
 				}
 			}
 
-			if strings.HasPrefix(strings.ToLower(currentLabelNode.Value), "x-") {
+			if strings.HasPrefix(currentLabelNode.Value, "x-") {
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			totalKeys++
