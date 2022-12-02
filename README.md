@@ -284,7 +284,7 @@ Every change can be explored and navigated just like you would use the high or l
 If you're using extensions with complex types (rather that just simple strings and primitives), then there is a good
 chance you're going to want some simple way to marshal extensions into those structs.
 
-Since version v0.4.0 There is a new method to make this simple available in the `high` package within the `datamodel` 
+Since version v0.3.2 There is a new method to make this simple available in the `high` package within the `datamodel` 
 package.
 
 Here is an example of complex types being extracted easily from OpenAPI extensions.
