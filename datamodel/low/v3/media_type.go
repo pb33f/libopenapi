@@ -27,6 +27,11 @@ type MediaType struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all MediaType extensions and satisfies the low.HasExtensions interface.
+func (mt *MediaType) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return mt.Extensions
+}
+
 // FindExtension will attempt to locate an extension with the supplied name.
 func (mt *MediaType) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, mt.Extensions)

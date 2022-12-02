@@ -32,7 +32,8 @@ func TestHeader_Build(t *testing.T) {
 
 func TestHeader_DefaultAsSlice(t *testing.T) {
 
-    yml := `default:
+    yml := `x-ext: thing
+default:
   - why
   - so many
   - variations`
@@ -47,7 +48,7 @@ func TestHeader_DefaultAsSlice(t *testing.T) {
 
     assert.NotNil(t, n.Default.Value)
     assert.Len(t, n.Default.Value, 3)
-
+    assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestHeader_DefaultAsObject(t *testing.T) {

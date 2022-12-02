@@ -96,6 +96,11 @@ func (d *Document) FindSecurityRequirement(name string) []low.ValueReference[str
 	return nil
 }
 
+// GetExtensions returns all Document extensions and satisfies the low.HasExtensions interface.
+func (d *Document) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return d.Extensions
+}
+
 func (d *Document) GetExternalDocs() *low.NodeReference[any] {
 	return &low.NodeReference[any]{
 		KeyNode:   d.ExternalDocs.KeyNode,

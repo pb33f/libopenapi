@@ -35,6 +35,7 @@ x-hack: code`
 
 	wentLow := highExt.GoLow()
 	assert.Equal(t, 2, wentLow.URL.ValueNode.Line)
+	assert.Len(t, highExt.GetExtensions(), 1)
 }
 
 func ExampleNewExternalDoc() {

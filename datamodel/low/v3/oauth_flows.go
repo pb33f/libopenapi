@@ -23,6 +23,11 @@ type OAuthFlows struct {
 	Extensions        map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all OAuthFlows extensions and satisfies the low.HasExtensions interface.
+func (o *OAuthFlows) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return o.Extensions
+}
+
 // FindExtension will attempt to locate an extension with the supplied name.
 func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, o.Extensions)
@@ -87,6 +92,11 @@ type OAuthFlow struct {
 	RefreshUrl       low.NodeReference[string]
 	Scopes           low.KeyReference[map[low.KeyReference[string]]low.ValueReference[string]]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+}
+
+// GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
+func (o *OAuthFlow) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return o.Extensions
 }
 
 // FindScope attempts to locate a scope using a specified name.

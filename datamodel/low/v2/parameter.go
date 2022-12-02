@@ -78,6 +78,11 @@ func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
 }
 
+// GetExtensions returns all Parameter extensions and satisfies the low.HasExtensions interface.
+func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return p.Extensions
+}
+
 // Build will extract out extensions, schema, items and default value
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)

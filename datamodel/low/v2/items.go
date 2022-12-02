@@ -45,6 +45,11 @@ func (i *Items) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, i.Extensions)
 }
 
+// GetExtensions returns all Items extensions and satisfies the low.HasExtensions interface.
+func (i *Items) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return i.Extensions
+}
+
 // Hash will return a consistent SHA256 Hash of the Items object
 func (i *Items) Hash() [32]byte {
 	var f []string

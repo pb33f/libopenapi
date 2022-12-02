@@ -51,6 +51,11 @@ func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
 }
 
+// GetExtensions returns all extensions for Parameter.
+func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return p.Extensions
+}
+
 // Build will extract examples, extensions and content/media types.
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)

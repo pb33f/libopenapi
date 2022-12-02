@@ -21,6 +21,11 @@ type Responses struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Responses extensions and satisfies the low.HasExtensions interface.
+func (r *Responses) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return r.Extensions
+}
+
 // Build will extract default value and extensions from node.
 func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)

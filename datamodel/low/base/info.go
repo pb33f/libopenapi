@@ -35,6 +35,11 @@ func (i *Info) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap(ext, i.Extensions)
 }
 
+// GetExtensions returns all extensions for Info
+func (i *Info) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return i.Extensions
+}
+
 // Build will extract out the Contact and Info objects from the supplied root node.
 func (i *Info) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	i.Extensions = low.ExtractExtensions(root)

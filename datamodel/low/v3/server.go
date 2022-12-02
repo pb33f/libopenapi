@@ -22,6 +22,11 @@ type Server struct {
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
+func (s *Server) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return s.Extensions
+}
+
 // FindVariable attempts to locate a ServerVariable instance using the supplied key.
 func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVariable] {
 	return low.FindItemInMap[*ServerVariable](serverVar, s.Variables.Value)

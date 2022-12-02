@@ -33,3 +33,34 @@ func ExtractExtensions(extensions map[low.KeyReference[string]]low.ValueReferenc
 	}
 	return extracted
 }
+
+// UnpackExtensions is a convenience function that makes it easy and simple to unpack an objects extensions
+// into a complex type, provided as a generic. This function is for high-level models that implement `GoesLow()`
+// and for low-level models that support extensions via `HasExtensions`.
+//
+// This feature will be upgraded at some point to hold a registry of types and extension mappings to make this
+// functionality available a little more automatically.
+// You can read more about the discussion here: https://github.com/pb33f/libopenapi/issues/8
+//
+// `T` represents the Type you want to unpack into
+// `R` represents the LOW type of the object that contains the extensions (not the high)
+// `low` represents the HIGH type of the object that contains the extensions.
+//
+// to use:
+//  schema := schemaProxy.Schema() // any high-level object that has extensions
+//  extensions, err := UnpackExtensions[MyComplexType, low.Schema](schema)
+func UnpackExtensions[T any, R low.HasExtensions[T]](low GoesLow[R]) (map[string]*T, error) {
+	m := make(map[string]*T)
+	ext := low.GoLow().GetExtensions()
+	for i := range ext {
+		key := i.Value
+		g := new(T)
+		valueNode := ext[i].ValueNode
+		err := valueNode.Decode(g)
+		if err != nil {
+			return nil, err
+		}
+		m[key] = g
+	}
+	return m, nil
+}

@@ -37,6 +37,7 @@ x-tasty: herbs
 	assert.Equal(t, "https://pb33f.io/token", n.TokenUrl.Value)
 	assert.Equal(t, "https://pb33f.io/refresh", n.RefreshUrl.Value)
 	assert.Equal(t, "vanilla", n.FindScope("fresh:cake").Value)
+	assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestOAuthFlow_Build_Implicit(t *testing.T) {
@@ -57,6 +58,7 @@ x-tasty: herbs`
 	assert.NoError(t, err)
 	assert.Equal(t, "herbs", n.FindExtension("x-tasty").Value)
 	assert.Equal(t, "https://pb33f.io/auth", n.Implicit.Value.AuthorizationUrl.Value)
+	assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {

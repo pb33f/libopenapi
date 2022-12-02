@@ -107,6 +107,7 @@ func TestCreateDocument(t *testing.T) {
     assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)
     assert.NotEmpty(t, doc.Info.Value.Title.Value)
     assert.Equal(t, "https://pb33f.io/schema", doc.JsonSchemaDialect.Value)
+    assert.Len(t, doc.GetExtensions(), 1)
 }
 
 func TestCreateDocument_Info(t *testing.T) {

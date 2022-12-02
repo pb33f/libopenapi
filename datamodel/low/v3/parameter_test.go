@@ -86,6 +86,7 @@ content:
 
 	ext := n.FindExtension("x-family-love").Value
 	assert.Equal(t, "strong", ext)
+	assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestParameter_Build_Success_Examples(t *testing.T) {

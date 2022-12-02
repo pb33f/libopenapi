@@ -13,7 +13,8 @@ import (
 
 func TestServer_Build(t *testing.T) {
 
-	yml := `url: https://pb33f.io
+	yml := `x-coffee: hot
+url: https://pb33f.io
 description: high quality software for developers.
 variables:
   var1: 
@@ -44,6 +45,8 @@ variables:
 	s := n.FindVariable("var1")
 	assert.Equal(t, "00eef99ee4a7b746be7b4ccdece59c5a96222c6206f846fafed782c9f3f9b46b",
 		low.GenerateHashString(s.Value))
+
+	assert.Len(t, n.GetExtensions(), 1)
 
 }
 

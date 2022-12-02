@@ -33,6 +33,11 @@ type Components struct {
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
+func (co *Components) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return co.Extensions
+}
+
 // Hash will return a consistent SHA256 Hash of the Encoding object
 func (co *Components) Hash() [32]byte {
 	var f []string

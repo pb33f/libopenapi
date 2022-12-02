@@ -31,6 +31,11 @@ func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, r.Extensions)
 }
 
+// GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
+func (r *Response) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return r.Extensions
+}
+
 // FindContent will attempt to locate a MediaType instance using the supplied key.
 func (r *Response) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](cType, r.Content.Value)

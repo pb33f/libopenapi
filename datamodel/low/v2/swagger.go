@@ -116,6 +116,11 @@ func (s *Swagger) FindExtension(ext string) *low.ValueReference[any] {
     return low.FindItemInMap[any](ext, s.Extensions)
 }
 
+// GetExtensions returns all Swagger/Top level extensions and satisfies the low.HasExtensions interface.
+func (s *Swagger) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+    return s.Extensions
+}
+
 func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 
     doc := Swagger{Swagger: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}

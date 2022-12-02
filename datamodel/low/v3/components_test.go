@@ -221,7 +221,7 @@ func TestComponents_Build_HashEmpty(t *testing.T) {
 	err = n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "seagull", n.FindExtension("x-curry").Value)
-
+	assert.Len(t, n.GetExtensions(), 1)
 	assert.Equal(t, "9cf2c6ab3f9ff7e5231fcb391c8af5c47406711d2ca366533f21a8bb2f67edfe",
 		low.GenerateHashString(&n))
 

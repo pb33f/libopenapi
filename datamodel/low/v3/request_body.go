@@ -27,6 +27,11 @@ func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, rb.Extensions)
 }
 
+// GetExtensions returns all RequestBody extensions and satisfies the low.HasExtensions interface.
+func (rb *RequestBody) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return rb.Extensions
+}
+
 // FindContent attempts to find content/MediaType defined using a specified name.
 func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](cType, rb.Content.Value)

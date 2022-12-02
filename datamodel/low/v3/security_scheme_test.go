@@ -70,6 +70,7 @@ x-milk: please`
 	assert.Equal(t, "https://pb33f.io/openid", n.OpenIdConnectUrl.Value)
 	assert.Equal(t, "please", n.FindExtension("x-milk").Value)
 	assert.Equal(t, "https://pb33f.io", n.Flows.Value.Implicit.Value.TokenUrl.Value)
+	assert.Len(t, n.GetExtensions(), 1)
 
 }
 

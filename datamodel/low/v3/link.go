@@ -35,6 +35,11 @@ type Link struct {
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Link extensions and satisfies the low.HasExtensions interface.
+func (l *Link) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return l.Extensions
+}
+
 // FindParameter will attempt to locate a parameter string value, using a parameter name input.
 func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
 	return low.FindItemInMap[string](pName, l.Parameters)

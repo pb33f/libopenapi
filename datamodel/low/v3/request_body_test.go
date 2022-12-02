@@ -34,6 +34,7 @@ x-requesto: presto`
 	assert.True(t, n.Required.Value)
 	assert.Equal(t, "nice.", n.FindContent("fresh/fish").Value.Example.Value)
 	assert.Equal(t, "presto", n.FindExtension("x-requesto").Value)
+	assert.Len(t, n.GetExtensions(), 1)
 
 }
 

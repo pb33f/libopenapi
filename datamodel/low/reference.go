@@ -34,6 +34,8 @@ type Hashable interface {
 
 // HasExtensions is implemented by any object that exposes extensions
 type HasExtensions[T any] interface {
+
+	// GetExtensions returns generic low level extensions
 	GetExtensions() map[KeyReference[string]]ValueReference[any]
 }
 
