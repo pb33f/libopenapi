@@ -285,7 +285,10 @@ If you're using extensions with complex types (rather that just simple strings a
 chance you're going to want some simple way to marshal extensions into those structs.
 
 Since version v0.3.2 There is a new method to make this simple available in the `high` package within the `datamodel` 
-package.
+package. It's called `UnpackExtensions`
+
+It's a generic function that requires the custom type and the **low** model type of the object that contains the extensions
+you'd like to unpack.
 
 Here is an example of complex types being extracted easily from OpenAPI extensions.
 
@@ -364,9 +367,9 @@ func main() {
     // build a v3 model.
     docModel, errs := doc.BuildV3Model()
     
-    // if anything went wrong building, indexing and resolving the model, an error is thrown
+    // if anything went wrong building, indexing and resolving the model, errors are thrown.
     if errs != nil {
-        panic(fmt.Sprintf("cannot create new document: %e", err))
+        panic(fmt.Sprintf("cannot create new document: %e", errs))
     }
     
     // get a reference to SchemaOne and ParameterOne
