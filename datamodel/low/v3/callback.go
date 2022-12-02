@@ -25,6 +25,11 @@ type Callback struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Callback extensions and satisfies the low.HasExtensions interface.
+func (cb *Callback) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return cb.Extensions
+}
+
 // FindExpression will locate a string expression and return a ValueReference containing the located PathItem
 func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
 	return low.FindItemInMap[*PathItem](exp, cb.Expression.Value)

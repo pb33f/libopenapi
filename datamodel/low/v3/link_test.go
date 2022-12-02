@@ -51,6 +51,7 @@ x-linky: slinky
 
 	assert.NotNil(t, n.Server.Value)
 	assert.Equal(t, "https://pb33f.io", n.Server.Value.URL.Value)
+	assert.Len(t, n.GetExtensions(), 1)
 
 }
 

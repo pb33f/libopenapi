@@ -60,6 +60,7 @@ func TestCreateDocument(t *testing.T) {
     assert.Equal(t, true, doc.FindExtension("x-pet").Value)
     assert.Equal(t, true, doc.FindExtension("X-Pet").Value)
     assert.NotNil(t, doc.GetExternalDocs())
+    assert.Len(t, doc.GetExtensions(), 1)
 }
 
 func TestCreateDocument_Info(t *testing.T) {

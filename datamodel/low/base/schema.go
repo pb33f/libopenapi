@@ -381,6 +381,11 @@ func (s *Schema) FindProperty(name string) *low.ValueReference[*SchemaProxy] {
 	return low.FindItemInMap[*SchemaProxy](name, s.Properties.Value)
 }
 
+// GetExtensions returns all extensions for Schema
+func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return s.Extensions
+}
+
 // Build will perform a number of operations.
 // Extraction of the following happens in this method:
 //  - Extensions

@@ -31,6 +31,11 @@ type SecurityScheme struct {
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all SecurityScheme extensions and satisfies the low.HasExtensions interface.
+func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return ss.Extensions
+}
+
 // Build will extract extensions and scopes from the node.
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	ss.Extensions = low.ExtractExtensions(root)

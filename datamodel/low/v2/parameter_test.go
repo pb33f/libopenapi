@@ -207,5 +207,6 @@ allowEmptyValue: true
 	assert.Equal(t, "int", v.Value.A)                          // A is v2
 	assert.True(t, n.GetRequired().Value)
 	assert.True(t, n.GetAllowEmptyValue().Value)
+	assert.Len(t, n.GetExtensions(), 1)
 
 }

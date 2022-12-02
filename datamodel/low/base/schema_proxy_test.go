@@ -12,7 +12,8 @@ import (
 
 func TestSchemaProxy_Build(t *testing.T) {
 
-	yml := `description: something`
+	yml := `x-windows: washed
+description: something`
 
 	var sch SchemaProxy
 	var idxNode yaml.Node
@@ -21,7 +22,7 @@ func TestSchemaProxy_Build(t *testing.T) {
 	err := sch.Build(idxNode.Content[0], nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "3fc9b689459d738f8c88a3a48aa9e33542016b7a4052e001aaa536fca74813cb",
+	assert.Equal(t, "db2a35dd6fb3d9481d0682571b9d687616bb2a34c1887f7863f0b2e769ca7b23",
 		low.GenerateHashString(&sch))
 
 	assert.Equal(t, "something", sch.Schema().Description.Value)
@@ -30,8 +31,10 @@ func TestSchemaProxy_Build(t *testing.T) {
 	assert.False(t, sch.IsSchemaReference())
 
 	// already rendered, should spit out the same
-	assert.Equal(t, "3fc9b689459d738f8c88a3a48aa9e33542016b7a4052e001aaa536fca74813cb",
+	assert.Equal(t, "db2a35dd6fb3d9481d0682571b9d687616bb2a34c1887f7863f0b2e769ca7b23",
 		low.GenerateHashString(&sch))
+
+	assert.Len(t, sch.Schema().GetExtensions(), 1)
 
 }
 

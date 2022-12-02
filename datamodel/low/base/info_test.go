@@ -55,6 +55,7 @@ x-cli-name: pizza cli`
 	cliName := n.FindExtension("x-cli-name")
 	assert.NotNil(t, cliName)
 	assert.Equal(t, "pizza cli", cliName.Value)
+	assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestContact_Build(t *testing.T) {

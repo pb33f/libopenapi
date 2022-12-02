@@ -58,6 +58,11 @@ func (ss *SecurityScheme) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, ss.Extensions)
 }
 
+// GetExtensions returns all SecurityScheme extensions and satisfies the low.HasExtensions interface.
+func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return ss.Extensions
+}
+
 // Build will extract OAuthFlows and extensions from the node.
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	ss.Extensions = low.ExtractExtensions(root)

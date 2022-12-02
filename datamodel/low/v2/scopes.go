@@ -23,6 +23,11 @@ type Scopes struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Scopes extensions and satisfies the low.HasExtensions interface.
+func (s *Scopes) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return s.Extensions
+}
+
 // FindScope will attempt to locate a scope string using a key.
 func (s *Scopes) FindScope(scope string) *low.ValueReference[string] {
 	return low.FindItemInMap[string](scope, s.Values)

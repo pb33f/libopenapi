@@ -31,6 +31,11 @@ func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, r.Extensions)
 }
 
+// GetExtensions returns all Response extensions and satisfies the low.HasExtensions interface.
+func (r *Response) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return r.Extensions
+}
+
 // FindHeader will attempt to locate a Header value, given a key
 func (r *Response) FindHeader(hType string) *low.ValueReference[*Header] {
 	return low.FindItemInMap[*Header](hType, r.Headers.Value)

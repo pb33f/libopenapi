@@ -110,4 +110,5 @@ headers:
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
+	assert.Len(t, n.GetExtensions(), 1)
 }

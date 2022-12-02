@@ -5,8 +5,27 @@
 ![Pipeline](https://github.com/pb33f/libopenapi/workflows/Build/badge.svg)
 [![GoReportCard](https://goreportcard.com/badge/github.com/pb33f/libopenapi)](https://goreportcard.com/report/github.com/pb33f/libopenapi)
 [![codecov](https://codecov.io/gh/pb33f/libopenapi/branch/main/graph/badge.svg?)](https://codecov.io/gh/pb33f/libopenapi)
+[![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/pb33f/libopenapi)
 
-libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1.
+libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1. It can handle the largest and most
+complex specifications you can think of.
+
+## Contents
+
+- [Installing libopenapi](#installing)
+- [Load an OpenAPI 3.1 or 3.0 specification into a model](#load-an-openapi-spec-into-a-model)
+- [Load a Swagger Spec into a model](#load-a-swagger-spec-into-a-model)
+- [Discover what changed](#discover-what-changed)
+- [Loading complex types using extensions](#loading-extensions-using-complex-types)
+- [Creating an index of an OpenAPI specification](#creating-an-index-of-an-openapi-specification)
+- [Resolving an OpenAPI specification](#resolving-an-openapi-specification)
+- [Checking for circular errors without resolving](#checking-for-circular-errors-without-resolving)
+- [Extracting circular refs and resolving errors when building a document](#extracting-circular-refs-and-resolving-errors-when-building-a-document)
+- [Mutating the model](#mutating-the-model)
+
+> **Read the docs at [https://pkg.go.dev/github.com/pb33f/libopenapi](https://pkg.go.dev/github.com/pb33f/libopenapi)**
+> 
+---
 
 ## Introduction - Why?
 
@@ -77,7 +96,7 @@ Grab the latest release of **libopenapi**
 go get github.com/pb33f/libopenapi
 ```
 
-### Load an OpenAPI 3+ spec into a model
+## Load an OpenAPI spec into a model
 
 ```go
 // import the library
@@ -124,7 +143,7 @@ There are 13 paths and 8 schemas in the document
 ```
 
 
-### Load a Swagger (OpenAPI 2) spec into a model
+## Load a Swagger spec into a model
 ```go
 // import the library
 import "github.com/pb33f/libopenapi"
@@ -135,7 +154,7 @@ func readSpec() {
     petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
     
     // create a new document from specification bytes
-    document, err := libeopnapi.NewDocument(petstore)
+    document, err := libopenapi.NewDocument(petstore)
     
     // if anything went wrong, an error is thrown
     if err != nil {
@@ -205,7 +224,7 @@ fmt.Printf("value is %s, the value is on line %d, " +
 ```
 ---
 
-## What changed?
+## Discover what changed
 
 libopenapi comes with a complete **diff engine**
 
@@ -260,97 +279,143 @@ Every change can be explored and navigated just like you would use the high or l
 
 ---
 
-## But wait, there's more - Mutating the model
+## Loading extensions using complex types
 
-Having a read-only model is great, but what about when we want to modify the model and mutate values, or even add new
-content to the model? What if we also want to save that output as an updated specification - but we don't want to 
-jumble up the original ordering of the source.
+If you're using extensions with complex types (rather that just simple strings and primitives), then there is a good
+chance you're going to want some simple way to marshal extensions into those structs.
 
-### marshaling and unmarshalling to and from structs into JSON/YAML is not ideal.
+Since version v0.4.0 There is a new method to make this simple available in the `high` package within the `datamodel` 
+package.
 
-When we straight up use `json.Marshal` or `yaml.Marshal` to send structs to be rendered into the desired format, there
-is no guarantee as to the order in which each component will be rendered. This works great if...
-
-- We don't care about the spec being randomly ordered. 
-- We don't care about code-reviews.
-- We don't actually care about this very much.
-
-### But if we do care...
-
-Then libopenpi provides a way to mutate the model, that keeps the original [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node)
-tree in-tact. It allows us to make changes to values in place, and serialize back to JSON or YAML without any changes to 
-other content order.
+Here is an example of complex types being extracted easily from OpenAPI extensions.
 
 ```go
-// create very small, and useless spec that does nothing useful, except showcase this feature.
-spec := `
-openapi: 3.1.0
-info:
-  title: This is a title
-  contact:
-    name: Some Person
-    email: some@emailaddress.com
-  license:
-    url: http://some-place-on-the-internet.com/license
-`
-// create a new document from specification bytes
-document, err := libopenapi.NewDocument([]byte(spec))
 
-// if anything went wrong, an error is thrown
-if err != nil {
-    panic(fmt.Sprintf("cannot create new document: %e", err))
+import (
+    "github.com/pb33f/libopenapi"
+    high "github.com/pb33f/libopenapi/datamodel/high"
+    lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+    lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+)
+
+// define an example struct representing a cake
+type cake struct {
+    Candles  int
+    Frosting string
 }
 
-// because we know this is a v3 spec, we can build a ready to go model from it.
-v3Model, errors := document.BuildV3Model()
+// define a struct that holds a map of cake pointers.
+type cakes struct {
+    Description string
+    Cakes       map[string]*cake
+}
 
-// if anything went wrong when building the v3 model, a slice of errors will be returned
-if len(errors) > 0 {
-    for i := range errors {
-        fmt.Printf("error: %e\n", errors[i])
+// define a struct representing a burger
+type burger struct {
+    Sauce string
+    Patty string
+}
+
+// define a struct that holds a map of cake pointers
+type burgers struct {
+    Description string
+    Burgers     map[string]*burger
+}
+
+func main() {
+
+    // create a specification with a schema and parameter that use complex 
+    // custom cakes and burgers extensions.
+    spec := `openapi: "3.1"
+    components:
+    schemas:
+    SchemaOne:
+      description: "Some schema with custom complex extensions"
+      x-custom-cakes:
+        description: some cakes
+        cakes:
+          someCake:
+            candles: 10
+            frosting: blue
+          anotherCake:
+            candles: 1
+            frosting: green
+    parameters:
+    ParameterOne:
+      description: "Some parameter also using complex extensions"
+      x-custom-burgers:
+        description: some burgers
+        burgers:
+          someBurger:
+            sauce: ketchup
+            patty: meat 
+          anotherBurger:
+            sauce: mayo
+            patty: lamb`
+    
+    // create a new document from specification bytes
+    doc, err := libopenapi.NewDocument([]byte(spec))
+    
+    // if anything went wrong, an error is thrown
+    if err != nil {
+        panic(fmt.Sprintf("cannot create new document: %e", err))
     }
-    panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+    
+    // build a v3 model.
+    docModel, errs := doc.BuildV3Model()
+    
+    // if anything went wrong building, indexing and resolving the model, an error is thrown
+    if errs != nil {
+        panic(fmt.Sprintf("cannot create new document: %e", err))
+    }
+    
+    // get a reference to SchemaOne and ParameterOne
+    schemaOne := docModel.Model.Components.Schemas["SchemaOne"].Schema()
+    parameterOne := docModel.Model.Components.Parameters["ParameterOne"]
+    
+    // unpack schemaOne extensions into complex `cakes` type
+    schemaOneExtensions, schemaUnpackErrors := high.UnpackExtensions[cakes, *lowbase.Schema](schemaOne)
+    if schemaUnpackErrors != nil {
+        panic(fmt.Sprintf("cannot unpack schema extensions: %e", err))
+    }
+    
+    // unpack parameterOne into complex `burgers` type
+    parameterOneExtensions, paramUnpackErrors := high.UnpackExtensions[burgers, *lowv3.Parameter](parameterOne)
+    if paramUnpackErrors != nil {
+        panic(fmt.Sprintf("cannot unpack parameter extensions: %e", err))
+    }
+    
+    // extract extension by name for schemaOne
+    customCakes := schemaOneExtensions["x-custom-cakes"]
+    
+    // extract extension by name for schemaOne
+    customBurgers := parameterOneExtensions["x-custom-burgers"]
+    
+    // print out schemaOne complex extension details.
+    fmt.Printf("schemaOne 'x-custom-cakes' (%s) has %d cakes, 'someCake' has %d candles and %s frosting\n",
+        customCakes.Description,
+        len(customCakes.Cakes),
+        customCakes.Cakes["someCake"].Candles,
+        customCakes.Cakes["someCake"].Frosting,
+    )
+    
+    // print out parameterOne complex extension details.
+    fmt.Printf("parameterOne 'x-custom-burgers' (%s) has %d burgers, 'anotherBurger' has %s sauce and a %s patty\n",
+        customBurgers.Description,
+        len(customBurgers.Burgers),
+        customBurgers.Burgers["anotherBurger"].Sauce,
+        customBurgers.Burgers["anotherBurger"].Patty,
+    )
 }
-
-// mutate the title, to do this we currently need to drop down to the low-level API.
-v3Model.Model.GoLow().Info.Value.Title.Mutate("A new title for a useless spec")
-
-// mutate the email address in the contact object.
-v3Model.Model.GoLow().Info.Value.Contact.Value.Email.Mutate("buckaroo@pb33f.io")
-
-// mutate the name in the contact object.
-v3Model.Model.GoLow().Info.Value.Contact.Value.Name.Mutate("Buckaroo")
-
-// mutate the URL for the license object.
-v3Model.Model.GoLow().Info.Value.License.Value.URL.Mutate("https://pb33f.io/license")
-
-// serialize the document back into the original YAML or JSON
-mutatedSpec, serialError := document.Serialize()
-
-// if something went wrong serializing
-if serialError != nil {
-    panic(fmt.Sprintf("cannot serialize document: %e", serialError))
-}
-
-// print our modified spec!
-fmt.Println(string(mutatedSpec))
 ```
 
-Which will output: 
+This will output:
 
-```yaml
-openapi: 3.1.0
-info:
-    title: A new title for a useless spec
-    contact:
-         name: Buckaroo
-         email: buckaroo@pb33f.io
-    license:
-         url: https://pb33f.io/license
-
+```text
+schemaOne 'x-custom-cakes' (some cakes) has 2 cakes, 'someCake' has 10 candles and blue frosting
+parameterOne 'x-custom-burgers' (some burgers) has 2 burgers, 'anotherBurger' has mayo sauce and a lamb patty
 ```
-> It's worth noting that the original line numbers and column numbers **won't be respected** when calling `Serialize()`, 
-> A new `Document` needs to be created from that raw YAML to continue processing after serialization.
+---
 
 ## Creating an index of an OpenAPI Specification
 
@@ -518,7 +583,167 @@ fmt.Printf("There are %d circular reference errors, " +
     len(resolver.GetNonPolymorphicCircularErrors()))
 ```
 
+### Extracting circular refs and resolving errors when building a document
+
+To avoid having to create an index and a resolver each time you want to both create
+a document and resolve it / check for errors, don't worry, circular references are checked
+automatically and are available in the returned `[]errors` which building a document.
+
+The errors returned by the slice are pointers to `*resolver.ResolvingError` which contains
+rich details about the issue, where it was found and the journey it took to get there.
+
+Here is an example:
+
+```go
+// create a specification with an obvious and deliberate circular reference 
+spec := `
+openapi: "3.1"
+components:
+  schemas:
+    One:
+      description: "test one"
+      properties:
+        things:
+          "$ref": "#/components/schemas/Two"
+    Two:
+      description: "test two"
+      properties:
+        testThing:
+          "$ref": "#/components/schemas/One"
+`
+// create a new document from specification bytes
+doc, err := NewDocument([]byte(spec))
+
+// if anything went wrong, an error is thrown
+if err != nil {
+    panic(fmt.Sprintf("cannot create new document: %e", err))
+}
+_, errs := doc.BuildV3Model()
+
+// extract resolving error
+resolvingError := errs[0]
+
+// resolving error is a pointer to *resolver.ResolvingError
+// which provides access to rich details about the error.
+circularReference := resolvingError.(*resolver.ResolvingError).CircularReference
+
+// capture the journey with all details
+var buf strings.Builder
+for n := range circularReference.Journey {
+
+    // add the full definition name to the journey.
+    buf.WriteString(circularReference.Journey[n].Definition)
+    if n < len(circularReference.Journey)-1 {
+        buf.WriteString(" -> ")
+    }
+}
+
+// print out the journey and the loop point.
+fmt.Printf("Journey: %s\n", buf.String())
+fmt.Printf("Loop Point: %s", circularReference.LoopPoint.Definition)
+```
+
+Will output:
+
+```text
+Journey: #/components/schemas/Two -> #/components/schemas/One -> #/components/schemas/Two
+Loop Point: #/components/schemas/Two
+```
+
 ---
+
+
+## Mutating the model
+
+Having a read-only model is great, but what about when we want to modify the model and mutate values, or even add new
+content to the model? What if we also want to save that output as an updated specification - but we don't want to
+jumble up the original ordering of the source.
+
+### marshaling and unmarshalling to and from structs into JSON/YAML is not ideal.
+
+When we straight up use `json.Marshal` or `yaml.Marshal` to send structs to be rendered into the desired format, there
+is no guarantee as to the order in which each component will be rendered. This works great if...
+
+- We don't care about the spec being randomly ordered.
+- We don't care about code-reviews.
+- We don't actually care about this very much.
+
+### But if we do care...
+
+Then libopenpi provides a way to mutate the model, that keeps the original [yaml.Node API](https://pkg.go.dev/gopkg.in/yaml.v3#Node)
+tree in-tact. It allows us to make changes to values in place, and serialize back to JSON or YAML without any changes to
+other content order.
+
+```go
+// create very small, and useless spec that does nothing useful, except showcase this feature.
+spec := `
+openapi: 3.1.0
+info:
+  title: This is a title
+  contact:
+    name: Some Person
+    email: some@emailaddress.com
+  license:
+    url: http://some-place-on-the-internet.com/license
+`
+// create a new document from specification bytes
+document, err := libopenapi.NewDocument([]byte(spec))
+
+// if anything went wrong, an error is thrown
+if err != nil {
+    panic(fmt.Sprintf("cannot create new document: %e", err))
+}
+
+// because we know this is a v3 spec, we can build a ready to go model from it.
+v3Model, errors := document.BuildV3Model()
+
+// if anything went wrong when building the v3 model, a slice of errors will be returned
+if len(errors) > 0 {
+    for i := range errors {
+        fmt.Printf("error: %e\n", errors[i])
+    }
+    panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+}
+
+// mutate the title, to do this we currently need to drop down to the low-level API.
+v3Model.Model.GoLow().Info.Value.Title.Mutate("A new title for a useless spec")
+
+// mutate the email address in the contact object.
+v3Model.Model.GoLow().Info.Value.Contact.Value.Email.Mutate("buckaroo@pb33f.io")
+
+// mutate the name in the contact object.
+v3Model.Model.GoLow().Info.Value.Contact.Value.Name.Mutate("Buckaroo")
+
+// mutate the URL for the license object.
+v3Model.Model.GoLow().Info.Value.License.Value.URL.Mutate("https://pb33f.io/license")
+
+// serialize the document back into the original YAML or JSON
+mutatedSpec, serialError := document.Serialize()
+
+// if something went wrong serializing
+if serialError != nil {
+    panic(fmt.Sprintf("cannot serialize document: %e", serialError))
+}
+
+// print our modified spec!
+fmt.Println(string(mutatedSpec))
+```
+
+Which will output:
+
+```yaml
+openapi: 3.1.0
+info:
+    title: A new title for a useless spec
+    contact:
+         name: Buckaroo
+         email: buckaroo@pb33f.io
+    license:
+         url: https://pb33f.io/license
+
+```
+> It's worth noting that the original line numbers and column numbers **won't be respected** when calling `Serialize()`,
+> A new `Document` needs to be created from that raw YAML to continue processing after serialization.
 
 > **Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)**
 

@@ -45,6 +45,11 @@ func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, h.Extensions)
 }
 
+// GetExtensions returns all Header extensions and satisfies the low.HasExtensions interface.
+func (h *Header) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return h.Extensions
+}
+
 // Build will build out items, extensions and default value from the supplied node.
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	h.Extensions = low.ExtractExtensions(root)

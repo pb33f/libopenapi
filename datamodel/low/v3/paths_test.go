@@ -62,6 +62,7 @@ x-milk: cold`
 	assert.Len(t, path.Parameters.Value, 1)
 	assert.Equal(t, "cold", n.FindExtension("x-milk").Value)
 	assert.Equal(t, "hello", path.Parameters.Value[0].Value.Name.Value)
+	assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestPaths_Build_Fail(t *testing.T) {

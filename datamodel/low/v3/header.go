@@ -47,6 +47,11 @@ func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
 	return low.FindItemInMap[*MediaType](ext, h.Content.Value)
 }
 
+// GetExtensions returns all Header extensions and satisfies the low.HasExtensions interface.
+func (h *Header) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return h.Extensions
+}
+
 // Hash will return a consistent SHA256 Hash of the Header object
 func (h *Header) Hash() [32]byte {
 	var f []string

@@ -31,7 +31,8 @@ func TestItems_Build(t *testing.T) {
 
 func TestItems_DefaultAsSlice(t *testing.T) {
 
-	yml := `default:
+	yml := `x-thing: thing
+default:
   - pizza
   - cake`
 
@@ -44,6 +45,7 @@ func TestItems_DefaultAsSlice(t *testing.T) {
 	_ = n.Build(idxNode.Content[0], idx)
 
 	assert.Len(t, n.Default.Value, 2)
+	assert.Len(t, n.GetExtensions(), 1)
 }
 
 func TestItems_DefaultAsMap(t *testing.T) {

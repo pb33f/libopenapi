@@ -39,6 +39,11 @@ func (p *PathItem) FindExtension(ext string) *low.ValueReference[any] {
 	return low.FindItemInMap[any](ext, p.Extensions)
 }
 
+// GetExtensions returns all PathItem extensions and satisfies the low.HasExtensions interface.
+func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return p.Extensions
+}
+
 // Build will extract extensions, parameters and operations for all methods. Every method is handled
 // asynchronously, in order to keep things moving quickly for complex operations.
 func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {

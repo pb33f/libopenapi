@@ -64,6 +64,7 @@ default:
 	assert.Equal(t, "c009b2046101bc03df802b4cf23f78176931137e6115bf7b445ca46856c06b51",
 		low.GenerateHashString(&n))
 
+
 }
 
 func TestResponses_NoDefault(t *testing.T) {
@@ -97,6 +98,9 @@ x-shoes: old`
 	// check hash
 	assert.Equal(t, "54ab66e6cb8bd226940f421c2387e45215b84c946182435dfe2a3036043fa07c",
 		low.GenerateHashString(&n))
+
+	assert.Len(t, n.FindResponseByCode("200").Value.GetExtensions(), 1)
+	assert.Len(t, n.GetExtensions(), 1)
 
 }
 

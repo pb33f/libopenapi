@@ -5,6 +5,9 @@ package libopenapi
 
 import (
     "fmt"
+    "github.com/pb33f/libopenapi/datamodel/high"
+    low "github.com/pb33f/libopenapi/datamodel/low/base"
+    v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
     "github.com/pb33f/libopenapi/resolver"
     "github.com/pb33f/libopenapi/utils"
     "github.com/stretchr/testify/assert"
@@ -532,5 +535,122 @@ components:
     fmt.Printf("Loop Point: %s", circularReference.LoopPoint.Definition)
     // Output: Journey: #/components/schemas/Two -> #/components/schemas/One -> #/components/schemas/Two
     // Loop Point: #/components/schemas/Two
+}
+
+// If you're using complex types with OpenAPI Extensions, it's simple to unpack extensions into complex
+// types using `high.UnpackExtensions()`. libopenapi retains the original raw data in the low model (not the high)
+// which means unpacking them can be a little complex.
+//
+// This example demonstrates how to use the `UnpackExtensions` with custom OpenAPI extensions.
+func ExampleNewDocument_unpacking_extensions() {
+
+    // define an example struct representing a cake
+    type cake struct {
+        Candles  int
+        Frosting string
+    }
+
+    // define a struct that holds a map of cake pointers.
+    type cakes struct {
+        Description string
+        Cakes       map[string]*cake
+    }
+
+    // define a struct representing a burger
+    type burger struct {
+        Sauce string
+        Patty string
+    }
+
+    // define a struct that holds a map of cake pointers
+    type burgers struct {
+        Description string
+        Burgers     map[string]*burger
+    }
+
+    // create a specification with a schema and parameter that use complex custom cakes and burgers extensions.
+    spec := `openapi: "3.1"
+components:
+  schemas:
+    SchemaOne:
+      description: "Some schema with custom complex extensions"
+      x-custom-cakes:
+        description: some cakes
+        cakes:
+          someCake:
+            candles: 10
+            frosting: blue
+          anotherCake:
+            candles: 1
+            frosting: green
+  parameters:
+    ParameterOne:
+      description: "Some parameter also using complex extensions"
+      x-custom-burgers:
+        description: some burgers
+        burgers:
+          someBurger:
+            sauce: ketchup
+            patty: meat 
+          anotherBurger:
+            sauce: mayo
+            patty: lamb`
+    // create a new document from specification bytes
+    doc, err := NewDocument([]byte(spec))
+
+    // if anything went wrong, an error is thrown
+    if err != nil {
+        panic(fmt.Sprintf("cannot create new document: %e", err))
+    }
+
+    // build a v3 model.
+    docModel, errs := doc.BuildV3Model()
+
+    // if anything went wrong building, indexing and resolving the model, an error is thrown
+    if errs != nil {
+        panic(fmt.Sprintf("cannot create new document: %e", err))
+    }
+
+    // get a reference to SchemaOne and ParameterOne
+    schemaOne := docModel.Model.Components.Schemas["SchemaOne"].Schema()
+    parameterOne := docModel.Model.Components.Parameters["ParameterOne"]
+
+    // unpack schemaOne extensions into complex `cakes` type
+    schemaOneExtensions, schemaUnpackErrors := high.UnpackExtensions[cakes, *low.Schema](schemaOne)
+    if schemaUnpackErrors != nil {
+        panic(fmt.Sprintf("cannot unpack schema extensions: %e", err))
+    }
+
+    // unpack parameterOne into complex `burgers` type
+    parameterOneExtensions, paramUnpackErrors := high.UnpackExtensions[burgers, *v3.Parameter](parameterOne)
+    if paramUnpackErrors != nil {
+        panic(fmt.Sprintf("cannot unpack parameter extensions: %e", err))
+    }
+
+    // extract extension by name for schemaOne
+    customCakes := schemaOneExtensions["x-custom-cakes"]
+
+    // extract extension by name for schemaOne
+    customBurgers := parameterOneExtensions["x-custom-burgers"]
+
+    // print out schemaOne complex extension details.
+    fmt.Printf("schemaOne 'x-custom-cakes' (%s) has %d cakes, 'someCake' has %d candles and %s frosting\n",
+        customCakes.Description,
+        len(customCakes.Cakes),
+        customCakes.Cakes["someCake"].Candles,
+        customCakes.Cakes["someCake"].Frosting,
+    )
+
+    // print out parameterOne complex extension details.
+    fmt.Printf("parameterOne 'x-custom-burgers' (%s) has %d burgers, 'anotherBurger' has %s sauce and a %s patty\n",
+        customBurgers.Description,
+        len(customBurgers.Burgers),
+        customBurgers.Burgers["anotherBurger"].Sauce,
+        customBurgers.Burgers["anotherBurger"].Patty,
+    )
+
+    // Output: schemaOne 'x-custom-cakes' (some cakes) has 2 cakes, 'someCake' has 10 candles and blue frosting
+    //parameterOne 'x-custom-burgers' (some burgers) has 2 burgers, 'anotherBurger' has mayo sauce and a lamb patty
+
 }
 

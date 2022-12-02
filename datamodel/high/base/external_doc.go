@@ -38,3 +38,7 @@ func NewExternalDoc(extDoc *low.ExternalDoc) *ExternalDoc {
 func (e *ExternalDoc) GoLow() *low.ExternalDoc {
 	return e.low
 }
+
+func (e *ExternalDoc) GetExtensions() map[string]any {
+	return e.Extensions
+}

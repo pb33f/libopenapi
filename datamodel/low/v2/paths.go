@@ -19,6 +19,11 @@ type Paths struct {
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
+// GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
+func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+	return p.Extensions
+}
+
 // FindPath attempts to locate a PathItem instance, given a path key.
 func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
 	for k, j := range p.PathItems {
