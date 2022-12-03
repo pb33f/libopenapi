@@ -546,8 +546,9 @@ func ExampleNewDocument_unpacking_extensions() {
 
     // define an example struct representing a cake
     type cake struct {
-        Candles  int
-        Frosting string
+        Candles               int    `yaml:"candles"`
+        Frosting              string `yaml:"frosting"`
+        Some_Strange_Var_Name string `yaml:"someStrangeVarName"`
     }
 
     // define a struct that holds a map of cake pointers.
@@ -580,6 +581,7 @@ components:
           someCake:
             candles: 10
             frosting: blue
+            someStrangeVarName: something
           anotherCake:
             candles: 1
             frosting: green

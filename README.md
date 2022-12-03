@@ -302,9 +302,11 @@ import (
 )
 
 // define an example struct representing a cake
+// super important to remember to use hints/meta-data to map properties correctly.
 type cake struct {
-    Candles  int
-    Frosting string
+    Candles               int    `yaml:"candles"`
+    Frosting              string `yaml:"frosting"`
+    Some_Strange_Var_Name string `yaml:"someStrangeVarName"`
 }
 
 // define a struct that holds a map of cake pointers.
@@ -340,6 +342,7 @@ func main() {
           someCake:
             candles: 10
             frosting: blue
+            someStrangeVarName: mapping is required to extract these.
           anotherCake:
             candles: 1
             frosting: green
