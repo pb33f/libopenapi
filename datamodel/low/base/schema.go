@@ -72,6 +72,10 @@ type Schema struct {
 	Examples low.NodeReference[[]low.ValueReference[any]]
 	// in 3.1 PrefixItems provides tuple validation using prefixItems.
 	PrefixItems low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	// in 3.1 Contains is used by arrays and points to a Schema.
+	Contains    low.NodeReference[*SchemaProxy]
+	MinContains low.NodeReference[int64]
+	MaxContains low.NodeReference[int64]
 
 	// Compatible with all versions
 	Title                low.NodeReference[string]
@@ -367,6 +371,17 @@ func (s *Schema) Hash() [32]byte {
 	if s.Example.Value != nil {
 		d = append(d, low.GenerateHashString(s.Example.Value))
 	}
+
+	// contains
+	if !s.Contains.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.Contains.Value))
+	}
+	if !s.MinContains.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MinContains.Value))
+	}
+	if !s.MaxContains.IsEmpty() {
+		d = append(d, fmt.Sprint(s.MaxContains.Value))
+	}
 	if !s.Examples.IsEmpty() {
 		var xph []string
 		for w := range s.Examples.Value {
@@ -632,6 +647,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	var allOf, anyOf, oneOf, not, items, prefixItems []low.ValueReference[*SchemaProxy]
+	var contains low.ValueReference[*SchemaProxy]
 
 	_, allOfLabel, allOfValue := utils.FindKeyNodeFullTop(AllOfLabel, root.Content)
 	_, anyOfLabel, anyOfValue := utils.FindKeyNodeFullTop(AnyOfLabel, root.Content)
@@ -639,6 +655,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	_, notLabel, notValue := utils.FindKeyNodeFullTop(NotLabel, root.Content)
 	_, itemsLabel, itemsValue := utils.FindKeyNodeFullTop(ItemsLabel, root.Content)
 	_, prefixItemsLabel, prefixItemsValue := utils.FindKeyNodeFullTop(PrefixItemsLabel, root.Content)
+	_, containsLabel, containsValue := utils.FindKeyNodeFullTop(ContainsLabel, root.Content)
 
 	errorChan := make(chan error)
 	allOfChan := make(chan schemaProxyBuildResult)
@@ -647,6 +664,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	itemsChan := make(chan schemaProxyBuildResult)
 	prefixItemsChan := make(chan schemaProxyBuildResult)
 	notChan := make(chan schemaProxyBuildResult)
+	containsChan := make(chan schemaProxyBuildResult)
 
 	totalBuilds := countSubSchemaItems(allOfValue) +
 		countSubSchemaItems(anyOfValue) +
@@ -673,6 +691,10 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if notValue != nil {
 		go buildSchema(notChan, notLabel, notValue, errorChan, idx)
 	}
+	if containsValue != nil {
+		totalBuilds++
+		go buildSchema(containsChan, containsLabel, containsValue, errorChan, idx)
+	}
 
 	completeCount := 0
 	for completeCount < totalBuilds {
@@ -697,6 +719,9 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		case r := <-notChan:
 			completeCount++
 			not = append(not, r.v)
+		case r := <-containsChan:
+			completeCount++
+			contains = r.v
 		}
 	}
 
@@ -741,6 +766,13 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			Value:     prefixItems,
 			KeyNode:   prefixItemsLabel,
 			ValueNode: prefixItemsValue,
+		}
+	}
+	if !contains.IsEmpty() {
+		s.Contains = low.NodeReference[*SchemaProxy]{
+			Value:     contains.Value,
+			KeyNode:   containsLabel,
+			ValueNode: containsValue,
 		}
 	}
 	return nil

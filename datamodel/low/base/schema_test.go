@@ -126,7 +126,11 @@ enum:
 x-pizza: tasty
 examples:
   - hey
-  - hi!`
+  - hi!
+contains:
+  type: int
+maxContains: 10
+minContains: 1`
 }
 
 func Test_Schema(t *testing.T) {
@@ -271,6 +275,12 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "cat", mv.Value)
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")
 	assert.Equal(t, "party", mv.Value)
+
+	// check contains
+	assert.Equal(t, "int", sch.Contains.Value.Schema().Type.Value.A)
+	assert.Equal(t, int64(1), sch.MinContains.Value)
+	assert.Equal(t, int64(10), sch.MaxContains.Value)
+
 }
 
 func TestSchema_Hash(t *testing.T) {
