@@ -59,6 +59,12 @@ type NodeReference[T any] struct {
 
 	// The yaml.Node that is the key, that contains the value.
 	KeyNode *yaml.Node
+
+	// Is this value actually a reference in the original tree?
+	IsReference bool
+
+	// If HasReference is true, then Reference contains the original $ref value.
+	Reference string
 }
 
 // KeyReference is a low-level container for key nodes holding a Value of type T. A KeyNode is a pointer to the
@@ -81,6 +87,12 @@ type ValueReference[T any] struct {
 
 	// The yaml.Node that holds the referenced value
 	ValueNode *yaml.Node
+
+	// Is this value actually a reference in the original tree?
+	IsReference bool
+
+	// If HasReference is true, then Reference contains the original $ref value.
+	Reference string
 }
 
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)

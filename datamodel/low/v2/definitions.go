@@ -84,12 +84,12 @@ func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 			r chan definitionResult[*base.SchemaProxy], e chan error) {
 
-			obj, err := low.ExtractObjectRaw[*base.SchemaProxy](value, idx)
+			obj, err, isRef, rv := low.ExtractObjectRaw[*base.SchemaProxy](value, idx)
 			if err != nil {
 				e <- err
 			}
 			r <- definitionResult[*base.SchemaProxy]{k: label, v: low.ValueReference[*base.SchemaProxy]{
-				Value: obj, ValueNode: value,
+				Value: obj, ValueNode: value, IsReference: isRef, Reference: rv,
 			}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
@@ -144,11 +144,12 @@ func (pd *ParameterDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) err
 		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 			r chan definitionResult[*Parameter], e chan error) {
 
-			obj, err := low.ExtractObjectRaw[*Parameter](value, idx)
+			obj, err, isRef, rv := low.ExtractObjectRaw[*Parameter](value, idx)
 			if err != nil {
 				e <- err
 			}
-			r <- definitionResult[*Parameter]{k: label, v: low.ValueReference[*Parameter]{Value: obj, ValueNode: value}}
+			r <- definitionResult[*Parameter]{k: label, v: low.ValueReference[*Parameter]{Value: obj,
+				ValueNode: value, IsReference: isRef, Reference: rv}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
 	}
@@ -192,11 +193,12 @@ func (r *ResponsesDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) erro
 		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 			r chan definitionResult[*Response], e chan error) {
 
-			obj, err := low.ExtractObjectRaw[*Response](value, idx)
+			obj, err, isRef, rv := low.ExtractObjectRaw[*Response](value, idx)
 			if err != nil {
 				e <- err
 			}
-			r <- definitionResult[*Response]{k: label, v: low.ValueReference[*Response]{Value: obj, ValueNode: value}}
+			r <- definitionResult[*Response]{k: label, v: low.ValueReference[*Response]{Value: obj,
+				ValueNode: value, IsReference: isRef, Reference: rv}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
 	}
@@ -234,12 +236,12 @@ func (s *SecurityDefinitions) Build(root *yaml.Node, idx *index.SpecIndex) error
 		var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 			r chan definitionResult[*SecurityScheme], e chan error) {
 
-			obj, err := low.ExtractObjectRaw[*SecurityScheme](value, idx)
+			obj, err, isRef, rv := low.ExtractObjectRaw[*SecurityScheme](value, idx)
 			if err != nil {
 				e <- err
 			}
 			r <- definitionResult[*SecurityScheme]{k: label, v: low.ValueReference[*SecurityScheme]{
-				Value: obj, ValueNode: value,
+				Value: obj, ValueNode: value, IsReference: isRef, Reference: rv,
 			}}
 		}
 		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)

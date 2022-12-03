@@ -48,7 +48,7 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			currentCB = callbackNode
 			continue
 		}
-		callback, eErr := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
+		callback, eErr, isRef, rv := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
 		if eErr != nil {
 			return eErr
 		}
@@ -56,8 +56,10 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			Value:   currentCB.Value,
 			KeyNode: currentCB,
 		}] = low.ValueReference[*PathItem]{
-			Value:     callback,
-			ValueNode: callbackNode,
+			Value:       callback,
+			ValueNode:   callbackNode,
+			IsReference: isRef,
+			Reference:   rv,
 		}
 	}
 	if len(callbacks) > 0 {

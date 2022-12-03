@@ -520,10 +520,35 @@ func TestExtractObjectRaw(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, _, _ := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, tag)
 	assert.Equal(t, "hello pizza", tag.Description.Value)
+}
+
+func TestExtractObjectRaw_With_Ref(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    pizza:
+      description: hello`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `$ref: '#/components/schemas/pizza'`
+
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	tag, err, isRef, rv := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.NotNil(t, tag)
+	assert.Equal(t, "hello", tag.Description.Value)
+	assert.True(t, isRef)
+	assert.Equal(t, "#/components/schemas/pizza", rv)
 }
 
 func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
@@ -548,7 +573,7 @@ func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, _, _ := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.NotNil(t, tag)
 
@@ -570,7 +595,7 @@ func TestExtractObjectRaw_RefBroken(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, _, _ := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Nil(t, tag)
 
@@ -592,7 +617,7 @@ func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	_, err := ExtractObjectRaw[*test_noGood](cNode.Content[0], idx)
+	_, err, _, _ := ExtractObjectRaw[*test_noGood](cNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -613,7 +638,7 @@ func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	_, err := ExtractObjectRaw[*test_almostGood](cNode.Content[0], idx)
+	_, err, _, _ := ExtractObjectRaw[*test_almostGood](cNode.Content[0], idx)
 	assert.Error(t, err)
 
 }

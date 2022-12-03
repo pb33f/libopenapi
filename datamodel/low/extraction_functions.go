@@ -111,35 +111,39 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 
 // ExtractObjectRaw will extract a typed Buildable[N] object from a root yaml.Node. The 'raw' aspect is
 // that there is no NodeReference wrapper around the result returned, just the raw object.
-func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error) {
+func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error, bool, string) {
 	var circError error
-	if h, _, _ := utils.IsNodeRefValue(root); h {
+	var isReference bool
+	var referenceValue string
+	if h, _, rv := utils.IsNodeRefValue(root); h {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
 			root = ref
+			isReference = true
+			referenceValue = rv
 			if err != nil {
 				circError = err
 			}
 		} else {
 			if err != nil {
-				return nil, fmt.Errorf("object extraction failed: %s", err.Error())
+				return nil, fmt.Errorf("object extraction failed: %s", err.Error()), isReference, referenceValue
 			}
 		}
 	}
 	var n T = new(N)
 	err := BuildModel(root, n)
 	if err != nil {
-		return n, err
+		return n, err, isReference, referenceValue
 	}
 	err = n.Build(root, idx)
 	if err != nil {
-		return n, err
+		return n, err, isReference, referenceValue
 	}
 	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
-		return n, circError
+		return n, circError, isReference, referenceValue
 	}
-	return n, nil
+	return n, nil, isReference, referenceValue
 }
 
 // ExtractObject will extract a typed Buildable[N] object from a root yaml.Node. The result is wrapped in a
@@ -147,11 +151,15 @@ func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecInd
 func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (NodeReference[T], error) {
 	var ln, vn *yaml.Node
 	var circError error
-	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
+	var isReference bool
+	var referenceValue string
+	if rf, rl, refVal := utils.IsNodeRefValue(root); rf {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
 			vn = ref
 			ln = rl
+			isReference = true
+			referenceValue = refVal
 			if err != nil {
 				circError = err
 			}
@@ -163,10 +171,12 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 	} else {
 		_, ln, vn = utils.FindKeyNodeFull(label, root.Content)
 		if vn != nil {
-			if h, _, _ := utils.IsNodeRefValue(vn); h {
+			if h, _, rVal := utils.IsNodeRefValue(vn); h {
 				ref, lerr := LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
+					isReference = true
+					referenceValue = rVal
 					if lerr != nil {
 						circError = lerr
 					}
@@ -191,9 +201,11 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 		return NodeReference[T]{}, err
 	}
 	res := NodeReference[T]{
-		Value:     n,
-		KeyNode:   ln,
-		ValueNode: vn,
+		Value:       n,
+		KeyNode:     ln,
+		ValueNode:   vn,
+		IsReference: isReference,
+		Reference:   referenceValue,
 	}
 	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
@@ -208,11 +220,15 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 	*yaml.Node, *yaml.Node, error) {
 	var ln, vn *yaml.Node
 	var circError error
-	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
+	var isReference bool
+	var referenceValue string
+	if rf, rl, rv := utils.IsNodeRefValue(root); rf {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
 			vn = ref
 			ln = rl
+			isReference = true
+			referenceValue = rv
 			if err != nil {
 				circError = err
 			}
@@ -223,10 +239,12 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 	} else {
 		_, ln, vn = utils.FindKeyNodeFullTop(label, root.Content)
 		if vn != nil {
-			if h, _, _ := utils.IsNodeRefValue(vn); h {
+			if h, _, rv := utils.IsNodeRefValue(vn); h {
 				ref, err := LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
+					isReference = true
+					referenceValue = rv
 					if err != nil {
 						circError = err
 					}
@@ -269,8 +287,10 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 				return nil, ln, vn, berr
 			}
 			items = append(items, ValueReference[T]{
-				Value:     n,
-				ValueNode: node,
+				Value:       n,
+				ValueNode:   node,
+				IsReference: isReference,
+				Reference:   referenceValue,
 			})
 		}
 	}
@@ -325,11 +345,16 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 				currentKey = node
 				continue
 			}
+
+			var isReference bool
+			var referenceValue string
 			// if value is a reference, we have to look it up in the index!
-			if h, _, _ := utils.IsNodeRefValue(node); h {
+			if h, _, rv := utils.IsNodeRefValue(node); h {
 				ref, err := LocateRefNode(node, idx)
 				if ref != nil {
 					node = ref
+					isReference = true
+					referenceValue = rv
 					if err != nil {
 						circError = err
 					}
@@ -353,8 +378,10 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 				Value:   currentKey.Value,
 				KeyNode: currentKey,
 			}] = ValueReference[PT]{
-				Value:     n,
-				ValueNode: node,
+				Value:       n,
+				ValueNode:   node,
+				IsReference: isReference,
+				Reference:   referenceValue,
 			}
 		}
 	}
@@ -378,15 +405,18 @@ func ExtractMap[PT Buildable[N], N any](
 	label string,
 	root *yaml.Node,
 	idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
-
+	var isReference bool
+	var referenceValue string
 	var labelNode, valueNode *yaml.Node
 	var circError error
-	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
+	if rf, rl, rv := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
+			isReference = true
+			referenceValue = rv
 			if err != nil {
 				circError = err
 			}
@@ -397,10 +427,12 @@ func ExtractMap[PT Buildable[N], N any](
 	} else {
 		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
 		if valueNode != nil {
-			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
+			if h, _, rv := utils.IsNodeRefValue(valueNode); h {
 				ref, err := LocateRefNode(valueNode, idx)
 				if ref != nil {
 					valueNode = ref
+					isReference = true
+					referenceValue = rv
 					if err != nil {
 						circError = err
 					}
@@ -434,8 +466,10 @@ func ExtractMap[PT Buildable[N], N any](
 					Value:   label.Value,
 				},
 				v: ValueReference[PT]{
-					Value:     n,
-					ValueNode: value,
+					Value:       n,
+					ValueNode:   value,
+					IsReference: isReference,
+					Reference:   referenceValue,
 				},
 			}
 		}
