@@ -191,7 +191,11 @@ minProperties: 1
 nullable: true
 readOnly: true
 writeOnly: false
-deprecated: true`
+deprecated: true
+contains:
+  type: int
+minContains: 1
+maxContains: 10`
 
 	var compNode yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
@@ -212,6 +216,11 @@ deprecated: true`
 
 	assert.NotNil(t, compiled)
 	assert.Nil(t, schemaProxy.GetBuildError())
+
+	// check contains
+	assert.Equal(t, "int", compiled.Contains.Schema().Type[0])
+	assert.Equal(t, int64(10), *compiled.MaxContains)
+	assert.Equal(t, int64(1), *compiled.MinContains)
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)

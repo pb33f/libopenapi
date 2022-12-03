@@ -55,9 +55,14 @@ type Schema struct {
 	// in 3.1 prefixItems provides tuple validation support.
 	PrefixItems []*SchemaProxy
 
+	// In 3.1 contains is used by arrays to define a single schema
+	Contains    *SchemaProxy
+	MinContains *int64
+	MaxContains *int64
+
 	// Compatible with all versions
 	Not                  []*SchemaProxy
-	Items                []*SchemaProxy
+	Items                *SchemaProxy
 	Properties           map[string]*SchemaProxy
 	Title                string
 	MultipleOf           *int64
@@ -139,6 +144,19 @@ func NewSchema(schema *base.Schema) *Schema {
 	if !schema.MinProperties.IsEmpty() {
 		s.MinProperties = &schema.MinProperties.Value
 	}
+	if !schema.MaxContains.IsEmpty() {
+		s.MaxContains = &schema.MaxContains.Value
+	}
+	if !schema.MinContains.IsEmpty() {
+		s.MinContains = &schema.MinContains.Value
+	}
+	if !schema.Contains.IsEmpty() {
+		s.Contains = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+			ValueNode: schema.Contains.ValueNode,
+			Value:     schema.Contains.Value,
+		}}
+	}
+
 	s.Pattern = schema.Pattern.Value
 	s.Format = schema.Format.Value
 
@@ -196,6 +214,8 @@ func NewSchema(schema *base.Schema) *Schema {
 		enum = append(enum, fmt.Sprint(schema.Enum.Value[i].Value))
 	}
 	s.Enum = enum
+
+	// build out
 
 	// async work.
 	// any polymorphic properties need to be handled in their own threads
@@ -312,7 +332,9 @@ func NewSchema(schema *base.Schema) *Schema {
 	s.OneOf = oneOf
 	s.AnyOf = anyOf
 	s.AllOf = allOf
-	s.Items = items
+	if len(items) > 0 {
+		s.Items = items[0]
+	}
 	s.PrefixItems = prefixItems
 	s.Not = not
 	return s
