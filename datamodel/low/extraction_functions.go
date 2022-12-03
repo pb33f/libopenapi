@@ -239,12 +239,12 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 	} else {
 		_, ln, vn = utils.FindKeyNodeFullTop(label, root.Content)
 		if vn != nil {
-			if h, _, rv := utils.IsNodeRefValue(vn); h {
+			if h, _, rVal := utils.IsNodeRefValue(vn); h {
 				ref, err := LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
 					isReference = true
-					referenceValue = rv
+					referenceValue = rVal
 					if err != nil {
 						circError = err
 					}
@@ -263,10 +263,12 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 			return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
 		}
 		for _, node := range vn.Content {
-			if rf, _, _ := utils.IsNodeRefValue(node); rf {
+			if rf, _, rv := utils.IsNodeRefValue(node); rf {
 				ref, err := LocateRefNode(node, idx)
 				if ref != nil {
 					node = ref
+					isReference = true
+					referenceValue = rv
 					if err != nil {
 						circError = err
 					}
