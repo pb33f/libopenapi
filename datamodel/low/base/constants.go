@@ -18,6 +18,7 @@ const (
 	XMLLabel                  = "xml"
 	ItemsLabel                = "items"
 	PrefixItemsLabel          = "prefixItems"
+	ContainsLabel             = "contains"
 	AllOfLabel                = "allOf"
 	AnyOfLabel                = "anyOf"
 	OneOfLabel                = "oneOf"
