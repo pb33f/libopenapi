@@ -521,7 +521,17 @@ func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing
 	assert.NoError(t, err)
 	assert.Nil(t, a)
 	assert.Nil(t, b)
+}
 
+// Discovered in issue https://github.com/pb33f/libopenapi/issues/37
+func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
+	a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
+	assert.NoError(t, err)
+	assert.Nil(t, a)
+	assert.Nil(t, b)
 }
 
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {

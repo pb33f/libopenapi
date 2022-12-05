@@ -1573,7 +1573,17 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 
 	case HttpResolve:
 		uri := strings.Split(componentId, "#")
-		if len(uri) == 2 {
+		if len(uri) >= 2 {
+			return index.performExternalLookup(uri, componentId, remoteLookup, parent)
+		}
+		if len(uri) == 1 {
+			// if there is no reference, second segment is empty / has no name
+			// this means there is no component to look-up and the entire file should be pulled in.
+			// to stop all the other code from breaking (that is expecting a component), let's just post-pend
+			// a hash to the end of the componentId and ensure the uri slice is as expected.
+			// described in https://github.com/pb33f/libopenapi/issues/37
+			componentId = fmt.Sprintf("%s#", componentId)
+			uri = append(uri, "")
 			return index.performExternalLookup(uri, componentId, remoteLookup, parent)
 		}
 
@@ -1980,7 +1990,12 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 	}
 
 	// lookup item from reference by using a path query.
-	query := fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
+	var query string
+	if len(uri) >= 2 {
+		query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
+	} else {
+		query = "$"
+	}
 
 	// remove any URL encoding
 	query = strings.Replace(query, "~1", "./", 1)
