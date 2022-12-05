@@ -105,6 +105,9 @@ type Schema struct {
 	Example              low.NodeReference[any]
 	Deprecated           low.NodeReference[bool]
 	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
+
+	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
+	ParentProxy *SchemaProxy
 }
 
 // Hash will calculate a SHA256 hash from the values of the schema, This allows equality checking against

@@ -86,6 +86,7 @@ func (sp *SchemaProxy) Schema() *Schema {
 		sp.buildError = err
 		return nil
 	}
+	schema.ParentProxy = sp // https://github.com/pb33f/libopenapi/issues/29
 	sp.rendered = schema
 	return schema
 }

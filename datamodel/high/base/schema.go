@@ -86,6 +86,9 @@ type Schema struct {
 	Deprecated           *bool
 	Extensions           map[string]any
 	low                  *base.Schema
+
+	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
+	ParentProxy *SchemaProxy
 }
 
 // NewSchema will create a new high-level schema from a low-level one.

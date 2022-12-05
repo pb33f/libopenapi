@@ -155,6 +155,10 @@ func Test_Schema(t *testing.T) {
 	assert.True(t, v.Value.Schema().ExclusiveMaximum.Value.A)
 
 	j := v.Value.Schema().FindProperty("somethingBProp").Value.Schema()
+	k := v.Value.Schema().FindProperty("somethingBProp").Value
+
+	assert.Equal(t, k, j.ParentProxy)
+
 	assert.NotNil(t, j)
 	assert.NotNil(t, j.XML.Value)
 	assert.Equal(t, "an xml thing", j.XML.Value.Name.Value)
