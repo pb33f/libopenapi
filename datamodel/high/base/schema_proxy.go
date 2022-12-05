@@ -60,7 +60,9 @@ func (sp *SchemaProxy) Schema() *Schema {
 		sp.buildError = sp.schema.Value.GetBuildError()
 		return nil
 	}
-	return NewSchema(s)
+	sch := NewSchema(s)
+	sch.ParentProxy = sp
+	return sch
 }
 
 // BuildSchema operates the same way as Schema, except it will return any error along with the *Schema

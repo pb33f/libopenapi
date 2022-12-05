@@ -208,6 +208,8 @@ deprecated: true`
 	schemaProxy := NewSchemaProxy(&lowproxy)
 	compiled := schemaProxy.Schema()
 
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
 	assert.NotNil(t, compiled)
 	assert.Nil(t, schemaProxy.GetBuildError())
 
