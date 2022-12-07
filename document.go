@@ -15,11 +15,13 @@ package libopenapi
 
 import (
 	"fmt"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	what_changed "github.com/pb33f/libopenapi/what-changed"
 	"github.com/pb33f/libopenapi/what-changed/model"
@@ -116,14 +118,22 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 			"supplied spec is a different version (%v). Try 'BuildV3Model()'", d.info.SpecFormat))
 		return nil, errors
 	}
-	lowDoc, err := v2low.CreateDocument(d.info)
-	if err != nil {
-		return nil, err
+	lowDoc, errs := v2low.CreateDocument(d.info)
+	// Do not shortcircuit on circular reference errors, so the client
+	// has the option of ignoring them.
+	for _, err := range errs {
+		if refErr, ok := err.(*resolver.ResolvingError); ok {
+			if refErr.CircularReference == nil {
+				return nil, errs
+			}
+		} else {
+			return nil, errs
+		}
 	}
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
 	return &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
-	}, nil
+	}, errs
 }
 
 func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
@@ -137,14 +147,22 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat))
 		return nil, errors
 	}
-	lowDoc, err := v3low.CreateDocument(d.info)
-	if err != nil {
-		return nil, err
+	lowDoc, errs := v3low.CreateDocument(d.info)
+	// Do not shortcircuit on circular reference errors, so the client
+	// has the option of ignoring them.
+	for _, err := range errs {
+		if refErr, ok := err.(*resolver.ResolvingError); ok {
+			if refErr.CircularReference == nil {
+				return nil, errs
+			}
+		} else {
+			return nil, errs
+		}
 	}
 	highDoc := v3high.NewDocument(lowDoc)
 	return &DocumentModel[v3high.Document]{
 		Model: *highDoc,
-	}, nil
+	}, errs
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct
