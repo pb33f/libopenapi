@@ -26,12 +26,23 @@ type SchemaChanges struct {
     AllOfChanges          []*SchemaChanges          `json:"allOf,omitempty" yaml:"allOf,omitempty"`
     AnyOfChanges          []*SchemaChanges          `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
     OneOfChanges          []*SchemaChanges          `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
-    NotChanges            []*SchemaChanges          `json:"not,omitempty" yaml:"not,omitempty"`
-    ItemsChanges          []*SchemaChanges          `json:"items,omitempty" yaml:"items,omitempty"`
+    NotChanges            *SchemaChanges            `json:"not,omitempty" yaml:"not,omitempty"`
+    ItemsChanges          *SchemaChanges            `json:"items,omitempty" yaml:"items,omitempty"`
     SchemaPropertyChanges map[string]*SchemaChanges `json:"properties,omitempty" yaml:"properties,omitempty"`
     ExternalDocChanges    *ExternalDocChanges       `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
     XMLChanges            *XMLChanges               `json:"xml,omitempty" yaml:"xml,omitempty"`
     ExtensionChanges      *ExtensionChanges         `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+
+    // 3.1 specifics
+    IfChanges                    *SchemaChanges            `json:"if,omitempty" yaml:"if,omitempty"`
+    ElseChanges                  *SchemaChanges            `json:"else,omitempty" yaml:"else,omitempty"`
+    ThenChanges                  *SchemaChanges            `json:"then,omitempty" yaml:"then,omitempty"`
+    PropertyNamesChanges         *SchemaChanges            `json:"propertyNames,omitempty" yaml:"propertyNames,omitempty"`
+    ContainsChanges              *SchemaChanges            `json:"contains,omitempty" yaml:"contains,omitempty"`
+    UnevaluatedItemsChanges      *SchemaChanges            `json:"unevaluatedItems,omitempty" yaml:"unevaluatedItems,omitempty"`
+    UnevaluatedPropertiesChanges *SchemaChanges            `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
+    DependentSchemasChanges      map[string]*SchemaChanges `json:"dependentSchemas,omitempty" yaml:"dependentSchemas,omitempty"`
+    PatternPropertiesChanges     map[string]*SchemaChanges `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 }
 
 // TotalChanges returns a count of the total number of changes made to this schema and all sub-schemas
@@ -55,19 +66,46 @@ func (s *SchemaChanges) TotalChanges() int {
             t += s.OneOfChanges[n].TotalChanges()
         }
     }
-    if len(s.NotChanges) > 0 {
-        for n := range s.NotChanges {
-            t += s.NotChanges[n].TotalChanges()
-        }
+    if s.NotChanges != nil {
+        t += s.NotChanges.TotalChanges()
     }
-    if len(s.ItemsChanges) > 0 {
-        for n := range s.ItemsChanges {
-            t += s.ItemsChanges[n].TotalChanges()
-        }
+    if s.ItemsChanges != nil {
+        t += s.ItemsChanges.TotalChanges()
+    }
+    if s.IfChanges != nil {
+        t += s.IfChanges.TotalChanges()
+    }
+    if s.ElseChanges != nil {
+        t += s.ElseChanges.TotalChanges()
+    }
+    if s.ThenChanges != nil {
+        t += s.ThenChanges.TotalChanges()
+    }
+    if s.PropertyNamesChanges != nil {
+        t += s.PropertyNamesChanges.TotalChanges()
+    }
+    if s.ContainsChanges != nil {
+        t += s.ContainsChanges.TotalChanges()
+    }
+    if s.UnevaluatedItemsChanges != nil {
+        t += s.UnevaluatedItemsChanges.TotalChanges()
+    }
+    if s.UnevaluatedPropertiesChanges != nil {
+        t += s.UnevaluatedPropertiesChanges.TotalChanges()
     }
     if s.SchemaPropertyChanges != nil {
         for n := range s.SchemaPropertyChanges {
             t += s.SchemaPropertyChanges[n].TotalChanges()
+        }
+    }
+    if s.DependentSchemasChanges != nil {
+        for n := range s.DependentSchemasChanges {
+            t += s.DependentSchemasChanges[n].TotalChanges()
+        }
+    }
+    if s.PatternPropertiesChanges != nil {
+        for n := range s.PatternPropertiesChanges {
+            t += s.PatternPropertiesChanges[n].TotalChanges()
         }
     }
     if s.ExternalDocChanges != nil {
@@ -108,14 +146,41 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
             t += s.OneOfChanges[n].TotalBreakingChanges()
         }
     }
-    if len(s.NotChanges) > 0 {
-        for n := range s.NotChanges {
-            t += s.NotChanges[n].TotalBreakingChanges()
+    if s.NotChanges != nil {
+        t += s.NotChanges.TotalBreakingChanges()
+    }
+    if s.ItemsChanges != nil {
+        t += s.ItemsChanges.TotalBreakingChanges()
+    }
+    if s.IfChanges != nil {
+        t += s.IfChanges.TotalBreakingChanges()
+    }
+    if s.ElseChanges != nil {
+        t += s.ElseChanges.TotalBreakingChanges()
+    }
+    if s.ThenChanges != nil {
+        t += s.ThenChanges.TotalBreakingChanges()
+    }
+    if s.PropertyNamesChanges != nil {
+        t += s.PropertyNamesChanges.TotalBreakingChanges()
+    }
+    if s.ContainsChanges != nil {
+        t += s.ContainsChanges.TotalBreakingChanges()
+    }
+    if s.UnevaluatedItemsChanges != nil {
+        t += s.UnevaluatedItemsChanges.TotalBreakingChanges()
+    }
+    if s.UnevaluatedPropertiesChanges != nil {
+        t += s.UnevaluatedPropertiesChanges.TotalBreakingChanges()
+    }
+    if s.DependentSchemasChanges != nil {
+        for n := range s.DependentSchemasChanges {
+            t += s.DependentSchemasChanges[n].TotalBreakingChanges()
         }
     }
-    if len(s.ItemsChanges) > 0 {
-        for n := range s.ItemsChanges {
-            t += s.ItemsChanges[n].TotalBreakingChanges()
+    if s.PatternPropertiesChanges != nil {
+        for n := range s.PatternPropertiesChanges {
+            t += s.PatternPropertiesChanges[n].TotalBreakingChanges()
         }
     }
     if s.XMLChanges != nil {
@@ -215,13 +280,13 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
         go extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
             &sc.AnyOfChanges, &changes, doneChan)
 
-        go extractSchemaChanges(lSchema.Items.Value, rSchema.Items.Value, v3.ItemsLabel,
-            &sc.ItemsChanges, &changes, doneChan)
+        //go extractSchemaChanges(lSchema.Items.Value, rSchema.Items.Value, v3.ItemsLabel,
+        //    &sc.ItemsChanges, &changes, doneChan)
+        //
+        //go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.NotLabel,
+        //    &sc.NotChanges, &changes, doneChan)
 
-        go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.NotLabel,
-            &sc.NotChanges, &changes, doneChan)
-
-        totalChecks := totalProperties + 5
+        totalChecks := totalProperties + 3
         completedChecks := 0
         for completedChecks < totalChecks {
             select {
@@ -750,6 +815,159 @@ func checkSchemaPropertyChanges(
     if lSchema.ExternalDocs.Value != nil && rSchema.ExternalDocs.Value == nil {
         CreateChange(changes, ObjectRemoved, v3.ExternalDocsLabel,
             lSchema.ExternalDocs.ValueNode, nil, false, lSchema.ExternalDocs.Value, nil)
+    }
+
+    // 3.1 properties
+    // If
+    if lSchema.If.Value != nil && rSchema.If.Value != nil {
+        if !low.AreEqual(lSchema.If.Value, rSchema.If.Value) {
+            sc.IfChanges = CompareSchemas(lSchema.If.Value, rSchema.If.Value)
+        }
+    }
+    // added If
+    if lSchema.If.Value == nil && rSchema.If.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.IfLabel,
+            nil, rSchema.If.ValueNode, true, nil, rSchema.If.Value)
+    }
+    // removed If
+    if lSchema.If.Value != nil && rSchema.If.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.IfLabel,
+            lSchema.If.ValueNode, nil, true, lSchema.If.Value, nil)
+    }
+    // Else
+    if lSchema.Else.Value != nil && rSchema.Else.Value != nil {
+        if !low.AreEqual(lSchema.Else.Value, rSchema.Else.Value) {
+            sc.ElseChanges = CompareSchemas(lSchema.Else.Value, rSchema.Else.Value)
+        }
+    }
+    // added Else
+    if lSchema.Else.Value == nil && rSchema.Else.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.ElseLabel,
+            nil, rSchema.Else.ValueNode, true, nil, rSchema.Else.Value)
+    }
+    // removed Else
+    if lSchema.Else.Value != nil && rSchema.Else.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.ElseLabel,
+            lSchema.Else.ValueNode, nil, true, lSchema.Else.Value, nil)
+    }
+    // Then
+    if lSchema.Then.Value != nil && rSchema.Then.Value != nil {
+        if !low.AreEqual(lSchema.Then.Value, rSchema.Then.Value) {
+            sc.ThenChanges = CompareSchemas(lSchema.Then.Value, rSchema.Then.Value)
+        }
+    }
+    // added Then
+    if lSchema.Then.Value == nil && rSchema.Then.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.ThenLabel,
+            nil, rSchema.Then.ValueNode, true, nil, rSchema.Then.Value)
+    }
+    // removed Then
+    if lSchema.Then.Value != nil && rSchema.Then.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.ThenLabel,
+            lSchema.Then.ValueNode, nil, true, lSchema.Then.Value, nil)
+    }
+    // PropertyNames
+    if lSchema.PropertyNames.Value != nil && rSchema.PropertyNames.Value != nil {
+        if !low.AreEqual(lSchema.PropertyNames.Value, rSchema.PropertyNames.Value) {
+            sc.PropertyNamesChanges = CompareSchemas(lSchema.PropertyNames.Value, rSchema.PropertyNames.Value)
+        }
+    }
+    // added PropertyNames
+    if lSchema.PropertyNames.Value == nil && rSchema.PropertyNames.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.PropertyNamesLabel,
+            nil, rSchema.PropertyNames.ValueNode, true, nil, rSchema.PropertyNames.Value)
+    }
+    // removed PropertyNames
+    if lSchema.PropertyNames.Value != nil && rSchema.PropertyNames.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.PropertyNamesLabel,
+            lSchema.PropertyNames.ValueNode, nil, true, lSchema.PropertyNames.Value, nil)
+    }
+    // Contains
+    if lSchema.Contains.Value != nil && rSchema.Contains.Value != nil {
+        if !low.AreEqual(lSchema.Contains.Value, rSchema.Contains.Value) {
+            sc.ContainsChanges = CompareSchemas(lSchema.Contains.Value, rSchema.Contains.Value)
+        }
+    }
+    // added Contains
+    if lSchema.Contains.Value == nil && rSchema.Contains.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.ContainsLabel,
+            nil, rSchema.Contains.ValueNode, true, nil, rSchema.Contains.Value)
+    }
+    // removed Contains
+    if lSchema.Contains.Value != nil && rSchema.Contains.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.ContainsLabel,
+            lSchema.Contains.ValueNode, nil, true, lSchema.Contains.Value, nil)
+    }
+    // UnevaluatedItems
+    if lSchema.UnevaluatedItems.Value != nil && rSchema.UnevaluatedItems.Value != nil {
+        if !low.AreEqual(lSchema.UnevaluatedItems.Value, rSchema.UnevaluatedItems.Value) {
+            sc.UnevaluatedItemsChanges = CompareSchemas(lSchema.UnevaluatedItems.Value, rSchema.UnevaluatedItems.Value)
+        }
+    }
+    // added UnevaluatedItems
+    if lSchema.UnevaluatedItems.Value == nil && rSchema.UnevaluatedItems.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.UnevaluatedItemsLabel,
+            nil, rSchema.UnevaluatedItems.ValueNode, true, nil, rSchema.UnevaluatedItems.Value)
+    }
+    // removed UnevaluatedItems
+    if lSchema.UnevaluatedItems.Value != nil && rSchema.UnevaluatedItems.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.UnevaluatedItemsLabel,
+            lSchema.UnevaluatedItems.ValueNode, nil, true, lSchema.UnevaluatedItems.Value, nil)
+    }
+    // UnevaluatedProperties
+    if lSchema.UnevaluatedProperties.Value != nil && rSchema.UnevaluatedProperties.Value != nil {
+        if !low.AreEqual(lSchema.UnevaluatedProperties.Value, rSchema.UnevaluatedProperties.Value) {
+            sc.UnevaluatedPropertiesChanges = CompareSchemas(lSchema.UnevaluatedProperties.Value, rSchema.UnevaluatedProperties.Value)
+        }
+    }
+    // added UnevaluatedProperties
+    if lSchema.UnevaluatedProperties.Value == nil && rSchema.UnevaluatedProperties.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.UnevaluatedPropertiesLabel,
+            nil, rSchema.UnevaluatedProperties.ValueNode, true, nil, rSchema.UnevaluatedProperties.Value)
+    }
+    // removed UnevaluatedProperties
+    if lSchema.UnevaluatedProperties.Value != nil && rSchema.UnevaluatedProperties.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.UnevaluatedPropertiesLabel,
+            lSchema.UnevaluatedProperties.ValueNode, nil, true, lSchema.UnevaluatedProperties.Value, nil)
+    }
+
+    // Not
+    if lSchema.Not.Value != nil && rSchema.Not.Value != nil {
+        if !low.AreEqual(lSchema.Not.Value, rSchema.Not.Value) {
+            sc.NotChanges = CompareSchemas(lSchema.Not.Value, rSchema.Not.Value)
+        }
+    }
+    // added Not
+    if lSchema.Not.Value == nil && rSchema.Not.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.NotLabel,
+            nil, rSchema.Not.ValueNode, true, nil, rSchema.Not.Value)
+    }
+    // removed not
+    if lSchema.Not.Value != nil && rSchema.Not.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.NotLabel,
+            lSchema.Not.ValueNode, nil, true, lSchema.Not.Value, nil)
+    }
+
+    // items
+    if lSchema.Items.Value != nil && rSchema.Items.Value != nil {
+        if lSchema.Items.Value.IsA() && rSchema.Items.Value.IsA() {
+            if !low.AreEqual(lSchema.Items.Value.A, rSchema.Items.Value.A) {
+                sc.ItemsChanges = CompareSchemas(lSchema.Items.Value.A, rSchema.Items.Value.A)
+            }
+        } else {
+            CreateChange(changes, Modified, v3.ItemsLabel,
+                lSchema.Items.ValueNode, rSchema.Items.ValueNode, true, lSchema.Items.Value.B, rSchema.Items.Value.B)
+        }
+    }
+    // added Items
+    if lSchema.Items.Value == nil && rSchema.Items.Value != nil {
+        CreateChange(changes, ObjectAdded, v3.ItemsLabel,
+            nil, rSchema.Items.ValueNode, true, nil, rSchema.Items.Value)
+    }
+    // removed Items
+    if lSchema.Items.Value != nil && rSchema.Items.Value == nil {
+        CreateChange(changes, ObjectRemoved, v3.ItemsLabel,
+            lSchema.Items.ValueNode, nil, true, lSchema.Items.Value, nil)
     }
 
     // check extensions

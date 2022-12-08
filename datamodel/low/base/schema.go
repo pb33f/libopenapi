@@ -51,10 +51,10 @@ type Schema struct {
 	SchemaTypeRef low.NodeReference[string]
 
 	// In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
-	ExclusiveMaximum low.NodeReference[SchemaDynamicValue[bool, int64]]
+	ExclusiveMaximum low.NodeReference[*SchemaDynamicValue[bool, int64]]
 
 	// In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
-	ExclusiveMinimum low.NodeReference[SchemaDynamicValue[bool, int64]]
+	ExclusiveMinimum low.NodeReference[*SchemaDynamicValue[bool, int64]]
 
 	// In versions 2 and 3.0, this Type is a single value, so array will only ever have one value
 	// in version 3.1, Type can be multiple values
@@ -77,6 +77,19 @@ type Schema struct {
 	MinContains low.NodeReference[int64]
 	MaxContains low.NodeReference[int64]
 
+	// items can be a schema in 2.0, 3.0 and 3.1 or a bool in 3.1
+	Items low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]
+
+	// 3.1 only
+	If                    low.NodeReference[*SchemaProxy]
+	Else                  low.NodeReference[*SchemaProxy]
+	Then                  low.NodeReference[*SchemaProxy]
+	DependentSchemas      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
+	PatternProperties     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
+	PropertyNames         low.NodeReference[*SchemaProxy]
+	UnevaluatedItems      low.NodeReference[*SchemaProxy]
+	UnevaluatedProperties low.NodeReference[*SchemaProxy]
+
 	// Compatible with all versions
 	Title                low.NodeReference[string]
 	MultipleOf           low.NodeReference[int64]
@@ -93,8 +106,7 @@ type Schema struct {
 	MinProperties        low.NodeReference[int64]
 	Required             low.NodeReference[[]low.ValueReference[string]]
 	Enum                 low.NodeReference[[]low.ValueReference[any]]
-	Not                  low.NodeReference[[]low.ValueReference[*SchemaProxy]]
-	Items                low.NodeReference[[]low.ValueReference[*SchemaProxy]]
+	Not                  low.NodeReference[*SchemaProxy]
 	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
@@ -229,18 +241,15 @@ func (s *Schema) Hash() [32]byte {
 	for i := range s.Enum.Value {
 		d = append(d, fmt.Sprint(s.Enum.Value[i].Value))
 	}
-	propertyKeys := make([]string, len(s.Properties.Value))
+	propKeys := make([]string, len(s.Properties.Value))
 	z := 0
 	for i := range s.Properties.Value {
-		propertyKeys[z] = i.Value
+		propKeys[z] = i.Value
 		z++
 	}
-	sort.Strings(propertyKeys)
-	for k := range propertyKeys {
-		prop := s.FindProperty(propertyKeys[k]).Value
-		if !prop.IsSchemaReference() {
-			d = append(d, low.GenerateHashString(prop.Schema()))
-		}
+	sort.Strings(propKeys)
+	for k := range propKeys {
+		d = append(d, low.GenerateHashString(s.FindProperty(propKeys[k]).Value))
 	}
 	if s.XML.Value != nil {
 		d = append(d, low.GenerateHashString(s.XML.Value))
@@ -307,39 +316,57 @@ func (s *Schema) Hash() [32]byte {
 		}
 	}
 
-	if len(s.Not.Value) > 0 {
-		notKeys := make([]string, len(s.Not.Value))
-		notEntities := make(map[string]*SchemaProxy)
-		z = 0
-		for i := range s.Not.Value {
-			g := s.Not.Value[i].Value
-			r := low.GenerateHashString(g)
-			notEntities[r] = g
-			notKeys[z] = r
-			z++
-
-		}
-		sort.Strings(notKeys)
-		for k := range notKeys {
-			d = append(d, low.GenerateHashString(notEntities[notKeys[k]]))
-		}
+	if !s.Not.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.Not.Value))
 	}
 
-	if len(s.Items.Value) > 0 {
-		itemsKeys := make([]string, len(s.Items.Value))
-		itemsEntities := make(map[string]*SchemaProxy)
-		z = 0
-		for i := range s.Items.Value {
-			g := s.Items.Value[i].Value
-			r := low.GenerateHashString(g)
-			itemsEntities[r] = g
-			itemsKeys[z] = r
-			z++
-		}
-		sort.Strings(itemsKeys)
-		for k := range itemsKeys {
-			d = append(d, low.GenerateHashString(itemsEntities[itemsKeys[k]]))
-		}
+	// check if items is a schema or a bool.
+	if !s.Items.IsEmpty() && s.Items.Value.IsA() {
+		d = append(d, low.GenerateHashString(s.Items.Value.A))
+	}
+	if !s.Items.IsEmpty() && s.Items.Value.IsB() {
+		d = append(d, fmt.Sprint(s.Items.Value.B))
+	}
+	// 3.1 only props
+	if !s.If.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.If.Value))
+	}
+	if !s.Else.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.Else.Value))
+	}
+	if !s.Then.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.Then.Value))
+	}
+	if !s.PropertyNames.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.PropertyNames.Value))
+	}
+	if !s.UnevaluatedProperties.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.UnevaluatedProperties.Value))
+	}
+	if !s.UnevaluatedItems.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.UnevaluatedItems.Value))
+	}
+
+	depSchemasKeys := make([]string, len(s.DependentSchemas.Value))
+	z = 0
+	for i := range s.DependentSchemas.Value {
+		depSchemasKeys[z] = i.Value
+		z++
+	}
+	sort.Strings(depSchemasKeys)
+	for k := range depSchemasKeys {
+		d = append(d, low.GenerateHashString(s.FindDependentSchema(depSchemasKeys[k]).Value))
+	}
+
+	patternPropsKeys := make([]string, len(s.PatternProperties.Value))
+	z = 0
+	for i := range s.PatternProperties.Value {
+		patternPropsKeys[z] = i.Value
+		z++
+	}
+	sort.Strings(patternPropsKeys)
+	for k := range patternPropsKeys {
+		d = append(d, low.GenerateHashString(s.FindPatternProperty(patternPropsKeys[k]).Value))
 	}
 
 	if len(s.PrefixItems.Value) > 0 {
@@ -399,6 +426,18 @@ func (s *Schema) FindProperty(name string) *low.ValueReference[*SchemaProxy] {
 	return low.FindItemInMap[*SchemaProxy](name, s.Properties.Value)
 }
 
+// FindDependentSchema will return a ValueReference pointer containing a SchemaProxy pointer
+// from a dependent schema key name. if found (3.1+ only)
+func (s *Schema) FindDependentSchema(name string) *low.ValueReference[*SchemaProxy] {
+	return low.FindItemInMap[*SchemaProxy](name, s.DependentSchemas.Value)
+}
+
+// FindPatternProperty will return a ValueReference pointer containing a SchemaProxy pointer
+// from a pattern property key name. if found (3.1+ only)
+func (s *Schema) FindPatternProperty(name string) *low.ValueReference[*SchemaProxy] {
+	return low.FindItemInMap[*SchemaProxy](name, s.PatternProperties.Value)
+}
+
 // GetExtensions returns all extensions for Schema
 func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
 	return s.Extensions
@@ -419,6 +458,14 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //  - Not
 //  - Items
 //  - PrefixItems
+//  - If
+//  - Else
+//  - Then
+//  - DependentSchemas
+//  - PatternProperties
+//  - PropertyNames
+//  - UnevaluatedItems
+//  - UnevaluatedProperties
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, err := low.LocateRefNode(root, idx)
@@ -469,18 +516,18 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if exMinValue != nil {
 		if utils.IsNodeBoolValue(exMinValue) {
 			val, _ := strconv.ParseBool(exMinValue.Value)
-			s.ExclusiveMinimum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
 				KeyNode:   exMinLabel,
 				ValueNode: exMinValue,
-				Value:     SchemaDynamicValue[bool, int64]{N: 0, A: val},
+				Value:     &SchemaDynamicValue[bool, int64]{N: 0, A: val},
 			}
 		}
 		if utils.IsNodeIntValue(exMinValue) {
 			val, _ := strconv.ParseInt(exMinValue.Value, 10, 64)
-			s.ExclusiveMinimum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
 				KeyNode:   exMinLabel,
 				ValueNode: exMinValue,
-				Value:     SchemaDynamicValue[bool, int64]{N: 1, B: val},
+				Value:     &SchemaDynamicValue[bool, int64]{N: 1, B: val},
 			}
 		}
 	}
@@ -490,18 +537,18 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if exMaxValue != nil {
 		if utils.IsNodeBoolValue(exMaxValue) {
 			val, _ := strconv.ParseBool(exMaxValue.Value)
-			s.ExclusiveMaximum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
 				KeyNode:   exMaxLabel,
 				ValueNode: exMaxValue,
-				Value:     SchemaDynamicValue[bool, int64]{N: 0, A: val},
+				Value:     &SchemaDynamicValue[bool, int64]{N: 0, A: val},
 			}
 		}
 		if utils.IsNodeIntValue(exMaxValue) {
 			val, _ := strconv.ParseInt(exMaxValue.Value, 10, 64)
-			s.ExclusiveMaximum = low.NodeReference[SchemaDynamicValue[bool, int64]]{
+			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
 				KeyNode:   exMaxLabel,
 				ValueNode: exMaxValue,
-				Value:     SchemaDynamicValue[bool, int64]{N: 1, B: val},
+				Value:     &SchemaDynamicValue[bool, int64]{N: 1, B: val},
 			}
 		}
 	}
@@ -585,77 +632,84 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		s.XML = low.NodeReference[*XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
 	}
 
-	// for property, build in a new thread!
-	bChan := make(chan schemaProxyBuildResult)
+	/*
 
-	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
-		refString string) {
-		c <- schemaProxyBuildResult{
-			k: low.KeyReference[string]{
-				KeyNode: label,
-				Value:   label.Value,
-			},
-			v: low.ValueReference[*SchemaProxy]{
-				Value:     &SchemaProxy{kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
-				ValueNode: value,
-			},
-		}
-	}
+	 */
 
 	// handle properties
-	_, propLabel, propsNode := utils.FindKeyNodeFullTop(PropertiesLabel, root.Content)
-	if propsNode != nil {
-		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*SchemaProxy])
-		var currentProp *yaml.Node
-		totalProps := 0
-		for i, prop := range propsNode.Content {
-			if i%2 == 0 {
-				currentProp = prop
-				continue
-			}
+	props, err := buildPropertyMap(root, idx, PropertiesLabel)
+	if err != nil {
+		return err
+	}
+	if props != nil {
+		s.Properties = *props
+	}
 
-			// check our prop isn't reference
-			isRef := false
-			refString := ""
-			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _ := low.LocateRefNode(prop, idx)
-				if ref != nil {
-					isRef = true
-					prop = ref
-					refString = l
-				} else {
-					return fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
-						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
-				}
-			}
-			totalProps++
-			go buildProperty(currentProp, prop, bChan, isRef, refString)
+	// handle dependent schemas
+	props, err = buildPropertyMap(root, idx, DependentSchemasLabel)
+	if err != nil {
+		return err
+	}
+	if props != nil {
+		s.DependentSchemas = *props
+	}
+
+	// handle pattern properties
+	props, err = buildPropertyMap(root, idx, PatternPropertiesLabel)
+	if err != nil {
+		return err
+	}
+	if props != nil {
+		s.PatternProperties = *props
+	}
+
+	// check items type for schema or bool (3.1 only)
+	itemsIsBool := false
+	itemsBoolValue := false
+	_, itemsLabel, itemsValue := utils.FindKeyNodeFullTop(ItemsLabel, root.Content)
+	if itemsValue != nil {
+		if utils.IsNodeBoolValue(itemsValue) {
+			itemsIsBool = true
+			itemsBoolValue, _ = strconv.ParseBool(itemsValue.Value)
 		}
-		completedProps := 0
-		for completedProps < totalProps {
-			select {
-			case res := <-bChan:
-				completedProps++
-				propertyMap[res.k] = res.v
-			}
-		}
-		s.Properties = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]{
-			Value:     propertyMap,
-			KeyNode:   propLabel,
-			ValueNode: propsNode,
+	}
+	if itemsIsBool {
+		s.Items = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]{
+			Value: &SchemaDynamicValue[*SchemaProxy, bool]{
+				B: itemsBoolValue,
+				N: 1,
+			},
+			KeyNode:   itemsLabel,
+			ValueNode: itemsValue,
 		}
 	}
 
-	var allOf, anyOf, oneOf, not, items, prefixItems []low.ValueReference[*SchemaProxy]
-	var contains low.ValueReference[*SchemaProxy]
+	/*
+		If                    low.NodeReference[*SchemaProxy]
+					Else                  low.NodeReference[*SchemaProxy]
+					Then                  low.NodeReference[*SchemaProxy]
+					PropertyNames         low.NodeReference[*SchemaProxy]
+					UnevaluatedItems      low.NodeReference[*SchemaProxy]
+					UnevaluatedProperties low.NodeReference[*SchemaProxy]
+	*/
+
+	var allOf, anyOf, oneOf, prefixItems []low.ValueReference[*SchemaProxy]
+
+	var items, not, contains, sif, selse, sthen, propertyNames, unevalItems, unevalProperties low.ValueReference[*SchemaProxy]
 
 	_, allOfLabel, allOfValue := utils.FindKeyNodeFullTop(AllOfLabel, root.Content)
 	_, anyOfLabel, anyOfValue := utils.FindKeyNodeFullTop(AnyOfLabel, root.Content)
 	_, oneOfLabel, oneOfValue := utils.FindKeyNodeFullTop(OneOfLabel, root.Content)
 	_, notLabel, notValue := utils.FindKeyNodeFullTop(NotLabel, root.Content)
-	_, itemsLabel, itemsValue := utils.FindKeyNodeFullTop(ItemsLabel, root.Content)
 	_, prefixItemsLabel, prefixItemsValue := utils.FindKeyNodeFullTop(PrefixItemsLabel, root.Content)
 	_, containsLabel, containsValue := utils.FindKeyNodeFullTop(ContainsLabel, root.Content)
+	_, sifLabel, sifValue := utils.FindKeyNodeFullTop(IfLabel, root.Content)
+	_, selseLabel, selseValue := utils.FindKeyNodeFullTop(ElseLabel, root.Content)
+	_, sthenLabel, sthenValue := utils.FindKeyNodeFullTop(ThenLabel, root.Content)
+	_, propNamesLabel, propNamesValue := utils.FindKeyNodeFullTop(PropertyNamesLabel, root.Content)
+
+	_, unevalItemsLabel, unevalItemsValue := utils.FindKeyNodeFullTop(UnevaluatedItemsLabel, root.Content)
+	_, unevalPropsLabel, unevalPropsValue := utils.FindKeyNodeFullTop(UnevaluatedPropertiesLabel, root.Content)
 
 	errorChan := make(chan error)
 	allOfChan := make(chan schemaProxyBuildResult)
@@ -665,12 +719,16 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	prefixItemsChan := make(chan schemaProxyBuildResult)
 	notChan := make(chan schemaProxyBuildResult)
 	containsChan := make(chan schemaProxyBuildResult)
+	ifChan := make(chan schemaProxyBuildResult)
+	elseChan := make(chan schemaProxyBuildResult)
+	thenChan := make(chan schemaProxyBuildResult)
+	propNamesChan := make(chan schemaProxyBuildResult)
+	unevalItemsChan := make(chan schemaProxyBuildResult)
+	unevalPropsChan := make(chan schemaProxyBuildResult)
 
 	totalBuilds := countSubSchemaItems(allOfValue) +
 		countSubSchemaItems(anyOfValue) +
 		countSubSchemaItems(oneOfValue) +
-		countSubSchemaItems(notValue) +
-		countSubSchemaItems(itemsValue) +
 		countSubSchemaItems(prefixItemsValue)
 
 	if allOfValue != nil {
@@ -682,18 +740,44 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if oneOfValue != nil {
 		go buildSchema(oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
 	}
-	if itemsValue != nil {
-		go buildSchema(itemsChan, itemsLabel, itemsValue, errorChan, idx)
-	}
 	if prefixItemsValue != nil {
 		go buildSchema(prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
 	}
 	if notValue != nil {
+		totalBuilds++
 		go buildSchema(notChan, notLabel, notValue, errorChan, idx)
 	}
 	if containsValue != nil {
 		totalBuilds++
 		go buildSchema(containsChan, containsLabel, containsValue, errorChan, idx)
+	}
+	if !itemsIsBool && itemsValue != nil {
+		totalBuilds++
+		go buildSchema(itemsChan, itemsLabel, itemsValue, errorChan, idx)
+	}
+	if sifValue != nil {
+		totalBuilds++
+		go buildSchema(ifChan, sifLabel, sifValue, errorChan, idx)
+	}
+	if selseValue != nil {
+		totalBuilds++
+		go buildSchema(elseChan, selseLabel, selseValue, errorChan, idx)
+	}
+	if sthenValue != nil {
+		totalBuilds++
+		go buildSchema(thenChan, sthenLabel, sthenValue, errorChan, idx)
+	}
+	if propNamesValue != nil {
+		totalBuilds++
+		go buildSchema(propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
+	}
+	if unevalItemsValue != nil {
+		totalBuilds++
+		go buildSchema(unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
+	}
+	if unevalPropsValue != nil {
+		totalBuilds++
+		go buildSchema(unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
 	}
 
 	completeCount := 0
@@ -712,16 +796,34 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			oneOf = append(oneOf, r.v)
 		case r := <-itemsChan:
 			completeCount++
-			items = append(items, r.v)
+			items = r.v
 		case r := <-prefixItemsChan:
 			completeCount++
 			prefixItems = append(prefixItems, r.v)
 		case r := <-notChan:
 			completeCount++
-			not = append(not, r.v)
+			not = r.v
 		case r := <-containsChan:
 			completeCount++
 			contains = r.v
+		case r := <-ifChan:
+			completeCount++
+			sif = r.v
+		case r := <-elseChan:
+			completeCount++
+			selse = r.v
+		case r := <-thenChan:
+			completeCount++
+			sthen = r.v
+		case r := <-propNamesChan:
+			completeCount++
+			propertyNames = r.v
+		case r := <-unevalItemsChan:
+			completeCount++
+			unevalItems = r.v
+		case r := <-unevalPropsChan:
+			completeCount++
+			unevalProperties = r.v
 		}
 	}
 
@@ -746,17 +848,18 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			ValueNode: allOfValue,
 		}
 	}
-	if len(not) > 0 {
-		s.Not = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
-			Value:     not,
+	if !not.IsEmpty() {
+		s.Not = low.NodeReference[*SchemaProxy]{
+			Value:     not.Value,
 			KeyNode:   notLabel,
 			ValueNode: notValue,
 		}
-
 	}
-	if len(items) > 0 {
-		s.Items = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
-			Value:     items,
+	if !itemsIsBool && !items.IsEmpty() {
+		s.Items = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]{
+			Value: &SchemaDynamicValue[*SchemaProxy, bool]{
+				A: items.Value,
+			},
 			KeyNode:   itemsLabel,
 			ValueNode: itemsValue,
 		}
@@ -775,7 +878,113 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			ValueNode: containsValue,
 		}
 	}
+	if !sif.IsEmpty() {
+		s.If = low.NodeReference[*SchemaProxy]{
+			Value:     sif.Value,
+			KeyNode:   sifLabel,
+			ValueNode: sifValue,
+		}
+	}
+	if !selse.IsEmpty() {
+		s.Else = low.NodeReference[*SchemaProxy]{
+			Value:     selse.Value,
+			KeyNode:   selseLabel,
+			ValueNode: selseValue,
+		}
+	}
+	if !sthen.IsEmpty() {
+		s.Then = low.NodeReference[*SchemaProxy]{
+			Value:     sthen.Value,
+			KeyNode:   sthenLabel,
+			ValueNode: sthenValue,
+		}
+	}
+	if !propertyNames.IsEmpty() {
+		s.PropertyNames = low.NodeReference[*SchemaProxy]{
+			Value:     propertyNames.Value,
+			KeyNode:   propNamesLabel,
+			ValueNode: propNamesValue,
+		}
+	}
+	if !unevalItems.IsEmpty() {
+		s.UnevaluatedItems = low.NodeReference[*SchemaProxy]{
+			Value:     unevalItems.Value,
+			KeyNode:   unevalItemsLabel,
+			ValueNode: unevalItemsValue,
+		}
+	}
+	if !unevalProperties.IsEmpty() {
+		s.UnevaluatedProperties = low.NodeReference[*SchemaProxy]{
+			Value:     unevalProperties.Value,
+			KeyNode:   unevalPropsLabel,
+			ValueNode: unevalPropsValue,
+		}
+	}
 	return nil
+}
+
+func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
+
+	// for property, build in a new thread!
+	bChan := make(chan schemaProxyBuildResult)
+
+	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
+		refString string) {
+		c <- schemaProxyBuildResult{
+			k: low.KeyReference[string]{
+				KeyNode: label,
+				Value:   label.Value,
+			},
+			v: low.ValueReference[*SchemaProxy]{
+				Value:     &SchemaProxy{kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
+				ValueNode: value,
+			},
+		}
+	}
+
+	_, propLabel, propsNode := utils.FindKeyNodeFullTop(label, root.Content)
+	if propsNode != nil {
+		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*SchemaProxy])
+		var currentProp *yaml.Node
+		totalProps := 0
+		for i, prop := range propsNode.Content {
+			if i%2 == 0 {
+				currentProp = prop
+				continue
+			}
+
+			// check our prop isn't reference
+			isRef := false
+			refString := ""
+			if h, _, l := utils.IsNodeRefValue(prop); h {
+				ref, _ := low.LocateRefNode(prop, idx)
+				if ref != nil {
+					isRef = true
+					prop = ref
+					refString = l
+				} else {
+					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
+						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
+				}
+			}
+			totalProps++
+			go buildProperty(currentProp, prop, bChan, isRef, refString)
+		}
+		completedProps := 0
+		for completedProps < totalProps {
+			select {
+			case res := <-bChan:
+				completedProps++
+				propertyMap[res.k] = res.v
+			}
+		}
+		return &low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]{
+			Value:     propertyMap,
+			KeyNode:   propLabel,
+			ValueNode: propsNode,
+		}, nil
+	}
+	return nil, nil
 }
 
 // count the number of sub-schemas in a node.
@@ -894,7 +1103,6 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				}
 			}
 		}
-
 	}
 }
 
