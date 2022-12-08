@@ -544,6 +544,473 @@ components:
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[0].Property)
 }
 
+func TestCompareSchemas_PropertyNames(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      propertyNames:
+        type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      propertyNames:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.PropertyNamesChanges.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_PropertyNames_Added(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      propertyNames:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.PropertyNamesLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_PropertyNames_Removed(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      propertyNames:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.PropertyNamesLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_Contains(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      contains:
+        type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      contains:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.ContainsChanges.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_Contains_Added(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      contains:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ContainsLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_Contains_Removed(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      contains:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.ContainsLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_UnevaluatedProperties(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties:
+        type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.UnevaluatedPropertiesChanges.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_UnevaluatedProperties_Added(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      unevaluatedProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.UnevaluatedPropertiesLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_UnevaluatedProperties_Removed(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      unevaluatedProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.UnevaluatedPropertiesLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_UnevaluatedItems(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedItems:
+        type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedItems:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.UnevaluatedItemsChanges.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_UnevaluatedItems_Added(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      unevaluatedItems:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.UnevaluatedItemsLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_UnevaluatedItems_Removed(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      unevaluatedItems:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.UnevaluatedItemsLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_ItemsBoolean(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      items: true`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      items: false`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_ItemsAdded(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      items: true`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_ItemsRemoved(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      items: true`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_NotAdded(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      not:
+        type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_NotRemoved(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      not:
+        type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
 func TestCompareSchemas_PropertyChanged(t *testing.T) {
 	left := `openapi: 3.0
 components:
@@ -801,10 +1268,10 @@ components:
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges[0].Changes[0].Property)
-	assert.Equal(t, Modified, changes.ItemsChanges[0].Changes[0].ChangeType)
-	assert.Equal(t, "string", changes.ItemsChanges[0].Changes[0].New)
-	assert.Equal(t, "bool", changes.ItemsChanges[0].Changes[0].Original)
+	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges.Changes[0].Property)
+	assert.Equal(t, Modified, changes.ItemsChanges.Changes[0].ChangeType)
+	assert.Equal(t, "string", changes.ItemsChanges.Changes[0].New)
+	assert.Equal(t, "bool", changes.ItemsChanges.Changes[0].Original)
 }
 
 func TestCompareSchemas_ItemsModifyAndAddItemArray(t *testing.T) {
@@ -834,10 +1301,10 @@ components:
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges[0].Changes[0].Property)
-	assert.Equal(t, Modified, changes.ItemsChanges[0].Changes[0].ChangeType)
-	assert.Equal(t, "string", changes.ItemsChanges[0].Changes[0].New)
-	assert.Equal(t, "bool", changes.ItemsChanges[0].Changes[0].Original)
+	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges.Changes[0].Property)
+	assert.Equal(t, Modified, changes.ItemsChanges.Changes[0].ChangeType)
+	assert.Equal(t, "string", changes.ItemsChanges.Changes[0].New)
+	assert.Equal(t, "bool", changes.ItemsChanges.Changes[0].Original)
 }
 
 func TestCompareSchemas_NotModifyAndAddItem(t *testing.T) {
@@ -867,10 +1334,10 @@ components:
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-	assert.Equal(t, v3.TypeLabel, changes.NotChanges[0].Changes[0].Property)
-	assert.Equal(t, Modified, changes.NotChanges[0].Changes[0].ChangeType)
-	assert.Equal(t, "string", changes.NotChanges[0].Changes[0].New)
-	assert.Equal(t, "bool", changes.NotChanges[0].Changes[0].Original)
+	assert.Equal(t, v3.TypeLabel, changes.NotChanges.Changes[0].Property)
+	assert.Equal(t, Modified, changes.NotChanges.Changes[0].ChangeType)
+	assert.Equal(t, "string", changes.NotChanges.Changes[0].New)
+	assert.Equal(t, "bool", changes.NotChanges.Changes[0].Original)
 }
 
 func TestCompareSchemas_DiscriminatorChange(t *testing.T) {

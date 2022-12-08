@@ -12,6 +12,24 @@ import (
 func test_get_schema_blob() string {
 	return `type: object
 description: something object
+if:
+  type: string
+else:
+  type: integer
+then:
+  type: boolean
+dependentSchemas:
+  schemaOne:
+    type: string
+patternProperties:
+  patternOne:
+    type: string
+propertyNames:
+  type: string
+unevaluatedItems:
+  type: boolean
+unevaluatedProperties:
+  type: integer
 discriminator:
   propertyName: athing
   mapping:
@@ -226,29 +244,29 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "oneOfBExp", v.Value.Schema().Example.Value)
 
 	// check values NOT
-	assert.Equal(t, "a not thing", sch.Not.Value[0].Value.Schema().Description.Value)
-	assert.Len(t, sch.Not.Value[0].Value.Schema().Properties.Value, 2)
+	assert.Equal(t, "a not thing", sch.Not.Value.Schema().Description.Value)
+	assert.Len(t, sch.Not.Value.Schema().Properties.Value, 2)
 
-	v = sch.Not.Value[0].Value.Schema().FindProperty("notA")
+	v = sch.Not.Value.Schema().FindProperty("notA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "notA description", v.Value.Schema().Description.Value)
 	assert.Equal(t, "notAExp", v.Value.Schema().Example.Value)
 
-	v = sch.Not.Value[0].Value.Schema().FindProperty("notB")
+	v = sch.Not.Value.Schema().FindProperty("notB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "notB description", v.Value.Schema().Description.Value)
 	assert.Equal(t, "notBExp", v.Value.Schema().Example.Value)
 
 	// check values Items
-	assert.Equal(t, "an items thing", sch.Items.Value[0].Value.Schema().Description.Value)
-	assert.Len(t, sch.Items.Value[0].Value.Schema().Properties.Value, 2)
+	assert.Equal(t, "an items thing", sch.Items.Value.A.Schema().Description.Value)
+	assert.Len(t, sch.Items.Value.A.Schema().Properties.Value, 2)
 
-	v = sch.Items.Value[0].Value.Schema().FindProperty("itemsA")
+	v = sch.Items.Value.A.Schema().FindProperty("itemsA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsA description", v.Value.Schema().Description.Value)
 	assert.Equal(t, "itemsAExp", v.Value.Schema().Example.Value)
 
-	v = sch.Items.Value[0].Value.Schema().FindProperty("itemsB")
+	v = sch.Items.Value.A.Schema().FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Schema().Description.Value)
 	assert.Equal(t, "itemsBExp", v.Value.Schema().Example.Value)
@@ -276,10 +294,18 @@ func Test_Schema(t *testing.T) {
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")
 	assert.Equal(t, "party", mv.Value)
 
-	// check contains
+	// check 3.1 properties.
 	assert.Equal(t, "int", sch.Contains.Value.Schema().Type.Value.A)
 	assert.Equal(t, int64(1), sch.MinContains.Value)
 	assert.Equal(t, int64(10), sch.MaxContains.Value)
+	assert.Equal(t, "string", sch.If.Value.Schema().Type.Value.A)
+	assert.Equal(t, "integer", sch.Else.Value.Schema().Type.Value.A)
+	assert.Equal(t, "boolean", sch.Then.Value.Schema().Type.Value.A)
+	assert.Equal(t, "string", sch.FindDependentSchema("schemaOne").Value.Schema().Type.Value.A)
+	assert.Equal(t, "string", sch.FindPatternProperty("patternOne").Value.Schema().Type.Value.A)
+	assert.Equal(t, "string", sch.PropertyNames.Value.Schema().Type.Value.A)
+	assert.Equal(t, "boolean", sch.UnevaluatedItems.Value.Schema().Type.Value.A)
+	assert.Equal(t, "integer", sch.UnevaluatedProperties.Value.Schema().Type.Value.A)
 
 }
 
@@ -581,8 +607,8 @@ items:
 	assert.Equal(t, desc, sch.OneOf.Value[0].Value.Schema().Description.Value)
 	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Schema().Description.Value)
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Schema().Description.Value)
-	assert.Equal(t, desc, sch.Not.Value[0].Value.Schema().Description.Value)
-	assert.Equal(t, desc, sch.Items.Value[0].Value.Schema().Description.Value)
+	assert.Equal(t, desc, sch.Not.Value.Schema().Description.Value)
+	assert.Equal(t, desc, sch.Items.Value.A.Schema().Description.Value)
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
@@ -671,8 +697,8 @@ items:
 	assert.Equal(t, desc, sch.OneOf.Value[0].Value.Schema().Description.Value)
 	assert.Equal(t, desc, sch.AnyOf.Value[0].Value.Schema().Description.Value)
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Schema().Description.Value)
-	assert.Equal(t, desc, sch.Not.Value[0].Value.Schema().Description.Value)
-	assert.Equal(t, desc, sch.Items.Value[0].Value.Schema().Description.Value)
+	assert.Equal(t, desc, sch.Not.Value.Schema().Description.Value)
+	assert.Equal(t, desc, sch.Items.Value.A.Schema().Description.Value)
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
