@@ -195,7 +195,26 @@ deprecated: true
 contains:
   type: int
 minContains: 1
-maxContains: 10`
+maxContains: 10
+if:
+  type: string
+else:
+  type: integer
+then:
+  type: boolean
+dependentSchemas:
+  schemaOne:
+    type: string
+patternProperties:
+  patternOne:
+    type: string
+propertyNames:
+  type: string
+unevaluatedItems:
+  type: boolean
+unevaluatedProperties:
+  type: integer
+`
 
 	var compNode yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
@@ -217,10 +236,18 @@ maxContains: 10`
 	assert.NotNil(t, compiled)
 	assert.Nil(t, schemaProxy.GetBuildError())
 
-	// check contains
+	// check 3.1 properties
 	assert.Equal(t, "int", compiled.Contains.Schema().Type[0])
 	assert.Equal(t, int64(10), *compiled.MaxContains)
 	assert.Equal(t, int64(1), *compiled.MinContains)
+	assert.Equal(t, "string", compiled.If.Schema().Type[0])
+	assert.Equal(t, "integer", compiled.Else.Schema().Type[0])
+	assert.Equal(t, "boolean", compiled.Then.Schema().Type[0])
+	assert.Equal(t, "string", compiled.PatternProperties["patternOne"].Schema().Type[0])
+	assert.Equal(t, "string", compiled.DependentSchemas["schemaOne"].Schema().Type[0])
+	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
+	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
+	assert.Equal(t, "integer", compiled.UnevaluatedProperties.Schema().Type[0])
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)
@@ -352,10 +379,9 @@ required: [cake, fish]`
 	assert.NotNil(t, compiled)
 	assert.Nil(t, schemaProxy.GetBuildError())
 
-	assert.True(t, *compiled.ExclusiveMaximumBool)
-	assert.False(t, *compiled.ExclusiveMinimumBool)
-	assert.Equal(t, int64(123), *compiled.Properties["somethingB"].Schema().ExclusiveMinimum)
-	assert.Equal(t, int64(334), *compiled.Properties["somethingB"].Schema().ExclusiveMaximum)
+	assert.True(t, compiled.ExclusiveMaximum.A)
+	assert.Equal(t, int64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum.B)
+	assert.Equal(t, int64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
 	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
 
 	wentLow := compiled.GoLow()
@@ -433,10 +459,9 @@ type: number
 	assert.Nil(t, highSchema.MultipleOf)
 	assert.Nil(t, highSchema.Minimum)
 	assert.Nil(t, highSchema.ExclusiveMinimum)
-	assert.Nil(t, highSchema.ExclusiveMinimumBool)
 	assert.Nil(t, highSchema.Maximum)
 	assert.Nil(t, highSchema.ExclusiveMaximum)
-	assert.Nil(t, highSchema.ExclusiveMaximumBool)
+
 }
 
 func TestSchemaNumberMultipleOf(t *testing.T) {
@@ -480,7 +505,7 @@ exclusiveMinimum: 5
 	highSchema := getHighSchema(t, yml)
 
 	value := int64(5)
-	assert.EqualValues(t, &value, highSchema.ExclusiveMinimum)
+	assert.EqualValues(t, value, highSchema.ExclusiveMinimum.B)
 }
 
 func TestSchemaNumberMaximum(t *testing.T) {
@@ -513,7 +538,7 @@ exclusiveMaximum: 5
 	highSchema := getHighSchema(t, yml)
 
 	value := int64(5)
-	assert.EqualValues(t, &value, highSchema.ExclusiveMaximum)
+	assert.EqualValues(t, value, highSchema.ExclusiveMaximum.B)
 }
 
 func TestSchemaExamples(t *testing.T) {
