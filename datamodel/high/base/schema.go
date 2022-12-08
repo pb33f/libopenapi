@@ -26,12 +26,12 @@ type DynamicValue[A any, B any] struct {
 }
 
 // IsA will return true if the 'A' or left value is set. (OpenAPI 3)
-func (s DynamicValue[A, B]) IsA() bool {
+func (s *DynamicValue[A, B]) IsA() bool {
 	return s.N == 0
 }
 
 // IsB will return true if the 'B' or right value is set (OpenAPI 3.1)
-func (s DynamicValue[A, B]) IsB() bool {
+func (s *DynamicValue[A, B]) IsB() bool {
 	return s.N == 1
 }
 

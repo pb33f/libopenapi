@@ -192,7 +192,7 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
     return props
 }
 
-// CompareParametersV3 is amn OpenAPI type safe proxy for CompareParameters
+// CompareParametersV3 is an OpenAPI type safe proxy for CompareParameters
 func CompareParametersV3(l, r *v3.Parameter) *ParameterChanges {
     return CompareParameters(l, r)
 }
@@ -306,9 +306,6 @@ func CompareParameters(l, r any) *ParameterChanges {
 
     pc.PropertyChanges = NewPropertyChanges(changes)
     pc.ExtensionChanges = CompareExtensions(lext, rext)
-    if pc.TotalChanges() <= 0 {
-        return nil
-    }
     return pc
 }
 

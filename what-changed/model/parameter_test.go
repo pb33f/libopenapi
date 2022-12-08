@@ -52,7 +52,7 @@ func TestCompareParameters_V3(t *testing.T) {
 	_ = rDoc.Build(rNode.Content[0], nil)
 
 	// compare.
-	extChanges := CompareParameters(&lDoc, &rDoc)
+	extChanges := CompareParametersV3(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 }
 
