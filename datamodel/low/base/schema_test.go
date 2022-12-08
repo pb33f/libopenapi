@@ -361,6 +361,7 @@ exclusiveMinimum: 12
 exclusiveMaximum: 13
 contentEncoding: fish64
 contentMediaType: fish/paste
+items: true
 examples:
   - testing`
 
@@ -387,6 +388,8 @@ examples:
 	assert.Equal(t, "testing", sch.Examples.Value[0].Value)
 	assert.Equal(t, "fish64", sch.ContentEncoding.Value)
 	assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
+	assert.True(t, sch.Items.Value.IsB())
+	assert.True(t, sch.Items.Value.B)
 
 }
 
@@ -551,6 +554,60 @@ func TestSchema_Build_PropsLookup_Fail(t *testing.T) {
 
 	yml = `type: object
 properties:
+  aValue:
+    $ref: '#/bork'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var n Schema
+	err := n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestSchema_Build_DependentSchemas_Fail(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `type: object
+dependentSchemas:
+  aValue:
+    $ref: '#/bork'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var n Schema
+	err := n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
+func TestSchema_Build_PatternProperties_Fail(t *testing.T) {
+
+	yml := `components:
+  schemas:
+    Something:
+      description: this is something
+      type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `type: object
+patternProperties:
   aValue:
     $ref: '#/bork'`
 
@@ -1465,6 +1522,9 @@ func TestSchema_Hash_NotEqual(t *testing.T) {
 
 	left := `schema:
   title: an OK message - but different
+  items: true
+  minContains: 3
+  maxContains: 22
   properties:
     propA:
       title: a proxy property
@@ -1472,6 +1532,9 @@ func TestSchema_Hash_NotEqual(t *testing.T) {
 
 	right := `schema:
   title: an OK message
+  items: false
+  minContains: 2
+  maxContains: 10
   properties:
     propA:
       title: a proxy property

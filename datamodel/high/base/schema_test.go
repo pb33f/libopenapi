@@ -14,6 +14,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestDynamicValue_IsA(t *testing.T) {
+	dv := &DynamicValue[int, bool]{N: 0, A: 23}
+	assert.True(t, dv.IsA())
+	assert.False(t, dv.IsB())
+}
+
 func TestNewSchemaProxy(t *testing.T) {
 
 	// check proxy
@@ -539,6 +545,16 @@ exclusiveMaximum: 5
 
 	value := int64(5)
 	assert.EqualValues(t, value, highSchema.ExclusiveMaximum.B)
+}
+
+func TestSchema_Items_Boolean(t *testing.T) {
+	yml := `
+type: number
+items: true
+`
+	highSchema := getHighSchema(t, yml)
+
+	assert.True(t, highSchema.Items.B)
 }
 
 func TestSchemaExamples(t *testing.T) {

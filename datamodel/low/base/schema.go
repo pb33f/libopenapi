@@ -684,17 +684,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	/*
-		If                    low.NodeReference[*SchemaProxy]
-					Else                  low.NodeReference[*SchemaProxy]
-					Then                  low.NodeReference[*SchemaProxy]
-					PropertyNames         low.NodeReference[*SchemaProxy]
-					UnevaluatedItems      low.NodeReference[*SchemaProxy]
-					UnevaluatedProperties low.NodeReference[*SchemaProxy]
-	*/
-
 	var allOf, anyOf, oneOf, prefixItems []low.ValueReference[*SchemaProxy]
-
 	var items, not, contains, sif, selse, sthen, propertyNames, unevalItems, unevalProperties low.ValueReference[*SchemaProxy]
 
 	_, allOfLabel, allOfValue := utils.FindKeyNodeFullTop(AllOfLabel, root.Content)

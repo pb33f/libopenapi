@@ -268,7 +268,14 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
         // now for the confusing part, there is also a schema's 'properties' property to parse.
         // inception, eat your heart out.
         doneChan := make(chan bool)
-        totalProperties := checkPropertiesPropertyOfASchema(lSchema, rSchema, &changes, sc, doneChan)
+        props, totalProperties := checkMappedSchemaOfASchema(lSchema.Properties.Value, rSchema.Properties.Value, &changes, doneChan)
+        sc.SchemaPropertyChanges = props
+
+        deps, depsTotal := checkMappedSchemaOfASchema(lSchema.DependentSchemas.Value, rSchema.DependentSchemas.Value, &changes, doneChan)
+        sc.DependentSchemasChanges = deps
+
+        patterns, patternsTotal := checkMappedSchemaOfASchema(lSchema.PatternProperties.Value, rSchema.PatternProperties.Value, &changes, doneChan)
+        sc.PatternPropertiesChanges = patterns
 
         // check polymorphic and multi-values async for speed.
         go extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
@@ -280,13 +287,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
         go extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
             &sc.AnyOfChanges, &changes, doneChan)
 
-        //go extractSchemaChanges(lSchema.Items.Value, rSchema.Items.Value, v3.ItemsLabel,
-        //    &sc.ItemsChanges, &changes, doneChan)
-        //
-        //go extractSchemaChanges(lSchema.Not.Value, rSchema.Not.Value, v3.NotLabel,
-        //    &sc.NotChanges, &changes, doneChan)
-
-        totalChecks := totalProperties + 3
+        totalChecks := totalProperties + depsTotal + patternsTotal + 3
         completedChecks := 0
         for completedChecks < totalChecks {
             select {
@@ -324,12 +325,11 @@ func checkSchemaXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chan
     }
 }
 
-func checkPropertiesPropertyOfASchema(
-    lSchema *base.Schema,
-    rSchema *base.Schema,
+func checkMappedSchemaOfASchema(
+    lSchema,
+    rSchema map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy],
     changes *[]*Change,
-    sc *SchemaChanges,
-    doneChan chan bool) int {
+    doneChan chan bool) (map[string]*SchemaChanges, int) {
 
     propChanges := make(map[string]*SchemaChanges)
 
@@ -340,19 +340,24 @@ func checkPropertiesPropertyOfASchema(
     rEntities := make(map[string]*base.SchemaProxy)
     rKeyNodes := make(map[string]*yaml.Node)
 
-    for w := range lSchema.Properties.Value {
+    for w := range lSchema {
         lProps = append(lProps, w.Value)
-        lEntities[w.Value] = lSchema.Properties.Value[w].Value
+        lEntities[w.Value] = lSchema[w].Value
         lKeyNodes[w.Value] = w.KeyNode
     }
-    for w := range rSchema.Properties.Value {
+    for w := range rSchema {
         rProps = append(rProps, w.Value)
-        rEntities[w.Value] = rSchema.Properties.Value[w].Value
+        rEntities[w.Value] = rSchema[w].Value
         rKeyNodes[w.Value] = w.KeyNode
     }
     sort.Strings(lProps)
     sort.Strings(rProps)
+    totalProperties := buildProperty(lProps, rProps, lEntities, rEntities, propChanges, doneChan, changes, rKeyNodes, lKeyNodes)
+    return propChanges, totalProperties
+}
 
+func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*base.SchemaProxy,
+    propChanges map[string]*SchemaChanges, doneChan chan bool, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node) int {
     var propLock sync.Mutex
     checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
         if lp != nil && rp != nil {
@@ -421,8 +426,6 @@ func checkPropertiesPropertyOfASchema(
             }
         }
     }
-
-    sc.SchemaPropertyChanges = propChanges
     return totalProperties
 }
 
