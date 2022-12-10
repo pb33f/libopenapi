@@ -1,4 +1,6 @@
-![libopenapi](libopenapi-logo.png)
+<p align="center">
+	<img src="libopenapi-logo.png" alt="libopenapi" height="300px"/>
+</p>
 
 # libopenapi - enterprise grade OpenAPI tools for golang.
 
