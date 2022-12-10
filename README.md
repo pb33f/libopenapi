@@ -10,6 +10,24 @@
 libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1. It can handle the largest and most
 complex specifications you can think of.
 
+---
+
+## Sponsors & users
+If your company is using `libopenapi`, please considering [supporting this project](https://github.com/sponsors/daveshanley), 
+like our _very kind_ sponsors:
+
+<p align="center">
+	<a href="//www.speakeasyapi.dev"><img src=".github/sponsors/speakeasy.png" alt="Speakeasy" height="100px"/></a>
+    <br/>
+    <a href="//www.speakeasyapi.dev">Speakeasy</a>
+</p>
+
+`libopenapi` is pretty new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
+
+- [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
+
+---
+
 ## Contents
 
 - [Installing libopenapi](#installing)
