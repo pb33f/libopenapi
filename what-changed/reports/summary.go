@@ -10,13 +10,13 @@ import (
 
 // Changed provides a simple wrapper for changed counts
 type Changed struct {
-    Total    int
-    Breaking int
+    Total    int `json:"totalChanges"`
+    Breaking int `json:"breakingChanges"`
 }
 
 // OverallReport provides a Document level overview of all changes to an OpenAPI doc.
 type OverallReport struct {
-    ChangeReport map[string]*Changed
+    ChangeReport map[string]*Changed `json:"overallSummaryReport"`
 }
 
 // CreateOverallReport will create a high level report for all top level changes (but with deep counts)
