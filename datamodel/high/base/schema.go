@@ -246,7 +246,17 @@ func NewSchema(schema *base.Schema) *Schema {
 			s.Type = append(s.Type, schema.Type.Value.B[i].Value)
 		}
 	}
-	s.AdditionalProperties = schema.AdditionalProperties.Value
+	if schema.AdditionalProperties.Value != nil {
+		if addPropSchema, ok := schema.AdditionalProperties.Value.(*base.SchemaProxy); ok {
+			s.AdditionalProperties = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+				KeyNode:   schema.AdditionalProperties.KeyNode,
+				ValueNode: schema.AdditionalProperties.ValueNode,
+				Value:     addPropSchema,
+			})
+		} else {
+			s.AdditionalProperties = schema.AdditionalProperties.Value
+		}
+	}
 	s.Description = schema.Description.Value
 	s.Default = schema.Default.Value
 	if !schema.Nullable.IsEmpty() {
