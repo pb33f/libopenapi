@@ -33,25 +33,27 @@ type Parameter struct {
 
 // NewParameter will create a new high-level instance of a Parameter, using a low-level one.
 func NewParameter(param *low.Parameter) *Parameter {
-	p := new(Parameter)
-	p.low = param
-	p.Name = param.Name.Value
-	p.In = param.In.Value
-	p.Description = param.Description.Value
-	p.Deprecated = param.Deprecated.Value
-	p.AllowEmptyValue = param.AllowEmptyValue.Value
-	p.Style = param.Style.Value
-	p.Explode = &param.Explode.Value
-	p.AllowReserved = param.AllowReserved.Value
-	if !param.Schema.IsEmpty() {
-		p.Schema = base.NewSchemaProxy(&param.Schema)
-	}
-	p.Required = param.Required.Value
-	p.Example = param.Example.Value
-	p.Examples = base.ExtractExamples(param.Examples.Value)
-	p.Content = ExtractContent(param.Content.Value)
-	p.Extensions = high.ExtractExtensions(param.Extensions)
-	return p
+    p := new(Parameter)
+    p.low = param
+    p.Name = param.Name.Value
+    p.In = param.In.Value
+    p.Description = param.Description.Value
+    p.Deprecated = param.Deprecated.Value
+    p.AllowEmptyValue = param.AllowEmptyValue.Value
+    p.Style = param.Style.Value
+    if !param.Explode.IsEmpty() {
+        p.Explode = &param.Explode.Value
+    }
+    p.AllowReserved = param.AllowReserved.Value
+    if !param.Schema.IsEmpty() {
+        p.Schema = base.NewSchemaProxy(&param.Schema)
+    }
+    p.Required = param.Required.Value
+    p.Example = param.Example.Value
+    p.Examples = base.ExtractExamples(param.Examples.Value)
+    p.Content = ExtractContent(param.Content.Value)
+    p.Extensions = high.ExtractExtensions(param.Extensions)
+    return p
 }
 
 // GoLow returns the low-level Parameter used to create the high-level one.
