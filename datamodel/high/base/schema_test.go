@@ -357,7 +357,9 @@ properties:
     additionalProperties: 
         why: yes
         thatIs: true    
-additionalProperties: true
+additionalProperties:
+  type: string
+  description: nice
 exclusiveMaximum: true
 exclusiveMinimum: false
 xml:
@@ -390,12 +392,14 @@ required: [cake, fish]`
 	assert.Equal(t, int64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
 	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
 
+	assert.Equal(t, "nice", compiled.AdditionalProperties.(*SchemaProxy).Schema().Description)
+
 	wentLow := compiled.GoLow()
-	assert.Equal(t, 96, wentLow.AdditionalProperties.ValueNode.Line)
-	assert.Equal(t, 100, wentLow.XML.ValueNode.Line)
+	assert.Equal(t, 97, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.Equal(t, 102, wentLow.XML.ValueNode.Line)
 
 	wentLower := compiled.XML.GoLow()
-	assert.Equal(t, 100, wentLower.Name.ValueNode.Line)
+	assert.Equal(t, 102, wentLower.Name.ValueNode.Line)
 
 }
 
