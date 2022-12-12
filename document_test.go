@@ -179,6 +179,38 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
     assert.Equal(t, jsonModified, string(serial))
 }
 
+func TestExtractReference(t *testing.T) {
+    var data = `
+openapi: "3.1"
+components:
+  parameters:
+    Param1:
+      description: "I am a param"
+paths:
+  /something:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/Param1'`
+
+    doc, err := NewDocument([]byte(data))
+    if err != nil {
+        panic(err)
+    }
+
+    result, errs := doc.BuildV3Model()
+    if len(errs) > 0 {
+        panic(errs)
+    }
+
+    // extract operation.
+    operation := result.Model.Paths.PathItems["/something"].Get
+
+    // print it out.
+    fmt.Printf("param1: %s, is reference? %t, original reference %s",
+        operation.Parameters[0].Description, operation.GoLow().Parameters.Value[0].IsReference,
+        operation.GoLow().Parameters.Value[0].Reference)
+}
+
 func ExampleNewDocument_fromOpenAPI3Document() {
 
     // How to read in an OpenAPI 3 Specification, into a Document.
