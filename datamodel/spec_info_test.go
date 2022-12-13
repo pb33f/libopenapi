@@ -115,7 +115,6 @@ info:
 
 func TestExtractSpecInfo_ValidJSON(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(goodJSON))
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
@@ -132,7 +131,6 @@ func TestExtractSpecInfo_Nothing(t *testing.T) {
 
 func TestExtractSpecInfo_ValidYAML(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(goodYAML))
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
@@ -153,8 +151,6 @@ func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, utils.OpenApi3, r.SpecType)
 	assert.Equal(t, "3.0.1", r.Version)
-
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 
 }
@@ -188,8 +184,6 @@ func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi2, r.SpecType)
 	assert.Equal(t, "2.0.1", r.Version)
-
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 }
 
@@ -207,7 +201,6 @@ func TestExtractSpecInfo_AsyncAPI(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, AsyncApi, r.SpecType)
 	assert.Equal(t, "2.0.0", r.Version)
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 }
 
