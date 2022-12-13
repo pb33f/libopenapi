@@ -105,8 +105,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 			spec.SpecJSONBytes = &bytes
 			spec.SpecJSON = &jsonSpec
 		}
-		spec.JsonParsingChannel <- true
-		close(spec.JsonParsingChannel)
+		close(spec.JsonParsingChannel) // this needs removing at some point
 	}
 
 	// check for specific keys
@@ -128,8 +127,6 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		specVersion.Version = version
 		specVersion.SpecFormat = OAS3
 	}
-
-	//return specVersion, nil
 
 	if openAPI2 != nil {
 		specVersion.SpecType = utils.OpenApi2
@@ -172,10 +169,10 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	if specVersion.SpecType == "" {
 		// parse JSON
 		parseJSON(spec, specVersion, &parsedSpec)
-
 		specVersion.Error = errors.New("spec type not supported by vacuum, sorry")
 		return specVersion, specVersion.Error
 	}
+
 	return specVersion, nil
 }
 
