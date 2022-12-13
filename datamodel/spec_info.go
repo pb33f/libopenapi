@@ -81,11 +81,8 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	_, openAPI2 := utils.FindKeyNode(utils.OpenApi2, parsedSpec.Content)
 	_, asyncAPI := utils.FindKeyNode(utils.AsyncApi, parsedSpec.Content)
 
-	parseJSON := func(bytes []byte, spec *SpecInfo) {
+	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) {
 		var jsonSpec map[string]interface{}
-
-		// no point in worrying about errors here, extract JSON friendly format.
-		// run in a separate thread, don't block.
 
 		if spec.SpecType == utils.OpenApi3 {
 			switch spec.Version {
@@ -100,9 +97,8 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		}
 
 		if utils.IsYAML(string(bytes)) {
-			_ = yaml.Unmarshal(bytes, &jsonSpec)
-			jsonData, _ := json.Marshal(jsonSpec)
-			spec.SpecJSONBytes = &jsonData
+			_ = parsedNode.Decode(&jsonSpec)
+			spec.SpecJSONBytes = &bytes
 			spec.SpecJSON = &jsonSpec
 		} else {
 			_ = json.Unmarshal(bytes, &jsonSpec)
@@ -112,6 +108,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		spec.JsonParsingChannel <- true
 		close(spec.JsonParsingChannel)
 	}
+
 	// check for specific keys
 	if openAPI3 != nil {
 		specVersion.SpecType = utils.OpenApi3
@@ -121,7 +118,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		}
 
 		// parse JSON
-		go parseJSON(spec, specVersion)
+		parseJSON(spec, specVersion, &parsedSpec)
 
 		// double check for the right version, people mix this up.
 		if majorVersion < 3 {
@@ -131,6 +128,9 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		specVersion.Version = version
 		specVersion.SpecFormat = OAS3
 	}
+
+	//return specVersion, nil
+
 	if openAPI2 != nil {
 		specVersion.SpecType = utils.OpenApi2
 		version, majorVersion, versionError := parseVersionTypeData(openAPI2.Value)
@@ -139,7 +139,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		}
 
 		// parse JSON
-		go parseJSON(spec, specVersion)
+		parseJSON(spec, specVersion, &parsedSpec)
 
 		// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
 		if majorVersion > 2 {
@@ -157,7 +157,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		}
 
 		// parse JSON
-		go parseJSON(spec, specVersion)
+		parseJSON(spec, specVersion, &parsedSpec)
 
 		// so far there is only 2 as a major release of AsyncAPI
 		if majorVersion > 2 {
@@ -171,7 +171,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 
 	if specVersion.SpecType == "" {
 		// parse JSON
-		go parseJSON(spec, specVersion)
+		parseJSON(spec, specVersion, &parsedSpec)
 
 		specVersion.Error = errors.New("spec type not supported by vacuum, sorry")
 		return specVersion, specVersion.Error

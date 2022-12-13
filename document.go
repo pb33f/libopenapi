@@ -84,6 +84,16 @@ func NewDocument(specByteArray []byte) (Document, error) {
 	d := new(document)
 	d.version = info.Version
 	d.info = info
+
+	// wait for json to be ready
+	// this needs to be deprecated at some-point
+	done := false
+	for !done {
+		select {
+		case <-info.JsonParsingChannel:
+			done = true
+		}
+	}
 	return d, nil
 }
 
