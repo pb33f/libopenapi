@@ -203,8 +203,10 @@ type KeyNodeSearch struct {
 // FindKeyNodeTop is a non-recursive search of top level nodes for a key, will not look at content.
 // Returns the key and value
 func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode *yaml.Node) {
-
 	for i, v := range nodes {
+		if i%2 != 0 {
+			continue
+		}
 		if strings.ToLower(key) == strings.ToLower(v.Value) {
 			return v, nodes[i+1] // next node is what we need.
 		}
@@ -270,6 +272,9 @@ func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelN
 // level of the node and not the children.
 func FindKeyNodeFullTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
 	for i := range nodes {
+		if i%2 != 0 {
+			continue
+		}
 		if i%2 == 0 && key == nodes[i].Value {
 			return nodes[i], nodes[i], nodes[i+1] // next node is what we need.
 		}
