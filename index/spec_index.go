@@ -1867,6 +1867,24 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 				index.paramOpRefs[pathItemNode.Value][method] = make(map[string]*Reference)
 			}
 			index.paramOpRefs[pathItemNode.Value][method][paramRefName] = paramRef
+
+			// if this is a duplicate, add an error and ignore it
+			if index.paramOpRefs[pathItemNode.Value][method][paramRefName] != nil {
+				path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
+				if method == "top" {
+					path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
+				}
+
+				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
+					Error: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
+						"index %d has a duplicate ref `%s`", method, pathItemNode.Value, i, paramRefName),
+					Node: param,
+					Path: path,
+				})
+			} else {
+				index.paramOpRefs[pathItemNode.Value][method][paramRefName] = paramRef
+			}
+
 			continue
 
 		} else {
