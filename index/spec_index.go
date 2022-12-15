@@ -1865,7 +1865,6 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 			if index.paramOpRefs[pathItemNode.Value][method] == nil {
 				index.paramOpRefs[pathItemNode.Value][method] = make(map[string]*Reference)
 			}
-			index.paramOpRefs[pathItemNode.Value][method][paramRefName] = paramRef
 
 			// if this is a duplicate, add an error and ignore it
 			if index.paramOpRefs[pathItemNode.Value][method][paramRefName] != nil {
