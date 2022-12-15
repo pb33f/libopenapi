@@ -239,6 +239,7 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 				}
 
 				value := node.Content[i+1].Value
+
 				ref := resolver.specIndex.GetMappedReferences()[value]
 
 				if ref == nil {
