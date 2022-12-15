@@ -5,15 +5,15 @@ package index
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
-
 	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(stripe, &rootNode)
@@ -61,7 +61,6 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 }
 
 func TestSpecIndex_Asana(t *testing.T) {
-
 	asana, _ := ioutil.ReadFile("../test_specs/asana.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(asana, &rootNode)
@@ -84,7 +83,6 @@ func TestSpecIndex_Asana(t *testing.T) {
 }
 
 func TestSpecIndex_k8s(t *testing.T) {
-
 	asana, _ := ioutil.ReadFile("../test_specs/k8s.json")
 	var rootNode yaml.Node
 	yaml.Unmarshal(asana, &rootNode)
@@ -107,11 +105,9 @@ func TestSpecIndex_k8s(t *testing.T) {
 	assert.Equal(t, 10, index.componentsInlineParamUniqueCount)
 	assert.Equal(t, 58, index.GetTotalTagsCount())
 	assert.Equal(t, 2524, index.GetRawReferenceCount())
-
 }
 
 func TestSpecIndex_PetstoreV2(t *testing.T) {
-
 	asana, _ := ioutil.ReadFile("../test_specs/petstorev2.json")
 	var rootNode yaml.Node
 	yaml.Unmarshal(asana, &rootNode)
@@ -136,7 +132,6 @@ func TestSpecIndex_PetstoreV2(t *testing.T) {
 }
 
 func TestSpecIndex_XSOAR(t *testing.T) {
-
 	xsoar, _ := ioutil.ReadFile("../test_specs/xsoar.json")
 	var rootNode yaml.Node
 	yaml.Unmarshal(xsoar, &rootNode)
@@ -155,7 +150,6 @@ func TestSpecIndex_XSOAR(t *testing.T) {
 }
 
 func TestSpecIndex_PetstoreV3(t *testing.T) {
-
 	asana, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
 	yaml.Unmarshal(asana, &rootNode)
@@ -179,13 +173,11 @@ func TestSpecIndex_PetstoreV3(t *testing.T) {
 	assert.Equal(t, 19, index.GetAllSummariesCount())
 	assert.Len(t, index.GetAllDescriptions(), 90)
 	assert.Len(t, index.GetAllSummaries(), 19)
-
 }
 
 var mappedRefs = 15
 
 func TestSpecIndex_BurgerShop(t *testing.T) {
-
 	burgershop, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(burgershop, &rootNode)
@@ -254,11 +246,9 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 5, len(index.GetAllPaths()))
 	assert.Equal(t, 5, len(index.GetOperationTags()))
 	assert.Equal(t, 3, len(index.GetAllParametersFromOperations()))
-
 }
 
 func TestSpecIndex_BurgerShop_AllTheComponents(t *testing.T) {
-
 	burgershop, _ := ioutil.ReadFile("../test_specs/all-the-components.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(burgershop, &rootNode)
@@ -272,11 +262,9 @@ func TestSpecIndex_BurgerShop_AllTheComponents(t *testing.T) {
 	assert.Equal(t, 1, len(index.GetAllResponses()))
 	assert.Equal(t, 2, len(index.GetAllRootServers()))
 	assert.Equal(t, 2, len(index.GetAllOperationsServers()))
-
 }
 
 func TestSpecIndex_SwaggerResponses(t *testing.T) {
-
 	yml := `swagger: 2.0
 responses:
   niceResponse: 
@@ -288,11 +276,9 @@ responses:
 	index := NewSpecIndex(&rootNode)
 
 	assert.Equal(t, 1, len(index.GetAllResponses()))
-
 }
 
 func TestSpecIndex_NoNameParam(t *testing.T) {
-
 	yml := `paths:
   /users/{id}:
     parameters:
@@ -311,11 +297,9 @@ func TestSpecIndex_NoNameParam(t *testing.T) {
 	index := NewSpecIndex(&rootNode)
 
 	assert.Equal(t, 2, len(index.GetOperationParametersIndexErrors()))
-
 }
 
 func TestSpecIndex_NoRoot(t *testing.T) {
-
 	index := NewSpecIndex(nil)
 	refs := index.ExtractRefs(nil, nil, nil, 0, false, "")
 	docs := index.ExtractExternalDocuments(nil)
@@ -331,11 +315,9 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 	assert.Equal(t, -1, index.GetComponentParameterCount())
 	assert.Equal(t, -1, index.GetComponentSchemaCount())
 	assert.Equal(t, -1, index.GetGlobalLinksCount())
-
 }
 
 func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
-
 	spec, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(spec, &rootNode)
@@ -355,11 +337,9 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
-
 }
 
 func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
-
 	asana, _ := ioutil.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(asana, &rootNode)
@@ -380,7 +360,6 @@ func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 }
 
 func TestTagsNoDescription(t *testing.T) {
-
 	yml := `tags:
   - name: one
   - name: two
@@ -391,7 +370,6 @@ func TestTagsNoDescription(t *testing.T) {
 
 	index := NewSpecIndex(&rootNode)
 	assert.Equal(t, 3, index.GetGlobalTagsCount())
-
 }
 
 func TestGlobalCallbacksNoIndexTest(t *testing.T) {
@@ -400,7 +378,6 @@ func TestGlobalCallbacksNoIndexTest(t *testing.T) {
 }
 
 func TestMultipleCallbacksPerOperationVerb(t *testing.T) {
-
 	yml := `components:
   callbacks:  
     callbackA:
@@ -516,7 +493,6 @@ func TestSpecIndex_FindComponenth(t *testing.T) {
 
 	index := NewSpecIndex(&rootNode)
 	assert.Nil(t, index.FindComponent("I-do-not-exist", nil))
-
 }
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {
@@ -611,8 +587,7 @@ func TestSpecIndex_lookupFileReference_BadFile(t *testing.T) {
 }
 
 func TestSpecIndex_lookupFileReference_BadFileDataRead(t *testing.T) {
-
-	_ = ioutil.WriteFile("chickers.yaml", []byte("broke: the: thing: [again]"), 0664)
+	_ = ioutil.WriteFile("chickers.yaml", []byte("broke: the: thing: [again]"), 0o664)
 	defer os.Remove("chickers.yaml")
 
 	index := new(SpecIndex)
@@ -621,8 +596,7 @@ func TestSpecIndex_lookupFileReference_BadFileDataRead(t *testing.T) {
 }
 
 func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
-
-	_ = ioutil.WriteFile("embie.yaml", []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy"), 0664)
+	_ = ioutil.WriteFile("embie.yaml", []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy"), 0o664)
 	defer os.Remove("embie.yaml")
 
 	index := new(SpecIndex)
@@ -634,8 +608,7 @@ func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 }
 
 func TestSpecIndex_lookupFileReference(t *testing.T) {
-
-	_ = ioutil.WriteFile("fox.yaml", []byte("good:\n - puppy: dog\n - puppy: forever-more"), 0664)
+	_ = ioutil.WriteFile("fox.yaml", []byte("good:\n - puppy: dog\n - puppy: forever-more"), 0o664)
 	defer os.Remove("fox.yaml")
 
 	index := new(SpecIndex)
@@ -644,12 +617,72 @@ func TestSpecIndex_lookupFileReference(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, doc)
 	assert.NotNil(t, k)
+}
 
+func TestSpecIndex_parameterReferencesHavePaths(t *testing.T) {
+	_ = ioutil.WriteFile("paramour.yaml", []byte(`components:
+  parameters:
+    param3:
+      name: param3
+      in: query
+      schema:
+        type: string`), 0o664)
+	defer os.Remove("paramour.yaml")
+
+	yml := `paths:
+  /:
+    parameters:
+      - $ref: '#/components/parameters/param1'
+      - $ref: 'paramour.yaml#/components/parameters/param3'
+    get:
+      parameters:
+        - $ref: '#/components/parameters/param2'
+        - name: test
+          in: query
+          schema:
+            type: string
+components:
+  parameters:
+    param1:
+      name: param1
+      in: query
+      schema:
+        type: string
+    param2:
+      name: param2
+      in: query
+      schema:
+        type: string`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+
+	params := index.GetAllParametersFromOperations()
+
+	if assert.Contains(t, params, "/") {
+		if assert.Contains(t, params["/"], "top") {
+			if assert.Contains(t, params["/"]["top"], "#/components/parameters/param1") {
+				assert.Equal(t, "$.components.parameters['param1']", params["/"]["top"]["#/components/parameters/param1"].Path)
+			}
+			if assert.Contains(t, params["/"]["top"], "paramour.yaml#/components/parameters/param3") {
+				assert.Equal(t, "$.components.parameters['param3']", params["/"]["top"]["paramour.yaml#/components/parameters/param3"].Path)
+			}
+		}
+		if assert.Contains(t, params["/"], "get") {
+			if assert.Contains(t, params["/"]["get"], "#/components/parameters/param2") {
+				assert.Equal(t, "$.components.parameters['param2']", params["/"]["get"]["#/components/parameters/param2"].Path)
+			}
+			if assert.Contains(t, params["/"]["get"], "test") {
+				assert.Equal(t, "$.paths./.get.parameters[1]", params["/"]["get"]["test"].Path)
+			}
+		}
+	}
 }
 
 // Example of how to load in an OpenAPI Specification and index it.
 func ExampleNewSpecIndex() {
-
 	// define a rootNode to hold our raw spec AST.
 	var rootNode yaml.Node
 
