@@ -493,32 +493,21 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
 				continue
 			}
-			cleaned = append(cleaned, fmt.Sprintf("%s%s", segs[i], segs[i]))
-			continue
 		} else {
 			intVal, err := strconv.ParseInt(segs[i], 10, 32)
 			if err == nil && intVal <= 99 {
 				segs[i] = fmt.Sprintf("[%d]", intVal)
-				if i < len(cleaned) {
-					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
-				} else {
-					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
-				}
+				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
 				continue
 			}
 			if err == nil && intVal > 99 {
 				segs[i] = fmt.Sprintf("['%d']", intVal)
-				if i < len(cleaned) {
-					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
-				} else {
-					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
-				}
+				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
 				continue
 			}
 			cleaned = append(cleaned, segs[i])
 		}
 	}
-
 	_, err := strconv.ParseInt(name, 10, 32)
 	var replaced string
 	if err != nil {

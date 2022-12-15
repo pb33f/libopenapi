@@ -6,6 +6,8 @@ package v3
 import (
     "fmt"
     "github.com/pb33f/libopenapi/datamodel"
+    v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
+    lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
     lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
     "github.com/stretchr/testify/assert"
     "io/ioutil"
@@ -364,7 +366,18 @@ func TestStripeAsDoc(t *testing.T) {
     lowDoc, err = lowv3.CreateDocument(info)
     assert.Len(t, err, 23)
     d := NewDocument(lowDoc)
-    fmt.Println(d)
+    assert.NotNil(t, d)
+}
+
+func TestK8sAsDoc(t *testing.T) {
+    data, _ := ioutil.ReadFile("../../../test_specs/k8s.json")
+    info, _ := datamodel.ExtractSpecInfo(data)
+    var err []error
+    lowSwag, err := lowv2.CreateDocument(info)
+    d := v2.NewSwaggerDocument(lowSwag)
+    assert.Len(t, err, 1)
+    assert.NotNil(t, d)
+
 }
 
 func TestAsanaAsDoc(t *testing.T) {
