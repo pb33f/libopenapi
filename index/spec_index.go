@@ -243,6 +243,16 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 
 	// pull out references
 	index.ExtractComponentsFromRefs(results)
+
+	// map poly refs
+	poly := make([]*Reference, len(index.polymorphicRefs))
+	z := 0
+	for i := range index.polymorphicRefs {
+		poly[z] = index.polymorphicRefs[i]
+		z++
+	}
+	index.ExtractComponentsFromRefs(poly)
+
 	index.ExtractExternalDocuments(index.root)
 	index.GetPathCount()
 
@@ -593,14 +603,15 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 				segs := strings.Split(value, "/")
 				name := segs[len(segs)-1]
-				// name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
+				//name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
+				_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(value)
 				ref := &Reference{
 					Definition: value,
 					Name:       name,
 					Node:       node,
-					Path:       fmt.Sprintf("$.%s", strings.Join(seenPath, ".")),
+					Path:       p,
 				}
-
+				//utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 				// add to raw sequenced refs
 				index.rawSequencedRefs = append(index.rawSequencedRefs, ref)
 
@@ -623,7 +634,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Definition: ref.Definition,
 						Name:       ref.Name,
 						Node:       &copiedNode,
-						Path:       ref.Path,
+						Path:       p,
 					}
 					// protect this data using a copy, prevent the resolver from destroying things.
 					index.refsWithSiblings[value] = copied
@@ -1527,12 +1538,14 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 		located := index.FindComponent(ref.Definition, ref.Node)
 		if located != nil {
-			found = append(found, located)
-			index.allMappedRefs[ref.Definition] = located
-			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, &ReferenceMapped{
-				Reference:  located,
-				Definition: ref.Definition,
-			})
+			if index.allMappedRefs[ref.Definition] == nil {
+				found = append(found, located)
+				index.allMappedRefs[ref.Definition] = located
+				index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, &ReferenceMapped{
+					Reference:  located,
+					Definition: ref.Definition,
+				})
+			}
 		} else {
 
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
@@ -1816,7 +1829,6 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 	if index.root != nil {
 		name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
-		friendlySearch = strings.ReplaceAll(friendlySearch, "~1", "/")
 		path, err := yamlpath.NewPath(friendlySearch)
 		if path == nil || err != nil {
 			return nil // no component found

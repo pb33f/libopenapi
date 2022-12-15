@@ -21,8 +21,7 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	index := NewSpecIndex(&rootNode)
 
 	assert.Len(t, index.allRefs, 385)
-	assert.Len(t, index.allMappedRefs, 385)
-
+	assert.Equal(t, 537, len(index.allMappedRefs))
 	combined := index.GetAllCombinedReferences()
 	assert.Equal(t, 537, len(combined))
 
@@ -68,7 +67,7 @@ func TestSpecIndex_Asana(t *testing.T) {
 	index := NewSpecIndex(&rootNode)
 
 	assert.Len(t, index.allRefs, 152)
-	assert.Len(t, index.allMappedRefs, 152)
+	assert.Len(t, index.allMappedRefs, 171)
 	combined := index.GetAllCombinedReferences()
 	assert.Equal(t, 171, len(combined))
 	assert.Equal(t, 118, index.pathCount)
@@ -90,7 +89,7 @@ func TestSpecIndex_k8s(t *testing.T) {
 	index := NewSpecIndex(&rootNode)
 
 	assert.Len(t, index.allRefs, 558)
-	assert.Len(t, index.allMappedRefs, 558)
+	assert.Equal(t, 563, len(index.allMappedRefs))
 	combined := index.GetAllCombinedReferences()
 	assert.Equal(t, 563, len(combined))
 	assert.Equal(t, 436, index.pathCount)
