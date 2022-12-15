@@ -611,6 +611,35 @@ func TestConvertComponentIdIntoFriendlyPathSearch_WithRootSymbol(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("/chicken/chips/pizza/cake")
 	assert.Equal(t, "$.chicken.chips.pizza['cake']", path)
 	assert.Equal(t, "cake", segment)
+
+	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema")
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses.404.content['application/xml; charset=utf-8']['schema']", path)
+	assert.Equal(t, "schema", segment)
+
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema")
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses.404.content['application/xml; charset=utf-8']['schema']", path)
+	assert.Equal(t, "schema", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_CrazyShort(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references")
+	assert.Equal(t, "$.paths['/crazy/ass/references']", path)
+	assert.Equal(t, "/crazy/ass/references", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Array(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/parameters/0")
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.parameters[0]", path)
+	assert.Equal(t, "0", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_HTTPCode(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404")
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses.404", path)
+	assert.Equal(t, "404", segment)
 }
 
 func TestConvertComponentIdIntoPath(t *testing.T) {
@@ -628,7 +657,6 @@ func TestDetectCase(t *testing.T) {
 	assert.Equal(t, KebabCase, DetectCase("chicken-be-be-beef-or-pork"))
 	assert.Equal(t, RegularCase, DetectCase("kebab-TimeIn_london-TOWN"))
 	assert.Equal(t, UnknownCase, DetectCase(""))
-
 }
 
 func TestIsNodeRefValue(t *testing.T) {

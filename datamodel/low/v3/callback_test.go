@@ -55,8 +55,7 @@ func TestCallback_Build_Error(t *testing.T) {
 	idx := index.NewSpecIndex(&idxNode)
 
 	yml := `'{$request.query.queryUrl}':
-  post:
-    $ref: #/does/not/exist/and/invalid`
+  $ref: '#/does/not/exist/and/invalid'`
 
 	var rootNode yaml.Node
 	mErr = yaml.Unmarshal([]byte(yml), &rootNode)

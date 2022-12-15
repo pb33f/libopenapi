@@ -90,16 +90,15 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 		}
 
 		// cant be found? last resort is to try a path lookup
-		cleaned := strings.ReplaceAll(rv, "#/paths/", "")
-		cleaned = strings.ReplaceAll(cleaned, "/", ".")
-		cleaned = strings.ReplaceAll(cleaned, "~1", "/")
-		yamlPath := fmt.Sprintf("$.paths.%s", cleaned)
-		path, err := yamlpath.NewPath(yamlPath)
-		if err == nil {
-			nodes, fErr := path.Find(idx.GetRootNode())
-			if fErr == nil {
-				if len(nodes) > 0 {
-					return nodes[0], nil
+		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
+		if friendly != "" {
+			path, err := yamlpath.NewPath(friendly)
+			if err == nil {
+				nodes, fErr := path.Find(idx.GetRootNode())
+				if fErr == nil {
+					if len(nodes) > 0 {
+						return nodes[0], nil
+					}
 				}
 			}
 		}
