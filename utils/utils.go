@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -480,12 +481,48 @@ func IsHttpVerb(verb string) bool {
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
 	name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
+	var cleaned []string
 
-	replaced := strings.ReplaceAll(fmt.Sprintf("%s['%s']",
-		strings.Join(segs[:len(segs)-1], "."), name), "#", "$")
+	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
+	for i := range segs {
+		reg, _ := regexp.MatchString("[%=;~]", segs[i])
+		if reg {
+			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
+			segs[i] = fmt.Sprintf("['%s']", segs[i])
+			h := i
+			if h-1 == len(cleaned) {
+				h--
+			}
+			cleaned[h-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+		} else {
+			cleaned = append(cleaned, segs[i])
+		}
+	}
 
-	if replaced[0] != '$' {
-		replaced = fmt.Sprintf("$%s", replaced)
+	nameIntVal, err := strconv.ParseInt(name, 10, 32)
+	var replaced string
+	if err != nil {
+		if len(cleaned) > 2 {
+			replaced = strings.ReplaceAll(fmt.Sprintf("%s['%s']",
+				strings.Join(cleaned[:len(cleaned)-1], "."), name), "#", "$")
+		} else {
+			replaced = strings.ReplaceAll(fmt.Sprintf("%s",
+				strings.Join(cleaned, ".")), "#", "$")
+		}
+	} else {
+		if nameIntVal <= 99 { // codes start at 100
+			replaced = strings.ReplaceAll(fmt.Sprintf("%s[%d]",
+				strings.Join(cleaned[:len(cleaned)-1], "."), nameIntVal), "#", "$")
+		} else {
+			replaced = strings.ReplaceAll(fmt.Sprintf("%s.%d",
+				strings.Join(cleaned[:len(cleaned)-1], "."), nameIntVal), "#", "$")
+		}
+	}
+
+	if len(replaced) > 0 {
+		if replaced[0] != '$' {
+			replaced = fmt.Sprintf("$%s", replaced)
+		}
 	}
 	return name, replaced
 }

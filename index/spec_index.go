@@ -1832,16 +1832,17 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 	if index.root != nil {
 		name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
 		friendlySearch = strings.ReplaceAll(friendlySearch, "~1", "/")
-		path, _ := yamlpath.NewPath(friendlySearch)
+		path, err := yamlpath.NewPath(friendlySearch)
+		if path == nil || err != nil {
+			return nil // no component found
+		}
 		res, _ := path.Find(index.root)
-
 		if len(res) == 1 {
 			ref := &Reference{
 				Definition: componentId,
 				Name:       name,
 				Node:       res[0],
 			}
-
 			return ref
 		}
 	}

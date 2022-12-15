@@ -454,7 +454,54 @@ func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
 	assert.Len(t, index.GetReferenceIndexErrors(), 1)
 }
 
-func TestSpecIndex_FindComponent(t *testing.T) {
+func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
+	yml := `paths:
+  /crazy/ass/references:
+    get:
+      parameters:
+        - name: a param
+          schema:
+            type: string
+      description: Show information about one architecture.
+      responses:
+        "200":
+          content:
+            application/xml; charset=utf-8:
+              schema:
+                example:
+                  name: x86_64
+          description: OK. The request has succeeded.
+        "404":
+         content:
+            application/xml; charset=utf-8:
+              example:
+                code: unknown_architecture
+                summary: "Architecture does not exist: x999"
+              schema:
+                 $ref: "#/paths/~1crazy~1ass~1references/get/parameters/0"
+        "400":
+          content:
+            application/xml; charset=utf-8:
+              example:
+                code: unknown_architecture
+                summary: "Architecture does not exist: x999"
+              schema:
+                $ref: "#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema"
+          description: Not Found.`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+	assert.Equal(t, "#/paths/~1crazy~1ass~1references/get/parameters/0",
+		index.FindComponent("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema", nil).Node.Content[1].Value)
+
+	assert.Equal(t, "a param",
+		index.FindComponent("#/paths/~1crazy~1ass~1references/get/parameters/0", nil).Node.Content[1].Value)
+
+}
+
+func TestSpecIndex_FindComponenth(t *testing.T) {
 	yml := `components:
   schemas:
     pizza:
