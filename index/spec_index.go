@@ -15,13 +15,14 @@ package index
 import (
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 )
 
 // Constants used to determine if resolving is local, file based or remote file based.
@@ -192,7 +193,6 @@ func runIndexFunction(funcs []func() int, wg *sync.WaitGroup) {
 // other than a raw index of every node for every content type in the specification. This process runs as fast as
 // possible so dependencies looking through the tree, don't need to walk the entire thing over, and over.
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
-
 	index := new(SpecIndex)
 	index.root = rootNode
 	index.allRefs = make(map[string]*Reference)
@@ -593,7 +593,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 				segs := strings.Split(value, "/")
 				name := segs[len(segs)-1]
-				//name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
+				// name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
 				ref := &Reference{
 					Definition: value,
 					Name:       name,
@@ -972,7 +972,7 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 		return index.globalCallbacksCount
 	}
 
-	//index.pathRefsLock.Lock()
+	// index.pathRefsLock.Lock()
 	for path, p := range index.pathRefs {
 		for _, m := range p {
 
@@ -981,7 +981,6 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 			res, _ := callbacks.Find(m.Node)
 
 			if len(res) > 0 {
-
 				for _, callback := range res[0].Content {
 					if utils.IsNodeMap(callback) {
 
@@ -1005,7 +1004,7 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 			}
 		}
 	}
-	//index.pathRefsLock.Unlock()
+	// index.pathRefsLock.Unlock()
 	return index.globalCallbacksCount
 }
 
@@ -1019,7 +1018,7 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 		return index.globalLinksCount
 	}
 
-	//index.pathRefsLock.Lock()
+	// index.pathRefsLock.Lock()
 	for path, p := range index.pathRefs {
 		for _, m := range p {
 
@@ -1028,7 +1027,6 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 			res, _ := links.Find(m.Node)
 
 			if len(res) > 0 {
-
 				for _, link := range res[0].Content {
 					if utils.IsNodeMap(link) {
 
@@ -1050,7 +1048,7 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 			}
 		}
 	}
-	//index.pathRefsLock.Unlock()
+	// index.pathRefsLock.Unlock()
 	return index.globalLinksCount
 }
 
@@ -1383,7 +1381,6 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 
 					// method level params.
 					if isHttpMethod(prop.Value) {
-
 						for z, httpMethodProp := range pathPropertyNode.Content[y+1].Content {
 							if z%2 == 0 {
 								if httpMethodProp.Value == "parameters" {
@@ -1478,8 +1475,8 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 		}
 	}
 
-	//now build main index of all params by combining comp refs with inline params from operations.
-	//use the namespace path:::param for inline params to identify them as inline.
+	// now build main index of all params by combining comp refs with inline params from operations.
+	// use the namespace path:::param for inline params to identify them as inline.
 	for path, params := range index.paramOpRefs {
 		for mName, mValue := range params {
 			for pName, pValue := range mValue {
@@ -1493,7 +1490,6 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 
 	index.operationParamCount = len(index.paramCompRefs) + len(index.paramInlineDuplicates)
 	return index.operationParamCount
-
 }
 
 // GetInlineDuplicateParamCount returns the number of inline duplicate parameters (operation params)
@@ -1777,15 +1773,12 @@ func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yam
 }
 
 func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
-	lookupFunction ExternalLookupFunction, parent *yaml.Node) *Reference {
-
+	lookupFunction ExternalLookupFunction, parent *yaml.Node,
+) *Reference {
 	if len(uri) > 0 {
 		externalSpecIndex := index.externalSpecIndex[uri[0]]
-		var foundNode *yaml.Node
 		if externalSpecIndex == nil {
-
-			n, newRoot, err := lookupFunction(componentId)
-
+			_, newRoot, err := lookupFunction(componentId)
 			if err != nil {
 				indexError := &IndexingError{
 					Error: err,
@@ -1796,31 +1789,23 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 				return nil
 			}
 
-			if n != nil {
-				foundNode = n
-			}
-
 			// cool, cool, lets index this spec also. This is a recursive action and will keep going
 			// until all remote references have been found.
 			newIndex := NewSpecIndex(newRoot)
 			index.externalSpecIndex[uri[0]] = newIndex
-
-		} else {
-
-			foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
-			if foundRef != nil {
-				foundNode = foundRef.Node
-			}
+			externalSpecIndex = newIndex
 		}
 
-		if foundNode != nil {
+		foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
+		if foundRef != nil {
 			nameSegs := strings.Split(uri[1], "/")
 			ref := &Reference{
 				Definition:     componentId,
 				Name:           nameSegs[len(nameSegs)-1],
-				Node:           foundNode,
+				Node:           foundRef.Node,
 				IsRemote:       true,
 				RemoteLocation: componentId,
+				Path:           foundRef.Path,
 			}
 			return ref
 		}
@@ -1840,6 +1825,7 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 				Definition: componentId,
 				Name:       name,
 				Node:       res[0],
+				Path:       friendlySearch,
 			}
 
 			return ref
@@ -1864,7 +1850,6 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
 
 func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *yaml.Node, method string) {
 	for i, param := range params {
-
 		// param is ref
 		if len(param.Content) > 0 && param.Content[0].Value == "$ref" {
 
@@ -1885,16 +1870,15 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 
 		} else {
 
-			//param is inline.
+			// param is inline.
 			_, vn := utils.FindKeyNode("name", param.Content)
 
+			path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
+			if method == "top" {
+				path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
+			}
+
 			if vn == nil {
-
-				path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
-				if method == "top" {
-					path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
-				}
-
 				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
 					Error: fmt.Errorf("the '%s' operation parameter at path '%s', index %d has no 'name' value",
 						method, pathItemNode.Value, i),
@@ -1908,6 +1892,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 				Definition: vn.Value,
 				Name:       vn.Value,
 				Node:       param,
+				Path:       path,
 			}
 			if index.paramOpRefs[pathItemNode.Value] == nil {
 				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string]*Reference)
@@ -1961,7 +1946,6 @@ func isHttpMethod(val string) bool {
 }
 
 func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Node, error) {
-
 	// split string to remove file reference
 	uri := strings.Split(ref, "#")
 
@@ -2013,7 +1997,6 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 }
 
 func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node, error) {
-
 	// split string to remove file reference
 	uri := strings.Split(ref, "#")
 
