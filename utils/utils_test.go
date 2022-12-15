@@ -621,9 +621,15 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Simple(t *testing.T) {
-	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#//~1fresh~1pizza/get")
-	assert.Equal(t, "$.['/fresh/pizza'].get", path)
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/~1fresh~1pizza/get")
+	assert.Equal(t, "$['/fresh/pizza'].get", path)
 	assert.Equal(t, "get", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Params(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/why/0")
+	assert.Equal(t, "$.why[0]", path)
+	assert.Equal(t, "0", segment)
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Crazy_Github(t *testing.T) {
@@ -647,6 +653,12 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Crazy_DigitalOcean_More(t *tes
 func TestConvertComponentIdIntoFriendlyPathSearch_CrazyShort(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references")
 	assert.Equal(t, "$.paths['/crazy/ass/references']", path)
+	assert.Equal(t, "/crazy/ass/references", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Short(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("/~1crazy~1ass~1references")
+	assert.Equal(t, "$['/crazy/ass/references']", path)
 	assert.Equal(t, "/crazy/ass/references", segment)
 }
 

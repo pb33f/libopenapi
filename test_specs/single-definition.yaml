@@ -1,0 +1,9 @@
+components:
+  schemas:
+    Thing:
+      type: object
+      description: A thing that does nothing.
+      properties:
+        message:
+          type: string
+          description: I am pointless.

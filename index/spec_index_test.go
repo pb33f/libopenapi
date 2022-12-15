@@ -323,8 +323,8 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 
 	index := NewSpecIndex(&rootNode)
 
-	assert.Len(t, index.allRefs, 4)
-	assert.Len(t, index.allMappedRefs, 4)
+	assert.Len(t, index.allRefs, 5)
+	assert.Len(t, index.allMappedRefs, 5)
 	assert.Equal(t, 5, index.GetPathCount())
 	assert.Equal(t, 5, index.GetOperationCount())
 	assert.Equal(t, 1, index.GetComponentSchemaCount())
@@ -632,9 +632,11 @@ func TestSpecIndex_parameterReferencesHavePaths(t *testing.T) {
   /:
     parameters:
       - $ref: '#/components/parameters/param1'
+      - $ref: '#/components/parameters/param1'
       - $ref: 'paramour.yaml#/components/parameters/param3'
     get:
       parameters:
+        - $ref: '#/components/parameters/param2'
         - $ref: '#/components/parameters/param2'
         - name: test
           in: query
@@ -674,7 +676,7 @@ components:
 				assert.Equal(t, "$.components.parameters.param2", params["/"]["get"]["#/components/parameters/param2"].Path)
 			}
 			if assert.Contains(t, params["/"]["get"], "test") {
-				assert.Equal(t, "$.paths./.get.parameters[1]", params["/"]["get"]["test"].Path)
+				assert.Equal(t, "$.paths./.get.parameters[2]", params["/"]["get"]["test"].Path)
 			}
 		}
 	}

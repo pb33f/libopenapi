@@ -156,7 +156,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
-	assert.Len(t, circ, 2)
+	assert.Len(t, circ, 10)
 
 }
 
