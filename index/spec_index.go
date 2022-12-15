@@ -603,7 +603,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 				segs := strings.Split(value, "/")
 				name := segs[len(segs)-1]
-				//name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
 				_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(value)
 				ref := &Reference{
 					Definition: value,
@@ -611,7 +610,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					Node:       node,
 					Path:       p,
 				}
-				//utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
+
 				// add to raw sequenced refs
 				index.rawSequencedRefs = append(index.rawSequencedRefs, ref)
 
