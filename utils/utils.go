@@ -480,43 +480,53 @@ func IsHttpVerb(verb string) bool {
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
-	name := strings.ReplaceAll(segs[len(segs)-1], "~1", "/")
+	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
 	var cleaned []string
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
-		reg, _ := regexp.MatchString("[%=;~]", segs[i])
+		reg, _ := regexp.MatchString("[%=;~.]", segs[i])
 		if reg {
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
-			h := i
-			if h-1 == len(cleaned) {
-				h--
+			if len(cleaned) > 0 {
+				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+				continue
 			}
-			cleaned[h-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+			cleaned = append(cleaned, fmt.Sprintf("%s%s", segs[i], segs[i]))
+			continue
 		} else {
+			intVal, err := strconv.ParseInt(segs[i], 10, 32)
+			if err == nil && intVal <= 99 {
+				segs[i] = fmt.Sprintf("[%d]", intVal)
+				if i < len(cleaned) {
+					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+				} else {
+					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
+				}
+				continue
+			}
+			if err == nil && intVal > 99 {
+				segs[i] = fmt.Sprintf("['%d']", intVal)
+				if i < len(cleaned) {
+					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+				} else {
+					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
+				}
+				continue
+			}
 			cleaned = append(cleaned, segs[i])
 		}
 	}
 
-	nameIntVal, err := strconv.ParseInt(name, 10, 32)
+	_, err := strconv.ParseInt(name, 10, 32)
 	var replaced string
 	if err != nil {
-		if len(cleaned) > 2 {
-			replaced = strings.ReplaceAll(fmt.Sprintf("%s['%s']",
-				strings.Join(cleaned[:len(cleaned)-1], "."), name), "#", "$")
-		} else {
-			replaced = strings.ReplaceAll(fmt.Sprintf("%s",
-				strings.Join(cleaned, ".")), "#", "$")
-		}
+		replaced = strings.ReplaceAll(fmt.Sprintf("%s",
+			strings.Join(cleaned, ".")), "#", "$")
 	} else {
-		if nameIntVal <= 99 { // codes start at 100
-			replaced = strings.ReplaceAll(fmt.Sprintf("%s[%d]",
-				strings.Join(cleaned[:len(cleaned)-1], "."), nameIntVal), "#", "$")
-		} else {
-			replaced = strings.ReplaceAll(fmt.Sprintf("%s.%d",
-				strings.Join(cleaned[:len(cleaned)-1], "."), nameIntVal), "#", "$")
-		}
+		replaced = strings.ReplaceAll(fmt.Sprintf("%s",
+			strings.Join(cleaned, ".")), "#", "$")
 	}
 
 	if len(replaced) > 0 {

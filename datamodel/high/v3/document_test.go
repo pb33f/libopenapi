@@ -362,7 +362,7 @@ func TestStripeAsDoc(t *testing.T) {
     info, _ := datamodel.ExtractSpecInfo(data)
     var err []error
     lowDoc, err = lowv3.CreateDocument(info)
-    assert.Len(t, err, 21)
+    assert.Len(t, err, 23)
     d := NewDocument(lowDoc)
     fmt.Println(d)
 }

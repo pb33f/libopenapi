@@ -86,10 +86,10 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
-	assert.Len(t, circ, 21)
+	assert.Len(t, circ, 23)
 
-	assert.Len(t, resolver.GetNonPolymorphicCircularErrors(), 2)
-	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 19)
+	assert.Len(t, resolver.GetNonPolymorphicCircularErrors(), 3)
+	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 20)
 
 }
 
@@ -202,6 +202,6 @@ func ExampleNewResolver() {
 	//
 	fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
 		len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
-	// Output: There are 21 circular reference errors, 19 of them are polymorphic errors, 2 are not
+	// Output: There are 23 circular reference errors, 20 of them are polymorphic errors, 3 are not
 
 }

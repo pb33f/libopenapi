@@ -603,25 +603,45 @@ func TestIsHttpVerb(t *testing.T) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/chicken/chips/pizza/cake")
-	assert.Equal(t, "$.chicken.chips.pizza['cake']", path)
+	assert.Equal(t, "$.chicken.chips.pizza.cake", path)
 	assert.Equal(t, "cake", segment)
 }
 
-func TestConvertComponentIdIntoFriendlyPathSearch_WithRootSymbol(t *testing.T) {
-	segment, path := ConvertComponentIdIntoFriendlyPathSearch("/chicken/chips/pizza/cake")
-	assert.Equal(t, "$.chicken.chips.pizza['cake']", path)
-	assert.Equal(t, "cake", segment)
-
-	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema")
-	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses.404.content['application/xml; charset=utf-8']['schema']", path)
+func TestConvertComponentIdIntoFriendlyPathSearch_SuperCrazy(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema")
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses['404'].content['application/xml; charset=utf-8'].schema", path)
 	assert.Equal(t, "schema", segment)
 
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/example/0/expires_at")
+	assert.Equal(t, "$.components.schemas.gpg-key.properties.subkeys.example[0].expires_at", path)
+	assert.Equal(t, "expires_at", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Simple(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#//~1fresh~1pizza/get")
+	assert.Equal(t, "$.['/fresh/pizza'].get", path)
+	assert.Equal(t, "get", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Crazy_Github(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema")
-	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses.404.content['application/xml; charset=utf-8']['schema']", path)
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses['404'].content['application/xml; charset=utf-8'].schema", path)
 	assert.Equal(t, "schema", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Crazy_DigitalOcean(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1v2~1customers~1my~1invoices~1%7Binvoice_uuid%7D/get/parameters/0")
+	assert.Equal(t, "$.paths['/v2/customers/my/invoices/{invoice_uuid}'].get.parameters[0]", path)
+	assert.Equal(t, "0", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Crazy_DigitalOcean_More(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1v2~1certificates/post/responses/201/content/application~1json/examples/Custom%20Certificate")
+	assert.Equal(t, "$.paths['/v2/certificates'].post.responses['201'].content['application/json'].examples['Custom Certificate']", path)
+	assert.Equal(t, "Custom Certificate", segment)
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_CrazyShort(t *testing.T) {
@@ -638,7 +658,7 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Array(t *testing.T) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch_HTTPCode(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404")
-	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses.404", path)
+	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses['404']", path)
 	assert.Equal(t, "404", segment)
 }
 
