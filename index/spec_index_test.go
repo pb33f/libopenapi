@@ -663,15 +663,15 @@ components:
 	if assert.Contains(t, params, "/") {
 		if assert.Contains(t, params["/"], "top") {
 			if assert.Contains(t, params["/"]["top"], "#/components/parameters/param1") {
-				assert.Equal(t, "$.components.parameters['param1']", params["/"]["top"]["#/components/parameters/param1"].Path)
+				assert.Equal(t, "$.components.parameters.param1", params["/"]["top"]["#/components/parameters/param1"].Path)
 			}
 			if assert.Contains(t, params["/"]["top"], "paramour.yaml#/components/parameters/param3") {
-				assert.Equal(t, "$.components.parameters['param3']", params["/"]["top"]["paramour.yaml#/components/parameters/param3"].Path)
+				assert.Equal(t, "$.components.parameters.param3", params["/"]["top"]["paramour.yaml#/components/parameters/param3"].Path)
 			}
 		}
 		if assert.Contains(t, params["/"], "get") {
 			if assert.Contains(t, params["/"]["get"], "#/components/parameters/param2") {
-				assert.Equal(t, "$.components.parameters['param2']", params["/"]["get"]["#/components/parameters/param2"].Path)
+				assert.Equal(t, "$.components.parameters.param2", params["/"]["get"]["#/components/parameters/param2"].Path)
 			}
 			if assert.Contains(t, params["/"]["get"], "test") {
 				assert.Equal(t, "$.paths./.get.parameters[1]", params["/"]["get"]["test"].Path)
