@@ -1091,6 +1091,7 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 							Name:       "server",
 							Node:       def,
 							Path:       fmt.Sprintf("$.servers[%d]", x),
+							ParentNode: index.rootServersNode,
 						}
 						index.serversRefs = append(index.serversRefs, ref)
 					}
@@ -1370,11 +1371,13 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 							index.opServersRefs[pathItemNode.Value] = make(map[string][]*Reference)
 						}
 						var serverRefs []*Reference
-						for _, serverRef := range serversNode.Content {
+						for i, serverRef := range serversNode.Content {
 							ref := &Reference{
 								Definition: serverRef.Value,
 								Name:       serverRef.Value,
 								Node:       serverRef,
+								ParentNode: prop,
+								Path:       fmt.Sprintf("$.paths.%s.servers[%d]", pathItemNode.Value, i),
 							}
 							serverRefs = append(serverRefs, ref)
 						}
@@ -1452,11 +1455,13 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 									serversNode := pathPropertyNode.Content[y+1].Content[z+1]
 
 									var serverRefs []*Reference
-									for _, serverRef := range serversNode.Content {
+									for i, serverRef := range serversNode.Content {
 										ref := &Reference{
 											Definition: "servers",
 											Name:       "servers",
 											Node:       serverRef,
+											ParentNode: httpMethodProp,
+											Path:       fmt.Sprintf("$.paths.%s.%s.servers[%d]", pathItemNode.Value, prop.Value, i),
 										}
 										serverRefs = append(serverRefs, ref)
 									}
