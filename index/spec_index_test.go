@@ -474,7 +474,6 @@ func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
 
 	assert.Equal(t, "a param",
 		index.FindComponent("#/paths/~1crazy~1ass~1references/get/parameters/0", nil).Node.Content[1].Value)
-
 }
 
 func TestSpecIndex_FindComponenth(t *testing.T) {
@@ -677,6 +676,47 @@ components:
 			}
 			if assert.Contains(t, params["/"]["get"], "test") {
 				assert.Equal(t, "$.paths./.get.parameters[2]", params["/"]["get"]["test"].Path)
+			}
+		}
+	}
+}
+
+func TestSpecIndex_serverReferencesHaveParentNodesAndPaths(t *testing.T) {
+	yml := `servers:
+  - url: https://api.example.com/v1
+paths:
+  /:
+    servers:
+      - url: https://api.example.com/v2
+    get:
+      servers:
+        - url: https://api.example.com/v3`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+
+	rootServers := index.GetAllRootServers()
+
+	for i, server := range rootServers {
+		assert.NotNil(t, server.ParentNode)
+		assert.Equal(t, fmt.Sprintf("$.servers[%d]", i), server.Path)
+	}
+
+	opServers := index.GetAllOperationsServers()
+
+	for path, ops := range opServers {
+		for op, servers := range ops {
+			for i, server := range servers {
+				assert.NotNil(t, server.ParentNode)
+
+				opPath := fmt.Sprintf(".%s", op)
+				if op == "top" {
+					opPath = ""
+				}
+
+				assert.Equal(t, fmt.Sprintf("$.paths.%s%s.servers[%d]", path, opPath, i), server.Path)
 			}
 		}
 	}
