@@ -722,6 +722,27 @@ paths:
 	}
 }
 
+func TestSpecIndex_schemaComponentsHaveParentsAndPaths(t *testing.T) {
+	yml := `components:
+  schemas:
+    Pet:
+      type: object
+    Dog:
+      type: object`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+
+	schemas := index.GetAllSchemas()
+
+	for _, schema := range schemas {
+		assert.NotNil(t, schema.ParentNode)
+		assert.Equal(t, fmt.Sprintf("$.components.schemas.%s", schema.Name), schema.Path)
+	}
+}
+
 // Example of how to load in an OpenAPI Specification and index it.
 func ExampleNewSpecIndex() {
 	// define a rootNode to hold our raw spec AST.

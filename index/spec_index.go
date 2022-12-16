@@ -1648,6 +1648,8 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			Definition: def,
 			Name:       name,
 			Node:       schema,
+			Path:       fmt.Sprintf("$.components.schemas.%s", name),
+			ParentNode: schemasNode,
 		}
 		index.allSchemas[def] = ref
 	}
