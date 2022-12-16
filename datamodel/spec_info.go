@@ -98,7 +98,8 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 
 		if utils.IsYAML(string(bytes)) {
 			_ = parsedNode.Decode(&jsonSpec)
-			spec.SpecJSONBytes = &bytes
+			b, _ := json.Marshal(&jsonSpec)
+			spec.SpecJSONBytes = &b
 			spec.SpecJSON = &jsonSpec
 		} else {
 			_ = json.Unmarshal(bytes, &jsonSpec)
