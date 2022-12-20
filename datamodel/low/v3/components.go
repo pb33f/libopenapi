@@ -254,7 +254,8 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			currentLabel = v
 			continue
 		}
-		if strings.HasPrefix(strings.ToLower(currentLabel.Value), "x-") {
+		// only check for lowercase extensions as 'X-' is still valid as a key (annoyingly).
+		if strings.HasPrefix(currentLabel.Value, "x-") {
 			continue
 		}
 		totalComponents++
