@@ -144,6 +144,7 @@ type SpecIndex struct {
 	allDescriptions                     []*DescriptionReference                     // every single description found in the spec.
 	allSummaries                        []*DescriptionReference                     // every single summary found in the spec.
 	allEnums                            []*EnumReference                            // every single enum found in the spec.
+	allObjectsWithProperties            []*ObjectReference                          // every single object with properties found in the spec.
 	enumCount                           int
 	descriptionCount                    int
 	summaryCount                        int
@@ -173,9 +174,17 @@ type DescriptionReference struct {
 }
 
 type EnumReference struct {
-	Node *yaml.Node
-	Type *yaml.Node
-	Path string
+	Node       *yaml.Node
+	Type       *yaml.Node
+	Path       string
+	SchemaNode *yaml.Node
+	ParentNode *yaml.Node
+}
+
+type ObjectReference struct {
+	Node       *yaml.Node
+	Path       string
+	ParentNode *yaml.Node
 }
 
 var methodTypes = []string{"get", "post", "put", "patch", "options", "head", "delete"}
@@ -414,6 +423,11 @@ func (index *SpecIndex) GetAllDescriptions() []*DescriptionReference {
 // GetAllEnums will return all enums found in the document
 func (index *SpecIndex) GetAllEnums() []*EnumReference {
 	return index.allEnums
+}
+
+// GetAllObjectsWithProperties will return all objects with properties found in the document
+func (index *SpecIndex) GetAllObjectsWithProperties() []*ObjectReference {
+	return index.allObjectsWithProperties
 }
 
 // GetAllSummaries will return all summaries found in the document
@@ -778,13 +792,41 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 					if enumKeyValueNode != nil {
 						ref := &EnumReference{
-							Path: nodePath,
-							Node: node.Content[i+1],
-							Type: enumKeyValueNode,
+							Path:       nodePath,
+							Node:       node.Content[i+1],
+							Type:       enumKeyValueNode,
+							SchemaNode: node,
+							ParentNode: parent,
 						}
 
 						index.allEnums = append(index.allEnums, ref)
 						index.enumCount++
+					}
+				}
+				// capture all objects with properties
+				if n.Value == "properties" {
+					_, typeKeyValueNode := utils.FindKeyNodeTop("type", node.Content)
+
+					if typeKeyValueNode != nil {
+						isObject := false
+
+						if typeKeyValueNode.Value == "object" {
+							isObject = true
+						}
+
+						for _, v := range typeKeyValueNode.Content {
+							if v.Value == "object" {
+								isObject = true
+							}
+						}
+
+						if isObject {
+							index.allObjectsWithProperties = append(index.allObjectsWithProperties, &ObjectReference{
+								Path:       nodePath,
+								Node:       node,
+								ParentNode: parent,
+							})
+						}
 					}
 				}
 
@@ -1786,6 +1828,8 @@ func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yam
 			Definition: def,
 			Name:       name,
 			Node:       secScheme,
+			ParentNode: securitySchemesNode,
+			Path:       fmt.Sprintf("$.components.securitySchemes.%s", name),
 		}
 		index.allSecuritySchemes[def] = ref
 	}
