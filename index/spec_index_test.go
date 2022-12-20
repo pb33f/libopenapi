@@ -743,6 +743,44 @@ func TestSpecIndex_schemaComponentsHaveParentsAndPaths(t *testing.T) {
 	}
 }
 
+func TestSpecIndex_foundObjectsWithProperties(t *testing.T) {
+	yml := `paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              type: object
+              properties:
+                test:
+                  type: string
+components:
+  schemas:
+    test:
+      type: object
+      properties:
+        test:
+          type: string
+    test2:
+      type: [object, null]
+      properties:
+        test:
+          type: string
+    test3:
+      type: object
+      additionalProperties: true`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+
+	objects := index.GetAllObjectsWithProperties()
+	assert.Len(t, objects, 3)
+}
+
 // Example of how to load in an OpenAPI Specification and index it.
 func ExampleNewSpecIndex() {
 	// define a rootNode to hold our raw spec AST.
