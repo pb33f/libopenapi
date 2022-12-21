@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"time"
+
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -111,11 +112,14 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 
 	// check for specific keys
 	if openAPI3 != nil {
-		specVersion.SpecType = utils.OpenApi3
 		version, majorVersion, versionError := parseVersionTypeData(openAPI3.Value)
 		if versionError != nil {
 			return nil, versionError
 		}
+
+		specVersion.SpecType = utils.OpenApi3
+		specVersion.Version = version
+		specVersion.SpecFormat = OAS3
 
 		// parse JSON
 		parseJSON(spec, specVersion, &parsedSpec)
@@ -125,16 +129,17 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 			specVersion.Error = errors.New("spec is defined as an openapi spec, but is using a swagger (2.0), or unknown version")
 			return specVersion, specVersion.Error
 		}
-		specVersion.Version = version
-		specVersion.SpecFormat = OAS3
 	}
 
 	if openAPI2 != nil {
-		specVersion.SpecType = utils.OpenApi2
 		version, majorVersion, versionError := parseVersionTypeData(openAPI2.Value)
 		if versionError != nil {
 			return nil, versionError
 		}
+
+		specVersion.SpecType = utils.OpenApi2
+		specVersion.Version = version
+		specVersion.SpecFormat = OAS2
 
 		// parse JSON
 		parseJSON(spec, specVersion, &parsedSpec)
@@ -144,15 +149,16 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 			specVersion.Error = errors.New("spec is defined as a swagger (openapi 2.0) spec, but is an openapi 3 or unknown version")
 			return specVersion, specVersion.Error
 		}
-		specVersion.Version = version
-		specVersion.SpecFormat = OAS2
 	}
 	if asyncAPI != nil {
-		specVersion.SpecType = utils.AsyncApi
 		version, majorVersion, versionErr := parseVersionTypeData(asyncAPI.Value)
 		if versionErr != nil {
 			return nil, versionErr
 		}
+
+		specVersion.SpecType = utils.AsyncApi
+		specVersion.Version = version
+		// TODO: format for AsyncAPI.
 
 		// parse JSON
 		parseJSON(spec, specVersion, &parsedSpec)
@@ -162,9 +168,6 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 			specVersion.Error = errors.New("spec is defined as asyncapi, but has a major version that is invalid")
 			return specVersion, specVersion.Error
 		}
-		specVersion.Version = version
-		// TODO: format for AsyncAPI.
-
 	}
 
 	if specVersion.SpecType == "" {

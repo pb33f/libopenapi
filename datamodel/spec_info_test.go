@@ -5,10 +5,11 @@ package datamodel
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -49,13 +50,13 @@ var badYAML = `name: kitty
 
 var OpenApiWat = `openapi: 3.2
 info:
-  title: Test API, valid, but not quite valid 
+  title: Test API, valid, but not quite valid
 servers:
   - url: https://quobix.com/api`
 
 var OpenApi31 = `openapi: 3.1
 info:
-  title: Test API, valid, but not quite valid 
+  title: Test API, valid, but not quite valid
 servers:
   - url: https://quobix.com/api`
 
@@ -152,7 +153,7 @@ func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 	assert.Equal(t, utils.OpenApi3, r.SpecType)
 	assert.Equal(t, "3.0.1", r.Version)
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
-
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.0/schema/2021-09-28")
 }
 
 func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
@@ -169,6 +170,7 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.1", r.Version)
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-02-27")
 }
 
 func TestExtractSpecInfo_OpenAPIFalse(t *testing.T) {
@@ -185,6 +187,7 @@ func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
 	assert.Equal(t, OpenApi2, r.SpecType)
 	assert.Equal(t, "2.0.1", r.Version)
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
+	assert.Contains(t, r.APISchema, "http://swagger.io/v2/schema.json#")
 }
 
 func TestExtractSpecInfo_OpenAPI2_OddVersion(t *testing.T) {
