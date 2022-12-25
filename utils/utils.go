@@ -3,12 +3,13 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 )
 
 type Case int8
@@ -208,7 +209,8 @@ func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNo
 		if i%2 != 0 {
 			continue
 		}
-		if strings.ToLower(key) == strings.ToLower(v.Value) {
+
+		if strings.EqualFold(key, v.Value) {
 			return v, nodes[i+1] // next node is what we need.
 		}
 	}

@@ -1,12 +1,15 @@
 package base
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func test_get_schema_blob() string {
@@ -70,7 +73,7 @@ anyOf:
     anyOfB:
       type: string
       description: anyOfB description
-      example: 'anyOfBExp'    
+      example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
@@ -82,7 +85,7 @@ not:
     notB:
       type: string
       description: notB description
-      example: 'notBExp'      
+      example: 'notBExp'
 items:
   type: object
   description: an items thing
@@ -132,11 +135,11 @@ properties:
           attribute: true
           wrapped: false
           x-pizza: love
-    additionalProperties: 
+    additionalProperties:
         why: yes
-        thatIs: true    
+        thatIs: true
 additionalProperties: true
-required: 
+required:
   - them
 enum:
   - one
@@ -307,6 +310,51 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "boolean", sch.UnevaluatedItems.Value.Schema().Type.Value.A)
 	assert.Equal(t, "integer", sch.UnevaluatedProperties.Value.Schema().Type.Value.A)
 
+}
+
+func TestSchemaAllOfSequenceOrder(t *testing.T) {
+	testSpec := test_get_allOf_schema_blob()
+
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
+	assert.NoError(t, mErr)
+
+	// test data is a map with one node
+	mapContent := rootNode.Content[0].Content
+
+	_, vn := utils.FindKeyNodeTop(AllOfLabel, mapContent)
+	assert.True(t, utils.IsNodeArray(vn))
+
+	want := []string{}
+
+	// Go over every element in AllOf and grab description
+	// Odd: object
+	// Event: description
+	for i := range vn.Content {
+		assert.True(t, utils.IsNodeMap(vn.Content[i]))
+		_, vn := utils.FindKeyNodeTop("description", vn.Content[i].Content)
+		assert.True(t, utils.IsNodeStringValue(vn))
+		want = append(want, vn.Value)
+	}
+
+	fmt.Printf("%#v\n", want)
+
+	sch := Schema{}
+	mbErr := low.BuildModel(rootNode.Content[0], &sch)
+	assert.NoError(t, mbErr)
+
+	schErr := sch.Build(rootNode.Content[0], nil)
+	assert.NoError(t, schErr)
+	assert.Equal(t, "allOf sequence check", sch.Description.Value)
+
+	got := []string{}
+	for i := range sch.AllOf.Value {
+		v := sch.AllOf.Value[i]
+		got = append(got, v.Value.Schema().Description.Value)
+	}
+
+	fmt.Printf("%#v\n", got)
+	assert.Equal(t, want, got)
 }
 
 func TestSchema_Hash(t *testing.T) {
@@ -1062,7 +1110,7 @@ func TestExtractSchema(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml = `schema: 
+	yml = `schema:
   type: object
   properties:
     aValue:
@@ -1081,7 +1129,7 @@ func TestExtractSchema(t *testing.T) {
 func TestExtractSchema_DefaultPrimitive(t *testing.T) {
 
 	yml := `
-schema: 
+schema:
   type: object
   default: 5`
 
@@ -1108,7 +1156,7 @@ func TestExtractSchema_Ref(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml = `schema: 
+	yml = `schema:
   $ref: '#/components/schemas/Something'`
 
 	var idxNode yaml.Node
@@ -1133,7 +1181,7 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml = `schema: 
+	yml = `schema:
   $ref: '#/components/schemas/Missing'`
 
 	var idxNode yaml.Node
@@ -1153,7 +1201,7 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
           $ref: '#/components/schemas/Nothing'
     Nothing:
       properties:
-        something: 
+        something:
           $ref: '#/components/schemas/Something'`
 
 	var iNode yaml.Node
@@ -1586,4 +1634,17 @@ func TestSchema_Hash_EqualJumbled(t *testing.T) {
 	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
 	assert.True(t, low.AreEqual(lDoc.Value.Schema(), rDoc.Value.Schema()))
 
+}
+
+func test_get_allOf_schema_blob() string {
+	return `type: object
+description: allOf sequence check
+allOf:
+  - type: object
+    description: allOf sequence check 1
+  - description: allOf sequence check 2
+  - type: object
+    description: allOf sequence check 3
+  - description: allOf sequence check 4
+`
 }
