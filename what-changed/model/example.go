@@ -72,7 +72,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		z := 0
 		for k := range l.Value.ValueNode.Content {
 			if k%2 == 0 {
-				lKeys[z] = fmt.Sprintf("%v-%v", l.Value.ValueNode.Content[k].Value, l.Value.ValueNode.Content[k+1].Value)
+				lKeys[z] = fmt.Sprintf("%v-%v-%v", l.Value.ValueNode.Content[k].Value, l.Value.ValueNode.Content[k+1].Tag, l.Value.ValueNode.Content[k+1].Value)
 				z++
 			} else {
 				continue
@@ -81,7 +81,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		z = 0
 		for k := range r.Value.ValueNode.Content {
 			if k%2 == 0 {
-				rKeys[z] = fmt.Sprintf("%v-%v", r.Value.ValueNode.Content[k].Value, r.Value.ValueNode.Content[k+1].Value)
+				rKeys[z] = fmt.Sprintf("%v-%v-%v", r.Value.ValueNode.Content[k].Value, r.Value.ValueNode.Content[k+1].Tag, r.Value.ValueNode.Content[k+1].Value)
 				z++
 			} else {
 				continue
