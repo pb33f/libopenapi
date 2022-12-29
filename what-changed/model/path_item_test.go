@@ -4,12 +4,13 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestComparePathItem_V2(t *testing.T) {
@@ -262,9 +263,6 @@ parameters:
 func TestComparePathItem_V2_RemoveParametersToPath(t *testing.T) {
 
 	left := `get:
-  description: get me`
-
-	right := `get:
   description: get me
 parameters:
   - name: cake
@@ -273,6 +271,9 @@ parameters:
     name: eggs
   - in: tune
     name: melody`
+
+	right := `get:
+  description: get me`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -287,9 +288,9 @@ parameters:
 	_ = rDoc.Build(rNode.Content[0], nil)
 
 	// compare.
-	extChanges := ComparePathItems(&rDoc, &lDoc)
-	assert.Equal(t, 4, extChanges.TotalChanges())
-	assert.Equal(t, 4, extChanges.TotalBreakingChanges())
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 
 }
 

@@ -333,7 +333,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 
 		// security
-		if !lOperation.Security.IsEmpty() && !lOperation.Security.IsEmpty() {
+		if !lOperation.Security.IsEmpty() || !rOperation.Security.IsEmpty() {
 			checkSecurity(lOperation.Security, rOperation.Security, &changes, oc)
 		}
 
