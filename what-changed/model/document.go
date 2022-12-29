@@ -122,17 +122,17 @@ func CompareDocuments(l, r any) *DocumentChanges {
 			lDoc.BasePath.Value, rDoc.BasePath.Value, &changes, v3.BasePathLabel, true)
 
 		// schemes
-		if len(lDoc.Schemes.Value) > 0 || len(lDoc.Schemes.Value) > 0 {
+		if len(lDoc.Schemes.Value) > 0 || len(rDoc.Schemes.Value) > 0 {
 			ExtractStringValueSliceChanges(lDoc.Schemes.Value, rDoc.Schemes.Value,
 				&changes, v3.SchemesLabel, true)
 		}
 		// consumes
-		if len(lDoc.Consumes.Value) > 0 || len(lDoc.Consumes.Value) > 0 {
+		if len(lDoc.Consumes.Value) > 0 || len(rDoc.Consumes.Value) > 0 {
 			ExtractStringValueSliceChanges(lDoc.Consumes.Value, rDoc.Consumes.Value,
 				&changes, v3.ConsumesLabel, true)
 		}
 		// produces
-		if len(lDoc.Produces.Value) > 0 || len(lDoc.Produces.Value) > 0 {
+		if len(lDoc.Produces.Value) > 0 || len(rDoc.Produces.Value) > 0 {
 			ExtractStringValueSliceChanges(lDoc.Produces.Value, rDoc.Produces.Value,
 				&changes, v3.ProducesLabel, true)
 		}

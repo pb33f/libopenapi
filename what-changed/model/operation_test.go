@@ -4,12 +4,13 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareOperations_V2(t *testing.T) {
@@ -23,7 +24,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -61,7 +62,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -78,7 +79,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -115,7 +116,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam`
 
@@ -128,7 +129,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -168,7 +169,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam`
 
@@ -181,7 +182,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -221,7 +222,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -238,7 +239,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -278,7 +279,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -295,7 +296,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -337,7 +338,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -354,7 +355,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -393,7 +394,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -411,7 +412,7 @@ operationId: mintyFresh
 consumes:
   - pizza
   - cake
-produces: 
+produces:
   - toast
   - jam
 parameters:
@@ -1308,6 +1309,62 @@ security:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
+}
+
+func TestCompareOperations_V3_AddSecurity(t *testing.T) {
+	left := `operationId: coldSecurity
+security: []`
+
+	right := `operationId: coldSecurity
+security:
+  - winter:
+    - cold`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Empty(t, extChanges.SecurityRequirementChanges)
+}
+
+func TestCompareOperations_V3_RemoveSecurity(t *testing.T) {
+	left := `operationId: coldSecurity
+security:
+  - winter:
+    - cold`
+
+	right := `operationId: coldSecurity
+security: []`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Empty(t, extChanges.SecurityRequirementChanges)
 }
 
 func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
