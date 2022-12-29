@@ -283,7 +283,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	}
 
 	// parameters
-	if !lPath.Parameters.IsEmpty() && !lPath.Parameters.IsEmpty() {
+	if !lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {
 		lParams := lPath.Parameters.Value
 		rParams := rPath.Parameters.Value
 		lp, rp := extractV2ParametersIntoInterface(lParams, rParams)
