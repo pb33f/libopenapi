@@ -171,14 +171,8 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, 
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag == l.Tag {
+	if l != nil && l.Value != "" && r != nil && r.Value != "" && (r.Value != l.Value || r.Tag != l.Tag) {
 		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
-	}
-	// the values may have not changed, but the tag (node type) type may have
-	if l != nil && l.Value != "" && r != nil && r.Value != "" && r.Value != l.Value && r.Tag != l.Tag {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
 	}
 }
 

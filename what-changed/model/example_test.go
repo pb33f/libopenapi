@@ -4,12 +4,14 @@
 package model
 
 import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareExamples_SummaryModified(t *testing.T) {
@@ -195,4 +197,28 @@ func TestCompareExamples_Identical(t *testing.T) {
 
 	extChanges := CompareExamples(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
+}
+
+func TestCompareExamples_Date(t *testing.T) {
+	left := `value:
+  date: 2022-12-29`
+
+	right := `value:
+  date: "2022-12-29"`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Example
+	var rDoc base.Example
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	changes := CompareExamples(&lDoc, &rDoc)
+
+	assert.Equal(t, 1, changes.TotalChanges())
 }
