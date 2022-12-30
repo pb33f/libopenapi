@@ -5,10 +5,11 @@ package base
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"sync"
 )
 
 // DynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
@@ -41,9 +42,9 @@ func (s *DynamicValue[A, B]) IsB() bool {
 // mix, which has been confusing. So, instead of building a bunch of different models, we have compressed
 // all variations into a single model that makes it easy to support multiple spec types.
 //
-//  - v2 schema: https://swagger.io/specification/v2/#schemaObject
-//  - v3 schema: https://swagger.io/specification/#schema-object
-//  - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
+//   - v2 schema: https://swagger.io/specification/v2/#schemaObject
+//   - v3 schema: https://swagger.io/specification/#schema-object
+//   - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
 type Schema struct {
 
 	// 3.1 only, used to define a dialect for this schema, label is '$schema'.
@@ -309,30 +310,20 @@ func NewSchema(schema *base.Schema) *Schema {
 	propsChan := make(chan bool)
 	errChan := make(chan error)
 
-	// for every item, build schema async
-	buildSchema := func(sch lowmodel.ValueReference[*base.SchemaProxy], bChan chan *SchemaProxy) {
-		p := &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+	// for every item, build schema sync since it is an array
+	buildSchema := func(sch lowmodel.ValueReference[*base.SchemaProxy]) *SchemaProxy {
+		return &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: sch.ValueNode,
 			Value:     sch.Value,
 		}}
-		bChan <- p
 	}
 
 	// schema async
 	buildOutSchemas := func(schemas []lowmodel.ValueReference[*base.SchemaProxy], items *[]*SchemaProxy,
 		doneChan chan bool, e chan error) {
-		bChan := make(chan *SchemaProxy)
-		totalSchemas := len(schemas)
 		for v := range schemas {
-			go buildSchema(schemas[v], bChan)
-		}
-		j := 0
-		for j < totalSchemas {
-			select {
-			case t := <-bChan:
-				j++
-				*items = append(*items, t)
-			}
+			t := buildSchema(schemas[v])
+			*items = append(*items, t)
 		}
 		doneChan <- true
 	}

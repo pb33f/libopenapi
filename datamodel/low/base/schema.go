@@ -3,13 +3,14 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 // SchemaDynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
@@ -42,9 +43,9 @@ func (s SchemaDynamicValue[A, B]) IsB() bool {
 // mix, which has been confusing. So, instead of building a bunch of different models, we have compressed
 // all variations into a single model that makes it easy to support multiple spec types.
 //
-//  - v2 schema: https://swagger.io/specification/v2/#schemaObject
-//  - v3 schema: https://swagger.io/specification/#schema-object
-//  - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
+//   - v2 schema: https://swagger.io/specification/v2/#schemaObject
+//   - v3 schema: https://swagger.io/specification/#schema-object
+//   - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
 type Schema struct {
 
 	// Reference to the '$schema' dialect setting (3.1 only)
@@ -445,27 +446,27 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 
 // Build will perform a number of operations.
 // Extraction of the following happens in this method:
-//  - Extensions
-//  - Type
-//  - ExclusiveMinimum and ExclusiveMaximum
-//  - Examples
-//  - AdditionalProperties
-//  - Discriminator
-//  - ExternalDocs
-//  - XML
-//  - Properties
-//  - AllOf, OneOf, AnyOf
-//  - Not
-//  - Items
-//  - PrefixItems
-//  - If
-//  - Else
-//  - Then
-//  - DependentSchemas
-//  - PatternProperties
-//  - PropertyNames
-//  - UnevaluatedItems
-//  - UnevaluatedProperties
+//   - Extensions
+//   - Type
+//   - ExclusiveMinimum and ExclusiveMaximum
+//   - Examples
+//   - AdditionalProperties
+//   - Discriminator
+//   - ExternalDocs
+//   - XML
+//   - Properties
+//   - AllOf, OneOf, AnyOf
+//   - Not
+//   - Items
+//   - PrefixItems
+//   - If
+//   - Else
+//   - Then
+//   - DependentSchemas
+//   - PatternProperties
+//   - PropertyNames
+//   - UnevaluatedItems
+//   - UnevaluatedProperties
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, err := low.LocateRefNode(root, idx)
@@ -1007,7 +1008,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 		// build out a SchemaProxy for every sub-schema.
 		build := func(kn *yaml.Node, vn *yaml.Node, c chan *low.ValueReference[*SchemaProxy],
-			isRef bool, refLocation string) {
+			isRef bool, refLocation string) *low.ValueReference[*SchemaProxy] {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
 			// take on circular references through polymorphism. Like the resolver, if we try and follow these
 			// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
@@ -1026,7 +1027,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				Value:     sp,
 				ValueNode: vn,
 			}
-			c <- res
+			if c != nil {
+				c <- res
+			}
+			return res
 		}
 
 		isRef := false
@@ -1059,7 +1063,6 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			}
 		}
 		if utils.IsNodeArray(valueNode) {
-			refBuilds := 0
 			for _, vn := range valueNode.Content {
 				isRef = false
 				h := false
@@ -1075,21 +1078,15 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 						return
 					}
 				}
-				refBuilds++
-				go build(vn, vn, syncChan, isRef, refLocation)
-			}
-			completedBuilds := 0
-			for completedBuilds < refBuilds {
-				select {
-				case res := <-syncChan:
-					completedBuilds++
-					schemas <- schemaProxyBuildResult{
-						k: low.KeyReference[string]{
-							KeyNode: labelNode,
-							Value:   labelNode.Value,
-						},
-						v: *res,
-					}
+				// We need to build arrays sequentially so call it in the loop instead of goroutines
+				// execution order of which is undefined
+				res := build(vn, vn, nil, isRef, refLocation)
+				schemas <- schemaProxyBuildResult{
+					k: low.KeyReference[string]{
+						KeyNode: labelNode,
+						Value:   labelNode.Value,
+					},
+					v: *res,
 				}
 			}
 		}

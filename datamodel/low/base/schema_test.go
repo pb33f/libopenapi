@@ -1,7 +1,6 @@
 package base
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -337,8 +336,6 @@ func TestSchemaAllOfSequenceOrder(t *testing.T) {
 		want = append(want, vn.Value)
 	}
 
-	fmt.Printf("%#v\n", want)
-
 	sch := Schema{}
 	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
@@ -353,7 +350,6 @@ func TestSchemaAllOfSequenceOrder(t *testing.T) {
 		got = append(got, v.Value.Schema().Description.Value)
 	}
 
-	fmt.Printf("%#v\n", got)
 	assert.Equal(t, want, got)
 }
 

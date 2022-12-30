@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -110,7 +111,7 @@ anyOf:
     anyOfB:
       type: string
       description: anyOfB description
-      example: 'anyOfBExp'    
+      example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
@@ -122,7 +123,7 @@ not:
     notB:
       type: string
       description: notB description
-      example: 'notBExp'      
+      example: 'notBExp'
 items:
   type: object
   description: an items thing
@@ -178,9 +179,9 @@ properties:
           attribute: true
           wrapped: false
           x-pizza: love
-    additionalProperties: 
+    additionalProperties:
         why: yes
-        thatIs: true    
+        thatIs: true
 additionalProperties: true
 xml:
   name: XML Thing
@@ -254,10 +255,62 @@ unevaluatedProperties:
 	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.UnevaluatedProperties.Schema().Type[0])
+	assert.NotNil(t, compiled.Nullable)
+	assert.True(t, *compiled.Nullable)
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)
 
+}
+
+func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
+	testSpec := test_get_allOf_schema_blob()
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	// test data is a map with one node
+	mapContent := compNode.Content[0].Content
+
+	_, vn := utils.FindKeyNodeTop(lowbase.AllOfLabel, mapContent)
+	assert.True(t, utils.IsNodeArray(vn))
+
+	want := []string{}
+
+	// Go over every element in AllOf and grab description
+	// Odd: object
+	// Event: description
+	for i := range vn.Content {
+		assert.True(t, utils.IsNodeMap(vn.Content[i]))
+		_, vn := utils.FindKeyNodeTop("description", vn.Content[i].Content)
+		assert.True(t, utils.IsNodeStringValue(vn))
+		want = append(want, vn.Value)
+	}
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
+
+	got := []string{}
+	for i := range compiled.AllOf {
+		v := compiled.AllOf[i]
+		got = append(got, v.Schema().Description)
+	}
+
+	assert.Equal(t, want, got)
 }
 
 func TestNewSchemaProxy_WithObject_FinishPoly(t *testing.T) {
@@ -304,7 +357,7 @@ anyOf:
     anyOfB:
       type: string
       description: anyOfB description
-      example: 'anyOfBExp'    
+      example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
@@ -316,7 +369,7 @@ not:
     notB:
       type: string
       description: notB description
-      example: 'notBExp'      
+      example: 'notBExp'
 items:
   type: object
   description: an items thing
@@ -342,7 +395,7 @@ properties:
       somethingBProp:
         exclusiveMinimum: 3
         exclusiveMaximum: 120
-        type: 
+        type:
          - string
          - null
         description: something b subprop
@@ -354,9 +407,9 @@ properties:
           attribute: true
           wrapped: false
           x-pizza: love
-    additionalProperties: 
+    additionalProperties:
         why: yes
-        thatIs: true    
+        thatIs: true
 additionalProperties:
   type: string
   description: nice
@@ -635,4 +688,26 @@ properties:
 	fmt.Print(highSchema.Schema().Properties["aProperty"].Schema().Description)
 	// Output: this is an integer property
 
+}
+
+func test_get_allOf_schema_blob() string {
+	return `type: object
+description: allOf sequence check
+allOf:
+  - type: object
+    description: allOf sequence check 1
+  - description: allOf sequence check 2
+  - type: object
+    description: allOf sequence check 3
+  - description: allOf sequence check 4
+properties:
+  somethingBee:
+    type: number
+  somethingThree:
+    type: number
+  somethingTwo:
+    type: number
+  somethingOne:
+    type: number
+`
 }
