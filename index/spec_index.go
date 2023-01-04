@@ -1,4 +1,4 @@
-// Copyright 2022 Dave Shanley / Quobix
+// Copyright 2022-2033 Dave Shanley / Quobix
 // SPDX-License-Identifier: MIT
 
 // Package index contains an OpenAPI indexer that will very quickly scan through an OpenAPI specification (all versions)
@@ -1647,6 +1647,19 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 		if len(uri) == 2 {
 			return index.performExternalLookup(uri, componentId, fileLookup, parent)
 		}
+		if len(uri) == 1 {
+			// if there is no reference, second segment is empty / has no name
+			// this means there is no component to look-up and the entire file should be pulled in.
+			// to stop all the other code from breaking (that is expecting a component), let's just post-pend
+			// a hash to the end of the componentId and ensure the uri slice is as expected.
+			// described in https://github.com/pb33f/libopenapi/issues/37
+			//
+			// ^^ this same issue was re-reported in file based lookups in vacuum.
+			// more info here: https://github.com/daveshanley/vacuum/issues/225
+			componentId = fmt.Sprintf("%s#", componentId)
+			uri = append(uri, "")
+			return index.performExternalLookup(uri, componentId, fileLookup, parent)
+		}
 	}
 	return nil
 }
@@ -2080,10 +2093,6 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 	// split string to remove file reference
 	uri := strings.Split(ref, "#")
 
-	if len(uri) != 2 {
-		return nil, nil, fmt.Errorf("unable to determine filename for file reference: '%s'", ref)
-	}
-
 	file := strings.ReplaceAll(uri[0], "file:", "")
 
 	var parsedRemoteDocument *yaml.Node
@@ -2106,7 +2115,12 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 	}
 
 	// lookup item from reference by using a path query.
-	query := fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
+	var query string
+	if len(uri) >= 2 {
+		query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
+	} else {
+		query = "$"
+	}
 
 	// remove any URL encoding
 	query = strings.Replace(query, "~1", "./", 1)
