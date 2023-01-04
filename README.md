@@ -8,6 +8,7 @@
 ![Pipeline](https://github.com/pb33f/libopenapi/workflows/Build/badge.svg)
 [![GoReportCard](https://goreportcard.com/badge/github.com/pb33f/libopenapi)](https://goreportcard.com/report/github.com/pb33f/libopenapi)
 [![codecov](https://codecov.io/gh/pb33f/libopenapi/branch/main/graph/badge.svg?)](https://codecov.io/gh/pb33f/libopenapi)
+[![discord](https://img.shields.io/discord/923258363540815912)](https://discord.gg/x7VACVuEGP)
 [![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/pb33f/libopenapi)
 
 libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1. It can handle the largest and most
@@ -31,6 +32,11 @@ like our _very kind_ sponsors:
 - [github.com/daveshanley/vacuum](https://github.com/daveshanley/vacuum) - "The world's fastest and most scalable OpenAPI/Swagger linter/quality tool"
 
 ---
+
+## Come chat with us
+
+Need help? Have a question? Want to share your work? [Join our discord](https://discord.gg/x7VACVuEGP) and
+come say hi!
 
 ## Contents
 
