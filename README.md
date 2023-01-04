@@ -113,7 +113,13 @@ Want a lightning fast way to look up any element in an OpenAPI swagger spec? **`
 Need a way to 'resolve' OpenAPI documents that are exploded out across multiple files, remotely or locally? 
 **`libopenapi` has you covered**.
 
-> **Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)**
+---
+### Quick-start tutorial
+
+👀 **Get rolling fast using `libopenapi` with the 
+[Parsing OpenAPI files using go](https://quobix.com/articles/parsing-openapi-using-go/)** guide 👀
+
+> Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)
 
 ---
 
