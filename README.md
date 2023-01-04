@@ -1,8 +1,9 @@
 <p align="center">
-	<img src="libopenapi-logo.png" alt="libopenapi" height="300px"/>
+	<img src="libopenapi-logo.png" alt="libopenapi" height="300px" width="450px"/>
 </p>
 
 # libopenapi - enterprise grade OpenAPI tools for golang.
+
 
 ![Pipeline](https://github.com/pb33f/libopenapi/workflows/Build/badge.svg)
 [![GoReportCard](https://goreportcard.com/badge/github.com/pb33f/libopenapi)](https://goreportcard.com/report/github.com/pb33f/libopenapi)

@@ -555,6 +555,40 @@ func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
 	assert.Nil(t, b)
 }
 
+// Discovered in issue https://github.com/daveshanley/vacuum/issues/225
+func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
+
+	index := new(SpecIndex)
+	_ = ioutil.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
+	defer os.Remove("coffee-time.yaml")
+
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	a, b, err := index.lookupFileReference("coffee-time.yaml")
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
+}
+
+func TestSpecIndex_CheckIndexDiscoversNoComponentLocalFileReference(t *testing.T) {
+
+	_ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
+	defer os.Remove("coffee-time.yaml")
+
+	yml := `openapi: 3.0.3
+paths:
+  /cakes:
+    post:
+      parameters:
+        - $ref: 'coffee-time.yaml'`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndex(&rootNode)
+
+	assert.NotNil(t, index.GetAllParametersFromOperations()["/cakes"]["post"]["coffee-time.yaml"].Node)
+}
+
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
 	index := new(SpecIndex)
 	index.seenRemoteSources = make(map[string]*yaml.Node)
