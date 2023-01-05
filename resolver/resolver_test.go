@@ -169,6 +169,7 @@ components:
 	assert.Len(t, circ, 0)
 }
 
+// TODO: Test for remote and file references with the option switched on and off
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	mixedref, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
@@ -180,6 +181,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
+	// TODO: This file seems to import correctly now, but the test fails as it's expecting 10 errors
 	assert.Len(t, circ, 10)
 }
 
