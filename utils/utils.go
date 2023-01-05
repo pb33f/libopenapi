@@ -3,12 +3,13 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 )
 
 type Case int8
@@ -402,15 +403,50 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 	return false, nil, ""
 }
 
+// IsPropertyNodeRequired will check if a node is required within circular references
+func IsPropertyNodeRequired(node *yaml.Node, propertyName string) bool {
+	_, requiredSeqNode := FindKeyNode("required", node.Content)
+	if requiredSeqNode == nil {
+		return false
+	}
+
+	_, propertiesMapNode := FindKeyNode("properties", node.Content)
+	if propertiesMapNode == nil {
+		return false
+	}
+
+	for _, requiredPropertyNode := range requiredSeqNode.Content {
+		_, requiredPropDefNode := FindKeyNode(requiredPropertyNode.Value, propertiesMapNode.Content)
+		if requiredPropDefNode == nil {
+			continue
+		}
+
+		isRef, _, defPath := IsNodeRefValue(requiredPropDefNode)
+		if isRef && defPath == propertyName {
+			return true
+		}
+
+		_, defItems := FindKeyNode("items", requiredPropDefNode.Content)
+		if defItems == nil {
+			continue
+		}
+
+		isRef, _, defPath = IsNodeRefValue(defItems)
+		if isRef && defPath == propertyName {
+			return true
+		}
+	}
+
+	return false
+}
+
 // FixContext will clean up a JSONpath string to be correctly traversable.
 func FixContext(context string) string {
-
 	tokens := strings.Split(context, ".")
 	var cleaned = []string{}
+
 	for i, t := range tokens {
-
 		if v, err := strconv.Atoi(t); err == nil {
-
 			if v < 200 { // codes start here
 				if cleaned[i-1] != "" {
 					cleaned[i-1] += fmt.Sprintf("[%v]", t)
@@ -421,8 +457,8 @@ func FixContext(context string) string {
 			continue
 		}
 		cleaned = append(cleaned, strings.ReplaceAll(t, "(root)", "$"))
-
 	}
+
 	return strings.Join(cleaned, ".")
 }
 

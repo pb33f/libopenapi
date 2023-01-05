@@ -35,16 +35,17 @@ const (
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing
 // algorithms on data models. the *yaml.Node def is just a bit too low level for tracking state.
 type Reference struct {
-	Definition     string
-	Name           string
-	Node           *yaml.Node
-	ParentNode     *yaml.Node
-	Resolved       bool
-	Circular       bool
-	Seen           bool
-	IsRemote       bool
-	RemoteLocation string
-	Path           string // this won't always be available.
+	Definition            string
+	Name                  string
+	Node                  *yaml.Node
+	ParentNode            *yaml.Node
+	Resolved              bool
+	Circular              bool
+	Seen                  bool
+	IsRemote              bool
+	RemoteLocation        string
+	Path                  string              // this won't always be available.
+	RequiredRefProperties map[string][]string // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition
 }
 
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
@@ -1614,10 +1615,12 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 		return nil
 	}
 
+	// FIXME: This is a potential security hole, and needs to be made optional (see log4j fiasco)
 	remoteLookup := func(id string) (*yaml.Node, *yaml.Node, error) {
 		return index.lookupRemoteReference(id)
 	}
 
+	// FIXME: As above
 	fileLookup := func(id string) (*yaml.Node, *yaml.Node, error) {
 		return index.lookupFileReference(id)
 	}
@@ -1685,16 +1688,91 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			name = schema.Value
 			continue
 		}
+
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
 		ref := &Reference{
-			Definition: def,
-			Name:       name,
-			Node:       schema,
-			Path:       fmt.Sprintf("$.components.schemas.%s", name),
-			ParentNode: schemasNode,
+			Definition:            def,
+			Name:                  name,
+			Node:                  schema,
+			Path:                  fmt.Sprintf("$.components.schemas.%s", name),
+			ParentNode:            schemasNode,
+			RequiredRefProperties: index.extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}),
 		}
 		index.allSchemas[def] = ref
 	}
+}
+
+// extractDefinitionRequiredRefProperties goes through the direct properties of a schema and extracts the map of required definitions from within it
+func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string) map[string][]string {
+	if schemaNode == nil {
+		return reqRefProps
+	}
+
+	_, requiredSeqNode := utils.FindKeyNode("required", schemaNode.Content)
+	if requiredSeqNode == nil {
+		return reqRefProps
+	}
+
+	_, propertiesMapNode := utils.FindKeyNode("properties", schemaNode.Content)
+	if propertiesMapNode == nil {
+		// TODO: Log a warning on the resolver, because if you have required properties, but no actual properties, something is wrong
+		return reqRefProps
+	}
+
+	name := ""
+	for i, param := range propertiesMapNode.Content {
+		if i%2 == 0 {
+			name = param.Value
+			continue
+		}
+
+		_, paramPropertiesMapNode := utils.FindKeyNode("properties", param.Content)
+		if paramPropertiesMapNode != nil {
+			reqRefProps = index.extractDefinitionRequiredRefProperties(param, reqRefProps)
+		}
+
+		for _, key := range []string{"allOf", "oneOf", "anyOf"} {
+			_, ofNode := utils.FindKeyNode(key, param.Content)
+			if ofNode != nil {
+				for _, ofNodeItem := range ofNode.Content {
+					reqRefProps = index.extractRequiredReferenceProperties(ofNodeItem, name, reqRefProps)
+				}
+			}
+		}
+	}
+
+	for _, requiredPropertyNode := range requiredSeqNode.Content {
+		_, requiredPropDefNode := utils.FindKeyNode(requiredPropertyNode.Value, propertiesMapNode.Content)
+		if requiredPropDefNode == nil {
+			continue
+		}
+
+		reqRefProps = index.extractRequiredReferenceProperties(requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
+	}
+
+	return reqRefProps
+}
+
+// extractRequiredReferenceProperties returns a map of definition names to the property or properties which reference it within a node
+func (index *SpecIndex) extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
+	isRef, _, defPath := utils.IsNodeRefValue(requiredPropDefNode)
+	if !isRef {
+		_, defItems := utils.FindKeyNode("items", requiredPropDefNode.Content)
+		if defItems != nil {
+			isRef, _, defPath = utils.IsNodeRefValue(defItems)
+		}
+	}
+
+	if /* still */ !isRef {
+		return reqRefProps
+	}
+
+	if _, ok := reqRefProps[defPath]; !ok {
+		reqRefProps[defPath] = []string{}
+	}
+	reqRefProps[defPath] = append(reqRefProps[defPath], propName)
+
+	return reqRefProps
 }
 
 func (index *SpecIndex) extractComponentParameters(paramsNode *yaml.Node, pathPrefix string) {
@@ -1886,11 +1964,13 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 		res, _ := path.Find(index.root)
 		if len(res) == 1 {
 			ref := &Reference{
-				Definition: componentId,
-				Name:       name,
-				Node:       res[0],
-				Path:       friendlySearch,
+				Definition:            componentId,
+				Name:                  name,
+				Node:                  res[0],
+				Path:                  friendlySearch,
+				RequiredRefProperties: index.extractDefinitionRequiredRefProperties(res[0], map[string][]string{}),
 			}
+
 			return ref
 		}
 	}
