@@ -1,12 +1,14 @@
 <p align="center">
-	<img src="libopenapi-logo.png" alt="libopenapi" height="300px"/>
+	<img src="libopenapi-logo.png" alt="libopenapi" height="300px" width="450px"/>
 </p>
 
 # libopenapi - enterprise grade OpenAPI tools for golang.
 
+
 ![Pipeline](https://github.com/pb33f/libopenapi/workflows/Build/badge.svg)
 [![GoReportCard](https://goreportcard.com/badge/github.com/pb33f/libopenapi)](https://goreportcard.com/report/github.com/pb33f/libopenapi)
 [![codecov](https://codecov.io/gh/pb33f/libopenapi/branch/main/graph/badge.svg?)](https://codecov.io/gh/pb33f/libopenapi)
+[![discord](https://img.shields.io/discord/923258363540815912)](https://discord.gg/x7VACVuEGP)
 [![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/pb33f/libopenapi)
 
 libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, and OpenAPI 3.1. It can handle the largest and most
@@ -27,8 +29,14 @@ like our _very kind_ sponsors:
 `libopenapi` is pretty new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
 
 - [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
+- [github.com/daveshanley/vacuum](https://github.com/daveshanley/vacuum) - "The world's fastest and most scalable OpenAPI/Swagger linter/quality tool"
 
 ---
+
+## Come chat with us
+
+Need help? Have a question? Want to share your work? [Join our discord](https://discord.gg/x7VACVuEGP) and
+come say hi!
 
 ## Contents
 
@@ -105,7 +113,13 @@ Want a lightning fast way to look up any element in an OpenAPI swagger spec? **`
 Need a way to 'resolve' OpenAPI documents that are exploded out across multiple files, remotely or locally? 
 **`libopenapi` has you covered**.
 
-> **Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)**
+---
+### Quick-start tutorial
+
+👀 **Get rolling fast using `libopenapi` with the 
+[Parsing OpenAPI files using go](https://quobix.com/articles/parsing-openapi-using-go/)** guide 👀
+
+> Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)
 
 ---
 

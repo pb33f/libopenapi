@@ -4,16 +4,16 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
-//
 func TestCompareDocuments_Swagger_BaseProperties_Identical(t *testing.T) {
 	left := `swagger: 2.0
 x-diet: tough
@@ -86,6 +86,62 @@ produces:
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 10, extChanges.TotalChanges())
 	assert.Equal(t, 6, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_Swagger_BaseProperties_Added(t *testing.T) {
+	left := `swagger: 2.0
+host: https://pb33f.io
+basePath: /api`
+
+	right := `swagger: 2.0
+host: https://pb33f.io
+basePath: /api
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json`
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_Swagger_BaseProperties_Removed(t *testing.T) {
+	left := `swagger: 2.0
+host: https://pb33f.io
+basePath: /api
+schemes:
+  - https
+consumes:
+  - application/json
+produces:
+  - application/json`
+
+	right := `swagger: 2.0
+host: https://pb33f.io
+basePath: /api`
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v2.CreateDocument(siLeft)
+	rDoc, _ := v2.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Equal(t, 3, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareDocuments_Swagger_Info_Modified(t *testing.T) {
@@ -987,7 +1043,7 @@ func TestCompareDocuments_OpenAPI_ModifyWebhooks(t *testing.T) {
 webhooks:
   bHook:
     get:
-      description: coffee  
+      description: coffee
   aHook:
     get:
       description: jazz`
