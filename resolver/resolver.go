@@ -5,6 +5,7 @@ package resolver
 
 import (
 	"fmt"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -87,7 +88,6 @@ func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*index.CircularRef
 // re-organize the node tree. Make sure you have copied your original tree before running this (if you want to preserve
 // original data)
 func (resolver *Resolver) Resolve() []*ResolvingError {
-
 	mapped := resolver.specIndex.GetMappedReferencesSequenced()
 	mappedIndex := resolver.specIndex.GetMappedReferences()
 
@@ -98,7 +98,6 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	}
 
 	schemas := resolver.specIndex.GetAllSchemas()
-
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
@@ -118,8 +117,13 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	}
 
 	for _, circRef := range resolver.circularReferences {
+		// If the circular reference is not required, we can ignore it, as it's a terminable loop rather than an infinite one
+		if !circRef.IsInfiniteLoop {
+			continue
+		}
+
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef: fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
+			ErrorRef: fmt.Errorf("Infinite circular reference detected: %s", circRef.Start.Name),
 			Node:     circRef.LoopPoint.Node,
 			Path:     circRef.GenerateJourneyPath(),
 		})
@@ -130,7 +134,6 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 
 // CheckForCircularReferences Check for circular references, without resolving, a non-destructive run.
 func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
-
 	mapped := resolver.specIndex.GetMappedReferencesSequenced()
 	mappedIndex := resolver.specIndex.GetMappedReferences()
 	for _, ref := range mapped {
@@ -138,6 +141,7 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 		var journey []*index.Reference
 		resolver.VisitReference(ref.Reference, seenReferences, journey, false)
 	}
+
 	schemas := resolver.specIndex.GetAllSchemas()
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
@@ -146,9 +150,15 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 			resolver.VisitReference(schemaRef, seenReferences, journey, false)
 		}
 	}
+
 	for _, circRef := range resolver.circularReferences {
+		// If the circular reference is not required, we can ignore it, as it's a terminable loop rather than an infinite one
+		if !circRef.IsInfiniteLoop {
+			continue
+		}
+
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef:          fmt.Errorf("Circular reference detected: %s", circRef.Start.Name),
+			ErrorRef:          fmt.Errorf("Infinite circular reference detected: %s", circRef.Start.Name),
 			Node:              circRef.LoopPoint.Node,
 			Path:              circRef.GenerateJourneyPath(),
 			CircularReference: circRef,
@@ -161,7 +171,6 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
 func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]bool, journey []*index.Reference, resolve bool) []*yaml.Node {
-
 	if ref.Resolved || ref.Seen {
 		return ref.Node.Content
 	}
@@ -173,34 +182,32 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 
 	seen[ref.Definition] = true
 	for _, r := range relatives {
-
 		// check if we have seen this on the journey before, if so! it's circular
 		skip := false
 		for i, j := range journey {
 			if j.Definition == r.Definition {
-
 				foundDup := resolver.specIndex.GetMappedReferences()[r.Definition]
 
 				var circRef *index.CircularReferenceResult
 				if !foundDup.Circular {
-
 					loop := append(journey, foundDup)
+
 					circRef = &index.CircularReferenceResult{
-						Journey:   loop,
-						Start:     foundDup,
-						LoopIndex: i,
-						LoopPoint: foundDup,
+						Journey:        loop,
+						Start:          foundDup,
+						LoopIndex:      i,
+						LoopPoint:      foundDup,
+						IsInfiniteLoop: resolver.isInfiniteCircularDependency(foundDup, nil),
 					}
+					resolver.circularReferences = append(resolver.circularReferences, circRef)
 
 					foundDup.Seen = true
 					foundDup.Circular = true
-					resolver.circularReferences = append(resolver.circularReferences, circRef)
-
 				}
 				skip = true
-
 			}
 		}
+
 		if !skip {
 			original := resolver.specIndex.GetMappedReferences()[r.Definition]
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
@@ -215,6 +222,30 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 	ref.Seen = true
 
 	return ref.Node.Content
+}
+
+func (resolver *Resolver) isInfiniteCircularDependency(ref *index.Reference, initialRef *index.Reference) bool {
+	if ref == nil {
+		return false
+	}
+
+	for refDefinition := range ref.RequiredRefProperties {
+		r := resolver.specIndex.GetMappedReferences()[refDefinition]
+		if initialRef != nil && initialRef.Definition == r.Definition {
+			return true
+		}
+
+		ir := initialRef
+		if ir == nil {
+			ir = ref
+		}
+
+		if resolver.isInfiniteCircularDependency(r, ir) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func (resolver *Resolver) extractRelatives(node *yaml.Node,
