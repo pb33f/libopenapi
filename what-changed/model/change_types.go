@@ -113,14 +113,6 @@ func NewPropertyChanges(changes []*Change) *PropertyChanges {
     return &PropertyChanges{Changes: changes}
 }
 
-// SortByChangeType will order changes by the types of change they represent,
-// This is a destructive action and will permanently re-order Changes.
-//func (p PropertyChanges[T]) SortByChangeType() {
-//	sort.SliceStable(p.Changes, func(i, j int) bool {
-//		return p.Changes[i].ChangeType < p.Changes[j].ChangeType
-//	})
-//}
-
 // PropertyCheck is used by functions to check the state of left and right values.
 type PropertyCheck struct {
 
