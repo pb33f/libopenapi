@@ -1074,3 +1074,86 @@ webhooks:
 	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
+
+func TestCompareDocuments_OpenAPIExampleMapChanges(t *testing.T) {
+	left := `openapi: 3.0.0
+paths:
+  /:
+    post:
+      requestBody:
+        content:
+          application/json:
+            examples:
+              test:
+                value:
+                  map:
+                    deep:
+                      date: 2020-01-01`
+
+	right := `openapi: 3.0.0
+paths:
+  /:
+    post:
+      requestBody:
+        content:
+          application/json:
+            examples:
+              test:
+                value:
+                  map:
+                    deep:
+                      date: "2020-01-04"`
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDocuments_OpenAPIExampleNoExampleMapChanges(t *testing.T) {
+	left := `openapi: 3.0.0
+paths:
+  /:
+    post:
+      requestBody:
+        content:
+          application/json:
+            examples:
+              test:
+                value:
+                  map:
+                    deep:
+                      date: 2020-01-01`
+
+	right := `openapi: 3.0.0
+paths:
+  /:
+    post:
+      requestBody:
+        content:
+          application/json:
+            examples:
+              test:
+                value:
+                  map:
+                    deep:
+                      date: 2020-01-01`
+
+	// have to build docs fully to get access to objects
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocument(siLeft)
+	rDoc, _ := v3.CreateDocument(siRight)
+
+	// compare.
+	extChanges := CompareDocuments(lDoc, rDoc)
+	assert.Nil(t, extChanges)
+}

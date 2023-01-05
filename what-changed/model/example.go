@@ -4,6 +4,7 @@
 package model
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"sort"
 
@@ -72,7 +73,17 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		z := 0
 		for k := range l.Value.ValueNode.Content {
 			if k%2 == 0 {
-				lKeys[z] = fmt.Sprintf("%v-%v-%v", l.Value.ValueNode.Content[k].Value, l.Value.ValueNode.Content[k+1].Tag, l.Value.ValueNode.Content[k+1].Value)
+				// if there is no value (value is another map or something else), render the node into yaml and hash it.
+				// https://github.com/pb33f/libopenapi/issues/61
+				val := l.Value.ValueNode.Content[k+1].Value
+				if val == "" {
+					yaml, _ := yaml.Marshal(l.Value.ValueNode.Content[k+1].Content)
+					val = fmt.Sprint(sha256.Sum256(yaml))
+				}
+				lKeys[z] = fmt.Sprintf("%v-%v-%v",
+					l.Value.ValueNode.Content[k].Value,
+					l.Value.ValueNode.Content[k+1].Tag,
+					fmt.Sprintf("%x", val))
 				z++
 			} else {
 				continue
@@ -81,7 +92,17 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		z = 0
 		for k := range r.Value.ValueNode.Content {
 			if k%2 == 0 {
-				rKeys[z] = fmt.Sprintf("%v-%v-%v", r.Value.ValueNode.Content[k].Value, r.Value.ValueNode.Content[k+1].Tag, r.Value.ValueNode.Content[k+1].Value)
+				// if there is no value (value is another map or something else), render the node into yaml and hash it.
+				// https://github.com/pb33f/libopenapi/issues/61
+				val := r.Value.ValueNode.Content[k+1].Value
+				if val == "" {
+					yaml, _ := yaml.Marshal(r.Value.ValueNode.Content[k+1].Content)
+					val = fmt.Sprint(sha256.Sum256(yaml))
+				}
+				rKeys[z] = fmt.Sprintf("%v-%v-%v",
+					r.Value.ValueNode.Content[k].Value,
+					r.Value.ValueNode.Content[k+1].Tag,
+					fmt.Sprintf("%x", val))
 				z++
 			} else {
 				continue
