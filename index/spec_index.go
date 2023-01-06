@@ -1721,12 +1721,12 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 		return reqRefProps
 	}
 
-	_, requiredSeqNode := utils.FindKeyNode("required", schemaNode.Content)
+	_, requiredSeqNode := utils.FindKeyNodeTop("required", schemaNode.Content)
 	if requiredSeqNode == nil {
 		return reqRefProps
 	}
 
-	_, propertiesMapNode := utils.FindKeyNode("properties", schemaNode.Content)
+	_, propertiesMapNode := utils.FindKeyNodeTop("properties", schemaNode.Content)
 	if propertiesMapNode == nil {
 		// TODO: Log a warning on the resolver, because if you have required properties, but no actual properties, something is wrong
 		return reqRefProps
@@ -1739,13 +1739,13 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 			continue
 		}
 
-		_, paramPropertiesMapNode := utils.FindKeyNode("properties", param.Content)
+		_, paramPropertiesMapNode := utils.FindKeyNodeTop("properties", param.Content)
 		if paramPropertiesMapNode != nil {
 			reqRefProps = index.extractDefinitionRequiredRefProperties(param, reqRefProps)
 		}
 
 		for _, key := range []string{"allOf", "oneOf", "anyOf"} {
-			_, ofNode := utils.FindKeyNode(key, param.Content)
+			_, ofNode := utils.FindKeyNodeTop(key, param.Content)
 			if ofNode != nil {
 				for _, ofNodeItem := range ofNode.Content {
 					reqRefProps = index.extractRequiredReferenceProperties(ofNodeItem, name, reqRefProps)
@@ -1755,7 +1755,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 	}
 
 	for _, requiredPropertyNode := range requiredSeqNode.Content {
-		_, requiredPropDefNode := utils.FindKeyNode(requiredPropertyNode.Value, propertiesMapNode.Content)
+		_, requiredPropDefNode := utils.FindKeyNodeTop(requiredPropertyNode.Value, propertiesMapNode.Content)
 		if requiredPropDefNode == nil {
 			continue
 		}
@@ -1770,7 +1770,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 func (index *SpecIndex) extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
 	isRef, _, defPath := utils.IsNodeRefValue(requiredPropDefNode)
 	if !isRef {
-		_, defItems := utils.FindKeyNode("items", requiredPropDefNode.Content)
+		_, defItems := utils.FindKeyNodeTop("items", requiredPropDefNode.Content)
 		if defItems != nil {
 			isRef, _, defPath = utils.IsNodeRefValue(defItems)
 		}

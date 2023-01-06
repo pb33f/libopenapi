@@ -405,18 +405,18 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 
 // IsPropertyNodeRequired will check if a node is required within circular references
 func IsPropertyNodeRequired(node *yaml.Node, propertyName string) bool {
-	_, requiredSeqNode := FindKeyNode("required", node.Content)
+	_, requiredSeqNode := FindKeyNodeTop("required", node.Content)
 	if requiredSeqNode == nil {
 		return false
 	}
 
-	_, propertiesMapNode := FindKeyNode("properties", node.Content)
+	_, propertiesMapNode := FindKeyNodeTop("properties", node.Content)
 	if propertiesMapNode == nil {
 		return false
 	}
 
 	for _, requiredPropertyNode := range requiredSeqNode.Content {
-		_, requiredPropDefNode := FindKeyNode(requiredPropertyNode.Value, propertiesMapNode.Content)
+		_, requiredPropDefNode := FindKeyNodeTop(requiredPropertyNode.Value, propertiesMapNode.Content)
 		if requiredPropDefNode == nil {
 			continue
 		}
@@ -426,7 +426,7 @@ func IsPropertyNodeRequired(node *yaml.Node, propertyName string) bool {
 			return true
 		}
 
-		_, defItems := FindKeyNode("items", requiredPropDefNode.Content)
+		_, defItems := FindKeyNodeTop("items", requiredPropDefNode.Content)
 		if defItems == nil {
 			continue
 		}
