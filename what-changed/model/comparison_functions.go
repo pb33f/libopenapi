@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -250,7 +251,12 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight map[low.KeyRefer
 		// run comparison.
 		if compare {
 			chLock.Lock()
-			expChanges[k] = compareFunc(p[k].Value, h[k].Value)
+			ch := compareFunc(p[k].Value, h[k].Value)
+			// incorrect map results were being generated causing panics.
+			// https://github.com/pb33f/libopenapi/issues/61
+			if !reflect.ValueOf(&ch).Elem().IsZero() {
+				expChanges[k] = ch
+			}
 			chLock.Unlock()
 		}
 		doneChan <- true
