@@ -181,7 +181,6 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
-	// TODO: This file seems to import correctly now, but the test fails as it's expecting 10 errors
 	assert.Len(t, circ, 10)
 }
 
