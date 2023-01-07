@@ -1721,7 +1721,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 		return reqRefProps
 	}
 
-	// If the path we're looking at is a direct ref to another model without any properties, mark it as required, but still continue to look for required properties
+	// If the node we're looking at is a direct ref to another model without any properties, mark it as required, but still continue to look for required properties
 	isRef, _, defPath := utils.IsNodeRefValue(schemaNode)
 	if isRef {
 		if _, ok := reqRefProps[defPath]; !ok {

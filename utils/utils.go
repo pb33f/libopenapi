@@ -405,6 +405,12 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 
 // IsPropertyNodeRequired will check if a node is required within circular references
 func IsPropertyNodeRequired(node *yaml.Node, propertyName string) bool {
+	// If the node we're looking at is a direct ref to another model without any properties, mark it as required
+	isRef, _, _ := IsNodeRefValue(node)
+	if isRef {
+		return true
+	}
+
 	_, requiredSeqNode := FindKeyNodeTop("required", node.Content)
 	if requiredSeqNode == nil {
 		return false
