@@ -1,12 +1,13 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func test_get_schema_blob() string {
@@ -1151,10 +1152,15 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
