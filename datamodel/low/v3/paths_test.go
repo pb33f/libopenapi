@@ -4,12 +4,13 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPaths_Build(t *testing.T) {
@@ -374,6 +375,43 @@ func TestPath_Build_Using_CircularRef(t *testing.T) {
 	assert.Error(t, err)
 
 }
+
+func TestPath_Build_Using_CircularRef_Invalid(t *testing.T) {
+
+	// first we need an index.
+	yml := `paths:
+  '/something/here':
+    post:
+      $ref: '#/paths/~1something~1there/post'
+  '/something/there':
+    post:
+      $ref: '#/paths/~1something~1here/post'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 1)
+
+	yml = `"/some/path":
+  $ref: '#/paths/~1something~1here/post'`
+
+	var rootNode yaml.Node
+	mErr = yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, mErr)
+
+	var n Paths
+	err := low.BuildModel(rootNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(rootNode.Content[0], idx)
+	assert.Error(t, err)
+
+}
+
 func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
 
 	// first we need an index.

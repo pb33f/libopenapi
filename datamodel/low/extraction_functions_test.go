@@ -6,13 +6,14 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"testing"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
-	"os"
-	"testing"
 )
 
 func TestFindItemInMap(t *testing.T) {
@@ -218,7 +219,6 @@ func TestExtractObject_DoubleRef(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular(t *testing.T) {
-
 	yml := `components:
   schemas:
     loopy:
@@ -249,7 +249,6 @@ func TestExtractObject_DoubleRef_Circular(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     loopy:

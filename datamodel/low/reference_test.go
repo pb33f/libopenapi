@@ -5,11 +5,12 @@ package low
 
 import (
 	"crypto/sha256"
+	"testing"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestNodeReference_IsEmpty(t *testing.T) {
@@ -103,10 +104,15 @@ func TestIsCircular_LookupFromJourney(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
@@ -135,10 +141,15 @@ func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
@@ -169,10 +180,15 @@ func TestIsCircular_FromRefLookup(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
@@ -211,10 +227,15 @@ func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
@@ -246,10 +267,15 @@ func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
@@ -281,10 +307,15 @@ func TestGetCircularReferenceResult_FromMappedRef(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
