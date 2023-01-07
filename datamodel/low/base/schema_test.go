@@ -1154,10 +1154,15 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
       properties:
         nothing:
           $ref: '#/components/schemas/Nothing'
+      required:
+        - nothing
     Nothing:
       properties:
         something: 
-          $ref: '#/components/schemas/Something'`
+          $ref: '#/components/schemas/Something'
+      required:
+        - something
+`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
