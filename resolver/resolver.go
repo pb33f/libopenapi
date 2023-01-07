@@ -65,10 +65,15 @@ func (resolver *Resolver) GetCircularErrors() []*index.CircularReferenceResult {
 func (resolver *Resolver) GetPolymorphicCircularErrors() []*index.CircularReferenceResult {
 	var res []*index.CircularReferenceResult
 	for i := range resolver.circularReferences {
+		if !resolver.circularReferences[i].IsInfiniteLoop {
+			continue
+		}
+
 		if resolver.circularReferences[i].IsPolymorphicResult {
 			res = append(res, resolver.circularReferences[i])
 		}
 	}
+
 	return res
 }
 
@@ -76,10 +81,15 @@ func (resolver *Resolver) GetPolymorphicCircularErrors() []*index.CircularRefere
 func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*index.CircularReferenceResult {
 	var res []*index.CircularReferenceResult
 	for i := range resolver.circularReferences {
+		if !resolver.circularReferences[i].IsInfiniteLoop {
+			continue
+		}
+
 		if !resolver.circularReferences[i].IsPolymorphicResult {
 			res = append(res, resolver.circularReferences[i])
 		}
 	}
+
 	return res
 }
 
@@ -192,12 +202,14 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 				if !foundDup.Circular {
 					loop := append(journey, foundDup)
 
+					visitedDefinitions := map[string]bool{}
+					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup, visitedDefinitions, nil)
 					circRef = &index.CircularReferenceResult{
 						Journey:        loop,
 						Start:          foundDup,
 						LoopIndex:      i,
 						LoopPoint:      foundDup,
-						IsInfiniteLoop: resolver.isInfiniteCircularDependency(foundDup, nil),
+						IsInfiniteLoop: isInfiniteLoop,
 					}
 					resolver.circularReferences = append(resolver.circularReferences, circRef)
 
@@ -224,28 +236,35 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 	return ref.Node.Content
 }
 
-func (resolver *Resolver) isInfiniteCircularDependency(ref *index.Reference, initialRef *index.Reference) bool {
+func (resolver *Resolver) isInfiniteCircularDependency(ref *index.Reference, visitedDefinitions map[string]bool, initialRef *index.Reference) (bool, map[string]bool) {
 	if ref == nil {
-		return false
+		return false, visitedDefinitions
 	}
 
 	for refDefinition := range ref.RequiredRefProperties {
 		r := resolver.specIndex.GetMappedReferences()[refDefinition]
 		if initialRef != nil && initialRef.Definition == r.Definition {
-			return true
+			return true, visitedDefinitions
 		}
+
+		if visitedDefinitions[r.Definition] {
+			continue
+		}
+		visitedDefinitions[r.Definition] = true
 
 		ir := initialRef
 		if ir == nil {
 			ir = ref
 		}
 
-		if resolver.isInfiniteCircularDependency(r, ir) {
-			return true
+		var isChildICD bool
+		isChildICD, visitedDefinitions = resolver.isInfiniteCircularDependency(r, visitedDefinitions, ir)
+		if isChildICD {
+			return true, visitedDefinitions
 		}
 	}
 
-	return false
+	return false, visitedDefinitions
 }
 
 func (resolver *Resolver) extractRelatives(node *yaml.Node,
