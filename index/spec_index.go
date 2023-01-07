@@ -1721,6 +1721,15 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 		return reqRefProps
 	}
 
+	// If the path we're looking at is a direct ref to another model without any properties, mark it as required, but still continue to look for required properties
+	isRef, _, defPath := utils.IsNodeRefValue(schemaNode)
+	if isRef {
+		if _, ok := reqRefProps[defPath]; !ok {
+			reqRefProps[defPath] = []string{}
+		}
+	}
+
+	// Check for a required parameters list, and return if none exists, as any properties will be optional
 	_, requiredSeqNode := utils.FindKeyNodeTop("required", schemaNode.Content)
 	if requiredSeqNode == nil {
 		return reqRefProps
@@ -1739,11 +1748,13 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 			continue
 		}
 
+		// Check to see if the current property is directly embedded within the current schema, and handle its properties if so
 		_, paramPropertiesMapNode := utils.FindKeyNodeTop("properties", param.Content)
 		if paramPropertiesMapNode != nil {
 			reqRefProps = index.extractDefinitionRequiredRefProperties(param, reqRefProps)
 		}
 
+		// Check to see if the current property is polymorphic, and dive into that model if so
 		for _, key := range []string{"allOf", "oneOf", "anyOf"} {
 			_, ofNode := utils.FindKeyNodeTop(key, param.Content)
 			if ofNode != nil {
@@ -1754,6 +1765,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 		}
 	}
 
+	// Run through each of the required properties and extract _their_ required references
 	for _, requiredPropertyNode := range requiredSeqNode.Content {
 		_, requiredPropDefNode := utils.FindKeyNodeTop(requiredPropertyNode.Value, propertiesMapNode.Content)
 		if requiredPropDefNode == nil {
