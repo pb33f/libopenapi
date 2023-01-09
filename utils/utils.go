@@ -403,49 +403,6 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 	return false, nil, ""
 }
 
-// IsPropertyNodeRequired will check if a node is required within circular references
-func IsPropertyNodeRequired(node *yaml.Node, propertyName string) bool {
-	// If the node we're looking at is a direct ref to another model without any properties, mark it as required
-	isRef, _, _ := IsNodeRefValue(node)
-	if isRef {
-		return true
-	}
-
-	_, requiredSeqNode := FindKeyNodeTop("required", node.Content)
-	if requiredSeqNode == nil {
-		return false
-	}
-
-	_, propertiesMapNode := FindKeyNodeTop("properties", node.Content)
-	if propertiesMapNode == nil {
-		return false
-	}
-
-	for _, requiredPropertyNode := range requiredSeqNode.Content {
-		_, requiredPropDefNode := FindKeyNodeTop(requiredPropertyNode.Value, propertiesMapNode.Content)
-		if requiredPropDefNode == nil {
-			continue
-		}
-
-		isRef, _, defPath := IsNodeRefValue(requiredPropDefNode)
-		if isRef && defPath == propertyName {
-			return true
-		}
-
-		_, defItems := FindKeyNodeTop("items", requiredPropDefNode.Content)
-		if defItems == nil {
-			continue
-		}
-
-		isRef, _, defPath = IsNodeRefValue(defItems)
-		if isRef && defPath == propertyName {
-			return true
-		}
-	}
-
-	return false
-}
-
 // FixContext will clean up a JSONpath string to be correctly traversable.
 func FixContext(context string) string {
 	tokens := strings.Split(context, ".")
