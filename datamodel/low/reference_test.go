@@ -133,8 +133,40 @@ func TestIsCircular_LookupFromJourney(t *testing.T) {
 	assert.True(t, IsCircular(ref, idx))
 }
 
-func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
+func TestIsCircular_LookupFromJourney_Optional(t *testing.T) {
 
+	yml := `components:
+  schemas:
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'
+`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 0)
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.True(t, IsCircular(ref, idx))
+}
+
+func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
 	yml := `components:
   schemas:
     Something:
@@ -161,6 +193,38 @@ func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.True(t, IsCircular(ref, idx))
+}
+
+func TestIsCircular_LookupFromLoopPoint_Optional(t *testing.T) {
+	yml := `components:
+  schemas:
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'
+`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Nothing'`
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 0)
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
@@ -211,6 +275,42 @@ func TestIsCircular_FromRefLookup(t *testing.T) {
 	assert.False(t, IsCircular(idxNode.Content[0], idx))
 }
 
+func TestIsCircular_FromRefLookup_Optional(t *testing.T) {
+	yml := `components:
+  schemas:
+    NotCircle:
+      description: not a circle
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'
+`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 0)
+
+	yml = `$ref: '#/components/schemas/Nothing'`
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	assert.True(t, IsCircular(idxNode.Content[0], idx))
+
+	yml = `$ref: '#/components/schemas/NotCircle'`
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	assert.False(t, IsCircular(idxNode.Content[0], idx))
+}
+
 func TestIsCircular_NoNode(t *testing.T) {
 	assert.False(t, IsCircular(nil, nil))
 }
@@ -220,7 +320,6 @@ func TestGetCircularReferenceResult_NoNode(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -256,11 +355,43 @@ func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
 	circ := GetCircularReferenceResult(ref, idx)
 	assert.NotNil(t, circ)
 	assert.Equal(t, "Nothing -> Something -> Nothing", circ.GenerateJourneyPath())
+}
 
+func TestGetCircularReferenceResult_FromJourney_Optional(t *testing.T) {
+	yml := `components:
+  schemas:
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'
+`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 0)
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	circ := GetCircularReferenceResult(ref, idx)
+	assert.NotNil(t, circ)
+	assert.Equal(t, "Nothing -> Something -> Nothing", circ.GenerateJourneyPath())
 }
 
 func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -296,11 +427,43 @@ func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
 	circ := GetCircularReferenceResult(ref, idx)
 	assert.NotNil(t, circ)
 	assert.Equal(t, "Nothing -> Something -> Nothing", circ.GenerateJourneyPath())
+}
 
+func TestGetCircularReferenceResult_FromLoopPoint_Optional(t *testing.T) {
+	yml := `components:
+  schemas:
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'
+`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Nothing'`
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 0)
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	circ := GetCircularReferenceResult(ref, idx)
+	assert.NotNil(t, circ)
+	assert.Equal(t, "Nothing -> Something -> Nothing", circ.GenerateJourneyPath())
 }
 
 func TestGetCircularReferenceResult_FromMappedRef(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -334,11 +497,41 @@ func TestGetCircularReferenceResult_FromMappedRef(t *testing.T) {
 	circ := GetCircularReferenceResult(idxNode.Content[0], idx)
 	assert.NotNil(t, circ)
 	assert.Equal(t, "Nothing -> Something -> Nothing", circ.GenerateJourneyPath())
+}
 
+func TestGetCircularReferenceResult_FromMappedRef_Optional(t *testing.T) {
+	yml := `components:
+  schemas:
+    Something:
+      properties:
+        nothing:
+          $ref: '#/components/schemas/Nothing'
+    Nothing:
+      properties:
+        something: 
+          $ref: '#/components/schemas/Something'
+`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Nothing'`
+
+	resolve := resolver.NewResolver(idx)
+	errs := resolve.CheckForCircularReferences()
+	assert.Len(t, errs, 0)
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	circ := GetCircularReferenceResult(idxNode.Content[0], idx)
+	assert.NotNil(t, circ)
+	assert.Equal(t, "Nothing -> Something -> Nothing", circ.GenerateJourneyPath())
 }
 
 func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
-
 	yml := `components:
   schemas:
     NotCircle:
