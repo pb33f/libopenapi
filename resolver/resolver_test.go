@@ -1,6 +1,7 @@
 package resolver
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"testing"
@@ -225,4 +226,19 @@ func ExampleNewResolver() {
 	fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
 		len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
 	// Output: There are 3 circular reference errors, 0 of them are polymorphic errors, 3 are not
+}
+
+func ExampleResolvingError() {
+	re := ResolvingError{
+		ErrorRef: errors.New("Je suis une erreur"),
+		Node: &yaml.Node{
+			Line:   5,
+			Column: 21,
+		},
+		Path:              "#/definitions/JeSuisUneErreur",
+		CircularReference: &index.CircularReferenceResult{},
+	}
+
+	fmt.Printf("%s", re.Error())
+	// Output: Je suis une erreur: #/definitions/JeSuisUneErreur [5:21]
 }
