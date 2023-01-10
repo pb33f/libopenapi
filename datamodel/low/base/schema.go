@@ -3,13 +3,14 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 // SchemaDynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
@@ -42,11 +43,10 @@ func (s SchemaDynamicValue[A, B]) IsB() bool {
 // mix, which has been confusing. So, instead of building a bunch of different models, we have compressed
 // all variations into a single model that makes it easy to support multiple spec types.
 //
-//  - v2 schema: https://swagger.io/specification/v2/#schemaObject
-//  - v3 schema: https://swagger.io/specification/#schema-object
-//  - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
+//   - v2 schema: https://swagger.io/specification/v2/#schemaObject
+//   - v3 schema: https://swagger.io/specification/#schema-object
+//   - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
 type Schema struct {
-
 	// Reference to the '$schema' dialect setting (3.1 only)
 	SchemaTypeRef low.NodeReference[string]
 
@@ -445,27 +445,27 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 
 // Build will perform a number of operations.
 // Extraction of the following happens in this method:
-//  - Extensions
-//  - Type
-//  - ExclusiveMinimum and ExclusiveMaximum
-//  - Examples
-//  - AdditionalProperties
-//  - Discriminator
-//  - ExternalDocs
-//  - XML
-//  - Properties
-//  - AllOf, OneOf, AnyOf
-//  - Not
-//  - Items
-//  - PrefixItems
-//  - If
-//  - Else
-//  - Then
-//  - DependentSchemas
-//  - PatternProperties
-//  - PropertyNames
-//  - UnevaluatedItems
-//  - UnevaluatedProperties
+//   - Extensions
+//   - Type
+//   - ExclusiveMinimum and ExclusiveMaximum
+//   - Examples
+//   - AdditionalProperties
+//   - Discriminator
+//   - ExternalDocs
+//   - XML
+//   - Properties
+//   - AllOf, OneOf, AnyOf
+//   - Not
+//   - Items
+//   - PrefixItems
+//   - If
+//   - Else
+//   - Then
+//   - DependentSchemas
+//   - PatternProperties
+//   - PropertyNames
+//   - UnevaluatedItems
+//   - UnevaluatedProperties
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, err := low.LocateRefNode(root, idx)
@@ -557,7 +557,8 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	_, schemaRefLabel, schemaRefNode := utils.FindKeyNodeFullTop(SchemaTypeLabel, root.Content)
 	if schemaRefNode != nil {
 		s.SchemaTypeRef = low.NodeReference[string]{
-			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefLabel}
+			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefLabel,
+		}
 	}
 
 	// handle example if set. (3.0)
@@ -914,12 +915,12 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 }
 
 func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
-
 	// for property, build in a new thread!
 	bChan := make(chan schemaProxyBuildResult)
 
-	var buildProperty = func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
-		refString string) {
+	buildProperty := func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
+		refString string,
+	) {
 		c <- schemaProxyBuildResult{
 			k: low.KeyReference[string]{
 				KeyNode: label,
@@ -1001,13 +1002,18 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 
 // build out a child schema for parent schema.
 func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
-
 	if valueNode != nil {
-		syncChan := make(chan *low.ValueReference[*SchemaProxy])
+		type buildResult struct {
+			res *low.ValueReference[*SchemaProxy]
+			idx int
+		}
+
+		syncChan := make(chan buildResult)
 
 		// build out a SchemaProxy for every sub-schema.
-		build := func(kn *yaml.Node, vn *yaml.Node, c chan *low.ValueReference[*SchemaProxy],
-			isRef bool, refLocation string) {
+		build := func(kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
+			isRef bool, refLocation string,
+		) {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
 			// take on circular references through polymorphism. Like the resolver, if we try and follow these
 			// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
@@ -1026,7 +1032,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				Value:     sp,
 				ValueNode: vn,
 			}
-			c <- res
+			c <- buildResult{
+				res: res,
+				idx: schemaIdx,
+			}
 		}
 
 		isRef := false
@@ -1046,7 +1055,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
-			go build(labelNode, valueNode, syncChan, isRef, refLocation)
+			go build(labelNode, valueNode, -1, syncChan, isRef, refLocation)
 			select {
 			case r := <-syncChan:
 				schemas <- schemaProxyBuildResult{
@@ -1054,13 +1063,15 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 						KeyNode: labelNode,
 						Value:   labelNode.Value,
 					},
-					v: *r,
+					v: *r.res,
 				}
 			}
 		}
 		if utils.IsNodeArray(valueNode) {
 			refBuilds := 0
-			for _, vn := range valueNode.Content {
+			results := make([]*low.ValueReference[*SchemaProxy], len(valueNode.Content))
+
+			for i, vn := range valueNode.Content {
 				isRef = false
 				h := false
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
@@ -1076,20 +1087,25 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					}
 				}
 				refBuilds++
-				go build(vn, vn, syncChan, isRef, refLocation)
+				go build(vn, vn, i, syncChan, isRef, refLocation)
 			}
+
 			completedBuilds := 0
 			for completedBuilds < refBuilds {
 				select {
 				case res := <-syncChan:
 					completedBuilds++
-					schemas <- schemaProxyBuildResult{
-						k: low.KeyReference[string]{
-							KeyNode: labelNode,
-							Value:   labelNode.Value,
-						},
-						v: *res,
-					}
+					results[res.idx] = res.res
+				}
+			}
+
+			for _, r := range results {
+				schemas <- schemaProxyBuildResult{
+					k: low.KeyReference[string]{
+						KeyNode: labelNode,
+						Value:   labelNode.Value,
+					},
+					v: *r,
 				}
 			}
 		}

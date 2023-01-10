@@ -1,12 +1,14 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func test_get_schema_blob() string {
@@ -306,12 +308,52 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "string", sch.PropertyNames.Value.Schema().Type.Value.A)
 	assert.Equal(t, "boolean", sch.UnevaluatedItems.Value.Schema().Type.Value.A)
 	assert.Equal(t, "integer", sch.UnevaluatedProperties.Value.Schema().Type.Value.A)
+}
 
+func TestSchemaAllOfSequenceOrder(t *testing.T) {
+	testSpec := test_get_allOf_schema_blob()
+
+	var rootNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
+	assert.NoError(t, mErr)
+
+	// test data is a map with one node
+	mapContent := rootNode.Content[0].Content
+
+	_, vn := utils.FindKeyNodeTop(AllOfLabel, mapContent)
+	assert.True(t, utils.IsNodeArray(vn))
+
+	want := []string{}
+
+	// Go over every element in AllOf and grab description
+	// Odd: object
+	// Event: description
+	for i := range vn.Content {
+		assert.True(t, utils.IsNodeMap(vn.Content[i]))
+		_, vn := utils.FindKeyNodeTop("description", vn.Content[i].Content)
+		assert.True(t, utils.IsNodeStringValue(vn))
+		want = append(want, vn.Value)
+	}
+
+	sch := Schema{}
+	mbErr := low.BuildModel(rootNode.Content[0], &sch)
+	assert.NoError(t, mbErr)
+
+	schErr := sch.Build(rootNode.Content[0], nil)
+	assert.NoError(t, schErr)
+	assert.Equal(t, "allOf sequence check", sch.Description.Value)
+
+	got := []string{}
+	for i := range sch.AllOf.Value {
+		v := sch.AllOf.Value[i]
+		got = append(got, v.Value.Schema().Description.Value)
+	}
+
+	assert.Equal(t, want, got)
 }
 
 func TestSchema_Hash(t *testing.T) {
-
-	//create two versions
+	// create two versions
 	testSpec := test_get_schema_blob()
 	var sc1n yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &sc1n)
@@ -326,12 +368,10 @@ func TestSchema_Hash(t *testing.T) {
 	_ = sch2.Build(sc2n.Content[0], nil)
 
 	assert.Equal(t, sch1.Hash(), sch2.Hash())
-
 }
 
 func BenchmarkSchema_Hash(b *testing.B) {
-
-	//create two versions
+	// create two versions
 	testSpec := test_get_schema_blob()
 	var sc1n yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &sc1n)
@@ -348,7 +388,6 @@ func BenchmarkSchema_Hash(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		assert.Equal(b, sch1.Hash(), sch2.Hash())
 	}
-
 }
 
 func Test_Schema_31(t *testing.T) {
@@ -390,7 +429,6 @@ examples:
 	assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
 	assert.True(t, sch.Items.Value.IsB())
 	assert.True(t, sch.Items.Value.B)
-
 }
 
 //func TestSchema_BuildLevel_TooDeep(t *testing.T) {
@@ -512,7 +550,6 @@ examples:
 //}
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -536,11 +573,9 @@ properties:
 	err := n.Build(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "this is something", n.FindProperty("aValue").Value.Schema().Description.Value)
-
 }
 
 func TestSchema_Build_PropsLookup_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -563,11 +598,9 @@ properties:
 	var n Schema
 	err := n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestSchema_Build_DependentSchemas_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -590,11 +623,9 @@ dependentSchemas:
 	var n Schema
 	err := n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestSchema_Build_PatternProperties_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -617,11 +648,9 @@ patternProperties:
 	var n Schema
 	err := n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func Test_Schema_Polymorphism_Array_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -669,7 +698,6 @@ items:
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -707,11 +735,9 @@ items:
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, schErr)
-
 }
 
 func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -759,7 +785,6 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -797,11 +822,9 @@ items:
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, schErr)
-
 }
 
 func Test_Schema_Polymorphism_BorkParent(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -825,11 +848,9 @@ allOf:
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, schErr)
-
 }
 
 func Test_Schema_Polymorphism_BorkChild(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -853,11 +874,9 @@ allOf:
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, schErr)
-
 }
 
 func Test_Schema_Polymorphism_BorkChild_Array(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -885,11 +904,9 @@ allOf:
 	assert.NoError(t, schErr)
 	assert.Nil(t, sch.AllOf.Value[0].Value.Schema()) // child can't be resolved, so this will be nil.
 	assert.Error(t, sch.AllOf.Value[0].Value.GetBuildError())
-
 }
 
 func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -918,11 +935,9 @@ allOf:
 
 	desc := "madness"
 	assert.Equal(t, desc, sch.AllOf.Value[0].Value.Schema().Description.Value)
-
 }
 
 func Test_Schema_Polymorphism_RefMadnessBork(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -948,11 +963,9 @@ allOf:
 
 	err = sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
-
 	// this does not work, but it won't error out.
 
 	yml := `components:
@@ -978,11 +991,9 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.NoError(t, schErr)
-
 }
 
 func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
-
 	// this does not work, but it won't error out.
 
 	yml := `components:
@@ -1012,11 +1023,9 @@ func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, schErr)
-
 }
 
 func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
-
 	// this does not work, but it won't error out.
 
 	yml := `components:
@@ -1046,11 +1055,9 @@ func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
 
 	schErr := sch.Build(idxNode.Content[0], idx)
 	assert.Error(t, schErr)
-
 }
 
 func TestExtractSchema(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1079,7 +1086,6 @@ func TestExtractSchema(t *testing.T) {
 }
 
 func TestExtractSchema_DefaultPrimitive(t *testing.T) {
-
 	yml := `
 schema: 
   type: object
@@ -1096,7 +1102,6 @@ schema:
 }
 
 func TestExtractSchema_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1121,7 +1126,6 @@ func TestExtractSchema_Ref(t *testing.T) {
 }
 
 func TestExtractSchema_Ref_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1144,7 +1148,6 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1176,11 +1179,9 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
 
 	props := res.Value.Schema().FindProperty("nothing")
 	assert.NotNil(t, props)
-
 }
 
 func TestExtractSchema_RefRoot(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1204,7 +1205,6 @@ func TestExtractSchema_RefRoot(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1223,11 +1223,9 @@ func TestExtractSchema_RefRoot_Fail(t *testing.T) {
 
 	_, err := ExtractSchema(idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1248,7 +1246,6 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_DoNothing(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -1267,11 +1264,9 @@ func TestExtractSchema_DoNothing(t *testing.T) {
 	res, err := ExtractSchema(idxNode.Content[0], idx)
 	assert.Nil(t, res)
 	assert.Nil(t, err)
-
 }
 
 func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     Nothing:
@@ -1297,11 +1292,9 @@ func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
 	res, err := ExtractSchema(idxNode.Content[0], idx)
 	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.(*SchemaProxy).Schema())
 	assert.Nil(t, err)
-
 }
 
 func TestExtractSchema_OneOfRef(t *testing.T) {
-
 	yml := `components:
   schemas:
     Error:
@@ -1414,11 +1407,9 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
 		res.Value.Schema().OneOf.Value[0].Value.Schema().Description.Value)
-
 }
 
 func TestSchema_Hash_Equal(t *testing.T) {
-
 	left := `schema:
   $schema: https://athing.com
   multipleOf: 1
@@ -1515,11 +1506,9 @@ func TestSchema_Hash_Equal(t *testing.T) {
 	rHash := rDoc.Value.Schema().Hash()
 
 	assert.Equal(t, lHash, rHash)
-
 }
 
 func TestSchema_Hash_NotEqual(t *testing.T) {
-
 	left := `schema:
   title: an OK message - but different
   items: true
@@ -1551,7 +1540,6 @@ func TestSchema_Hash_NotEqual(t *testing.T) {
 }
 
 func TestSchema_Hash_EqualJumbled(t *testing.T) {
-
 	left := `schema:
   title: an OK message
   description: a nice thing.
@@ -1585,5 +1573,17 @@ func TestSchema_Hash_EqualJumbled(t *testing.T) {
 	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
 	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
 	assert.True(t, low.AreEqual(lDoc.Value.Schema(), rDoc.Value.Schema()))
+}
 
+func test_get_allOf_schema_blob() string {
+	return `type: object
+description: allOf sequence check
+allOf:
+  - type: object
+    description: allOf sequence check 1
+  - description: allOf sequence check 2
+  - type: object
+    description: allOf sequence check 3
+  - description: allOf sequence check 4
+`
 }
