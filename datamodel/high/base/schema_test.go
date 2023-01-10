@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -21,7 +22,6 @@ func TestDynamicValue_IsA(t *testing.T) {
 }
 
 func TestNewSchemaProxy(t *testing.T) {
-
 	// check proxy
 	yml := `components:
     schemas:
@@ -63,11 +63,9 @@ func TestNewSchemaProxy(t *testing.T) {
 	g, o := sch1.BuildSchema()
 	assert.Nil(t, g)
 	assert.Error(t, o)
-
 }
 
 func TestNewSchemaProxy_WithObject(t *testing.T) {
-
 	testSpec := `type: object
 description: something object
 discriminator:
@@ -254,14 +252,64 @@ unevaluatedProperties:
 	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.UnevaluatedProperties.Schema().Type[0])
+	assert.NotNil(t, compiled.Nullable)
+	assert.True(t, *compiled.Nullable)
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)
+}
 
+func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
+	testSpec := test_get_allOf_schema_blob()
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	// test data is a map with one node
+	mapContent := compNode.Content[0].Content
+
+	_, vn := utils.FindKeyNodeTop(lowbase.AllOfLabel, mapContent)
+	assert.True(t, utils.IsNodeArray(vn))
+
+	want := []string{}
+
+	// Go over every element in AllOf and grab description
+	// Odd: object
+	// Event: description
+	for i := range vn.Content {
+		assert.True(t, utils.IsNodeMap(vn.Content[i]))
+		_, vn := utils.FindKeyNodeTop("description", vn.Content[i].Content)
+		assert.True(t, utils.IsNodeStringValue(vn))
+		want = append(want, vn.Value)
+	}
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
+
+	got := []string{}
+	for i := range compiled.AllOf {
+		v := compiled.AllOf[i]
+		got = append(got, v.Schema().Description)
+	}
+
+	assert.Equal(t, want, got)
 }
 
 func TestNewSchemaProxy_WithObject_FinishPoly(t *testing.T) {
-
 	testSpec := `type: object
 description: something object
 discriminator:
@@ -400,11 +448,9 @@ required: [cake, fish]`
 
 	wentLower := compiled.XML.GoLow()
 	assert.Equal(t, 102, wentLower.Name.ValueNode.Line)
-
 }
 
 func TestSchemaProxy_GoLow(t *testing.T) {
-
 	const ymlComponents = `components:
     schemas:
      rice:
@@ -471,7 +517,6 @@ type: number
 	assert.Nil(t, highSchema.ExclusiveMinimum)
 	assert.Nil(t, highSchema.Maximum)
 	assert.Nil(t, highSchema.ExclusiveMaximum)
-
 }
 
 func TestSchemaNumberMultipleOf(t *testing.T) {
@@ -574,7 +619,6 @@ examples:
 }
 
 func ExampleNewSchema() {
-
 	// create an example schema object
 	// this can be either JSON or YAML.
 	yml := `
@@ -601,11 +645,9 @@ properties:
 	// print out the description of 'aProperty'
 	fmt.Print(highSchema.Properties["aProperty"].Schema().Description)
 	// Output: this is an integer property
-
 }
 
 func ExampleNewSchemaProxy() {
-
 	// create an example schema object
 	// this can be either JSON or YAML.
 	yml := `
@@ -634,5 +676,26 @@ properties:
 	// print out the description of 'aProperty'
 	fmt.Print(highSchema.Schema().Properties["aProperty"].Schema().Description)
 	// Output: this is an integer property
+}
 
+func test_get_allOf_schema_blob() string {
+	return `type: object
+description: allOf sequence check
+allOf:
+  - type: object
+    description: allOf sequence check 1
+  - description: allOf sequence check 2
+  - type: object
+    description: allOf sequence check 3
+  - description: allOf sequence check 4
+properties:
+  somethingBee:
+    type: number
+  somethingThree:
+    type: number
+  somethingTwo:
+    type: number
+  somethingOne:
+    type: number
+`
 }
