@@ -321,8 +321,6 @@ func NewSchema(schema *base.Schema) *Schema {
 			Value:     sch.Value,
 		}}
 
-		fmt.Println("building schema", idx, sch)
-
 		bChan <- buildResult{idx: idx, s: p}
 	}
 
@@ -333,7 +331,6 @@ func NewSchema(schema *base.Schema) *Schema {
 		bChan := make(chan buildResult)
 		totalSchemas := len(schemas)
 		for i := range schemas {
-			fmt.Println("start build schema", i, schemas[i])
 			go buildSchema(schemas[i], i, bChan)
 		}
 		j := 0
@@ -341,7 +338,6 @@ func NewSchema(schema *base.Schema) *Schema {
 			select {
 			case r := <-bChan:
 				j++
-				fmt.Println("got schema", r.idx, "of", totalSchemas)
 				(*items)[r.idx] = r.s
 			}
 		}
