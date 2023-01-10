@@ -5,10 +5,11 @@ package base
 
 import (
 	"fmt"
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"sync"
 )
 
 // DynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
@@ -41,11 +42,10 @@ func (s *DynamicValue[A, B]) IsB() bool {
 // mix, which has been confusing. So, instead of building a bunch of different models, we have compressed
 // all variations into a single model that makes it easy to support multiple spec types.
 //
-//  - v2 schema: https://swagger.io/specification/v2/#schemaObject
-//  - v3 schema: https://swagger.io/specification/#schema-object
-//  - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
+//   - v2 schema: https://swagger.io/specification/v2/#schemaObject
+//   - v3 schema: https://swagger.io/specification/#schema-object
+//   - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
 type Schema struct {
-
 	// 3.1 only, used to define a dialect for this schema, label is '$schema'.
 	SchemaTypeRef string
 
@@ -309,29 +309,40 @@ func NewSchema(schema *base.Schema) *Schema {
 	propsChan := make(chan bool)
 	errChan := make(chan error)
 
+	type buildResult struct {
+		idx int
+		s   *SchemaProxy
+	}
+
 	// for every item, build schema async
-	buildSchema := func(sch lowmodel.ValueReference[*base.SchemaProxy], bChan chan *SchemaProxy) {
+	buildSchema := func(sch lowmodel.ValueReference[*base.SchemaProxy], idx int, bChan chan buildResult) {
 		p := &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: sch.ValueNode,
 			Value:     sch.Value,
 		}}
-		bChan <- p
+
+		fmt.Println("building schema", idx, sch)
+
+		bChan <- buildResult{idx: idx, s: p}
 	}
 
 	// schema async
 	buildOutSchemas := func(schemas []lowmodel.ValueReference[*base.SchemaProxy], items *[]*SchemaProxy,
-		doneChan chan bool, e chan error) {
-		bChan := make(chan *SchemaProxy)
+		doneChan chan bool, e chan error,
+	) {
+		bChan := make(chan buildResult)
 		totalSchemas := len(schemas)
-		for v := range schemas {
-			go buildSchema(schemas[v], bChan)
+		for i := range schemas {
+			fmt.Println("start build schema", i, schemas[i])
+			go buildSchema(schemas[i], i, bChan)
 		}
 		j := 0
 		for j < totalSchemas {
 			select {
-			case t := <-bChan:
+			case r := <-bChan:
 				j++
-				*items = append(*items, t)
+				fmt.Println("got schema", r.idx, "of", totalSchemas)
+				(*items)[r.idx] = r.s
 			}
 		}
 		doneChan <- true
@@ -339,8 +350,9 @@ func NewSchema(schema *base.Schema) *Schema {
 
 	// props async
 	var plock sync.Mutex
-	var buildProps = func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*base.SchemaProxy], c chan bool,
-		props map[string]*SchemaProxy, sw int) {
+	buildProps := func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*base.SchemaProxy], c chan bool,
+		props map[string]*SchemaProxy, sw int,
+	) {
 		plock.Lock()
 		props[k.Value] = &SchemaProxy{
 			schema: &lowmodel.NodeReference[*base.SchemaProxy]{
@@ -386,14 +398,17 @@ func NewSchema(schema *base.Schema) *Schema {
 	children := 0
 	if !schema.AllOf.IsEmpty() {
 		children++
+		allOf = make([]*SchemaProxy, len(schema.AllOf.Value))
 		go buildOutSchemas(schema.AllOf.Value, &allOf, polyCompletedChan, errChan)
 	}
 	if !schema.AnyOf.IsEmpty() {
 		children++
+		anyOf = make([]*SchemaProxy, len(schema.AnyOf.Value))
 		go buildOutSchemas(schema.AnyOf.Value, &anyOf, polyCompletedChan, errChan)
 	}
 	if !schema.OneOf.IsEmpty() {
 		children++
+		oneOf = make([]*SchemaProxy, len(schema.OneOf.Value))
 		go buildOutSchemas(schema.OneOf.Value, &oneOf, polyCompletedChan, errChan)
 	}
 	if !schema.Not.IsEmpty() {
@@ -412,6 +427,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 	if !schema.PrefixItems.IsEmpty() {
 		children++
+		prefixItems = make([]*SchemaProxy, len(schema.PrefixItems.Value))
 		go buildOutSchemas(schema.PrefixItems.Value, &prefixItems, polyCompletedChan, errChan)
 	}
 
