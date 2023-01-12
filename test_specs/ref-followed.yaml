@@ -1,0 +1,37 @@
+openapi: 3.1.0
+info:
+  title: All scalar types
+  version: 1.0.0
+  description: These types used in testing
+servers:
+  - url: https://api.server.test/v1
+
+paths:
+  /test:
+    get:
+      operationId: 20CBF3CA-4F9F-455E-8A3E-3C2B2CD9849A
+      responses:
+        "200":
+          type: string
+          description: This is my schema that is great!
+
+components:
+  schemas:
+    FBSRef:
+      $ref: "#/components/schemas/FP"
+
+    FP:
+      type: string
+      description: Always use full F{
+      example: asd asd asd
+      pattern: '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[\+-]\d{2}:\d{2})$'
+
+    UInt64:
+      type: integer
+      format: uint64
+      nullable: true
+      example: 1
+      minimum: 1
+
+    Byte:
+      $ref: "#/components/schemas/UInt64"

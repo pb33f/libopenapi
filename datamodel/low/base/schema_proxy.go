@@ -5,7 +5,7 @@ package base
 
 import (
 	"crypto/sha256"
-	"github.com/pb33f/libopenapi/datamodel/low"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -35,8 +35,8 @@ import (
 // and slow things down when building. By preventing recursion through every polymorphic item, building models is kept
 // fast and snappy, which is desired for realtime processing of specs.
 //
-//  - Q: Yeah, but, why not just use state to avoiding re-visiting seen polymorphic nodes?
-//  - A: It's slow, takes up memory and still has runaway potential in very, very long chains.
+//   - Q: Yeah, but, why not just use state to avoiding re-visiting seen polymorphic nodes?
+//   - A: It's slow, takes up memory and still has runaway potential in very, very long chains.
 //
 // 3. Short Circuit Errors.
 //
@@ -80,7 +80,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 		return sp.rendered
 	}
 	schema := new(Schema)
-	_ = low.BuildModel(sp.vn, schema)
 	err := schema.Build(sp.vn, sp.idx)
 	if err != nil {
 		sp.buildError = err

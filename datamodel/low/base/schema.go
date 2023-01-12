@@ -482,6 +482,11 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
+	// Build model using possibly dereferenced root
+	if err := low.BuildModel(root, s); err != nil {
+		return err
+	}
+
 	s.extractExtensions(root)
 
 	// determine schema type, singular (3.0) or multiple (3.1), use a variable value
