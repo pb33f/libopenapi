@@ -722,3 +722,45 @@ components:
 	//parameterOne 'x-custom-burgers' (some burgers) has 2 burgers, 'anotherBurger' has mayo sauce and a lamb patty
 
 }
+
+func TestSchemaRefIsFollowed(t *testing.T) {
+	petstore, _ := ioutil.ReadFile("test_specs/ref-followed.yaml")
+
+	// create a new document from specification bytes
+	document, err := NewDocument(petstore)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	v3Model, errors := document.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// get a count of the number of paths and schemas.
+	schemas := v3Model.Model.Components.Schemas
+	assert.Equal(t, 4, len(schemas))
+
+	fp := schemas["FP"]
+	fbsref := schemas["FBSRef"]
+
+	assert.Equal(t, fp.Schema().Pattern, fbsref.Schema().Pattern)
+	assert.Equal(t, fp.Schema().Example, fbsref.Schema().Example)
+
+	byte := schemas["Byte"]
+	uint64 := schemas["UInt64"]
+
+	assert.Equal(t, uint64.Schema().Format, byte.Schema().Format)
+	assert.Equal(t, uint64.Schema().Type, byte.Schema().Type)
+	assert.Equal(t, uint64.Schema().Nullable, byte.Schema().Nullable)
+	assert.Equal(t, uint64.Schema().Example, byte.Schema().Example)
+	assert.Equal(t, uint64.Schema().Minimum, byte.Schema().Minimum)
+}
