@@ -153,7 +153,7 @@ func (p *Paths) Hash() [32]byte {
 	}
 	sort.Strings(l)
 	for k := range l {
-		f = append(f, low.GenerateHashString(keys[l[k]].Value))
+		f = append(f, fmt.Sprintf("%s-%s",l[k], low.GenerateHashString(keys[l[k]].Value)))
 	}
 	ekeys := make([]string, len(p.Extensions))
 	z = 0
