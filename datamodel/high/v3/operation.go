@@ -75,6 +75,13 @@ func NewOperation(operation *low.Operation) *Operation {
 	}
 	o.Servers = servers
 	o.Extensions = high.ExtractExtensions(operation.Extensions)
+	if !operation.Callbacks.IsEmpty() {
+		callbacks := make(map[string]*Callback)
+		for k, v := range operation.Callbacks.Value {
+			callbacks[k.Value] = NewCallback(v.Value)
+		}
+		o.Callbacks = callbacks
+	}
 	return o
 }
 
