@@ -149,6 +149,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	// if we're dealing with a 3.1 spec using an int
 	if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsB() {
 		s.ExclusiveMaximum = &DynamicValue[bool, int64]{
+			N: 1,
 			B: schema.ExclusiveMaximum.Value.B,
 		}
 	}
@@ -161,6 +162,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	// if we're dealing with a 3.1 spec, using an int
 	if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsB() {
 		s.ExclusiveMinimum = &DynamicValue[bool, int64]{
+			N: 1,
 			B: schema.ExclusiveMinimum.Value.B,
 		}
 	}
@@ -418,7 +420,7 @@ func NewSchema(schema *base.Schema) *Schema {
 				KeyNode:   schema.Items.KeyNode,
 			}}}
 		} else {
-			items = &DynamicValue[*SchemaProxy, bool]{B: schema.Items.Value.B}
+			items = &DynamicValue[*SchemaProxy, bool]{N: 1, B: schema.Items.Value.B}
 		}
 	}
 	if !schema.PrefixItems.IsEmpty() {
