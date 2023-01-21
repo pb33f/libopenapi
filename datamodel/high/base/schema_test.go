@@ -561,6 +561,7 @@ exclusiveMinimum: 5
 
 	value := int64(5)
 	assert.EqualValues(t, value, highSchema.ExclusiveMinimum.B)
+	assert.True(t, highSchema.ExclusiveMinimum.IsB())
 }
 
 func TestSchemaNumberMaximum(t *testing.T) {
@@ -594,6 +595,7 @@ exclusiveMaximum: 5
 
 	value := int64(5)
 	assert.EqualValues(t, value, highSchema.ExclusiveMaximum.B)
+	assert.True(t, highSchema.ExclusiveMaximum.IsB())
 }
 
 func TestSchema_Items_Boolean(t *testing.T) {
