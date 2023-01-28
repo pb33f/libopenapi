@@ -107,7 +107,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 		ref.Reference.Node.Content = resolver.VisitReference(ref.Reference, seenReferences, journey, true)
 	}
 
-	schemas := resolver.specIndex.GetAllSchemas()
+	schemas := resolver.specIndex.GetAllComponentSchemas()
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
@@ -152,7 +152,7 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 		resolver.VisitReference(ref.Reference, seenReferences, journey, false)
 	}
 
-	schemas := resolver.specIndex.GetAllSchemas()
+	schemas := resolver.specIndex.GetAllComponentSchemas()
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
