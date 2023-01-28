@@ -15,6 +15,7 @@ package libopenapi
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/index"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
@@ -68,6 +69,7 @@ type document struct {
 // built from a parent Document.
 type DocumentModel[T v2high.Swagger | v3high.Document] struct {
 	Model T
+	Index *index.SpecIndex // index created from the document.
 }
 
 // NewDocument will create a new OpenAPI instance from an OpenAPI specification []byte array. If anything goes
@@ -133,6 +135,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
 	return &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
+		Index: lowDoc.Index,
 	}, errs
 }
 
@@ -162,6 +165,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	highDoc := v3high.NewDocument(lowDoc)
 	return &DocumentModel[v3high.Document]{
 		Model: *highDoc,
+		Index: lowDoc.Index,
 	}, errs
 }
 
