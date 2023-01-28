@@ -191,7 +191,8 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 6, index.pathCount)
 	assert.Equal(t, 6, index.GetPathCount())
 
-	assert.Equal(t, 6, len(index.GetAllSchemas()))
+	assert.Equal(t, 6, len(index.GetAllComponentSchemas()))
+	assert.Equal(t, 15, len(index.GetAllSchemas()))
 
 	assert.Equal(t, 34, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
@@ -833,19 +834,28 @@ func ExampleNewSpecIndex() {
 	fmt.Printf("There are %d references\n"+
 		"%d paths\n"+
 		"%d operations\n"+
-		"%d schemas\n"+
+		"%d component schemas\n"+
+		"%d inline schemas\n"+
+		"%d inline schemas that are objects or arrays\n"+
+		"%d total schemas\n"+
 		"%d enums\n"+
 		"%d polymorphic references",
 		len(index.GetAllCombinedReferences()),
 		len(index.GetAllPaths()),
 		index.GetOperationCount(),
+		len(index.GetAllComponentSchemas()),
+		len(index.GetAllInlineSchemas()),
+		len(index.GetAllInlineSchemaObjects()),
 		len(index.GetAllSchemas()),
 		len(index.GetAllEnums()),
 		len(index.GetPolyOneOfReferences())+len(index.GetPolyAnyOfReferences()))
 	// Output: There are 537 references
 	// 246 paths
 	// 402 operations
-	// 537 schemas
+	// 537 component schemas
+	// 1530 inline schemas
+	// 711 inline schemas that are objects or arrays
+	// 2067 total schemas
 	// 1516 enums
 	// 828 polymorphic references
 }

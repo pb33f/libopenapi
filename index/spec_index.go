@@ -122,7 +122,9 @@ type SpecIndex struct {
 	allParametersNode                   map[string]*Reference                       // all parameters node
 	allParameters                       map[string]*Reference                       // all parameters (components/defs)
 	schemasNode                         *yaml.Node                                  // components/schemas node
-	allSchemas                          map[string]*Reference                       // all schemas
+	allInlineSchemaDefinitions          []*Reference                                // all schemas found in document outside of components (openapi) or definitions (swagger).
+	allInlineSchemaObjectDefinitions    []*Reference                                // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
+	allComponentSchemaDefinitions       map[string]*Reference                       // all schemas found in components (openapi) or definitions (swagger).
 	securitySchemesNode                 *yaml.Node                                  // components/securitySchemes node
 	allSecuritySchemes                  map[string]*Reference                       // all security schemes / definitions.
 	requestBodiesNode                   *yaml.Node                                  // components/requestBodies node
@@ -227,7 +229,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.linksRefs = make(map[string]map[string][]*Reference)
 	index.callbackRefs = make(map[string]*Reference)
 	index.externalSpecIndex = make(map[string]*SpecIndex)
-	index.allSchemas = make(map[string]*Reference)
+	index.allComponentSchemaDefinitions = make(map[string]*Reference)
 	index.allParameters = make(map[string]*Reference)
 	index.allSecuritySchemes = make(map[string]*Reference)
 	index.allRequestBodies = make(map[string]*Reference)
@@ -304,7 +306,7 @@ func (index *SpecIndex) GetRootNode() *yaml.Node {
 	return index.root
 }
 
-// GetGlobalTagsNode returns document root node.
+// GetGlobalTagsNode returns document root tags node.
 func (index *SpecIndex) GetGlobalTagsNode() *yaml.Node {
 	return index.tagsNode
 }
@@ -391,9 +393,41 @@ func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]
 	return index.paramOpRefs
 }
 
-// GetAllSchemas will return all schemas found in the document
-func (index *SpecIndex) GetAllSchemas() map[string]*Reference {
-	return index.allSchemas
+// GetAllSchemas will return references to all schemas found in the document both inline and those under components
+// The first elements of at the top of the slice, are all the inline references (using GetAllInlineSchemas),
+// and then following on are all the references extracted from the components section (using GetAllComponentSchemas).
+func (index *SpecIndex) GetAllSchemas() []*Reference {
+
+	componentSchemas := index.GetAllComponentSchemas()
+	inlineSchemas := index.GetAllInlineSchemas()
+
+	combined := make([]*Reference, len(inlineSchemas)+len(componentSchemas))
+	i := 0
+	for x := range inlineSchemas {
+		combined[i] = inlineSchemas[x]
+		i++
+	}
+	for x := range componentSchemas {
+		combined[i] = componentSchemas[x]
+		i++
+	}
+	return combined
+}
+
+// GetAllInlineSchemaObjects will return all schemas that are inline (not inside components) and that are also typed
+// as 'object' or 'array' (not primitives).
+func (index *SpecIndex) GetAllInlineSchemaObjects() []*Reference {
+	return index.allInlineSchemaObjectDefinitions
+}
+
+// GetAllInlineSchemas will return all schemas defined in the components section of the document.
+func (index *SpecIndex) GetAllInlineSchemas() []*Reference {
+	return index.allInlineSchemaDefinitions
+}
+
+// GetAllComponentSchemas will return all schemas defined in the components section of the document.
+func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
+	return index.allComponentSchemaDefinitions
 }
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
@@ -598,6 +632,27 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 				}
 				found = append(found, index.ExtractRefs(n, node, seenPath, level, poly, polyName)...)
+			}
+
+			if i%2 == 0 && n.Value == "schema" {
+				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
+				if isRef {
+					continue
+				}
+				ref := &Reference{
+					Node: node.Content[i+1],
+					Path: fmt.Sprintf("$.%s", strings.Join(seenPath, ".")),
+				}
+				index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
+
+				// check if the schema is an object or an array,
+				// and if so, add it to the list of inline schema object definitions.
+				k, v := utils.FindKeyNodeTop("type", node.Content[i+1].Content)
+				if k != nil && v != nil {
+					if v.Value == "object" || v.Value == "array" {
+						index.allInlineSchemaObjectDefinitions = append(index.allInlineSchemaObjectDefinitions, ref)
+					}
+				}
 			}
 
 			if i%2 == 0 && n.Value == "$ref" {
@@ -1711,7 +1766,7 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			ParentNode:            schemasNode,
 			RequiredRefProperties: index.extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}),
 		}
-		index.allSchemas[def] = ref
+		index.allComponentSchemaDefinitions[def] = ref
 	}
 }
 
