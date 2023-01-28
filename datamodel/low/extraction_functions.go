@@ -31,7 +31,7 @@ func FindItemInMap[T any](item string, collection map[KeyReference[string]]Value
 // helper function to generate a list of all the things an index should be searched for.
 func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Reference {
 	return []func() map[string]*index.Reference{
-		idx.GetAllSchemas,
+		idx.GetAllComponentSchemas,
 		idx.GetMappedReferences,
 		idx.GetAllExternalDocuments,
 		idx.GetAllParameters,
