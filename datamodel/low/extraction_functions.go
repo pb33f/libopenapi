@@ -6,12 +6,13 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
+	"strconv"
+	"strings"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
-	"strconv"
-	"strings"
 )
 
 // FindItemInMap accepts a string key and a collection of KeyReference[string] and ValueReference[T]. Every
@@ -73,7 +74,6 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 				// if this is a ref node, we need to keep diving
 				// until we hit something that isn't a ref.
 				if jh, _, _ := utils.IsNodeRefValue(found[rv].Node); jh {
-
 					// if this node is circular, stop drop and roll.
 					if !IsCircular(found[rv].Node, idx) {
 						return LocateRefNode(found[rv].Node, idx)
@@ -199,6 +199,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 	if err != nil {
 		return NodeReference[T]{}, err
 	}
+
 	res := NodeReference[T]{
 		Value:       n,
 		KeyNode:     ln,
@@ -216,7 +217,8 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 // ExtractArray will extract a slice of []ValueReference[T] from a root yaml.Node that is defined as a sequence.
 // Used when the value being extracted is an array.
 func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) ([]ValueReference[T],
-	*yaml.Node, *yaml.Node, error) {
+	*yaml.Node, *yaml.Node, error,
+) {
 	var ln, vn *yaml.Node
 	var circError error
 	var isReference bool
@@ -256,18 +258,22 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 			}
 		}
 	}
+
 	var items []ValueReference[T]
 	if vn != nil && ln != nil {
 		if !utils.IsNodeArray(vn) {
 			return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
 		}
 		for _, node := range vn.Content {
+			localReferenceValue := ""
+			localIsReference := false
+
 			if rf, _, rv := utils.IsNodeRefValue(node); rf {
 				ref, err := LocateRefNode(node, idx)
 				if ref != nil {
 					node = ref
-					isReference = true
-					referenceValue = rv
+					localIsReference = true
+					localReferenceValue = rv
 					if err != nil {
 						circError = err
 					}
@@ -287,11 +293,17 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 			if berr != nil {
 				return nil, ln, vn, berr
 			}
+
+			if localReferenceValue == "" {
+				localReferenceValue = referenceValue
+				localIsReference = isReference
+			}
+
 			items = append(items, ValueReference[T]{
 				Value:       n,
 				ValueNode:   node,
-				IsReference: isReference,
-				Reference:   referenceValue,
+				IsReference: localIsReference,
+				Reference:   localReferenceValue,
 			})
 		}
 	}
@@ -326,8 +338,8 @@ func ExtractExample(expNode, expLabel *yaml.Node) NodeReference[any] {
 // This is useful when the node to be extracted, is already known and does not require a search.
 func ExtractMapNoLookup[PT Buildable[N], N any](
 	root *yaml.Node,
-	idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], error) {
-
+	idx *index.SpecIndex,
+) (map[KeyReference[string]]ValueReference[PT], error) {
 	valueMap := make(map[KeyReference[string]]ValueReference[PT])
 	var circError error
 	if utils.IsNodeMap(root) {
@@ -405,7 +417,8 @@ type mappingResult[T any] struct {
 func ExtractMap[PT Buildable[N], N any](
 	label string,
 	root *yaml.Node,
-	idx *index.SpecIndex) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
+	idx *index.SpecIndex,
+) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
 	var isReference bool
 	var referenceValue string
 	var labelNode, valueNode *yaml.Node
@@ -453,7 +466,7 @@ func ExtractMap[PT Buildable[N], N any](
 		bChan := make(chan mappingResult[PT])
 		eChan := make(chan error)
 
-		var buildMap = func(label *yaml.Node, value *yaml.Node, c chan mappingResult[PT], ec chan<- error) {
+		buildMap := func(label *yaml.Node, value *yaml.Node, c chan mappingResult[PT], ec chan<- error) {
 			var n PT = new(N)
 			_ = BuildModel(value, n)
 			err := n.Build(value, idx)
@@ -525,11 +538,16 @@ func ExtractMap[PT Buildable[N], N any](
 // ExtractExtensions will extract any 'x-' prefixed key nodes from a root node into a map. Requirements have been pre-cast:
 //
 // Maps
-//   map[string]interface{} for maps
+//
+//	map[string]interface{} for maps
+//
 // Slices
-//   []interface{}
+//
+//	[]interface{}
+//
 // int, float, bool, string
-//   int64, float64, bool, string
+//
+//	int64, float64, bool, string
 func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[any] {
 	extensions := utils.FindExtensionNodes(root.Content)
 	extensionMap := make(map[KeyReference[string]]ValueReference[any])
