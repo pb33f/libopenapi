@@ -634,7 +634,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				found = append(found, index.ExtractRefs(n, node, seenPath, level, poly, polyName)...)
 			}
 
-			if i%2 == 0 && n.Value == "schema" {
+			// check if we're dealing with an inline schema definition, that isn't part of an array
+			// (which means it's being used as a value in an array, and it's not a label)
+			// https://github.com/pb33f/libopenapi/issues/76
+			if i%2 == 0 && n.Value == "schema" && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
 				if isRef {
 					continue
