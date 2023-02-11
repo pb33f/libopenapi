@@ -173,7 +173,7 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 	if specVersion.SpecType == "" {
 		// parse JSON
 		parseJSON(spec, specVersion, &parsedSpec)
-		specVersion.Error = errors.New("spec type not supported by vacuum, sorry")
+		specVersion.Error = errors.New("spec type not supported by libopenapi, sorry")
 		return specVersion, specVersion.Error
 	}
 
