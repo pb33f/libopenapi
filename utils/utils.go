@@ -312,7 +312,7 @@ var BinaryLabel = "binary"
 var ArrayLabel = "array"
 var BooleanLabel = "boolean"
 var SchemaSource = "https://json-schema.org/draft/2020-12/schema"
-var SchemaId = "https://quobix.com/api/vacuum"
+var SchemaId = "https://pb33f.io/openapi-changes/schema"
 
 func MakeTagReadable(node *yaml.Node) string {
 	switch node.Tag {

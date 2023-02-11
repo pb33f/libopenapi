@@ -186,7 +186,12 @@ func CompareDocuments(original, updated Document) (*model.DocumentChanges, []err
 		if len(errs) > 0 {
 			errors = errs
 		}
-		return what_changed.CompareOpenAPIDocuments(v3ModelLeft.Model.GoLow(), v3ModelRight.Model.GoLow()), errors
+		if v3ModelLeft != nil && v3ModelRight != nil {
+			return what_changed.CompareOpenAPIDocuments(v3ModelLeft.Model.GoLow(), v3ModelRight.Model.GoLow()), errors
+		} else {
+			return nil, errs
+		}
+
 	}
 	if original.GetSpecInfo().SpecType == utils.OpenApi2 && updated.GetSpecInfo().SpecType == utils.OpenApi2 {
 		v2ModelLeft, errs := original.BuildV2Model()
@@ -197,7 +202,11 @@ func CompareDocuments(original, updated Document) (*model.DocumentChanges, []err
 		if len(errs) > 0 {
 			errors = errs
 		}
-		return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), errors
+		if v2ModelLeft != nil && v2ModelRight != nil {
+			return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), errors
+		} else {
+			return nil, errs
+		}
 	}
 	return nil, nil
 }
