@@ -1,0 +1,548 @@
+openapi: 3.1.0
+info:
+  title: Burger Shop
+  description: |
+    The best burger API at princess beef. You can find the testiest burgers in the world
+  termsOfService: https://pb33f.io
+  contact:
+    name: pb33f
+    email: buckaroo@pb33f.io
+    url: https://pb33f.io
+  license:
+    name: pb33f
+    url: https://pb33f.io/made-up
+  version: "1.2"
+security:
+  - OAuthScheme:
+      - read:burgers
+      - write:burgers
+tags:
+  - name: "Burgers"
+    description: "All kinds of yummy burgers."
+    externalDocs:
+      description: "Find out more"
+      url: "https://pb33f.io"
+    x-internal-ting: somethingSpecial
+    x-internal-tong: 1
+    x-internal-tang: 1.2
+    x-internal-tung: true
+    x-internal-arr:
+      - one
+      - two
+    x-internal-arrmap:
+      - what: now
+      - why: that
+    x-something-else:
+      ok:
+        - what: now?
+  - name: "Dressing"
+    description: "Variety of dressings: cheese, veggie, oil and a lot more"
+    externalDocs:
+      description: "Find out more information about our products)"
+      url: "https://pb33f.io"
+servers:
+  - url: "{scheme}://api.pb33f.io"
+    description: "this is our main API server, for all fun API things."
+    variables:
+      scheme:
+        enum: [https, wss]
+        default: https
+        description: this is a server variable for the scheme
+  - url: "https://{domain}.{host}.com"
+    description: "this is our second API server, for all fun API things."
+    variables:
+      domain:
+        default: "api"
+        description: the default API domain is 'api'
+      host:
+        default: "pb33f.io"
+        description: the default host for this API is 'pb33f.io'
+paths:
+  x-milky-milk: milky
+  /burgers:
+    x-burger-meta: meaty
+    post:
+      operationId: createBurger
+      tags:
+        - "Burgers"
+      summary:  Create a new burger
+      description: A new burger for our menu, yummy yum yum.
+      requestBody:
+        $ref: '#/components/requestBodies/BurgerRequest'
+      responses:
+        "200":
+          headers:
+            UseOil:
+              $ref: '#/components/headers/UseOil'
+          description: A tasty burger for you to eat.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Burger'
+              examples:
+                quarterPounder:
+                  $ref: '#/components/examples/QuarterPounder'
+                filetOFish:
+                  summary: a cripsy fish sammich filled with ocean goodness.
+                  value:
+                    name: Filet-O-Fish
+                    numPatties: 1
+          links:
+            LocateBurger:
+              $ref: '#/components/links/LocateBurger'
+            AnotherLocateBurger:
+              $ref: '#/components/links/AnotherLocateBurger'
+        "500":
+          description: Unexpected error creating a new burger. Sorry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unexpectedError:
+                  summary: oh my goodness
+                  value:
+                    message: something went terribly wrong my friend, no new burger for you.
+        "422":
+          description: Unprocessable entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unexpectedError:
+                  summary: invalid request
+                  value:
+                    message: unable to accept this request, looks bad, missing something.
+      security:
+        - OAuthScheme:
+          - read:burgers
+          - write:burgers
+      servers:
+        - url: https://pb33f.io
+          description: this is an alternative server for this operation.
+  /burgers/{burgerId}:
+    get:
+      callbacks:
+        burgerCallback:
+          $ref: '#/components/callbacks/BurgerCallback'
+      operationId: locateBurger
+      tags:
+        - "Burgers"
+      summary: Search a burger by ID - returns the burger with that identifier
+      description: Look up a tasty burger take it and enjoy it
+      parameters:
+        - $ref: '#/components/parameters/BurgerId'
+        - $ref: '#/components/parameters/BurgerHeader'
+      responses:
+        "200":
+          description: A tasty burger for you to eat. Wide variety of products to choose from
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Burger'
+              examples:
+                quarterPounder:
+                  $ref: '#/components/examples/QuarterPounder'
+                filetOFish:
+                  summary: A tasty treat from the sea
+                  value:
+                    name: Filet-O-Fish
+                    numPatties: 1
+          links:
+            ListBurgerDressings:
+              operationId: listBurgerDressings
+              parameters:
+                dressingId: 'something here'
+              description: 'Try the ketchup!'
+        "404":
+          description: Cannot find your burger. Sorry. We may have sold out of this type
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                notFound:
+                  summary: burger missing
+                  value:
+                    message: can't find a burger with that ID, we may have sold out my friend.
+        "500":
+          description: Unexpected error. Sorry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                unexpectedError:
+                  summary: oh my stars
+                  value:
+                    message: something went terribly wrong my friend, burger location crashed!
+  /burgers/{burgerId}/dressings:
+    get:
+      operationId: listBurgerDressings
+      tags:
+        - "Dressing"
+      summary:  Get a list of all dressings available
+      description: Same as the summary, look up a tasty burger, by its ID - the burger identifier
+      parameters:
+        - in: path
+          name: burgerId
+          schema:
+            type: string
+          example: big-mac
+          description: the name of the our fantastic burger. You can pick a name from our menu
+          required: true
+      responses:
+        "200":
+          $ref: '#/components/responses/DressingResponse'
+        "404":
+          description: Cannot find your burger in which to list dressings. Sorry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: There is no burger here
+        "500":
+          description: Unexpected error listing dressings for burger. Sorry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: computer says no dressings for this burger.
+  /dressings/{dressingId}:
+    get:
+      operationId: getDressing
+      tags:
+        - "Dressing"
+      summary:  Get a specific dressing - you can choose the dressing from our menu
+      description: Same as the summary, get a dressing, by its ID
+      parameters:
+        - in: path
+          name: dressingId
+          schema:
+            type: string
+          example: cheese
+          description: This is the unique identifier for the dressing items.
+          required: true
+      responses:
+        "200":
+          description: a dressing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dressing'
+              example:
+                name: Butter Sauce
+        "404":
+          description: Cannot find your dressing, sorry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: No such dressing as 'Pizza'
+        "500":
+          description: Unexpected error getting a dressing. Sorry.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: failed looking up dressing by ID, our server borked.
+  /dressings:
+    get:
+      operationId: getAllDressings
+      tags:
+        - "Dressing"
+      summary:  Get all dressings available in our store
+      description: Get all dressings and choose from them
+      responses:
+        "200":
+          description: an array of dressings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dressing'
+              example:
+                - name: Burger Sauce
+        "418":
+          description: I am a teapot.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: It's teapot time.
+        "500":
+          description: Something went wrong with getting dressings.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                message: "failed looking up all dressings, something went wrong."
+components:
+  callbacks:
+    BurgerCallback:
+      x-break-everything: please
+      "{$request.query.queryUrl}":
+        post:
+          requestBody:
+            description: Callback payload
+            content:
+              'application/json':
+                schema:
+                  $ref: '#/components/schemas/SomePayload'
+          responses:
+            '200':
+              description: callback successfully processes
+  links:
+    LocateBurger:
+      operationId: locateBurger
+      parameters:
+        burgerId: '$response.body#/id'
+      description: Go and get a tasty burger
+    AnotherLocateBurger:
+      operationId: locateBurger
+      parameters:
+        burgerId: '$response.body#/id'
+      description: Go and get another really tasty burger
+      server:
+        url: https://pb33f.io
+  headers:
+    UseOil:
+      description: this is a header example for UseOil
+      schema:
+        type: string
+  requestBodies:
+    BurgerRequest:
+      description: Give us the new burger!
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Burger'
+          examples:
+            pbjBurger:
+              summary: A horrible, nutty, sticky mess.
+              value:
+                name: Peanut And Jelly
+                numPatties: 3
+            cakeBurger:
+              summary: A sickly, sweet, atrocity
+              value:
+                name: Chocolate Cake Burger
+                numPatties: 5
+  examples:
+    QuarterPounder:
+      summary: A juicy two hander sammich
+      value:
+        name: Quarter Pounder with Cheese
+        numPatties: 1
+  responses:
+    DressingResponse:
+      description: all the dressings for a burger.
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              $ref: '#/components/schemas/Dressing'
+          example:
+            - name: Thousand Island
+  securitySchemes:
+    APIKeyScheme:
+      type: apiKey
+      description: an apiKey security scheme
+      name: apiKeyScheme
+      in: query
+    JWTScheme:
+      type: http
+      description: an JWT security scheme
+      name: aJWTThing
+      scheme: bearer
+      bearerFormat: JWT
+    OAuthScheme:
+      type: oauth2
+      description: an oAuth security scheme
+      name: oAuthy
+      flows:
+        implicit:
+          authorizationUrl: https://pb33f.io/oauth
+          scopes:
+            write:burgers: modify and add new burgers
+            read:burgers: read all burgers
+        authorizationCode:
+          authorizationUrl: https://pb33f.io/oauth
+          tokenUrl: https://api.pb33f.io/oauth/token
+          scopes:
+            write:burgers: modify burgers and stuff
+            read:burgers: read all the burgers
+  parameters:
+    BurgerHeader:
+      in: header
+      name: burgerHeader
+      schema:
+        properties:
+          burgerTheme:
+            type: string
+            description: something about a theme goes in here?
+          burgerTime:
+            type: number
+            description: number of burgers ordered so far this year.
+      example: big-mac
+      description: the name of the burger. use this to order your food
+      required: true
+      content:
+        application/json:
+          example: somethingNice
+          encoding:
+            burgerTheme:
+              contentType: text/plain
+              headers:
+                someHeader:
+                  description: this is a header
+                  schema:
+                    type: string
+          schema:
+            type: object
+            required: [burgerTheme, burgerTime]
+            properties:
+              burgerTheme:
+                type: string
+                description: something about a theme?
+              burgerTime:
+                type: number
+                description: number of burgers ordered this year.
+    BurgerId:
+      in: path
+      name: burgerId
+      schema:
+        type: string
+      example: big-mac
+      description: the name of the burger. use this to order your tasty burger
+      required: true
+  schemas:
+    Error:
+      type: object
+      description: Error defining what went wrong when providing a specification. The message should help indicate the issue clearly.
+      properties:
+        message:
+          type: string
+          description: returns the error message if something wrong happens
+          example: No such burger as 'Big-Whopper'
+    Burger:
+      type: object
+      description: The tastiest food on the planet you would love to eat everyday
+      required:
+        - name
+        - numPatties
+      properties:
+        name:
+          type: string
+          description: The name of your tasty burger - burger names are listed in our menus
+          example: Big Mac
+        numPatties:
+          type: integer
+          description: The number of burger patties used
+          example: 2
+        numTomatoes:
+          type: integer
+          description: how many slices of orange goodness would you like?
+          example: 1
+        fries:
+          $ref: '#/components/schemas/Fries'
+    Fries:
+      type: object
+      description: golden slices of happy fun joy
+      required:
+        - potatoShape
+        - favoriteDrink
+      properties:
+        seasoning:
+          type: array
+          description: herbs and spices for your golden joy
+          items:
+            type: string
+            description: type of herb or spice used to liven up the yummy
+            example: salt
+        potatoShape:
+          type: string
+          description: what type of potato shape? wedges? shoestring?
+          example: Crispy Shoestring
+        favoriteDrink:
+          $ref: '#/components/schemas/Drink'
+    Dressing:
+      type: object
+      description: This is the object that contains the information about the content of the dressing
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          description: The name of your dressing you can pick up from the menu
+          example: Cheese
+      additionalProperties:
+        type: object
+        description: something in here.
+    Drink:
+      type: object
+      description: a frosty cold beverage can be coke or sprite
+      required:
+        - size
+        - drinkType
+      properties:
+        ice:
+          type: boolean
+        drinkType:
+          description: select from coke or sprite
+          enum:
+            - coke
+            - sprite
+        size:
+          type: string
+          description: what size man? S/M/L
+          example: M
+      additionalProperties: true
+      discriminator:
+        propertyName: drinkType
+        mapping:
+          drink: some value
+    SomePayload:
+      type: string
+      description: some kind of payload for something.
+      xml:
+        name: is html programming? yes.
+      externalDocs:
+        url: https://pb33f.io/docs
+      oneOf:
+        - $ref: '#/components/schemas/Drink'
+      anyOf:
+        - $ref: '#/components/schemas/Drink'
+      allOf:
+        - $ref: '#/components/schemas/Drink'
+      not:
+        type: string
+      items:
+        - $ref: '#/components/schemas/Drink'
+  x-screaming-baby: loud
+x-something-something: darkside
+externalDocs:
+  description: "Find out more information about our products and services"
+  url: "https://pb33f.io"
+jsonSchemaDialect: https://pb33f.io/schema
+webhooks:
+  someHook:
+    post:
+      requestBody:
+        description: Information about a new burger
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Burger"
+      responses:
+        "200":
+          description: the hook is good! you have a new burger.

@@ -12,6 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -763,4 +764,41 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 	assert.Equal(t, uint64.Schema().Nullable, byte.Schema().Nullable)
 	assert.Equal(t, uint64.Schema().Example, byte.Schema().Example)
 	assert.Equal(t, uint64.Schema().Minimum, byte.Schema().Minimum)
+}
+
+// Currently this test will be failing because of resolving errors - as currently we resolve only parent index.
+// To fix this we'll need to resolve nested indexes recursively in the resolver.
+func skipTestLoadDocumentWithOptions_V3(t *testing.T) {
+
+	specPath := "test_specs/relativeref.yaml"
+	petstore, _ := ioutil.ReadFile(specPath)
+
+	indexOptions := index.NewOptions()
+	indexOptions.SetSpecPath(specPath)
+
+	// create a new document with options, specifying the source
+	document, err := NewDocumentWithOptions(petstore, index.NewOptions())
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	v3Model, errors := document.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// get a count of the number of paths and schemas.
+	schemas := v3Model.Model.Components.Schemas
+	assert.Equal(t, 4, len(schemas))
+
+	assert.Len(t, v3Model.Index.GetAllReferences(), 6)
+	assert.Len(t, v3Model.Index.GetMappedReferences(), 6)
 }

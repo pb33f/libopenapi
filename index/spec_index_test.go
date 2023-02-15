@@ -339,6 +339,32 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
 }
 
+func TestSpecIndex_BurgerShopRelativeRef(t *testing.T) {
+	specFilePath := "../test_specs/relativeref-burgershop.openapi.yaml"
+	spec, _ := os.ReadFile(specFilePath)
+	var rootNode yaml.Node
+	yaml.Unmarshal(spec, &rootNode)
+
+	indexOptions := NewOptions()
+	indexOptions.SetSpecPath(specFilePath)
+
+	index := NewSpecIndexWithOptions(&rootNode, indexOptions)
+
+	assert.Len(t, index.allRefs, 6)
+	assert.Len(t, index.allMappedRefs, 6)
+	assert.Equal(t, 5, index.GetPathCount())
+	assert.Equal(t, 5, index.GetOperationCount())
+	assert.Equal(t, 1, index.GetComponentSchemaCount())
+	assert.Equal(t, 2, index.GetGlobalTagsCount())
+	assert.Equal(t, 3, index.GetTotalTagsCount())
+	assert.Equal(t, 2, index.GetOperationTagsCount())
+	assert.Equal(t, 0, index.GetGlobalLinksCount())
+	assert.Equal(t, 0, index.GetComponentParameterCount())
+	assert.Equal(t, 2, index.GetOperationsParameterCount())
+	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
+	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
+}
+
 func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
 	var rootNode yaml.Node

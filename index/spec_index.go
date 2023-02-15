@@ -17,6 +17,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -155,6 +157,7 @@ type SpecIndex struct {
 	remoteLock                          sync.Mutex
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
 	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
+	options                             *Options
 }
 
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the
@@ -205,6 +208,15 @@ func runIndexFunction(funcs []func() int, wg *sync.WaitGroup) {
 // other than a raw index of every node for every content type in the specification. This process runs as fast as
 // possible so dependencies looking through the tree, don't need to walk the entire thing over, and over.
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
+	return newIndex(rootNode, nil)
+}
+
+// Same as NewSpecIndex(), with an additional options parameter that can be used to influence the behaviour of SpecIndex.
+func NewSpecIndexWithOptions(rootNode *yaml.Node, options *Options) *SpecIndex {
+	return newIndex(rootNode, options)
+}
+
+func newIndex(rootNode *yaml.Node, options *Options) *SpecIndex {
 	index := new(SpecIndex)
 	index.root = rootNode
 	index.allRefs = make(map[string]*Reference)
@@ -244,6 +256,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.refsWithSiblings = make(map[string]Reference)
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	index.opServersRefs = make(map[string]map[string][]*Reference)
+	index.options = options
 
 	// there is no node! return an empty index.
 	if rootNode == nil {
@@ -297,7 +310,6 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.GetInlineDuplicateParamCount()
 	index.GetAllDescriptionsCount()
 	index.GetTotalTagsCount()
-
 	return index
 }
 
@@ -2000,7 +2012,9 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 	lookupFunction ExternalLookupFunction, parent *yaml.Node,
 ) *Reference {
 	if len(uri) > 0 {
+
 		externalSpecIndex := index.externalSpecIndex[uri[0]]
+
 		if externalSpecIndex == nil {
 			_, newRoot, err := lookupFunction(componentId)
 			if err != nil {
@@ -2015,7 +2029,8 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 
 			// cool, cool, lets index this spec also. This is a recursive action and will keep going
 			// until all remote references have been found.
-			newIndex := NewSpecIndex(newRoot)
+			newIndex := index.createNestedIndex(newRoot, uri[0])
+
 			index.externalSpecIndex[uri[0]] = newIndex
 			externalSpecIndex = newIndex
 		}
@@ -2035,6 +2050,16 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 		}
 	}
 	return nil
+}
+
+func (index *SpecIndex) createNestedIndex(rootNode *yaml.Node, path string) *SpecIndex {
+	if index.options != nil && len(index.options.GetReferenceBasePath()) > 0 {
+		nestedIndexOptions := NewOptions()
+		nestedIndexOptions.SetSpecPath(filepath.Join(index.options.GetReferenceBasePath(), path))
+		return NewSpecIndexWithOptions(rootNode, nestedIndexOptions)
+	}
+
+	return NewSpecIndex(rootNode)
 }
 
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
@@ -2192,11 +2217,13 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 	// split string to remove file reference
 	uri := strings.Split(ref, "#")
 
+	remotePath := index.buildReferencePath(uri[0])
+
 	var parsedRemoteDocument *yaml.Node
-	if index.seenRemoteSources[uri[0]] != nil {
+	if index.seenRemoteSources[remotePath] != nil {
 		parsedRemoteDocument = index.seenRemoteSources[uri[0]]
 	} else {
-		resp, err := http.Get(uri[0])
+		resp, err := http.Get(remotePath)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -2212,7 +2239,7 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 		}
 		parsedRemoteDocument = &remoteDoc
 		index.remoteLock.Lock()
-		index.seenRemoteSources[uri[0]] = &remoteDoc
+		index.seenRemoteSources[remotePath] = &remoteDoc
 		index.remoteLock.Unlock()
 	}
 
@@ -2244,13 +2271,14 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 	uri := strings.Split(ref, "#")
 
 	file := strings.ReplaceAll(uri[0], "file:", "")
+	file = index.buildReferencePath(file)
 
 	var parsedRemoteDocument *yaml.Node
 	if index.seenRemoteSources[file] != nil {
 		parsedRemoteDocument = index.seenRemoteSources[file]
 	} else {
 
-		body, err := ioutil.ReadFile(file)
+		body, err := os.ReadFile(file)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -2286,4 +2314,24 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 	}
 
 	return nil, parsedRemoteDocument, nil
+}
+
+// Builds reference path: if the path is relative, and the base path option is set,
+// this function will return the correct absolute path,
+// otherwise it returns the relative path passed to it.
+func (index *SpecIndex) buildReferencePath(path string) string {
+	if index.options != nil && len(index.options.GetReferenceBasePath()) > 0 {
+		if isRelativePath(path) {
+			path = filepath.Join(index.options.GetReferenceBasePath(), path)
+		}
+	}
+	return path
+}
+
+func isRelativePath(path string) bool {
+	return !filepath.IsAbs(path) && !isHttpOrHttpsPath(path)
+}
+
+func isHttpOrHttpsPath(path string) bool {
+	return path[:6] == "https:" || path[:5] == "http:"
 }

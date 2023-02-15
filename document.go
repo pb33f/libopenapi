@@ -15,6 +15,7 @@ package libopenapi
 
 import (
 	"fmt"
+
 	"github.com/pb33f/libopenapi/index"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -61,8 +62,9 @@ type Document interface {
 }
 
 type document struct {
-	version string
-	info    *datamodel.SpecInfo
+	version      string
+	info         *datamodel.SpecInfo
+	indexOptions *index.Options
 }
 
 // DocumentModel represents either a Swagger document (version 2) or an OpenAPI document (version 3) that is
@@ -79,14 +81,11 @@ type DocumentModel[T v2high.Swagger | v3high.Document] struct {
 // After creating a Document, the option to build a model becomes available, in either V2 or V3 flavors. The models
 // are about 70% different between Swagger and OpenAPI 3, which is why two different models are available.
 func NewDocument(specByteArray []byte) (Document, error) {
-	info, err := datamodel.ExtractSpecInfo(specByteArray)
-	if err != nil {
-		return nil, err
-	}
-	d := new(document)
-	d.version = info.Version
-	d.info = info
-	return d, nil
+	return newDocument(specByteArray, nil)
+}
+
+func NewDocumentWithOptions(specByteArray []byte, indexOptions *index.Options) (Document, error) {
+	return newDocument(specByteArray, indexOptions)
 }
 
 func (d *document) GetVersion() string {
@@ -120,7 +119,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 			"supplied spec is a different version (%v). Try 'BuildV3Model()'", d.info.SpecFormat))
 		return nil, errors
 	}
-	lowDoc, errs := v2low.CreateDocument(d.info)
+	lowDoc, errs := v2low.CreateDocumentWithIndexOptions(d.info, d.indexOptions)
 	// Do not shortcircuit on circular reference errors, so the client
 	// has the option of ignoring them.
 	for _, err := range errs {
@@ -150,7 +149,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat))
 		return nil, errors
 	}
-	lowDoc, errs := v3low.CreateDocument(d.info)
+	lowDoc, errs := v3low.CreateDocumentWithIndexOptions(d.info, d.indexOptions)
 	// Do not shortcircuit on circular reference errors, so the client
 	// has the option of ignoring them.
 	for _, err := range errs {
@@ -167,6 +166,18 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}, errs
+}
+
+func newDocument(specByteArray []byte, indexOptions *index.Options) (*document, error) {
+	info, err := datamodel.ExtractSpecInfo(specByteArray)
+	if err != nil {
+		return nil, err
+	}
+	d := new(document)
+	d.version = info.Version
+	d.info = info
+	d.indexOptions = indexOptions
+	return d, nil
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct

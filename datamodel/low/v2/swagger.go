@@ -122,12 +122,19 @@ func (s *Swagger) GetExtensions() map[low.KeyReference[string]]low.ValueReferenc
 }
 
 func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
+    return createDocument(info, nil)
+}
 
+func CreateDocumentWithIndexOptions(info *datamodel.SpecInfo, indexOptions *index.Options) (*Swagger, []error) {
+    return createDocument(info, indexOptions)
+}
+
+func createDocument(info *datamodel.SpecInfo, indexOptions *index.Options) (*Swagger, []error) {
     doc := Swagger{Swagger: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
     doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])
 
     // build an index
-    idx := index.NewSpecIndex(info.RootNode)
+    idx := index.NewSpecIndexWithOptions(info.RootNode, indexOptions)
     doc.Index = idx
     doc.SpecInfo = info
 

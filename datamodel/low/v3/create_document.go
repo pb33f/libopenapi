@@ -11,7 +11,17 @@ import (
     "sync"
 )
 
+// Creates a V3 document.
 func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
+    return createDocument(info, nil)
+}
+
+// Same as CreateDocument, but with an additional parameter for index options.
+func CreateDocumentWithIndexOptions(info *datamodel.SpecInfo, indexOptions *index.Options) (*Document, []error) {
+    return createDocument(info, indexOptions)
+}
+
+func createDocument(info *datamodel.SpecInfo, indexOptions *index.Options) (*Document, []error) {
 
     _, labelNode, versionNode := utils.FindKeyNodeFull(OpenAPILabel, info.RootNode.Content)
     var version low.NodeReference[string]
@@ -22,7 +32,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
     doc := Document{Version: version}
 
     // build an index
-    idx := index.NewSpecIndex(info.RootNode)
+    idx := index.NewSpecIndexWithOptions(info.RootNode, indexOptions)
     doc.Index = idx
 
     var errors []error

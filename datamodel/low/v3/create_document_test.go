@@ -7,6 +7,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -600,6 +601,29 @@ externalDocs:
 	var err []error
 	_, err = CreateDocument(info)
 	assert.Len(t, err, 1)
+}
+
+func TestCreateDocumentWithIndexOptions(t *testing.T) {
+	if doc != nil {
+		return
+	}
+	specPath := "../../../test_specs/burgershop.openapi.yaml"
+	data, _ := ioutil.ReadFile(specPath)
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err []error
+	indexOptions := index.NewOptions()
+	indexOptions.SetSpecPath(specPath)
+
+	doc, err = CreateDocumentWithIndexOptions(info, indexOptions)
+	if err != nil {
+		panic("broken something")
+	}
+
+	assert.Equal(t, "3.1.0", doc.Version.Value)
+	assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)
+	assert.NotEmpty(t, doc.Info.Value.Title.Value)
+	assert.Equal(t, "https://pb33f.io/schema", doc.JsonSchemaDialect.Value)
+	assert.Len(t, doc.GetExtensions(), 1)
 }
 
 func ExampleCreateDocument() {
