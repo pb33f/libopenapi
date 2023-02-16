@@ -11,8 +11,24 @@ import (
     "sync"
 )
 
+// CreateDocument will create a new Document instance from the provided SpecInfo.
+//
+// Deprecated: Use CreateDocumentFromConfig instead. This function will be removed in a later version, it
+// defaults to allowing file and remote references, and does not support relative file references.
 func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
+    config := datamodel.DocumentConfiguration{
+        AllowFileReferences:   true,
+        AllowRemoteReferences: true,
+    }
+    return createDocument(info, &config)
+}
 
+// CreateDocumentFromConfig Create a new document from the provided SpecInfo and DocumentConfiguration pointer.
+func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, []error) {
+    return createDocument(info, config)
+}
+
+func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, []error) {
     _, labelNode, versionNode := utils.FindKeyNodeFull(OpenAPILabel, info.RootNode.Content)
     var version low.NodeReference[string]
     if versionNode == nil {
@@ -22,10 +38,16 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
     doc := Document{Version: version}
 
     // build an index
-    idx := index.NewSpecIndex(info.RootNode)
+    idx := index.NewSpecIndexWithConfig(info.RootNode, &index.SpecIndexConfig{
+        BaseURL:           config.BaseURL,
+        AllowFileLookup:   config.AllowFileReferences,
+        AllowRemoteLookup: config.AllowRemoteReferences,
+    })
     doc.Index = idx
 
-    var errors []error
+    var errs []error
+
+    errs = idx.GetReferenceIndexErrors()
 
     // create resolver and check for circular references.
     resolve := resolver.NewResolver(idx)
@@ -33,7 +55,7 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
     if len(resolvingErrors) > 0 {
         for r := range resolvingErrors {
-           errors = append(errors, resolvingErrors[r])
+            errs = append(errs, resolvingErrors[r])
         }
     }
 
@@ -71,10 +93,10 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 
     wg.Add(len(extractionFuncs))
     for _, f := range extractionFuncs {
-        go runExtraction(info, &doc, idx, f, &errors, &wg)
+        go runExtraction(info, &doc, idx, f, &errs, &wg)
     }
     wg.Wait()
-    return &doc, errors
+    return &doc, errs
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {

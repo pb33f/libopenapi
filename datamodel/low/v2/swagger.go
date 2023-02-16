@@ -121,13 +121,32 @@ func (s *Swagger) GetExtensions() map[low.KeyReference[string]]low.ValueReferenc
     return s.Extensions
 }
 
-func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
+// CreateDocumentFromConfig will create a new Swagger document from the provided SpecInfo and DocumentConfiguration.
+func CreateDocumentFromConfig(info *datamodel.SpecInfo,
+    configuration *datamodel.DocumentConfiguration) (*Swagger, []error) {
+    return createDocument(info, configuration)
+}
 
+// CreateDocument will create a new Swagger document from the provided SpecInfo.
+//
+// Deprecated: Use CreateDocumentFromConfig instead.
+func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
+    return createDocument(info, &datamodel.DocumentConfiguration{
+        AllowRemoteReferences: true,
+        AllowFileReferences:   true,
+    })
+}
+
+func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Swagger, []error) {
     doc := Swagger{Swagger: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
     doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])
 
     // build an index
-    idx := index.NewSpecIndex(info.RootNode)
+    idx := index.NewSpecIndexWithConfig(info.RootNode, &index.SpecIndexConfig{
+        BaseURL:           config.BaseURL,
+        AllowRemoteLookup: config.AllowRemoteReferences,
+        AllowFileLookup:   config.AllowFileReferences,
+    })
     doc.Index = idx
     doc.SpecInfo = info
 

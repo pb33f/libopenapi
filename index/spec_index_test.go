@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"testing"
 
@@ -79,6 +80,55 @@ func TestSpecIndex_Asana(t *testing.T) {
 	assert.Equal(t, 107, index.operationParamCount)
 	assert.Equal(t, 8, index.componentsInlineParamDuplicateCount)
 	assert.Equal(t, 69, index.componentsInlineParamUniqueCount)
+}
+
+func TestSpecIndex_DigitalOcean(t *testing.T) {
+	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	var rootNode yaml.Node
+	yaml.Unmarshal(asana, &rootNode)
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
+		BaseURL:           baseURL,
+		AllowRemoteLookup: true,
+		AllowFileLookup:   true,
+	})
+
+	assert.Len(t, index.GetAllExternalIndexes(), 291)
+	assert.NotNil(t, index)
+}
+
+func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
+	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	var rootNode yaml.Node
+	yaml.Unmarshal(asana, &rootNode)
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
+		BaseURL: baseURL,
+	})
+
+	// no lookups allowed, bits have not been set, so there should just be a bunch of errors.
+	assert.Len(t, index.GetAllExternalIndexes(), 0)
+	assert.True(t, len(index.GetReferenceIndexErrors()) > 0)
+}
+
+func TestSpecIndex_BaseURLError(t *testing.T) {
+	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	var rootNode yaml.Node
+	yaml.Unmarshal(asana, &rootNode)
+
+	// this should fail because the base url is not a valid url and digital ocean won't be able to resolve
+	// anything.
+	baseURL, _ := url.Parse("https://githerbs.com/fresh/herbs/for/you")
+	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
+		BaseURL:           baseURL,
+		AllowRemoteLookup: true,
+		AllowFileLookup:   true,
+	})
+
+	assert.Len(t, index.GetAllExternalIndexes(), 0)
+	assert.Len(t, index.GetReferenceIndexErrors(), 582)
 }
 
 func TestSpecIndex_k8s(t *testing.T) {
@@ -591,7 +641,9 @@ paths:
 }
 
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
-	index := new(SpecIndex)
+	index := NewSpecIndexWithConfig(nil, &SpecIndexConfig{
+		AllowRemoteLookup: true,
+	})
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	a, b, err := index.lookupRemoteReference("https://google.com//logos/doodles/2022/labor-day-2022-6753651837109490.3-l.png#/hey")
 	assert.Error(t, err)

@@ -5,7 +5,9 @@ package libopenapi
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
 	"io/ioutil"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -245,6 +247,77 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 	// print the number of paths and schemas in the document
 	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
 	// Output: There are 13 paths and 8 schemas in the document
+}
+
+func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
+
+	// This example shows how to create a document that prevents the loading of external references/
+	// from files or the network
+
+	// load in the Digital Ocean OpenAPI specification
+	digitalOcean, _ := ioutil.ReadFile("test_specs/digitalocean.yaml")
+
+	// create a DocumentConfiguration that prevents loading file and remote references
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	}
+
+	// create a new document from specification bytes
+	doc, err := NewDocumentWithConfiguration(digitalOcean, &config)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// only errors will be thrown, so just capture them and print the number of errors.
+	_, errors := doc.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		fmt.Println("Error building Digital Ocean spec errors reported")
+	}
+	// Output: Error building Digital Ocean spec errors reported
+}
+
+func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
+
+	// This example shows how to create a document that prevents the loading of external references/
+	// from files or the network
+
+	// load in the Digital Ocean OpenAPI specification
+	digitalOcean, _ := ioutil.ReadFile("test_specs/digitalocean.yaml")
+
+	// Digital Ocean needs a baseURL to be set, so we can resolve relative references.
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+
+	// create a DocumentConfiguration that allows loading file and remote references, and sets the baseURL
+	// to somewhere that can resolve the relative references.
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BaseURL:               baseURL,
+	}
+
+	// create a new document from specification bytes
+	doc, err := NewDocumentWithConfiguration(digitalOcean, &config)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// only errors will be thrown, so just capture them and print the number of errors.
+	_, errors := doc.BuildV3Model()
+
+	// if anything went wrong when building the v3 model, a slice of errors will be returned
+	if len(errors) > 0 {
+		fmt.Println("Error building Digital Ocean spec errors reported")
+	} else {
+		fmt.Println("Digital Ocean spec built successfully")
+	}
+	// Output: Digital Ocean spec built successfully
 }
 
 func ExampleNewDocument_fromSwaggerDocument() {

@@ -1,0 +1,320 @@
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
+package index
+
+import (
+    "errors"
+    "fmt"
+    "github.com/pb33f/libopenapi/utils"
+    "gopkg.in/yaml.v3"
+    "strings"
+)
+
+// ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
+// The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
+func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
+    if node == nil {
+        return nil
+    }
+    var found []*Reference
+    if len(node.Content) > 0 {
+        var prev, polyName string
+        for i, n := range node.Content {
+
+            if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
+                level++
+                // check if we're using  polymorphic values. These tend to create rabbit warrens of circular
+                // references if every single link is followed. We don't resolve polymorphic values.
+                isPoly, _ := index.checkPolymorphicNode(prev)
+                polyName = pName
+                if isPoly {
+                    poly = true
+                    if prev != "" {
+                        polyName = prev
+                    }
+                }
+                found = append(found, index.ExtractRefs(n, node, seenPath, level, poly, polyName)...)
+            }
+
+            // check if we're dealing with an inline schema definition, that isn't part of an array
+            // (which means it's being used as a value in an array, and it's not a label)
+            // https://github.com/pb33f/libopenapi/issues/76
+            if i%2 == 0 && n.Value == "schema" && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+                isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
+                if isRef {
+                    continue
+                }
+                ref := &Reference{
+                    Node: node.Content[i+1],
+                    Path: fmt.Sprintf("$.%s", strings.Join(seenPath, ".")),
+                }
+                index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
+
+                // check if the schema is an object or an array,
+                // and if so, add it to the list of inline schema object definitions.
+                k, v := utils.FindKeyNodeTop("type", node.Content[i+1].Content)
+                if k != nil && v != nil {
+                    if v.Value == "object" || v.Value == "array" {
+                        index.allInlineSchemaObjectDefinitions = append(index.allInlineSchemaObjectDefinitions, ref)
+                    }
+                }
+            }
+
+            if i%2 == 0 && n.Value == "$ref" {
+
+                // only look at scalar values, not maps (looking at you k8s)
+                if !utils.IsNodeStringValue(node.Content[i+1]) {
+                    continue
+                }
+
+                index.linesWithRefs[n.Line] = true
+
+                fp := make([]string, len(seenPath))
+                for x, foundPathNode := range seenPath {
+                    fp[x] = foundPathNode
+                }
+
+                value := node.Content[i+1].Value
+
+                segs := strings.Split(value, "/")
+                name := segs[len(segs)-1]
+                _, p := utils.ConvertComponentIdIntoFriendlyPathSearch(value)
+                ref := &Reference{
+                    Definition: value,
+                    Name:       name,
+                    Node:       node,
+                    Path:       p,
+                }
+
+                // add to raw sequenced refs
+                index.rawSequencedRefs = append(index.rawSequencedRefs, ref)
+
+                // add ref by line number
+                refNameIndex := strings.LastIndex(value, "/")
+                refName := value[refNameIndex+1:]
+                if len(index.refsByLine[refName]) > 0 {
+                    index.refsByLine[refName][n.Line] = true
+                } else {
+                    v := make(map[int]bool)
+                    v[n.Line] = true
+                    index.refsByLine[refName] = v
+                }
+
+                // if this ref value has any siblings (node.Content is larger than two elements)
+                // then add to refs with siblings
+                if len(node.Content) > 2 {
+                    copiedNode := *node
+                    copied := Reference{
+                        Definition: ref.Definition,
+                        Name:       ref.Name,
+                        Node:       &copiedNode,
+                        Path:       p,
+                    }
+                    // protect this data using a copy, prevent the resolver from destroying things.
+                    index.refsWithSiblings[value] = copied
+                }
+
+                // if this is a polymorphic reference, we're going to leave it out
+                // allRefs. We don't ever want these resolved, so instead of polluting
+                // the timeline, we will keep each poly ref in its own collection for later
+                // analysis.
+                if poly {
+                    index.polymorphicRefs[value] = ref
+
+                    // index each type
+                    switch pName {
+                    case "anyOf":
+                        index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)
+                    case "allOf":
+                        index.polymorphicAllOfRefs = append(index.polymorphicAllOfRefs, ref)
+                    case "oneOf":
+                        index.polymorphicOneOfRefs = append(index.polymorphicOneOfRefs, ref)
+                    }
+                    continue
+                }
+
+                // check if this is a dupe, if so, skip it, we don't care now.
+                if index.allRefs[value] != nil { // seen before, skip.
+                    continue
+                }
+
+                if value == "" {
+
+                    completedPath := fmt.Sprintf("$.%s", strings.Join(fp, "."))
+
+                    indexError := &IndexingError{
+                        Err:  errors.New("schema reference is empty and cannot be processed"),
+                        Node: node.Content[i+1],
+                        Path: completedPath,
+                    }
+
+                    index.refErrors = append(index.refErrors, indexError)
+
+                    continue
+                }
+
+                index.allRefs[value] = ref
+                found = append(found, ref)
+            }
+
+            if i%2 == 0 && n.Value != "$ref" && n.Value != "" {
+
+                nodePath := fmt.Sprintf("$.%s", strings.Join(seenPath, "."))
+
+                // capture descriptions and summaries
+                if n.Value == "description" {
+
+                    // if the parent is a sequence, ignore.
+                    if utils.IsNodeArray(node) {
+                        continue
+                    }
+
+                    ref := &DescriptionReference{
+                        Content:   node.Content[i+1].Value,
+                        Path:      nodePath,
+                        Node:      node.Content[i+1],
+                        IsSummary: false,
+                    }
+
+                    index.allDescriptions = append(index.allDescriptions, ref)
+                    index.descriptionCount++
+                }
+
+                if n.Value == "summary" {
+
+                    var b *yaml.Node
+                    if len(node.Content) == i+1 {
+                        b = node.Content[i]
+                    } else {
+                        b = node.Content[i+1]
+                    }
+                    ref := &DescriptionReference{
+                        Content:   b.Value,
+                        Path:      nodePath,
+                        Node:      b,
+                        IsSummary: true,
+                    }
+
+                    index.allSummaries = append(index.allSummaries, ref)
+                    index.summaryCount++
+                }
+
+                // capture security requirement references (these are not traditional references, but they
+                // are used as a look-up. This is the only exception to the design.
+                if n.Value == "security" {
+                    var b *yaml.Node
+                    if len(node.Content) == i+1 {
+                        b = node.Content[i]
+                    } else {
+                        b = node.Content[i+1]
+                    }
+                    if utils.IsNodeArray(b) {
+                        var secKey string
+                        for k := range b.Content {
+                            if utils.IsNodeMap(b.Content[k]) {
+                                for g := range b.Content[k].Content {
+                                    if g%2 == 0 {
+                                        secKey = b.Content[k].Content[g].Value
+                                        continue
+                                    }
+                                    if utils.IsNodeArray(b.Content[k].Content[g]) {
+                                        var refMap map[string][]*Reference
+                                        if index.securityRequirementRefs[secKey] == nil {
+                                            index.securityRequirementRefs[secKey] = make(map[string][]*Reference)
+                                            refMap = index.securityRequirementRefs[secKey]
+                                        } else {
+                                            refMap = index.securityRequirementRefs[secKey]
+                                        }
+                                        for r := range b.Content[k].Content[g].Content {
+                                            var refs []*Reference
+                                            if refMap[b.Content[k].Content[g].Content[r].Value] != nil {
+                                                refs = refMap[b.Content[k].Content[g].Content[r].Value]
+                                            }
+
+                                            refs = append(refs, &Reference{
+                                                Definition: b.Content[k].Content[g].Content[r].Value,
+                                                Path:       fmt.Sprintf("%s.security[%d].%s[%d]", nodePath, k, secKey, r),
+                                                Node:       b.Content[k].Content[g].Content[r],
+                                            })
+
+                                            index.securityRequirementRefs[secKey][b.Content[k].Content[g].Content[r].Value] = refs
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                // capture enums
+                if n.Value == "enum" {
+
+                    // all enums need to have a type, extract the type from the node where the enum was found.
+                    _, enumKeyValueNode := utils.FindKeyNodeTop("type", node.Content)
+
+                    if enumKeyValueNode != nil {
+                        ref := &EnumReference{
+                            Path:       nodePath,
+                            Node:       node.Content[i+1],
+                            Type:       enumKeyValueNode,
+                            SchemaNode: node,
+                            ParentNode: parent,
+                        }
+
+                        index.allEnums = append(index.allEnums, ref)
+                        index.enumCount++
+                    }
+                }
+                // capture all objects with properties
+                if n.Value == "properties" {
+                    _, typeKeyValueNode := utils.FindKeyNodeTop("type", node.Content)
+
+                    if typeKeyValueNode != nil {
+                        isObject := false
+
+                        if typeKeyValueNode.Value == "object" {
+                            isObject = true
+                        }
+
+                        for _, v := range typeKeyValueNode.Content {
+                            if v.Value == "object" {
+                                isObject = true
+                            }
+                        }
+
+                        if isObject {
+                            index.allObjectsWithProperties = append(index.allObjectsWithProperties, &ObjectReference{
+                                Path:       nodePath,
+                                Node:       node,
+                                ParentNode: parent,
+                            })
+                        }
+                    }
+                }
+
+                seenPath = append(seenPath, n.Value)
+                prev = n.Value
+            }
+
+            // if next node is map, don't add segment.
+            if i < len(node.Content)-1 {
+                next := node.Content[i+1]
+
+                if i%2 != 0 && next != nil && !utils.IsNodeArray(next) && !utils.IsNodeMap(next) {
+                    seenPath = seenPath[:len(seenPath)-1]
+                }
+            }
+        }
+        if len(seenPath) > 0 {
+            seenPath = seenPath[:len(seenPath)-1]
+        }
+
+    }
+    if len(seenPath) > 0 {
+        seenPath = seenPath[:len(seenPath)-1]
+    }
+
+    index.refCount = len(index.allRefs)
+
+    return found
+}

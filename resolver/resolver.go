@@ -104,7 +104,9 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
 		var journey []*index.Reference
-		ref.Reference.Node.Content = resolver.VisitReference(ref.Reference, seenReferences, journey, true)
+		if ref != nil && ref.Reference != nil {
+			ref.Reference.Node.Content = resolver.VisitReference(ref.Reference, seenReferences, journey, true)
+		}
 	}
 
 	schemas := resolver.specIndex.GetAllComponentSchemas()
