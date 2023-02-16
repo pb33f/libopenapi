@@ -398,6 +398,18 @@ func TestAsanaAsDoc(t *testing.T) {
 	fmt.Println(d)
 }
 
+func TestDigitalOceanAsDoc(t *testing.T) {
+	data, _ := ioutil.ReadFile("../../../test_specs/asana.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err []error
+	lowDoc, err = lowv3.CreateDocument(info)
+	if err != nil {
+		panic("broken something")
+	}
+	d := NewDocument(lowDoc)
+	fmt.Println(d)
+}
+
 func TestPetstoreAsDoc(t *testing.T) {
 	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
