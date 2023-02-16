@@ -39,6 +39,10 @@ type Document interface {
 	// GetSpecInfo will return the *datamodel.SpecInfo instance that contains all specification information.
 	GetSpecInfo() *datamodel.SpecInfo
 
+	// SetConfiguration will set the configuration for the document. This allows for finer grained control over
+	// allowing remote or local references, as well as a BaseURL to allow for relative file references.
+	SetConfiguration(configuration *datamodel.DocumentConfiguration)
+
 	// BuildV2Model will build out a Swagger (version 2) model from the specification used to create the document
 	// If there are any issues, then no model will be returned, instead a slice of errors will explain all the
 	// problems that occurred. This method will only support version 2 specifications and will throw an error for
@@ -63,6 +67,7 @@ type Document interface {
 type document struct {
 	version string
 	info    *datamodel.SpecInfo
+	config  *datamodel.DocumentConfiguration
 }
 
 // DocumentModel represents either a Swagger document (version 2) or an OpenAPI document (version 3) that is
@@ -89,12 +94,26 @@ func NewDocument(specByteArray []byte) (Document, error) {
 	return d, nil
 }
 
+// NewDocumentWithConfiguration is the same as NewDocument, except it's a convenience function that calls NewDocument
+// under the hood and then calls SetConfiguration() on the returned Document.
+func NewDocumentWithConfiguration(specByteArray []byte, configuration *datamodel.DocumentConfiguration) (Document, error) {
+	d, err := NewDocument(specByteArray)
+	if d != nil {
+		d.SetConfiguration(configuration)
+	}
+	return d, err
+}
+
 func (d *document) GetVersion() string {
 	return d.version
 }
 
 func (d *document) GetSpecInfo() *datamodel.SpecInfo {
 	return d.info
+}
+
+func (d *document) SetConfiguration(configuration *datamodel.DocumentConfiguration) {
+	d.config = configuration
 }
 
 func (d *document) Serialize() ([]byte, error) {
@@ -120,23 +139,32 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 			"supplied spec is a different version (%v). Try 'BuildV3Model()'", d.info.SpecFormat))
 		return nil, errors
 	}
-	lowDoc, errs := v2low.CreateDocument(d.info)
-	// Do not shortcircuit on circular reference errors, so the client
+
+	var lowDoc *v2low.Swagger
+	if d.config == nil {
+		d.config = &datamodel.DocumentConfiguration{
+			AllowFileReferences:   true,
+			AllowRemoteReferences: true,
+		}
+	}
+
+	lowDoc, errors = v2low.CreateDocumentFromConfig(d.info, d.config)
+	// Do not short-circuit on circular reference errors, so the client
 	// has the option of ignoring them.
-	for _, err := range errs {
+	for _, err := range errors {
 		if refErr, ok := err.(*resolver.ResolvingError); ok {
 			if refErr.CircularReference == nil {
-				return nil, errs
+				return nil, errors
 			}
 		} else {
-			return nil, errs
+			return nil, errors
 		}
 	}
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
 	return &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
-	}, errs
+	}, errors
 }
 
 func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
@@ -150,23 +178,32 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat))
 		return nil, errors
 	}
-	lowDoc, errs := v3low.CreateDocument(d.info)
-	// Do not shortcircuit on circular reference errors, so the client
+
+	var lowDoc *v3low.Document
+	if d.config == nil {
+		d.config = &datamodel.DocumentConfiguration{
+			AllowFileReferences:   true,
+			AllowRemoteReferences: true,
+		}
+	}
+
+	lowDoc, errors = v3low.CreateDocumentFromConfig(d.info, d.config)
+	// Do not short-circuit on circular reference errors, so the client
 	// has the option of ignoring them.
-	for _, err := range errs {
+	for _, err := range errors {
 		if refErr, ok := err.(*resolver.ResolvingError); ok {
 			if refErr.CircularReference == nil {
-				return nil, errs
+				return nil, errors
 			}
 		} else {
-			return nil, errs
+			return nil, errors
 		}
 	}
 	highDoc := v3high.NewDocument(lowDoc)
 	return &DocumentModel[v3high.Document]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
-	}, errs
+	}, errors
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct
