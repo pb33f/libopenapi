@@ -183,6 +183,10 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
 func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]bool, journey []*index.Reference, resolve bool) []*yaml.Node {
+	if ref == nil {
+		panic("what?")
+	}
+
 	if ref.Resolved || ref.Seen {
 		return ref.Node.Content
 	}
@@ -198,7 +202,12 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 		skip := false
 		for i, j := range journey {
 			if j.Definition == r.Definition {
-				foundDup := resolver.specIndex.GetMappedReferences()[r.Definition]
+
+				var foundDup *index.Reference
+				foundRefs := resolver.specIndex.SearchIndexForReference(r.Definition)
+				if len(foundRefs) > 0 {
+					foundDup = foundRefs[0]
+				}
 
 				var circRef *index.CircularReferenceResult
 				if !foundDup.Circular {
@@ -223,7 +232,11 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 		}
 
 		if !skip {
-			original := resolver.specIndex.GetMappedReferences()[r.Definition]
+			var original *index.Reference
+			foundRefs := resolver.specIndex.SearchIndexForReference(r.Definition)
+			if len(foundRefs) > 0 {
+				original = foundRefs[0]
+			}
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve {
 				r.Node.Content = resolved // this is where we perform the actual resolving.
@@ -292,7 +305,7 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 
 				value := node.Content[i+1].Value
 
-				ref := resolver.specIndex.GetMappedReferences()[value]
+				ref := resolver.specIndex.SearchIndexForReference(value)
 
 				if ref == nil {
 					// TODO handle error, missing ref, can't resolve.
