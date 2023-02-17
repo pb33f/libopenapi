@@ -7,6 +7,8 @@ import (
     "fmt"
     "github.com/pb33f/libopenapi/utils"
     "gopkg.in/yaml.v3"
+    "net/url"
+    "strings"
     "sync"
 )
 
@@ -370,3 +372,43 @@ func runIndexFunction(funcs []func() int, wg *sync.WaitGroup) {
         }(wg, cFunc)
     }
 }
+
+func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bool) string {
+
+    cleanedPath := baseURL.Path // not cleaned yet!
+
+    // create a slice of path segments from existing path
+    pathSegs := strings.Split(cleanedPath, "/")
+    dirSegs := strings.Split(dir, "/")
+
+    var cleanedSegs []string
+    if !includeFile {
+        dirSegs = dirSegs[:len(dirSegs)-1]
+    }
+
+    // relative paths are a pain in the ass, damn you digital ocean, use a single spec, and break them
+    // down into services, please don't blast apart specs into a billion shards.
+    if strings.Contains(dir, "../") {
+        for s := range dirSegs {
+            if dirSegs[s] == ".." {
+                // chop off the last segment of the base path.
+                if len(pathSegs) > 0 {
+                    pathSegs = pathSegs[:len(pathSegs)-1]
+                }
+            } else {
+                cleanedSegs = append(cleanedSegs, dirSegs[s])
+            }
+        }
+        cleanedPath = fmt.Sprintf("%s/%s", strings.Join(pathSegs, "/"), strings.Join(cleanedSegs, "/"))
+    } else {
+        cleanedPath = fmt.Sprintf("%s/%s", strings.Join(pathSegs, "/"), strings.Join(dirSegs, "/"))
+    }
+    p := fmt.Sprintf("%s://%s%s", baseURL.Scheme, baseURL.Host, cleanedPath)
+    if strings.HasSuffix(p, "/") {
+        p = p[:len(p)-1]
+    }
+    return p
+
+}
+
+
