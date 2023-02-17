@@ -26,6 +26,10 @@ import (
 // how the index is set up.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
+	if config != nil && config.seenRemoteSources == nil {
+		config.seenRemoteSources = make(map[string]*yaml.Node)
+	}
+	config.remoteLock = &sync.Mutex{}
 	index.config = config
 	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index)
@@ -45,6 +49,7 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.config = &SpecIndexConfig{
 		AllowRemoteLookup: true,
 		AllowFileLookup:   true,
+		seenRemoteSources: make(map[string]*yaml.Node),
 	}
 	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index)
@@ -103,7 +108,7 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex) *SpecIndex {
 	index.GetInlineDuplicateParamCount()
 	index.GetAllDescriptionsCount()
 	index.GetTotalTagsCount()
-
+	index.seenRemoteSources = index.config.seenRemoteSources
 	return index
 }
 
@@ -1131,4 +1136,11 @@ func (index *SpecIndex) GetAllDescriptionsCount() int {
 // GetAllSummariesCount will collect together every single summary found in the document
 func (index *SpecIndex) GetAllSummariesCount() int {
 	return len(index.allSummaries)
+}
+
+func (index *SpecIndex) CheckForSeenRemoteSource(url string) (bool, *yaml.Node) {
+	if _, ok := index.config.seenRemoteSources[url]; ok {
+		return true, index.config.seenRemoteSources[url]
+	}
+	return false, nil
 }

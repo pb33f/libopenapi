@@ -89,6 +89,11 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 			}
 		}
 
+		foundRefs := idx.SearchIndexForReference(rv)
+		if len(foundRefs) > 0 {
+			return foundRefs[0].Node, nil
+		}
+
 		// cant be found? last resort is to try a path lookup
 		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
 		if friendly != "" {

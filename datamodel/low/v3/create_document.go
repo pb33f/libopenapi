@@ -43,7 +43,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
         AllowFileLookup:   config.AllowFileReferences,
         AllowRemoteLookup: config.AllowRemoteReferences,
     })
-    doc.Index = idx
+     doc.Index = idx
 
     var errs []error
 
