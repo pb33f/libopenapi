@@ -194,7 +194,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 		var op Operation
 
-		wg.Add(1)
+
 
 		if ok, _, _ := utils.IsNodeRefValue(pathNode); ok {
 			r, err := low.LocateRefNode(pathNode, idx)
@@ -210,7 +210,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 					pathNode.Content[1].Value, pathNode.Content[1].Line, pathNode.Content[1].Column)
 			}
 		}
-
+		wg.Add(1)
 		go low.BuildModelAsync(pathNode, &op, &wg, &errors)
 
 		opRef := low.NodeReference[*Operation]{

@@ -170,19 +170,56 @@ components:
 	assert.Len(t, circ, 0)
 }
 
-// TODO: Test for remote and file references with the option switched on and off
-func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
-	mixedref, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+func TestResolver_ResolveComponents_Missing(t *testing.T) {
+	yml := `paths:
+  /hey:
+    get:
+      responses:
+        "200":
+          $ref: '#/components/schemas/crackers'
+components:
+  schemas:
+    cheese:
+      description: cheese
+      properties:
+        thang:
+          $ref: '#/components/schemas/crackers' 
+    crackers:
+      description: crackers
+      properties:
+        butter:
+          $ref: 'go home, I am drunk'`
+
 	var rootNode yaml.Node
-	yaml.Unmarshal(mixedref, &rootNode)
+	yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := index.NewSpecIndex(&rootNode)
 
 	resolver := NewResolver(index)
 	assert.NotNil(t, resolver)
 
+	err := resolver.Resolve()
+	assert.Len(t, err, 1)
+	assert.Equal(t, "cannot resolve reference `go home, I am drunk`, it's missing: $go home, I am drunk [18:11]", err[0].Error())
+}
+
+func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
+	mixedref, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+	var rootNode yaml.Node
+	yaml.Unmarshal(mixedref, &rootNode)
+
+	b := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, b)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
 	circ := resolver.Resolve()
-	assert.Len(t, circ, 10)
+	assert.Len(t, circ, 0)
+	assert.Equal(t, 5, resolver.GetIndexesVisited())
+	assert.Equal(t, 209, resolver.GetRelativesSeen())
+	assert.Equal(t, 35, resolver.GetJourneysTaken())
+	assert.Equal(t, 62, resolver.GetReferenceVisited())
 }
 
 func TestResolver_ResolveComponents_k8s(t *testing.T) {
@@ -211,7 +248,8 @@ func ExampleNewResolver() {
 	_ = yaml.Unmarshal(stripeBytes, &rootNode)
 
 	// create a new spec index (resolver depends on it)
-	index := index.NewSpecIndex(&rootNode)
+	indexConfig := index.CreateClosedAPIIndexConfig()
+	index := index.NewSpecIndexWithConfig(&rootNode, indexConfig)
 
 	// create a new resolver using the index.
 	resolver := NewResolver(index)
