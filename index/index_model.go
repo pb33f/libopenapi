@@ -4,6 +4,7 @@
 package index
 
 import (
+    "golang.org/x/sync/syncmap"
     "gopkg.in/yaml.v3"
     "net/http"
     "net/url"
@@ -72,8 +73,28 @@ type SpecIndexConfig struct {
     RootIndex   *SpecIndex // if this is a sub-index, the root knows about everything below.
     ParentIndex *SpecIndex // Who owns this index?
 
-    seenRemoteSources map[string]*yaml.Node
+    seenRemoteSources *syncmap.Map
     remoteLock        *sync.Mutex
+}
+
+// CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
+// AllowFileLookup set to true. This is the default behaviour of the index in previous versions of libopenapi. (pre 0.6.0)
+func CreateOpenAPIIndexConfig() *SpecIndexConfig {
+    return &SpecIndexConfig{
+        AllowRemoteLookup: true,
+        AllowFileLookup:   true,
+        seenRemoteSources: &syncmap.Map{},
+    }
+}
+
+// CreateClosedAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
+// AllowFileLookup set to false. This is the default behaviour of the index in versions 0.6.0+
+func CreateClosedAPIIndexConfig() *SpecIndexConfig {
+    return &SpecIndexConfig{
+        AllowRemoteLookup: false,
+        AllowFileLookup:   false,
+        seenRemoteSources: &syncmap.Map{},
+    }
 }
 
 // SpecIndex is a complete pre-computed index of the entire specification. Numbers are pre-calculated and
@@ -134,69 +155,70 @@ type SpecIndex struct {
     componentParamCount                 int                                         // number of params defined in components
     componentsInlineParamUniqueCount    int                                         // number of inline params with unique names
     componentsInlineParamDuplicateCount int                                         // number of inline params with duplicate names
-    schemaCount                      int                                            // number of schemas
-    refCount                         int                                            // total ref count
-    root                             *yaml.Node                                     // the root document
-    pathsNode                        *yaml.Node                                     // paths node
-    tagsNode                         *yaml.Node                                     // tags node
-    componentsNode                   *yaml.Node                                     // components node
-    parametersNode                   *yaml.Node                                     // components/parameters node
-    allParametersNode                map[string]*Reference                          // all parameters node
-    allParameters                    map[string]*Reference                          // all parameters (components/defs)
-    schemasNode                      *yaml.Node                                     // components/schemas node
-    allInlineSchemaDefinitions       []*Reference                                   // all schemas found in document outside of components (openapi) or definitions (swagger).
-    allInlineSchemaObjectDefinitions []*Reference                                   // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
-    allComponentSchemaDefinitions    map[string]*Reference                          // all schemas found in components (openapi) or definitions (swagger).
-    securitySchemesNode              *yaml.Node                                     // components/securitySchemes node
-    allSecuritySchemes               map[string]*Reference                          // all security schemes / definitions.
-    requestBodiesNode                *yaml.Node                                     // components/requestBodies node
-    allRequestBodies                 map[string]*Reference                          // all request bodies
-    responsesNode                    *yaml.Node                                     // components/responses node
-    allResponses                     map[string]*Reference                          // all responses
-    headersNode                      *yaml.Node                                     // components/headers node
-    allHeaders                       map[string]*Reference                          // all headers
-    examplesNode                     *yaml.Node                                     // components/examples node
-    allExamples                      map[string]*Reference                          // all components examples
-    linksNode                        *yaml.Node                                     // components/links node
-    allLinks                         map[string]*Reference                          // all links
-    callbacksNode                    *yaml.Node                                     // components/callbacks node
-    allCallbacks                     map[string]*Reference                          // all components examples
-    externalDocumentsNode            *yaml.Node                                     // external documents node
-    allExternalDocuments             map[string]*Reference                          // all external documents
-    externalSpecIndex                map[string]*SpecIndex                          // create a primary index of all external specs and componentIds
-    refErrors                        []error                                        // errors when indexing references
-    operationParamErrors             []error                                        // errors when indexing parameters
-    allDescriptions                  []*DescriptionReference                        // every single description found in the spec.
-    allSummaries                     []*DescriptionReference                        // every single summary found in the spec.
-    allEnums                         []*EnumReference                               // every single enum found in the spec.
-    allObjectsWithProperties         []*ObjectReference                             // every single object with properties found in the spec.
-    enumCount                        int
-    descriptionCount                 int
-    summaryCount                     int
-    seenRemoteSources                map[string]*yaml.Node
-    seenLocalSources                 map[string]*yaml.Node
-    remoteLock                       sync.RWMutex
-    httpLock                         sync.RWMutex
-    fileLock                         sync.Mutex
-    refLock                          sync.Mutex
-    circularReferences               []*CircularReferenceResult // only available when the resolver has been used.
-    allowCircularReferences          bool                       // decide if you want to error out, or allow circular references, default is false.
-    relativePath                     string                     // relative path of the spec file.
-    config                           *SpecIndexConfig           // configuration for the index
-    httpClient                       *http.Client
-    componentIndexChan               chan bool
-    polyComponentIndexChan           chan bool
+    schemaCount                         int                                         // number of schemas
+    refCount                            int                                         // total ref count
+    root                                *yaml.Node                                  // the root document
+    pathsNode                           *yaml.Node                                  // paths node
+    tagsNode                            *yaml.Node                                  // tags node
+    componentsNode                      *yaml.Node                                  // components node
+    parametersNode                      *yaml.Node                                  // components/parameters node
+    allParametersNode                   map[string]*Reference                       // all parameters node
+    allParameters                       map[string]*Reference                       // all parameters (components/defs)
+    schemasNode                         *yaml.Node                                  // components/schemas node
+    allInlineSchemaDefinitions          []*Reference                                // all schemas found in document outside of components (openapi) or definitions (swagger).
+    allInlineSchemaObjectDefinitions    []*Reference                                // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
+    allComponentSchemaDefinitions       map[string]*Reference                       // all schemas found in components (openapi) or definitions (swagger).
+    securitySchemesNode                 *yaml.Node                                  // components/securitySchemes node
+    allSecuritySchemes                  map[string]*Reference                       // all security schemes / definitions.
+    requestBodiesNode                   *yaml.Node                                  // components/requestBodies node
+    allRequestBodies                    map[string]*Reference                       // all request bodies
+    responsesNode                       *yaml.Node                                  // components/responses node
+    allResponses                        map[string]*Reference                       // all responses
+    headersNode                         *yaml.Node                                  // components/headers node
+    allHeaders                          map[string]*Reference                       // all headers
+    examplesNode                        *yaml.Node                                  // components/examples node
+    allExamples                         map[string]*Reference                       // all components examples
+    linksNode                           *yaml.Node                                  // components/links node
+    allLinks                            map[string]*Reference                       // all links
+    callbacksNode                       *yaml.Node                                  // components/callbacks node
+    allCallbacks                        map[string]*Reference                       // all components examples
+    externalDocumentsNode               *yaml.Node                                  // external documents node
+    allExternalDocuments                map[string]*Reference                       // all external documents
+    externalSpecIndex                   map[string]*SpecIndex                       // create a primary index of all external specs and componentIds
+    refErrors                           []error                                     // errors when indexing references
+    operationParamErrors                []error                                     // errors when indexing parameters
+    allDescriptions                     []*DescriptionReference                     // every single description found in the spec.
+    allSummaries                        []*DescriptionReference                     // every single summary found in the spec.
+    allEnums                            []*EnumReference                            // every single enum found in the spec.
+    allObjectsWithProperties            []*ObjectReference                          // every single object with properties found in the spec.
+    enumCount                           int
+    descriptionCount                    int
+    summaryCount                        int
+    seenRemoteSources                   map[string]*yaml.Node
+    seenLocalSources                    map[string]*yaml.Node
+    refLock                             sync.Mutex
+    circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
+    allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
+    relativePath                        string                     // relative path of the spec file.
+    config                              *SpecIndexConfig           // configuration for the index
+    httpClient                          *http.Client
+    componentIndexChan                  chan bool
+    polyComponentIndexChan              chan bool
 
     // when things get complex (looking at you digital ocean) then we need to know
     // what we have seen across indexes, so we need to be able to travel back up to the root
     // cto avoid re-downloading sources.
-    rootIndex   *SpecIndex
     parentIndex *SpecIndex
     children    []*SpecIndex
 }
 
 func (index *SpecIndex) AddChild(child *SpecIndex) {
     index.children = append(index.children, child)
+}
+
+// GetChildren returns the children of this index.
+func (index *SpecIndex) GetChildren() []*SpecIndex {
+    return index.children
 }
 
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the

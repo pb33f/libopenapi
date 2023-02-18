@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 	"strings"
 	"sync"
@@ -27,7 +28,7 @@ import (
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
 	if config != nil && config.seenRemoteSources == nil {
-		config.seenRemoteSources = make(map[string]*yaml.Node)
+		config.seenRemoteSources = &syncmap.Map{}
 	}
 	config.remoteLock = &sync.Mutex{}
 	index.config = config
@@ -46,11 +47,7 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 //  - https://github.com/pb33f/libopenapi/issues/73
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
-	index.config = &SpecIndexConfig{
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-		seenRemoteSources: make(map[string]*yaml.Node),
-	}
+	index.config = CreateOpenAPIIndexConfig()
 	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index)
 }
@@ -108,7 +105,12 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex) *SpecIndex {
 	index.GetInlineDuplicateParamCount()
 	index.GetAllDescriptionsCount()
 	index.GetTotalTagsCount()
-	index.seenRemoteSources = index.config.seenRemoteSources
+
+	// do a copy!
+	index.config.seenRemoteSources.Range(func(k, v any) bool {
+		index.seenRemoteSources[k.(string)] = v.(*yaml.Node)
+		return true
+	})
 	return index
 }
 
@@ -1138,9 +1140,15 @@ func (index *SpecIndex) GetAllSummariesCount() int {
 	return len(index.allSummaries)
 }
 
+// CheckForSeenRemoteSource will check to see if we have already seen this remote source and return it,
+// to avoid making duplicate remote calls for document data.
 func (index *SpecIndex) CheckForSeenRemoteSource(url string) (bool, *yaml.Node) {
-	if _, ok := index.config.seenRemoteSources[url]; ok {
-		return true, index.config.seenRemoteSources[url]
+	if index.config == nil || index.config.seenRemoteSources == nil {
+		return false, nil
+	}
+	j, _ := index.config.seenRemoteSources.Load(url)
+	if j != nil {
+		return true, j.(*yaml.Node)
 	}
 	return false, nil
 }

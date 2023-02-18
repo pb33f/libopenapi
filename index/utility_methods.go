@@ -401,9 +401,20 @@ func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bo
         }
         cleanedPath = fmt.Sprintf("%s/%s", strings.Join(pathSegs, "/"), strings.Join(cleanedSegs, "/"))
     } else {
-        cleanedPath = fmt.Sprintf("%s/%s", strings.Join(pathSegs, "/"), strings.Join(dirSegs, "/"))
+        if !strings.HasPrefix(dir, "http") {
+            if len(pathSegs) > 1 || len(dirSegs) > 1 {
+                cleanedPath = fmt.Sprintf("%s/%s", strings.Join(pathSegs, "/"), strings.Join(dirSegs, "/"))
+            }
+        } else {
+            cleanedPath = strings.Join(dirSegs, "/")
+        }
     }
-    p := fmt.Sprintf("%s://%s%s", baseURL.Scheme, baseURL.Host, cleanedPath)
+    var p string
+    if baseURL.Scheme != "" && !strings.HasPrefix(dir, "http") {
+        p = fmt.Sprintf("%s://%s%s", baseURL.Scheme, baseURL.Host, cleanedPath)
+    } else {
+        p = cleanedPath
+    }
     if strings.HasSuffix(p, "/") {
         p = p[:len(p)-1]
     }

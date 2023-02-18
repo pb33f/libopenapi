@@ -113,7 +113,7 @@ paths:
 	assert.NoError(t, err)
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 1)
+	assert.Len(t, docErr, 2)
 	assert.Nil(t, v3Doc)
 }
 
