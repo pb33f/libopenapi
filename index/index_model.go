@@ -68,11 +68,8 @@ type SpecIndexConfig struct {
     AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
     AllowFileLookup   bool // Allow file lookups for references. Defaults to false
 
-    // Indexes can be deeply nested, depending on how complex each spec is. If creating a sub-index
-    // this will help lookups remain efficient.
-    RootIndex   *SpecIndex // if this is a sub-index, the root knows about everything below.
-    ParentIndex *SpecIndex // Who owns this index?
 
+    // private fields
     seenRemoteSources *syncmap.Map
     remoteLock        *sync.Mutex
 }
