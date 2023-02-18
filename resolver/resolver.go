@@ -142,8 +142,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 
 // CheckForCircularReferences Check for circular references, without resolving, a non-destructive run.
 func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
-	visitIndex(resolver, resolver.specIndex)
-
+	visitIndexWithoutDamagingIt(resolver, resolver.specIndex)
 	for _, circRef := range resolver.circularReferences {
 		// If the circular reference is not required, we can ignore it, as it's a terminable loop rather than an infinite one
 		if !circRef.IsInfiniteLoop {
@@ -160,6 +159,30 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 	// update our index with any circular refs we found.
 	resolver.specIndex.SetCircularReferences(resolver.circularReferences)
 	return resolver.resolvingErrors
+}
+
+func visitIndexWithoutDamagingIt(res *Resolver, idx *index.SpecIndex) {
+	mapped := idx.GetMappedReferencesSequenced()
+	mappedIndex := idx.GetMappedReferences()
+	res.indexesVisited++
+	for _, ref := range mapped {
+		seenReferences := make(map[string]bool)
+		var journey []*index.Reference
+		res.indexesVisited++
+		res.VisitReference(ref.Reference, seenReferences, journey, false)
+	}
+	schemas := idx.GetAllComponentSchemas()
+	for s, schemaRef := range schemas {
+		if mappedIndex[s] == nil {
+			seenReferences := make(map[string]bool)
+			var journey []*index.Reference
+			res.indexesVisited++
+			res.VisitReference(schemaRef, seenReferences, journey, false)
+		}
+	}
+	for _, c := range idx.GetChildren() {
+		visitIndexWithoutDamagingIt(res, c)
+	}
 }
 
 func visitIndex(res *Resolver, idx *index.SpecIndex) {
