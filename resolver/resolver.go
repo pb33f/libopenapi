@@ -142,22 +142,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 
 // CheckForCircularReferences Check for circular references, without resolving, a non-destructive run.
 func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
-	mapped := resolver.specIndex.GetMappedReferencesSequenced()
-	mappedIndex := resolver.specIndex.GetMappedReferences()
-	for _, ref := range mapped {
-		seenReferences := make(map[string]bool)
-		var journey []*index.Reference
-		resolver.VisitReference(ref.Reference, seenReferences, journey, false)
-	}
-
-	schemas := resolver.specIndex.GetAllComponentSchemas()
-	for s, schemaRef := range schemas {
-		if mappedIndex[s] == nil {
-			seenReferences := make(map[string]bool)
-			var journey []*index.Reference
-			resolver.VisitReference(schemaRef, seenReferences, journey, false)
-		}
-	}
+	visitIndex(resolver, resolver.specIndex)
 
 	for _, circRef := range resolver.circularReferences {
 		// If the circular reference is not required, we can ignore it, as it's a terminable loop rather than an infinite one
