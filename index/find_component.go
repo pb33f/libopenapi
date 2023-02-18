@@ -9,9 +9,10 @@ import (
     "github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
     "gopkg.in/yaml.v3"
     "io/ioutil"
+    "net/http"
     "net/url"
     "strings"
-    "sync"
+    "time"
 )
 
 // FindComponent will locate a component by its reference, returns nil if nothing is found.
@@ -26,7 +27,7 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
         if index.config.AllowRemoteLookup {
             return index.lookupRemoteReference(id)
         } else {
-            return nil, nil, fmt.Errorf("remote lookups are not premitted, " +
+            return nil, nil, fmt.Errorf("remote lookups are not permitted, " +
                 "please set AllowRemoteLookup to true in the configuration")
         }
     }
@@ -82,11 +83,22 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
     return nil
 }
 
-var n sync.Mutex
+var httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
 
-var openCalls = 0
-var closedCalls = 0
-var totalCalls = 0
+func getRemoteDoc(u string, d chan []byte, e chan error) {
+    resp, err := httpClient.Get(u)
+    if err != nil {
+        e <- err
+        close(e)
+        close(d)
+        return
+    }
+    var body []byte
+    body, _ = ioutil.ReadAll(resp.Body)
+    d <- body
+    close(e)
+    close(d)
+}
 
 func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Node, error) {
     // split string to remove file reference
@@ -99,30 +111,43 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
     if alreadySeen {
         parsedRemoteDocument = foundDocument
     } else {
-        resp, err := index.httpClient.Get(uri[0])
-        totalCalls++
-        fmt.Printf("Closed: %s (t: %d)\n", uri[0], totalCalls)
 
-        if err != nil {
-            return nil, nil, err
-        }
-        body, err := ioutil.ReadAll(resp.Body)
-        if err != nil {
-            return nil, nil, err
-        }
+        d := make(chan bool)
+        var body []byte
+        var err error
 
-        var remoteDoc yaml.Node
-        err = yaml.Unmarshal(body, &remoteDoc)
+        go func(uri string) {
+            bc := make(chan []byte)
+            ec := make(chan error)
+            go getRemoteDoc(uri, bc, ec)
+            select {
+            case v := <-bc:
+                body = v
+                break
+            case er := <-ec:
+                err = er
+                break
+            }
+            var remoteDoc yaml.Node
+            er := yaml.Unmarshal(body, &remoteDoc)
+            if er != nil {
+                err = er
+                d <- true
+                return
+            }
+            parsedRemoteDocument = &remoteDoc
+            if index.config != nil {
+                index.config.seenRemoteSources.Store(uri, &remoteDoc)
+            }
+            d <- true
+        }(uri[0])
+
+        // wait for double go fun.
+        <-d
         if err != nil {
+            // no bueno.
             return nil, nil, err
         }
-        parsedRemoteDocument = &remoteDoc
-        //n.Lock()
-        //index.seenRemoteSources[uri[0]] = &remoteDoc
-        if index.config != nil {
-            index.config.seenRemoteSources[uri[0]] = &remoteDoc
-        }
-        //n.Unlock()
     }
 
     // lookup item from reference by using a path query.
@@ -163,9 +188,7 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 
         // try and read the file off the local file system, if it fails
         // check for a baseURL and then ask our remote lookup function to go try and get it.
-        // index.fileLock.Lock()
         body, err := ioutil.ReadFile(file)
-        // index.fileLock.Unlock()
 
         if err != nil {
 
@@ -173,26 +196,12 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
             if index.config != nil && index.config.BaseURL != nil {
 
                 u := index.config.BaseURL
-
                 remoteRef := GenerateCleanSpecConfigBaseURL(u, ref, true)
                 a, b, e := index.lookupRemoteReference(remoteRef)
                 if e != nil {
                     // give up, we can't find the file, not locally, not remotely. It's toast.
                     return nil, nil, e
                 }
-
-                //// everything looks good, lets just make sure we also add a key to the raw reference name.
-                //if _, ok := index.seenRemoteSources[file]; !ok {
-                //    if b != nil {
-                //        //index.seenRemoteSources[ref] = b
-                //    } else {
-                //        panic("oh now")
-                //    }
-                //
-                //} else {
-                //    panic("oh no")
-                //}
-
                 return a, b, nil
 
             } else {
@@ -207,7 +216,9 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
             return nil, nil, err
         }
         parsedRemoteDocument = &remoteDoc
-        index.seenLocalSources[file] = &remoteDoc
+        if index.seenLocalSources != nil {
+            index.seenLocalSources[file] = &remoteDoc
+        }
     }
 
     // lookup item from reference by using a path query.
@@ -279,10 +290,14 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
             // cool, cool, lets index this spec also. This is a recursive action and will keep going
             // until all remote references have been found.
 
-            // TODO: start here tomorrow, need to pass in the config to the new spec index.
-            // set the base URL to the path.
+            var j *url.URL
+            if index.config.BaseURL != nil {
+                j = index.config.BaseURL
+            } else {
+                j, _ = url.Parse(uri[0])
+            }
 
-            path := GenerateCleanSpecConfigBaseURL(index.config.BaseURL, uri[0], false)
+            path := GenerateCleanSpecConfigBaseURL(j, uri[0], false)
 
             newUrl, e := url.Parse(path)
             if e == nil {
@@ -296,10 +311,12 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 
                 var newIndex *SpecIndex
                 newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
+                index.refLock.Lock()
                 index.externalSpecIndex[uri[0]] = newIndex
                 newIndex.relativePath = path
                 newIndex.parentIndex = index
                 index.AddChild(newIndex)
+                index.refLock.Unlock()
                 externalSpecIndex = newIndex
 
             } else {

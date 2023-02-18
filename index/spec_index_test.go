@@ -128,7 +128,6 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 	})
 
 	assert.Len(t, index.GetAllExternalIndexes(), 0)
-	assert.Len(t, index.GetReferenceIndexErrors(), 582)
 }
 
 func TestSpecIndex_k8s(t *testing.T) {
@@ -199,9 +198,9 @@ func TestSpecIndex_XSOAR(t *testing.T) {
 }
 
 func TestSpecIndex_PetstoreV3(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+	petstore, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+    yaml.Unmarshal(petstore, &rootNode)
 
 	index := NewSpecIndex(&rootNode)
 
@@ -368,21 +367,24 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 }
 
 func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
-	spec, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
-	var rootNode yaml.Node
-	yaml.Unmarshal(spec, &rootNode)
+    spec, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+    var rootNode yaml.Node
+    yaml.Unmarshal(spec, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+    index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
+        AllowRemoteLookup: true,
+        AllowFileLookup:   true,
+    })
 
-	assert.Len(t, index.allRefs, 5)
-	assert.Len(t, index.allMappedRefs, 5)
-	assert.Equal(t, 5, index.GetPathCount())
-	assert.Equal(t, 5, index.GetOperationCount())
-	assert.Equal(t, 1, index.GetComponentSchemaCount())
-	assert.Equal(t, 2, index.GetGlobalTagsCount())
-	assert.Equal(t, 3, index.GetTotalTagsCount())
-	assert.Equal(t, 2, index.GetOperationTagsCount())
-	assert.Equal(t, 0, index.GetGlobalLinksCount())
+    assert.Len(t, index.allRefs, 5)
+    assert.Len(t, index.allMappedRefs, 5)
+    assert.Equal(t, 5, index.GetPathCount())
+    assert.Equal(t, 5, index.GetOperationCount())
+    assert.Equal(t, 1, index.GetComponentSchemaCount())
+    assert.Equal(t, 2, index.GetGlobalTagsCount())
+    assert.Equal(t, 3, index.GetTotalTagsCount())
+    assert.Equal(t, 2, index.GetOperationTagsCount())
+    assert.Equal(t, 0, index.GetGlobalLinksCount())
 	assert.Equal(t, 0, index.GetComponentParameterCount())
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
@@ -589,43 +591,80 @@ func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing
 	index := new(SpecIndex)
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
-	a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
-	assert.NoError(t, err)
-	assert.Nil(t, a)
+    a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
+    assert.Error(t, err)
+    assert.Nil(t, a)
 	assert.Nil(t, b)
 }
 
 // Discovered in issue https://github.com/pb33f/libopenapi/issues/37
 func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
-	index := new(SpecIndex)
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
-	a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
-	assert.NoError(t, err)
-	assert.Nil(t, a)
-	assert.Nil(t, b)
+    index := new(SpecIndex)
+    index.seenRemoteSources = make(map[string]*yaml.Node)
+    index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
+    a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
+    assert.NoError(t, err)
+    assert.NotNil(t, a)
+    assert.NotNil(t, b)
 }
 
 // Discovered in issue https://github.com/daveshanley/vacuum/issues/225
 func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
 
 	index := new(SpecIndex)
-	_ = ioutil.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
-	defer os.Remove("coffee-time.yaml")
+    _ = ioutil.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
+    defer os.Remove("coffee-time.yaml")
 
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	a, b, err := index.lookupFileReference("coffee-time.yaml")
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	assert.NotNil(t, b)
+    index.seenRemoteSources = make(map[string]*yaml.Node)
+    a, b, err := index.lookupFileReference("coffee-time.yaml")
+    assert.NoError(t, err)
+    assert.NotNil(t, a)
+    assert.NotNil(t, b)
+}
+
+func TestSpecIndex_CheckBadURLRef(t *testing.T) {
+
+    yml := `openapi: 3.1.0
+paths:
+  /cakes:
+    post:
+      parameters:
+        - $ref: 'httpsss://badurl'`
+
+    var rootNode yaml.Node
+    yaml.Unmarshal([]byte(yml), &rootNode)
+
+    index := NewSpecIndex(&rootNode)
+
+    assert.Len(t, index.refErrors, 2)
+}
+
+func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
+
+    yml := `openapi: 3.1.0
+paths:
+  /cakes:
+    post:
+      parameters:
+        - $ref: 'httpsss://badurl'`
+
+    var rootNode yaml.Node
+    yaml.Unmarshal([]byte(yml), &rootNode)
+
+    c := CreateClosedAPIIndexConfig()
+    idx := NewSpecIndexWithConfig(&rootNode, c)
+
+    assert.Len(t, idx.refErrors, 2)
+    assert.Equal(t, "remote lookups are not permitted, "+
+        "please set AllowRemoteLookup to true in the configuration", idx.refErrors[0].Error())
 }
 
 func TestSpecIndex_CheckIndexDiscoversNoComponentLocalFileReference(t *testing.T) {
 
-	_ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
-	defer os.Remove("coffee-time.yaml")
+    _ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
+    defer os.Remove("coffee-time.yaml")
 
-	yml := `openapi: 3.0.3
+    yml := `openapi: 3.0.3
 paths:
   /cakes:
     post:

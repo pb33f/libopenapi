@@ -325,9 +325,8 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
     var found []*Reference
 
     //run this async because when things get recursive, it can take a while
-    //c := make(chan bool)
-    //tm := make(chan bool)
-
+    c := make(chan bool)
+    
     locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
         located := index.FindComponent(ref.Definition, ref.Node)
         if located != nil {
@@ -351,7 +350,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
             }
             index.refErrors = append(index.refErrors, indexError)
         }
-        //c <- true
+        c <- true
     }
 
     var refsToCheck []*Reference
@@ -372,32 +371,19 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
         refsToCheck = append(refsToCheck, ref)
     }
     mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))
-    //go func() {
-    //    time.Sleep(20 * time.Second)
-    //    tm <- true
-    //}()
 
     for r := range refsToCheck {
         // expand our index of all mapped refs
-        // go locate(refsToCheck[r], r, mappedRefsInSequence)
-        locate(refsToCheck[r], r, mappedRefsInSequence)
+        go locate(refsToCheck[r], r, mappedRefsInSequence)
     }
 
-    //completedRefs := 0
-    //for completedRefs < len(refsToCheck) {
-    //    select {
-    //    case <-c:
-    //        completedRefs++
-    //        if completedRefs >= len(refsToCheck) {
-    //            fmt.Printf("done parsing on %d of %d refs\n", completedRefs, len(refsToCheck))
-    //            break
-    //        } else {
-    //            //fmt.Printf("waiting on %d of %d refs\n", completedRefs, len(refsToCheck))
-    //        }
-    //        //case <-tm:
-    //        //    panic("OH NO")
-    //    }
-    //}
+    completedRefs := 0
+    for completedRefs < len(refsToCheck) {
+        select {
+        case <-c:
+            completedRefs++
+        }
+    }
     for m := range mappedRefsInSequence {
         if mappedRefsInSequence[m] != nil {
             index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, mappedRefsInSequence[m])

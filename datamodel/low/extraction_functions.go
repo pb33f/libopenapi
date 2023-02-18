@@ -39,7 +39,6 @@ func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Re
 		idx.GetAllHeaders,
 		idx.GetAllCallbacks,
 		idx.GetAllLinks,
-		idx.GetAllExternalDocuments,
 		idx.GetAllExamples,
 		idx.GetAllRequestBodies,
 		idx.GetAllResponses,
@@ -51,6 +50,7 @@ func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Re
 // the reference being supplied. If there is a match found, the reference *yaml.Node is returned.
 func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 	if rf, _, rv := utils.IsNodeRefValue(root); rf {
+
 		// run through everything and return as soon as we find a match.
 		// this operates as fast as possible as ever
 		collections := generateIndexCollection(idx)
@@ -89,10 +89,13 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 			}
 		}
 
+		// perform a search for the reference in the index
 		foundRefs := idx.SearchIndexForReference(rv)
 		if len(foundRefs) > 0 {
 			return foundRefs[0].Node, nil
 		}
+
+		// let's try something else to find our references.
 
 		// cant be found? last resort is to try a path lookup
 		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
