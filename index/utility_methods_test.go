@@ -25,3 +25,9 @@ func TestGenerateCleanSpecConfigBaseURL_RelativeDeep(t *testing.T) {
     assert.Equal(t, "https://pb33f.io/things/stuff/foo/bar/baz/crap.yaml#thang",
         GenerateCleanSpecConfigBaseURL(u, path, true))
 }
+
+func TestSpecIndex_extractDefinitionRequiredRefProperties(t *testing.T) {
+    c := CreateOpenAPIIndexConfig()
+    idx := NewSpecIndexWithConfig(nil, c)
+    assert.Nil(t, idx.extractDefinitionRequiredRefProperties(nil, nil))
+}

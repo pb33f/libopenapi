@@ -296,11 +296,9 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
             } else {
                 j, _ = url.Parse(uri[0])
             }
-
             path := GenerateCleanSpecConfigBaseURL(j, uri[0], false)
-
-            newUrl, e := url.Parse(path)
-            if e == nil {
+            newUrl, _ := url.Parse(path)
+            if newUrl != nil {
                 newConfig := &SpecIndexConfig{
                     BaseURL:           newUrl,
                     AllowRemoteLookup: index.config.AllowRemoteLookup,
@@ -318,9 +316,6 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
                 index.AddChild(newIndex)
                 index.refLock.Unlock()
                 externalSpecIndex = newIndex
-
-            } else {
-                return nil
             }
         }
 

@@ -23,7 +23,7 @@ func TestSpecIndex_SearchIndexForReference(t *testing.T) {
     assert.NotNil(t, ref)
 }
 
-func TestSpecIndex_SearchIndexForReferene_ExternalSpecs(t *testing.T) {
+func TestSpecIndex_SearchIndexForReference_ExternalSpecs(t *testing.T) {
 
     // load up an index with lots of references
     petstore, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
@@ -45,5 +45,9 @@ func TestSpecIndex_SearchIndexForReferene_ExternalSpecs(t *testing.T) {
     ref = idx.SearchIndexForReference("../../shared/responses/server_error.yml")
     assert.NotNil(t, ref)
     assert.Equal(t, "description", ref[0].Node.Content[0].Value)
+
+    ref = idx.SearchIndexForReference("../models/options.yml")
+    assert.NotNil(t, ref)
+    assert.Equal(t, "kubernetes_options", ref[0].Node.Content[0].Value)
 
 }
