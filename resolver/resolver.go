@@ -168,7 +168,7 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *index.SpecIndex) {
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
 		var journey []*index.Reference
-		res.indexesVisited++
+		res.journeysTaken++
 		res.VisitReference(ref.Reference, seenReferences, journey, false)
 	}
 	schemas := idx.GetAllComponentSchemas()
@@ -176,7 +176,7 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *index.SpecIndex) {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
 			var journey []*index.Reference
-			res.indexesVisited++
+			res.journeysTaken++
 			res.VisitReference(schemaRef, seenReferences, journey, false)
 		}
 	}
