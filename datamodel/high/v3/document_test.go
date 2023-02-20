@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/url"
 	"testing"
@@ -413,6 +414,9 @@ func TestDigitalOceanAsDoc(t *testing.T) {
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
 	if err != nil {
+		for e := range err {
+			fmt.Println(err[e])
+		}
 		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
@@ -435,6 +439,9 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
 	if err != nil {
+		for e := range err {
+			fmt.Println(err[e])
+		}
 		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
