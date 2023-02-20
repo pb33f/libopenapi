@@ -4,8 +4,8 @@
 package v3
 
 import (
-	"fmt"
 	"io/ioutil"
+	"net/url"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -395,19 +395,52 @@ func TestAsanaAsDoc(t *testing.T) {
 		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
-	fmt.Println(d)
+	assert.NotNil(t, d)
+	assert.Equal(t, 118, len(d.Paths.PathItems))
 }
 
 func TestDigitalOceanAsDoc(t *testing.T) {
-	data, _ := ioutil.ReadFile("../../../test_specs/asana.yaml")
+	data, _ := ioutil.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowDoc, err = lowv3.CreateDocument(info)
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BaseURL:               baseURL,
+	}
+
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
 	if err != nil {
 		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
-	fmt.Println(d)
+	assert.NotNil(t, d)
+	assert.Equal(t, 183, len(d.Paths.PathItems))
+
+}
+
+func TestDigitalOceanAsDocFromSHA(t *testing.T) {
+	data, _ := ioutil.ReadFile("../../../test_specs/digitalocean.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err []error
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/82e1d558e15a59edc1d47d2c5544e7138f5b3cbf/specification")
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BaseURL:               baseURL,
+	}
+
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
+	if err != nil {
+		panic("broken something")
+	}
+	d := NewDocument(lowDoc)
+	assert.NotNil(t, d)
+	assert.Equal(t, 183, len(d.Paths.PathItems))
+
 }
 
 func TestPetstoreAsDoc(t *testing.T) {
@@ -419,7 +452,8 @@ func TestPetstoreAsDoc(t *testing.T) {
 		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
-	fmt.Println(d)
+	assert.NotNil(t, d)
+	assert.Equal(t, 13, len(d.Paths.PathItems))
 }
 
 func TestCircularReferencesDoc(t *testing.T) {

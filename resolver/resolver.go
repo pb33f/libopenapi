@@ -111,7 +111,7 @@ func (resolver *Resolver) GetIndexesVisited() int {
 	return resolver.indexesVisited
 }
 
-//
+// GetRelativesSeen returns the number of siblings (nodes at the same level) seen for each reference found.
 func (resolver *Resolver) GetRelativesSeen() int {
 	return resolver.relativesSeen
 }
