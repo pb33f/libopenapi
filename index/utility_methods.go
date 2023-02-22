@@ -261,7 +261,7 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
         return index.componentsInlineParamUniqueCount
     }
     unique := 0
-    for _, p := range index.paramInlineDuplicates {
+    for _, p := range index.paramInlineDuplicateNames {
         if len(p) == 1 {
             unique++
         }
@@ -279,13 +279,13 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
             paramRef := index.allMappedRefs[paramRefName]
 
             if index.paramOpRefs[pathItemNode.Value] == nil {
-                index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string]*Reference)
-                index.paramOpRefs[pathItemNode.Value][method] = make(map[string]*Reference)
+                index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)
+                index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
 
             }
             // if we know the path, but it's a new method
             if index.paramOpRefs[pathItemNode.Value][method] == nil {
-                index.paramOpRefs[pathItemNode.Value][method] = make(map[string]*Reference)
+                index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
             }
 
             // if this is a duplicate, add an error and ignore it
@@ -302,7 +302,8 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
                     Path: path,
                 })
             } else {
-                index.paramOpRefs[pathItemNode.Value][method][paramRefName] = paramRef
+                index.paramOpRefs[pathItemNode.Value][method][paramRefName] =
+                    append(index.paramOpRefs[pathItemNode.Value][method][paramRefName], paramRef)
             }
 
             continue
@@ -334,30 +335,47 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
                 Path:       path,
             }
             if index.paramOpRefs[pathItemNode.Value] == nil {
-                index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string]*Reference)
-                index.paramOpRefs[pathItemNode.Value][method] = make(map[string]*Reference)
+                index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)
+                index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
             }
 
             // if we know the path but this is a new method.
             if index.paramOpRefs[pathItemNode.Value][method] == nil {
-                index.paramOpRefs[pathItemNode.Value][method] = make(map[string]*Reference)
+                index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
             }
 
-            // if this is a duplicate, add an error and ignore it
-            if index.paramOpRefs[pathItemNode.Value][method][ref.Name] != nil {
-                path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
-                if method == "top" {
-                    path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
-                }
+            // if this is a duplicate name, check if the `in` type is also the same, if so, it's a duplicate.
+            if len(index.paramOpRefs[pathItemNode.Value][method][ref.Name]) > 0 {
 
-                index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
-                    Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
-                        "index %d has a duplicate name `%s`", method, pathItemNode.Value, i, vn.Value),
-                    Node: param,
-                    Path: path,
-                })
+                currentNode := ref.Node
+                checkNodes := index.paramOpRefs[pathItemNode.Value][method][ref.Name]
+                _, currentIn := utils.FindKeyNodeTop("in", currentNode.Content)
+
+                for _, checkNode := range checkNodes {
+
+                    _, checkIn := utils.FindKeyNodeTop("in", checkNode.Node.Content)
+
+                    if currentIn != nil && checkIn != nil && currentIn.Value == checkIn.Value {
+
+                        path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
+                        if method == "top" {
+                            path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
+                        }
+
+                        index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
+                            Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
+                                "index %d has a duplicate name `%s` and `in` type", method, pathItemNode.Value, i, vn.Value),
+                            Node: param,
+                            Path: path,
+                        })
+                    } else {
+                        index.paramOpRefs[pathItemNode.Value][method][ref.Name] =
+                            append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
+                    }
+                }
             } else {
-                index.paramOpRefs[pathItemNode.Value][method][ref.Name] = ref
+                index.paramOpRefs[pathItemNode.Value][method][ref.Name] =
+                    append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
             }
             continue
         }

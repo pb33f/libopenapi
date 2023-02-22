@@ -98,96 +98,96 @@ func CreateClosedAPIIndexConfig() *SpecIndexConfig {
 // quick direct access to paths, operations, tags are all available. No need to walk the entire node tree in rules,
 // everything is pre-walked if you need it.
 type SpecIndex struct {
-    allRefs                             map[string]*Reference                       // all (deduplicated) refs
-    rawSequencedRefs                    []*Reference                                // all raw references in sequence as they are scanned, not deduped.
-    linesWithRefs                       map[int]bool                                // lines that link to references.
-    allMappedRefs                       map[string]*Reference                       // these are the located mapped refs
-    allMappedRefsSequenced              []*ReferenceMapped                          // sequenced mapped refs
-    refsByLine                          map[string]map[int]bool                     // every reference and the lines it's referenced from
-    pathRefs                            map[string]map[string]*Reference            // all path references
-    paramOpRefs                         map[string]map[string]map[string]*Reference // params in operations.
-    paramCompRefs                       map[string]*Reference                       // params in components
-    paramAllRefs                        map[string]*Reference                       // combined components and ops
-    paramInlineDuplicates               map[string][]*Reference                     // inline params all with the same name
-    globalTagRefs                       map[string]*Reference                       // top level global tags
-    securitySchemeRefs                  map[string]*Reference                       // top level security schemes
-    requestBodiesRefs                   map[string]*Reference                       // top level request bodies
-    responsesRefs                       map[string]*Reference                       // top level responses
-    headersRefs                         map[string]*Reference                       // top level responses
-    examplesRefs                        map[string]*Reference                       // top level examples
-    securityRequirementRefs             map[string]map[string][]*Reference          // (NOT $ref) but a name based lookup for requirements
-    callbacksRefs                       map[string]map[string][]*Reference          // all links
-    linksRefs                           map[string]map[string][]*Reference          // all  callbacks
-    operationTagsRefs                   map[string]map[string][]*Reference          // tags found in operations
-    operationDescriptionRefs            map[string]map[string]*Reference            // descriptions in operations.
-    operationSummaryRefs                map[string]map[string]*Reference            // summaries in operations
-    callbackRefs                        map[string]*Reference                       // top level callback refs
-    serversRefs                         []*Reference                                // all top level server refs
-    rootServersNode                     *yaml.Node                                  // servers root node
-    opServersRefs                       map[string]map[string][]*Reference          // all operation level server overrides.
-    polymorphicRefs                     map[string]*Reference                       // every reference to a polymorphic ref
-    polymorphicAllOfRefs                []*Reference                                // every reference to 'allOf' references
-    polymorphicOneOfRefs                []*Reference                                // every reference to 'oneOf' references
-    polymorphicAnyOfRefs                []*Reference                                // every reference to 'anyOf' references
-    externalDocumentsRef                []*Reference                                // all external documents in spec
-    rootSecurity                        []*Reference                                // root security definitions.
-    rootSecurityNode                    *yaml.Node                                  // root security node.
-    refsWithSiblings                    map[string]Reference                        // references with sibling elements next to them
-    pathRefsLock                        sync.Mutex                                  // create lock for all refs maps, we want to build data as fast as we can
-    externalDocumentsCount              int                                         // number of externalDocument nodes found
-    operationTagsCount                  int                                         // number of unique tags in operations
-    globalTagsCount                     int                                         // number of global tags defined
-    totalTagsCount                      int                                         // number unique tags in spec
-    securitySchemesCount                int                                         // security schemes
-    globalRequestBodiesCount            int                                         // component request bodies
-    globalResponsesCount                int                                         // component responses
-    globalHeadersCount                  int                                         // component headers
-    globalExamplesCount                 int                                         // component examples
-    globalLinksCount                    int                                         // component links
-    globalCallbacksCount                int                                         // component callbacks
-    globalCallbacks                     int                                         // component callbacks.
-    pathCount                           int                                         // number of paths
-    operationCount                      int                                         // number of operations
-    operationParamCount                 int                                         // number of params defined in operations
-    componentParamCount                 int                                         // number of params defined in components
-    componentsInlineParamUniqueCount    int                                         // number of inline params with unique names
-    componentsInlineParamDuplicateCount int                                         // number of inline params with duplicate names
-    schemaCount                         int                                         // number of schemas
-    refCount                            int                                         // total ref count
-    root                                *yaml.Node                                  // the root document
-    pathsNode                           *yaml.Node                                  // paths node
-    tagsNode                            *yaml.Node                                  // tags node
-    componentsNode                      *yaml.Node                                  // components node
-    parametersNode                      *yaml.Node                                  // components/parameters node
-    allParametersNode                   map[string]*Reference                       // all parameters node
-    allParameters                       map[string]*Reference                       // all parameters (components/defs)
-    schemasNode                         *yaml.Node                                  // components/schemas node
-    allInlineSchemaDefinitions          []*Reference                                // all schemas found in document outside of components (openapi) or definitions (swagger).
-    allInlineSchemaObjectDefinitions    []*Reference                                // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
-    allComponentSchemaDefinitions       map[string]*Reference                       // all schemas found in components (openapi) or definitions (swagger).
-    securitySchemesNode                 *yaml.Node                                  // components/securitySchemes node
-    allSecuritySchemes                  map[string]*Reference                       // all security schemes / definitions.
-    requestBodiesNode                   *yaml.Node                                  // components/requestBodies node
-    allRequestBodies                    map[string]*Reference                       // all request bodies
-    responsesNode                       *yaml.Node                                  // components/responses node
-    allResponses                        map[string]*Reference                       // all responses
-    headersNode                         *yaml.Node                                  // components/headers node
-    allHeaders                          map[string]*Reference                       // all headers
-    examplesNode                        *yaml.Node                                  // components/examples node
-    allExamples                         map[string]*Reference                       // all components examples
-    linksNode                           *yaml.Node                                  // components/links node
-    allLinks                            map[string]*Reference                       // all links
-    callbacksNode                       *yaml.Node                                  // components/callbacks node
-    allCallbacks                        map[string]*Reference                       // all components examples
-    externalDocumentsNode               *yaml.Node                                  // external documents node
-    allExternalDocuments                map[string]*Reference                       // all external documents
-    externalSpecIndex                   map[string]*SpecIndex                       // create a primary index of all external specs and componentIds
-    refErrors                           []error                                     // errors when indexing references
-    operationParamErrors                []error                                     // errors when indexing parameters
-    allDescriptions                     []*DescriptionReference                     // every single description found in the spec.
-    allSummaries                        []*DescriptionReference                     // every single summary found in the spec.
-    allEnums                            []*EnumReference                            // every single enum found in the spec.
-    allObjectsWithProperties            []*ObjectReference                          // every single object with properties found in the spec.
+    allRefs                             map[string]*Reference                         // all (deduplicated) refs
+    rawSequencedRefs                    []*Reference                                  // all raw references in sequence as they are scanned, not deduped.
+    linesWithRefs                       map[int]bool                                  // lines that link to references.
+    allMappedRefs                       map[string]*Reference                         // these are the located mapped refs
+    allMappedRefsSequenced              []*ReferenceMapped                            // sequenced mapped refs
+    refsByLine                          map[string]map[int]bool                       // every reference and the lines it's referenced from
+    pathRefs                            map[string]map[string]*Reference              // all path references
+    paramOpRefs                         map[string]map[string]map[string][]*Reference // params in operations.
+    paramCompRefs                       map[string]*Reference                         // params in components
+    paramAllRefs                        map[string]*Reference                         // combined components and ops
+    paramInlineDuplicateNames           map[string][]*Reference                       // inline params all with the same name
+    globalTagRefs                       map[string]*Reference                         // top level global tags
+    securitySchemeRefs                  map[string]*Reference                         // top level security schemes
+    requestBodiesRefs                   map[string]*Reference                         // top level request bodies
+    responsesRefs                       map[string]*Reference                         // top level responses
+    headersRefs                         map[string]*Reference                         // top level responses
+    examplesRefs                        map[string]*Reference                         // top level examples
+    securityRequirementRefs             map[string]map[string][]*Reference            // (NOT $ref) but a name based lookup for requirements
+    callbacksRefs                       map[string]map[string][]*Reference            // all links
+    linksRefs                           map[string]map[string][]*Reference            // all  callbacks
+    operationTagsRefs                   map[string]map[string][]*Reference            // tags found in operations
+    operationDescriptionRefs            map[string]map[string]*Reference              // descriptions in operations.
+    operationSummaryRefs                map[string]map[string]*Reference              // summaries in operations
+    callbackRefs                        map[string]*Reference                         // top level callback refs
+    serversRefs                         []*Reference                                  // all top level server refs
+    rootServersNode                     *yaml.Node                                    // servers root node
+    opServersRefs                       map[string]map[string][]*Reference            // all operation level server overrides.
+    polymorphicRefs                     map[string]*Reference                         // every reference to a polymorphic ref
+    polymorphicAllOfRefs                []*Reference                                  // every reference to 'allOf' references
+    polymorphicOneOfRefs                []*Reference                                  // every reference to 'oneOf' references
+    polymorphicAnyOfRefs                []*Reference                                  // every reference to 'anyOf' references
+    externalDocumentsRef                []*Reference                                  // all external documents in spec
+    rootSecurity                        []*Reference                                  // root security definitions.
+    rootSecurityNode                    *yaml.Node                                    // root security node.
+    refsWithSiblings                    map[string]Reference                          // references with sibling elements next to them
+    pathRefsLock                        sync.Mutex                                    // create lock for all refs maps, we want to build data as fast as we can
+    externalDocumentsCount              int                                           // number of externalDocument nodes found
+    operationTagsCount                  int                                           // number of unique tags in operations
+    globalTagsCount                     int                                           // number of global tags defined
+    totalTagsCount                      int                                           // number unique tags in spec
+    securitySchemesCount                int                                           // security schemes
+    globalRequestBodiesCount            int                                           // component request bodies
+    globalResponsesCount                int                                           // component responses
+    globalHeadersCount                  int                                           // component headers
+    globalExamplesCount                 int                                           // component examples
+    globalLinksCount                    int                                           // component links
+    globalCallbacksCount                int                                           // component callbacks
+    globalCallbacks                     int                                           // component callbacks.
+    pathCount                           int                                           // number of paths
+    operationCount                      int                                           // number of operations
+    operationParamCount                 int                                           // number of params defined in operations
+    componentParamCount                 int                                           // number of params defined in components
+    componentsInlineParamUniqueCount    int                                           // number of inline params with unique names
+    componentsInlineParamDuplicateCount int                                           // number of inline params with duplicate names
+    schemaCount                         int                                           // number of schemas
+    refCount                            int                                           // total ref count
+    root                                *yaml.Node                                    // the root document
+    pathsNode                           *yaml.Node                                    // paths node
+    tagsNode                            *yaml.Node                                    // tags node
+    componentsNode                      *yaml.Node                                    // components node
+    parametersNode                      *yaml.Node                                    // components/parameters node
+    allParametersNode                   map[string]*Reference                         // all parameters node
+    allParameters                       map[string]*Reference                         // all parameters (components/defs)
+    schemasNode                         *yaml.Node                                    // components/schemas node
+    allInlineSchemaDefinitions          []*Reference                                  // all schemas found in document outside of components (openapi) or definitions (swagger).
+    allInlineSchemaObjectDefinitions    []*Reference                                  // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
+    allComponentSchemaDefinitions       map[string]*Reference                         // all schemas found in components (openapi) or definitions (swagger).
+    securitySchemesNode                 *yaml.Node                                    // components/securitySchemes node
+    allSecuritySchemes                  map[string]*Reference                         // all security schemes / definitions.
+    requestBodiesNode                   *yaml.Node                                    // components/requestBodies node
+    allRequestBodies                    map[string]*Reference                         // all request bodies
+    responsesNode                       *yaml.Node                                    // components/responses node
+    allResponses                        map[string]*Reference                         // all responses
+    headersNode                         *yaml.Node                                    // components/headers node
+    allHeaders                          map[string]*Reference                         // all headers
+    examplesNode                        *yaml.Node                                    // components/examples node
+    allExamples                         map[string]*Reference                         // all components examples
+    linksNode                           *yaml.Node                                    // components/links node
+    allLinks                            map[string]*Reference                         // all links
+    callbacksNode                       *yaml.Node                                    // components/callbacks node
+    allCallbacks                        map[string]*Reference                         // all components examples
+    externalDocumentsNode               *yaml.Node                                    // external documents node
+    allExternalDocuments                map[string]*Reference                         // all external documents
+    externalSpecIndex                   map[string]*SpecIndex                         // create a primary index of all external specs and componentIds
+    refErrors                           []error                                       // errors when indexing references
+    operationParamErrors                []error                                       // errors when indexing parameters
+    allDescriptions                     []*DescriptionReference                       // every single description found in the spec.
+    allSummaries                        []*DescriptionReference                       // every single summary found in the spec.
+    allEnums                            []*EnumReference                              // every single enum found in the spec.
+    allObjectsWithProperties            []*ObjectReference                            // every single object with properties found in the spec.
     enumCount                           int
     descriptionCount                    int
     summaryCount                        int

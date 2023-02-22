@@ -202,7 +202,7 @@ func (index *SpecIndex) GetMappedReferencesSequenced() []*ReferenceMapped {
 }
 
 // GetOperationParameterReferences will return all references to operation parameters
-func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]map[string]*Reference {
+func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]map[string][]*Reference {
 	return index.paramOpRefs
 }
 
@@ -310,7 +310,7 @@ func (index *SpecIndex) GetAllCallbacks() map[string]*Reference {
 
 // GetInlineOperationDuplicateParameters will return a map of duplicates located in operation parameters.
 func (index *SpecIndex) GetInlineOperationDuplicateParameters() map[string][]*Reference {
-	return index.paramInlineDuplicates
+	return index.paramInlineDuplicateNames
 }
 
 // GetReferencesWithSiblings will return a map of all the references with sibling nodes (illegal)
@@ -359,7 +359,7 @@ func (index *SpecIndex) GetOperationTags() map[string]map[string][]*Reference {
 }
 
 // GetAllParametersFromOperations will return all paths indexed in the document
-func (index *SpecIndex) GetAllParametersFromOperations() map[string]map[string]map[string]*Reference {
+func (index *SpecIndex) GetAllParametersFromOperations() map[string]map[string]map[string][]*Reference {
 	return index.paramOpRefs
 }
 
@@ -1104,14 +1104,23 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 		for mName, mValue := range params {
 			for pName, pValue := range mValue {
 				if !strings.HasPrefix(pName, "#") {
-					index.paramInlineDuplicates[pName] = append(index.paramInlineDuplicates[pName], pValue)
-					index.paramAllRefs[fmt.Sprintf("%s:::%s", path, mName)] = pValue
+					index.paramInlineDuplicateNames[pName] = append(index.paramInlineDuplicateNames[pName], pValue...)
+					for i := range pValue {
+						if pValue[i] != nil {
+							_, in := utils.FindKeyNodeTop("in", pValue[i].Node.Content)
+							if in != nil {
+								index.paramAllRefs[fmt.Sprintf("%s:::%s:::%s", path, mName, in.Value)] = pValue[i]
+							} else {
+								index.paramAllRefs[fmt.Sprintf("%s:::%s", path, mName)] = pValue[i]
+							}
+						}
+					}
 				}
 			}
 		}
 	}
 
-	index.operationParamCount = len(index.paramCompRefs) + len(index.paramInlineDuplicates)
+	index.operationParamCount = len(index.paramCompRefs) + len(index.paramInlineDuplicateNames)
 	return index.operationParamCount
 }
 
@@ -1120,7 +1129,7 @@ func (index *SpecIndex) GetInlineDuplicateParamCount() int {
 	if index.componentsInlineParamDuplicateCount > 0 {
 		return index.componentsInlineParamDuplicateCount
 	}
-	dCount := len(index.paramInlineDuplicates) - index.countUniqueInlineDuplicates()
+	dCount := len(index.paramInlineDuplicateNames) - index.countUniqueInlineDuplicates()
 	index.componentsInlineParamDuplicateCount = dCount
 	return dCount
 }
