@@ -638,10 +638,6 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		s.XML = low.NodeReference[*XML]{Value: &xml, KeyNode: xmlLabel, ValueNode: xmlNode}
 	}
 
-	/*
-
-	 */
-
 	// handle properties
 	props, err := buildPropertyMap(root, idx, PropertiesLabel)
 	if err != nil {
