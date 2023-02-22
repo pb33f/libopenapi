@@ -247,6 +247,19 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
     if index.root != nil {
+
+        // check component for url encoding.
+        if strings.Contains(componentId, "%") {
+            // decode the url.
+            var err error
+            componentId, err = url.QueryUnescape(componentId)
+            if err != nil {
+                // TODO: this is a fatal problem.
+                // we need some logging or something in here.
+                return nil
+            }
+        }
+
         name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
         path, err := yamlpath.NewPath(friendlySearch)
         if path == nil || err != nil {
