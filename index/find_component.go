@@ -251,13 +251,7 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
         // check component for url encoding.
         if strings.Contains(componentId, "%") {
             // decode the url.
-            var err error
-            componentId, err = url.QueryUnescape(componentId)
-            if err != nil {
-                // TODO: this is a fatal problem.
-                // we need some logging or something in here.
-                return nil
-            }
+            componentId, _ = url.QueryUnescape(componentId)
         }
 
         name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
