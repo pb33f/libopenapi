@@ -661,7 +661,7 @@ paths:
 
 	index := NewSpecIndex(&rootNode)
 
-	assert.NotNil(t, index.GetAllParametersFromOperations()["/cakes"]["post"]["coffee-time.yaml"].Node)
+	assert.NotNil(t, index.GetAllParametersFromOperations()["/cakes"]["post"]["coffee-time.yaml"][0].Node)
 }
 
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
@@ -775,18 +775,18 @@ components:
 	if assert.Contains(t, params, "/") {
 		if assert.Contains(t, params["/"], "top") {
 			if assert.Contains(t, params["/"]["top"], "#/components/parameters/param1") {
-				assert.Equal(t, "$.components.parameters.param1", params["/"]["top"]["#/components/parameters/param1"].Path)
+				assert.Equal(t, "$.components.parameters.param1", params["/"]["top"]["#/components/parameters/param1"][0].Path)
 			}
 			if assert.Contains(t, params["/"]["top"], "paramour.yaml#/components/parameters/param3") {
-				assert.Equal(t, "$.components.parameters.param3", params["/"]["top"]["paramour.yaml#/components/parameters/param3"].Path)
+				assert.Equal(t, "$.components.parameters.param3", params["/"]["top"]["paramour.yaml#/components/parameters/param3"][0].Path)
 			}
 		}
 		if assert.Contains(t, params["/"], "get") {
 			if assert.Contains(t, params["/"]["get"], "#/components/parameters/param2") {
-				assert.Equal(t, "$.components.parameters.param2", params["/"]["get"]["#/components/parameters/param2"].Path)
+				assert.Equal(t, "$.components.parameters.param2", params["/"]["get"]["#/components/parameters/param2"][0].Path)
 			}
 			if assert.Contains(t, params["/"]["get"], "test") {
-				assert.Equal(t, "$.paths./.get.parameters[2]", params["/"]["get"]["test"].Path)
+				assert.Equal(t, "$.paths./.get.parameters[2]", params["/"]["get"]["test"][0].Path)
 			}
 		}
 	}
@@ -852,6 +852,103 @@ func TestSpecIndex_schemaComponentsHaveParentsAndPaths(t *testing.T) {
 		assert.NotNil(t, schema.ParentNode)
 		assert.Equal(t, fmt.Sprintf("$.components.schemas.%s", schema.Name), schema.Path)
 	}
+}
+
+func TestSpecIndex_ParamsWithDuplicateNamesButUniqueInTypes(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+ title: Test
+ version: 0.0.1
+servers:
+ - url: http://localhost:35123
+paths:
+ /example/{action}:
+  parameters:
+   - name: fastAction
+     in: path
+     required: true
+     schema:
+      type: string
+   - name: fastAction
+     in: query
+     required: true
+     schema:
+      type: string
+  get:
+     operationId: example
+     parameters:
+       - name: action
+         in: path
+         required: true
+         schema:
+           type: string
+       - name: action
+         in: query
+         required: true
+         schema:
+           type: string
+     responses:
+       "200":
+         description: OK`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	idx := NewSpecIndex(&rootNode)
+
+	assert.Len(t, idx.paramAllRefs, 4)
+	assert.Len(t, idx.paramInlineDuplicateNames, 2)
+	assert.Len(t, idx.operationParamErrors, 0)
+	assert.Len(t, idx.refErrors, 0)
+
+}
+
+func TestSpecIndex_ParamsWithDuplicateNamesAndSameInTypes(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+ title: Test
+ version: 0.0.1
+servers:
+ - url: http://localhost:35123
+paths:
+ /example/{action}:
+  parameters:
+   - name: fastAction
+     in: path
+     required: true
+     schema:
+      type: string
+   - name: fastAction
+     in: path
+     required: true
+     schema:
+      type: string
+  get:
+     operationId: example
+     parameters:
+       - name: action
+         in: path
+         required: true
+         schema:
+           type: string
+       - name: action
+         in: query
+         required: true
+         schema:
+           type: string
+     responses:
+       "200":
+         description: OK`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	idx := NewSpecIndex(&rootNode)
+
+	assert.Len(t, idx.paramAllRefs, 3)
+	assert.Len(t, idx.paramInlineDuplicateNames, 2)
+	assert.Len(t, idx.operationParamErrors, 1)
+	assert.Len(t, idx.refErrors, 0)
 }
 
 func TestSpecIndex_foundObjectsWithProperties(t *testing.T) {
