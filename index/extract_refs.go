@@ -177,8 +177,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
                         IsSummary: false,
                     }
 
-                    index.allDescriptions = append(index.allDescriptions, ref)
-                    index.descriptionCount++
+                    if !utils.IsNodeMap(ref.Node) {
+                        index.allDescriptions = append(index.allDescriptions, ref)
+                        index.descriptionCount++
+                    }
                 }
 
                 if n.Value == "summary" {
