@@ -35,3 +35,31 @@ paths:
     assert.Len(t, idx.allDescriptions, 2)
     assert.Equal(t, 2, idx.descriptionCount)
 }
+
+func TestSpecIndex_ExtractRefs_CheckPropertiesForInlineSchema(t *testing.T) {
+
+    yml := `openapi: 3.1.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  test:
+                    type: array
+                    items: true
+   `
+    var rootNode yaml.Node
+    _ = yaml.Unmarshal([]byte(yml), &rootNode)
+    c := CreateOpenAPIIndexConfig()
+    idx := NewSpecIndexWithConfig(&rootNode, c)
+    assert.Len(t, idx.allInlineSchemaDefinitions, 2)
+    assert.Len(t, idx.allInlineSchemaObjectDefinitions, 1)
+}
