@@ -302,8 +302,10 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
                     Path: path,
                 })
             } else {
-                index.paramOpRefs[pathItemNode.Value][method][paramRefName] =
-                    append(index.paramOpRefs[pathItemNode.Value][method][paramRefName], paramRef)
+                if paramRef != nil {
+                    index.paramOpRefs[pathItemNode.Value][method][paramRefName] =
+                        append(index.paramOpRefs[pathItemNode.Value][method][paramRefName], paramRef)
+                }
             }
 
             continue
