@@ -47,7 +47,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
                 }
                 ref := &Reference{
                     Node: node.Content[i+1],
-                    Path: fmt.Sprintf("$.%s", strings.Join(seenPath, ".")),
+                    Path: fmt.Sprintf("$.%s.schema", strings.Join(seenPath, ".")),
                 }
                 index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
 
@@ -57,6 +57,40 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
                 if k != nil && v != nil {
                     if v.Value == "object" || v.Value == "array" {
                         index.allInlineSchemaObjectDefinitions = append(index.allInlineSchemaObjectDefinitions, ref)
+                    }
+                }
+            }
+
+            // Perform the same check for all properties in an inline schema definition
+            // https://github.com/pb33f/libopenapi/issues/76
+            if i%2 == 0 && n.Value == "properties" && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+                isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
+                if isRef {
+                    continue
+                }
+
+                // for each property add it to our schema definitions
+                label := ""
+                for h, prop := range node.Content[i+1].Content {
+
+                    if h%2 == 0 {
+                        label = prop.Value
+                        continue
+                    }
+
+                    ref := &Reference{
+                        Node: prop,
+                        Path: fmt.Sprintf("$.%s.properties.%s", strings.Join(seenPath, "."), label),
+                    }
+                    index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
+
+                    // check if the schema is an object or an array,
+                    // and if so, add it to the list of inline schema object definitions.
+                    k, v := utils.FindKeyNodeTop("type", node.Content[i+1].Content)
+                    if k != nil && v != nil {
+                        if v.Value == "object" || v.Value == "array" {
+                            index.allInlineSchemaObjectDefinitions = append(index.allInlineSchemaObjectDefinitions, ref)
+                        }
                     }
                 }
             }
