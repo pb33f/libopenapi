@@ -956,7 +956,7 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 					refString = l
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
-						prop.Content[1].Value, prop.Content[1].Column, prop.Content[1].Line)
+						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
 			totalProps++
