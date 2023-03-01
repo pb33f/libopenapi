@@ -43,6 +43,7 @@ type HasExtensions[T any] interface {
 type HasValue[T any] interface {
 	GetValue() T
 	GetValueNode() *yaml.Node
+	IsEmpty() bool
 	*T
 }
 
