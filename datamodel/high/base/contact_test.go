@@ -56,3 +56,25 @@ email: buckaroo@pb33f.io`
 	fmt.Print(highContact.Name)
 	// Output: Buckaroo
 }
+
+func TestContact_MarshalYAML(t *testing.T) {
+
+	highC := &Contact{Name: "dave", URL: "https://pb33f.io", Email: "dave@pb33f.io"}
+	dat, _ := highC.Render()
+
+	// unmarshal yaml into a *yaml.Node instance
+	var cNode yaml.Node
+	_ = yaml.Unmarshal(dat, &cNode)
+
+	// build low
+	var lowContact lowbase.Contact
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowContact)
+
+	// build high
+	highContact := NewContact(&lowContact)
+
+	assert.Equal(t, "dave", highContact.Name)
+	assert.Equal(t, "dave@pb33f.io", highContact.Email)
+	assert.Equal(t, "https://pb33f.io", highContact.URL)
+
+}

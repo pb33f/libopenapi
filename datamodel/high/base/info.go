@@ -6,6 +6,7 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // Info represents a high-level Info object as defined by both OpenAPI 2 and OpenAPI 3.
@@ -16,13 +17,13 @@ import (
 //	v2 - https://swagger.io/specification/v2/#infoObject
 //	v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
-	Title          string
-	Summary        string
-	Description    string
-	TermsOfService string
-	Contact        *Contact
-	License        *License
-	Version        string
+	Summary        string   `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Title          string   `json:"title,omitempty" yaml:"title,omitempty"`
+	Description    string   `json:"description,omitempty" yaml:"description,omitempty"`
+	TermsOfService string   `json:"termsOfService,omitempty" yaml:"termsOfService,omitempty"`
+	Contact        *Contact `json:"contact,omitempty" yaml:"contact,omitempty"`
+	License        *License `json:"license,omitempty" yaml:"license,omitempty"`
+	Version        string   `json:"version,omitempty" yaml:"version,omitempty"`
 	Extensions     map[string]any
 	low            *low.Info
 }
@@ -61,4 +62,25 @@ func NewInfo(info *low.Info) *Info {
 // GoLow will return the low-level Info instance that was used to create the high-level one.
 func (i *Info) GoLow() *low.Info {
 	return i.low
+}
+
+// Render will return a YAML representation of the Info object as a byte slice.
+func (i *Info) Render() ([]byte, error) {
+	return yaml.Marshal(i)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Info object.
+func (i *Info) MarshalYAML() (interface{}, error) {
+	if i == nil {
+		return nil, nil
+	}
+	n := high.CreateEmptyMapNode()
+	high.AddYAMLNode(n, low.TitleLabel, i.Title)
+	high.AddYAMLNode(n, low.DescriptionLabel, i.Description)
+	high.AddYAMLNode(n, low.TermsOfServiceLabel, i.TermsOfService)
+	high.AddYAMLNode(n, low.ContactLabel, i.Contact)
+	high.AddYAMLNode(n, low.LicenseLabel, i.License)
+	high.AddYAMLNode(n, low.VersionLabel, i.Version)
+	high.MarshalExtensions(n, i.Extensions)
+	return n, nil
 }

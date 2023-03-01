@@ -14,6 +14,7 @@
 package libopenapi
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/pb33f/libopenapi/index"
@@ -55,19 +56,39 @@ type Document interface {
 	// any other types.
 	BuildV3Model() (*DocumentModel[v3high.Document], []error)
 
+	// RenderAndReload will render the high level model as it currently exists (including any mutations, additions
+	// and removals to and from any object in the tree). It will then reload the low level model with the new bytes
+	// extracted from the model that was re-rendered. This is useful if you want to make changes to the high level model
+	// and then 'reload' the model into memory, so that line numbers and column numbers are correct and all update
+	// according to the changes made.
+	//
+	// The method returns the raw YAML bytes that were rendered, and any errors that occurred during rebuilding of the model.
+	// This is a destructive operation, and will re-build the entire model from scratch using the new bytes, so any
+	// references to the old model will be lost. The second return is the new Document that was created, and the third
+	// return is any errors hit trying to re-render.
+	//
+	// **IMPORTANT** This method only supports OpenAPI Documents. The Swagger model will not support mutations correctly
+	// and will not update when called. This choice has been made because we don't want to continue supporting Swagger,
+	// it's too old, so it should be motivation to upgrade to OpenAPI 3.
+	RenderAndReload() ([]byte, *Document, *DocumentModel[v3high.Document], []error)
+
 	// Serialize will re-render a Document back into a []byte slice. If any modifications have been made to the
 	// underlying data model using low level APIs, then those changes will be reflected in the serialized output.
 	//
 	// It's important to know that this should not be used if the resolver has been used on a specification to
 	// for anything other than checking for circular references. If the resolver is used to resolve the spec, then this
 	// method may spin out forever if the specification backing the model has circular references.
+	// Deprecated: This method is deprecated and will be removed in a future release. Use RenderAndReload() instead.
+	// This method does not support mutations correctly.
 	Serialize() ([]byte, error)
 }
 
 type document struct {
-	version string
-	info    *datamodel.SpecInfo
-	config  *datamodel.DocumentConfiguration
+	version           string
+	info              *datamodel.SpecInfo
+	config            *datamodel.DocumentConfiguration
+	highOpenAPI3Model *DocumentModel[v3high.Document]
+	highSwaggerModel  *DocumentModel[v2high.Swagger]
 }
 
 // DocumentModel represents either a Swagger document (version 2) or an OpenAPI document (version 3) that is
@@ -135,7 +156,31 @@ func (d *document) Serialize() ([]byte, error) {
 	}
 }
 
+func (d *document) RenderAndReload() ([]byte, *Document, *DocumentModel[v3high.Document], []error) {
+	if d.highSwaggerModel != nil && d.highOpenAPI3Model == nil {
+		return nil, nil, nil, []error{errors.New("this method only supports OpenAPI 3 documents, not Swagger")}
+	}
+	newBytes, err := d.highOpenAPI3Model.Model.Render()
+	if err != nil {
+		return newBytes, nil, nil, []error{err}
+	}
+	newDoc, err := NewDocument(newBytes)
+	if err != nil {
+		return newBytes, &newDoc, nil, []error{err}
+	}
+	// build the model.
+	model, errs := newDoc.BuildV3Model()
+	if errs != nil {
+		return newBytes, &newDoc, model, errs
+	}
+	// this document is now dead, long live the new document!
+	return newBytes, &newDoc, model, nil
+}
+
 func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
+	if d.highSwaggerModel != nil {
+		return d.highSwaggerModel, nil
+	}
 	var errors []error
 	if d.info == nil {
 		errors = append(errors, fmt.Errorf("unable to build swagger document, no specification has been loaded"))
@@ -168,13 +213,17 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 		}
 	}
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
-	return &DocumentModel[v2high.Swagger]{
+	d.highSwaggerModel = &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
-	}, errors
+	}
+	return d.highSwaggerModel, errors
 }
 
 func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
+	if d.highOpenAPI3Model != nil {
+		return d.highOpenAPI3Model, nil
+	}
 	var errors []error
 	if d.info == nil {
 		errors = append(errors, fmt.Errorf("unable to build document, no specification has been loaded"))
@@ -207,10 +256,11 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		}
 	}
 	highDoc := v3high.NewDocument(lowDoc)
-	return &DocumentModel[v3high.Document]{
+	d.highOpenAPI3Model = &DocumentModel[v3high.Document]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
-	}, errors
+	}
+	return d.highOpenAPI3Model, errors
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct

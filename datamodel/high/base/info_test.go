@@ -106,3 +106,50 @@ url: https://opensource.org/licenses/MIT`
 	fmt.Print(highLicense.Name)
 	// Output: MIT
 }
+
+func TestInfo_Render(t *testing.T) {
+
+	ext := make(map[string]any)
+
+	ext["x-pizza"] = "pepperoni"
+
+	highI := &Info{
+		Title:          "hey",
+		Description:    "there you",
+		TermsOfService: "have you got any money",
+		Contact: &Contact{
+			Name:  "buckaroo",
+			Email: "buckaroo@pb33f.io",
+		},
+		License: &License{
+			Name: "MIT",
+			URL:  "https://opensource.org/licenses/MIT",
+		},
+		Version:    "1.2.3",
+		Extensions: ext,
+	}
+
+	dat, _ := highI.Render()
+
+	// unmarshal yaml into a *yaml.Node instance
+	var cNode yaml.Node
+	_ = yaml.Unmarshal(dat, &cNode)
+
+	// build low
+	var lowInfo lowbase.Info
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowInfo)
+	_ = lowInfo.Build(cNode.Content[0], nil)
+
+	// build high
+	highInfo := NewInfo(&lowInfo)
+
+	assert.Equal(t, "hey", highInfo.Title)
+	assert.Equal(t, "there you", highInfo.Description)
+	assert.Equal(t, "have you got any money", highInfo.TermsOfService)
+	assert.Equal(t, "buckaroo", highInfo.Contact.Name)
+	assert.Equal(t, "buckaroo@pb33f.io", highInfo.Contact.Email)
+	assert.Equal(t, "MIT", highInfo.License.Name)
+	assert.Equal(t, "https://opensource.org/licenses/MIT", highInfo.License.URL)
+	assert.Equal(t, "1.2.3", highInfo.Version)
+	assert.Equal(t, "pepperoni", highInfo.Extensions["x-pizza"])
+}

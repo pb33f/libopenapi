@@ -4,15 +4,17 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // License is a high-level representation of a License object as defined by OpenAPI 2 and OpenAPI 3
 //  v2 - https://swagger.io/specification/v2/#licenseObject
 //  v3 - https://spec.openapis.org/oas/v3.1.0#license-object
 type License struct {
-	Name string
-	URL  string
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+	URL  string `json:"url,omitempty" yaml:"url,omitempty"`
 	low  *low.License
 }
 
@@ -32,4 +34,20 @@ func NewLicense(license *low.License) *License {
 // GoLow will return the low-level License used to create the high-level one.
 func (l *License) GoLow() *low.License {
 	return l.low
+}
+
+// Render will return a YAML representation of the License object as a byte slice.
+func (l *License) Render() ([]byte, error) {
+	return yaml.Marshal(l)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the License object.
+func (l *License) MarshalYAML() (interface{}, error) {
+	if l == nil {
+		return nil, nil
+	}
+	n := high.CreateEmptyMapNode()
+	high.AddYAMLNode(n, low.NameLabel, l.Name)
+	high.AddYAMLNode(n, low.URLLabel, l.URL)
+	return n, nil
 }

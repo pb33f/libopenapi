@@ -473,3 +473,25 @@ func TestCircularReferencesDoc(t *testing.T) {
 	assert.Len(t, d.Components.Schemas, 9)
 	assert.Len(t, d.Index.GetCircularReferences(), 3)
 }
+
+func TestDocument_MarshalYAML(t *testing.T) {
+
+	// create a new document
+	initTest()
+	h := NewDocument(lowDoc)
+
+	// render the document to YAML
+
+	r, _ := h.Render()
+
+	info, _ := datamodel.ExtractSpecInfo(r)
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	highDoc := NewDocument(lowDoc)
+
+	assert.Equal(t, "3.1.0", highDoc.Version)
+
+	// TODO: COMPLETE THIS
+
+}
+
+
