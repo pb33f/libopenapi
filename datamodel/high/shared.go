@@ -13,7 +13,12 @@
 // those models, things like key/value breakdown of each value, lines, column, source comments etc.
 package high
 
-import "github.com/pb33f/libopenapi/datamodel/low"
+import (
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"gopkg.in/yaml.v3"
+	"reflect"
+	"strconv"
+)
 
 // GoesLow is used to represent any high-level model. All high level models meet this interface and can be used to
 // extract low-level models from any high-level model.
@@ -63,4 +68,75 @@ func UnpackExtensions[T any, R low.HasExtensions[T]](low GoesLow[R]) (map[string
 		m[key] = g
 	}
 	return m, nil
+}
+
+// MarshalExtensions is a convenience function that makes it easy and simple to marshal an objects extensions into a
+// map that can then correctly rendered back down in to YAML.
+func MarshalExtensions(parent *yaml.Node, extensions map[string]any) {
+	for k := range extensions {
+		AddYAMLNode(parent, k, extensions[k])
+	}
+}
+
+func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
+
+	if value == nil {
+		return parent
+	}
+
+	// check the type
+	t := reflect.TypeOf(value)
+	l := CreateStringNode(key)
+	var valueNode *yaml.Node
+	switch t.Kind() {
+	case reflect.String:
+		if value.(string) == "" {
+			return parent
+		}
+		valueNode = CreateStringNode(value.(string))
+	case reflect.Int:
+		valueNode = CreateIntNode(value.(int))
+	case reflect.Struct:
+		panic("no way dude")
+	case reflect.Ptr:
+		rawRender, _ := value.(Renderable).MarshalYAML()
+		if rawRender != nil {
+			valueNode = rawRender.(*yaml.Node)
+		} else {
+			return parent
+		}
+	}
+	parent.Content = append(parent.Content, l, valueNode)
+	return parent
+}
+
+func CreateEmptyMapNode() *yaml.Node {
+	n := &yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+	}
+	return n
+}
+
+func CreateStringNode(str string) *yaml.Node {
+	n := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!str",
+		Value: str,
+	}
+	return n
+}
+
+func CreateIntNode(val int) *yaml.Node {
+	i := strconv.Itoa(val)
+	n := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!int",
+		Value: i,
+	}
+	return n
+}
+
+type Renderable interface {
+	MarshalYAML() (interface{}, error)
 }

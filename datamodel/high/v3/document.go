@@ -14,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"gopkg.in/yaml.v3"
 )
 
 // Document represents a high-level OpenAPI 3 document (both 3.0 & 3.1). A Document is the root of the specification.
@@ -121,27 +122,50 @@ func NewDocument(document *low.Document) *Document {
 	if !document.Paths.IsEmpty() {
 		d.Paths = NewPaths(document.Paths.Value)
 	}
-    if !document.JsonSchemaDialect.IsEmpty() {
-        d.JsonSchemaDialect = document.JsonSchemaDialect.Value
-    }
-    if !document.Webhooks.IsEmpty() {
-        hooks := make(map[string]*PathItem)
-        for h := range document.Webhooks.Value {
-            hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
-        }
-        d.Webhooks = hooks
-    }
-    if !document.Security.IsEmpty() {
-        var security []*base.SecurityRequirement
-        for s := range document.Security.Value {
-            security = append(security, base.NewSecurityRequirement(document.Security.Value[s].Value))
-        }
-        d.Security = security
-    }
-    return d
+	if !document.JsonSchemaDialect.IsEmpty() {
+		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
+	}
+	if !document.Webhooks.IsEmpty() {
+		hooks := make(map[string]*PathItem)
+		for h := range document.Webhooks.Value {
+			hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
+		}
+		d.Webhooks = hooks
+	}
+	if !document.Security.IsEmpty() {
+		var security []*base.SecurityRequirement
+		for s := range document.Security.Value {
+			security = append(security, base.NewSecurityRequirement(document.Security.Value[s].Value))
+		}
+		d.Security = security
+	}
+	return d
 }
 
 // GoLow returns the low-level Document that was used to create the high level one.
 func (d *Document) GoLow() *low.Document {
 	return d.low
+}
+
+// Render will return a YAML representation of the Document object as a byte slice.
+func (d *Document) Render() ([]byte, error) {
+	return yaml.Marshal(d)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Document object.
+func (d *Document) MarshalYAML() (interface{}, error) {
+	n := high.CreateEmptyMapNode()
+	high.AddYAMLNode(n, low.SchemaDialectLabel, d.JsonSchemaDialect)
+	high.AddYAMLNode(n, low.OpenAPILabel, d.Version)
+	high.AddYAMLNode(n, low.InfoLabel, d.Info)
+	//high.AddYAMLNode(n, low.TagsLabel, d.Tags)
+	//high.AddYAMLNode(n, low.ServersLabel, d.Servers)
+	//high.AddYAMLNode(n, low.SecurityLabel, d.Security)
+	//high.AddYAMLNode(n, low.ServersLabel, d.Servers)
+	//high.AddYAMLNode(n, low.ExternalDocsLabel, d.ExternalDocs)
+	//high.AddYAMLNode(n, low.PathsLabel, d.Paths)
+	//high.AddYAMLNode(n, low.ComponentsLabel, d.Components)
+	//high.AddYAMLNode(n, low.WebhooksLabel, d.Webhooks)
+	high.MarshalExtensions(n, d.Extensions)
+	return n, nil
 }

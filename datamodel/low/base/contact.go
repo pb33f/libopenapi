@@ -40,3 +40,4 @@ func (c *Contact) Hash() [32]byte {
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
+

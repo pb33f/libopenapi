@@ -157,6 +157,23 @@ info:
 	assert.Equal(t, ymlModified, string(serial))
 }
 
+func TestDocument_RenderAndReload(t *testing.T) {
+
+	yml := `openapi: 3.0
+info:
+    title: The magic API
+`
+	doc, _ := NewDocument([]byte(yml))
+	v3Doc, _ := doc.BuildV3Model()
+
+	v3Doc.Model.Info.Title = "The magic API - but now, altered!"
+	bytes, _, newDocModel, err := doc.RenderAndReload()
+	assert.Nil(t, err)
+	assert.NotNil(t, bytes)
+	assert.Equal(t, "The magic API - but now, altered!",
+		newDocModel.Model.Info.Title)
+}
+
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 
 	json := `{ 'openapi': '3.0',

@@ -4,17 +4,19 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // Contact represents a high-level representation of the Contact definitions found at
 //  v2 - https://swagger.io/specification/v2/#contactObject
 //  v3 - https://spec.openapis.org/oas/v3.1.0#contact-object
 type Contact struct {
-	Name  string
-	URL   string
-	Email string
-	low   *low.Contact
+	Name  string       `json:"name,omitempty" yaml:"name,omitempty"`
+	URL   string       `json:"url,omitempty" yaml:"url,omitempty"`
+	Email string       `json:"email,omitempty" yaml:"email,omitempty"`
+	low   *low.Contact `json:"-" yaml:"-"` // low-level representation
 }
 
 // NewContact will create a new Contact instance using a low-level Contact
@@ -31,3 +33,19 @@ func NewContact(contact *low.Contact) *Contact {
 func (c *Contact) GoLow() *low.Contact {
 	return c.low
 }
+
+func (c *Contact) Render() ([]byte, error) {
+	return yaml.Marshal(c)
+}
+
+func (c *Contact) MarshalYAML() (interface{}, error) {
+	if c == nil {
+		return nil, nil
+	}
+	n := high.CreateEmptyMapNode()
+	high.AddYAMLNode(n, low.NameLabel, c.Name)
+	high.AddYAMLNode(n, low.URLLabel, c.URL)
+	high.AddYAMLNode(n, low.EmailLabel, c.Email)
+	return n, nil
+}
+

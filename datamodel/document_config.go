@@ -25,3 +25,17 @@ type DocumentConfiguration struct {
 	// AllowRemoteReferences will allow the index to lookup remote references. This is disabled by default.
 	AllowRemoteReferences bool
 }
+
+func NewOpenDocumentConfiguration() *DocumentConfiguration {
+    return &DocumentConfiguration{
+        AllowFileReferences:   true,
+        AllowRemoteReferences: true,
+    }
+}
+
+func NewClosedDocumentConfiguration() *DocumentConfiguration {
+    return &DocumentConfiguration{
+        AllowFileReferences:   false,
+        AllowRemoteReferences: false,
+    }
+}

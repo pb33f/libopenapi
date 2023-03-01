@@ -5,6 +5,13 @@ package base
 
 // Constants for labels used to look up values within OpenAPI specifications.
 const (
+	VersionLabel               = "version"
+	TermsOfServiceLabel        = "termsOfService"
+	DescriptionLabel           = "description"
+	TitleLabel                 = "title"
+	EmailLabel                 = "email"
+	NameLabel                  = "name"
+	URLLabel                   = "url"
 	TagsLabel                  = "tags"
 	ExternalDocsLabel          = "externalDocs"
 	ExamplesLabel              = "examples"
