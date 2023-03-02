@@ -9,6 +9,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"testing"
 )
 
@@ -36,6 +37,11 @@ x-hack: code`
 	wentLow := highExt.GoLow()
 	assert.Equal(t, 2, wentLow.URL.ValueNode.Line)
 	assert.Len(t, highExt.GetExtensions(), 1)
+
+	// render the high-level object as YAML
+	rendered, _ := highExt.Render()
+	assert.Equal(t, strings.TrimSpace(string(rendered)), yml)
+
 }
 
 func ExampleNewExternalDoc() {

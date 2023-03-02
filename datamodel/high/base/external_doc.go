@@ -6,6 +6,7 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // ExternalDoc represents a high-level External Documentation object as defined by OpenAPI 2 and 3
@@ -14,9 +15,9 @@ import (
 //  v2 - https://swagger.io/specification/v2/#externalDocumentationObject
 //  v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
 type ExternalDoc struct {
-	Description string
-	URL         string
-	Extensions  map[string]any
+	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
+	URL         string         `json:"url,omitempty" yaml:"url,omitempty"`
+	Extensions  map[string]any `json:"-" yaml:"-"`
 	low         *low.ExternalDoc
 }
 
@@ -41,4 +42,18 @@ func (e *ExternalDoc) GoLow() *low.ExternalDoc {
 
 func (e *ExternalDoc) GetExtensions() map[string]any {
 	return e.Extensions
+}
+
+// Render will return a YAML representation of the ExternalDoc object as a byte slice.
+func (e *ExternalDoc) Render() ([]byte, error) {
+	return yaml.Marshal(e)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
+func (e *ExternalDoc) MarshalYAML() (interface{}, error) {
+	if e == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(e, e.low)
+	return nb.Render(), nil
 }
