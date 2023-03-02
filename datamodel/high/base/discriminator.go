@@ -4,7 +4,9 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // Discriminator is only used by OpenAPI 3+ documents, it represents a polymorphic discriminator used for schemas
@@ -16,8 +18,8 @@ import (
 // When using the discriminator, inline schemas will not be considered.
 //  v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
-	PropertyName string
-	Mapping      map[string]string
+	PropertyName string            `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
+	Mapping      map[string]string `json:"mapping,omitempty" yaml:"mapping,omitempty"`
 	low          *low.Discriminator
 }
 
@@ -37,4 +39,18 @@ func NewDiscriminator(disc *low.Discriminator) *Discriminator {
 // GoLow returns the low-level Discriminator used to build the high-level one.
 func (d *Discriminator) GoLow() *low.Discriminator {
 	return d.low
+}
+
+// Render will return a YAML representation of the Discriminator object as a byte slice.
+func (d *Discriminator) Render() ([]byte, error) {
+	return yaml.Marshal(d)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Discriminator object.
+func (d *Discriminator) MarshalYAML() (interface{}, error) {
+	if d == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(d, d.low)
+	return nb.Render(), nil
 }

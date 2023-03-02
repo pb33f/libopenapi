@@ -14,7 +14,6 @@
 package high
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
 	"reflect"
@@ -118,11 +117,7 @@ func (n *NodeBuilder) add(key string) {
 	// if the key is 'Extensions' then we need to extract the keys from the map
 	// and add them to the node builder.
 	if key == "Extensions" {
-
 		extensions := reflect.ValueOf(n.High).Elem().FieldByName(key)
-		//for _, k := range extensions.MapKeys() {
-		//	n.add(k.String())
-		//}
 		for _, e := range extensions.MapKeys() {
 			v := extensions.MapIndex(e)
 
@@ -135,17 +130,6 @@ func (n *NodeBuilder) add(key string) {
 				f := fieldValue.Interface()
 				value := reflect.ValueOf(f)
 				switch value.Kind() {
-				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-					panic("not supported yet")
-				case reflect.String:
-					panic("not supported yet")
-				case reflect.Ptr:
-					panic("not supported yet")
-				case reflect.Struct:
-					nb := f.(low.HasValueNodeUntyped).GetValueNode()
-					if nb != nil {
-						nodeEntry.Line = nb.Line
-					}
 				case reflect.Map:
 					if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
 						originalExtensions := j.GetExtensions()
@@ -156,9 +140,6 @@ func (n *NodeBuilder) add(key string) {
 						}
 					}
 				default:
-					if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
-						fmt.Print(j)
-					}
 					panic("not supported yet")
 				}
 			}
@@ -189,30 +170,26 @@ func (n *NodeBuilder) add(key string) {
 	case reflect.Ptr:
 		nodeEntry.Value = f
 	case reflect.Map:
-		nodeEntry.Value = value
+		nodeEntry.Value = f
 	}
 
 	// if there is no low level object, then we cannot extract line numbers,
 	// so skip and default to 0, which means a new entry to the spec.
 	// this will place new content and the top of the rendered object.
 	if !reflect.ValueOf(n.Low).IsZero() {
-		fieldValue = reflect.ValueOf(n.Low).Elem().FieldByName(key)
-		f = fieldValue.Interface()
-		value = reflect.ValueOf(f)
+		lowFieldValue := reflect.ValueOf(n.Low).Elem().FieldByName(key)
+		fLow := lowFieldValue.Interface()
+		value = reflect.ValueOf(fLow)
 		switch value.Kind() {
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			panic("not supported yet")
-		case reflect.String:
-			panic("not supported yet")
-		case reflect.Ptr:
-			panic("not supported yet")
 		case reflect.Struct:
 			nb := value.Interface().(low.HasValueNodeUntyped).GetValueNode()
 			if nb != nil {
 				nodeEntry.Line = nb.Line
 			}
 		default:
-			panic("not supported yet")
+			// everything else, weight it to the bottom of the rendered object.
+			// this is things that we have no way of knowing where they should be placed.
+			nodeEntry.Line = 9999
 		}
 	}
 	n.Nodes = append(n.Nodes, nodeEntry)

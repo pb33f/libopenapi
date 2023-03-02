@@ -7,16 +7,17 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // Example represents a high-level Example object as defined by OpenAPI 3+
 //  v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
-	Summary       string
-	Description   string
-	Value         any
-	ExternalValue string
-	Extensions    map[string]any
+	Summary       string         `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description   string         `json:"description,omitempty" yaml:"description,omitempty"`
+	Value         any            `json:"value,omitempty" yaml:"value,omitempty"`
+	ExternalValue string         `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
+	Extensions    map[string]any `json:"-" yaml:"-"`
 	low           *low.Example
 }
 
@@ -35,6 +36,20 @@ func NewExample(example *low.Example) *Example {
 // GoLow will return the low-level Example used to build the high level one.
 func (e *Example) GoLow() *low.Example {
 	return e.low
+}
+
+// Render will return a YAML representation of the Example object as a byte slice.
+func (e *Example) Render() ([]byte, error) {
+	return yaml.Marshal(e)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Example object.
+func (e *Example) MarshalYAML() (interface{}, error) {
+	if e == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(e, e.low)
+	return nb.Render(), nil
 }
 
 // ExtractExamples will convert a low-level example map, into a high level one that is simple to navigate.

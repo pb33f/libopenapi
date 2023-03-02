@@ -9,6 +9,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"testing"
 )
 
@@ -18,7 +19,7 @@ func TestNewDiscriminator(t *testing.T) {
 
 	yml := `propertyName: coffee
 mapping:
-  fogCleaner: in the morning`
+    fogCleaner: in the morning`
 
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
@@ -32,6 +33,10 @@ mapping:
 	assert.Equal(t, "coffee", highDiscriminator.PropertyName)
 	assert.Equal(t, "in the morning", highDiscriminator.Mapping["fogCleaner"])
 	assert.Equal(t, 3, highDiscriminator.GoLow().FindMappingValue("fogCleaner").ValueNode.Line)
+
+	// render the example as YAML
+	rendered, _ := highDiscriminator.Render()
+	assert.Equal(t, strings.TrimSpace(string(rendered)), yml)
 
 }
 
