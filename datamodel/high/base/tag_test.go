@@ -9,6 +9,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"testing"
 )
 
@@ -19,7 +20,7 @@ func TestNewTag(t *testing.T) {
 	yml := `name: chicken
 description: nuggets
 externalDocs:
-  url: https://pb33f.io
+    url: https://pb33f.io
 x-hack: code`
 
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
@@ -37,6 +38,10 @@ x-hack: code`
 
 	wentLow := highTag.GoLow()
 	assert.Equal(t, 5, wentLow.FindExtension("x-hack").ValueNode.Line)
+
+	// render the tag as YAML
+	highTagBytes, _ := highTag.Render()
+	assert.Equal(t, strings.TrimSpace(string(highTagBytes)), yml)
 
 }
 
