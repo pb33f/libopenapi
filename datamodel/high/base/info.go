@@ -74,13 +74,6 @@ func (i *Info) MarshalYAML() (interface{}, error) {
 	if i == nil {
 		return nil, nil
 	}
-	n := high.CreateEmptyMapNode()
-	high.AddYAMLNode(n, low.TitleLabel, i.Title)
-	high.AddYAMLNode(n, low.DescriptionLabel, i.Description)
-	high.AddYAMLNode(n, low.TermsOfServiceLabel, i.TermsOfService)
-	high.AddYAMLNode(n, low.ContactLabel, i.Contact)
-	high.AddYAMLNode(n, low.LicenseLabel, i.License)
-	high.AddYAMLNode(n, low.VersionLabel, i.Version)
-	high.MarshalExtensions(n, i.Extensions)
-	return n, nil
+	nb := high.NewNodeBuilder(i, i.low)
+	return nb.Render(), nil
 }

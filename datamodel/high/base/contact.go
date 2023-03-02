@@ -42,10 +42,9 @@ func (c *Contact) MarshalYAML() (interface{}, error) {
 	if c == nil {
 		return nil, nil
 	}
-	n := high.CreateEmptyMapNode()
-	high.AddYAMLNode(n, low.NameLabel, c.Name)
-	high.AddYAMLNode(n, low.URLLabel, c.URL)
-	high.AddYAMLNode(n, low.EmailLabel, c.Email)
-	return n, nil
+	nb := high.NewNodeBuilder(c, c.low)
+	return nb.Render(), nil
 }
+
+
 
