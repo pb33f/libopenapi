@@ -26,6 +26,11 @@ type HasValueNode[T any] interface {
 	*T
 }
 
+// HasValueNodeUntyped is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
+type HasValueNodeUntyped interface {
+	GetValueNode() *yaml.Node
+}
+
 // Hashable defines any struct that implements a Hash function that returns a 256SHA hash of the state of the
 // representative object. Great for equality checking!
 type Hashable interface {
@@ -34,6 +39,13 @@ type Hashable interface {
 
 // HasExtensions is implemented by any object that exposes extensions
 type HasExtensions[T any] interface {
+
+	// GetExtensions returns generic low level extensions
+	GetExtensions() map[KeyReference[string]]ValueReference[any]
+}
+
+// HasExtensionsUntyped is implemented by any object that exposes extensions
+type HasExtensionsUntyped interface {
 
 	// GetExtensions returns generic low level extensions
 	GetExtensions() map[KeyReference[string]]ValueReference[any]
@@ -101,6 +113,15 @@ func (n NodeReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil && n.ValueNode == nil
 }
 
+func (n NodeReference[T]) NodeLineNumber() int {
+	if !n.IsEmpty() {
+		return n.ValueNode.Line
+	} else {
+		return 0
+	}
+}
+
+// IsReferenceNode will return true if the key node contains a $ref key.
 func (n NodeReference[T]) IsReferenceNode() bool {
 	if n.KeyNode != nil {
 		for k := range n.KeyNode.Content {
@@ -140,6 +161,15 @@ func (n NodeReference[T]) GetValue() T {
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
 func (n ValueReference[T]) IsEmpty() bool {
 	return n.ValueNode == nil
+}
+
+// NodeLineNumber will return the line number of the value node (or 0 if the value node is empty)
+func (n ValueReference[T]) NodeLineNumber() int {
+	if !n.IsEmpty() {
+		return n.ValueNode.Line
+	} else {
+		return 0
+	}
 }
 
 // GenerateMapKey will return a string based on the line and column number of the node, e.g. 33:56 for line 33, col 56.
