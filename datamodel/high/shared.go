@@ -14,10 +14,14 @@
 package high
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
 	"reflect"
+	"sort"
 	"strconv"
+	"strings"
+	"unicode"
 )
 
 // GoesLow is used to represent any high-level model. All high level models meet this interface and can be used to
@@ -78,6 +82,155 @@ func MarshalExtensions(parent *yaml.Node, extensions map[string]any) {
 	}
 }
 
+type NodeEntry struct {
+	Key   string
+	Value any
+	Line  int
+}
+
+type NodeBuilder struct {
+	Nodes []*NodeEntry
+	High  any
+	Low   any
+}
+
+func NewNodeBuilder(high any, low any) *NodeBuilder {
+	// create a new node builder
+	nb := &NodeBuilder{High: high, Low: low}
+
+	// extract fields from the high level object and add them into our node builder.
+	// this will allow us to extract the line numbers from the low level object as well.
+	v := reflect.ValueOf(high).Elem()
+	num := v.NumField()
+	for i := 0; i < num; i++ {
+		nb.add(v.Type().Field(i).Name)
+	}
+	return nb
+}
+
+func (n *NodeBuilder) add(key string) {
+
+	// only operate on exported fields.
+	if unicode.IsLower(rune(key[0])) {
+		return
+	}
+
+	// if the key is 'Extensions' then we need to extract the keys from the map
+	// and add them to the node builder.
+	if key == "Extensions" {
+
+		extensions := reflect.ValueOf(n.High).Elem().FieldByName(key)
+		//for _, k := range extensions.MapKeys() {
+		//	n.add(k.String())
+		//}
+		for _, e := range extensions.MapKeys() {
+			v := extensions.MapIndex(e)
+
+			extKey := e.String()
+			extValue := v.Interface()
+			nodeEntry := &NodeEntry{Key: extKey, Value: extValue}
+
+			if !reflect.ValueOf(n.Low).IsZero() {
+				fieldValue := reflect.ValueOf(n.Low).Elem().FieldByName("Extensions")
+				f := fieldValue.Interface()
+				value := reflect.ValueOf(f)
+				switch value.Kind() {
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					panic("not supported yet")
+				case reflect.String:
+					panic("not supported yet")
+				case reflect.Ptr:
+					panic("not supported yet")
+				case reflect.Struct:
+					nb := f.(low.HasValueNodeUntyped).GetValueNode()
+					if nb != nil {
+						nodeEntry.Line = nb.Line
+					}
+				case reflect.Map:
+					if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
+						originalExtensions := j.GetExtensions()
+						for k := range originalExtensions {
+							if k.Value == extKey {
+								nodeEntry.Line = originalExtensions[k].ValueNode.Line
+							}
+						}
+					}
+				default:
+					if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
+						fmt.Print(j)
+					}
+					panic("not supported yet")
+				}
+			}
+			n.Nodes = append(n.Nodes, nodeEntry)
+		}
+		// done, extensions are handled separately.
+		return
+	}
+
+	// find the field with the tag supplied.
+	field, _ := reflect.TypeOf(n.High).Elem().FieldByName(key)
+	tag := string(field.Tag.Get("yaml"))
+	tagName := strings.Split(tag, ",")[0]
+
+	// extract the value of the field
+	fieldValue := reflect.ValueOf(n.High).Elem().FieldByName(key)
+	f := fieldValue.Interface()
+	value := reflect.ValueOf(f)
+
+	// create a new node entry
+	nodeEntry := &NodeEntry{Key: tagName}
+
+	switch value.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		nodeEntry.Value = strconv.FormatInt(value.Int(), 10)
+	case reflect.String:
+		nodeEntry.Value = value.String()
+	case reflect.Ptr:
+		nodeEntry.Value = f
+	case reflect.Map:
+		nodeEntry.Value = value
+	}
+
+	// if there is no low level object, then we cannot extract line numbers,
+	// so skip and default to 0, which means a new entry to the spec.
+	// this will place new content and the top of the rendered object.
+	if !reflect.ValueOf(n.Low).IsZero() {
+		fieldValue = reflect.ValueOf(n.Low).Elem().FieldByName(key)
+		f = fieldValue.Interface()
+		value = reflect.ValueOf(f)
+		switch value.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			panic("not supported yet")
+		case reflect.String:
+			panic("not supported yet")
+		case reflect.Ptr:
+			panic("not supported yet")
+		case reflect.Struct:
+			nb := value.Interface().(low.HasValueNodeUntyped).GetValueNode()
+			if nb != nil {
+				nodeEntry.Line = nb.Line
+			}
+		default:
+			panic("not supported yet")
+		}
+	}
+	n.Nodes = append(n.Nodes, nodeEntry)
+}
+
+func (n *NodeBuilder) Render() *yaml.Node {
+	// order nodes by line number, retain original order
+	sort.Slice(n.Nodes, func(i, j int) bool {
+		return n.Nodes[i].Line < n.Nodes[j].Line
+	})
+	m := CreateEmptyMapNode()
+	for i := range n.Nodes {
+		node := n.Nodes[i]
+		AddYAMLNode(m, node.Key, node.Value)
+	}
+	return m
+}
+
 func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
 
 	if value == nil {
@@ -97,7 +250,15 @@ func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
 	case reflect.Int:
 		valueNode = CreateIntNode(value.(int))
 	case reflect.Struct:
-		panic("no way dude")
+		panic("no way dude, why?")
+	case reflect.Map:
+		var rawNode yaml.Node
+		err := rawNode.Encode(value)
+		if err != nil {
+			return parent
+		} else {
+			valueNode = &rawNode
+		}
 	case reflect.Ptr:
 		rawRender, _ := value.(Renderable).MarshalYAML()
 		if rawRender != nil {
@@ -105,6 +266,8 @@ func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
 		} else {
 			return parent
 		}
+	default:
+		panic("not supported yet")
 	}
 	parent.Content = append(parent.Content, l, valueNode)
 	return parent

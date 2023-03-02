@@ -46,8 +46,6 @@ func (l *License) MarshalYAML() (interface{}, error) {
 	if l == nil {
 		return nil, nil
 	}
-	n := high.CreateEmptyMapNode()
-	high.AddYAMLNode(n, low.NameLabel, l.Name)
-	high.AddYAMLNode(n, low.URLLabel, l.URL)
-	return n, nil
+	nb := high.NewNodeBuilder(l, l.low)
+	return nb.Render(), nil
 }

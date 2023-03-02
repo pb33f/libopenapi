@@ -110,9 +110,11 @@ url: https://opensource.org/licenses/MIT`
 func TestInfo_Render(t *testing.T) {
 
 	ext := make(map[string]any)
-
 	ext["x-pizza"] = "pepperoni"
-
+	ext["x-cake"] = &License{
+		Name: "someone",
+		URL:  "nowhere",
+	}
 	highI := &Info{
 		Title:          "hey",
 		Description:    "there you",
@@ -153,3 +155,50 @@ func TestInfo_Render(t *testing.T) {
 	assert.Equal(t, "1.2.3", highInfo.Version)
 	assert.Equal(t, "pepperoni", highInfo.Extensions["x-pizza"])
 }
+
+func TestInfo_RenderOrder(t *testing.T) {
+
+	yml := `title: hey
+description: there you
+termsOfService: have you got any money
+contact:
+    name: buckaroo
+    email: buckaroo@pb33f.io
+license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+version: 1.2.3
+x-pizza: pepperoni
+x-cake:
+    name: someone
+    url: nowhere
+`
+
+	// unmarshal yaml into a *yaml.Node instance
+	var cNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	// build low
+	var lowInfo lowbase.Info
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowInfo)
+	_ = lowInfo.Build(cNode.Content[0], nil)
+
+	// build high
+	highInfo := NewInfo(&lowInfo)
+
+	assert.Equal(t, "hey", highInfo.Title)
+	assert.Equal(t, "there you", highInfo.Description)
+	assert.Equal(t, "have you got any money", highInfo.TermsOfService)
+	assert.Equal(t, "buckaroo", highInfo.Contact.Name)
+	assert.Equal(t, "buckaroo@pb33f.io", highInfo.Contact.Email)
+	assert.Equal(t, "MIT", highInfo.License.Name)
+	assert.Equal(t, "https://opensource.org/licenses/MIT", highInfo.License.URL)
+	assert.Equal(t, "1.2.3", highInfo.Version)
+	assert.Equal(t, "pepperoni", highInfo.Extensions["x-pizza"])
+
+	// marshal high back to yaml, should be the same as the original, in same order.
+	bytes, _ := highInfo.Render()
+	assert.Equal(t, yml, string(bytes))
+}
+
+
