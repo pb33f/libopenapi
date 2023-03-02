@@ -4,7 +4,9 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // SecurityRequirement is a high-level representation of a Swagger / OpenAPI 2 SecurityRequirement object.
@@ -39,4 +41,18 @@ func NewSecurityRequirement(req *base.SecurityRequirement) *SecurityRequirement 
 // GoLow returns the low-level SecurityRequirement used to create the high-level one.
 func (s *SecurityRequirement) GoLow() *base.SecurityRequirement {
 	return s.low
+}
+
+// Render will return a YAML representation of the SecurityRequirement object as a byte slice.
+func (s *SecurityRequirement) Render() ([]byte, error) {
+	return yaml.Marshal(s)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the SecurityRequirement object.
+func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
+	if s == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(s, s.low)
+	return nb.Render(), nil
 }

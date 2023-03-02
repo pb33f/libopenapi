@@ -167,10 +167,14 @@ func (n *NodeBuilder) add(key string) {
 		nodeEntry.Value = strconv.FormatInt(value.Int(), 10)
 	case reflect.String:
 		nodeEntry.Value = value.String()
+	case reflect.Bool:
+		nodeEntry.Value = value.Bool()
 	case reflect.Ptr:
 		nodeEntry.Value = f
 	case reflect.Map:
 		nodeEntry.Value = f
+	default:
+		panic("not supported yet")
 	}
 
 	// if there is no low level object, then we cannot extract line numbers,
@@ -216,26 +220,14 @@ func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
 
 	// check the type
 	t := reflect.TypeOf(value)
-	l := CreateStringNode(key)
+	var l *yaml.Node
+	if key != "" {
+		l = CreateStringNode(key)
+	}
 	var valueNode *yaml.Node
 	switch t.Kind() {
-	case reflect.String:
-		if value.(string) == "" {
-			return parent
-		}
-		valueNode = CreateStringNode(value.(string))
-	case reflect.Int:
-		valueNode = CreateIntNode(value.(int))
 	case reflect.Struct:
 		panic("no way dude, why?")
-	case reflect.Map:
-		var rawNode yaml.Node
-		err := rawNode.Encode(value)
-		if err != nil {
-			return parent
-		} else {
-			valueNode = &rawNode
-		}
 	case reflect.Ptr:
 		rawRender, _ := value.(Renderable).MarshalYAML()
 		if rawRender != nil {
@@ -244,9 +236,20 @@ func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
 			return parent
 		}
 	default:
-		panic("not supported yet")
+		var rawNode yaml.Node
+		err := rawNode.Encode(value)
+		if err != nil {
+			return parent
+		} else {
+			valueNode = &rawNode
+		}
 	}
-	parent.Content = append(parent.Content, l, valueNode)
+	if l != nil {
+		parent.Content = append(parent.Content, l, valueNode)
+	} else {
+		parent.Content = valueNode.Content
+	}
+
 	return parent
 }
 

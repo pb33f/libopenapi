@@ -6,6 +6,7 @@ package base
 import (
     "github.com/pb33f/libopenapi/datamodel/high"
     low "github.com/pb33f/libopenapi/datamodel/low/base"
+    "gopkg.in/yaml.v3"
 )
 
 // Tag represents a high-level Tag instance that is backed by a low-level one.
@@ -15,9 +16,9 @@ import (
 //  - v2: https://swagger.io/specification/v2/#tagObject
 //  - v3: https://swagger.io/specification/#tag-object
 type Tag struct {
-    Name         string
-    Description  string
-    ExternalDocs *ExternalDoc
+    Name         string       `json:"name,omitempty" yaml:"name,omitempty"`
+    Description  string       `json:"description,omitempty" yaml:"description,omitempty"`
+    ExternalDocs *ExternalDoc `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
     Extensions   map[string]any
     low          *low.Tag
 }
@@ -42,6 +43,20 @@ func NewTag(tag *low.Tag) *Tag {
 // GoLow returns the low-level Tag instance used to create the high-level one.
 func (t *Tag) GoLow() *low.Tag {
     return t.low
+}
+
+// Render will return a YAML representation of the Info object as a byte slice.
+func (t *Tag) Render() ([]byte, error) {
+    return yaml.Marshal(t)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Info object.
+func (t *Tag) MarshalYAML() (interface{}, error) {
+    if t == nil {
+        return nil, nil
+    }
+    nb := high.NewNodeBuilder(t, t.low)
+    return nb.Render(), nil
 }
 
 // Experimental mutation API.

@@ -8,6 +8,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"testing"
 )
 
@@ -16,8 +17,8 @@ func TestNewSecurityRequirement(t *testing.T) {
 	var cNode yaml.Node
 
 	yml := `pizza:
-  - cheese
-  - tomato`
+    - cheese
+    - tomato`
 
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
@@ -32,4 +33,8 @@ func TestNewSecurityRequirement(t *testing.T) {
 
 	wentLow := highExt.GoLow()
 	assert.Len(t, wentLow.Requirements.Value, 1)
+
+	// render the high-level object as YAML
+	highBytes, _ := highExt.Render()
+	assert.Equal(t, strings.TrimSpace(string(highBytes)), yml)
 }

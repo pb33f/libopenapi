@@ -6,6 +6,7 @@ package base
 import (
     "github.com/pb33f/libopenapi/datamodel/high"
     low "github.com/pb33f/libopenapi/datamodel/low/base"
+    "gopkg.in/yaml.v3"
 )
 
 // XML represents a high-level representation of an XML object defined by all versions of OpenAPI and backed by
@@ -18,11 +19,11 @@ import (
 //  v2 - https://swagger.io/specification/v2/#xmlObject
 //  v3 - https://swagger.io/specification/#xml-object
 type XML struct {
-    Name       string
-    Namespace  string
-    Prefix     string
-    Attribute  bool
-    Wrapped    bool
+    Name       string `json:"name,omitempty" yaml:"name,omitempty"`
+    Namespace  string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+    Prefix     string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+    Attribute  bool   `json:"attribute,omitempty" yaml:"attribute,omitempty"`
+    Wrapped    bool   `json:"wrapped,omitempty" yaml:"wrapped,omitempty"`
     Extensions map[string]any
     low        *low.XML
 }
@@ -33,7 +34,7 @@ func NewXML(xml *low.XML) *XML {
     x.low = xml
     x.Name = xml.Name.Value
     x.Namespace = xml.Namespace.Value
-    x.Prefix = xml.Namespace.Value
+    x.Prefix = xml.Prefix.Value
     x.Attribute = xml.Attribute.Value
     x.Wrapped = xml.Wrapped.Value
     x.Extensions = high.ExtractExtensions(xml.Extensions)
@@ -44,3 +45,18 @@ func NewXML(xml *low.XML) *XML {
 func (x *XML) GoLow() *low.XML {
     return x.low
 }
+
+// Render will return a YAML representation of the XML object as a byte slice.
+func (x *XML) Render() ([]byte, error) {
+    return yaml.Marshal(x)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the XML object.
+func (x *XML) MarshalYAML() (interface{}, error) {
+    if x == nil {
+        return nil, nil
+    }
+    nb := high.NewNodeBuilder(x, x.low)
+    return nb.Render(), nil
+}
+
