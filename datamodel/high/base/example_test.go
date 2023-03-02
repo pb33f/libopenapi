@@ -9,6 +9,7 @@ import (
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"testing"
 )
 
@@ -39,6 +40,11 @@ x-hack: code`
 	assert.Equal(t, "code", highExample.Extensions["x-hack"])
 	assert.Equal(t, "a thing", highExample.Value)
 	assert.Equal(t, 4, highExample.GoLow().ExternalValue.ValueNode.Line)
+
+	// render the example as YAML
+	rendered, _ := highExample.Render()
+	assert.Equal(t, strings.TrimSpace(string(rendered)), yml)
+
 }
 
 func TestExtractExamples(t *testing.T) {
