@@ -257,6 +257,11 @@ unevaluatedProperties:
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)
+
+	// now render it out!
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, string(schemaBytes))
+
 }
 
 func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
@@ -700,4 +705,115 @@ properties:
   somethingOne:
     type: number
 `
+}
+
+func TestNewSchemaProxy_RenderSchema(t *testing.T) {
+	testSpec := `type: object
+description: something object
+discriminator:
+    propertyName: athing
+    mapping:
+        log: cat
+        pizza: party
+allOf:
+    - type: object
+      description: an allof thing
+      properties:
+        allOfA:
+            type: string
+            description: allOfA description
+            example: allOfAExp
+        allOfB:
+            type: string
+            description: allOfB description
+            example: allOfBExp
+`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, string(schemaBytes))
+
+}
+
+func TestNewSchemaProxy_RenderSchemaWithMultipleObjectTypes(t *testing.T) {
+	testSpec := `type: object
+description: something object
+oneOf:
+    - type: object
+      description: a oneof thing
+      properties:
+        oneOfA:
+            type: string
+            example: oneOfAExp
+anyOf:
+    - type: object
+      description: an anyOf thing
+      properties:
+        anyOfA:
+            type: string
+            example: anyOfAExp
+not:
+    type: object
+    description: a not thing
+    properties:
+        notA:
+            type: string
+            example: notAExp
+items:
+    type: object
+    description: an items thing
+    properties:
+        itemsA:
+            type: string
+            description: itemsA description
+            example: itemsAExp
+        itemsB:
+            type: string
+            description: itemsB description
+            example: itemsBExp
+`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, string(schemaBytes))
 }
