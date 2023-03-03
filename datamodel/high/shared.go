@@ -14,7 +14,9 @@
 package high
 
 import (
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"gopkg.in/yaml.v3"
 	"reflect"
 	"sort"
@@ -153,11 +155,22 @@ func (n *NodeBuilder) add(key string) {
 	field, _ := reflect.TypeOf(n.High).Elem().FieldByName(key)
 	tag := string(field.Tag.Get("yaml"))
 	tagName := strings.Split(tag, ",")[0]
+	if tag == "-" {
+		return
+	}
 
 	// extract the value of the field
 	fieldValue := reflect.ValueOf(n.High).Elem().FieldByName(key)
 	f := fieldValue.Interface()
 	value := reflect.ValueOf(f)
+
+	if tag == "additionalProperties" {
+		fmt.Printf("woo")
+	}
+
+	if f == nil || value.IsZero() {
+		return
+	}
 
 	// create a new node entry
 	nodeEntry := &NodeEntry{Key: tagName}
@@ -169,12 +182,22 @@ func (n *NodeBuilder) add(key string) {
 		nodeEntry.Value = value.String()
 	case reflect.Bool:
 		nodeEntry.Value = value.Bool()
+	case reflect.Slice:
+		if tagName == v3.TypeLabel {
+			if value.Len() == 1 {
+				nodeEntry.Value = value.Index(0).String()
+			}
+		} else {
+			if !value.IsNil() {
+				nodeEntry.Value = f
+			}
+		}
 	case reflect.Ptr:
-		nodeEntry.Value = f
-	case reflect.Map:
-		nodeEntry.Value = f
+		if !value.IsNil() {
+			nodeEntry.Value = f
+		}
 	default:
-		panic("not supported yet")
+		nodeEntry.Value = f
 	}
 
 	// if there is no low level object, then we cannot extract line numbers,
@@ -196,7 +219,9 @@ func (n *NodeBuilder) add(key string) {
 			nodeEntry.Line = 9999
 		}
 	}
-	n.Nodes = append(n.Nodes, nodeEntry)
+	if nodeEntry.Value != nil {
+		n.Nodes = append(n.Nodes, nodeEntry)
+	}
 }
 
 func (n *NodeBuilder) Render() *yaml.Node {
@@ -225,17 +250,75 @@ func AddYAMLNode(parent *yaml.Node, key string, value any) *yaml.Node {
 		l = CreateStringNode(key)
 	}
 	var valueNode *yaml.Node
+	vo := reflect.ValueOf(value)
 	switch t.Kind() {
+
+	case reflect.String:
+		val := value.(string)
+		if val == "" {
+			return parent
+		}
+		valueNode = CreateStringNode(val)
+		break
+
+	case reflect.Bool:
+		val := value.(bool)
+		if !val {
+			return parent
+		}
+		valueNode = CreateBoolNode("true")
+		break
+
+	case reflect.Slice:
+		if vo.IsNil() {
+			return parent
+		}
+
+		// type is a case where it can be a single value, or a slice.
+		// so, if the key is 'type', then check if the slice contains a sigle value
+		// and if so, render it as a string, otherwise, proceed as normal.
+		skip := false
+		if key == v3.TypeLabel {
+			//if vo.Len() == 1 {
+			//	valueNode = CreateStringNode(value.([]string)[0])
+			//	skip = true
+			//}
+		}
+
+		if !skip {
+			var rawNode yaml.Node
+			err := rawNode.Encode(value)
+			if err != nil {
+				return parent
+			} else {
+				valueNode = &rawNode
+			}
+		}
+
 	case reflect.Struct:
 		panic("no way dude, why?")
 	case reflect.Ptr:
-		rawRender, _ := value.(Renderable).MarshalYAML()
-		if rawRender != nil {
-			valueNode = rawRender.(*yaml.Node)
+		if r, ok := value.(Renderable); ok {
+			rawRender, _ := r.MarshalYAML()
+			if rawRender != nil {
+				valueNode = rawRender.(*yaml.Node)
+			} else {
+				return parent
+			}
 		} else {
+			var rawNode yaml.Node
+			err := rawNode.Encode(value)
+			if err != nil {
+				return parent
+			} else {
+				valueNode = &rawNode
+			}
+		}
+
+	default:
+		if vo.IsNil() {
 			return parent
 		}
-	default:
 		var rawNode yaml.Node
 		err := rawNode.Encode(value)
 		if err != nil {
@@ -265,6 +348,15 @@ func CreateStringNode(str string) *yaml.Node {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
 		Tag:   "!!str",
+		Value: str,
+	}
+	return n
+}
+
+func CreateBoolNode(str string) *yaml.Node {
+	n := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!bool",
 		Value: str,
 	}
 	return n

@@ -4,8 +4,10 @@
 package base
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -83,3 +85,23 @@ func (sp *SchemaProxy) GoLow() *base.SchemaProxy {
 	}
 	return sp.schema.Value
 }
+
+// Render will return a YAML representation of the Schema object as a byte slice.
+func (sp *SchemaProxy) Render() ([]byte, error) {
+	return yaml.Marshal(sp)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
+func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
+	if sp == nil {
+		return nil, nil
+	}
+	s, err := sp.BuildSchema()
+	if err != nil {
+		return nil, err
+	}
+	nb := high.NewNodeBuilder(s, s.low)
+	return nb.Render(), nil
+	
+}
+

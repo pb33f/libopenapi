@@ -5,6 +5,7 @@ package base
 
 import (
 	"fmt"
+	"gopkg.in/yaml.v3"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
@@ -12,29 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
-// DynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
-// value (A) and a right value (B). The left value (A) is a 3.0 schema property value, the right value (B) is a 3.1
-// schema value.
-//
-// OpenAPI 3.1 treats a Schema as a real JSON schema, which means some properties become incompatible, or others
-// now support more than one primitive type or structure.
-// The N value is a bit to make it each to know which value (A or B) is used, this prevents having to
-// if/else on the value to determine which one is set.
-type DynamicValue[A any, B any] struct {
-	N int // 0 == A, 1 == B
-	A A
-	B B
-}
 
-// IsA will return true if the 'A' or left value is set. (OpenAPI 3)
-func (s *DynamicValue[A, B]) IsA() bool {
-	return s.N == 0
-}
-
-// IsB will return true if the 'B' or right value is set (OpenAPI 3.1)
-func (s *DynamicValue[A, B]) IsB() bool {
-	return s.N == 1
-}
 
 // Schema represents a JSON Schema that support Swagger, OpenAPI 3 and OpenAPI 3.1
 //
@@ -47,83 +26,83 @@ func (s *DynamicValue[A, B]) IsB() bool {
 //   - v3.1 schema: https://spec.openapis.org/oas/v3.1.0#schema-object
 type Schema struct {
 	// 3.1 only, used to define a dialect for this schema, label is '$schema'.
-	SchemaTypeRef string
+	SchemaTypeRef string `json:"$schema,omitempty" yaml:"$schema,omitempty"`
 
 	// In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
 	// In version 3.1, ExclusiveMaximum is an integer.
-	ExclusiveMaximum *DynamicValue[bool, int64]
+	ExclusiveMaximum *DynamicValue[bool, int64] `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
 
 	// In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
 	// In version 3.1, ExclusiveMinimum is an integer.
-	ExclusiveMinimum *DynamicValue[bool, int64]
+	ExclusiveMinimum *DynamicValue[bool, int64] `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
 
 	// In versions 2 and 3.0, this Type is a single value, so array will only ever have one value
 	// in version 3.1, Type can be multiple values
-	Type []string
+	Type []string `json:"type,omitempty" yaml:"type,omitempty"`
 
 	// Schemas are resolved on demand using a SchemaProxy
-	AllOf []*SchemaProxy
+	AllOf []*SchemaProxy `json:"allOf,omitempty" yaml:"allOf,omitempty"`
 
 	// Polymorphic Schemas are only available in version 3+
-	OneOf         []*SchemaProxy
-	AnyOf         []*SchemaProxy
-	Discriminator *Discriminator
+	OneOf         []*SchemaProxy `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	AnyOf         []*SchemaProxy `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
+	Discriminator *Discriminator `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
 
 	// in 3.1 examples can be an array (which is recommended)
-	Examples []any
+	Examples []any `json:"examples,omitempty" yaml:"examples,omitempty"`
 
 	// in 3.1 prefixItems provides tuple validation support.
-	PrefixItems []*SchemaProxy
+	PrefixItems []*SchemaProxy `json:"prefixItems,omitempty" yaml:"prefixItems,omitempty"`
 
 	// 3.1 Specific properties
-	Contains              *SchemaProxy
-	MinContains           *int64
-	MaxContains           *int64
-	If                    *SchemaProxy
-	Else                  *SchemaProxy
-	Then                  *SchemaProxy
-	DependentSchemas      map[string]*SchemaProxy
-	PatternProperties     map[string]*SchemaProxy
-	PropertyNames         *SchemaProxy
-	UnevaluatedItems      *SchemaProxy
-	UnevaluatedProperties *SchemaProxy
+	Contains              *SchemaProxy            `json:"contains,omitempty" yaml:"contains,omitempty"`
+	MinContains           *int64                  `json:"minContains,omitempty" yaml:"minContains,omitempty"`
+	MaxContains           *int64                  `json:"maxContains,omitempty" yaml:"maxContains,omitempty"`
+	If                    *SchemaProxy            `json:"if,omitempty" yaml:"if,omitempty"`
+	Else                  *SchemaProxy            `json:"else,omitempty" yaml:"else,omitempty"`
+	Then                  *SchemaProxy            `json:"then,omitempty" yaml:"then,omitempty"`
+	DependentSchemas      map[string]*SchemaProxy `json:"dependentSchemas,omitempty" yaml:"dependentSchemas,omitempty"`
+	PatternProperties     map[string]*SchemaProxy `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
+	PropertyNames         *SchemaProxy            `json:"propertyNames,omitempty" yaml:"propertyNames,omitempty"`
+	UnevaluatedItems      *SchemaProxy            `json:"unevaluatedItems,omitempty" yaml:"unevaluatedItems,omitempty"`
+	UnevaluatedProperties *SchemaProxy            `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
 
 	// in 3.1 Items can be a Schema or a boolean
-	Items *DynamicValue[*SchemaProxy, bool]
+	Items *DynamicValue[*SchemaProxy, bool] `json:"items,omitempty" yaml:"items,omitempty"`
 
 	// Compatible with all versions
-	Not                  *SchemaProxy
-	Properties           map[string]*SchemaProxy
-	Title                string
-	MultipleOf           *int64
-	Maximum              *int64
-	Minimum              *int64
-	MaxLength            *int64
-	MinLength            *int64
-	Pattern              string
-	Format               string
-	MaxItems             *int64
-	MinItems             *int64
-	UniqueItems          *int64
-	MaxProperties        *int64
-	MinProperties        *int64
-	Required             []string
-	Enum                 []any
-	AdditionalProperties any
-	Description          string
-	Default              any
-	Nullable             *bool
-	ReadOnly             bool // https://github.com/pb33f/libopenapi/issues/30
-	WriteOnly            bool // https://github.com/pb33f/libopenapi/issues/30
-	XML                  *XML
-	ExternalDocs         *ExternalDoc
-	Example              any
-	Deprecated           *bool
-	Extensions           map[string]any
+	Not                  *SchemaProxy            `json:"not,omitempty" yaml:"not,omitempty"`
+	Properties           map[string]*SchemaProxy `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Title                string                  `json:"title,omitempty" yaml:"title,omitempty"`
+	MultipleOf           *int64                  `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
+	Maximum              *int64                  `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+	Minimum              *int64                  `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	MaxLength            *int64                  `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
+	MinLength            *int64                  `json:"minLength,omitempty" yaml:"minLength,omitempty"`
+	Pattern              string                  `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	Format               string                  `json:"format,omitempty" yaml:"format,omitempty"`
+	MaxItems             *int64                  `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
+	MinItems             *int64                  `json:"minItems,omitempty" yaml:"minItems,omitempty"`
+	UniqueItems          *int64                  `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
+	MaxProperties        *int64                  `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
+	MinProperties        *int64                  `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	Required             []string                `json:"required,omitempty" yaml:"required,omitempty"`
+	Enum                 []any                   `json:"enum,omitempty" yaml:"enum,omitempty"`
+	AdditionalProperties any                     `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
+	Description          string                  `json:"description,omitempty" yaml:"description,omitempty"`
+	Default              any                     `json:"default,omitempty" yaml:"default,omitempty"`
+	Nullable             *bool                   `json:"nullable,omitempty" yaml:"nullable,omitempty"`
+	ReadOnly             bool                    `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
+	WriteOnly            bool                    `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
+	XML                  *XML                    `json:"xml,omitempty" yaml:"xml,omitempty"`
+	ExternalDocs         *ExternalDoc            `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	Example              any                     `json:"example,omitempty" yaml:"example,omitempty"`
+	Deprecated           *bool                   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Extensions           map[string]any          `json:"-" yaml:"-"`
 	low                  *base.Schema
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
-	ParentProxy *SchemaProxy
+	ParentProxy *SchemaProxy `json:"-" yaml:"-"`
 }
 
 // NewSchema will create a new high-level schema from a low-level one.
@@ -461,4 +440,18 @@ func NewSchema(schema *base.Schema) *Schema {
 // GoLow will return the low-level instance of Schema that was used to create the high level one.
 func (s *Schema) GoLow() *base.Schema {
 	return s.low
+}
+
+// Render will return a YAML representation of the Schema object as a byte slice.
+func (s *Schema) Render() ([]byte, error) {
+	return yaml.Marshal(s)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
+func (s *Schema) MarshalYAML() (interface{}, error) {
+	if s == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(s, s.low)
+	return nb.Render(), nil
 }
