@@ -11,12 +11,13 @@ import "net/url"
 // The default configuration will set AllowFileReferences to false and AllowRemoteReferences to false, which means
 // any non-local (local being the specification, not the file system) references, will be ignored.
 type DocumentConfiguration struct {
-    // if the document uses relative file references, this is the base url to use when resolving them.
-    BaseURL *url.URL
+	// The BaseURL will be the root from which relative references will be resolved from if they can't be found locally.
+	// Schema must be set to "http/https".
+	BaseURL *url.URL
 
-    // AllowFileReferences will allow the index to locate relative file references. This is disabled by default.
-    AllowFileReferences bool
+	// AllowFileReferences will allow the index to locate relative file references. This is disabled by default.
+	AllowFileReferences bool
 
-    // AllowRemoteReferences will allow the index to lookup remote references. This is disabled by default.
-    AllowRemoteReferences bool
+	// AllowRemoteReferences will allow the index to lookup remote references. This is disabled by default.
+	AllowRemoteReferences bool
 }

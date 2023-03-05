@@ -15,6 +15,7 @@ package libopenapi
 
 import (
 	"fmt"
+
 	"github.com/pb33f/libopenapi/index"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -32,7 +33,6 @@ import (
 // Document Represents an OpenAPI specification that can then be rendered into a model or serialized back into
 // a string document after being manipulated.
 type Document interface {
-
 	// GetVersion will return the exact version of the OpenAPI specification set for the document.
 	GetVersion() string
 
@@ -150,8 +150,8 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 	var lowDoc *v2low.Swagger
 	if d.config == nil {
 		d.config = &datamodel.DocumentConfiguration{
-			AllowFileReferences:   true,
-			AllowRemoteReferences: true,
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
 		}
 	}
 
@@ -189,8 +189,8 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	var lowDoc *v3low.Document
 	if d.config == nil {
 		d.config = &datamodel.DocumentConfiguration{
-			AllowFileReferences:   true,
-			AllowRemoteReferences: true,
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
 		}
 	}
 
