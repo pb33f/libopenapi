@@ -65,5 +65,5 @@ func (d *DynamicValue[A, B]) MarshalYAML() (interface{}, error) {
     case reflect.Int64:
         _ = n.Encode(value.(int64))
     }
-    return n, err
+    return &n, err
 }

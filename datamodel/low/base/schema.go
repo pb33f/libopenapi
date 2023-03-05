@@ -3,6 +3,7 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -174,7 +175,43 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, fmt.Sprint(s.MinProperties.Value))
 	}
 	if !s.AdditionalProperties.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.AdditionalProperties.Value))
+
+		// check type of properties, if we have a low level map, we need to hash the values in a repeatable
+		// order.
+		to := reflect.TypeOf(s.AdditionalProperties.Value)
+		vo := reflect.ValueOf(s.AdditionalProperties.Value)
+		var values []string
+		switch to.Kind() {
+		case reflect.Slice:
+			for i := 0; i < vo.Len(); i++ {
+				vn := vo.Index(i).Interface()
+				values = append(values, fmt.Sprintf("%d:%s", i, low.GenerateHashString(vn)))
+			}
+			sort.Strings(values)
+			d = append(d, strings.Join(values, "||"))
+
+		case reflect.Map:
+			for _, k := range vo.MapKeys() {
+				var x string
+				var l int
+				var v any
+				// extract key
+				if o, ok := k.Interface().(low.HasKeyNode); ok {
+					x = o.GetKeyNode().Value
+					l = o.GetKeyNode().Line
+					v = vo.MapIndex(k).Interface().(low.HasValueNodeUntyped).GetValueNode().Value
+				} else {
+					x = k.String()
+					l = 999
+					v = vo.MapIndex(k).Interface()
+				}
+				values = append(values, fmt.Sprintf("%d:%s:%s", l, x, low.GenerateHashString(v)))
+			}
+			sort.Strings(values)
+			d = append(d, strings.Join(values, "||"))
+		default:
+			d = append(d, low.GenerateHashString(s.AdditionalProperties.Value))
+		}
 	}
 	if !s.Description.IsEmpty() {
 		d = append(d, fmt.Sprint(s.Description.Value))
@@ -593,17 +630,60 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		if utils.IsNodeMap(addPNode) {
 			// check if this is a reference, or an inline schema.
 			isRef, _, _ := utils.IsNodeRefValue(addPNode)
-			sp := &SchemaProxy{
-				kn:  addPLabel,
-				vn:  addPNode,
-				idx: idx,
+			var sp *SchemaProxy
+			// now check if this object has a 'type' if so, it's a schema, if not... it's a random
+			// object, and we should treat it as a raw map.
+			if _, v := utils.FindKeyNodeTop(TypeLabel, addPNode.Content); v != nil {
+				sp = &SchemaProxy{
+					kn:  addPLabel,
+					vn:  addPNode,
+					idx: idx,
+				}
 			}
 			if isRef {
-				sp.isReference = true
 				_, vn := utils.FindKeyNodeTop("$ref", addPNode.Content)
-				sp.referenceLookup = vn.Value
+				sp = &SchemaProxy{
+					kn:              addPLabel,
+					vn:              addPNode,
+					idx:             idx,
+					isReference:     true,
+					referenceLookup: vn.Value,
+				}
 			}
-			s.AdditionalProperties = low.NodeReference[any]{Value: sp, KeyNode: addPLabel, ValueNode: addPNode}
+
+			// if this is a reference, or a schema, we're done.
+			if sp != nil {
+				s.AdditionalProperties = low.NodeReference[any]{Value: sp, KeyNode: addPLabel, ValueNode: addPNode}
+			} else {
+
+				// if this is a map, collect all the keys and values.
+				if utils.IsNodeMap(addPNode) {
+
+					addProps := make(map[low.KeyReference[string]]low.ValueReference[any])
+					var label string
+					for g := range addPNode.Content {
+						if g%2 == 0 {
+							label = addPNode.Content[g].Value
+							continue
+						} else {
+							addProps[low.KeyReference[string]{Value: label, KeyNode: addPNode.Content[g-1]}] =
+								low.ValueReference[any]{Value: addPNode.Content[g].Value, ValueNode: addPNode.Content[g]}
+						}
+					}
+					s.AdditionalProperties = low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
+				}
+
+				// if the node is an array, extract everything into a trackable structure
+				if utils.IsNodeArray(addPNode) {
+					var addProps []low.ValueReference[any]
+					for i := range addPNode.Content {
+						addProps = append(addProps,
+							low.ValueReference[any]{Value: addPNode.Content[i].Value, ValueNode: addPNode.Content[i]})
+					}
+					s.AdditionalProperties =
+						low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
+				}
+			}
 		}
 		if utils.IsNodeBoolValue(addPNode) {
 			b, _ := strconv.ParseBool(addPNode.Value)

@@ -155,9 +155,9 @@ func (d *Document) Render() ([]byte, error) {
 // MarshalYAML will create a ready to render YAML representation of the Document object.
 func (d *Document) MarshalYAML() (interface{}, error) {
 	n := high.CreateEmptyMapNode()
-	high.AddYAMLNode(n, low.SchemaDialectLabel, d.JsonSchemaDialect)
-	high.AddYAMLNode(n, low.OpenAPILabel, d.Version)
-	high.AddYAMLNode(n, low.InfoLabel, d.Info)
+	//high.AddYAMLNode(n, low.SchemaDialectLabel, d.JsonSchemaDialect)
+	//high.AddYAMLNode(n, low.OpenAPILabel, d.Version)
+	//high.AddYAMLNode(n, low.InfoLabel, d.Info)
 	//high.AddYAMLNode(n, low.TagsLabel, d.Tags)
 	//high.AddYAMLNode(n, low.ServersLabel, d.Servers)
 	//high.AddYAMLNode(n, low.SecurityLabel, d.Security)
@@ -166,6 +166,6 @@ func (d *Document) MarshalYAML() (interface{}, error) {
 	//high.AddYAMLNode(n, low.PathsLabel, d.Paths)
 	//high.AddYAMLNode(n, low.ComponentsLabel, d.Components)
 	//high.AddYAMLNode(n, low.WebhooksLabel, d.Webhooks)
-	high.MarshalExtensions(n, d.Extensions)
+	//high.MarshalExtensions(n, d.Extensions)
 	return n, nil
 }
