@@ -59,6 +59,17 @@ type HasValue[T any] interface {
 	*T
 }
 
+// HasValueUnTyped is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
+type HasValueUnTyped interface {
+	GetValueUntyped() any
+	GetValueNode() *yaml.Node
+}
+
+// HasKeyNode is implemented by KeyReference to return the yaml.Node backing the key.
+type HasKeyNode interface {
+	GetKeyNode() *yaml.Node
+}
+
 // NodeReference is a low-level container for holding a Value of type T, as well as references to
 // a key yaml.Node that points to the key node that contains the value node, and the value node that contains
 // the actual value.
@@ -158,6 +169,11 @@ func (n NodeReference[T]) GetValue() T {
 	return n.Value
 }
 
+// GetValueUntyped will return the raw value of the node with no type
+func (n NodeReference[T]) GetValueUntyped() any {
+	return n.Value
+}
+
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
 func (n ValueReference[T]) IsEmpty() bool {
 	return n.ValueNode == nil
@@ -187,9 +203,24 @@ func (n ValueReference[T]) GetValue() T {
 	return n.Value
 }
 
+// GetValueUntyped will return the raw value of the node with no type
+func (n ValueReference[T]) GetValueUntyped() any {
+	return n.Value
+}
+
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
 func (n KeyReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil
+}
+
+// GetValueUntyped will return the raw value of the node with no type
+func (n KeyReference[T]) GetValueUntyped() any {
+	return n.Value
+}
+
+// GetKeyNode will return the yaml.Node containing the reference key node.
+func (n KeyReference[T]) GetKeyNode() *yaml.Node {
+	return n.KeyNode
 }
 
 // GenerateMapKey will return a string based on the line and column number of the node, e.g. 33:56 for line 33, col 56.

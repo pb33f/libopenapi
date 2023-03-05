@@ -235,6 +235,8 @@ func NewSchema(schema *base.Schema) *Schema {
 				Value:     addPropSchema,
 			})
 		} else {
+			// TODO: check for slice and map types and unpack correctly.
+			
 			s.AdditionalProperties = schema.AdditionalProperties.Value
 		}
 	}

@@ -5,6 +5,7 @@ package base
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
@@ -171,8 +172,7 @@ version: 1.2.3
 x-pizza: pepperoni
 x-cake:
     name: someone
-    url: nowhere
-`
+    url: nowhere`
 
 	// unmarshal yaml into a *yaml.Node instance
 	var cNode yaml.Node
@@ -198,7 +198,7 @@ x-cake:
 
 	// marshal high back to yaml, should be the same as the original, in same order.
 	bytes, _ := highInfo.Render()
-	assert.Equal(t, yml, string(bytes))
+	assert.Equal(t, yml, strings.TrimSpace(string(bytes)))
 }
 
 

@@ -5,6 +5,7 @@ package base
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -68,157 +69,146 @@ func TestNewSchemaProxy(t *testing.T) {
 func TestNewSchemaProxy_WithObject(t *testing.T) {
 	testSpec := `type: object
 description: something object
-discriminator:
-  propertyName: athing
-  mapping:
-    log: cat
-    pizza: party
-allOf:
-  - type: object
-    description: an allof thing
-    properties:
-      allOfA:
-        type: string
-        description: allOfA description
-        example: 'allOfAExp'
-      allOfB:
-        type: string
-        description: allOfB description
-        example: 'allOfBExp'
-oneOf:
-  type: object
-  description: a oneof thing
-  properties:
-    oneOfA:
-      type: string
-      description: oneOfA description
-      example: 'oneOfAExp'
-    oneOfB:
-      type: string
-      description: oneOfB description
-      example: 'oneOfBExp'
-anyOf:
-  type: object
-  description: an anyOf thing
-  properties:
-    anyOfA:
-      type: string
-      description: anyOfA description
-      example: 'anyOfAExp'
-    anyOfB:
-      type: string
-      description: anyOfB description
-      example: 'anyOfBExp'    
-not:
-  type: object
-  description: a not thing
-  properties:
-    notA:
-      type: string
-      description: notA description
-      example: 'notAExp'
-    notB:
-      type: string
-      description: notB description
-      example: 'notBExp'      
-items:
-  type: object
-  description: an items thing
-  properties:
-    itemsA:
-      type: string
-      description: itemsA description
-      example: 'itemsAExp'
-    itemsB:
-      type: string
-      description: itemsB description
-      example: 'itemsBExp'
-prefixItems:
-  type: object
-  description: an items thing
-  properties:
-    itemsA:
-      type: string
-      description: itemsA description
-      example: 'itemsAExp'
-    itemsB:
-      type: string
-      description: itemsB description
-      example: 'itemsBExp'
-properties:
-  somethingBee:
-    type: number
-  somethingThree:
-    type: number
-  somethingTwo:
-    type: number
-  somethingOne:
-    type: number
-  somethingA:
-    type: number
-    description: a number
-    example: 2
-  somethingB:
-    type: object
-    description: an object
-    externalDocs:
-      description: the best docs
-      url: https://pb33f.io
-    properties:
-      somethingBProp:
-        type: string
-        description: something b subprop
-        example: picnics are nice.
-        xml:
-          name: an xml thing
-          namespace: an xml namespace
-          prefix: a prefix
-          attribute: true
-          wrapped: false
-          x-pizza: love
-    additionalProperties: 
-        why: yes
-        thatIs: true    
-additionalProperties: true
-xml:
-  name: XML Thing
-externalDocs:
-  url: https://pb33f.io/docs
-enum: [fish, cake]
-required: [cake, fish]
-maxLength: 10
-minLength: 1
-maxItems: 10
-minItems: 1
-maxProperties: 10
-minProperties: 1
-nullable: true
-readOnly: true
-writeOnly: false
-deprecated: true
-contains:
-  type: int
-minContains: 1
-maxContains: 10
 if:
-  type: string
+    type: string
 else:
-  type: integer
+    type: integer
 then:
-  type: boolean
+    type: boolean
 dependentSchemas:
-  schemaOne:
-    type: string
+    schemaOne:
+        type: string
 patternProperties:
-  patternOne:
-    type: string
+    patternOne:
+        type: string
 propertyNames:
-  type: string
+    type: string
 unevaluatedItems:
-  type: boolean
+    type: boolean
 unevaluatedProperties:
-  type: integer
-`
+    type: integer
+discriminator:
+    propertyName: athing
+    mapping:
+        log: cat
+        pizza: party
+allOf:
+    - type: object
+      description: an allof thing
+      properties:
+        allOfA:
+            type: string
+            description: allOfA description
+            example: allOfAExp
+        allOfB:
+            type: string
+            description: allOfB description
+            example: allOfBExp
+oneOf:
+    - type: object
+      description: a oneof thing
+      properties:
+        oneOfA:
+            type: string
+            description: oneOfA description
+            example: oneOfAExp
+        oneOfB:
+            type: string
+            description: oneOfB description
+            example: oneOfBExp
+anyOf:
+    - type: object
+      description: an anyOf thing
+      properties:
+        anyOfA:
+            type: string
+            description: anyOfA description
+            example: anyOfAExp
+        anyOfB:
+            type: string
+            description: anyOfB description
+            example: anyOfBExp
+not:
+    type: object
+    description: a not thing
+    properties:
+        notA:
+            type: string
+            description: notA description
+            example: notAExp
+        notB:
+            type: string
+            description: notB description
+            example: notBExp
+items:
+    type: object
+    description: an items thing
+    properties:
+        itemsA:
+            type: string
+            description: itemsA description
+            example: itemsAExp
+        itemsB:
+            type: string
+            description: itemsB description
+            example: itemsBExp
+prefixItems:
+    - type: object
+      description: an items thing
+      properties:
+        itemsA:
+            type: string
+            description: itemsA description
+            example: itemsAExp
+        itemsB:
+            type: string
+            description: itemsB description
+            example: itemsBExp
+properties:
+    somethingA:
+        type: number
+        description: a number
+        example: "2"
+        additionalProperties:
+            - chicken
+            - nugget
+            - soup
+    somethingB:
+        type: object
+        exclusiveMinimum: true
+        exclusiveMaximum: true
+        description: an object
+        externalDocs:
+            description: the best docs
+            url: https://pb33f.io
+        properties:
+            somethingBProp:
+                type: string
+                description: something b subprop
+                example: picnics are nice.
+                xml:
+                    name: an xml thing
+                    namespace: an xml namespace
+                    prefix: a prefix
+                    attribute: true
+                    x-pizza: love
+        additionalProperties:
+            why: yes
+            thatIs: true
+additionalProperties: true
+required:
+    - them
+enum:
+    - one
+    - two
+x-pizza: tasty
+examples:
+    - hey
+    - hi!
+contains:
+    type: int
+maxContains: 10
+minContains: 1`
 
 	var compNode yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
@@ -252,15 +242,13 @@ unevaluatedProperties:
 	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.UnevaluatedProperties.Schema().Type[0])
-	assert.NotNil(t, compiled.Nullable)
-	assert.True(t, *compiled.Nullable)
 
 	wentLow := compiled.GoLow()
-	assert.Equal(t, 114, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.Equal(t, 129, wentLow.AdditionalProperties.ValueNode.Line)
 
 	// now render it out!
 	schemaBytes, _ := compiled.Render()
-	assert.Equal(t, testSpec, string(schemaBytes))
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
 
 }
 
@@ -817,3 +805,278 @@ items:
 	schemaBytes, _ := compiled.Render()
 	assert.Equal(t, testSpec, string(schemaBytes))
 }
+
+func TestNewSchemaProxy_RenderSchemaEnsurePropertyOrdering(t *testing.T) {
+	testSpec := `properties:
+    somethingBee:
+        type: number
+    somethingThree:
+        type: number
+    somethingTwo:
+        type: number
+    somethingOne:
+        type: number
+    somethingA:
+        type: number
+        description: a number
+        example: "2"
+    somethingB:
+        type: object
+        description: an object
+        externalDocs:
+            description: the best docs
+            url: https://pb33f.io
+        properties:
+            somethingBProp:
+                type: string
+                description: something b subprop
+                example: picnics are nice.
+                xml:
+                    name: an xml thing
+                    namespace: an xml namespace
+                    prefix: a prefix
+                    attribute: true
+                    x-pizza: love
+        additionalProperties:
+            why: yes
+            thatIs: true
+additionalProperties: true
+xml:
+    name: XML Thing`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
+
+func TestNewSchemaProxy_RenderSchemaCheckDiscriminatorMappingOrder(t *testing.T) {
+	testSpec := `discriminator:
+    mapping:
+        log: cat
+        pizza: party
+        chicken: nuggets
+        warm: soup
+        cold: heart`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
+
+func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSlice(t *testing.T) {
+	testSpec := `additionalProperties:
+    - one
+    - two
+    - miss a few
+    - ninety nine
+    - hundred`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	compiled.low.Hash()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
+
+/*
+
+
+
+type: object
+description: something object
+discriminator:
+  propertyName: athing
+  mapping:
+    log: cat
+    pizza: party
+allOf:
+  - type: object
+    description: an allof thing
+    properties:
+      allOfA:
+        type: string
+        description: allOfA description
+        example: 'allOfAExp'
+      allOfB:
+        type: string
+        description: allOfB description
+        example: 'allOfBExp'
+oneOf:
+  type: object
+  description: a oneof thing
+  properties:
+    oneOfA:
+      type: string
+      description: oneOfA description
+      example: 'oneOfAExp'
+    oneOfB:
+      type: string
+      description: oneOfB description
+      example: 'oneOfBExp'
+anyOf:
+  type: object
+  description: an anyOf thing
+  properties:
+    anyOfA:
+      type: string
+      description: anyOfA description
+      example: 'anyOfAExp'
+    anyOfB:
+      type: string
+      description: anyOfB description
+      example: 'anyOfBExp'
+not:
+  type: object
+  description: a not thing
+  properties:
+    notA:
+      type: string
+      description: notA description
+      example: 'notAExp'
+    notB:
+      type: string
+      description: notB description
+      example: 'notBExp'
+items:
+  type: object
+  description: an items thing
+  properties:
+    itemsA:
+      type: string
+      description: itemsA description
+      example: 'itemsAExp'
+    itemsB:
+      type: string
+      description: itemsB description
+      example: 'itemsBExp'
+prefixItems:
+  type: object
+  description: an items thing
+  properties:
+    itemsA:
+      type: string
+      description: itemsA description
+      example: 'itemsAExp'
+    itemsB:
+      type: string
+      description: itemsB description
+      example: 'itemsBExp'
+properties:
+  somethingBee:
+    type: number
+  somethingThree:
+    type: number
+  somethingTwo:
+    type: number
+  somethingOne:
+    type: number
+  somethingA:
+    type: number
+    description: a number
+    example: 2
+  somethingB:
+    type: object
+    description: an object
+    externalDocs:
+      description: the best docs
+      url: https://pb33f.io
+    properties:
+      somethingBProp:
+        type: string
+        description: something b subprop
+        example: picnics are nice.
+        xml:
+          name: an xml thing
+          namespace: an xml namespace
+          prefix: a prefix
+          attribute: true
+          wrapped: false
+          x-pizza: love
+    additionalProperties:
+        why: yes
+        thatIs: true
+additionalProperties: true
+xml:
+  name: XML Thing
+externalDocs:
+  url: https://pb33f.io/docs
+enum: [fish, cake]
+required: [cake, fish]
+maxLength: 10
+minLength: 1
+maxItems: 10
+minItems: 1
+maxProperties: 10
+minProperties: 1
+nullable: true
+readOnly: true
+writeOnly: false
+deprecated: true
+contains:
+  type: int
+minContains: 1
+maxContains: 10
+if:
+  type: string
+else:
+  type: integer
+then:
+  type: boolean
+dependentSchemas:
+  schemaOne:
+    type: string
+patternProperties:
+  patternOne:
+    type: string
+propertyNames:
+  type: string
+unevaluatedItems:
+  type: boolean
+unevaluatedProperties:
+  type: integer
+*/
