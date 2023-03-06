@@ -324,6 +324,33 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 3, len(index.GetAllParametersFromOperations()))
 }
 
+func TestSpecIndex_GetAllParametersFromOperations(t *testing.T) {
+
+	yml := `openapi: 3.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /test:
+    get:
+      parameters:
+        - name: action
+          in: query
+          schema:
+            type: string
+        - name: action
+          in: query
+          schema:
+            type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	assert.Equal(t, 1, len(index.GetAllParametersFromOperations()))
+	assert.Equal(t, 1, len(index.GetOperationParametersIndexErrors()))
+}
+
 func TestSpecIndex_BurgerShop_AllTheComponents(t *testing.T) {
 	burgershop, _ := ioutil.ReadFile("../test_specs/all-the-components.yaml")
 	var rootNode yaml.Node
