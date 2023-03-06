@@ -178,9 +178,7 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node, error) {
     // split string to remove file reference
     uri := strings.Split(ref, "#")
-
     file := strings.ReplaceAll(uri[0], "file:", "")
-
     filePath := filepath.Dir(file)
     fileName := filepath.Base(file)
 
@@ -188,7 +186,6 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 
     if index.seenRemoteSources[file] != nil {
         parsedRemoteDocument = index.seenRemoteSources[file]
-
     } else {
 
         base := index.config.BasePath
@@ -306,7 +303,6 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 
             // cool, cool, lets index this spec also. This is a recursive action and will keep going
             // until all remote references have been found.
-
             var bp *url.URL
             var bd string
 
@@ -327,20 +323,18 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
             }
             if bd != "" {
                 newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
-
             }
 
             if newUrl != nil || newBasePath != "" {
                 newConfig := &SpecIndexConfig{
                     BaseURL:  newUrl,
                     BasePath: newBasePath,
-
                     AllowRemoteLookup: index.config.AllowRemoteLookup,
                     AllowFileLookup:   index.config.AllowFileLookup,
                     seenRemoteSources: index.config.seenRemoteSources,
                     remoteLock:        index.config.remoteLock,
                 }
-
+                
                 var newIndex *SpecIndex
                 newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
                 index.refLock.Lock()
