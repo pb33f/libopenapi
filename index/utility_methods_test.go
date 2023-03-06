@@ -26,6 +26,28 @@ func TestGenerateCleanSpecConfigBaseURL_RelativeDeep(t *testing.T) {
         GenerateCleanSpecConfigBaseURL(u, path, true))
 }
 
+func TestGenerateCleanSpecConfigBaseURL_NoBaseURL(t *testing.T) {
+
+    u, _ := url.Parse("/things/stuff/jazz/cakes/winter/oil")
+    path := "../../../../foo/bar/baz/crap.yaml#thang"
+    assert.Equal(t, "/things/stuff/foo/bar/baz",
+        GenerateCleanSpecConfigBaseURL(u, path, false))
+
+    assert.Equal(t, "/things/stuff/foo/bar/baz/crap.yaml#thang",
+        GenerateCleanSpecConfigBaseURL(u, path, true))
+}
+
+func TestGenerateCleanSpecConfigBaseURL_HttpStrip(t *testing.T) {
+
+    u, _ := url.Parse(".")
+    path := "http://thing.com/crap.yaml#thang"
+    assert.Equal(t, "http://thing.com",
+        GenerateCleanSpecConfigBaseURL(u, path, false))
+
+    assert.Equal(t, "",
+        GenerateCleanSpecConfigBaseURL(u, "crap.yaml#thing", true))
+}
+
 func TestSpecIndex_extractDefinitionRequiredRefProperties(t *testing.T) {
     c := CreateOpenAPIIndexConfig()
     idx := NewSpecIndexWithConfig(nil, c)
