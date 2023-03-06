@@ -8,6 +8,7 @@ import (
     "gopkg.in/yaml.v3"
     "net/http"
     "net/url"
+    "os"
     "sync"
 )
 
@@ -59,6 +60,9 @@ type SpecIndexConfig struct {
     // More details on relative references can be found in issue #73: https://github.com/pb33f/libopenapi/issues/73
     BaseURL *url.URL // set the Base URL for resolving relative references if the spec is exploded.
 
+    // If resolving locally, the BasePath will be the root from which relative references will be resolved from
+    BasePath string // set the Base Path for resolving relative references if the spec is exploded.
+
     // In an earlier version of libopenapi (pre 0.6.0) the index would automatically resolve all references
     // They could have been local, or they could have been remote. This was a problem because it meant
     // There was a potential for a remote exploit if a remote reference was malicious. There aren't any known
@@ -68,7 +72,6 @@ type SpecIndexConfig struct {
     AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
     AllowFileLookup   bool // Allow file lookups for references. Defaults to false
 
-
     // private fields
     seenRemoteSources *syncmap.Map
     remoteLock        *sync.Mutex
@@ -76,8 +79,12 @@ type SpecIndexConfig struct {
 
 // CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
 // AllowFileLookup set to true. This is the default behaviour of the index in previous versions of libopenapi. (pre 0.6.0)
+//
+// The default BasePath is the current working directory.
 func CreateOpenAPIIndexConfig() *SpecIndexConfig {
+    cw, _ := os.Getwd()
     return &SpecIndexConfig{
+        BasePath:          cw,
         AllowRemoteLookup: true,
         AllowFileLookup:   true,
         seenRemoteSources: &syncmap.Map{},
@@ -86,8 +93,12 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 
 // CreateClosedAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
 // AllowFileLookup set to false. This is the default behaviour of the index in versions 0.6.0+
+//
+// The default BasePath is the current working directory.
 func CreateClosedAPIIndexConfig() *SpecIndexConfig {
+    cw, _ := os.Getwd()
     return &SpecIndexConfig{
+        BasePath:          cw,
         AllowRemoteLookup: false,
         AllowFileLookup:   false,
         seenRemoteSources: &syncmap.Map{},
@@ -194,6 +205,7 @@ type SpecIndex struct {
     seenRemoteSources                   map[string]*yaml.Node
     seenLocalSources                    map[string]*yaml.Node
     refLock                             sync.Mutex
+    sourceLock                          sync.Mutex
     circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
     allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
     relativePath                        string                     // relative path of the spec file.
