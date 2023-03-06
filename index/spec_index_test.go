@@ -6,8 +6,11 @@ package index
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -17,9 +20,9 @@ import (
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(stripe, &rootNode)
+	_ = yaml.Unmarshal(stripe, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, index.allRefs, 385)
 	assert.Equal(t, 537, len(index.allMappedRefs))
@@ -63,9 +66,9 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 func TestSpecIndex_Asana(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/asana.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(asana, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, index.allRefs, 152)
 	assert.Len(t, index.allMappedRefs, 171)
@@ -83,9 +86,9 @@ func TestSpecIndex_Asana(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	do, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(do, &rootNode)
 
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
@@ -98,10 +101,34 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	assert.NotNil(t, index)
 }
 
+func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
+
+	// this is a full checkout of the digitalocean API repo.
+	tmp, _ := os.MkdirTemp("", "openapi")
+	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
+	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
+	doLocal, _ := ioutil.ReadFile(spec)
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(doLocal, &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.BasePath = filepath.Join(tmp, "specification")
+
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	assert.Len(t, index.GetAllExternalIndexes(), 291)
+	assert.NotNil(t, index)
+}
+
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(asana, &rootNode)
 
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
@@ -116,7 +143,7 @@ func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 func TestSpecIndex_BaseURLError(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(asana, &rootNode)
 
 	// this should fail because the base url is not a valid url and digital ocean won't be able to resolve
 	// anything.
@@ -133,9 +160,9 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 func TestSpecIndex_k8s(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/k8s.json")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(asana, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, index.allRefs, 558)
 	assert.Equal(t, 563, len(index.allMappedRefs))
@@ -158,9 +185,9 @@ func TestSpecIndex_k8s(t *testing.T) {
 func TestSpecIndex_PetstoreV2(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/petstorev2.json")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(asana, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, index.allRefs, 6)
 	assert.Len(t, index.allMappedRefs, 6)
@@ -182,9 +209,9 @@ func TestSpecIndex_PetstoreV2(t *testing.T) {
 func TestSpecIndex_XSOAR(t *testing.T) {
 	xsoar, _ := ioutil.ReadFile("../test_specs/xsoar.json")
 	var rootNode yaml.Node
-	yaml.Unmarshal(xsoar, &rootNode)
+	_ = yaml.Unmarshal(xsoar, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Len(t, index.allRefs, 209)
 	assert.Equal(t, 85, index.pathCount)
 	assert.Equal(t, 88, index.operationCount)
@@ -200,9 +227,9 @@ func TestSpecIndex_XSOAR(t *testing.T) {
 func TestSpecIndex_PetstoreV3(t *testing.T) {
 	petstore, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
-    yaml.Unmarshal(petstore, &rootNode)
+	_ = yaml.Unmarshal(petstore, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, index.allRefs, 7)
 	assert.Len(t, index.allMappedRefs, 7)
@@ -228,9 +255,9 @@ var mappedRefs = 15
 func TestSpecIndex_BurgerShop(t *testing.T) {
 	burgershop, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(burgershop, &rootNode)
+	_ = yaml.Unmarshal(burgershop, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, index.allRefs, mappedRefs)
 	assert.Len(t, index.allMappedRefs, mappedRefs)
@@ -300,9 +327,9 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 func TestSpecIndex_BurgerShop_AllTheComponents(t *testing.T) {
 	burgershop, _ := ioutil.ReadFile("../test_specs/all-the-components.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(burgershop, &rootNode)
+	_ = yaml.Unmarshal(burgershop, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Equal(t, 1, len(index.GetAllHeaders()))
 	assert.Equal(t, 1, len(index.GetAllLinks()))
@@ -320,9 +347,9 @@ responses:
     description: hi`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Equal(t, 1, len(index.GetAllResponses()))
 }
@@ -341,9 +368,9 @@ func TestSpecIndex_NoNameParam(t *testing.T) {
         - in: query`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Equal(t, 2, len(index.GetOperationParametersIndexErrors()))
 }
@@ -367,24 +394,27 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 }
 
 func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
-    spec, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
-    var rootNode yaml.Node
-    yaml.Unmarshal(spec, &rootNode)
+	spec, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(spec, &rootNode)
 
-    index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-        AllowRemoteLookup: true,
-        AllowFileLookup:   true,
-    })
+	cwd, _ := os.Getwd()
 
-    assert.Len(t, index.allRefs, 5)
-    assert.Len(t, index.allMappedRefs, 5)
-    assert.Equal(t, 5, index.GetPathCount())
-    assert.Equal(t, 5, index.GetOperationCount())
-    assert.Equal(t, 1, index.GetComponentSchemaCount())
-    assert.Equal(t, 2, index.GetGlobalTagsCount())
-    assert.Equal(t, 3, index.GetTotalTagsCount())
-    assert.Equal(t, 2, index.GetOperationTagsCount())
-    assert.Equal(t, 0, index.GetGlobalLinksCount())
+	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
+		AllowRemoteLookup: true,
+		AllowFileLookup:   true,
+		BasePath:          cwd,
+	})
+
+	assert.Len(t, index.allRefs, 5)
+	assert.Len(t, index.allMappedRefs, 5)
+	assert.Equal(t, 5, index.GetPathCount())
+	assert.Equal(t, 5, index.GetOperationCount())
+	assert.Equal(t, 1, index.GetComponentSchemaCount())
+	assert.Equal(t, 2, index.GetGlobalTagsCount())
+	assert.Equal(t, 3, index.GetTotalTagsCount())
+	assert.Equal(t, 2, index.GetOperationTagsCount())
+	assert.Equal(t, 0, index.GetGlobalLinksCount())
 	assert.Equal(t, 0, index.GetComponentParameterCount())
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
@@ -394,9 +424,9 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	asana, _ := ioutil.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(asana, &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, 5, index.GetPathCount())
 	assert.Equal(t, 5, index.GetOperationCount())
 	assert.Equal(t, 5, index.GetComponentSchemaCount())
@@ -418,9 +448,9 @@ func TestTagsNoDescription(t *testing.T) {
   - three: three`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, 3, index.GetGlobalTagsCount())
 }
 
@@ -460,9 +490,9 @@ paths:
           $ref: '#/components/callbacks/CallbackA'`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, 4, index.GetGlobalCallbacksCount())
 }
 
@@ -477,9 +507,9 @@ func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
       description: something`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Len(t, index.GetReferenceIndexErrors(), 1)
 }
 
@@ -519,9 +549,9 @@ func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
           description: Not Found.`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, "#/paths/~1crazy~1ass~1references/get/parameters/0",
 		index.FindComponent("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema", nil).Node.Content[1].Value)
 
@@ -540,9 +570,9 @@ func TestSpecIndex_FindComponenth(t *testing.T) {
       description: something`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Nil(t, index.FindComponent("I-do-not-exist", nil))
 }
 
@@ -558,9 +588,9 @@ func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
       description: something`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Nil(t, index.performExternalLookup(nil, "unknown", nil, nil))
 }
 
@@ -596,15 +626,18 @@ func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
 // Discovered in issue https://github.com/daveshanley/vacuum/issues/225
 func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
 
+	cwd, _ := os.Getwd()
 	index := new(SpecIndex)
-    _ = ioutil.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
-    defer os.Remove("coffee-time.yaml")
+	index.config = &SpecIndexConfig{BasePath: cwd}
 
-    index.seenRemoteSources = make(map[string]*yaml.Node)
-    a, b, err := index.lookupFileReference("coffee-time.yaml")
-    assert.NoError(t, err)
-    assert.NotNil(t, a)
-    assert.NotNil(t, b)
+	_ = ioutil.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
+	defer os.Remove("coffee-time.yaml")
+
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	a, b, err := index.lookupFileReference("coffee-time.yaml")
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
 }
 
 func TestSpecIndex_CheckBadURLRef(t *testing.T) {
@@ -617,9 +650,9 @@ paths:
         - $ref: 'httpsss://badurl'`
 
     var rootNode yaml.Node
-    yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-    index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
     assert.Len(t, index.refErrors, 2)
 }
@@ -634,7 +667,7 @@ paths:
         - $ref: 'httpsss://badurl'`
 
     var rootNode yaml.Node
-    yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
     c := CreateClosedAPIIndexConfig()
     idx := NewSpecIndexWithConfig(&rootNode, c)
@@ -657,9 +690,9 @@ paths:
         - $ref: 'coffee-time.yaml'`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.NotNil(t, index.GetAllParametersFromOperations()["/cakes"]["post"]["coffee-time.yaml"][0].Node)
 }
@@ -676,13 +709,13 @@ func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing
 }
 
 func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
-	index := new(SpecIndex)
+	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
 	_, _, err := index.lookupFileReference("not-a-reference")
 	assert.Error(t, err)
 }
 
 func TestSpecIndex_lookupFileReference_SeenSourceSimulation_Error(t *testing.T) {
-	index := new(SpecIndex)
+	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	index.seenRemoteSources["magic-money-file.json"] = &yaml.Node{}
 	_, _, err := index.lookupFileReference("magic-money-file.json#something")
@@ -690,7 +723,7 @@ func TestSpecIndex_lookupFileReference_SeenSourceSimulation_Error(t *testing.T) 
 }
 
 func TestSpecIndex_lookupFileReference_BadFile(t *testing.T) {
-	index := new(SpecIndex)
+	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
 	_, _, err := index.lookupFileReference("chickers.json#no-rice")
 	assert.Error(t, err)
 }
@@ -698,8 +731,8 @@ func TestSpecIndex_lookupFileReference_BadFile(t *testing.T) {
 func TestSpecIndex_lookupFileReference_BadFileDataRead(t *testing.T) {
 	_ = ioutil.WriteFile("chickers.yaml", []byte("broke: the: thing: [again]"), 0o664)
 	defer os.Remove("chickers.yaml")
-
-	index := new(SpecIndex)
+	var root yaml.Node
+	index := NewSpecIndexWithConfig(&root, CreateOpenAPIIndexConfig())
 	_, _, err := index.lookupFileReference("chickers.yaml#no-rice")
 	assert.Error(t, err)
 }
@@ -708,7 +741,7 @@ func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 	_ = ioutil.WriteFile("embie.yaml", []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy"), 0o664)
 	defer os.Remove("embie.yaml")
 
-	index := new(SpecIndex)
+	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	k, doc, err := index.lookupFileReference("embie.yaml#/.naughty")
 	assert.NoError(t, err)
@@ -720,7 +753,7 @@ func TestSpecIndex_lookupFileReference(t *testing.T) {
 	_ = ioutil.WriteFile("fox.yaml", []byte("good:\n - puppy: dog\n - puppy: forever-more"), 0o664)
 	defer os.Remove("fox.yaml")
 
-	index := new(SpecIndex)
+	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	k, doc, err := index.lookupFileReference("fox.yaml#/good")
 	assert.NoError(t, err)
@@ -766,9 +799,9 @@ components:
         type: string`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	params := index.GetAllParametersFromOperations()
 
@@ -804,9 +837,9 @@ paths:
         - url: https://api.example.com/v3`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	rootServers := index.GetAllRootServers()
 
@@ -842,9 +875,9 @@ func TestSpecIndex_schemaComponentsHaveParentsAndPaths(t *testing.T) {
       type: object`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	schemas := index.GetAllSchemas()
 
@@ -892,9 +925,9 @@ paths:
          description: OK`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	idx := NewSpecIndex(&rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, idx.paramAllRefs, 4)
 	assert.Len(t, idx.paramInlineDuplicateNames, 2)
@@ -941,9 +974,9 @@ paths:
          description: OK`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	idx := NewSpecIndex(&rootNode)
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	assert.Len(t, idx.paramAllRefs, 3)
 	assert.Len(t, idx.paramInlineDuplicateNames, 2)
@@ -983,7 +1016,7 @@ components:
 	var rootNode yaml.Node
 	yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	objects := index.GetAllObjectsWithProperties()
 	assert.Len(t, objects, 3)
@@ -998,10 +1031,10 @@ func ExampleNewSpecIndex() {
 	stripeSpec, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
 
 	// unmarshal spec into our rootNode
-	yaml.Unmarshal(stripeSpec, &rootNode)
+	_ = yaml.Unmarshal(stripeSpec, &rootNode)
 
 	// create a new specification index.
-	index := NewSpecIndex(&rootNode)
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	// print out some statistics
 	fmt.Printf("There are %d references\n"+
