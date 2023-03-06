@@ -405,7 +405,7 @@ func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bo
     if !includeFile {
         dirSegs = dirSegs[:len(dirSegs)-1]
     }
-
+    
     // relative paths are a pain in the ass, damn you digital ocean, use a single spec, and break them
     // down into services, please don't blast apart specs into a billion shards.
     if strings.Contains(dir, "../") {
