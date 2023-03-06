@@ -32,6 +32,9 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 	}
 	config.remoteLock = &sync.Mutex{}
 	index.config = config
+	if rootNode == nil || len(rootNode.Content) <= 0 {
+		return index
+	}
 	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index)
 }

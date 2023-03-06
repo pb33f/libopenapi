@@ -11,6 +11,8 @@ import (
     "io/ioutil"
     "net/http"
     "net/url"
+    "os"
+    "path/filepath"
     "strings"
     "time"
 )
@@ -179,6 +181,9 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 
     file := strings.ReplaceAll(uri[0], "file:", "")
 
+    filePath := filepath.Dir(file)
+    fileName := filepath.Base(file)
+
     var parsedRemoteDocument *yaml.Node
 
     if index.seenRemoteSources[file] != nil {
@@ -186,9 +191,12 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
 
     } else {
 
+        base := index.config.BasePath
+        fileToRead := filepath.Join(base, filePath, fileName)
+
         // try and read the file off the local file system, if it fails
         // check for a baseURL and then ask our remote lookup function to go try and get it.
-        body, err := ioutil.ReadFile(file)
+        body, err := os.ReadFile(fileToRead)
 
         if err != nil {
 
@@ -217,7 +225,9 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
         }
         parsedRemoteDocument = &remoteDoc
         if index.seenLocalSources != nil {
+            index.sourceLock.Lock()
             index.seenLocalSources[file] = &remoteDoc
+            index.sourceLock.Unlock()
         }
     }
 
@@ -297,17 +307,34 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
             // cool, cool, lets index this spec also. This is a recursive action and will keep going
             // until all remote references have been found.
 
-            var j *url.URL
+            var bp *url.URL
+            var bd string
+
             if index.config.BaseURL != nil {
-                j = index.config.BaseURL
-            } else {
-                j, _ = url.Parse(uri[0])
+                bp = index.config.BaseURL
             }
-            path := GenerateCleanSpecConfigBaseURL(j, uri[0], false)
-            newUrl, _ := url.Parse(path)
-            if newUrl != nil {
+            if index.config.BasePath != "" {
+                bd = index.config.BasePath
+            }
+
+            var path, newBasePath string
+            var newUrl *url.URL
+
+            if bp != nil {
+                path = GenerateCleanSpecConfigBaseURL(bp, uri[0], false)
+                newUrl, _ = url.Parse(path)
+                newBasePath = filepath.Dir(filepath.Join(index.config.BasePath, filepath.Dir(newUrl.Path)))
+            }
+            if bd != "" {
+                newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
+
+            }
+
+            if newUrl != nil || newBasePath != "" {
                 newConfig := &SpecIndexConfig{
-                    BaseURL:           newUrl,
+                    BaseURL:  newUrl,
+                    BasePath: newBasePath,
+
                     AllowRemoteLookup: index.config.AllowRemoteLookup,
                     AllowFileLookup:   index.config.AllowFileLookup,
                     seenRemoteSources: index.config.seenRemoteSources,
@@ -326,18 +353,20 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
             }
         }
 
-        foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
-        if foundRef != nil {
-            nameSegs := strings.Split(uri[1], "/")
-            ref := &Reference{
-                Definition:     componentId,
-                Name:           nameSegs[len(nameSegs)-1],
-                Node:           foundRef.Node,
-                IsRemote:       true,
-                RemoteLocation: componentId,
-                Path:           foundRef.Path,
+        if externalSpecIndex != nil {
+            foundRef := externalSpecIndex.FindComponentInRoot(uri[1])
+            if foundRef != nil {
+                nameSegs := strings.Split(uri[1], "/")
+                ref := &Reference{
+                    Definition:     componentId,
+                    Name:           nameSegs[len(nameSegs)-1],
+                    Node:           foundRef.Node,
+                    IsRemote:       true,
+                    RemoteLocation: componentId,
+                    Path:           foundRef.Path,
+                }
+                return ref
             }
-            return ref
         }
     }
     return nil

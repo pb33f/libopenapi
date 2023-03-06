@@ -8,6 +8,7 @@ import (
     "github.com/pb33f/libopenapi/index"
     "github.com/pb33f/libopenapi/resolver"
     "github.com/pb33f/libopenapi/utils"
+    "os"
     "sync"
 )
 
@@ -37,13 +38,17 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
     version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
     doc := Document{Version: version}
 
+    // get current working directory
+    cwd, _ := os.Getwd()
+
     // build an index
     idx := index.NewSpecIndexWithConfig(info.RootNode, &index.SpecIndexConfig{
         BaseURL:           config.BaseURL,
+        BasePath:          cwd,
         AllowFileLookup:   config.AllowFileReferences,
         AllowRemoteLookup: config.AllowRemoteReferences,
     })
-     doc.Index = idx
+    doc.Index = idx
 
     var errs []error
 
