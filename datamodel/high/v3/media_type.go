@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 	"sync"
 )
 
@@ -16,11 +17,11 @@ import (
 // Each Media Type Object provides schema and examples for the media type identified by its key.
 //  - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
-	Schema     *base.SchemaProxy
-	Example    any
-	Examples   map[string]*base.Example
-	Encoding   map[string]*Encoding
-	Extensions map[string]any
+	Schema     *base.SchemaProxy        `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example    any                      `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples   map[string]*base.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Encoding   map[string]*Encoding     `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	Extensions map[string]any           `json:"-" yaml:"-"`
 	low        *low.MediaType
 }
 
@@ -41,6 +42,20 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 // GoLow will return the low-level instance of MediaType used to create the high-level one.
 func (m *MediaType) GoLow() *low.MediaType {
 	return m.low
+}
+
+// Render will return a YAML representation of the MediaType object as a byte slice.
+func (m *MediaType) Render() ([]byte, error) {
+	return yaml.Marshal(m)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the MediaType object.
+func (m *MediaType) MarshalYAML() (interface{}, error) {
+	if m == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(m, m.low)
+	return nb.Render(), nil
 }
 
 // ExtractContent takes in a complex and hard to navigate low-level content map, and converts it in to a much simpler

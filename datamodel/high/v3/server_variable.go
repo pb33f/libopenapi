@@ -3,16 +3,20 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v3"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
+)
 
 // ServerVariable represents a high-level OpenAPI 3+ ServerVariable object, that is backed by a low-level one.
 //
 // ServerVariable is an object representing a Server Variable for server URL template substitution.
 // - https://spec.openapis.org/oas/v3.1.0#server-variable-object
 type ServerVariable struct {
-	Enum        []string
-	Default     string
-	Description string
+	Enum        []string `json:"enum,omitempty" yaml:"enum,omitempty"`
+	Default     string   `json:"default,omitempty" yaml:"default,omitempty"`
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
 	low         *low.ServerVariable
 }
 
@@ -32,7 +36,21 @@ func NewServerVariable(variable *low.ServerVariable) *ServerVariable {
 	return v
 }
 
-// GoLow returns the low-level ServerVariable used to to create the high\-level one.
+// GoLow returns the low-level ServerVariable used to create the high\-level one.
 func (s *ServerVariable) GoLow() *low.ServerVariable {
 	return s.low
+}
+
+// Render will return a YAML representation of the ServerVariable object as a byte slice.
+func (s *ServerVariable) Render() ([]byte, error) {
+	return yaml.Marshal(s)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the ServerVariable object.
+func (s *ServerVariable) MarshalYAML() (interface{}, error) {
+	if s == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(s, s.low)
+	return nb.Render(), nil
 }
