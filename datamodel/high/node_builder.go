@@ -211,6 +211,33 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
         valueNode = CreateBoolNode("true")
         break
 
+    case reflect.Int:
+        if value != nil {
+            val := strconv.Itoa(value.(int))
+            valueNode = CreateIntNode(val)
+        } else {
+            return parent
+        }
+        break
+
+    case reflect.Int64:
+        if value != nil {
+            val := strconv.FormatInt(value.(int64), 10)
+            valueNode = CreateIntNode(val)
+        } else {
+            return parent
+        }
+        break
+
+    case reflect.Float64:
+        if value != nil {
+            val := strconv.FormatFloat(value.(float64), 'f', 2, 64)
+            valueNode = CreateFloatNode(val)
+        } else {
+            return parent
+        }
+        break
+
     case reflect.Map:
 
         // the keys will be rendered randomly, if we don't find out the original line
@@ -239,12 +266,22 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                     if pr, ok := gh.(low.HasValueUnTyped); ok {
                         fg := reflect.ValueOf(pr.GetValueUntyped())
                         for _, ky := range fg.MapKeys() {
-                            er := ky.Interface().(low.HasKeyNode).GetKeyNode().Value
-                            if er == x {
+                            if we, wok := ky.Interface().(low.HasKeyNode); wok {
+                                er := we.GetKeyNode().Value
+                                if er == x {
+                                    orderedCollection = append(orderedCollection, &NodeEntry{
+                                        Tag:   x,
+                                        Key:   x,
+                                        Line:  we.GetKeyNode().Line,
+                                        Value: m.MapIndex(k).Interface(),
+                                    })
+                                }
+                            } else {
+                                // this is a map, without any low level details available
                                 orderedCollection = append(orderedCollection, &NodeEntry{
                                     Tag:   x,
                                     Key:   x,
-                                    Line:  ky.Interface().(low.HasKeyNode).GetKeyNode().Line,
+                                    Line:  9999,
                                     Value: m.MapIndex(k).Interface(),
                                 })
                             }
@@ -296,7 +333,11 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
         for _, cv := range orderedCollection {
             n.AddYAMLNode(p, cv.Tag, cv.Key, cv.Value)
         }
-        valueNode = p
+        if len(p.Content) > 0 {
+            valueNode = p
+        } else {
+            return parent
+        }
 
     case reflect.Slice:
         if vo.IsNil() {
@@ -378,6 +419,24 @@ func CreateBoolNode(str string) *yaml.Node {
     n := &yaml.Node{
         Kind:  yaml.ScalarNode,
         Tag:   "!!bool",
+        Value: str,
+    }
+    return n
+}
+
+func CreateIntNode(str string) *yaml.Node {
+    n := &yaml.Node{
+        Kind:  yaml.ScalarNode,
+        Tag:   "!!int",
+        Value: str,
+    }
+    return n
+}
+
+func CreateFloatNode(str string) *yaml.Node {
+    n := &yaml.Node{
+        Kind:  yaml.ScalarNode,
+        Tag:   "!!float",
         Value: str,
     }
     return n

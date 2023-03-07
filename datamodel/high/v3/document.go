@@ -22,26 +22,26 @@ type Document struct {
 
 	// Version is the version of OpenAPI being used, extracted from the 'openapi: x.x.x' definition.
 	// This is not a standard property of the OpenAPI model, it's a convenience mechanism only.
-	Version string
+	Version string `json:"openapi,omitempty" yaml:"openapi,omitempty"`
 
 	// Info represents a specification Info definitions
 	// Provides metadata about the API. The metadata MAY be used by tooling as required.
 	// - https://spec.openapis.org/oas/v3.1.0#info-object
-	Info *base.Info
+	Info *base.Info `json:"info,omitempty" yaml:"info,omitempty"`
 
 	// Servers is a slice of Server instances which provide connectivity information to a target server. If the servers
 	// property is not provided, or is an empty array, the default value would be a Server Object with a url value of /.
 	// - https://spec.openapis.org/oas/v3.1.0#server-object
-	Servers []*Server
+	Servers []*Server `json:"servers,omitempty" yaml:"servers,omitempty"`
 
 	// Paths contains all the PathItem definitions for the specification.
 	// The available paths and operations for the API, The most important part of ths spec.
 	// - https://spec.openapis.org/oas/v3.1.0#paths-object
-	Paths *Paths
+	Paths *Paths `json:"-" yaml:"-"`
 
 	// Components is an element to hold various schemas for the document.
 	// - https://spec.openapis.org/oas/v3.1.0#components-object
-	Components *Components
+	Components *Components `json:"-" yaml:"-"`
 
 	// Security contains global security requirements/roles for the specification
 	// A declaration of which security mechanisms can be used across the API. The list of values includes alternative
@@ -49,7 +49,7 @@ type Document struct {
 	// to authorize a request. Individual operations can override this definition. To make security optional,
 	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
-	Security []*base.SecurityRequirement
+	Security []*base.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
 
 	// Tags is a slice of base.Tag instances defined by the specification
 	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on
@@ -57,20 +57,20 @@ type Document struct {
 	// The tags that are not declared MAY be organized randomly or based on the tools’ logic.
 	// Each tag name in the list MUST be unique.
 	// - https://spec.openapis.org/oas/v3.1.0#tag-object
-	Tags []*base.Tag
+	Tags []*base.Tag `json:"tags,omitempty" yaml:"tags,omitempty"`
 
 	// ExternalDocs is an instance of base.ExternalDoc for.. well, obvious really, innit.
 	// - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
-	ExternalDocs *base.ExternalDoc
+	ExternalDocs *base.ExternalDoc `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
 
 	// Extensions contains all custom extensions defined for the top-level document.
-	Extensions map[string]any
+	Extensions map[string]any `json:"-" yaml:"-"`
 
 	// JsonSchemaDialect is a 3.1+ property that sets the dialect to use for validating *base.Schema definitions
 	// The default value for the $schema keyword within Schema Objects contained within this OAS document.
 	// This MUST be in the form of a URI.
 	// - https://spec.openapis.org/oas/v3.1.0#schema-object
-	JsonSchemaDialect string
+	JsonSchemaDialect string `json:"$schema,omitempty" yaml:"$schema,omitempty"`
 
 	// Webhooks is a 3.1+ property that is similar to callbacks, except, this defines incoming webhooks.
 	// The incoming webhooks that MAY be received as part of this API and that the API consumer MAY choose to implement.
@@ -78,15 +78,15 @@ type Document struct {
 	// for example by an out-of-band registration. The key name is a unique string to refer to each webhook,
 	// while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider
 	// and the expected responses. An example is available.
-	Webhooks map[string]*PathItem
+	Webhooks map[string]*PathItem `json:"-" yaml:"-"`
 
 	// Index is a reference to the *index.SpecIndex that was created for the document and used
 	// as a guide when building out the Document. Ideal if further processing is required on the model and
 	// the original details are required to continue the work.
 	//
 	// This property is not a part of the OpenAPI schema, this is custom to libopenapi.
-	Index *index.SpecIndex
-	low   *low.Document
+	Index *index.SpecIndex `json:"-" yaml:"-"`
+	low   *low.Document    `json:"-" yaml:"-"`
 }
 
 // NewDocument will create a new high-level Document from a low-level one.
@@ -154,18 +154,9 @@ func (d *Document) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Document object.
 func (d *Document) MarshalYAML() (interface{}, error) {
-	n := high.CreateEmptyMapNode()
-	//high.AddYAMLNode(n, low.SchemaDialectLabel, d.JsonSchemaDialect)
-	//high.AddYAMLNode(n, low.OpenAPILabel, d.Version)
-	//high.AddYAMLNode(n, low.InfoLabel, d.Info)
-	//high.AddYAMLNode(n, low.TagsLabel, d.Tags)
-	//high.AddYAMLNode(n, low.ServersLabel, d.Servers)
-	//high.AddYAMLNode(n, low.SecurityLabel, d.Security)
-	//high.AddYAMLNode(n, low.ServersLabel, d.Servers)
-	//high.AddYAMLNode(n, low.ExternalDocsLabel, d.ExternalDocs)
-	//high.AddYAMLNode(n, low.PathsLabel, d.Paths)
-	//high.AddYAMLNode(n, low.ComponentsLabel, d.Components)
-	//high.AddYAMLNode(n, low.WebhooksLabel, d.Webhooks)
-	//high.MarshalExtensions(n, d.Extensions)
-	return n, nil
+	if d == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(d, d.low)
+	return nb.Render(), nil
 }

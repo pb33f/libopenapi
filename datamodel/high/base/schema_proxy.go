@@ -67,6 +67,16 @@ func (sp *SchemaProxy) Schema() *Schema {
 	return sch
 }
 
+// IsReference returns true if the SchemaProxy is a reference to another Schema.
+func (sp *SchemaProxy) IsReference() bool {
+	return sp.schema.Value.IsSchemaReference()
+}
+
+// GetReference returns the location of the $ref if this SchemaProxy is a reference to another Schema.
+func (sp *SchemaProxy) GetReference() string {
+	return sp.schema.Value.GetSchemaReference()
+}
+
 // BuildSchema operates the same way as Schema, except it will return any error along with the *Schema
 func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
 	schema := sp.Schema()
@@ -96,12 +106,23 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 	if sp == nil {
 		return nil, nil
 	}
-	s, err := sp.BuildSchema()
-	if err != nil {
-		return nil, err
+	var s *Schema
+	var err error
+	// if this schema isn't a reference, then build it out.
+	if !sp.IsReference() {
+		s, err = sp.BuildSchema()
+		if err != nil {
+			return nil, err
+		}
+		nb := high.NewNodeBuilder(s, s.low)
+		return nb.Render(), nil
+	} else {
+		// do not build out a reference, just marshal the reference.
+		mp := high.CreateEmptyMapNode()
+		mp.Content = append(mp.Content,
+			high.CreateStringNode("$ref"),
+			high.CreateStringNode(sp.GetReference()))
+		return mp, nil
 	}
-	nb := high.NewNodeBuilder(s, s.low)
-	return nb.Render(), nil
-	
 }
 

@@ -424,8 +424,6 @@ func (index *SpecIndex) checkPolymorphicNode(name string) (bool, string) {
 	return false, ""
 }
 
-
-
 // GetPathCount will return the number of paths found in the spec
 func (index *SpecIndex) GetPathCount() int {
 	if index.root == nil {

@@ -485,9 +485,10 @@ func TestDocument_MarshalYAML(t *testing.T) {
 	r, _ := h.Render()
 
 	info, _ := datamodel.ExtractSpecInfo(r)
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	highDoc := NewDocument(lowDoc)
+	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	assert.Nil(t, e)
 
+	highDoc := NewDocument(lDoc)
 	assert.Equal(t, "3.1.0", highDoc.Version)
 
 	// TODO: COMPLETE THIS
