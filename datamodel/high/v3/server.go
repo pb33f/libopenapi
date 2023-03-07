@@ -6,15 +6,16 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Server represents a high-level OpenAPI 3+ Server object, that is backed by a low level one.
 //  - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
-	URL         string
-	Description string
-	Variables   map[string]*ServerVariable
-	Extensions  map[string]any
+	URL         string                     `json:"url,omitempty" yaml:"url,omitempty"`
+	Description string                     `json:"description,omitempty" yaml:"description,omitempty"`
+	Variables   map[string]*ServerVariable `json:"variables,omitempty" yaml:"variables,omitempty"`
+	Extensions  map[string]any             `json:"-" yaml:"-"`
 	low         *low.Server
 }
 
@@ -36,4 +37,18 @@ func NewServer(server *low.Server) *Server {
 // GoLow returns the low-level Server instance that was used to create the high-level one
 func (s *Server) GoLow() *low.Server {
 	return s.low
+}
+
+// Render will return a YAML representation of the Server object as a byte slice.
+func (s *Server) Render() ([]byte, error) {
+	return yaml.Marshal(s)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Server object.
+func (s *Server) MarshalYAML() (interface{}, error) {
+	if s == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(s, s.low)
+	return nb.Render(), nil
 }

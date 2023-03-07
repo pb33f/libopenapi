@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Link represents a high-level OpenAPI 3+ Link object that is backed by a low-level one.
@@ -21,13 +22,13 @@ import (
 // in an operation and using them as parameters while invoking the linked operation.
 //  - https://spec.openapis.org/oas/v3.1.0#link-object
 type Link struct {
-	OperationRef string
-	OperationId  string
-	Parameters   map[string]string
-	RequestBody  string
-	Description  string
-	Server       *Server
-	Extensions   map[string]any
+	OperationRef string            `json:"operationRef,omitempty" yaml:"operationRef,omitempty"`
+	OperationId  string            `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Parameters   map[string]string `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  string            `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Description  string            `json:"description,omitempty" yaml:"description,omitempty"`
+	Server       *Server           `json:"server,omitempty" yaml:"server,omitempty"`
+	Extensions   map[string]any    `json:"-" yaml:"-"`
 	low          *low.Link
 }
 
@@ -54,4 +55,18 @@ func NewLink(link *low.Link) *Link {
 // GoLow will return the low-level Link instance used to create the high-level one.
 func (l *Link) GoLow() *low.Link {
 	return l.low
+}
+
+// Render will return a YAML representation of the Link object as a byte slice.
+func (l *Link) Render() ([]byte, error) {
+	return yaml.Marshal(l)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Link object.
+func (l *Link) MarshalYAML() (interface{}, error) {
+	if l == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(l, l.low)
+	return nb.Render(), nil
 }
