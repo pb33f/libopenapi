@@ -13,18 +13,18 @@ import (
 // Header represents a high-level OpenAPI 3+ Header object that is backed by a low-level one.
 //  - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
-	Description     string
-	Required        bool
-	Deprecated      bool
-	AllowEmptyValue bool
-	Style           string
-	Explode         bool
-	AllowReserved   bool
-	Schema          *highbase.SchemaProxy
-	Example         any
-	Examples        map[string]*highbase.Example
-	Content         map[string]*MediaType
-	Extensions      map[string]any
+	Description     string                       `json:"description,omitempty" yaml:"description,omitempty"`
+	Required        bool                         `json:"required,omitempty" yaml:"required,omitempty"`
+	Deprecated      bool                         `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	AllowEmptyValue bool                         `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Style           string                       `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode         bool                         `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowReserved   bool                         `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	Schema          *highbase.SchemaProxy        `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example         any                          `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        map[string]*highbase.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Content         map[string]*MediaType        `json:"content,omitempty" yaml:"content,omitempty"`
+	Extensions      map[string]any               `json:"-" yaml:"-"`
 	low             *low.Header
 }
 
