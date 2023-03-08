@@ -286,8 +286,9 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
     lookupFunction ExternalLookupFunction, parent *yaml.Node,
 ) *Reference {
     if len(uri) > 0 {
-        //index.fileLock.Lock()
+        index.externalLock.RLock()
         externalSpecIndex := index.externalSpecIndex[uri[0]]
+        index.externalLock.RUnlock()
 
         if externalSpecIndex == nil {
             _, newRoot, err := lookupFunction(componentId)
@@ -297,7 +298,9 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
                     Node: parent,
                     Path: componentId,
                 }
+                index.errorLock.Lock()
                 index.refErrors = append(index.refErrors, indexError)
+                index.errorLock.Unlock()
                 return nil
             }
 
@@ -338,7 +341,9 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
                 var newIndex *SpecIndex
                 newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
                 index.refLock.Lock()
+                index.externalLock.Lock()
                 index.externalSpecIndex[uri[0]] = newIndex
+                index.externalLock.Unlock()
                 newIndex.relativePath = path
                 newIndex.parentIndex = index
                 index.AddChild(newIndex)
