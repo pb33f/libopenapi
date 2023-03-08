@@ -752,7 +752,9 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 				// extract parameters
 				if parametersNode != nil {
 					index.extractComponentParameters(parametersNode, "#/components/parameters/")
+					index.componentLock.Lock()
 					index.parametersNode = parametersNode
+					index.componentLock.Unlock()
 				}
 
 				// extract requestBodies
@@ -815,10 +817,11 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 			if n.Value == "parameters" {
 				parametersNode := index.root.Content[0].Content[i+1]
 				if parametersNode != nil {
-
 					// extract params
 					index.extractComponentParameters(parametersNode, "#/parameters/")
+					index.componentLock.Lock()
 					index.parametersNode = parametersNode
+					index.componentLock.Unlock()
 				}
 			}
 
@@ -863,16 +866,20 @@ func (index *SpecIndex) GetComponentParameterCount() int {
 			if n.Value == "components" {
 				_, parametersNode := utils.FindKeyNode("parameters", index.root.Content[0].Content[i+1].Content)
 				if parametersNode != nil {
+					index.componentLock.Lock()
 					index.parametersNode = parametersNode
 					index.componentParamCount = len(parametersNode.Content) / 2
+					index.componentLock.Unlock()
 				}
 			}
 			// openapi 2
 			if n.Value == "parameters" {
 				parametersNode := index.root.Content[0].Content[i+1]
 				if parametersNode != nil {
+					index.componentLock.Lock()
 					index.parametersNode = parametersNode
 					index.componentParamCount = len(parametersNode.Content) / 2
+					index.componentLock.Unlock()
 				}
 			}
 		}
