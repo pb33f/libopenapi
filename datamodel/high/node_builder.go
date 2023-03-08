@@ -148,9 +148,13 @@ func (n *NodeBuilder) add(key string) {
         value = reflect.ValueOf(fLow)
         switch value.Kind() {
         case reflect.Struct:
-            nb := value.Interface().(low.HasValueNodeUntyped).GetValueNode()
-            if nb != nil {
-                nodeEntry.Line = nb.Line
+            y := value.Interface()
+            if nb, ok := y.(low.HasValueNodeUntyped); ok {
+                if nb.GetValueNode() != nil {
+                    nodeEntry.Line = nb.GetValueNode().Line
+                }
+            } else {
+                panic("not supported yet")
             }
         default:
             // everything else, weight it to the bottom of the rendered object.
@@ -265,10 +269,12 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                     // extract low level key line number
                     if pr, ok := gh.(low.HasValueUnTyped); ok {
                         fg := reflect.ValueOf(pr.GetValueUntyped())
+                        found := false
                         for _, ky := range fg.MapKeys() {
                             if we, wok := ky.Interface().(low.HasKeyNode); wok {
                                 er := we.GetKeyNode().Value
                                 if er == x {
+                                    found = true
                                     orderedCollection = append(orderedCollection, &NodeEntry{
                                         Tag:   x,
                                         Key:   x,
@@ -278,6 +284,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                                 }
                             } else {
                                 // this is a map, without any low level details available
+                                found = true
                                 orderedCollection = append(orderedCollection, &NodeEntry{
                                     Tag:   x,
                                     Key:   x,
@@ -286,19 +293,37 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                                 })
                             }
                         }
+                        if found != true {
+                            // this is something new, add it.
+                            orderedCollection = append(orderedCollection, &NodeEntry{
+                                Tag:   x,
+                                Key:   x,
+                                Line:  9999,
+                                Value: m.MapIndex(k).Interface(),
+                            })
+                        }
                     } else {
-                        // this is a map, without an enclosing struct
+                        // this is a map, but it may be wrapped still.
                         bj := reflect.ValueOf(gh)
-                        for _, ky := range bj.MapKeys() {
-                            er := ky.Interface().(low.HasKeyNode).GetKeyNode().Value
-                            if er == x {
-                                orderedCollection = append(orderedCollection, &NodeEntry{
-                                    Tag:   x,
-                                    Key:   x,
-                                    Line:  ky.Interface().(low.HasKeyNode).GetKeyNode().Line,
-                                    Value: m.MapIndex(k).Interface(),
-                                })
+                        yh := bj.Interface()
+                        calc := func(iu reflect.Value) {
+                            for _, ky := range iu.MapKeys() {
+                                er := ky.Interface().(low.HasKeyNode).GetKeyNode().Value
+                                if er == x {
+                                    orderedCollection = append(orderedCollection, &NodeEntry{
+                                        Tag:   x,
+                                        Key:   x,
+                                        Line:  ky.Interface().(low.HasKeyNode).GetKeyNode().Line,
+                                        Value: m.MapIndex(k).Interface(),
+                                    })
+                                }
                             }
+                        }
+                        if vg, jo := yh.(low.HasKeyNode); jo {
+                            fv := reflect.ValueOf(vg.GetKeyNode())
+                            calc(fv)
+                        } else {
+                            calc(bj)
                         }
                     }
                 } else {
