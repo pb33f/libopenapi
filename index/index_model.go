@@ -206,6 +206,9 @@ type SpecIndex struct {
     seenLocalSources                    map[string]*yaml.Node
     refLock                             sync.Mutex
     sourceLock                          sync.Mutex
+    componentLock                       sync.RWMutex
+    externalLock                        sync.RWMutex
+    errorLock                           sync.RWMutex
     circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
     allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
     relativePath                        string                     // relative path of the spec file.

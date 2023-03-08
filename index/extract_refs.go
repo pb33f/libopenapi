@@ -384,7 +384,9 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
                 Node: ref.Node,
                 Path: path,
             }
+            index.errorLock.Lock()
             index.refErrors = append(index.refErrors, indexError)
+            index.errorLock.Unlock()
         }
         c <- true
     }
