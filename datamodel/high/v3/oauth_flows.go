@@ -6,16 +6,17 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // OAuthFlows represents a high-level OpenAPI 3+ OAuthFlows object that is backed by a low-level one.
 //  - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
 type OAuthFlows struct {
-	Implicit          *OAuthFlow
-	Password          *OAuthFlow
-	ClientCredentials *OAuthFlow
-	AuthorizationCode *OAuthFlow
-	Extensions        map[string]any
+	Implicit          *OAuthFlow     `json:"implicit,omitempty" yaml:"implicit,omitempty"`
+	Password          *OAuthFlow     `json:"password,omitempty" yaml:"password,omitempty"`
+	ClientCredentials *OAuthFlow     `json:"clientCredentials,omitempty" yaml:"clientCredentials,omitempty"`
+	AuthorizationCode *OAuthFlow     `json:"authorizationCode,omitempty" yaml:"authorizationCode,omitempty"`
+	Extensions        map[string]any `json:"-" yaml:"-"`
 	low               *low.OAuthFlows
 }
 
@@ -46,3 +47,18 @@ func NewOAuthFlows(flows *low.OAuthFlows) *OAuthFlows {
 func (o *OAuthFlows) GoLow() *low.OAuthFlows {
 	return o.low
 }
+
+// Render will return a YAML representation of the OAuthFlows object as a byte slice.
+func (o *OAuthFlows) Render() ([]byte, error) {
+	return yaml.Marshal(o)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the OAuthFlows object.
+func (o *OAuthFlows) MarshalYAML() (interface{}, error) {
+	if o == nil {
+		return nil, nil
+	}
+	nb := high.NewNodeBuilder(o, o.low)
+	return nb.Render(), nil
+}
+

@@ -90,7 +90,7 @@ type OAuthFlow struct {
 	AuthorizationUrl low.NodeReference[string]
 	TokenUrl         low.NodeReference[string]
 	RefreshUrl       low.NodeReference[string]
-	Scopes           low.KeyReference[map[low.KeyReference[string]]low.ValueReference[string]]
+	Scopes           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 }
 
