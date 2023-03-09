@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -6,15 +6,16 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // RequestBody represents a high-level OpenAPI 3+ RequestBody object, backed by a low-level one.
 //  - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
-	Description string
-	Content     map[string]*MediaType
-	Required    bool
-	Extensions  map[string]any
+	Description string                `json:"description,omitempty" yaml:"description,omitempty"`
+	Content     map[string]*MediaType `json:"content,omitempty" yaml:"content,omitempty"`
+	Required    bool                  `json:"required,omitempty" yaml:"required,omitempty"`
+	Extensions  map[string]any        `json:"-" yaml:"-"`
 	low         *low.RequestBody
 }
 
@@ -32,4 +33,15 @@ func NewRequestBody(rb *low.RequestBody) *RequestBody {
 // GoLow returns the low-level RequestBody instance used to create the high-level one.
 func (r *RequestBody) GoLow() *low.RequestBody {
 	return r.low
+}
+
+// Render will return a YAML representation of the RequestBody object as a byte slice.
+func (r *RequestBody) Render() ([]byte, error) {
+	return yaml.Marshal(r)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the RequestBody object.
+func (r *RequestBody) MarshalYAML() (interface{}, error) {
+	nb := high.NewNodeBuilder(r, r.low)
+	return nb.Render(), nil
 }

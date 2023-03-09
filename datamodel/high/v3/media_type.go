@@ -51,9 +51,6 @@ func (m *MediaType) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the MediaType object.
 func (m *MediaType) MarshalYAML() (interface{}, error) {
-	if m == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(m, m.low)
 	return nb.Render(), nil
 }

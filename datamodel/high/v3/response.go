@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Response represents a high-level OpenAPI 3+ Response object that is backed by a low-level one.
@@ -14,11 +15,11 @@ import (
 // operations based on the response.
 //  - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
-	Description string
-	Headers     map[string]*Header
-	Content     map[string]*MediaType
-	Extensions  map[string]any
-	Links       map[string]*Link
+	Description string                `json:"description,omitempty" yaml:"description,omitempty"`
+	Headers     map[string]*Header    `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Content     map[string]*MediaType `json:"content,omitempty" yaml:"content,omitempty"`
+	Links       map[string]*Link      `json:"links,omitempty" yaml:"links,omitempty"`
+	Extensions  map[string]any        `json:"-" yaml:"-"`
 	low         *low.Response
 }
 
@@ -48,3 +49,15 @@ func NewResponse(response *low.Response) *Response {
 func (r *Response) GoLow() *low.Response {
 	return r.low
 }
+
+// Render will return a YAML representation of the Response object as a byte slice.
+func (r *Response) Render() ([]byte, error) {
+	return yaml.Marshal(r)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Response object.
+func (r *Response) MarshalYAML() (interface{}, error) {
+	nb := high.NewNodeBuilder(r, r.low)
+	return nb.Render(), nil
+}
+

@@ -6,6 +6,8 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
+	"sort"
 )
 
 // Paths represents a high-level OpenAPI 3+ Paths object, that is backed by a low-level one.
@@ -15,8 +17,8 @@ import (
 // constraints.
 //  - https://spec.openapis.org/oas/v3.1.0#paths-object
 type Paths struct {
-	PathItems  map[string]*PathItem
-	Extensions map[string]any
+	PathItems  map[string]*PathItem `json:"-" yaml:"-"`
+	Extensions map[string]any       `json:"-" yaml:"-"`
 	low        *low.Paths
 }
 
@@ -55,3 +57,48 @@ func NewPaths(paths *low.Paths) *Paths {
 func (p *Paths) GoLow() *low.Paths {
 	return p.low
 }
+
+// Render will return a YAML representation of the Paths object as a byte slice.
+func (p *Paths) Render() ([]byte, error) {
+	return yaml.Marshal(p)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Paths object.
+func (p *Paths) MarshalYAML() (interface{}, error) {
+	if p == nil {
+		return nil, nil
+	}
+
+	// map keys correctly.
+	m := high.CreateEmptyMapNode()
+	type pathItem struct {
+		pi   *PathItem
+		path string
+		line int
+	}
+	var mapped []*pathItem
+
+	for k, pi := range p.PathItems {
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		if p.low != nil {
+			lpi := p.low.FindPath(k)
+			if lpi != nil {
+				ln = lpi.ValueNode.Line
+			}
+		}
+		mapped = append(mapped, &pathItem{pi, k, ln})
+	}
+
+	sort.Slice(mapped, func(i, j int) bool {
+		return mapped[i].line < mapped[j].line
+	})
+	for j := range mapped {
+		rendered, _ := mapped[j].pi.MarshalYAML()
+		m.Content = append(m.Content, high.CreateStringNode(mapped[j].path))
+		m.Content = append(m.Content, rendered.(*yaml.Node))
+	}
+	return m, nil
+}
+
+
+

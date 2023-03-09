@@ -1,13 +1,15 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Header represents a high-level OpenAPI 3+ Header object that is backed by a low-level one.
@@ -64,4 +66,15 @@ func ExtractHeaders(elements map[lowmodel.KeyReference[string]]lowmodel.ValueRef
 		extracted[k.Value] = NewHeader(v.Value)
 	}
 	return extracted
+}
+
+// Render will return a YAML representation of the Header object as a byte slice.
+func (h *Header) Render() ([]byte, error) {
+	return yaml.Marshal(h)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Header object.
+func (h *Header) MarshalYAML() (interface{}, error) {
+	nb := high.NewNodeBuilder(h, h.low)
+	return nb.Render(), nil
 }

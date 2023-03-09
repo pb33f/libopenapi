@@ -9,6 +9,7 @@ import (
     "github.com/pb33f/libopenapi/index"
     "github.com/stretchr/testify/assert"
     "gopkg.in/yaml.v3"
+    "strings"
     "testing"
 )
 
@@ -16,7 +17,6 @@ import (
 // response with *everything* populated, I had already written a ton of tests
 // with hard coded line and column numbers in them, changing the spec above the bottom will
 // create pointless test changes. So here is a standalone test. you know... for science.
-
 func TestPathItem(t *testing.T) {
     yml := `servers:
   - description: so many options for things in places.`
@@ -66,4 +66,45 @@ trace:
     r := NewPathItem(&n)
 
     assert.Len(t, r.GetOperations(), 8)
+}
+
+func TestPathItem_MarshalYAML(t *testing.T) {
+
+    pi := &PathItem{
+        Description: "a path item",
+        Summary:     "It's a test, don't worry about it, Jim",
+        Servers: []*Server{
+            {
+                Description: "a server",
+            },
+        },
+        Parameters: []*Parameter{
+            {
+                Name: "I am a query parameter",
+                In:   "query",
+            },
+        },
+        Get: &Operation{
+            Description: "a get operation",
+        },
+        Post: &Operation{
+            Description: "a post operation",
+        },
+    }
+
+    rend, _ := pi.Render()
+
+    desired := `description: a path item
+summary: It's a test, don't worry about it, Jim
+get:
+    description: a get operation
+post:
+    description: a post operation
+servers:
+    - description: a server
+parameters:
+    - name: I am a query parameter
+      in: query`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 }
