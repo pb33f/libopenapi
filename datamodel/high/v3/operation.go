@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package v3
@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // Operation is a high-level representation of an OpenAPI 3+ Operation object, backed by a low-level one.
@@ -15,19 +16,19 @@ import (
 // happens here. The entire being for existence of this library and the specification, is this Operation.
 //   - https://spec.openapis.org/oas/v3.1.0#operation-object
 type Operation struct {
-	Tags         []string
-	Summary      string
-	Description  string
-	ExternalDocs *base.ExternalDoc
-	OperationId  string
-	Parameters   []*Parameter
-	RequestBody  *RequestBody
-	Responses    *Responses
-	Callbacks    map[string]*Callback
-	Deprecated   *bool
-	Security     []*base.SecurityRequirement
-	Servers      []*Server
-	Extensions   map[string]any
+	Tags         []string                    `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Summary      string                      `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description  string                      `json:"description,omitempty" yaml:"description,omitempty"`
+	ExternalDocs *base.ExternalDoc           `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	OperationId  string                      `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Parameters   []*Parameter                `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  *RequestBody                `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Responses    *Responses                  `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Callbacks    map[string]*Callback        `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Deprecated   *bool                       `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Security     []*base.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
+	Servers      []*Server                   `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Extensions   map[string]any              `json:"-" yaml:"-"`
 	low          *low.Operation
 }
 
@@ -76,11 +77,11 @@ func NewOperation(operation *low.Operation) *Operation {
 	o.Servers = servers
 	o.Extensions = high.ExtractExtensions(operation.Extensions)
 	if !operation.Callbacks.IsEmpty() {
-		callbacks := make(map[string]*Callback)
+		cbs := make(map[string]*Callback)
 		for k, v := range operation.Callbacks.Value {
-			callbacks[k.Value] = NewCallback(v.Value)
+			cbs[k.Value] = NewCallback(v.Value)
 		}
-		o.Callbacks = callbacks
+		o.Callbacks = cbs
 	}
 	return o
 }
@@ -88,4 +89,15 @@ func NewOperation(operation *low.Operation) *Operation {
 // GoLow will return the low-level Operation instance that was used to create the high-level one.
 func (o *Operation) GoLow() *low.Operation {
 	return o.low
+}
+
+// Render will return a YAML representation of the Operation object as a byte slice.
+func (o *Operation) Render() ([]byte, error) {
+	return yaml.Marshal(o)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Operation object.
+func (o *Operation) MarshalYAML() (interface{}, error) {
+	nb := high.NewNodeBuilder(o, o.low)
+	return nb.Render(), nil
 }

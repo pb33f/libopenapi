@@ -64,9 +64,6 @@ func (l *Link) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Link object.
 func (l *Link) MarshalYAML() (interface{}, error) {
-	if l == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(l, l.low)
 	return nb.Render(), nil
 }

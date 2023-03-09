@@ -55,9 +55,6 @@ func (o *OAuthFlows) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the OAuthFlows object.
 func (o *OAuthFlows) MarshalYAML() (interface{}, error) {
-	if o == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(o, o.low)
 	return nb.Render(), nil
 }

@@ -38,9 +38,9 @@ func TestMediaType_MarshalYAML(t *testing.T) {
     // modify the media type to have an example
     mt.Example = "testing a nice mutation"
 
-    op = `example: testing a nice mutation
-schema:
-    $ref: '#/components/schemas/Pet'`
+    op = `schema:
+    $ref: '#/components/schemas/Pet'
+example: testing a nice mutation`
 
     yml, _ = mt.Render()
 
