@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+    "gopkg.in/yaml.v3"
 )
 
 // Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
@@ -14,21 +15,21 @@ import (
 // A unique parameter is defined by a combination of a name and location.
 //  - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
-	Name            string
-	In              string
-	Description     string
-	Required        bool
-	Deprecated      bool
-	AllowEmptyValue bool
-	Style           string
-	Explode         *bool
-	AllowReserved   bool
-	Schema          *base.SchemaProxy
-	Example         any
-	Examples        map[string]*base.Example
-	Content         map[string]*MediaType
-	Extensions      map[string]any
-	low             *low.Parameter
+    Name            string                   `json:"name,omitempty" yaml:"name,omitempty"`
+    In              string                   `json:"in,omitempty" yaml:"in,omitempty"`
+    Description     string                   `json:"description,omitempty" yaml:"description,omitempty"`
+    Required        bool                     `json:"required,omitempty" yaml:"required,omitempty"`
+    Deprecated      bool                     `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+    AllowEmptyValue bool                     `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+    Style           string                   `json:"style,omitempty" yaml:"style,omitempty"`
+    Explode         *bool                    `json:"explode,omitempty" yaml:"explode,omitempty"`
+    AllowReserved   bool                     `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+    Schema          *base.SchemaProxy        `json:"schema,omitempty" yaml:"schema,omitempty"`
+    Example         any                      `json:"example,omitempty" yaml:"example,omitempty"`
+    Examples        map[string]*base.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
+    Content         map[string]*MediaType    `json:"content,omitempty" yaml:"content,omitempty"`
+    Extensions      map[string]any           `json:"-" yaml:"-"`
+    low             *low.Parameter
 }
 
 // NewParameter will create a new high-level instance of a Parameter, using a low-level one.
@@ -58,5 +59,16 @@ func NewParameter(param *low.Parameter) *Parameter {
 
 // GoLow returns the low-level Parameter used to create the high-level one.
 func (p *Parameter) GoLow() *low.Parameter {
-	return p.low
+    return p.low
+}
+
+// Render will return a YAML representation of the Encoding object as a byte slice.
+func (p *Parameter) Render() ([]byte, error) {
+    return yaml.Marshal(p)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Encoding object.
+func (p *Parameter) MarshalYAML() (interface{}, error) {
+    nb := high.NewNodeBuilder(p, p.low)
+    return nb.Render(), nil
 }

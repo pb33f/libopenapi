@@ -4,6 +4,8 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -49,4 +51,42 @@ callbacks:
 	assert.Contains(t, r.Callbacks, "testCallback")
 	assert.Contains(t, r.Callbacks["testCallback"].Expression, "{$request.body#/callbackUrl}")
 	assert.Equal(t, 3, r.GoLow().Callbacks.KeyNode.Line)
+}
+
+func TestOperation_MarshalYAML(t *testing.T) {
+
+	op := &Operation{
+		Tags:        []string{"test"},
+		Summary:     "nice",
+		Description: "rice",
+		ExternalDocs: &base.ExternalDoc{
+			Description: "spice",
+		},
+		OperationId: "slice",
+		Parameters: []*Parameter{
+			&Parameter{
+				Name: "mice",
+			},
+		},
+		RequestBody: &RequestBody{
+			Description: "dice",
+		},
+	}
+
+	rend, _ := op.Render()
+
+	desired := `tags:
+    - test
+summary: nice
+description: rice
+externalDocs:
+    description: spice
+operationId: slice
+parameters:
+    - name: mice
+requestBody:
+    description: dice`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+
 }

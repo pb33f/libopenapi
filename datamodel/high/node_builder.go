@@ -123,7 +123,7 @@ func (n *NodeBuilder) add(key string) {
                 nodeEntry.Value = value.Index(0).String()
             }
         } else {
-            if !value.IsNil() {
+            if !value.IsNil() && !value.IsZero() {
                 nodeEntry.Value = f
             }
         }
@@ -132,7 +132,7 @@ func (n *NodeBuilder) add(key string) {
             nodeEntry.Value = f
         }
     case reflect.Map:
-        if !value.IsNil() {
+        if !value.IsNil() && value.Len() > 0 {
             nodeEntry.Value = f
         }
     default:
@@ -152,6 +152,8 @@ func (n *NodeBuilder) add(key string) {
             if nb, ok := y.(low.HasValueNodeUntyped); ok {
                 if nb.GetValueNode() != nil {
                     nodeEntry.Line = nb.GetValueNode().Line
+                } else {
+                    nodeEntry.Line = 9999
                 }
             } else {
                 panic("not supported yet")
@@ -178,7 +180,10 @@ func (n *NodeBuilder) Render() *yaml.Node {
         node := n.Nodes[i]
         n.AddYAMLNode(m, node.Tag, node.Key, node.Value)
     }
-    return m
+    if len(m.Content) > 0 {
+        return m
+    }
+    return nil
 }
 
 // AddYAMLNode will add a new *yaml.Node to the parent node, using the tag, key and value provided.
@@ -393,12 +398,35 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                 return parent
             }
         } else {
-            var rawNode yaml.Node
-            err := rawNode.Encode(value)
-            if err != nil {
-                return parent
-            } else {
-                valueNode = &rawNode
+
+            encodeSkip := false
+            // check if the value is a bool, int or float
+            if b, bok := value.(*bool); bok {
+                encodeSkip = true
+                if *b {
+                    valueNode = CreateBoolNode("true")
+                }
+            }
+            if b, bok := value.(*int64); bok {
+                encodeSkip = true
+                if *b > 0 {
+                    valueNode = CreateIntNode(strconv.Itoa(int(*b)))
+                }
+            }
+            if b, bok := value.(*float64); bok {
+                encodeSkip = true
+                if *b > 0 {
+                    valueNode = CreateFloatNode(strconv.FormatFloat(*b, 'f', -1, 64))
+                }
+            }
+            if !encodeSkip {
+                var rawNode yaml.Node
+                err := rawNode.Encode(value)
+                if err != nil {
+                    return parent
+                } else {
+                    valueNode = &rawNode
+                }
             }
         }
 
@@ -414,12 +442,14 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
             valueNode = &rawNode
         }
     }
+    if valueNode == nil {
+        return parent
+    }
     if l != nil {
         parent.Content = append(parent.Content, l, valueNode)
     } else {
         parent.Content = valueNode.Content
     }
-
     return parent
 }
 
