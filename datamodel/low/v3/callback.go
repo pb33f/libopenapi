@@ -48,6 +48,9 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			currentCB = callbackNode
 			continue
 		}
+		if strings.HasPrefix(currentCB.Value, "x-") {
+			continue // ignore extension.
+		}
 		callback, eErr, isRef, rv := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
 		if eErr != nil {
 			return eErr
