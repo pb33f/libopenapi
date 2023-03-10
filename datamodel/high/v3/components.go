@@ -9,6 +9,7 @@ import (
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
 )
 
 // used for internal channel co-ordination for building out different component types.
@@ -29,16 +30,20 @@ const (
 // will have no effect on the API unless they are explicitly referenced from properties outside the components object.
 //  - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
-	Schemas         map[string]*highbase.SchemaProxy
-	Responses       map[string]*Response
-	Parameters      map[string]*Parameter
-	Examples        map[string]*highbase.Example
-	RequestBodies   map[string]*RequestBody
-	Headers         map[string]*Header
-	SecuritySchemes map[string]*SecurityScheme
-	Links           map[string]*Link
-	Callbacks       map[string]*Callback
-	Extensions      map[string]any
+	//Schemas         map[string]*highbase.SchemaProxy `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	Schemas   map[string]*highbase.SchemaProxy `json:"-" yaml:"-"`
+	Responses map[string]*Response             `json:"-" yaml:"-"`
+	//Responses       map[string]*Response             `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Parameters map[string]*Parameter `json:"-" yaml:"-"`
+	//Parameters      map[string]*Parameter        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	//Examples        map[string]*highbase.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Examples        map[string]*highbase.Example `json:"-" yaml:"-"`
+	RequestBodies   map[string]*RequestBody      `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	Headers         map[string]*Header           `json:"headers,omitempty" yaml:"headers,omitempty"`
+	SecuritySchemes map[string]*SecurityScheme   `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Links           map[string]*Link             `json:"links,omitempty" yaml:"links,omitempty"`
+	Callbacks       map[string]*Callback         `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Extensions      map[string]any               `json:"-" yaml:"-"`
 	low             *low.Components
 }
 
@@ -84,7 +89,7 @@ func NewComponents(comp *low.Components) *Components {
 		go buildComponent[*Parameter, *low.Parameter](parameters, k.Value, v.Value, paramChan, NewParameter)
 	}
 	for k, v := range comp.Examples.Value {
-		go buildComponent[*highbase.Example, *base.Example](parameters, k.Value, v.Value, exampleChan, highbase.NewExample)
+		go buildComponent[*highbase.Example, *base.Example](examples, k.Value, v.Value, exampleChan, highbase.NewExample)
 	}
 	for k, v := range comp.RequestBodies.Value {
 		go buildComponent[*RequestBody, *low.RequestBody](requestBodies, k.Value, v.Value,
@@ -162,7 +167,8 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 }
 
 // build out a schema
-func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy], c chan componentResult[*highbase.SchemaProxy]) {
+func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy],
+	c chan componentResult[*highbase.SchemaProxy]) {
 	var sch *highbase.SchemaProxy
 	sch = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 		Value:     orig.Value,
@@ -174,4 +180,15 @@ func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference
 // GoLow returns the low-level Components instance used to create the high-level one.
 func (c *Components) GoLow() *low.Components {
 	return c.low
+}
+
+// Render will return a YAML representation of the Components object as a byte slice.
+func (c *Components) Render() ([]byte, error) {
+	return yaml.Marshal(c)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Response object.
+func (c *Components) MarshalYAML() (interface{}, error) {
+	nb := high.NewNodeBuilder(c, c.low)
+	return nb.Render(), nil
 }

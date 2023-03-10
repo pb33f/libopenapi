@@ -5,8 +5,11 @@ package v3
 
 import (
     "github.com/pb33f/libopenapi/datamodel"
+    "github.com/pb33f/libopenapi/datamodel/low"
     "github.com/pb33f/libopenapi/datamodel/low/v3"
+    "github.com/pb33f/libopenapi/index"
     "github.com/stretchr/testify/assert"
+    "gopkg.in/yaml.v3"
     "io/ioutil"
     "strings"
     "testing"
@@ -47,3 +50,31 @@ example: testing a nice mutation`
     assert.Equal(t, op, strings.TrimSpace(string(yml)))
 
 }
+
+func TestMediaType_Examples(t *testing.T) {
+    yml := `examples:
+    pbjBurger:
+        summary: A horrible, nutty, sticky mess.
+        value:
+            name: Peanut And Jelly
+            numPatties: 3
+    cakeBurger:
+        summary: A sickly, sweet, atrocity
+        value:
+            name: Chocolate Cake Burger
+            numPatties: 5`
+
+    var idxNode yaml.Node
+    _ = yaml.Unmarshal([]byte(yml), &idxNode)
+    idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+    var n v3.MediaType
+    _ = low.BuildModel(idxNode.Content[0], &n)
+    _ = n.Build(idxNode.Content[0], idx)
+
+    r := NewMediaType(&n)
+
+    rend, _ := r.Render()
+    assert.Equal(t, yml, strings.TrimSpace(string(rend)))
+}
+

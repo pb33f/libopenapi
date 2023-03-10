@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -22,7 +23,10 @@ func initTest() {
 	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowDoc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+	})
 	if err != nil {
 		panic("broken something")
 	}
@@ -481,17 +485,18 @@ func TestDocument_MarshalYAML(t *testing.T) {
 	h := NewDocument(lowDoc)
 
 	// render the document to YAML
-
 	r, _ := h.Render()
 
+	os.WriteFile("rendered.yaml", r, 0644)
+
+	// re-parse the document
 	info, _ := datamodel.ExtractSpecInfo(r)
 	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	assert.Nil(t, e)
 
 	highDoc := NewDocument(lDoc)
 	assert.Equal(t, "3.1.0", highDoc.Version)
-
-	// TODO: COMPLETE THIS
+	assert.Len(t, highDoc.Paths.PathItems, 1)
 
 }
 

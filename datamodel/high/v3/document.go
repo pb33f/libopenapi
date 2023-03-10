@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 // Package v3 represents all OpenAPI 3+ high-level models. High-level models are easy to navigate
@@ -30,18 +30,18 @@ type Document struct {
 	Info *base.Info `json:"info,omitempty" yaml:"info,omitempty"`
 
 	// Servers is a slice of Server instances which provide connectivity information to a target server. If the servers
-	// property is not provided, or is an empty array, the default value would be a Server Object with a url value of /.
+	// property is not provided, or is an empty array, the default value would be a Server Object with an url value of /.
 	// - https://spec.openapis.org/oas/v3.1.0#server-object
 	Servers []*Server `json:"servers,omitempty" yaml:"servers,omitempty"`
 
 	// Paths contains all the PathItem definitions for the specification.
 	// The available paths and operations for the API, The most important part of ths spec.
 	// - https://spec.openapis.org/oas/v3.1.0#paths-object
-	Paths *Paths `json:"-" yaml:"-"`
+	Paths *Paths `json:"paths,omitempty" yaml:"paths,omitempty"`
 
 	// Components is an element to hold various schemas for the document.
 	// - https://spec.openapis.org/oas/v3.1.0#components-object
-	Components *Components `json:"-" yaml:"-"`
+	Components *Components `json:"components,omitempty" yaml:"components,omitempty"`
 
 	// Security contains global security requirements/roles for the specification
 	// A declaration of which security mechanisms can be used across the API. The list of values includes alternative
@@ -78,7 +78,7 @@ type Document struct {
 	// for example by an out-of-band registration. The key name is a unique string to refer to each webhook,
 	// while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider
 	// and the expected responses. An example is available.
-	Webhooks map[string]*PathItem `json:"-" yaml:"-"`
+	Webhooks map[string]*PathItem `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
 
 	// Index is a reference to the *index.SpecIndex that was created for the document and used
 	// as a guide when building out the Document. Ideal if further processing is required on the model and
@@ -86,7 +86,7 @@ type Document struct {
 	//
 	// This property is not a part of the OpenAPI schema, this is custom to libopenapi.
 	Index *index.SpecIndex `json:"-" yaml:"-"`
-	low   *low.Document    `json:"-" yaml:"-"`
+	low   *low.Document
 }
 
 // NewDocument will create a new high-level Document from a low-level one.

@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
 	"testing"
 )
 
@@ -34,5 +35,35 @@ func TestNewResponses(t *testing.T) {
 
 	assert.Equal(t, "default response", r.Default.Description)
 	assert.Equal(t, 1, r.GoLow().Default.KeyNode.Line)
+
+}
+
+func TestResponses_MarshalYAML(t *testing.T) {
+
+	yml := `"201":
+    description: this is a response
+    content:
+        something/thing:
+            example: cake
+"404":
+    description: this is a 404
+    content:
+        something/thing:
+            example: why do you need an example?
+"200":
+    description: OK! not bad.`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.Responses
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	r := NewResponses(&n)
+
+	rend, _ := r.Render()
+	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
 
 }

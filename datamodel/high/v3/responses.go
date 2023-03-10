@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
+	"sort"
 )
 
 // Responses represents a high-level OpenAPI 3+ Responses object that is backed by a low-level one.
@@ -24,9 +26,9 @@ import (
 // be the response for a successful operation call.
 //  - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
-	Codes      map[string]*Response
-	Default    *Response
-	Extensions map[string]any
+	Codes      map[string]*Response `json:"-" yaml:"-"`
+	Default    *Response            `json:"default,omitempty" yaml:"default,omitempty"`
+	Extensions map[string]any       `json:"-" yaml:"-"`
 	low        *low.Responses
 }
 
@@ -76,4 +78,42 @@ func (r *Responses) FindResponseByCode(code int) *Response {
 // GoLow returns the low-level Response object used to create the high-level one.
 func (r *Responses) GoLow() *low.Responses {
 	return r.low
+}
+
+// Render will return a YAML representation of the Responses object as a byte slice.
+func (r *Responses) Render() ([]byte, error) {
+	return yaml.Marshal(r)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Responses object.
+func (r *Responses) MarshalYAML() (interface{}, error) {
+	// map keys correctly.
+	m := high.CreateEmptyMapNode()
+	type responseItem struct {
+		resp *Response
+		code string
+		line int
+	}
+	var mapped []*responseItem
+
+	for k, re := range r.Codes {
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		if r.low != nil {
+			lpi := r.low.FindResponseByCode(k)
+			if lpi != nil {
+				ln = lpi.ValueNode.Line
+			}
+		}
+		mapped = append(mapped, &responseItem{re, k, ln})
+	}
+
+	sort.Slice(mapped, func(i, j int) bool {
+		return mapped[i].line < mapped[j].line
+	})
+	for j := range mapped {
+		rendered, _ := mapped[j].resp.MarshalYAML()
+		m.Content = append(m.Content, high.CreateStringNode(mapped[j].code))
+		m.Content = append(m.Content, rendered.(*yaml.Node))
+	}
+	return m, nil
 }
