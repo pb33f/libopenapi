@@ -3,7 +3,12 @@
 
 package v3
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v3"
+import (
+	"github.com/pb33f/libopenapi/datamodel/high"
+	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"gopkg.in/yaml.v3"
+	"sort"
+)
 
 // Callback represents a high-level Callback object for OpenAPI 3+.
 //
@@ -13,8 +18,8 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v3"
 // that identifies a URL to use for the callback operation.
 //  - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
-	Expression map[string]*PathItem
-	Extensions map[string]any
+	Expression map[string]*PathItem `json:"-" yaml:"-"`
+	Extensions map[string]any       `json:"-" yaml:"-"`
 	low        *low.Callback
 }
 
@@ -36,4 +41,47 @@ func NewCallback(lowCallback *low.Callback) *Callback {
 // GoLow returns the low-level Callback instance used to create the high-level one.
 func (c *Callback) GoLow() *low.Callback {
 	return c.low
+}
+
+// Render will return a YAML representation of the Callback object as a byte slice.
+func (c *Callback) Render() ([]byte, error) {
+	return yaml.Marshal(c)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Callback object.
+func (c *Callback) MarshalYAML() (interface{}, error) {
+	// map keys correctly.
+	m := high.CreateEmptyMapNode()
+	type cbItem struct {
+		cb   *PathItem
+		exp  string
+		line int
+	}
+	var mapped []*cbItem
+
+	for k, ex := range c.Expression {
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		if c.low != nil {
+			lcb := c.low.FindExpression(k)
+			if lcb != nil {
+				ln = lcb.ValueNode.Line
+			}
+		}
+		mapped = append(mapped, &cbItem{ex, k, ln})
+	}
+
+	sort.Slice(mapped, func(i, j int) bool {
+		return mapped[i].line < mapped[j].line
+	})
+	for j := range mapped {
+		rendered, _ := mapped[j].cb.MarshalYAML()
+		m.Content = append(m.Content, high.CreateStringNode(mapped[j].exp))
+		m.Content = append(m.Content, rendered.(*yaml.Node))
+	}
+	nb := high.NewNodeBuilder(c, c.low)
+	extNode := nb.Render()
+	if extNode.Content != nil {
+		m.Content = append(m.Content, extNode.Content...)
+	}
+	return m, nil
 }

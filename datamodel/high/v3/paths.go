@@ -65,16 +65,13 @@ func (p *Paths) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Paths object.
 func (p *Paths) MarshalYAML() (interface{}, error) {
-	if p == nil {
-		return nil, nil
-	}
-
 	// map keys correctly.
 	m := high.CreateEmptyMapNode()
 	type pathItem struct {
-		pi   *PathItem
-		path string
-		line int
+		pi       *PathItem
+		path     string
+		line     int
+		rendered *yaml.Node
 	}
 	var mapped []*pathItem
 
@@ -86,17 +83,33 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 				ln = lpi.ValueNode.Line
 			}
 		}
-		mapped = append(mapped, &pathItem{pi, k, ln})
+		mapped = append(mapped, &pathItem{pi, k, ln, nil})
+	}
+
+	nb := high.NewNodeBuilder(p, p.low)
+	extNode := nb.Render()
+	if extNode.Content != nil {
+		for u := range extNode.Content {
+			mapped = append(mapped, &pathItem{nil, extNode.Content[u].Value,
+				extNode.Content[u].Line, extNode.Content[u]})
+		}
+		//m.Content = append(m.Content, extNode.Content...)
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
 	for j := range mapped {
-		rendered, _ := mapped[j].pi.MarshalYAML()
-		m.Content = append(m.Content, high.CreateStringNode(mapped[j].path))
-		m.Content = append(m.Content, rendered.(*yaml.Node))
+		if mapped[j].pi != nil {
+			rendered, _ := mapped[j].pi.MarshalYAML()
+			m.Content = append(m.Content, high.CreateStringNode(mapped[j].path))
+			m.Content = append(m.Content, rendered.(*yaml.Node))
+		}
+		if mapped[j].rendered != nil {
+			m.Content = append(m.Content, mapped[j].rendered)
+		}
 	}
+
 	return m, nil
 }
 

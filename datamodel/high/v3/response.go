@@ -60,4 +60,3 @@ func (r *Response) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(r, r.low)
 	return nb.Render(), nil
 }
-

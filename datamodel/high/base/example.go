@@ -45,9 +45,6 @@ func (e *Example) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Example object.
 func (e *Example) MarshalYAML() (interface{}, error) {
-	if e == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(e, e.low)
 	return nb.Render(), nil
 }
