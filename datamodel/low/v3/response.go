@@ -24,6 +24,7 @@ type Response struct {
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 	Links       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]]
+	*low.Reference
 }
 
 // FindExtension will attempt to locate an extension using the supplied key
@@ -53,6 +54,7 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 
 // Build will extract headers, extensions, content and links from node.
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
 
 	//extract headers

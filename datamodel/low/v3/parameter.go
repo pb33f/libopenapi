@@ -34,6 +34,7 @@ type Parameter struct {
 	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
 	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindContent will attempt to locate a MediaType instance using the specified name.
@@ -58,6 +59,7 @@ func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // Build will extract examples, extensions and content/media types.
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.

@@ -124,6 +124,11 @@ func (p *PathItem) GoLow() *low.PathItem {
     return p.low
 }
 
+// GoLowUntyped will return the low-level PathItem instance that was used to create the high-level one, with no type
+func (p *PathItem) GoLowUntyped() any {
+    return p.low
+}
+
 func (p *PathItem) GetOperations() map[string]*Operation {
     o := make(map[string]*Operation)
     if p.Get != nil {

@@ -20,6 +20,7 @@ type Server struct {
 	Description low.NodeReference[string]
 	Variables   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
@@ -34,6 +35,7 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 
 // Build will extract server variables from the supplied node.
 func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	s.Reference = new(low.Reference)
 	s.Extensions = low.ExtractExtensions(root)
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)
 	if vars == nil {
@@ -50,6 +52,7 @@ func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				continue
 			}
 			variable := ServerVariable{}
+			variable.Reference = new(low.Reference)
 			_ = low.BuildModel(varNode, &variable)
 			variablesMap[low.KeyReference[string]{
 				Value:   currentNode,

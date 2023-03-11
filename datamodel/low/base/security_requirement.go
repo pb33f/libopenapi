@@ -23,10 +23,12 @@ import (
 //  - https://swagger.io/specification/#security-requirement-object
 type SecurityRequirement struct {
 	Requirements low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
+	*low.Reference
 }
 
 // Build will extract security requirements from the node (the structure is odd, to be honest)
 func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
+	s.Reference = new(low.Reference)
 	var labelNode *yaml.Node
 	valueMap := make(map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])
 	var arr []low.ValueReference[string]

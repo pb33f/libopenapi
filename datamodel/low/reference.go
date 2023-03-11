@@ -11,6 +11,28 @@ const (
 	HASH = "%x"
 )
 
+type Reference struct {
+	Reference string `json:"-" yaml:"-"`
+}
+
+func (r *Reference) GetReference() string {
+	return r.Reference
+}
+
+func (r *Reference) IsReference() bool {
+	return r.Reference != ""
+}
+
+func (r *Reference) SetReference(ref string) {
+	r.Reference = ref
+}
+
+type IsReferenced interface {
+	IsReference() bool
+	GetReference() string
+	SetReference(string)
+}
+
 // Buildable is an interface for any struct that can be 'built out'. This means that a struct can accept
 // a root node and a reference to the index that carries data about any references used.
 //
@@ -29,6 +51,7 @@ type HasValueNode[T any] interface {
 // HasValueNodeUntyped is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
 type HasValueNodeUntyped interface {
 	GetValueNode() *yaml.Node
+	IsReferenced
 }
 
 // Hashable defines any struct that implements a Hash function that returns a 256SHA hash of the state of the
@@ -85,7 +108,7 @@ type NodeReference[T any] struct {
 	KeyNode *yaml.Node
 
 	// Is this value actually a reference in the original tree?
-	IsReference bool
+	ReferenceNode bool
 
 	// If HasReference is true, then Reference contains the original $ref value.
 	Reference string
@@ -113,7 +136,7 @@ type ValueReference[T any] struct {
 	ValueNode *yaml.Node
 
 	// Is this value actually a reference in the original tree?
-	IsReference bool
+	ReferenceNode bool
 
 	// If HasReference is true, then Reference contains the original $ref value.
 	Reference string
@@ -132,12 +155,24 @@ func (n NodeReference[T]) NodeLineNumber() int {
 	}
 }
 
-// IsReferenceNode will return true if the key node contains a $ref key.
-func (n NodeReference[T]) IsReferenceNode() bool {
+func (n NodeReference[T]) GetReference() string {
+	return n.Reference
+}
+
+func (n NodeReference[T]) SetReference(ref string) {
+	n.Reference = ref
+}
+
+// IsReference will return true if the key node contains a $ref key.
+func (n NodeReference[T]) IsReference() bool {
+	if n.ReferenceNode {
+		return true
+	}
 	if n.KeyNode != nil {
 		for k := range n.KeyNode.Content {
 			if k%2 == 0 {
 				if n.KeyNode.Content[k].Value == "$ref" {
+					n.ReferenceNode = true
 					return true
 				}
 			}
@@ -162,6 +197,11 @@ func (n NodeReference[T]) Mutate(value T) NodeReference[T] {
 // GetValueNode will return the yaml.Node containing the reference value node
 func (n NodeReference[T]) GetValueNode() *yaml.Node {
 	return n.ValueNode
+}
+
+// GetKeyNode will return the yaml.Node containing the reference key node
+func (n NodeReference[T]) GetKeyNode() *yaml.Node {
+	return n.KeyNode
 }
 
 // GetValue will return the  raw value of the node
@@ -206,6 +246,22 @@ func (n ValueReference[T]) GetValue() T {
 // GetValueUntyped will return the raw value of the node with no type
 func (n ValueReference[T]) GetValueUntyped() any {
 	return n.Value
+}
+
+func (n ValueReference[T]) GetReference() string {
+	return n.Reference
+}
+
+func (n ValueReference[T]) SetReference(ref string) {
+	n.Reference = ref
+}
+
+// IsReference will return true if the key node contains a $ref
+func (n ValueReference[T]) IsReference() bool {
+	if n.Reference != "" {
+		return true
+	}
+	return false
 }
 
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)

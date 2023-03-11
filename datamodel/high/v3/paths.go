@@ -58,6 +58,11 @@ func (p *Paths) GoLow() *low.Paths {
 	return p.low
 }
 
+// GoLowUntyped will return the low-level Paths instance that was used to create the high-level one, with no type
+func (p *Paths) GoLowUntyped() any {
+	return p.low
+}
+
 // Render will return a YAML representation of the Paths object as a byte slice.
 func (p *Paths) Render() ([]byte, error) {
 	return yaml.Marshal(p)
@@ -88,7 +93,7 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 
 	nb := high.NewNodeBuilder(p, p.low)
 	extNode := nb.Render()
-	if extNode.Content != nil {
+	if extNode != nil && extNode.Content != nil {
 		for u := range extNode.Content {
 			mapped = append(mapped, &pathItem{nil, extNode.Content[u].Value,
 				extNode.Content[u].Line, extNode.Content[u]})

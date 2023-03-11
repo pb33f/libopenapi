@@ -46,6 +46,11 @@ func (x *XML) GoLow() *low.XML {
     return x.low
 }
 
+// GoLowUntyped will return the low-level XML instance that was used to create the high-level one, with no type
+func (x *XML) GoLowUntyped() any {
+    return x.low
+}
+
 // Render will return a YAML representation of the XML object as a byte slice.
 func (x *XML) Render() ([]byte, error) {
     return yaml.Marshal(x)

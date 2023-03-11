@@ -41,6 +41,11 @@ func (d *Discriminator) GoLow() *low.Discriminator {
 	return d.low
 }
 
+// GoLowUntyped will return the low-level Discriminator instance that was used to create the high-level one, with no type
+func (d *Discriminator) GoLowUntyped() any {
+	return d.low
+}
+
 // Render will return a YAML representation of the Discriminator object as a byte slice.
 func (d *Discriminator) Render() ([]byte, error) {
 	return yaml.Marshal(d)

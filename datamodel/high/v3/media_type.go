@@ -44,6 +44,11 @@ func (m *MediaType) GoLow() *low.MediaType {
 	return m.low
 }
 
+// GoLowUntyped will return the low-level MediaType instance that was used to create the high-level one, with no type
+func (m *MediaType) GoLowUntyped() any {
+	return m.low
+}
+
 // Render will return a YAML representation of the MediaType object as a byte slice.
 func (m *MediaType) Render() ([]byte, error) {
 	return yaml.Marshal(m)

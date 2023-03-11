@@ -125,6 +125,7 @@ type Schema struct {
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
 	ParentProxy *SchemaProxy
+	*low.Reference
 }
 
 // Hash will calculate a SHA256 hash from the values of the schema, This allows equality checking against
@@ -504,6 +505,7 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //   - UnevaluatedItems
 //   - UnevaluatedProperties
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	s.Reference = new(low.Reference)
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, err := low.LocateRefNode(root, idx)
 		if ref != nil {
@@ -1233,7 +1235,8 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 	if schNode != nil {
 		// check if schema has already been built.
 		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, isReference: isRef, referenceLookup: refLocation}
-		return &low.NodeReference[*SchemaProxy]{Value: schema, KeyNode: schLabel, ValueNode: schNode}, nil
+		return &low.NodeReference[*SchemaProxy]{Value: schema, KeyNode: schLabel, ValueNode: schNode, ReferenceNode: isRef,
+			Reference: refLocation}, nil
 	}
 	return nil, nil
 }

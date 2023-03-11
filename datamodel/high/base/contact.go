@@ -34,6 +34,11 @@ func (c *Contact) GoLow() *low.Contact {
 	return c.low
 }
 
+// GoLowUntyped will return the low-level Contact instance that was used to create the high-level one, with no type
+func (c *Contact) GoLowUntyped() any {
+	return c.low
+}
+
 func (c *Contact) Render() ([]byte, error) {
 	return yaml.Marshal(c)
 }

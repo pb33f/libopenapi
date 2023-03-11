@@ -23,6 +23,7 @@ import (
 type Paths struct {
 	PathItems  map[low.KeyReference[string]]low.ValueReference[*PathItem]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindPath will attempt to locate a PathItem using the provided path string.
@@ -57,6 +58,7 @@ func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[
 
 // Build will extract extensions and all PathItems. This happens asynchronously for speed.
 func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node

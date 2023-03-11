@@ -38,6 +38,11 @@ func (e *Encoding) GoLow() *low.Encoding {
 	return e.low
 }
 
+// GoLowUntyped will return the low-level Encoding instance that was used to create the high-level one, with no type
+func (e *Encoding) GoLowUntyped() any {
+	return e.low
+}
+
 // Render will return a YAML representation of the Encoding object as a byte slice.
 func (e *Encoding) Render() ([]byte, error) {
 	return yaml.Marshal(e)

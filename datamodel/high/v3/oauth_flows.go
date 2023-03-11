@@ -48,6 +48,11 @@ func (o *OAuthFlows) GoLow() *low.OAuthFlows {
 	return o.low
 }
 
+// GoLowUntyped will return the low-level OAuthFlows instance that was used to create the high-level one, with no type
+func (o *OAuthFlows) GoLowUntyped() any {
+	return o.low
+}
+
 // Render will return a YAML representation of the OAuthFlows object as a byte slice.
 func (o *OAuthFlows) Render() ([]byte, error) {
 	return yaml.Marshal(o)

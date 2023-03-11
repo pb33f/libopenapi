@@ -86,25 +86,32 @@ func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
 
 // GetBuildError returns any error that was thrown when calling Schema()
 func (sp *SchemaProxy) GetBuildError() error {
-	return sp.buildError
+    return sp.buildError
 }
 
 func (sp *SchemaProxy) GoLow() *base.SchemaProxy {
-	if sp.schema == nil {
-		return nil
-	}
-	return sp.schema.Value
+    if sp.schema == nil {
+        return nil
+    }
+    return sp.schema.Value
+}
+
+func (sp *SchemaProxy) GoLowUntyped() any {
+    if sp.schema == nil {
+        return nil
+    }
+    return sp.schema.Value
 }
 
 // Render will return a YAML representation of the Schema object as a byte slice.
 func (sp *SchemaProxy) Render() ([]byte, error) {
-	return yaml.Marshal(sp)
+    return yaml.Marshal(sp)
 }
 
 // MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
 func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
-	if sp == nil {
-		return nil, nil
+    if sp == nil {
+        return nil, nil
 	}
 	var s *Schema
 	var err error

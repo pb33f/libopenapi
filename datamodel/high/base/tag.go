@@ -45,6 +45,11 @@ func (t *Tag) GoLow() *low.Tag {
     return t.low
 }
 
+// GoLowUntyped will return the low-level Tag instance that was used to create the high-level one, with no type
+func (t *Tag) GoLowUntyped() any {
+    return t.low
+}
+
 // Render will return a YAML representation of the Info object as a byte slice.
 func (t *Tag) Render() ([]byte, error) {
     return yaml.Marshal(t)
@@ -58,28 +63,3 @@ func (t *Tag) MarshalYAML() (interface{}, error) {
     nb := high.NewNodeBuilder(t, t.low)
     return nb.Render(), nil
 }
-
-// Experimental mutation API.
-//func (t *Tag) SetName(value string) {
-//	t.GoLow().Name.ValueNode.Value = value
-//}
-//func (t *Tag) SetDescription(value string) {
-//	t.GoLow().Description.ValueNode.Value = value
-//}
-
-//func (t *Tag) MarshalYAML() (interface{}, error) {
-//	m := make(map[string]interface{})
-//	for i := range t.Extensions {
-//		m[i] = t.Extensions[i]
-//	}
-//	if t.Name != "" {
-//		m[NameLabel] = t.Name
-//	}
-//	if t.Description != "" {
-//		m[DescriptionLabel] = t.Description
-//	}
-//	if t.ExternalDocs != nil {
-//		m[ExternalDocsLabel] = t.ExternalDocs
-//	}
-//	return m, nil
-//}

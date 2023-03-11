@@ -24,6 +24,7 @@ type Tag struct {
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
@@ -33,6 +34,7 @@ func (t *Tag) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions and external docs for the Tag.
 func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	t.Reference = new(low.Reference)
 	t.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs

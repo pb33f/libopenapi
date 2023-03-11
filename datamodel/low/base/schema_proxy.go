@@ -104,6 +104,21 @@ func (sp *SchemaProxy) IsSchemaReference() bool {
 	return sp.isReference
 }
 
+// IsReference is an alias for IsSchemaReference() except it's compatible wih the IsReferenced interface type.
+func (sp *SchemaProxy) IsReference() bool {
+	return sp.IsSchemaReference()
+}
+
+// GetReference is an alias for GetSchemaReference() except it's compatible wih the IsReferenced interface type.
+func (sp *SchemaProxy) GetReference() string {
+	return sp.GetSchemaReference()
+}
+
+// SetReference will set the reference lookup for this SchemaProxy.
+func (sp *SchemaProxy) SetReference(ref string) {
+	sp.referenceLookup = ref
+}
+
 // GetSchemaReference will return the lookup defined by the $ref that this schema points to. If the schema
 // is inline, and not a reference, then this method returns an empty string. Only useful when combined with
 // IsSchemaReference()

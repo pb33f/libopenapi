@@ -62,6 +62,11 @@ func (p *Parameter) GoLow() *low.Parameter {
     return p.low
 }
 
+// GoLowUntyped will return the low-level Discriminator instance that was used to create the high-level one, with no type
+func (p *Parameter) GoLowUntyped() any {
+    return p.low
+}
+
 // Render will return a YAML representation of the Encoding object as a byte slice.
 func (p *Parameter) Render() ([]byte, error) {
     return yaml.Marshal(p)

@@ -35,6 +35,7 @@ type PathItem struct {
 	Servers     low.NodeReference[[]low.ValueReference[*Server]]
 	Parameters  low.NodeReference[[]low.ValueReference[*Parameter]]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // Hash will return a consistent SHA256 Hash of the PathItem object
@@ -107,6 +108,7 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 // Build extracts extensions, parameters, servers and each http method defined.
 // everything is extracted asynchronously for speed.
 func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node

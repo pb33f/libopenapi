@@ -38,6 +38,11 @@ func (e *Example) GoLow() *low.Example {
 	return e.low
 }
 
+// GoLowUntyped will return the low-level Example instance that was used to create the high-level one, with no type
+func (e *Example) GoLowUntyped() any {
+	return e.low
+}
+
 // Render will return a YAML representation of the Example object as a byte slice.
 func (e *Example) Render() ([]byte, error) {
 	return yaml.Marshal(e)
