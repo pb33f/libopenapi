@@ -127,10 +127,12 @@ func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInd
 	if err != nil {
 		return err
 	}
-	doc.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
-		Value:     sec,
-		KeyNode:   ln,
-		ValueNode: vn,
+	if vn != nil && ln != nil {
+		doc.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
+			Value:     sec,
+			KeyNode:   ln,
+			ValueNode: vn,
+		}
 	}
 	return nil
 }

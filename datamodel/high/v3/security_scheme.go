@@ -55,6 +55,11 @@ func (s *SecurityScheme) GoLow() *low.SecurityScheme {
 	return s.low
 }
 
+// GoLowUntyped will return the low-level SecurityScheme instance that was used to create the high-level one, with no type
+func (s *SecurityScheme) GoLowUntyped() any {
+	return s.low
+}
+
 // Render will return a YAML representation of the SecurityScheme object as a byte slice.
 func (s *SecurityScheme) Render() ([]byte, error) {
 	return yaml.Marshal(s)

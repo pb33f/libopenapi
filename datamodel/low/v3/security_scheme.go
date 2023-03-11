@@ -33,25 +33,8 @@ type SecurityScheme struct {
 	Flows            low.NodeReference[*OAuthFlows]
 	OpenIdConnectUrl low.NodeReference[string]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
-
-// SecurityRequirement is a low-level representation of an OpenAPI 3+ SecurityRequirement object.
-//
-// It lists the required security schemes to execute this operation. The name used for each property MUST correspond
-// to a security scheme declared in the Security Schemes under the Components Object.
-//
-// Security Requirement Objects that contain multiple schemes require that all schemes MUST be satisfied for a
-// request to be authorized. This enables support for scenarios where multiple query parameters or HTTP headers are
-// required to convey security information.
-//
-// When a list of Security Requirement Objects is defined on the OpenAPI Object or Operation Object, only one of the
-// Security Requirement Objects in the list needs to be satisfied to authorize the request.
-//  - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
-//type SecurityRequirement struct {
-//
-//	// FYI, I hate this data structure. Even without the low level wrapping, it sucks.
-//	ValueRequirements []low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
-//}
 
 // FindExtension attempts to locate an extension using the supplied key.
 func (ss *SecurityScheme) FindExtension(ext string) *low.ValueReference[any] {
@@ -65,6 +48,7 @@ func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.Value
 
 // Build will extract OAuthFlows and extensions from the node.
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	ss.Reference = new(low.Reference)
 	ss.Extensions = low.ExtractExtensions(root)
 
 	oa, oaErr := low.ExtractObject[*OAuthFlows](OAuthFlowsLabel, root, idx)

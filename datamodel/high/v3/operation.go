@@ -91,6 +91,11 @@ func (o *Operation) GoLow() *low.Operation {
 	return o.low
 }
 
+// GoLowUntyped will return the low-level Discriminator instance that was used to create the high-level one, with no type
+func (o *Operation) GoLowUntyped() any {
+	return o.low
+}
+
 // Render will return a YAML representation of the Operation object as a byte slice.
 func (o *Operation) Render() ([]byte, error) {
 	return yaml.Marshal(o)

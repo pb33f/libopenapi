@@ -36,6 +36,11 @@ func (l *License) GoLow() *low.License {
 	return l.low
 }
 
+// GoLowUntyped will return the low-level License instance that was used to create the high-level one, with no type
+func (l *License) GoLowUntyped() any {
+	return l.low
+}
+
 // Render will return a YAML representation of the License object as a byte slice.
 func (l *License) Render() ([]byte, error) {
 	return yaml.Marshal(l)

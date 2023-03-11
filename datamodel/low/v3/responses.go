@@ -36,6 +36,7 @@ type Responses struct {
 	Codes      map[low.KeyReference[string]]low.ValueReference[*Response]
 	Default    low.NodeReference[*Response]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all Responses extensions and satisfies the low.HasExtensions interface.
@@ -45,6 +46,7 @@ func (r *Responses) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // Build will extract default response and all Response objects for each code
 func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
 	if utils.IsNodeMap(root) {
 		codes, err := low.ExtractMapNoLookup[*Response](root, idx)

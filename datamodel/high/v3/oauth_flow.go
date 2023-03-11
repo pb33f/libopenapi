@@ -41,6 +41,11 @@ func (o *OAuthFlow) GoLow() *low.OAuthFlow {
 	return o.low
 }
 
+// GoLowUntyped will return the low-level Discriminator instance that was used to create the high-level one, with no type
+func (o *OAuthFlow) GoLowUntyped() any {
+	return o.low
+}
+
 // Render will return a YAML representation of the OAuthFlow object as a byte slice.
 func (o *OAuthFlow) Render() ([]byte, error) {
 	return yaml.Marshal(o)

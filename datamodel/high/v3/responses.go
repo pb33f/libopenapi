@@ -80,6 +80,11 @@ func (r *Responses) GoLow() *low.Responses {
 	return r.low
 }
 
+// GoLowUntyped will return the low-level Responses instance that was used to create the high-level one, with no type
+func (r *Responses) GoLowUntyped() any {
+	return r.low
+}
+
 // Render will return a YAML representation of the Responses object as a byte slice.
 func (r *Responses) Render() ([]byte, error) {
 	return yaml.Marshal(r)

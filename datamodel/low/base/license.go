@@ -17,10 +17,12 @@ import (
 type License struct {
 	Name low.NodeReference[string]
 	URL  low.NodeReference[string]
+	*low.Reference
 }
 
 // Build is not implemented for License (there is nothing to build)
 func (l *License) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	l.Reference = new(low.Reference)
 	return nil
 }
 

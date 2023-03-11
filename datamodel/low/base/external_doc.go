@@ -22,6 +22,7 @@ type ExternalDoc struct {
 	Description low.NodeReference[string]
 	URL         low.NodeReference[string]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
@@ -31,6 +32,7 @@ func (ex *ExternalDoc) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions from the ExternalDoc instance.
 func (ex *ExternalDoc) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	ex.Reference = new(low.Reference)
 	ex.Extensions = low.ExtractExtensions(root)
 	return nil
 }

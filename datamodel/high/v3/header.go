@@ -59,6 +59,11 @@ func (h *Header) GoLow() *low.Header {
 	return h.low
 }
 
+// GoLowUntyped will return the low-level Header instance that was used to create the high-level one, with no type
+func (h *Header) GoLowUntyped() any {
+	return h.low
+}
+
 // ExtractHeaders will extract a hard to navigate low-level Header map, into simple high-level one.
 func ExtractHeaders(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Header]) map[string]*Header {
 	extracted := make(map[string]*Header)

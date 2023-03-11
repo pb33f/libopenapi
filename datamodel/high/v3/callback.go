@@ -43,6 +43,11 @@ func (c *Callback) GoLow() *low.Callback {
 	return c.low
 }
 
+// GoLowUntyped will return the low-level Callback instance that was used to create the high-level one, with no type
+func (c *Callback) GoLowUntyped() any {
+	return c.low
+}
+
 // Render will return a YAML representation of the Callback object as a byte slice.
 func (c *Callback) Render() ([]byte, error) {
 	return yaml.Marshal(c)

@@ -43,6 +43,11 @@ func (s *SecurityRequirement) GoLow() *base.SecurityRequirement {
 	return s.low
 }
 
+// GoLowUntyped will return the low-level Discriminator instance that was used to create the high-level one, with no type
+func (s *SecurityRequirement) GoLowUntyped() any {
+	return s.low
+}
+
 // Render will return a YAML representation of the SecurityRequirement object as a byte slice.
 func (s *SecurityRequirement) Render() ([]byte, error) {
 	return yaml.Marshal(s)
