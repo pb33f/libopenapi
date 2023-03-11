@@ -19,6 +19,7 @@ type ServerVariable struct {
 	Enum        []low.NodeReference[string]
 	Default     low.NodeReference[string]
 	Description low.NodeReference[string]
+	*low.Reference
 }
 
 // Hash will return a consistent SHA256 Hash of the ServerVariable object

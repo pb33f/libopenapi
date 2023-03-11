@@ -39,6 +39,11 @@ func (s *Server) GoLow() *low.Server {
 	return s.low
 }
 
+// GoLowUntyped will return the low-level Server instance that was used to create the high-level one, with no type
+func (s *Server) GoLowUntyped() any {
+	return s.low
+}
+
 // Render will return a YAML representation of the Server object as a byte slice.
 func (s *Server) Render() ([]byte, error) {
 	return yaml.Marshal(s)

@@ -64,6 +64,11 @@ func (i *Info) GoLow() *low.Info {
 	return i.low
 }
 
+// GoLowUntyped will return the low-level Info instance that was used to create the high-level one, with no type
+func (i *Info) GoLowUntyped() any {
+	return i.low
+}
+
 // Render will return a YAML representation of the Info object as a byte slice.
 func (i *Info) Render() ([]byte, error) {
 	return yaml.Marshal(i)

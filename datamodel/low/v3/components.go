@@ -31,6 +31,7 @@ type Components struct {
 	Links           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]]
 	Callbacks       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
@@ -126,6 +127,7 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 }
 
 func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	co.Reference = new(low.Reference)
 	co.Extensions = low.ExtractExtensions(root)
 
 	// build out components asynchronously for speed. There could be some significant weight here.

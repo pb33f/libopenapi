@@ -30,6 +30,7 @@ type Header struct {
 	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
 	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindExtension will attempt to locate an extension with the supplied name
@@ -95,6 +96,7 @@ func (h *Header) Hash() [32]byte {
 
 // Build will extract extensions, examples, schema and content/media types from node.
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	h.Reference = new(low.Reference)
 	h.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.

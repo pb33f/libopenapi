@@ -25,10 +25,12 @@ type XML struct {
 	Attribute  low.NodeReference[bool]
 	Wrapped    low.NodeReference[bool]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // Build will extract extensions from the XML instance.
 func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
+	x.Reference = new(low.Reference)
 	x.Extensions = low.ExtractExtensions(root)
 	return nil
 }

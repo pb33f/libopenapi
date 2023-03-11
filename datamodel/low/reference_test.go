@@ -40,7 +40,7 @@ func TestNodeReference_Mutate(t *testing.T) {
 	n := nr.Mutate("nice one!")
 	assert.NotNil(t, nr.GetValueNode())
 	assert.Empty(t, nr.GetValue())
-	assert.False(t, nr.IsReferenceNode())
+	assert.False(t, nr.IsReference())
 	assert.Equal(t, "nice one!", n.Value)
 	assert.Equal(t, "nice one!", nr.ValueNode.Value)
 }
@@ -52,7 +52,7 @@ func TestNodeReference_RefNode(t *testing.T) {
 			Value: "$ref",
 		}},
 	}
-	assert.True(t, nr.IsReferenceNode())
+	assert.True(t, nr.IsReference())
 }
 
 func TestValueReference_Mutate(t *testing.T) {

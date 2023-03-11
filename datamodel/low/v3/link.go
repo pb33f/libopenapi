@@ -33,6 +33,7 @@ type Link struct {
 	Description  low.NodeReference[string]
 	Server       low.NodeReference[*Server]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all Link extensions and satisfies the low.HasExtensions interface.
@@ -52,6 +53,7 @@ func (l *Link) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions and servers from the node.
 func (l *Link) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	l.Reference = new(low.Reference)
 	l.Extensions = low.ExtractExtensions(root)
 	// extract server.
 	ser, sErr := low.ExtractObject[*Server](ServerLabel, root, idx)

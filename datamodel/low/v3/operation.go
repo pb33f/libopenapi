@@ -33,6 +33,7 @@ type Operation struct {
 	Security     low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindCallback will attempt to locate a Callback instance by the supplied name.
@@ -54,6 +55,7 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs

@@ -23,6 +23,7 @@ type Example struct {
 	Value         low.NodeReference[any]
 	ExternalValue low.NodeReference[string]
 	Extensions    map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
@@ -59,6 +60,7 @@ func (ex *Example) Hash() [32]byte {
 
 // Build extracts extensions and example value
 func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	ex.Reference = new(low.Reference)
 	ex.Extensions = low.ExtractExtensions(root)
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
 

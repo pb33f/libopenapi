@@ -40,6 +40,11 @@ func (e *ExternalDoc) GoLow() *low.ExternalDoc {
 	return e.low
 }
 
+// GoLowUntyped will return the low-level ExternalDoc instance that was used to create the high-level one, with no type
+func (e *ExternalDoc) GoLowUntyped() any {
+	return e.low
+}
+
 func (e *ExternalDoc) GetExtensions() map[string]any {
 	return e.Extensions
 }

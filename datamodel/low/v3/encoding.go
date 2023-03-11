@@ -20,6 +20,7 @@ type Encoding struct {
 	Style         low.NodeReference[string]
 	Explode       low.NodeReference[bool]
 	AllowReserved low.NodeReference[bool]
+	*low.Reference
 }
 
 // FindHeader attempts to locate a Header with the supplied name
@@ -57,6 +58,7 @@ func (en *Encoding) Hash() [32]byte {
 
 // Build will extract all Header objects from supplied node.
 func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	en.Reference = new(low.Reference)
 	headers, hL, hN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
 	if err != nil {
 		return err

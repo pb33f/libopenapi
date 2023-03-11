@@ -30,6 +30,7 @@ type Info struct {
 	License        low.NodeReference[*License]
 	Version        low.NodeReference[string]
 	Extensions     map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindExtension attempts to locate an extension with the supplied key
@@ -44,6 +45,7 @@ func (i *Info) GetExtensions() map[low.KeyReference[string]]low.ValueReference[a
 
 // Build will extract out the Contact and Info objects from the supplied root node.
 func (i *Info) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	i.Reference = new(low.Reference)
 	i.Extensions = low.ExtractExtensions(root)
 
 	// extract contact

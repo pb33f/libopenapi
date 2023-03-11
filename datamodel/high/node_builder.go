@@ -150,6 +150,16 @@ func (n *NodeBuilder) add(key string) {
         case reflect.Struct:
             y := value.Interface()
             if nb, ok := y.(low.HasValueNodeUntyped); ok {
+
+                if nb.IsReference() {
+                    if jk, kj := y.(low.HasKeyNode); kj {
+                        nodeEntry.Line = jk.GetKeyNode().Line
+                        break
+                    }
+                    panic("this should not break.")
+
+                }
+
                 if nb.GetValueNode() != nil {
                     nodeEntry.Line = nb.GetValueNode().Line
                 } else {
@@ -169,13 +179,32 @@ func (n *NodeBuilder) add(key string) {
     }
 }
 
+func (n *NodeBuilder) renderReference() []*yaml.Node {
+    if fg, ok := n.Low.(low.IsReferenced); ok {
+        nodes := make([]*yaml.Node, 2)
+        nodes[0] = CreateStringNode("$ref")
+        nodes[1] = CreateStringNode(fg.GetReference())
+        return nodes
+    }
+    return nil
+
+}
+
 // Render will render the NodeBuilder back to a YAML node, iterating over every NodeEntry defined
 func (n *NodeBuilder) Render() *yaml.Node {
     // order nodes by line number, retain original order
+    m := CreateEmptyMapNode()
+    if fg, ok := n.Low.(low.IsReferenced); ok {
+        if fg.IsReference() {
+            m.Content = append(m.Content, n.renderReference()...)
+            return m
+        }
+    }
+
     sort.Slice(n.Nodes, func(i, j int) bool {
         return n.Nodes[i].Line < n.Nodes[j].Line
     })
-    m := CreateEmptyMapNode()
+
     for i := range n.Nodes {
         node := n.Nodes[i]
         n.AddYAMLNode(m, node.Tag, node.Key, node.Value)
@@ -296,7 +325,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                                         Tag:   uu.(string),
                                         Key:   uu.(string),
                                         Line:  9999 + j,
-                                        Value: fg.MapIndex(ky).Interface(),
+                                        Value: m.MapIndex(k).Interface(),
                                     })
                                 }
                             }
@@ -379,6 +408,32 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
         }
 
         var rawNode yaml.Node
+        m := reflect.ValueOf(value)
+        sl := CreateEmptySequenceNode()
+        for i := 0; i < m.Len(); i++ {
+
+            sqi := m.Index(i).Interface()
+            if glu, ok := sqi.(GoesLowUntyped); ok {
+                if glu.GoLowUntyped().(low.IsReferenced).IsReference() {
+
+                    rt := CreateEmptyMapNode()
+
+                    nodes := make([]*yaml.Node, 2)
+                    nodes[0] = CreateStringNode("$ref")
+                    nodes[1] = CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
+                    rt.Content = append(rt.Content, nodes...)
+                    sl.Content = append(sl.Content, rt)
+
+                }
+            }
+
+        }
+
+        if len(sl.Content) > 0 {
+            valueNode = sl
+            break
+        }
+
         err := rawNode.Encode(value)
         if err != nil {
             return parent
@@ -399,6 +454,15 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
 
     case reflect.Ptr:
         if r, ok := value.(Renderable); ok {
+            if gl, lg := value.(GoesLowUntyped); lg {
+                if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
+                    rvn := CreateEmptyMapNode()
+                    rvn.Content = append(rvn.Content, CreateStringNode("$ref"))
+                    rvn.Content = append(rvn.Content, CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
+                    valueNode = rvn
+                    break
+                }
+            }
             rawRender, _ := r.MarshalYAML()
             if rawRender != nil {
                 valueNode = rawRender.(*yaml.Node)
@@ -465,6 +529,14 @@ func CreateEmptyMapNode() *yaml.Node {
     n := &yaml.Node{
         Kind: yaml.MappingNode,
         Tag:  "!!map",
+    }
+    return n
+}
+
+func CreateEmptySequenceNode() *yaml.Node {
+    n := &yaml.Node{
+        Kind: yaml.SequenceNode,
+        Tag:  "!!seq",
     }
     return n
 }

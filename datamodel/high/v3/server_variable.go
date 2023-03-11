@@ -41,6 +41,11 @@ func (s *ServerVariable) GoLow() *low.ServerVariable {
 	return s.low
 }
 
+// GoLowUntyped will return the low-level ServerVariable instance that was used to create the high-level one, with no type
+func (s *ServerVariable) GoLowUntyped() any {
+	return s.low
+}
+
 // Render will return a YAML representation of the ServerVariable object as a byte slice.
 func (s *ServerVariable) Render() ([]byte, error) {
 	return yaml.Marshal(s)

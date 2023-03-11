@@ -25,6 +25,7 @@ type MediaType struct {
 	Examples   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
 	Encoding   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Encoding]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all MediaType extensions and satisfies the low.HasExtensions interface.
@@ -54,6 +55,7 @@ func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueRefe
 
 // Build will extract examples, extensions, schema and encoding from node.
 func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	mt.Reference = new(low.Reference)
 	mt.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.

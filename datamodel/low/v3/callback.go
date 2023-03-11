@@ -23,6 +23,7 @@ import (
 type Callback struct {
 	Expression low.ValueReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all Callback extensions and satisfies the low.HasExtensions interface.
@@ -37,6 +38,7 @@ func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
 
 // Build will extract extensions, expressions and PathItem objects for Callback
 func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	cb.Reference = new(low.Reference)
 	cb.Extensions = low.ExtractExtensions(root)
 
 	// handle callback
@@ -51,7 +53,7 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		if strings.HasPrefix(currentCB.Value, "x-") {
 			continue // ignore extension.
 		}
-		callback, eErr, isRef, rv := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
+		callback, eErr, _, rv := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
 		if eErr != nil {
 			return eErr
 		}
@@ -61,7 +63,6 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}] = low.ValueReference[*PathItem]{
 			Value:       callback,
 			ValueNode:   callbackNode,
-			IsReference: isRef,
 			Reference:   rv,
 		}
 	}

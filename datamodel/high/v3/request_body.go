@@ -35,6 +35,11 @@ func (r *RequestBody) GoLow() *low.RequestBody {
 	return r.low
 }
 
+// GoLowUntyped will return the low-level RequestBody instance that was used to create the high-level one, with no type
+func (r *RequestBody) GoLowUntyped() any {
+	return r.low
+}
+
 // Render will return a YAML representation of the RequestBody object as a byte slice.
 func (r *RequestBody) Render() ([]byte, error) {
 	return yaml.Marshal(r)

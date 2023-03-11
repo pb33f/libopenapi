@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -490,14 +491,149 @@ func TestDocument_MarshalYAML(t *testing.T) {
 	os.WriteFile("rendered.yaml", r, 0644)
 
 	// re-parse the document
+
+	//TODO:  pick up in the morning here, trying to figure out why headers are being rendered (UseOil)
+
 	info, _ := datamodel.ExtractSpecInfo(r)
 	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	assert.Nil(t, e)
 
 	highDoc := NewDocument(lDoc)
 	assert.Equal(t, "3.1.0", highDoc.Version)
-	assert.Len(t, highDoc.Paths.PathItems, 1)
+	assert.Len(t, highDoc.Paths.PathItems, 5)
 
 }
+
+func TestDocument_MarshalYAML_TestRefs(t *testing.T) {
+
+	// create a new document
+	yml := `openapi: 3.1.0
+paths:
+    x-milky-milk: milky
+    /burgers:
+        x-burger-meta: meaty
+        post:
+            operationId: createBurger
+            tags:
+                - Burgers
+            summary: Create a new burger
+            description: A new burger for our menu, yummy yum yum.
+            responses:
+                "200":
+                    headers:
+                        UseOil:
+                            $ref: '#/components/headers/UseOil'
+                    description: A tasty burger for you to eat.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Burger'
+                            examples:
+                                quarterPounder:
+                                    $ref: '#/components/examples/QuarterPounder'
+                                filetOFish:
+                                    summary: a cripsy fish sammich filled with ocean goodness.
+                                    value:
+                                        name: Filet-O-Fish
+                                        numPatties: 1
+components:
+    headers:
+        UseOil:
+            description: this is a header example for UseOil
+            schema:
+                type: string
+    schemas:
+        Burger:
+            type: object
+            description: The tastiest food on the planet you would love to eat everyday
+            required:
+                - name
+                - numPatties
+            properties:
+                name:
+                    type: string
+                    description: The name of your tasty burger - burger names are listed in our menus
+                    example: Big Mac
+                numPatties:
+                    type: integer
+                    description: The number of burger patties used
+                    example: "2"
+    examples:
+        QuarterPounder:
+            summary: A juicy two hander sammich
+            value:
+                name: Quarter Pounder with Cheese
+                numPatties: 1`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+	})
+	if err != nil {
+		panic("broken something")
+	}
+	h := NewDocument(lowDoc)
+
+	// render the document to YAML and it should be identical.
+	r, _ := h.Render()
+	assert.Equal(t, yml, strings.TrimSpace(string(r)))
+}
+
+func TestDocument_MarshalYAML_TestParamRefs(t *testing.T) {
+
+	// create a new document
+	yml := `openapi: 3.1.0
+paths:
+  "/burgers/{burgerId}":
+    get:
+      operationId: locateBurger
+      tags:
+        - Burgers
+      summary: Search a burger by ID - returns the burger with that identifier
+      description: Look up a tasty burger take it and enjoy it
+      parameters:
+        - $ref: "#/components/parameters/BurgerId"
+        - $ref: "#/components/parameters/BurgerHeader"
+components:
+  parameters:
+    BurgerHeader:
+      in: header
+      name: burgerHeader
+      schema:
+        properties:
+          burgerTheme:
+            type: string
+            description: something about a theme goes in here?
+          burgerTime:
+            type: number
+            description: number of burgers ordered so far this year.
+    BurgerId:
+      in: path
+      name: burgerId
+      schema:
+        type: string
+      example: big-mac
+      description: the name of the burger. use this to order your tasty burger
+      required: true
+`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err []error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+	})
+	if err != nil {
+		panic("broken something")
+	}
+	h := NewDocument(lowDoc)
+
+	// render the document to YAML and it should be identical.
+	r, _ := h.Render()
+	assert.Equal(t, yml, strings.TrimSpace(string(r)))
+}
+
 
 

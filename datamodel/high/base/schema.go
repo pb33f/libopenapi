@@ -444,6 +444,11 @@ func (s *Schema) GoLow() *base.Schema {
 	return s.low
 }
 
+// GoLowUntyped will return the low-level Schema instance that was used to create the high-level one, with no type
+func (s *Schema) GoLowUntyped() any {
+	return s.low
+}
+
 // Render will return a YAML representation of the Schema object as a byte slice.
 func (s *Schema) Render() ([]byte, error) {
 	return yaml.Marshal(s)

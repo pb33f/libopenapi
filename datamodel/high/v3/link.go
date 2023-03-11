@@ -57,6 +57,11 @@ func (l *Link) GoLow() *low.Link {
 	return l.low
 }
 
+// GoLowUntyped will return the low-level Link instance that was used to create the high-level one, with no type
+func (l *Link) GoLowUntyped() any {
+	return l.low
+}
+
 // Render will return a YAML representation of the Link object as a byte slice.
 func (l *Link) Render() ([]byte, error) {
 	return yaml.Marshal(l)

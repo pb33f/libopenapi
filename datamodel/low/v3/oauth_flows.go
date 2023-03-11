@@ -21,6 +21,7 @@ type OAuthFlows struct {
 	ClientCredentials low.NodeReference[*OAuthFlow]
 	AuthorizationCode low.NodeReference[*OAuthFlow]
 	Extensions        map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all OAuthFlows extensions and satisfies the low.HasExtensions interface.
@@ -35,6 +36,7 @@ func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions and all OAuthFlow types from the supplied node.
 func (o *OAuthFlows) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 
 	v, vErr := low.ExtractObject[*OAuthFlow](ImplicitLabel, root, idx)
@@ -92,6 +94,7 @@ type OAuthFlow struct {
 	RefreshUrl       low.NodeReference[string]
 	Scopes           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
@@ -111,6 +114,7 @@ func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions from the node.
 func (o *OAuthFlow) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 	return nil
 }

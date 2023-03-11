@@ -146,6 +146,12 @@ func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecInd
 	if err != nil {
 		return n, err, isReference, referenceValue
 	}
+
+	// if this is a reference, keep track of the reference in the value
+	if isReference {
+		SetReference(n, referenceValue)
+	}
+
 	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
 		return n, circError, isReference, referenceValue
@@ -208,18 +214,33 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 		return NodeReference[T]{}, err
 	}
 
-	res := NodeReference[T]{
-		Value:       n,
-		KeyNode:     ln,
-		ValueNode:   vn,
-		IsReference: isReference,
-		Reference:   referenceValue,
+	// if this is a reference, keep track of the reference in the value
+	if isReference {
+		SetReference(n, referenceValue)
 	}
+
+	res := NodeReference[T]{
+		Value:         n,
+		KeyNode:       ln,
+		ValueNode:     vn,
+		ReferenceNode: isReference,
+		Reference:     referenceValue,
+	}
+
 	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
 		return res, circError
 	}
 	return res, nil
+}
+
+func SetReference(obj any, ref string) {
+	if obj == nil {
+		return
+	}
+	if r, ok := obj.(IsReferenced); ok {
+		r.SetReference(ref)
+	}
 }
 
 // ExtractArray will extract a slice of []ValueReference[T] from a root yaml.Node that is defined as a sequence.
@@ -229,15 +250,11 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 ) {
 	var ln, vn *yaml.Node
 	var circError error
-	var isReference bool
-	var referenceValue string
-	if rf, rl, rv := utils.IsNodeRefValue(root); rf {
+	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
 			vn = ref
 			ln = rl
-			isReference = true
-			referenceValue = rv
 			if err != nil {
 				circError = err
 			}
@@ -248,12 +265,11 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 	} else {
 		_, ln, vn = utils.FindKeyNodeFullTop(label, root.Content)
 		if vn != nil {
-			if h, _, rVal := utils.IsNodeRefValue(vn); h {
+			if h, _, _ := utils.IsNodeRefValue(vn); h {
 				ref, err := LocateRefNode(vn, idx)
 				if ref != nil {
 					vn = ref
-					isReference = true
-					referenceValue = rVal
+					//referenceValue = rVal
 					if err != nil {
 						circError = err
 					}
@@ -274,13 +290,13 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 		}
 		for _, node := range vn.Content {
 			localReferenceValue := ""
-			localIsReference := false
+			//localIsReference := false
 
 			if rf, _, rv := utils.IsNodeRefValue(node); rf {
-				ref, err := LocateRefNode(node, idx)
-				if ref != nil {
-					node = ref
-					localIsReference = true
+				refg, err := LocateRefNode(node, idx)
+				if refg != nil {
+					node = refg
+					//localIsReference = true
 					localReferenceValue = rv
 					if err != nil {
 						circError = err
@@ -302,16 +318,15 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 				return nil, ln, vn, berr
 			}
 
-			if localReferenceValue == "" {
-				localReferenceValue = referenceValue
-				localIsReference = isReference
+			if localReferenceValue != "" {
+				SetReference(n, localReferenceValue)
 			}
 
 			items = append(items, ValueReference[T]{
-				Value:       n,
-				ValueNode:   node,
-				IsReference: localIsReference,
-				Reference:   localReferenceValue,
+				Value:         n,
+				ValueNode:     node,
+				ReferenceNode: localReferenceValue != "",
+				Reference:     localReferenceValue,
 			})
 		}
 	}
@@ -395,14 +410,18 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 			if berr != nil {
 				return nil, berr
 			}
+			if isReference {
+				SetReference(n, referenceValue)
+			}
+
 			valueMap[KeyReference[string]{
 				Value:   currentKey.Value,
 				KeyNode: currentKey,
 			}] = ValueReference[PT]{
-				Value:       n,
-				ValueNode:   node,
-				IsReference: isReference,
-				Reference:   referenceValue,
+				Value:     n,
+				ValueNode: node,
+				//IsReference: isReference,
+				Reference: referenceValue,
 			}
 		}
 	}
@@ -427,7 +446,7 @@ func ExtractMap[PT Buildable[N], N any](
 	root *yaml.Node,
 	idx *index.SpecIndex,
 ) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
-	var isReference bool
+	//var isReference bool
 	var referenceValue string
 	var labelNode, valueNode *yaml.Node
 	var circError error
@@ -437,7 +456,7 @@ func ExtractMap[PT Buildable[N], N any](
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
-			isReference = true
+			//isReference = true
 			referenceValue = rv
 			if err != nil {
 				circError = err
@@ -449,12 +468,12 @@ func ExtractMap[PT Buildable[N], N any](
 	} else {
 		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
 		if valueNode != nil {
-			if h, _, rv := utils.IsNodeRefValue(valueNode); h {
+			if h, _, rvt := utils.IsNodeRefValue(valueNode); h {
 				ref, err := LocateRefNode(valueNode, idx)
 				if ref != nil {
 					valueNode = ref
-					isReference = true
-					referenceValue = rv
+					//isReference = true
+					referenceValue = rvt
 					if err != nil {
 						circError = err
 					}
@@ -474,7 +493,7 @@ func ExtractMap[PT Buildable[N], N any](
 		bChan := make(chan mappingResult[PT])
 		eChan := make(chan error)
 
-		buildMap := func(label *yaml.Node, value *yaml.Node, c chan mappingResult[PT], ec chan<- error) {
+		buildMap := func(label *yaml.Node, value *yaml.Node, c chan mappingResult[PT], ec chan<- error, ref string) {
 			var n PT = new(N)
 			_ = BuildModel(value, n)
 			err := n.Build(value, idx)
@@ -482,31 +501,40 @@ func ExtractMap[PT Buildable[N], N any](
 				ec <- err
 				return
 			}
+
+			//isRef := false
+			if ref != "" {
+				//isRef = true
+				SetReference(n, ref)
+			}
+
 			c <- mappingResult[PT]{
 				k: KeyReference[string]{
 					KeyNode: label,
 					Value:   label.Value,
 				},
 				v: ValueReference[PT]{
-					Value:       n,
-					ValueNode:   value,
-					IsReference: isReference,
-					Reference:   referenceValue,
+					Value:     n,
+					ValueNode: value,
+					//IsReference: isRef,
+					Reference: ref,
 				},
 			}
 		}
 
 		totalKeys := 0
 		for i, en := range valueNode.Content {
+			referenceValue = ""
 			if i%2 == 0 {
 				currentLabelNode = en
 				continue
 			}
 			// check our valueNode isn't a reference still.
-			if h, _, _ := utils.IsNodeRefValue(en); h {
+			if h, _, refVal := utils.IsNodeRefValue(en); h {
 				ref, err := LocateRefNode(en, idx)
 				if ref != nil {
 					en = ref
+					referenceValue = refVal
 					if err != nil {
 						circError = err
 					}
@@ -522,7 +550,7 @@ func ExtractMap[PT Buildable[N], N any](
 				continue // yo, don't pay any attention to extensions, not here anyway.
 			}
 			totalKeys++
-			go buildMap(currentLabelNode, en, bChan, eChan)
+			go buildMap(currentLabelNode, en, bChan, eChan, referenceValue)
 		}
 
 		completedKeys := 0

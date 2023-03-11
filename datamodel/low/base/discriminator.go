@@ -21,6 +21,7 @@ import (
 type Discriminator struct {
 	PropertyName low.NodeReference[string]
 	Mapping      map[low.KeyReference[string]]low.ValueReference[string]
+	low.Reference
 }
 
 // FindMappingValue will return a ValueReference containing the string mapping value

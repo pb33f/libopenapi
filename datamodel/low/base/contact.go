@@ -18,10 +18,12 @@ type Contact struct {
 	Name  low.NodeReference[string]
 	URL   low.NodeReference[string]
 	Email low.NodeReference[string]
+	*low.Reference
 }
 
 // Build is not implemented for Contact (there is nothing to build).
 func (c *Contact) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	c.Reference = new(low.Reference)
 	// not implemented.
 	return nil
 }

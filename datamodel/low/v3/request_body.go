@@ -20,6 +20,7 @@ type RequestBody struct {
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
 	Required    low.NodeReference[bool]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	*low.Reference
 }
 
 // FindExtension attempts to locate an extension using the provided name.
@@ -39,6 +40,7 @@ func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType]
 
 // Build will extract extensions and MediaType objects from the node.
 func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	rb.Reference = new(low.Reference)
 	rb.Extensions = low.ExtractExtensions(root)
 
 	// handle content, if set.
