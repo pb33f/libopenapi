@@ -147,6 +147,10 @@ func (n *NodeBuilder) add(key string) {
         fLow := lowFieldValue.Interface()
         value = reflect.ValueOf(fLow)
         switch value.Kind() {
+        case reflect.Map:
+            y := value.Interface()
+            panic(y)
+
         case reflect.Struct:
             y := value.Interface()
             if nb, ok := y.(low.HasValueNodeUntyped); ok {
