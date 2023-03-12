@@ -29,7 +29,7 @@ func NewDiscriminator(disc *low.Discriminator) *Discriminator {
 	d.low = disc
 	d.PropertyName = disc.PropertyName.Value
 	mapping := make(map[string]string)
-	for k, v := range disc.Mapping {
+	for k, v := range disc.Mapping.Value {
 		mapping[k.Value] = v.Value
 	}
 	d.Mapping = mapping

@@ -28,7 +28,7 @@ import (
 type Link struct {
 	OperationRef low.NodeReference[string]
 	OperationId  low.NodeReference[string]
-	Parameters   map[low.KeyReference[string]]low.ValueReference[string]
+	Parameters   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
 	RequestBody  low.NodeReference[string]
 	Description  low.NodeReference[string]
 	Server       low.NodeReference[*Server]
@@ -43,7 +43,7 @@ func (l *Link) GetExtensions() map[low.KeyReference[string]]low.ValueReference[a
 
 // FindParameter will attempt to locate a parameter string value, using a parameter name input.
 func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
-	return low.FindItemInMap[string](pName, l.Parameters)
+	return low.FindItemInMap[string](pName, l.Parameters.Value)
 }
 
 // FindExtension will attempt to locate an extension with a specific key
@@ -84,10 +84,10 @@ func (l *Link) Hash() [32]byte {
 	}
 	// todo: needs ordering.
 
-	keys := make([]string, len(l.Parameters))
+	keys := make([]string, len(l.Parameters.Value))
 	z := 0
-	for k := range l.Parameters {
-		keys[z] = l.Parameters[k].Value
+	for k := range l.Parameters.Value {
+		keys[z] = l.Parameters.Value[k].Value
 		z++
 	}
 	sort.Strings(keys)
