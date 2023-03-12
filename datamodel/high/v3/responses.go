@@ -104,9 +104,10 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	for k, re := range r.Codes {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		if r.low != nil {
-			lpi := r.low.FindResponseByCode(k)
-			if lpi != nil {
-				ln = lpi.ValueNode.Line
+			for lKey := range r.low.Codes {
+				if lKey.Value == k {
+					ln = lKey.KeyNode.Line
+				}
 			}
 		}
 		mapped = append(mapped, &responseItem{re, k, ln})

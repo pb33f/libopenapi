@@ -20,13 +20,13 @@ import (
 //  v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
 	PropertyName low.NodeReference[string]
-	Mapping      map[low.KeyReference[string]]low.ValueReference[string]
+	Mapping      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
 	low.Reference
 }
 
 // FindMappingValue will return a ValueReference containing the string mapping value
 func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string] {
-	for k, v := range d.Mapping {
+	for k, v := range d.Mapping.Value {
 		if k.Value == key {
 			return &v
 		}
@@ -42,8 +42,8 @@ func (d *Discriminator) Hash() [32]byte {
 	if d.PropertyName.Value != "" {
 		f = append(f, d.PropertyName.Value)
 	}
-	propertyKeys := make([]string, 0, len(d.Mapping))
-	for i := range d.Mapping {
+	propertyKeys := make([]string, 0, len(d.Mapping.Value))
+	for i := range d.Mapping.Value {
 		propertyKeys = append(propertyKeys, i.Value)
 	}
 	sort.Strings(propertyKeys)
