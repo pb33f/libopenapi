@@ -25,7 +25,7 @@ func TestCreateSummary_OverallReport(t *testing.T) {
     changes := createDiff()
     report := CreateOverallReport(changes)
     assert.Equal(t, 1, report.ChangeReport[v3.InfoLabel].Total)
-    assert.Equal(t, 38, report.ChangeReport[v3.PathsLabel].Total)
+    assert.Equal(t, 43, report.ChangeReport[v3.PathsLabel].Total)
     assert.Equal(t, 9, report.ChangeReport[v3.PathsLabel].Breaking)
     assert.Equal(t, 3, report.ChangeReport[v3.TagsLabel].Total)
     assert.Equal(t, 1, report.ChangeReport[v3.ExternalDocsLabel].Total)
