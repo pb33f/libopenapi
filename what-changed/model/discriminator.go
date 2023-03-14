@@ -54,8 +54,8 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
     CheckProperties(props)
 
     // flatten maps
-    lMap := FlattenLowLevelMap[string](l.Mapping)
-    rMap := FlattenLowLevelMap[string](r.Mapping)
+    lMap := FlattenLowLevelMap[string](l.Mapping.Value)
+    rMap := FlattenLowLevelMap[string](r.Mapping.Value)
 
     // check for removals, modifications and moves
     for i := range lMap {

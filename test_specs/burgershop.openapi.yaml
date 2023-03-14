@@ -199,6 +199,7 @@ paths:
           description: Cannot find your burger in which to list dressings. Sorry
           content:
             application/json:
+              x-nice: rice
               schema:
                 $ref: '#/components/schemas/Error'
               example:
@@ -212,21 +213,25 @@ paths:
               example:
                 message: computer says no dressings for this burger.
   /dressings/{dressingId}:
+    x-winter-coat: warm
     get:
       operationId: getDressing
       tags:
         - "Dressing"
       summary:  Get a specific dressing - you can choose the dressing from our menu
       description: Same as the summary, get a dressing, by its ID
+      x-runny-nose: runny.
       parameters:
         - in: path
           name: dressingId
           schema:
+            x-hot-cross-buns: bunny
             type: string
           example: cheese
           description: This is the unique identifier for the dressing items.
           required: true
       responses:
+        x-toasty-roasty: hot
         "200":
           description: a dressing
           content:

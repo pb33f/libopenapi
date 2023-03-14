@@ -53,9 +53,6 @@ func (d *Discriminator) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Discriminator object.
 func (d *Discriminator) MarshalYAML() (interface{}, error) {
-	if d == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(d, d.low)
 	return nb.Render(), nil
 }

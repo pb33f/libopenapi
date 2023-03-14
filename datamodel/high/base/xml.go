@@ -58,9 +58,6 @@ func (x *XML) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the XML object.
 func (x *XML) MarshalYAML() (interface{}, error) {
-    if x == nil {
-        return nil, nil
-    }
     nb := high.NewNodeBuilder(x, x.low)
     return nb.Render(), nil
 }

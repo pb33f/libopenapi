@@ -46,6 +46,7 @@ import (
 type SchemaProxy struct {
 	schema     *low.NodeReference[*base.SchemaProxy]
 	buildError error
+	rendered   *Schema
 }
 
 // NewSchemaProxy creates a new high-level SchemaProxy from a low-level one.
@@ -57,14 +58,19 @@ func NewSchemaProxy(schema *low.NodeReference[*base.SchemaProxy]) *SchemaProxy {
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
 func (sp *SchemaProxy) Schema() *Schema {
-	s := sp.schema.Value.Schema()
-	if s == nil {
-		sp.buildError = sp.schema.Value.GetBuildError()
-		return nil
+	if sp.rendered == nil {
+		s := sp.schema.Value.Schema()
+		if s == nil {
+			sp.buildError = sp.schema.Value.GetBuildError()
+			return nil
+		}
+		sch := NewSchema(s)
+		sch.ParentProxy = sp
+		sp.rendered = sch
+		return sch
+	} else {
+		return sp.rendered
 	}
-	sch := NewSchema(s)
-	sch.ParentProxy = sp
-	return sch
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
@@ -79,6 +85,9 @@ func (sp *SchemaProxy) GetReference() string {
 
 // BuildSchema operates the same way as Schema, except it will return any error along with the *Schema
 func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
+	if sp.rendered != nil {
+		return sp.rendered, sp.buildError
+	}
 	schema := sp.Schema()
 	er := sp.buildError
 	return schema, er

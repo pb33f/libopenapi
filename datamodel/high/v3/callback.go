@@ -61,32 +61,51 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 		cb   *PathItem
 		exp  string
 		line int
+		ext  *yaml.Node
 	}
 	var mapped []*cbItem
 
 	for k, ex := range c.Expression {
-		ln := 9999 // default to a high value to weight new content to the bottom.
+		ln := 999 // default to a high value to weight new content to the bottom.
 		if c.low != nil {
-			lcb := c.low.FindExpression(k)
-			if lcb != nil {
-				ln = lcb.ValueNode.Line
+			for lKey := range c.low.Expression.Value {
+				if lKey.Value == k {
+					ln = lKey.KeyNode.Line
+				}
 			}
 		}
-		mapped = append(mapped, &cbItem{ex, k, ln})
+		mapped = append(mapped, &cbItem{ex, k, ln, nil})
+	}
+
+	// extract extensions
+	nb := high.NewNodeBuilder(c, c.low)
+	extNode := nb.Render()
+	if extNode != nil && extNode.Content != nil {
+		var label string
+		for u := range extNode.Content {
+			if u%2 == 0 {
+				label = extNode.Content[u].Value
+				continue
+			}
+			mapped = append(mapped, &cbItem{nil, label,
+				extNode.Content[u].Line, extNode.Content[u]})
+		}
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
 	for j := range mapped {
-		rendered, _ := mapped[j].cb.MarshalYAML()
-		m.Content = append(m.Content, high.CreateStringNode(mapped[j].exp))
-		m.Content = append(m.Content, rendered.(*yaml.Node))
+		if mapped[j].cb != nil {
+			rendered, _ := mapped[j].cb.MarshalYAML()
+			m.Content = append(m.Content, high.CreateStringNode(mapped[j].exp))
+			m.Content = append(m.Content, rendered.(*yaml.Node))
+		}
+		if mapped[j].ext != nil {
+			m.Content = append(m.Content, high.CreateStringNode(mapped[j].exp))
+			m.Content = append(m.Content, mapped[j].ext)
+		}
 	}
-	nb := high.NewNodeBuilder(c, c.low)
-	extNode := nb.Render()
-	if extNode.Content != nil {
-		m.Content = append(m.Content, extNode.Content...)
-	}
+
 	return m, nil
 }

@@ -76,9 +76,6 @@ func (i *Info) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Info object.
 func (i *Info) MarshalYAML() (interface{}, error) {
-	if i == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(i, i.low)
 	return nb.Render(), nil
 }

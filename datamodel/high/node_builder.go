@@ -59,12 +59,12 @@ func (n *NodeBuilder) add(key string) {
     // and add them to the node builder.
     if key == "Extensions" {
         extensions := reflect.ValueOf(n.High).Elem().FieldByName(key)
-        for _, e := range extensions.MapKeys() {
+        for b, e := range extensions.MapKeys() {
             v := extensions.MapIndex(e)
 
             extKey := e.String()
             extValue := v.Interface()
-            nodeEntry := &NodeEntry{Tag: extKey, Key: extKey, Value: extValue}
+            nodeEntry := &NodeEntry{Tag: extKey, Key: extKey, Value: extValue, Line: 9999 + b}
 
             if !reflect.ValueOf(n.Low).IsZero() {
                 fieldValue := reflect.ValueOf(n.Low).Elem().FieldByName("Extensions")
@@ -199,19 +199,31 @@ func (n *NodeBuilder) Render() *yaml.Node {
     // order nodes by line number, retain original order
     m := CreateEmptyMapNode()
     if fg, ok := n.Low.(low.IsReferenced); ok {
-        if fg.IsReference() {
-            m.Content = append(m.Content, n.renderReference()...)
-            return m
+        g := reflect.ValueOf(fg)
+        if !g.IsNil() {
+            if fg.IsReference() {
+                m.Content = append(m.Content, n.renderReference()...)
+                return m
+            }
         }
     }
 
     sort.Slice(n.Nodes, func(i, j int) bool {
-        return n.Nodes[i].Line < n.Nodes[j].Line
+        if n.Nodes[i].Line != n.Nodes[j].Line {
+            return n.Nodes[i].Line < n.Nodes[j].Line
+        }
+        if strings.HasPrefix(n.Nodes[i].Key, "x-") {
+            return false
+        }
+        if strings.HasPrefix(n.Nodes[j].Key, "x-") {
+            return false
+        }
+        return false
     })
 
     for i := range n.Nodes {
         node := n.Nodes[i]
-        n.AddYAMLNode(m, node.Tag, node.Key, node.Value)
+        n.AddYAMLNode(m, node.Tag, node.Key, node.Value, node.Line)
     }
     if len(m.Content) > 0 {
         return m
@@ -222,7 +234,7 @@ func (n *NodeBuilder) Render() *yaml.Node {
 // AddYAMLNode will add a new *yaml.Node to the parent node, using the tag, key and value provided.
 // If the value is nil, then the node will not be added. This method is recursive, so it will dig down
 // into any non-scalar types.
-func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any) *yaml.Node {
+func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any, line int) *yaml.Node {
     if value == nil {
         return parent
     }
@@ -243,6 +255,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
             return parent
         }
         valueNode = CreateStringNode(val)
+        valueNode.Line = line
         break
 
     case reflect.Bool:
@@ -251,12 +264,14 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
             return parent
         }
         valueNode = CreateBoolNode("true")
+        valueNode.Line = line
         break
 
     case reflect.Int:
         if value != nil {
             val := strconv.Itoa(value.(int))
             valueNode = CreateIntNode(val)
+            valueNode.Line = line
         } else {
             return parent
         }
@@ -266,6 +281,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
         if value != nil {
             val := strconv.FormatInt(value.(int64), 10)
             valueNode = CreateIntNode(val)
+            valueNode.Line = line
         } else {
             return parent
         }
@@ -275,6 +291,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
         if value != nil {
             val := strconv.FormatFloat(value.(float64), 'f', 2, 64)
             valueNode = CreateFloatNode(val)
+            valueNode.Line = line
         } else {
             return parent
         }
@@ -389,6 +406,17 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
 
         // sort the slice by line number to ensure everything is rendered in order.
         sort.Slice(orderedCollection, func(i, j int) bool {
+
+            if orderedCollection[i].Line != orderedCollection[j].Line {
+                return orderedCollection[i].Line < orderedCollection[j].Line
+            }
+            if strings.HasPrefix(orderedCollection[i].Tag, "x-") {
+                return false
+            }
+            if strings.HasPrefix(orderedCollection[i].Tag, "x-") {
+                return false
+            }
+
             return orderedCollection[i].Line < orderedCollection[j].Line
         })
 
@@ -398,7 +426,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
 
         // build out each map node in original order.
         for _, cv := range orderedCollection {
-            n.AddYAMLNode(p, cv.Tag, cv.Key, cv.Value)
+            n.AddYAMLNode(p, cv.Tag, cv.Key, cv.Value, cv.Line)
         }
         if len(p.Content) > 0 {
             valueNode = p
@@ -418,16 +446,23 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
 
             sqi := m.Index(i).Interface()
             if glu, ok := sqi.(GoesLowUntyped); ok {
-                if glu.GoLowUntyped().(low.IsReferenced).IsReference() {
+                ut := glu.GoLowUntyped()
 
-                    rt := CreateEmptyMapNode()
+                if !reflect.ValueOf(ut).IsNil() {
 
-                    nodes := make([]*yaml.Node, 2)
-                    nodes[0] = CreateStringNode("$ref")
-                    nodes[1] = CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
-                    rt.Content = append(rt.Content, nodes...)
-                    sl.Content = append(sl.Content, rt)
+                    r := ut.(low.IsReferenced)
+                    if ut != nil && r.GetReference() != "" &&
+                        ut.(low.IsReferenced).IsReference() {
 
+                        rt := CreateEmptyMapNode()
+
+                        nodes := make([]*yaml.Node, 2)
+                        nodes[0] = CreateStringNode("$ref")
+                        nodes[1] = CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
+                        rt.Content = append(rt.Content, nodes...)
+                        sl.Content = append(sl.Content, rt)
+
+                    }
                 }
             }
 
@@ -459,12 +494,16 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
     case reflect.Ptr:
         if r, ok := value.(Renderable); ok {
             if gl, lg := value.(GoesLowUntyped); lg {
-                if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
-                    rvn := CreateEmptyMapNode()
-                    rvn.Content = append(rvn.Content, CreateStringNode("$ref"))
-                    rvn.Content = append(rvn.Content, CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
-                    valueNode = rvn
-                    break
+
+                ut := reflect.ValueOf(gl.GoLowUntyped())
+                if !ut.IsNil() {
+                    if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
+                        rvn := CreateEmptyMapNode()
+                        rvn.Content = append(rvn.Content, CreateStringNode("$ref"))
+                        rvn.Content = append(rvn.Content, CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
+                        valueNode = rvn
+                        break
+                    }
                 }
             }
             rawRender, _ := r.MarshalYAML()
@@ -481,18 +520,21 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                 encodeSkip = true
                 if *b {
                     valueNode = CreateBoolNode("true")
+                    valueNode.Line = line
                 }
             }
             if b, bok := value.(*int64); bok {
                 encodeSkip = true
                 if *b > 0 {
                     valueNode = CreateIntNode(strconv.Itoa(int(*b)))
+                    valueNode.Line = line
                 }
             }
             if b, bok := value.(*float64); bok {
                 encodeSkip = true
                 if *b > 0 {
                     valueNode = CreateFloatNode(strconv.FormatFloat(*b, 'f', -1, 64))
+                    valueNode.Line = line
                 }
             }
             if !encodeSkip {
@@ -502,6 +544,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
                     return parent
                 } else {
                     valueNode = &rawNode
+                    valueNode.Line = line
                 }
             }
         }
@@ -516,6 +559,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any)
             return parent
         } else {
             valueNode = &rawNode
+            valueNode.Line = line
         }
     }
     if valueNode == nil {

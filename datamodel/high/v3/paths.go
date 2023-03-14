@@ -94,11 +94,15 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(p, p.low)
 	extNode := nb.Render()
 	if extNode != nil && extNode.Content != nil {
+		var label string
 		for u := range extNode.Content {
-			mapped = append(mapped, &pathItem{nil, extNode.Content[u].Value,
+			if u%2 == 0 {
+				label = extNode.Content[u].Value
+				continue
+			}
+			mapped = append(mapped, &pathItem{nil, label,
 				extNode.Content[u].Line, extNode.Content[u]})
 		}
-		//m.Content = append(m.Content, extNode.Content...)
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
@@ -111,6 +115,7 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
 		if mapped[j].rendered != nil {
+			m.Content = append(m.Content, high.CreateStringNode(mapped[j].path))
 			m.Content = append(m.Content, mapped[j].rendered)
 		}
 	}

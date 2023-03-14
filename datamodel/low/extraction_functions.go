@@ -413,15 +413,16 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 			if isReference {
 				SetReference(n, referenceValue)
 			}
-
-			valueMap[KeyReference[string]{
-				Value:   currentKey.Value,
-				KeyNode: currentKey,
-			}] = ValueReference[PT]{
-				Value:     n,
-				ValueNode: node,
-				//IsReference: isReference,
-				Reference: referenceValue,
+			if currentKey != nil {
+				valueMap[KeyReference[string]{
+					Value:   currentKey.Value,
+					KeyNode: currentKey,
+				}] = ValueReference[PT]{
+					Value:     n,
+					ValueNode: node,
+					//IsReference: isReference,
+					Reference: referenceValue,
+				}
 			}
 		}
 	}

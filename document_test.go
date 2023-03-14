@@ -6,6 +6,7 @@ package libopenapi
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"io/ioutil"
 	"net/url"
 	"strings"
@@ -159,19 +160,54 @@ info:
 
 func TestDocument_RenderAndReload(t *testing.T) {
 
-	yml := `openapi: 3.0
-info:
-    title: The magic API
-`
-	doc, _ := NewDocument([]byte(yml))
-	v3Doc, _ := doc.BuildV3Model()
+	// load an OpenAPI 3 specification from bytes
+	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
 
-	v3Doc.Model.Info.Title = "The magic API - but now, altered!"
-	bytes, _, newDocModel, err := doc.RenderAndReload()
-	assert.Nil(t, err)
+	// create a new document from specification bytes
+	doc, err := NewDocument(petstore)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	m, _ := doc.BuildV3Model()
+
+	// mutate the model
+	h := m.Model
+	h.Paths.PathItems["/pet/findByStatus"].Get.OperationId = "findACakeInABakery"
+	h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description = "a nice bucket of mice"
+	h.Paths.PathItems["/pet/findByTags"].Get.Tags =
+		append(h.Paths.PathItems["/pet/findByTags"].Get.Tags, "gurgle", "giggle")
+
+	h.Paths.PathItems["/pet/{petId}"].Delete.Security = append(h.Paths.PathItems["/pet/{petId}"].Delete.Security,
+		&base.SecurityRequirement{Requirements: map[string][]string{
+			"pizza-and-cake": {"read:abook", "write:asong"},
+		}})
+
+	h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example = "I am a teapot, filled with love."
+	h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
+
+	bytes, _, newDocModel, e := doc.RenderAndReload()
+	assert.Nil(t, e)
 	assert.NotNil(t, bytes)
-	assert.Equal(t, "The magic API - but now, altered!",
-		newDocModel.Model.Info.Title)
+
+	h = newDocModel.Model
+	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems["/pet/findByStatus"].Get.OperationId)
+	assert.Equal(t, "a nice bucket of mice",
+		h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description)
+	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
+
+	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
+	yu := h.Paths.PathItems["/pet/{petId}"].Delete.Security
+	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements["pizza-and-cake"][0])
+	assert.Equal(t, "I am a teapot, filled with love.",
+		h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example)
+
+	assert.Equal(t, "https://pb33f.io",
+		h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl)
+
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
@@ -227,7 +263,7 @@ paths:
 
 	// print it out.
 	fmt.Printf("param1: %s, is reference? %t, original reference %s",
-		operation.Parameters[0].Description, operation.GoLow().Parameters.Value[0].IsReference,
+		operation.Parameters[0].Description, operation.GoLow().Parameters.Value[0].IsReference(),
 		operation.GoLow().Parameters.Value[0].Reference)
 }
 
@@ -532,7 +568,7 @@ func ExampleCompareDocuments_openAPI() {
 	// Print out some interesting stats about the OpenAPI document changes.
 	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges))
-	//Output: There are 67 changes, of which 17 are breaking. 5 schemas have changes.
+	//Output: There are 72 changes, of which 17 are breaking. 5 schemas have changes.
 
 }
 
@@ -854,3 +890,4 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 	assert.Equal(t, uint64.Schema().Example, byte.Schema().Example)
 	assert.Equal(t, uint64.Schema().Minimum, byte.Schema().Minimum)
 }
+
