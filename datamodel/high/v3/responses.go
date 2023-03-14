@@ -98,6 +98,7 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 		resp *Response
 		code string
 		line int
+		ext  *yaml.Node
 	}
 	var mapped []*responseItem
 
@@ -110,16 +111,38 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{re, k, ln})
+		mapped = append(mapped, &responseItem{re, k, ln, nil})
+	}
+
+	// extract extensions
+	nb := high.NewNodeBuilder(r, r.low)
+	extNode := nb.Render()
+	if extNode != nil && extNode.Content != nil {
+		var label string
+		for u := range extNode.Content {
+			if u%2 == 0 {
+				label = extNode.Content[u].Value
+				continue
+			}
+			mapped = append(mapped, &responseItem{nil, label,
+				extNode.Content[u].Line, extNode.Content[u]})
+		}
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
 	for j := range mapped {
-		rendered, _ := mapped[j].resp.MarshalYAML()
-		m.Content = append(m.Content, high.CreateStringNode(mapped[j].code))
-		m.Content = append(m.Content, rendered.(*yaml.Node))
+		if mapped[j].resp != nil {
+			rendered, _ := mapped[j].resp.MarshalYAML()
+			m.Content = append(m.Content, high.CreateStringNode(mapped[j].code))
+			m.Content = append(m.Content, rendered.(*yaml.Node))
+		}
+		if mapped[j].ext != nil {
+			m.Content = append(m.Content, high.CreateStringNode(mapped[j].code))
+			m.Content = append(m.Content, mapped[j].ext)
+		}
+
 	}
 	return m, nil
 }

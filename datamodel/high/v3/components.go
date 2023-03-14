@@ -31,13 +31,9 @@ const (
 //  - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
 	Schemas map[string]*highbase.SchemaProxy `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	//Schemas   map[string]*highbase.SchemaProxy `json:"-" yaml:"-"`
-	//Responses map[string]*Response             `json:"-" yaml:"-"`
 	Responses map[string]*Response `json:"responses,omitempty" yaml:"responses,omitempty"`
-	//Parameters map[string]*Parameter `json:"-" yaml:"-"`
 	Parameters map[string]*Parameter        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	Examples   map[string]*highbase.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
-	//Examples        map[string]*highbase.Example `json:"-" yaml:"-"`
 	RequestBodies   map[string]*RequestBody    `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
 	Headers         map[string]*Header         `json:"headers,omitempty" yaml:"headers,omitempty"`
 	SecuritySchemes map[string]*SecurityScheme `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`

@@ -290,7 +290,7 @@ func Test_Schema(t *testing.T) {
 	// check discriminator
 	assert.NotNil(t, sch.Discriminator.Value)
 	assert.Equal(t, "athing", sch.Discriminator.Value.PropertyName.Value)
-	assert.Len(t, sch.Discriminator.Value.Mapping, 2)
+	assert.Len(t, sch.Discriminator.Value.Mapping.Value, 2)
 	mv := sch.Discriminator.Value.FindMappingValue("log")
 	assert.Equal(t, "cat", mv.Value)
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")

@@ -44,9 +44,6 @@ func (c *Contact) Render() ([]byte, error) {
 }
 
 func (c *Contact) MarshalYAML() (interface{}, error) {
-	if c == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(c, c.low)
 	return nb.Render(), nil
 }
