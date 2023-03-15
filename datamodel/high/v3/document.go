@@ -154,9 +154,6 @@ func (d *Document) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Document object.
 func (d *Document) MarshalYAML() (interface{}, error) {
-	if d == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(d, d.low)
 	return nb.Render(), nil
 }

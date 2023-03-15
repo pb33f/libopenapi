@@ -4,7 +4,7 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
+	low2 "github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	"gopkg.in/yaml.v3"
 )
@@ -44,7 +44,7 @@ func (c *Contact) Render() ([]byte, error) {
 }
 
 func (c *Contact) MarshalYAML() (interface{}, error) {
-	nb := high.NewNodeBuilder(c, c.low)
+	nb := low2.NewNodeBuilder(c, c.low)
 	return nb.Render(), nil
 }
 

@@ -5,7 +5,6 @@ package high
 
 import (
     "github.com/pb33f/libopenapi/datamodel/low"
-    "github.com/pb33f/libopenapi/datamodel/low/v3"
     "gopkg.in/yaml.v3"
     "reflect"
     "sort"
@@ -118,7 +117,7 @@ func (n *NodeBuilder) add(key string) {
     case reflect.Bool:
         nodeEntry.Value = value.Bool()
     case reflect.Slice:
-        if tagName == v3.TypeLabel {
+        if tagName == "type" {
             if value.Len() == 1 {
                 nodeEntry.Value = value.Index(0).String()
             }
@@ -287,9 +286,18 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         }
         break
 
+    case reflect.Float32:
+        if value != nil {
+            val := strconv.FormatFloat(float64(value.(float32)), 'f', 2, 64)
+            valueNode = CreateFloatNode(val)
+            valueNode.Line = line
+        } else {
+            return parent
+        }
+
     case reflect.Float64:
         if value != nil {
-            val := strconv.FormatFloat(value.(float64), 'f', 2, 64)
+            val := strconv.FormatFloat(value.(float64), 'f', -1, 64)
             valueNode = CreateFloatNode(val)
             valueNode.Line = line
         } else {

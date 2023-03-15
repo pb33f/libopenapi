@@ -38,6 +38,7 @@ x-hack: code`
 
 	wentLow := highTag.GoLow()
 	assert.Equal(t, 5, wentLow.FindExtension("x-hack").ValueNode.Line)
+	assert.NotNil(t, highTag.GoLowUntyped())
 
 	// render the tag as YAML
 	highTagBytes, _ := highTag.Render()

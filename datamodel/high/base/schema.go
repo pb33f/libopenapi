@@ -13,8 +13,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 )
 
-
-
 // Schema represents a JSON Schema that support Swagger, OpenAPI 3 and OpenAPI 3.1
 //
 // Until 3.1 OpenAPI had a strange relationship with JSON Schema. It's been a super-set/sub-set
@@ -456,9 +454,6 @@ func (s *Schema) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
 func (s *Schema) MarshalYAML() (interface{}, error) {
-	if s == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(s, s.low)
 	return nb.Render(), nil
 }
