@@ -55,9 +55,6 @@ func (s *SecurityRequirement) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the SecurityRequirement object.
 func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
-	if s == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(s, s.low)
 	return nb.Render(), nil
 }

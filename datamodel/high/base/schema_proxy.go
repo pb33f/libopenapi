@@ -119,9 +119,6 @@ func (sp *SchemaProxy) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
 func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
-    if sp == nil {
-        return nil, nil
-	}
 	var s *Schema
 	var err error
 	// if this schema isn't a reference, then build it out.

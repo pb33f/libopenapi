@@ -61,9 +61,57 @@ func TestNewSchemaProxy(t *testing.T) {
 	assert.Nil(t, sch1.Schema())
 	assert.Error(t, sch1.GetBuildError())
 
+	rend, rendErr := sch1.Render()
+	assert.Nil(t, rend)
+	assert.Error(t, rendErr)
+
 	g, o := sch1.BuildSchema()
 	assert.Nil(t, g)
 	assert.Error(t, o)
+}
+
+func TestNewSchemaProxyRender(t *testing.T) {
+	// check proxy
+	yml := `components:
+    schemas:
+        rice:
+            type: string
+            description: a rice`
+
+	var idxNode, compNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	yml = `properties:
+    rice:
+     $ref: '#/components/schemas/rice'`
+
+	_ = yaml.Unmarshal([]byte(yml), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: idxNode.Content[0],
+	}
+
+	sch1 := SchemaProxy{schema: &lowproxy}
+	assert.NotNil(t, sch1.Schema())
+	assert.NoError(t, sch1.GetBuildError())
+
+	g, o := sch1.BuildSchema()
+	assert.NotNil(t, g)
+	assert.NoError(t, o)
+
+	rend, _ := sch1.Render()
+	desired := `properties:
+    rice:
+        $ref: '#/components/schemas/rice'`
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+
 }
 
 func TestNewSchemaProxy_WithObject(t *testing.T) {
@@ -208,7 +256,17 @@ examples:
 contains:
     type: int
 maxContains: 10
-minContains: 1`
+minContains: 1
+deprecated: true
+writeOnly: true
+readOnly: true
+nullable: true
+maxLength: 10
+minLength: 1
+maxItems: 20
+minItems: 10
+maxProperties: 30
+minProperties: 1`
 
 	var compNode yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
@@ -234,6 +292,12 @@ minContains: 1`
 	assert.Equal(t, "int", compiled.Contains.Schema().Type[0])
 	assert.Equal(t, int64(10), *compiled.MaxContains)
 	assert.Equal(t, int64(1), *compiled.MinContains)
+	assert.Equal(t, int64(10), *compiled.MaxLength)
+	assert.Equal(t, int64(1), *compiled.MinLength)
+	assert.Equal(t, int64(20), *compiled.MaxItems)
+	assert.Equal(t, int64(10), *compiled.MinItems)
+	assert.Equal(t, int64(30), *compiled.MaxProperties)
+	assert.Equal(t, int64(1), *compiled.MinProperties)
 	assert.Equal(t, "string", compiled.If.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.Else.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.Then.Schema().Type[0])
@@ -242,9 +306,14 @@ minContains: 1`
 	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.UnevaluatedProperties.Schema().Type[0])
+	assert.True(t, compiled.ReadOnly)
+	assert.True(t, compiled.WriteOnly)
+	assert.True(t, *compiled.Deprecated)
+	assert.True(t, *compiled.Nullable)
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 129, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.NotNil(t, compiled.GoLowUntyped())
 
 	// now render it out!
 	schemaBytes, _ := compiled.Render()
@@ -480,9 +549,12 @@ func TestSchemaProxy_GoLow(t *testing.T) {
 	sp := NewSchemaProxy(&lowRef)
 	assert.Equal(t, lowProxy, sp.GoLow())
 	assert.Equal(t, ref, sp.GoLow().GetSchemaReference())
+	assert.Equal(t, ref, sp.GoLow().GetReference())
 
 	spNil := NewSchemaProxy(nil)
 	assert.Nil(t, spNil.GoLow())
+	assert.Nil(t, spNil.GoLowUntyped())
+
 }
 
 func getHighSchema(t *testing.T, yml string) *Schema {

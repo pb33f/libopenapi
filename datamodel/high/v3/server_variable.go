@@ -53,9 +53,6 @@ func (s *ServerVariable) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the ServerVariable object.
 func (s *ServerVariable) MarshalYAML() (interface{}, error) {
-	if s == nil {
-		return nil, nil
-	}
 	nb := high.NewNodeBuilder(s, s.low)
 	return nb.Render(), nil
 }

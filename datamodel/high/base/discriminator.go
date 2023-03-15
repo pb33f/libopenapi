@@ -4,7 +4,7 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
+	low2 "github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	"gopkg.in/yaml.v3"
 )
@@ -53,6 +53,6 @@ func (d *Discriminator) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Discriminator object.
 func (d *Discriminator) MarshalYAML() (interface{}, error) {
-	nb := high.NewNodeBuilder(d, d.low)
+	nb := low2.NewNodeBuilder(d, d.low)
 	return nb.Render(), nil
 }

@@ -4,7 +4,7 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
+	low2 "github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	"gopkg.in/yaml.v3"
 )
@@ -48,6 +48,6 @@ func (l *License) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the License object.
 func (l *License) MarshalYAML() (interface{}, error) {
-	nb := high.NewNodeBuilder(l, l.low)
+	nb := low2.NewNodeBuilder(l, l.low)
 	return nb.Render(), nil
 }

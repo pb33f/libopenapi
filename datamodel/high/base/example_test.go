@@ -40,6 +40,7 @@ x-hack: code`
 	assert.Equal(t, "code", highExample.Extensions["x-hack"])
 	assert.Equal(t, "a thing", highExample.Value)
 	assert.Equal(t, 4, highExample.GoLow().ExternalValue.ValueNode.Line)
+	assert.NotNil(t, highExample.GoLowUntyped())
 
 	// render the example as YAML
 	rendered, _ := highExample.Render()

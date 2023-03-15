@@ -155,6 +155,7 @@ func TestInfo_Render(t *testing.T) {
 	assert.Equal(t, "https://opensource.org/licenses/MIT", highInfo.License.URL)
 	assert.Equal(t, "1.2.3", highInfo.Version)
 	assert.Equal(t, "pepperoni", highInfo.Extensions["x-pizza"])
+	assert.NotNil(t, highInfo.GoLowUntyped())
 }
 
 func TestInfo_RenderOrder(t *testing.T) {

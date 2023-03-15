@@ -33,6 +33,7 @@ func TestNewSecurityRequirement(t *testing.T) {
 
 	wentLow := highExt.GoLow()
 	assert.Len(t, wentLow.Requirements.Value, 1)
+	assert.NotNil(t, highExt.GoLowUntyped())
 
 	// render the high-level object as YAML
 	highBytes, _ := highExt.Render()

@@ -39,9 +39,6 @@ func (d *DynamicValue[A, B]) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the DynamicValue object.
 func (d *DynamicValue[A, B]) MarshalYAML() (interface{}, error) {
-    if d == nil {
-        return nil, nil
-    }
     // this is a custom renderer, we can't use the NodeBuilder out of the gate.
     var n yaml.Node
     var err error
@@ -55,15 +52,27 @@ func (d *DynamicValue[A, B]) MarshalYAML() (interface{}, error) {
     }
     to := reflect.TypeOf(value)
     switch to.Kind() {
-
     case reflect.Ptr:
         if r, ok := value.(high.Renderable); ok {
             return r.MarshalYAML()
+        } else {
+            _ = n.Encode(value)
         }
     case reflect.Bool:
         _ = n.Encode(value.(bool))
+    case reflect.Int:
+        _ = n.Encode(value.(int))
+    case reflect.String:
+        _ = n.Encode(value.(string))
     case reflect.Int64:
         _ = n.Encode(value.(int64))
+    case reflect.Float64:
+        _ = n.Encode(value.(float64))
+    case reflect.Float32:
+        _ = n.Encode(value.(float32))
+    case reflect.Int32:
+        _ = n.Encode(value.(int32))
+
     }
     return &n, err
 }
