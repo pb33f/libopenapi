@@ -15,6 +15,10 @@ type DocumentConfiguration struct {
 	// Schema must be set to "http/https".
 	BaseURL *url.URL
 
+	// If resolving locally, the BasePath will be the root from which relative references will be resolved from.
+	// It usually location of the root specification.
+	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
+
 	// AllowFileReferences will allow the index to locate relative file references. This is disabled by default.
 	AllowFileReferences bool
 
