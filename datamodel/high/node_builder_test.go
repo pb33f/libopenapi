@@ -11,6 +11,55 @@ import (
     "testing"
 )
 
+type key struct {
+    Name   string `yaml:"name"`
+    ref    bool
+    refStr string
+    ln     int
+    nilval bool
+    v      any
+    kn     *yaml.Node
+    low.IsReferenced
+}
+
+func (k key) GetKeyNode() *yaml.Node {
+    if k.kn != nil {
+        return k.kn
+    }
+    kn := CreateStringNode("meddy")
+    kn.Line = k.ln
+    return kn
+}
+
+func (k key) GetValueUntyped() any {
+    return k.v
+}
+
+func (k key) GetValueNode() *yaml.Node {
+    return k.GetValueNodeUntyped()
+}
+
+func (k key) GetValueNodeUntyped() *yaml.Node {
+    if k.nilval {
+        return nil
+    }
+    kn := CreateStringNode("maddy")
+    kn.Line = k.ln
+    return kn
+}
+
+func (k key) IsReference() bool {
+    return k.ref
+}
+
+func (k key) GetReference() string {
+    return k.refStr
+}
+
+func (k key) SetReference(ref string) {
+    k.refStr = ref
+}
+
 type test1 struct {
     Thing      string              `yaml:"thing"`
     Thong      int                 `yaml:"thong"`
@@ -24,8 +73,12 @@ type test1 struct {
     Thral      *float64            `yaml:"thral"`
     Tharg      []string            `yaml:"tharg"`
     Type       []string            `yaml:"type"`
+    Thrug      map[string]string   `yaml:"thrug"`
     Thoom      []map[string]string `yaml:"thoom"`
-    Thomp      map[string]string   `yaml:"thomp"`
+    Thomp      map[key]string      `yaml:"thomp"`
+    Thump      key                 `yaml:"thump"`
+    Thane      key                 `yaml:"thane"`
+    Thunk      key                 `yaml:"thunk"`
     Extensions map[string]any      `yaml:"-"`
     ignoreMe   string              `yaml:"-"`
     IgnoreMe   string              `yaml:"-"`
@@ -55,12 +108,12 @@ func (te *test1) MarshalYAML() (interface{}, error) {
 }
 
 func (te *test1) GetKeyNode() *yaml.Node {
-    kn := CreateStringNode("test1")
+    kn := CreateStringNode("meddy")
     kn.Line = 20
     return kn
 }
 
-func TestNewNodeBuilder_Components(t *testing.T) {
+func TestNewNodeBuilder(t *testing.T) {
 
     b := true
     c := int64(12345)
@@ -88,9 +141,19 @@ func TestNewNodeBuilder_Components(t *testing.T) {
                 "ember": "naughty",
             },
         },
-        Thomp: map[string]string{
-            "meddy": "princess",
+        Thomp: map[key]string{
+            {ln: 1}: "princess",
         },
+        Thane: key{ // this is going to be ignored, needs to be a ValueReference
+            ln:     2,
+            ref:    true,
+            refStr: "ripples",
+        },
+        Thrug: map[string]string{
+            "chicken": "nuggets",
+        },
+        Thump: key{Name: "I will be ignored", ln: 3},
+        Thunk: key{ln: 4, nilval: true},
         Extensions: map[string]any{
             "x-pizza": "time",
         },
@@ -101,7 +164,11 @@ func TestNewNodeBuilder_Components(t *testing.T) {
 
     data, _ := yaml.Marshal(node)
 
-    desired := `thing: ding
+    desired := `thrug:
+    chicken: nuggets
+thomp:
+    meddy: princess
+thing: ding
 thong: "1"
 thrum: "1234567"
 thang: 2.20
@@ -117,8 +184,6 @@ type: chicken
 thoom:
     - maddy: champion
     - ember: naughty
-thomp:
-    meddy: princess
 x-pizza: time`
 
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
@@ -142,3 +207,246 @@ func TestNewNodeBuilder_Type(t *testing.T) {
 
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
+
+func TestNewNodeBuilder_IsReferenced(t *testing.T) {
+
+    t1 := key{
+        Name:   "cotton",
+        ref:    true,
+        refStr: "#/my/heart",
+        ln:     2,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `$ref: '#/my/heart'`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_Extensions(t *testing.T) {
+
+    t1 := test1{
+        Thing: "ding",
+        Extensions: map[string]any{
+            "x-pizza": "time",
+            "x-money": "time",
+        },
+        Thong: 1,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thing: ding
+thong: "1"
+x-pizza: time
+x-money: time`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_LowValueNode(t *testing.T) {
+
+    t1 := test1{
+        Thing: "ding",
+        Extensions: map[string]any{
+            "x-pizza": "time",
+            "x-money": "time",
+        },
+        Thong: 1,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thing: ding
+thong: "1"
+x-pizza: time
+x-money: time`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_NoValue(t *testing.T) {
+
+    t1 := test1{
+        Thing: "",
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.AddYAMLNode(nil, "", "", nil, 0)
+    assert.Nil(t, node)
+}
+
+func TestNewNodeBuilder_EmptyString(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    node := nb.AddYAMLNode(nil, "", "", "", 0)
+    assert.Nil(t, node)
+}
+
+func TestNewNodeBuilder_Bool(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    node := nb.AddYAMLNode(nil, "", "", false, 0)
+    assert.Nil(t, node)
+}
+
+func TestNewNodeBuilder_Int(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    p := CreateEmptyMapNode()
+    node := nb.AddYAMLNode(p, "p", "p", 12, 0)
+    assert.NotNil(t, node)
+    assert.Len(t, node.Content, 2)
+    assert.Equal(t, "12", node.Content[1].Value)
+}
+
+func TestNewNodeBuilder_Int64(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    p := CreateEmptyMapNode()
+    node := nb.AddYAMLNode(p, "p", "p", int64(234556), 0)
+    assert.NotNil(t, node)
+    assert.Len(t, node.Content, 2)
+    assert.Equal(t, "234556", node.Content[1].Value)
+}
+
+func TestNewNodeBuilder_Float32(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    p := CreateEmptyMapNode()
+    node := nb.AddYAMLNode(p, "p", "p", float32(1234.23), 0)
+    assert.NotNil(t, node)
+    assert.Len(t, node.Content, 2)
+    assert.Equal(t, "1234.23", node.Content[1].Value)
+}
+
+func TestNewNodeBuilder_Float64(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    p := CreateEmptyMapNode()
+    node := nb.AddYAMLNode(p, "p", "p", 1234.232323, 0)
+    assert.NotNil(t, node)
+    assert.Len(t, node.Content, 2)
+    assert.Equal(t, "1234.232323", node.Content[1].Value)
+}
+
+func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
+
+    t1 := test1{
+        Thrug: map[string]string{
+            "dump": "trump",
+        },
+    }
+
+    type test1low struct {
+        Thrug key `yaml:"thrug"`
+    }
+
+    t2 := test1low{
+        Thrug: key{
+            v: map[string]string{
+                "dump": "trump",
+            },
+            ln: 2,
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t2)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thrug:
+    dump: trump`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
+
+    t1 := test1{
+        Thomp: map[key]string{
+            {v: "who"}: "princess",
+        },
+    }
+
+    type test1low struct {
+        Thomp key `yaml:"thomp"`
+    }
+
+    t2 := test1low{
+        Thomp: key{
+            v: map[key]string{
+                {
+                    v: key{
+                        v: "ice",
+                    },
+                    ln: 6}: "princess",
+            },
+            ln: 2,
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t2)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thomp:
+    meddy: princess`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+type test1low struct {
+    Thomp test2 `yaml:"thomp"`
+}
+
+type test2 struct {
+    v any
+}
+
+func (test2) GetKeyNode() *yaml.Node {
+    return &yaml.Node{
+        Kind:  yaml.MappingNode,
+        Value: "",
+    }
+}
+
+//func TestNewNodeBuilder_MapKeyHasValueThatHasValueMismatch(t *testing.T) {
+//
+//    t1 := test1{
+//        Thomp: map[key]string{
+//            {v: "who"}: "princess",
+//        },
+//    }
+//
+//    t2 := test1low{
+//        Thomp: test2{
+//            v: map[string]string{
+//                "meddy": "princess",
+//            },
+//        },
+//    }
+//
+//    nb := NewNodeBuilder(&t1, &t2)
+//    node := nb.Render()
+//
+//    data, _ := yaml.Marshal(node)
+//
+//    desired := `thomp:
+//    meddy: princess`
+//
+//    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+//}
+
