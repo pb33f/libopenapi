@@ -4,6 +4,7 @@
 package high
 
 import (
+    "fmt"
     "github.com/pb33f/libopenapi/datamodel/low"
     "gopkg.in/yaml.v3"
     "reflect"
@@ -120,6 +121,8 @@ func (n *NodeBuilder) add(key string) {
         if tagName == "type" {
             if value.Len() == 1 {
                 nodeEntry.Value = value.Index(0).String()
+            } else {
+                nodeEntry.Value = f
             }
         } else {
             if !value.IsNil() && !value.IsZero() {
@@ -148,6 +151,18 @@ func (n *NodeBuilder) add(key string) {
         switch value.Kind() {
         case reflect.Map:
             y := value.Interface()
+
+            for _, ky := range value.MapKeys() {
+
+                v := value.MapIndex(ky).Interface()
+
+                if we, wok := v.(low.HasKeyNode); wok {
+                    er := we.GetKeyNode().Value
+                    fmt.Print(er)
+                }
+
+            }
+
             panic(y)
 
         case reflect.Struct:

@@ -12,19 +12,23 @@ import (
 )
 
 type test1 struct {
-    Thing      string         `yaml:"thing"`
-    Thong      int            `yaml:"thong"`
-    Thrum      int64          `yaml:"thrum"`
-    Thang      float32        `yaml:"thang"`
-    Thung      float64        `yaml:"thung"`
-    Thyme      bool           `yaml:"thyme"`
-    Thurm      any            `yaml:"thurm"`
-    Thugg      *bool          `yaml:"thugg"`
-    Thurr      *int64         `yaml:"thurr"`
-    Thral      *float64       `yaml:"thral"`
-    Extensions map[string]any `yaml:"-"`
-    ignoreMe   string         `yaml:"-"`
-    IgnoreMe   string         `yaml:"-"`
+    Thing      string              `yaml:"thing"`
+    Thong      int                 `yaml:"thong"`
+    Thrum      int64               `yaml:"thrum"`
+    Thang      float32             `yaml:"thang"`
+    Thung      float64             `yaml:"thung"`
+    Thyme      bool                `yaml:"thyme"`
+    Thurm      any                 `yaml:"thurm"`
+    Thugg      *bool               `yaml:"thugg"`
+    Thurr      *int64              `yaml:"thurr"`
+    Thral      *float64            `yaml:"thral"`
+    Tharg      []string            `yaml:"tharg"`
+    Type       []string            `yaml:"type"`
+    Thoom      []map[string]string `yaml:"thoom"`
+    Thomp      map[string]string   `yaml:"thomp"`
+    Extensions map[string]any      `yaml:"-"`
+    ignoreMe   string              `yaml:"-"`
+    IgnoreMe   string              `yaml:"-"`
 }
 
 func (te *test1) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
@@ -50,6 +54,12 @@ func (te *test1) MarshalYAML() (interface{}, error) {
     return nb.Render(), nil
 }
 
+func (te *test1) GetKeyNode() *yaml.Node {
+    kn := CreateStringNode("test1")
+    kn.Line = 20
+    return kn
+}
+
 func TestNewNodeBuilder_Components(t *testing.T) {
 
     b := true
@@ -68,6 +78,19 @@ func TestNewNodeBuilder_Components(t *testing.T) {
         Thugg:    &b,
         Thurr:    &c,
         Thral:    &d,
+        Tharg:    []string{"chicken", "nuggets"},
+        Type:     []string{"chicken"},
+        Thoom: []map[string]string{
+            {
+                "maddy": "champion",
+            },
+            {
+                "ember": "naughty",
+            },
+        },
+        Thomp: map[string]string{
+            "meddy": "princess",
+        },
         Extensions: map[string]any{
             "x-pizza": "time",
         },
@@ -87,7 +110,35 @@ thyme: true
 thugg: true
 thurr: 12345
 thral: 1234.1234
+tharg:
+    - chicken
+    - nuggets
+type: chicken
+thoom:
+    - maddy: champion
+    - ember: naughty
+thomp:
+    meddy: princess
 x-pizza: time`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+
+}
+
+func TestNewNodeBuilder_Type(t *testing.T) {
+
+    t1 := test1{
+        Type: []string{"chicken", "soup"},
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `type:
+    - chicken
+    - soup`
 
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
