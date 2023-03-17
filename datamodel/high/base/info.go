@@ -34,6 +34,9 @@ func NewInfo(info *low.Info) *Info {
 	if !info.Title.IsEmpty() {
 		i.Title = info.Title.Value
 	}
+	if !info.Summary.IsEmpty() {
+		i.Summary = info.Summary.Value
+	}
 	if !info.Description.IsEmpty() {
 		i.Description = info.Description.Value
 	}
