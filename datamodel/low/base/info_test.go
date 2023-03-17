@@ -13,8 +13,8 @@ import (
 )
 
 func TestInfo_Build(t *testing.T) {
-
 	yml := `title: pizza
+summary: a pizza pie
 description: pie
 termsOfService: yes indeed.
 contact:
@@ -38,6 +38,7 @@ x-cli-name: pizza cli`
 	assert.NoError(t, err)
 
 	assert.Equal(t, "pizza", n.Title.Value)
+	assert.Equal(t, "a pizza pie", n.Summary.Value)
 	assert.Equal(t, "pie", n.Description.Value)
 	assert.Equal(t, "yes indeed.", n.TermsOfService.Value)
 
@@ -71,7 +72,6 @@ func TestLicense_Build(t *testing.T) {
 }
 
 func TestInfo_Hash(t *testing.T) {
-
 	left := `title: princess b33f
 description: a thing
 termsOfService: https://pb33f.io
@@ -109,5 +109,4 @@ x-b33f: princess`
 	_ = rDoc.Build(rNode.Content[0], nil)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
-
 }

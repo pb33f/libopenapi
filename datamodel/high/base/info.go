@@ -17,6 +17,7 @@ import (
 //	v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
 	Title          string
+	Summary        string
 	Description    string
 	TermsOfService string
 	Contact        *Contact

@@ -6,11 +6,12 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Info represents a low-level Info object as defined by both OpenAPI 2 and OpenAPI 3.
@@ -22,6 +23,7 @@ import (
 //	v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
 	Title          low.NodeReference[string]
+	Summary        low.NodeReference[string]
 	Description    low.NodeReference[string]
 	TermsOfService low.NodeReference[string]
 	Contact        low.NodeReference[*Contact]
@@ -60,6 +62,9 @@ func (i *Info) Hash() [32]byte {
 
 	if !i.Title.IsEmpty() {
 		f = append(f, i.Title.Value)
+	}
+	if !i.Summary.IsEmpty() {
+		f = append(f, i.Summary.Value)
 	}
 	if !i.Description.IsEmpty() {
 		f = append(f, i.Description.Value)
