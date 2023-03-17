@@ -431,124 +431,6 @@ examples:
 	assert.True(t, sch.Items.Value.B)
 }
 
-//func TestSchema_BuildLevel_TooDeep(t *testing.T) {
-//
-//	// if you design data models like this, you're doing it fucking wrong. Seriously. why, what is so complex about a model
-//	// that it needs to be 30+ levels deep? I have seen this shit in the wild, it's unreadable, un-parsable garbage.
-//	yml := `type: object
-//properties:
-//  aValue:
-//    type: object
-//    properties:
-//      aValue:
-//        type: object
-//        properties:
-//          aValue:
-//            type: object
-//            properties:
-//              aValue:
-//                type: object
-//                properties:
-//                  aValue:
-//                    type: object
-//                    properties:
-//                      aValue:
-//                        type: object
-//                        properties:
-//                          aValue:
-//                            type: object
-//                            properties:
-//                              aValue:
-//                                type: object
-//                                properties:
-//                                  aValue:
-//                                    type: object
-//                                    properties:
-//                                      aValue:
-//                                        type: object
-//                                        properties:
-//                                          aValue:
-//                                            type: object
-//                                            properties:
-//                                              aValue:
-//                                                type: object
-//                                                properties:
-//                                                  aValue:
-//                                                    type: object
-//                                                    properties:
-//                                                      aValue:
-//                                                        type: object
-//                                                        properties:
-//                                                          aValue:
-//                                                            type: object
-//                                                            properties:
-//                                                              aValue:
-//                                                                type: object
-//                                                                properties:
-//                                                                  aValue:
-//                                                                    type: object
-//                                                                    properties:
-//                                                                      aValue:
-//                                                                        type: object
-//                                                                        properties:
-//                                                                          aValue:
-//                                                                            type: object
-//                                                                            properties:
-//                                                                              aValue:
-//                                                                                type: object
-//                                                                                properties:
-//                                                                                  aValue:
-//                                                                                    type: object
-//                                                                                    properties:
-//                                                                                      aValue:
-//                                                                                        type: object
-//                                                                                        properties:
-//                                                                                          aValue:
-//                                                                                            type: object
-//                                                                                            properties:
-//                                                                                              aValue:
-//                                                                                                type: object
-//                                                                                                properties:
-//                                                                                                  aValue:
-//                                                                                                    type: object
-//                                                                                                    properties:
-//                                                                                                      aValue:
-//                                                                                                        type: object
-//                                                                                                        properties:
-//                                                                                                          aValue:
-//                                                                                                            type: object
-//                                                                                                            properties:
-//                                                                                                              aValue:
-//                                                                                                                type: object
-//                                                                                                                properties:
-//                                                                                                                  aValue:
-//                                                                                                                    type: object
-//                                                                                                                    properties:
-//                                                                                                                      aValue:
-//                                                                                                                        type: object
-//                                                                                                                        properties:
-//                                                                                                                          aValue:
-//                                                                                                                            type: object
-//                                                                                                                            properties:
-//                                                                                                                              aValue:
-//                                                                                                                                type: object
-//                                                                                                                                properties:
-//                                                                                                                                  aValue:
-//                                                                                                                                    type: object`
-//
-//	var idxNode yaml.Node
-//	_ = yaml.Unmarshal([]byte(yml), &idxNode)
-//	idx := index.NewSpecIndex(&idxNode)
-//
-//	var n Schema
-//	err := low.BuildModel(&idxNode, &n)
-//	assert.NoError(t, err)
-//
-//	err = n.Build(idxNode.Content[0], idx)
-//	assert.Error(t, err)
-//
-//}
-
 func TestSchema_Build_PropsLookup(t *testing.T) {
 	yml := `components:
   schemas:
@@ -1250,6 +1132,54 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestExtractSchema_AdditionalPropertiesAsSchema(t *testing.T) {
+	yml := `components:
+  schemas:
+    Something:
+      additionalProperties:
+        type: string`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+
+	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.(*SchemaProxy).Schema())
+	assert.Nil(t, err)
+
+}
+
+func TestExtractSchema_AdditionalPropertiesAsSchemaSlice(t *testing.T) {
+	yml := `components:
+  schemas:
+    Something:
+      additionalProperties:
+        - nice: rice`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&iNode)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], idx)
+
+	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.([]low.ValueReference[interface{}]))
+	assert.Nil(t, err)
+
+}
+
 func TestExtractSchema_DoNothing(t *testing.T) {
 	yml := `components:
   schemas:
@@ -1496,6 +1426,31 @@ func TestSchema_Hash_Equal(t *testing.T) {
     propA:
       title: a proxy property
       type: string`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+
+	assert.NotNil(t, lDoc)
+	assert.NotNil(t, rDoc)
+
+	lHash := lDoc.Value.Schema().Hash()
+	rHash := rDoc.Value.Schema().Hash()
+
+	assert.Equal(t, lHash, rHash)
+}
+
+func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
+	left := `schema:
+  additionalProperties:
+    - type: string`
+
+	right := `schema:
+  additionalProperties:
+    - type: string`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
