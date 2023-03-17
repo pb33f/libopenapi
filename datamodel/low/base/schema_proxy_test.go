@@ -29,6 +29,10 @@ description: something`
 	assert.Empty(t, sch.GetSchemaReference())
 	assert.NotNil(t, sch.GetValueNode())
 	assert.False(t, sch.IsSchemaReference())
+	assert.False(t, sch.IsReference())
+	assert.Empty(t, sch.GetReference())
+	sch.SetReference("coffee")
+	assert.Equal(t, "coffee", sch.GetReference())
 
 	// already rendered, should spit out the same
 	assert.Equal(t, "db2a35dd6fb3d9481d0682571b9d687616bb2a34c1887f7863f0b2e769ca7b23",
