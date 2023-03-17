@@ -14,10 +14,10 @@ import (
 )
 
 func TestNewInfo(t *testing.T) {
-
 	var cNode yaml.Node
 
 	yml := `title: chicken
+summary: a chicken nugget
 description: nugget
 termsOfService: chicken soup
 contact:
@@ -37,6 +37,7 @@ x-cli-name: chicken cli`
 	highInfo := NewInfo(&lowInfo)
 
 	assert.Equal(t, "chicken", highInfo.Title)
+	assert.Equal(t, "a chicken nugget", highInfo.Summary)
 	assert.Equal(t, "nugget", highInfo.Description)
 	assert.Equal(t, "chicken soup", highInfo.TermsOfService)
 	assert.Equal(t, "buckaroo", highInfo.Contact.Name)
@@ -46,18 +47,17 @@ x-cli-name: chicken cli`
 	assert.Equal(t, "chicken cli", highInfo.Extensions["x-cli-name"])
 
 	wentLow := highInfo.GoLow()
-	assert.Equal(t, 9, wentLow.Version.ValueNode.Line)
+	assert.Equal(t, 10, wentLow.Version.ValueNode.Line)
 
 	wentLower := highInfo.License.GoLow()
-	assert.Equal(t, 8, wentLower.URL.ValueNode.Line)
-
+	assert.Equal(t, 9, wentLower.URL.ValueNode.Line)
 }
 
 func ExampleNewInfo() {
-
 	// create an example info object (including contact and license)
 	// this can be either JSON or YAML.
 	yml := `title: some spec by some company
+summary: this is a summary
 description: this is a specification, for an API, by a company.
 termsOfService: https://pb33f.io/tos
 contact:
@@ -85,7 +85,6 @@ version: 1.2.3`
 }
 
 func ExampleNewLicense() {
-
 	// create an example license object
 	// this can be either JSON or YAML.
 	yml := `name: MIT
