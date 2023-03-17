@@ -35,7 +35,10 @@ type NodeBuilder struct {
 // Using reflection, a map of every field in the high level object is created, ready to be rendered.
 func NewNodeBuilder(high any, low any) *NodeBuilder {
     // create a new node builder
-    nb := &NodeBuilder{High: high, Low: low}
+    nb := &NodeBuilder{High: high}
+    if low != nil {
+        nb.Low = low
+    }
 
     // extract fields from the high level object and add them into our node builder.
     // this will allow us to extract the line numbers from the low level object as well.
@@ -65,7 +68,7 @@ func (n *NodeBuilder) add(key string, i int) {
             extValue := v.Interface()
             nodeEntry := &NodeEntry{Tag: extKey, Key: extKey, Value: extValue, Line: 9999 + b}
 
-            if !reflect.ValueOf(n.Low).IsZero() {
+            if n.Low != nil && !reflect.ValueOf(n.Low).IsZero() {
                 fieldValue := reflect.ValueOf(n.Low).Elem().FieldByName("Extensions")
                 f := fieldValue.Interface()
                 value := reflect.ValueOf(f)
@@ -73,10 +76,16 @@ func (n *NodeBuilder) add(key string, i int) {
                 case reflect.Map:
                     if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
                         originalExtensions := j.GetExtensions()
+                        u := 0
                         for k := range originalExtensions {
                             if k.Value == extKey {
-                                nodeEntry.Line = originalExtensions[k].ValueNode.Line
+                                if originalExtensions[k].ValueNode.Line != 0 {
+                                    nodeEntry.Line = originalExtensions[k].ValueNode.Line + u
+                                } else {
+                                    nodeEntry.Line = 999999 + b + u
+                                }
                             }
+                            u++
                         }
                     }
                 default:
@@ -143,7 +152,7 @@ func (n *NodeBuilder) add(key string, i int) {
     // if there is no low level object, then we cannot extract line numbers,
     // so skip and default to 0, which means a new entry to the spec.
     // this will place new content and the top of the rendered object.
-    if !reflect.ValueOf(n.Low).IsZero() {
+    if n.Low != nil && !reflect.ValueOf(n.Low).IsZero() {
         lowFieldValue := reflect.ValueOf(n.Low).Elem().FieldByName(key)
         fLow := lowFieldValue.Interface()
         value = reflect.ValueOf(fLow)
@@ -158,24 +167,18 @@ func (n *NodeBuilder) add(key string, i int) {
 
         case reflect.Struct:
             y := value.Interface()
+            nodeEntry.Line = 9999 + i
             if nb, ok := y.(low.HasValueNodeUntyped); ok {
-
                 if nb.IsReference() {
                     if jk, kj := y.(low.HasKeyNode); kj {
                         nodeEntry.Line = jk.GetKeyNode().Line
                         break
                     }
                     panic("this should not break.")
-
                 }
-
                 if nb.GetValueNode() != nil {
                     nodeEntry.Line = nb.GetValueNode().Line
-                } else {
-                    nodeEntry.Line = 9999 + i
                 }
-            } else {
-                nodeEntry.Line = 9999 + i
             }
         default:
             // everything else, weight it to the bottom of the rendered object.
@@ -242,7 +245,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         l = CreateStringNode(tag)
     }
     var valueNode *yaml.Node
-    vo := reflect.ValueOf(value)
     switch t.Kind() {
 
     case reflect.String:
@@ -291,6 +293,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
 
         // the keys will be rendered randomly, if we don't find out the original line
         // number of the tag.
+
         var orderedCollection []*NodeEntry
         m := reflect.ValueOf(value)
         for g, k := range m.MapKeys() {
@@ -305,7 +308,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
 
             // go low and pull out the line number.
             lowProps := reflect.ValueOf(n.Low)
-            if !lowProps.IsZero() && !lowProps.IsNil() {
+            if n.Low != nil && !lowProps.IsZero() && !lowProps.IsNil() {
                 gu := lowProps.Elem()
                 gi := gu.FieldByName(key)
                 jl := reflect.ValueOf(gi)
@@ -315,33 +318,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
                     if pr, ok := gh.(low.HasValueUnTyped); ok {
                         fg := reflect.ValueOf(pr.GetValueUntyped())
                         found := false
-                        for j, ky := range fg.MapKeys() {
-                            hu := ky.Interface()
-                            if we, wok := hu.(low.HasKeyNode); wok {
-                                er := we.GetKeyNode().Value
-                                if er == x {
-                                    found = true
-                                    orderedCollection = append(orderedCollection, &NodeEntry{
-                                        Tag:   x,
-                                        Key:   x,
-                                        Line:  we.GetKeyNode().Line,
-                                        Value: m.MapIndex(k).Interface(),
-                                    })
-                                }
-                            } else {
-                                uu := ky.Interface()
-                                if uu == x {
-                                    // this is a map, without any low level details available
-                                    found = true
-                                    orderedCollection = append(orderedCollection, &NodeEntry{
-                                        Tag:   uu.(string),
-                                        Key:   uu.(string),
-                                        Line:  9999 + j,
-                                        Value: m.MapIndex(k).Interface(),
-                                    })
-                                }
-                            }
-                        }
+                        found, orderedCollection = n.extractLowMapKeys(fg, x, found, orderedCollection, m, k)
                         if found != true {
                             // this is something new, add it.
                             orderedCollection = append(orderedCollection, &NodeEntry{
@@ -354,36 +331,13 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
                     } else {
                         // this is a map, but it may be wrapped still.
                         bj := reflect.ValueOf(gh)
-                        // yh := bj.Interface()
-                        calc := func(iu reflect.Value) {
-                            for _, ky := range iu.MapKeys() {
-                                ty := ky.Interface()
+                        //yh := bj.Interface()
 
-                                if ere, eok := ty.(low.HasKeyNode); eok {
-                                    er := ere.GetKeyNode().Value
-                                    if er == x {
-                                        orderedCollection = append(orderedCollection, &NodeEntry{
-                                            Tag:   x,
-                                            Key:   x,
-                                            Line:  ky.Interface().(low.HasKeyNode).GetKeyNode().Line,
-                                            Value: iu.MapIndex(ky).Interface(),
-                                        })
-                                    }
-                                } else {
-                                    orderedCollection = append(orderedCollection, &NodeEntry{
-                                        Tag:   x,
-                                        Key:   x,
-                                        Line:  9999 + g,
-                                        Value: iu.MapIndex(ky).Interface(),
-                                    })
-                                }
-                            }
-                        }
-                        //if vg, jo := yh.(low.HasKeyNode); jo {
+                        // if vg, jo := yh.(low.HasKeyNode); jo {
                         //    fv := reflect.ValueOf(vg.GetKeyNode())
-                        //    calc(fv)
-                        //} else {
-                        calc(bj)
+                        //    orderedCollection = n.extractLowMapKeysWrapped(fv, x, orderedCollection, g)
+                        // } else {
+                        orderedCollection = n.extractLowMapKeysWrapped(bj, x, orderedCollection, g)
                         //}
                     }
                 } else {
@@ -408,22 +362,10 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
 
         // sort the slice by line number to ensure everything is rendered in order.
         sort.Slice(orderedCollection, func(i, j int) bool {
-
-            if orderedCollection[i].Line != orderedCollection[j].Line {
-                return orderedCollection[i].Line < orderedCollection[j].Line
-            }
-            if strings.HasPrefix(orderedCollection[i].Tag, "x-") {
-                return false
-            }
-            if strings.HasPrefix(orderedCollection[i].Tag, "x-") {
-                return false
-            }
-
             return orderedCollection[i].Line < orderedCollection[j].Line
         })
 
         // create an empty map.
-
         p := CreateEmptyMapNode()
 
         // build out each map node in original order.
@@ -437,9 +379,9 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         }
 
     case reflect.Slice:
-        if vo.IsNil() {
-            return parent
-        }
+        //if vo.IsNil() {
+        //    return parent
+        //}
 
         var rawNode yaml.Node
         m := reflect.ValueOf(value)
@@ -448,22 +390,24 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
 
             sqi := m.Index(i).Interface()
             if glu, ok := sqi.(GoesLowUntyped); ok {
-                ut := glu.GoLowUntyped()
+                if glu != nil {
+                    ut := glu.GoLowUntyped()
 
-                if !reflect.ValueOf(ut).IsNil() {
+                    if !reflect.ValueOf(ut).IsNil() {
 
-                    r := ut.(low.IsReferenced)
-                    if ut != nil && r.GetReference() != "" &&
-                        ut.(low.IsReferenced).IsReference() {
+                        r := ut.(low.IsReferenced)
+                        if ut != nil && r.GetReference() != "" &&
+                            ut.(low.IsReferenced).IsReference() {
 
-                        rt := CreateEmptyMapNode()
+                            rt := CreateEmptyMapNode()
 
-                        nodes := make([]*yaml.Node, 2)
-                        nodes[0] = CreateStringNode("$ref")
-                        nodes[1] = CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
-                        rt.Content = append(rt.Content, nodes...)
-                        sl.Content = append(sl.Content, rt)
+                            nodes := make([]*yaml.Node, 2)
+                            nodes[0] = CreateStringNode("$ref")
+                            nodes[1] = CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
+                            rt.Content = append(rt.Content, nodes...)
+                            sl.Content = append(sl.Content, rt)
 
+                        }
                     }
                 }
             }
@@ -552,17 +496,19 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         }
 
     default:
-        if vo.IsNil() {
-            return parent
-        }
-        var rawNode yaml.Node
-        err := rawNode.Encode(value)
-        if err != nil {
-            return parent
-        } else {
-            valueNode = &rawNode
-            valueNode.Line = line
-        }
+        panic("not supported yet")
+        //vo := reflect.ValueOf(value)
+        //if vo.IsNil() {
+        //    return parent
+        //}
+        //var rawNode yaml.Node
+        //err := rawNode.Encode(value)
+        //if err != nil {
+        //    return parent
+        //} else {
+        //    valueNode = &rawNode
+        //    valueNode.Line = line
+        //}
     }
     if valueNode == nil {
         return parent
@@ -573,6 +519,62 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         parent.Content = valueNode.Content
     }
     return parent
+}
+
+func (n *NodeBuilder) extractLowMapKeysWrapped(iu reflect.Value, x string, orderedCollection []*NodeEntry, g int) []*NodeEntry {
+    for _, ky := range iu.MapKeys() {
+        ty := ky.Interface()
+        if ere, eok := ty.(low.HasKeyNode); eok {
+            er := ere.GetKeyNode().Value
+            if er == x {
+                orderedCollection = append(orderedCollection, &NodeEntry{
+                    Tag:   x,
+                    Key:   x,
+                    Line:  ky.Interface().(low.HasKeyNode).GetKeyNode().Line,
+                    Value: iu.MapIndex(ky).Interface(),
+                })
+            }
+        } else {
+            orderedCollection = append(orderedCollection, &NodeEntry{
+                Tag:   x,
+                Key:   x,
+                Line:  9999 + g,
+                Value: iu.MapIndex(ky).Interface(),
+            })
+        }
+    }
+    return orderedCollection
+}
+
+func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, orderedCollection []*NodeEntry, m reflect.Value, k reflect.Value) (bool, []*NodeEntry) {
+    for j, ky := range fg.MapKeys() {
+        hu := ky.Interface()
+        if we, wok := hu.(low.HasKeyNode); wok {
+            er := we.GetKeyNode().Value
+            if er == x {
+                found = true
+                orderedCollection = append(orderedCollection, &NodeEntry{
+                    Tag:   x,
+                    Key:   x,
+                    Line:  we.GetKeyNode().Line,
+                    Value: m.MapIndex(k).Interface(),
+                })
+            }
+        } else {
+            uu := ky.Interface()
+            if uu == x {
+                // this is a map, without any low level details available
+                found = true
+                orderedCollection = append(orderedCollection, &NodeEntry{
+                    Tag:   uu.(string),
+                    Key:   uu.(string),
+                    Line:  9999 + j,
+                    Value: m.MapIndex(k).Interface(),
+                })
+            }
+        }
+    }
+    return found, orderedCollection
 }
 
 func CreateEmptyMapNode() *yaml.Node {
