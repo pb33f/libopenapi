@@ -186,6 +186,14 @@ func (s *Schema) Hash() [32]byte {
 		case reflect.Slice:
 			for i := 0; i < vo.Len(); i++ {
 				vn := vo.Index(i).Interface()
+
+				if jh, ok := vn.(low.HasValueUnTyped); ok {
+					vn = jh.GetValueUntyped()
+					fg := reflect.TypeOf(vn)
+					if fg.Kind() == reflect.Map {
+						panic("smack")
+					}
+				}
 				values = append(values, fmt.Sprintf("%d:%s", i, low.GenerateHashString(vn)))
 			}
 			sort.Strings(values)
@@ -629,7 +637,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	_, addPLabel, addPNode := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
 	if addPNode != nil {
-		if utils.IsNodeMap(addPNode) {
+		if utils.IsNodeMap(addPNode) || utils.IsNodeArray(addPNode) {
 			// check if this is a reference, or an inline schema.
 			isRef, _, _ := utils.IsNodeRefValue(addPNode)
 			var sp *SchemaProxy
@@ -678,6 +686,10 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				// if the node is an array, extract everything into a trackable structure
 				if utils.IsNodeArray(addPNode) {
 					var addProps []low.ValueReference[any]
+
+					// todo: check for a map, and encode before packing.
+					// todo: pick up here tomorrow.
+
 					for i := range addPNode.Content {
 						addProps = append(addProps,
 							low.ValueReference[any]{Value: addPNode.Content[i].Value, ValueNode: addPNode.Content[i]})
