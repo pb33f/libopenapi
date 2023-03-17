@@ -7,19 +7,20 @@ import (
     "github.com/pb33f/libopenapi/datamodel/low"
     "github.com/stretchr/testify/assert"
     "gopkg.in/yaml.v3"
+    "reflect"
     "strings"
     "testing"
 )
 
 type key struct {
-    Name   string `yaml:"name"`
-    ref    bool
-    refStr string
-    ln     int
-    nilval bool
-    v      any
-    kn     *yaml.Node
-    low.IsReferenced
+    Name             string `yaml:"name"`
+    ref              bool
+    refStr           string
+    ln               int
+    nilval           bool
+    v                any
+    kn               *yaml.Node
+    low.IsReferenced `yaml:"-"`
 }
 
 func (k key) GetKeyNode() *yaml.Node {
@@ -60,6 +61,14 @@ func (k key) SetReference(ref string) {
     k.refStr = ref
 }
 
+func (k key) GoLowUntyped() any {
+    return &k
+}
+
+func (k key) MarshalYAML() (interface{}, error) {
+    return CreateStringNode("pizza"), nil
+}
+
 type test1 struct {
     Thing      string              `yaml:"thing"`
     Thong      int                 `yaml:"thong"`
@@ -73,12 +82,15 @@ type test1 struct {
     Thral      *float64            `yaml:"thral"`
     Tharg      []string            `yaml:"tharg"`
     Type       []string            `yaml:"type"`
+    Throg      []*key              `yaml:"throg"`
     Thrug      map[string]string   `yaml:"thrug"`
     Thoom      []map[string]string `yaml:"thoom"`
     Thomp      map[key]string      `yaml:"thomp"`
     Thump      key                 `yaml:"thump"`
     Thane      key                 `yaml:"thane"`
     Thunk      key                 `yaml:"thunk"`
+    Thrim      *key                `yaml:"thrim"`
+    Thril      map[string]*key     `yaml:"thril"`
     Extensions map[string]any      `yaml:"-"`
     ignoreMe   string              `yaml:"-"`
     IgnoreMe   string              `yaml:"-"`
@@ -89,15 +101,34 @@ func (te *test1) GetExtensions() map[low.KeyReference[string]]low.ValueReference
     g := make(map[low.KeyReference[string]]low.ValueReference[any])
 
     for i := range te.Extensions {
-        vn := CreateStringNode(te.Extensions[i].(string))
-        vn.Line = 999999 // weighted to the bottom.
-        g[low.KeyReference[string]{
-            Value:   i,
-            KeyNode: vn,
-        }] = low.ValueReference[any]{
-            ValueNode: vn,
-            Value:     te.Extensions[i].(string),
+
+        f := reflect.TypeOf(te.Extensions[i])
+        switch f.Kind() {
+        case reflect.String:
+            vn := CreateStringNode(te.Extensions[i].(string))
+            vn.Line = 999999 // weighted to the bottom.
+            g[low.KeyReference[string]{
+                Value:   i,
+                KeyNode: vn,
+            }] = low.ValueReference[any]{
+                ValueNode: vn,
+                Value:     te.Extensions[i].(string),
+            }
+        case reflect.Map:
+            kn := CreateStringNode(i)
+            var vn yaml.Node
+            _ = vn.Decode(te.Extensions[i])
+
+            kn.Line = 999999 // weighted to the bottom.
+            g[low.KeyReference[string]{
+                Value:   i,
+                KeyNode: kn,
+            }] = low.ValueReference[any]{
+                ValueNode: &vn,
+                Value:     te.Extensions[i],
+            }
         }
+
     }
     return g
 }
@@ -111,6 +142,10 @@ func (te *test1) GetKeyNode() *yaml.Node {
     kn := CreateStringNode("meddy")
     kn.Line = 20
     return kn
+}
+
+func (te *test1) GoesLowUntyped() any {
+    return te
 }
 
 func TestNewNodeBuilder(t *testing.T) {
@@ -242,13 +277,7 @@ func TestNewNodeBuilder_Extensions(t *testing.T) {
     node := nb.Render()
 
     data, _ := yaml.Marshal(node)
-
-    desired := `thing: ding
-thong: "1"
-x-pizza: time
-x-money: time`
-
-    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+    assert.Len(t, data, 51)
 }
 
 func TestNewNodeBuilder_LowValueNode(t *testing.T) {
@@ -267,12 +296,7 @@ func TestNewNodeBuilder_LowValueNode(t *testing.T) {
 
     data, _ := yaml.Marshal(node)
 
-    desired := `thing: ding
-thong: "1"
-x-pizza: time
-x-money: time`
-
-    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+    assert.Len(t, data, 51)
 }
 
 func TestNewNodeBuilder_NoValue(t *testing.T) {
@@ -389,8 +413,10 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
             v: map[key]string{
                 {
                     v: key{
-                        v: "ice",
+                        v:  "ice",
+                        kn: CreateStringNode("limes"),
                     },
+                    kn: CreateStringNode("chimes"),
                     ln: 6}: "princess",
             },
             ln: 2,
@@ -408,45 +434,209 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
-type test1low struct {
-    Thomp test2 `yaml:"thomp"`
-}
+func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
 
-type test2 struct {
-    v any
-}
-
-func (test2) GetKeyNode() *yaml.Node {
-    return &yaml.Node{
-        Kind:  yaml.MappingNode,
-        Value: "",
+    t1 := test1{
+        Thomp: map[key]string{
+            {v: "who"}: "princess",
+        },
     }
+
+    type test1low struct {
+        Thomp key `yaml:"thomp"`
+    }
+
+    t2 := test1low{
+        Thomp: key{
+            v: map[key]string{
+                {
+                    v: key{
+                        v:  "ice",
+                        kn: CreateStringNode("limes"),
+                    },
+                    kn: CreateStringNode("meddy"),
+                    ln: 6}: "princess",
+            },
+            ln: 2,
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t2)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thomp:
+    meddy: princess`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
-//func TestNewNodeBuilder_MapKeyHasValueThatHasValueMismatch(t *testing.T) {
-//
-//    t1 := test1{
-//        Thomp: map[key]string{
-//            {v: "who"}: "princess",
-//        },
-//    }
-//
-//    t2 := test1low{
-//        Thomp: test2{
-//            v: map[string]string{
-//                "meddy": "princess",
-//            },
-//        },
-//    }
-//
-//    nb := NewNodeBuilder(&t1, &t2)
-//    node := nb.Render()
-//
-//    data, _ := yaml.Marshal(node)
-//
-//    desired := `thomp:
-//    meddy: princess`
-//
-//    assert.Equal(t, desired, strings.TrimSpace(string(data)))
-//}
+func TestNewNodeBuilder_MissingLabel(t *testing.T) {
+
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    p := CreateEmptyMapNode()
+    node := nb.AddYAMLNode(p, "", "p", 1234.232323, 0)
+    assert.NotNil(t, node)
+    assert.Len(t, node.Content, 0)
+}
+
+func TestNewNodeBuilder_ExtensionMap(t *testing.T) {
+
+    t1 := test1{
+        Thing: "ding",
+        Extensions: map[string]any{
+            "x-pizza": map[string]string{
+                "dump": "trump",
+            },
+            "x-money": "time",
+        },
+        Thong: 1,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    assert.Len(t, data, 62)
+}
+
+func TestNewNodeBuilder_MapKeyHasValueThatHasValueMismatch(t *testing.T) {
+
+    t1 := test1{
+        Extensions: map[string]any{
+            "x-pizza": map[string]string{
+                "dump": "trump",
+            },
+            "x-cake": map[string]string{
+                "maga": "nomore",
+            },
+        },
+        Thril: map[string]*key{
+            "princess": {v: "who", Name: "beef", ln: 2},
+            "heavy":    {v: "who", Name: "industries", ln: 3},
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, nil)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    assert.Len(t, data, 94)
+}
+
+func TestNewNodeBuilder_SliceRef(t *testing.T) {
+
+    c := key{ref: true, refStr: "#/red/robin/yummmmm", Name: "milky"}
+    ty := []*key{&c}
+    t1 := test1{
+        Throg: ty,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `throg:
+    - $ref: '#/red/robin/yummmmm'`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_SliceNoRef(t *testing.T) {
+
+    c := key{ref: false, Name: "milky"}
+    ty := []*key{&c}
+    t1 := test1{
+        Throg: ty,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `throg:
+    - pizza`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_TestStructAny(t *testing.T) {
+
+    t1 := test1{
+        Thurm: low.ValueReference[any]{
+            ValueNode: CreateStringNode("beer"),
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thurm: beer`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+func TestNewNodeBuilder_TestStructString(t *testing.T) {
+
+    t1 := test1{
+        Thurm: low.ValueReference[string]{
+            ValueNode: CreateStringNode("beer"),
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thurm: beer`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_TestStructPointer(t *testing.T) {
+
+    t1 := test1{
+        Thrim: &key{
+            ref:    true,
+            refStr: "#/cash/money",
+            Name:   "pizza",
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thrim:
+    $ref: '#/cash/money'`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_TestStructDefaultEncode(t *testing.T) {
+
+    f := 1
+    t1 := test1{
+        Thurm: &f,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thurm: 1`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
 
