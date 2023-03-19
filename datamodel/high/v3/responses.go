@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 )
@@ -93,7 +94,7 @@ func (r *Responses) Render() ([]byte, error) {
 // MarshalYAML will create a ready to render YAML representation of the Responses object.
 func (r *Responses) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
-	m := high.CreateEmptyMapNode()
+	m := utils.CreateEmptyMapNode()
 	type responseItem struct {
 		resp *Response
 		code string
@@ -135,11 +136,11 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	for j := range mapped {
 		if mapped[j].resp != nil {
 			rendered, _ := mapped[j].resp.MarshalYAML()
-			m.Content = append(m.Content, high.CreateStringNode(mapped[j].code))
+			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
 		if mapped[j].ext != nil {
-			m.Content = append(m.Content, high.CreateStringNode(mapped[j].code))
+			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
 			m.Content = append(m.Content, mapped[j].ext)
 		}
 

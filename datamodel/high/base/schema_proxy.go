@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -131,10 +132,10 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 		return nb.Render(), nil
 	} else {
 		// do not build out a reference, just marshal the reference.
-		mp := high.CreateEmptyMapNode()
+		mp := utils.CreateEmptyMapNode()
 		mp.Content = append(mp.Content,
-			high.CreateStringNode("$ref"),
-			high.CreateStringNode(sp.GetReference()))
+			utils.CreateStringNode("$ref"),
+			utils.CreateStringNode(sp.GetReference()))
 		return mp, nil
 	}
 }

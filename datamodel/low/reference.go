@@ -264,6 +264,18 @@ func (n ValueReference[T]) IsReference() bool {
 	return false
 }
 
+func (n ValueReference[T]) MarshalYAML() (interface{}, error) {
+	if n.IsReference() {
+		nodes := make([]*yaml.Node, 2)
+		nodes[0] = utils.CreateStringNode("$ref")
+		nodes[1] = utils.CreateStringNode(n.Reference)
+		return nodes, nil
+	}
+	var h yaml.Node
+	e := n.ValueNode.Decode(&h)
+	return h, e
+}
+
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
 func (n KeyReference[T]) IsEmpty() bool {
 	return n.KeyNode == nil
