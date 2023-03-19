@@ -608,3 +608,6 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	}
 	return res
 }
+
+
+

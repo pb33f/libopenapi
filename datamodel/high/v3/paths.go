@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 )
@@ -71,7 +72,7 @@ func (p *Paths) Render() ([]byte, error) {
 // MarshalYAML will create a ready to render YAML representation of the Paths object.
 func (p *Paths) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
-	m := high.CreateEmptyMapNode()
+	m := utils.CreateEmptyMapNode()
 	type pathItem struct {
 		pi       *PathItem
 		path     string
@@ -111,11 +112,11 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 	for j := range mapped {
 		if mapped[j].pi != nil {
 			rendered, _ := mapped[j].pi.MarshalYAML()
-			m.Content = append(m.Content, high.CreateStringNode(mapped[j].path))
+			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].path))
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
 		if mapped[j].rendered != nil {
-			m.Content = append(m.Content, high.CreateStringNode(mapped[j].path))
+			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].path))
 			m.Content = append(m.Content, mapped[j].rendered)
 		}
 	}

@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 )
@@ -56,7 +57,7 @@ func (c *Callback) Render() ([]byte, error) {
 // MarshalYAML will create a ready to render YAML representation of the Callback object.
 func (c *Callback) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
-	m := high.CreateEmptyMapNode()
+	m := utils.CreateEmptyMapNode()
 	type cbItem struct {
 		cb   *PathItem
 		exp  string
@@ -98,11 +99,11 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 	for j := range mapped {
 		if mapped[j].cb != nil {
 			rendered, _ := mapped[j].cb.MarshalYAML()
-			m.Content = append(m.Content, high.CreateStringNode(mapped[j].exp))
+			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].exp))
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
 		if mapped[j].ext != nil {
-			m.Content = append(m.Content, high.CreateStringNode(mapped[j].exp))
+			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].exp))
 			m.Content = append(m.Content, mapped[j].ext)
 		}
 	}
