@@ -5,6 +5,7 @@ package high
 
 import (
     "github.com/pb33f/libopenapi/datamodel/low"
+    "github.com/pb33f/libopenapi/utils"
     "github.com/stretchr/testify/assert"
     "gopkg.in/yaml.v3"
     "reflect"
@@ -27,7 +28,7 @@ func (k key) GetKeyNode() *yaml.Node {
     if k.kn != nil {
         return k.kn
     }
-    kn := CreateStringNode("meddy")
+    kn := utils.CreateStringNode("meddy")
     kn.Line = k.ln
     return kn
 }
@@ -44,7 +45,7 @@ func (k key) GetValueNodeUntyped() *yaml.Node {
     if k.nilval {
         return nil
     }
-    kn := CreateStringNode("maddy")
+    kn := utils.CreateStringNode("maddy")
     kn.Line = k.ln
     return kn
 }
@@ -66,7 +67,7 @@ func (k key) GoLowUntyped() any {
 }
 
 func (k key) MarshalYAML() (interface{}, error) {
-    return CreateStringNode("pizza"), nil
+    return utils.CreateStringNode("pizza"), nil
 }
 
 type test1 struct {
@@ -105,7 +106,7 @@ func (te *test1) GetExtensions() map[low.KeyReference[string]]low.ValueReference
         f := reflect.TypeOf(te.Extensions[i])
         switch f.Kind() {
         case reflect.String:
-            vn := CreateStringNode(te.Extensions[i].(string))
+            vn := utils.CreateStringNode(te.Extensions[i].(string))
             vn.Line = 999999 // weighted to the bottom.
             g[low.KeyReference[string]{
                 Value:   i,
@@ -115,7 +116,7 @@ func (te *test1) GetExtensions() map[low.KeyReference[string]]low.ValueReference
                 Value:     te.Extensions[i].(string),
             }
         case reflect.Map:
-            kn := CreateStringNode(i)
+            kn := utils.CreateStringNode(i)
             var vn yaml.Node
             _ = vn.Decode(te.Extensions[i])
 
@@ -139,7 +140,7 @@ func (te *test1) MarshalYAML() (interface{}, error) {
 }
 
 func (te *test1) GetKeyNode() *yaml.Node {
-    kn := CreateStringNode("meddy")
+    kn := utils.CreateStringNode("meddy")
     kn.Line = 20
     return kn
 }
@@ -327,7 +328,7 @@ func TestNewNodeBuilder_Bool(t *testing.T) {
 func TestNewNodeBuilder_Int(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
-    p := CreateEmptyMapNode()
+    p := utils.CreateEmptyMapNode()
     node := nb.AddYAMLNode(p, "p", "p", 12, 0)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
@@ -337,7 +338,7 @@ func TestNewNodeBuilder_Int(t *testing.T) {
 func TestNewNodeBuilder_Int64(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
-    p := CreateEmptyMapNode()
+    p := utils.CreateEmptyMapNode()
     node := nb.AddYAMLNode(p, "p", "p", int64(234556), 0)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
@@ -347,7 +348,7 @@ func TestNewNodeBuilder_Int64(t *testing.T) {
 func TestNewNodeBuilder_Float32(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
-    p := CreateEmptyMapNode()
+    p := utils.CreateEmptyMapNode()
     node := nb.AddYAMLNode(p, "p", "p", float32(1234.23), 0)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
@@ -357,7 +358,7 @@ func TestNewNodeBuilder_Float32(t *testing.T) {
 func TestNewNodeBuilder_Float64(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
-    p := CreateEmptyMapNode()
+    p := utils.CreateEmptyMapNode()
     node := nb.AddYAMLNode(p, "p", "p", 1234.232323, 0)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
@@ -414,9 +415,9 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
                 {
                     v: key{
                         v:  "ice",
-                        kn: CreateStringNode("limes"),
+                        kn: utils.CreateStringNode("limes"),
                     },
-                    kn: CreateStringNode("chimes"),
+                    kn: utils.CreateStringNode("chimes"),
                     ln: 6}: "princess",
             },
             ln: 2,
@@ -452,9 +453,9 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
                 {
                     v: key{
                         v:  "ice",
-                        kn: CreateStringNode("limes"),
+                        kn: utils.CreateStringNode("limes"),
                     },
-                    kn: CreateStringNode("meddy"),
+                    kn: utils.CreateStringNode("meddy"),
                     ln: 6}: "princess",
             },
             ln: 2,
@@ -476,7 +477,7 @@ func TestNewNodeBuilder_MissingLabel(t *testing.T) {
 
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
-    p := CreateEmptyMapNode()
+    p := utils.CreateEmptyMapNode()
     node := nb.AddYAMLNode(p, "", "p", 1234.232323, 0)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 0)
@@ -570,7 +571,7 @@ func TestNewNodeBuilder_TestStructAny(t *testing.T) {
 
     t1 := test1{
         Thurm: low.ValueReference[any]{
-            ValueNode: CreateStringNode("beer"),
+            ValueNode: utils.CreateStringNode("beer"),
         },
     }
 
@@ -587,7 +588,7 @@ func TestNewNodeBuilder_TestStructString(t *testing.T) {
 
     t1 := test1{
         Thurm: low.ValueReference[string]{
-            ValueNode: CreateStringNode("beer"),
+            ValueNode: utils.CreateStringNode("beer"),
         },
     }
 

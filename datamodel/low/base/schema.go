@@ -190,11 +190,17 @@ func (s *Schema) Hash() [32]byte {
 				if jh, ok := vn.(low.HasValueUnTyped); ok {
 					vn = jh.GetValueUntyped()
 					fg := reflect.TypeOf(vn)
+					gf := reflect.ValueOf(vn)
+
 					if fg.Kind() == reflect.Map {
-						panic("smack")
+						for _, ky := range gf.MapKeys() {
+							hu := ky.Interface()
+							values = append(values, fmt.Sprintf("%s:%s", hu, low.GenerateHashString(gf.MapIndex(ky).Interface())))
+						}
+						continue
 					}
+					values = append(values, fmt.Sprintf("%d:%s", i, low.GenerateHashString(vn)))
 				}
-				values = append(values, fmt.Sprintf("%d:%s", i, low.GenerateHashString(vn)))
 			}
 			sort.Strings(values)
 			d = append(d, strings.Join(values, "||"))
@@ -687,13 +693,19 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				if utils.IsNodeArray(addPNode) {
 					var addProps []low.ValueReference[any]
 
-					// todo: check for a map, and encode before packing.
-					// todo: pick up here tomorrow.
-
+					// if this is an array or maps, encode the map items correctly.
 					for i := range addPNode.Content {
-						addProps = append(addProps,
-							low.ValueReference[any]{Value: addPNode.Content[i].Value, ValueNode: addPNode.Content[i]})
+						if utils.IsNodeMap(addPNode.Content[i]) {
+							var prop map[string]any
+							addPNode.Content[i].Decode(&prop)
+							addProps = append(addProps,
+								low.ValueReference[any]{Value: prop, ValueNode: addPNode.Content[i]})
+						} else {
+							addProps = append(addProps,
+								low.ValueReference[any]{Value: addPNode.Content[i].Value, ValueNode: addPNode.Content[i]})
+						}
 					}
+
 					s.AdditionalProperties =
 						low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
 				}

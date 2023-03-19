@@ -5,6 +5,7 @@ package high
 
 import (
     "github.com/pb33f/libopenapi/datamodel/low"
+    "github.com/pb33f/libopenapi/utils"
     "gopkg.in/yaml.v3"
     "reflect"
     "sort"
@@ -194,15 +195,15 @@ func (n *NodeBuilder) add(key string, i int) {
 func (n *NodeBuilder) renderReference() []*yaml.Node {
     fg := n.Low.(low.IsReferenced)
     nodes := make([]*yaml.Node, 2)
-    nodes[0] = CreateStringNode("$ref")
-    nodes[1] = CreateStringNode(fg.GetReference())
+    nodes[0] = utils.CreateStringNode("$ref")
+    nodes[1] = utils.CreateStringNode(fg.GetReference())
     return nodes
 }
 
 // Render will render the NodeBuilder back to a YAML node, iterating over every NodeEntry defined
 func (n *NodeBuilder) Render() *yaml.Node {
     // order nodes by line number, retain original order
-    m := CreateEmptyMapNode()
+    m := utils.CreateEmptyMapNode()
     if fg, ok := n.Low.(low.IsReferenced); ok {
         g := reflect.ValueOf(fg)
         if !g.IsNil() {
@@ -242,7 +243,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
     t := reflect.TypeOf(value)
     var l *yaml.Node
     if tag != "" {
-        l = CreateStringNode(tag)
+        l = utils.CreateStringNode(tag)
     }
     var valueNode *yaml.Node
     switch t.Kind() {
@@ -252,7 +253,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         if val == "" {
             return parent
         }
-        valueNode = CreateStringNode(val)
+        valueNode = utils.CreateStringNode(val)
         valueNode.Line = line
         break
 
@@ -261,31 +262,31 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         if !val {
             return parent
         }
-        valueNode = CreateBoolNode("true")
+        valueNode = utils.CreateBoolNode("true")
         valueNode.Line = line
         break
 
     case reflect.Int:
         val := strconv.Itoa(value.(int))
-        valueNode = CreateIntNode(val)
+        valueNode = utils.CreateIntNode(val)
         valueNode.Line = line
         break
 
     case reflect.Int64:
         val := strconv.FormatInt(value.(int64), 10)
-        valueNode = CreateIntNode(val)
+        valueNode = utils.CreateIntNode(val)
         valueNode.Line = line
         break
 
     case reflect.Float32:
         val := strconv.FormatFloat(float64(value.(float32)), 'f', 2, 64)
-        valueNode = CreateFloatNode(val)
+        valueNode = utils.CreateFloatNode(val)
         valueNode.Line = line
         break
 
     case reflect.Float64:
         val := strconv.FormatFloat(value.(float64), 'f', -1, 64)
-        valueNode = CreateFloatNode(val)
+        valueNode = utils.CreateFloatNode(val)
         valueNode.Line = line
         break
 
@@ -366,7 +367,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
         })
 
         // create an empty map.
-        p := CreateEmptyMapNode()
+        p := utils.CreateEmptyMapNode()
 
         // build out each map node in original order.
         for _, cv := range orderedCollection {
@@ -385,7 +386,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
 
         var rawNode yaml.Node
         m := reflect.ValueOf(value)
-        sl := CreateEmptySequenceNode()
+        sl := utils.CreateEmptySequenceNode()
         for i := 0; i < m.Len(); i++ {
 
             sqi := m.Index(i).Interface()
@@ -399,11 +400,11 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
                         if ut != nil && r.GetReference() != "" &&
                             ut.(low.IsReferenced).IsReference() {
 
-                            rt := CreateEmptyMapNode()
+                            rt := utils.CreateEmptyMapNode()
 
                             nodes := make([]*yaml.Node, 2)
-                            nodes[0] = CreateStringNode("$ref")
-                            nodes[1] = CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
+                            nodes[0] = utils.CreateStringNode("$ref")
+                            nodes[1] = utils.CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
                             rt.Content = append(rt.Content, nodes...)
                             sl.Content = append(sl.Content, rt)
 
@@ -444,9 +445,9 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
                 ut := reflect.ValueOf(gl.GoLowUntyped())
                 if !ut.IsNil() {
                     if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
-                        rvn := CreateEmptyMapNode()
-                        rvn.Content = append(rvn.Content, CreateStringNode("$ref"))
-                        rvn.Content = append(rvn.Content, CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
+                        rvn := utils.CreateEmptyMapNode()
+                        rvn.Content = append(rvn.Content, utils.CreateStringNode("$ref"))
+                        rvn.Content = append(rvn.Content, utils.CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
                         valueNode = rvn
                         break
                     }
@@ -465,21 +466,21 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, tag, key string, value any,
             if b, bok := value.(*bool); bok {
                 encodeSkip = true
                 if *b {
-                    valueNode = CreateBoolNode("true")
+                    valueNode = utils.CreateBoolNode("true")
                     valueNode.Line = line
                 }
             }
             if b, bok := value.(*int64); bok {
                 encodeSkip = true
                 if *b > 0 {
-                    valueNode = CreateIntNode(strconv.Itoa(int(*b)))
+                    valueNode = utils.CreateIntNode(strconv.Itoa(int(*b)))
                     valueNode.Line = line
                 }
             }
             if b, bok := value.(*float64); bok {
                 encodeSkip = true
                 if *b > 0 {
-                    valueNode = CreateFloatNode(strconv.FormatFloat(*b, 'f', -1, 64))
+                    valueNode = utils.CreateFloatNode(strconv.FormatFloat(*b, 'f', -1, 64))
                     valueNode.Line = line
                 }
             }
@@ -575,58 +576,6 @@ func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, 
         }
     }
     return found, orderedCollection
-}
-
-func CreateEmptyMapNode() *yaml.Node {
-    n := &yaml.Node{
-        Kind: yaml.MappingNode,
-        Tag:  "!!map",
-    }
-    return n
-}
-
-func CreateEmptySequenceNode() *yaml.Node {
-    n := &yaml.Node{
-        Kind: yaml.SequenceNode,
-        Tag:  "!!seq",
-    }
-    return n
-}
-
-func CreateStringNode(str string) *yaml.Node {
-    n := &yaml.Node{
-        Kind:  yaml.ScalarNode,
-        Tag:   "!!str",
-        Value: str,
-    }
-    return n
-}
-
-func CreateBoolNode(str string) *yaml.Node {
-    n := &yaml.Node{
-        Kind:  yaml.ScalarNode,
-        Tag:   "!!bool",
-        Value: str,
-    }
-    return n
-}
-
-func CreateIntNode(str string) *yaml.Node {
-    n := &yaml.Node{
-        Kind:  yaml.ScalarNode,
-        Tag:   "!!int",
-        Value: str,
-    }
-    return n
-}
-
-func CreateFloatNode(str string) *yaml.Node {
-    n := &yaml.Node{
-        Kind:  yaml.ScalarNode,
-        Tag:   "!!float",
-        Value: str,
-    }
-    return n
 }
 
 type Renderable interface {
