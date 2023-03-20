@@ -15,6 +15,19 @@ type LinkChanges struct {
     ServerChanges    *ServerChanges    `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Link objects
+func (l *LinkChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, l.Changes...)
+    if l.ServerChanges != nil {
+        changes = append(changes, l.ServerChanges.GetAllChanges()...)
+    }
+    if l.ExtensionChanges != nil {
+        changes = append(changes, l.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total changes made between OpenAPI Link objects
 func (l *LinkChanges) TotalChanges() int {
     c := l.PropertyChanges.TotalChanges()

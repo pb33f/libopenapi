@@ -269,7 +269,9 @@ func (n ValueReference[T]) MarshalYAML() (interface{}, error) {
 		nodes := make([]*yaml.Node, 2)
 		nodes[0] = utils.CreateStringNode("$ref")
 		nodes[1] = utils.CreateStringNode(n.Reference)
-		return nodes, nil
+		m := utils.CreateEmptyMapNode()
+		m.Content = nodes
+		return m, nil
 	}
 	var h yaml.Node
 	e := n.ValueNode.Decode(&h)

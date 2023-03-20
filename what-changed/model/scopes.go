@@ -15,6 +15,16 @@ type ScopesChanges struct {
     ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Scopes objects
+func (s *ScopesChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, s.Changes...)
+    if s.ExtensionChanges != nil {
+        changes = append(changes, s.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total changes found between two Swagger Scopes objects.
 func (s *ScopesChanges) TotalChanges() int {
     c := s.PropertyChanges.TotalChanges()

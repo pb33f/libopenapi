@@ -1019,3 +1019,74 @@ func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSliceMap(t *testing
 	assert.Len(t, schemaBytes, 75)
 }
 
+/*
+
+ */
+
+func TestNewSchemaProxy_RenderAdditionalPropertiesFalse(t *testing.T) {
+	testSpec := `additionalProperties: false`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
+
+func TestNewSchemaProxy_RenderMultiplePoly(t *testing.T) {
+	idxYaml := `openapi: 3.1.0
+components:
+    schemas:
+        balance_transaction:
+          description: A balance transaction`
+
+	testSpec := `properties:
+    bigBank:
+        type: object
+        properties:
+            failure_balance_transaction:
+                anyOf:
+                    - maxLength: 5000
+                      type: string
+                    - $ref: '#/components/schemas/balance_transaction'
+                x-expansionResources:
+                    oneOf:
+                        - $ref: '#/components/schemas/balance_transaction'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+
+	err := sp.Build(compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: idxNode.Content[0],
+	}
+
+	sch1 := SchemaProxy{schema: &lowproxy}
+	compiled := sch1.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
+

@@ -13,6 +13,11 @@ type LicenseChanges struct {
     *PropertyChanges
 }
 
+// GetAllChanges returns a slice of all changes made between License objects
+func (l *LicenseChanges) GetAllChanges() []*Change {
+    return l.Changes
+}
+
 // TotalChanges represents the total number of changes made to a License instance.
 func (l *LicenseChanges) TotalChanges() int {
     return l.PropertyChanges.TotalChanges()

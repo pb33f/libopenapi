@@ -13,6 +13,16 @@ type EncodingChanges struct {
     HeaderChanges map[string]*HeaderChanges `json:"headers,omitempty" yaml:"headers,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Encoding objects
+func (e *EncodingChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, e.Changes...)
+    for k := range e.HeaderChanges {
+        changes = append(changes, e.HeaderChanges[k].GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes made between two Encoding objects
 func (e *EncodingChanges) TotalChanges() int {
     c := e.PropertyChanges.TotalChanges()

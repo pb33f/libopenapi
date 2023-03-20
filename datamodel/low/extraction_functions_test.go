@@ -1536,3 +1536,27 @@ func TestGenerateHashString(t *testing.T) {
 		GenerateHashString("hello"))
 
 }
+
+func TestSetReference(t *testing.T) {
+
+	type testObj struct {
+		*Reference
+	}
+
+	n := testObj{Reference: &Reference{}}
+	SetReference(&n, "#/pigeon/street")
+
+	assert.Equal(t, "#/pigeon/street", n.GetReference())
+
+}
+
+func TestSetReference_nil(t *testing.T) {
+
+	type testObj struct {
+		*Reference
+	}
+
+	n := testObj{Reference: &Reference{}}
+	SetReference(nil, "#/pigeon/street")
+	assert.NotEqual(t, "#/pigeon/street", n.GetReference())
+}

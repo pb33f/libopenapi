@@ -19,6 +19,7 @@ func initTest() {
 	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
+	// deprecated function test.
 	doc, err = CreateDocument(info)
 	if err != nil {
 		panic("broken something")
@@ -29,7 +30,10 @@ func BenchmarkCreateDocument(b *testing.B) {
 	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		doc, _ = CreateDocument(info)
+		doc, _ = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
+		})
 	}
 }
 
@@ -37,7 +41,10 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		_, err := CreateDocument(info)
+		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
+		})
 		if err != nil {
 			panic("this should not error")
 		}
@@ -51,7 +58,10 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 
-		_, err := CreateDocument(info)
+		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
+		})
 		if err != nil {
 			panic("this should not error")
 		}
@@ -62,7 +72,10 @@ func TestCircularReferenceError(t *testing.T) {
 
 	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	circDoc, err := CreateDocument(info)
+	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.NotNil(t, circDoc)
 	assert.Len(t, err, 3)
 }
@@ -72,7 +85,10 @@ func BenchmarkCreateDocument_Stripe(b *testing.B) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 
 	for i := 0; i < b.N; i++ {
-		_, err := CreateDocument(info)
+		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
+		})
 		if err != nil {
 			panic("this should not error")
 		}
@@ -83,7 +99,10 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		_, err := CreateDocument(info)
+		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+			AllowFileReferences:   false,
+			AllowRemoteReferences: false,
+		})
 		if err != nil {
 			panic("this should not error")
 		}
@@ -94,7 +113,11 @@ func TestCreateDocumentStripe(t *testing.T) {
 
 	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	d, err := CreateDocument(info)
+	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+		BasePath:              "/here",
+	})
 	assert.Len(t, err, 3)
 
 	assert.Equal(t, "3.0.0", d.Version.Value)
@@ -137,7 +160,10 @@ func TestCreateDocument_WebHooks_Error(t *testing.T) {
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	_, err = CreateDocument(info)
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 }
 
@@ -523,7 +549,10 @@ components:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 0)
 
 	ob := doc.Components.Value.FindSchema("bork").Value
@@ -539,7 +568,10 @@ webhooks:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	doc, err = CreateDocument(info)
+	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 }
 
@@ -552,7 +584,10 @@ components:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	_, err = CreateDocument(info)
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 
 }
@@ -565,7 +600,10 @@ paths:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	_, err = CreateDocument(info)
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 }
 
@@ -576,7 +614,10 @@ tags:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	_, err = CreateDocument(info)
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 }
 
@@ -587,7 +628,10 @@ security:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	_, err = CreateDocument(info)
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 }
 
@@ -598,7 +642,10 @@ externalDocs:
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err []error
-	_, err = CreateDocument(info)
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 	assert.Len(t, err, 1)
 }
 
@@ -612,7 +659,10 @@ func ExampleCreateDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, errors := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
 
 	// if something went wrong, a slice of errors is returned
 	if len(errors) > 0 {

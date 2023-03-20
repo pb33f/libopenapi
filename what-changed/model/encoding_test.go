@@ -80,6 +80,7 @@ allowReserved: true`
 	extChanges := CompareEncoding(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 
 }
@@ -114,6 +115,7 @@ allowReserved: true`
 	extChanges := CompareEncoding(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.HeadersLabel, extChanges.Changes[0].Property)
@@ -149,6 +151,7 @@ allowReserved: true`
 	extChanges := CompareEncoding(&rDoc, &lDoc)
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 
 }

@@ -33,6 +33,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }

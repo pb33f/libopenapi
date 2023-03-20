@@ -26,6 +26,28 @@ type ParameterChanges struct {
     ContentChanges  map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Parameter objects
+func (p *ParameterChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, p.Changes...)
+    if p.SchemaChanges != nil {
+        changes = append(changes, p.SchemaChanges.GetAllChanges()...)
+    }
+    for i := range p.ExamplesChanges {
+        changes = append(changes, p.ExamplesChanges[i].GetAllChanges()...)
+    }
+    if p.ItemsChanges != nil {
+        changes = append(changes, p.ItemsChanges.GetAllChanges()...)
+    }
+    if p.ExtensionChanges != nil {
+        changes = append(changes, p.ExtensionChanges.GetAllChanges()...)
+    }
+    for i := range p.ContentChanges {
+        changes = append(changes, p.ContentChanges[i].GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns a count of everything that changed
 func (p *ParameterChanges) TotalChanges() int {
     c := p.PropertyChanges.TotalChanges()

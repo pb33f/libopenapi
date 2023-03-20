@@ -27,6 +27,7 @@ type hotdog struct {
 	LotsOfUnknowns  []NodeReference[any]
 	Where           map[string]NodeReference[any]
 	There           map[string]NodeReference[string]
+	AllTheThings    NodeReference[map[KeyReference[string]]ValueReference[string]]
 }
 
 func TestBuildModel_Mismatch(t *testing.T) {
@@ -99,7 +100,10 @@ where:
     bears: 200
 there:
   oh: yeah
-  care: bear`
+  care: bear
+allTheThings:
+  beer: isGood
+  cake: isNice`
 
 	var rootNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
@@ -129,6 +133,16 @@ there:
 	assert.Len(t, hd.There, 2)
 	assert.Equal(t, "bear", hd.There["care"].Value)
 	assert.Equal(t, 324938249028.98234892374892374923874823974, hd.Mustard.Value)
+
+	allTheThings := hd.AllTheThings.Value
+	for i := range allTheThings {
+		if i.Value == "beer" {
+			assert.Equal(t, "isGood", allTheThings[i].Value)
+		}
+		if i.Value == "cake" {
+			assert.Equal(t, "isNice", allTheThings[i].Value)
+		}
+	}
 	assert.NoError(t, cErr)
 }
 

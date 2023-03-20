@@ -31,6 +31,7 @@ func TestCompareExamplesV2(t *testing.T) {
 
     extChanges := CompareExamplesV2(&lDoc, &rDoc)
     assert.Equal(t, extChanges.TotalChanges(), 1)
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
     assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.SummaryLabel, extChanges.Changes[0].Property)
@@ -58,6 +59,7 @@ yummy: coffee`
 
     extChanges := CompareExamplesV2(&lDoc, &rDoc)
     assert.Equal(t, extChanges.TotalChanges(), 1)
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
     assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -82,6 +84,7 @@ yummy: coffee`
 
     extChanges := CompareExamplesV2(&rDoc, &lDoc)
     assert.Equal(t, extChanges.TotalChanges(), 1)
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
     assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }

@@ -44,6 +44,7 @@ tags:
 	assert.Len(t, changes[0].ExternalDocs.Changes, 2)
 	assert.Len(t, changes[0].ExtensionChanges.Changes, 1)
 	assert.Equal(t, 4, changes[0].TotalChanges())
+	assert.Len(t, changes[0].GetAllChanges(), 4)
 
 	descChange := changes[0].Changes[0]
 	assert.Equal(t, "a lovelier tag description", descChange.New)
@@ -86,6 +87,7 @@ tags:
 	// evaluate.
 	assert.Len(t, changes[0].Changes, 1)
 	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Len(t, changes[0].GetAllChanges(), 1)
 
 	descChange := changes[0].Changes[0]
 	assert.Equal(t, ObjectAdded, descChange.ChangeType)
@@ -119,6 +121,7 @@ tags:
 	// evaluate.
 	assert.Len(t, changes, 2)
 	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Len(t, changes[0].GetAllChanges(), 1)
 	assert.Equal(t, 1, changes[1].TotalChanges())
 	assert.Equal(t, 1, changes[0].TotalBreakingChanges())
 }
@@ -222,6 +225,7 @@ tags:
 	// evaluate.
 	assert.Len(t, changes[0].Changes, 1)
 	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Len(t, changes[0].GetAllChanges(), 1)
 
 	descChange := changes[0].Changes[0]
 	assert.Equal(t, Modified, descChange.ChangeType)
@@ -288,6 +292,7 @@ tags:
 
 	// evaluate.
 	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Len(t, changes[0].GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, changes[0].Changes[0].ChangeType)
 
 }
@@ -316,6 +321,7 @@ tags:
 
 	// evaluate.
 	assert.Equal(t, 1, changes[0].TotalChanges())
+	assert.Len(t, changes[0].GetAllChanges(), 1)
 	assert.Equal(t, ObjectRemoved, changes[0].Changes[0].ChangeType)
 
 }

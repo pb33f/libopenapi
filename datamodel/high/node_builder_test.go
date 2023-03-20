@@ -14,7 +14,7 @@ import (
 )
 
 type key struct {
-    Name             string `yaml:"name"`
+    Name             string `yaml:"name,omitempty"`
     ref              bool
     refStr           string
     ln               int
@@ -71,27 +71,27 @@ func (k key) MarshalYAML() (interface{}, error) {
 }
 
 type test1 struct {
-    Thing      string              `yaml:"thing"`
-    Thong      int                 `yaml:"thong"`
-    Thrum      int64               `yaml:"thrum"`
-    Thang      float32             `yaml:"thang"`
-    Thung      float64             `yaml:"thung"`
-    Thyme      bool                `yaml:"thyme"`
-    Thurm      any                 `yaml:"thurm"`
-    Thugg      *bool               `yaml:"thugg"`
-    Thurr      *int64              `yaml:"thurr"`
-    Thral      *float64            `yaml:"thral"`
-    Tharg      []string            `yaml:"tharg"`
-    Type       []string            `yaml:"type"`
-    Throg      []*key              `yaml:"throg"`
-    Thrug      map[string]string   `yaml:"thrug"`
-    Thoom      []map[string]string `yaml:"thoom"`
-    Thomp      map[key]string      `yaml:"thomp"`
-    Thump      key                 `yaml:"thump"`
-    Thane      key                 `yaml:"thane"`
-    Thunk      key                 `yaml:"thunk"`
-    Thrim      *key                `yaml:"thrim"`
-    Thril      map[string]*key     `yaml:"thril"`
+    Thing      string              `yaml:"thing,omitempty"`
+    Thong      int                 `yaml:"thong,omitempty"`
+    Thrum      int64               `yaml:"thrum,omitempty"`
+    Thang      float32             `yaml:"thang,omitempty"`
+    Thung      float64             `yaml:"thung,omitempty"`
+    Thyme      bool                `yaml:"thyme,omitempty"`
+    Thurm      any                 `yaml:"thurm,omitempty"`
+    Thugg      *bool               `yaml:"thugg,omitempty"`
+    Thurr      *int64              `yaml:"thurr,omitempty"`
+    Thral      *float64            `yaml:"thral,omitempty"`
+    Tharg      []string            `yaml:"tharg,omitempty"`
+    Type       []string            `yaml:"type,omitempty"`
+    Throg      []*key              `yaml:"throg,omitempty"`
+    Thrug      map[string]string   `yaml:"thrug,omitempty"`
+    Thoom      []map[string]string `yaml:"thoom,omitempty"`
+    Thomp      map[key]string      `yaml:"thomp,omitempty"`
+    Thump      key                 `yaml:"thump,omitempty"`
+    Thane      key                 `yaml:"thane,omitempty"`
+    Thunk      key                 `yaml:"thunk,omitempty"`
+    Thrim      *key                `yaml:"thrim,omitempty"`
+    Thril      map[string]*key     `yaml:"thril,omitempty"`
     Extensions map[string]any      `yaml:"-"`
     ignoreMe   string              `yaml:"-"`
     IgnoreMe   string              `yaml:"-"`
@@ -159,7 +159,7 @@ func TestNewNodeBuilder(t *testing.T) {
         ignoreMe: "I should never be seen!",
         Thing:    "ding",
         Thong:    1,
-        Thurm:    &test1{},
+        Thurm:    nil,
         Thrum:    1234567,
         Thang:    2.2,
         Thung:    3.33333,
@@ -195,16 +195,12 @@ func TestNewNodeBuilder(t *testing.T) {
         },
     }
 
-    nb := NewNodeBuilder(&t1, &t1)
+    nb := NewNodeBuilder(&t1, nil)
     node := nb.Render()
 
     data, _ := yaml.Marshal(node)
 
-    desired := `thrug:
-    chicken: nuggets
-thomp:
-    meddy: princess
-thing: ding
+    desired := `thing: ding
 thong: "1"
 thrum: "1234567"
 thang: 2.20
@@ -217,9 +213,13 @@ tharg:
     - chicken
     - nuggets
 type: chicken
+thrug:
+    chicken: nuggets
 thoom:
     - maddy: champion
     - ember: naughty
+thomp:
+    meddy: princess
 x-pizza: time`
 
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
@@ -306,22 +306,25 @@ func TestNewNodeBuilder_NoValue(t *testing.T) {
         Thing: "",
     }
 
+    nodeEnty := NodeEntry{}
     nb := NewNodeBuilder(&t1, &t1)
-    node := nb.AddYAMLNode(nil, "", "", nil, 0)
+    node := nb.AddYAMLNode(nil, &nodeEnty)
     assert.Nil(t, node)
 }
 
 func TestNewNodeBuilder_EmptyString(t *testing.T) {
     t1 := new(test1)
+    nodeEnty := NodeEntry{}
     nb := NewNodeBuilder(t1, t1)
-    node := nb.AddYAMLNode(nil, "", "", "", 0)
+    node := nb.AddYAMLNode(nil, &nodeEnty)
     assert.Nil(t, node)
 }
 
 func TestNewNodeBuilder_Bool(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
-    node := nb.AddYAMLNode(nil, "", "", false, 0)
+    nodeEnty := NodeEntry{}
+    node := nb.AddYAMLNode(nil, &nodeEnty)
     assert.Nil(t, node)
 }
 
@@ -329,7 +332,8 @@ func TestNewNodeBuilder_Int(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
     p := utils.CreateEmptyMapNode()
-    node := nb.AddYAMLNode(p, "p", "p", 12, 0)
+    nodeEnty := NodeEntry{Tag: "p", Value: 12, Key: "p"}
+    node := nb.AddYAMLNode(p, &nodeEnty)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
     assert.Equal(t, "12", node.Content[1].Value)
@@ -339,7 +343,8 @@ func TestNewNodeBuilder_Int64(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
     p := utils.CreateEmptyMapNode()
-    node := nb.AddYAMLNode(p, "p", "p", int64(234556), 0)
+    nodeEnty := NodeEntry{Tag: "p", Value: int64(234556), Key: "p"}
+    node := nb.AddYAMLNode(p, &nodeEnty)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
     assert.Equal(t, "234556", node.Content[1].Value)
@@ -349,7 +354,8 @@ func TestNewNodeBuilder_Float32(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
     p := utils.CreateEmptyMapNode()
-    node := nb.AddYAMLNode(p, "p", "p", float32(1234.23), 0)
+    nodeEnty := NodeEntry{Tag: "p", Value: float32(1234.23), Key: "p"}
+    node := nb.AddYAMLNode(p, &nodeEnty)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
     assert.Equal(t, "1234.23", node.Content[1].Value)
@@ -359,7 +365,8 @@ func TestNewNodeBuilder_Float64(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
     p := utils.CreateEmptyMapNode()
-    node := nb.AddYAMLNode(p, "p", "p", 1234.232323, 0)
+    nodeEnty := NodeEntry{Tag: "p", Value: 1234.232323, Key: "p"}
+    node := nb.AddYAMLNode(p, &nodeEnty)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 2)
     assert.Equal(t, "1234.232323", node.Content[1].Value)
@@ -478,7 +485,8 @@ func TestNewNodeBuilder_MissingLabel(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
     p := utils.CreateEmptyMapNode()
-    node := nb.AddYAMLNode(p, "", "p", 1234.232323, 0)
+    nodeEnty := NodeEntry{Value: 1234.232323, Key: "p"}
+    node := nb.AddYAMLNode(p, &nodeEnty)
     assert.NotNil(t, node)
     assert.Len(t, node.Content, 0)
 }

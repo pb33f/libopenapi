@@ -77,6 +77,7 @@ x-toot: poot`
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Equal(t, 5, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -110,6 +111,7 @@ examples:
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -143,6 +145,7 @@ examples:
 
 	extChanges := CompareResponse(&rDoc, &lDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -223,5 +226,6 @@ x-toot: pooty`
 	extChanges := CompareResponse(&lDoc, &rDoc)
 
 	assert.Equal(t, 5, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }

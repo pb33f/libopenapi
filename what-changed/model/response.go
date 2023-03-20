@@ -26,6 +26,34 @@ type ResponseChanges struct {
     ServerChanges  *ServerChanges               `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between RequestBody objects
+func (r *ResponseChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, r.Changes...)
+    if r.ExtensionChanges != nil {
+        changes = append(changes, r.ExtensionChanges.GetAllChanges()...)
+    }
+    if r.SchemaChanges != nil {
+        changes = append(changes, r.SchemaChanges.GetAllChanges()...)
+    }
+    if r.ExamplesChanges != nil {
+        changes = append(changes, r.ExamplesChanges.GetAllChanges()...)
+    }
+    if r.ServerChanges != nil {
+        changes = append(changes, r.ServerChanges.GetAllChanges()...)
+    }
+    for k := range r.HeadersChanges {
+        changes = append(changes, r.HeadersChanges[k].GetAllChanges()...)
+    }
+    for k := range r.ContentChanges {
+        changes = append(changes, r.ContentChanges[k].GetAllChanges()...)
+    }
+    for k := range r.LinkChanges {
+        changes = append(changes, r.LinkChanges[k].GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes found between two Swagger or OpenAPI Response Objects
 func (r *ResponseChanges) TotalChanges() int {
     c := r.PropertyChanges.TotalChanges()
@@ -37,6 +65,9 @@ func (r *ResponseChanges) TotalChanges() int {
     }
     if r.ExamplesChanges != nil {
         c += r.ExamplesChanges.TotalChanges()
+    }
+    if r.ServerChanges != nil {
+        c += r.ServerChanges.TotalChanges()
     }
     for k := range r.HeadersChanges {
         c += r.HeadersChanges[k].TotalChanges()
@@ -56,6 +87,9 @@ func (r *ResponseChanges) TotalBreakingChanges() int {
     c := r.PropertyChanges.TotalBreakingChanges()
     if r.SchemaChanges != nil {
         c += r.SchemaChanges.TotalBreakingChanges()
+    }
+    if r.ServerChanges != nil {
+        c += r.ServerChanges.TotalBreakingChanges()
     }
     for k := range r.HeadersChanges {
         c += r.HeadersChanges[k].TotalBreakingChanges()

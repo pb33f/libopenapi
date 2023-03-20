@@ -235,6 +235,22 @@ func runComparison[T any, R any](l, r map[low.KeyReference[string]]low.ValueRefe
 	}
 }
 
+// GetAllChanges returns a slice of all changes made between Callback objects
+func (c *ComponentsChanges) GetAllChanges() []*Change {
+	var changes []*Change
+	changes = append(changes, c.Changes...)
+	for k := range c.SchemaChanges {
+		changes = append(changes, c.SchemaChanges[k].GetAllChanges()...)
+	}
+	for k := range c.SecuritySchemeChanges {
+		changes = append(changes, c.SecuritySchemeChanges[k].GetAllChanges()...)
+	}
+	if c.ExtensionChanges != nil {
+		changes = append(changes, c.ExtensionChanges.GetAllChanges()...)
+	}
+	return changes
+}
+
 // TotalChanges returns total changes for all Components and Definitions
 func (c *ComponentsChanges) TotalChanges() int {
 	v := c.PropertyChanges.TotalChanges()

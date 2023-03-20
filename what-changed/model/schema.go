@@ -45,6 +45,94 @@ type SchemaChanges struct {
     PatternPropertiesChanges     map[string]*SchemaChanges `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Responses objects
+func (s *SchemaChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, s.Changes...)
+    if s.DiscriminatorChanges != nil {
+        changes = append(changes, s.DiscriminatorChanges.GetAllChanges()...)
+    }
+    if len(s.AllOfChanges) > 0 {
+        for n := range s.AllOfChanges {
+            if s.AllOfChanges[n] != nil {
+                changes = append(changes, s.AllOfChanges[n].GetAllChanges()...)
+            }
+        }
+    }
+    if len(s.AnyOfChanges) > 0 {
+        for n := range s.AnyOfChanges {
+            if s.AnyOfChanges[n] != nil {
+                changes = append(changes, s.AnyOfChanges[n].GetAllChanges()...)
+            }
+        }
+    }
+    if len(s.OneOfChanges) > 0 {
+        for n := range s.OneOfChanges {
+            if s.OneOfChanges[n] != nil {
+                changes = append(changes, s.OneOfChanges[n].GetAllChanges()...)
+            }
+        }
+    }
+    if s.NotChanges != nil {
+        changes = append(changes, s.NotChanges.GetAllChanges()...)
+    }
+    if s.ItemsChanges != nil {
+        changes = append(changes, s.ItemsChanges.GetAllChanges()...)
+    }
+    if s.IfChanges != nil {
+        changes = append(changes, s.IfChanges.GetAllChanges()...)
+    }
+    if s.ElseChanges != nil {
+        changes = append(changes, s.ElseChanges.GetAllChanges()...)
+    }
+    if s.ThenChanges != nil {
+        changes = append(changes, s.ThenChanges.GetAllChanges()...)
+    }
+    if s.PropertyNamesChanges != nil {
+        changes = append(changes, s.PropertyNamesChanges.GetAllChanges()...)
+    }
+    if s.ContainsChanges != nil {
+        changes = append(changes, s.ContainsChanges.GetAllChanges()...)
+    }
+    if s.UnevaluatedItemsChanges != nil {
+        changes = append(changes, s.UnevaluatedItemsChanges.GetAllChanges()...)
+    }
+    if s.UnevaluatedPropertiesChanges != nil {
+        changes = append(changes, s.UnevaluatedPropertiesChanges.GetAllChanges()...)
+    }
+    if s.SchemaPropertyChanges != nil {
+        for n := range s.SchemaPropertyChanges {
+            if s.SchemaPropertyChanges[n] != nil {
+                changes = append(changes, s.SchemaPropertyChanges[n].GetAllChanges()...)
+            }
+        }
+    }
+    if s.DependentSchemasChanges != nil {
+        for n := range s.DependentSchemasChanges {
+            if s.DependentSchemasChanges[n] != nil {
+                changes = append(changes, s.DependentSchemasChanges[n].GetAllChanges()...)
+            }
+        }
+    }
+    if s.PatternPropertiesChanges != nil {
+        for n := range s.PatternPropertiesChanges {
+            if s.PatternPropertiesChanges[n] != nil {
+                changes = append(changes, s.PatternPropertiesChanges[n].GetAllChanges()...)
+            }
+        }
+    }
+    if s.ExternalDocChanges != nil {
+        changes = append(changes, s.ExternalDocChanges.GetAllChanges()...)
+    }
+    if s.XMLChanges != nil {
+        changes = append(changes, s.XMLChanges.GetAllChanges()...)
+    }
+    if s.ExtensionChanges != nil {
+        changes = append(changes, s.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns a count of the total number of changes made to this schema and all sub-schemas
 func (s *SchemaChanges) TotalChanges() int {
     t := s.PropertyChanges.TotalChanges()
@@ -58,7 +146,9 @@ func (s *SchemaChanges) TotalChanges() int {
     }
     if len(s.AnyOfChanges) > 0 {
         for n := range s.AnyOfChanges {
-            t += s.AnyOfChanges[n].TotalChanges()
+            if s.AnyOfChanges[n] != nil {
+                t += s.AnyOfChanges[n].TotalChanges()
+            }
         }
     }
     if len(s.OneOfChanges) > 0 {
@@ -95,7 +185,9 @@ func (s *SchemaChanges) TotalChanges() int {
     }
     if s.SchemaPropertyChanges != nil {
         for n := range s.SchemaPropertyChanges {
-            t += s.SchemaPropertyChanges[n].TotalChanges()
+            if s.SchemaPropertyChanges[n] != nil {
+                t += s.SchemaPropertyChanges[n].TotalChanges()
+            }
         }
     }
     if s.DependentSchemasChanges != nil {
@@ -302,7 +394,10 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
     } else {
         sc.PropertyChanges = NewPropertyChanges(nil)
     }
-    return sc
+    if sc.TotalChanges() > 0 {
+        return sc
+    }
+    return nil
 }
 
 func checkSchemaXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change, sc *SchemaChanges) {
