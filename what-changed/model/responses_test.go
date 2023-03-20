@@ -81,6 +81,7 @@ x-ting: tang`
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ResponseChanges["404"].SchemaChanges.Changes[0].ChangeType)
 	assert.Equal(t, Modified, extChanges.ResponseChanges["200"].SchemaChanges.Changes[0].ChangeType)
@@ -121,6 +122,7 @@ x-apple: pie`
 
 	extChanges := CompareResponses(&rDoc, &lDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.ResponseChanges["200"].Changes[0].ChangeType)
 }
@@ -156,6 +158,7 @@ func TestCompareResponses_V2_RemoveSchema(t *testing.T) {
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.ResponseChanges["200"].Changes[0].ChangeType)
 }
@@ -189,6 +192,7 @@ default:
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -222,6 +226,7 @@ default:
 
 	extChanges := CompareResponses(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -259,6 +264,7 @@ default:
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -322,6 +328,7 @@ x-coffee: yum
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -355,6 +362,7 @@ default:
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.DefaultLabel, extChanges.Changes[0].Property)
 }
@@ -389,6 +397,7 @@ default:
 
 	extChanges := CompareResponses(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.DefaultLabel, extChanges.Changes[0].Property)
 }
@@ -425,6 +434,7 @@ default:
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.DescriptionLabel, extChanges.DefaultChanges.Changes[0].Property)
 }
@@ -457,5 +467,6 @@ func TestCompareResponses_V3_AddRemoveMediaType(t *testing.T) {
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }

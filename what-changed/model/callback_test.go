@@ -87,6 +87,7 @@ func TestCompareCallback_Add(t *testing.T) {
 
 	// compare.
 	extChanges := CompareCallback(&lDoc, &rDoc)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
@@ -138,6 +139,7 @@ func TestCompareCallback_Modify(t *testing.T) {
 	// compare.
 	extChanges := CompareCallback(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.ExpressionChanges["{$request.query.queryUrl}"].Changes[0].ChangeType)
 	assert.Equal(t, v3.GetLabel, extChanges.ExpressionChanges["{$request.query.queryUrl}"].Changes[0].Property)
@@ -187,6 +189,7 @@ func TestCompareCallback_Remove(t *testing.T) {
 	// compare.
 	extChanges := CompareCallback(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "slippers", extChanges.Changes[0].Property)

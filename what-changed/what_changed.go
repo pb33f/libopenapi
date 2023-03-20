@@ -19,6 +19,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/what-changed/model"
+	"reflect"
 )
 
 // CompareOpenAPIDocuments will compare left (original) and right (updated) OpenAPI 3+ documents and extract every change
@@ -33,4 +34,24 @@ func CompareOpenAPIDocuments(original, updated *v3.Document) *model.DocumentChan
 // or removed and which of those changes were breaking.
 func CompareSwaggerDocuments(original, updated *v2.Swagger) *model.DocumentChanges {
 	return model.CompareDocuments(original, updated)
+}
+
+func ExtractFlatChanges(changes *model.DocumentChanges) []*model.Change {
+	return extractChanges(changes)
+}
+
+func extractChanges(anything any) []*model.Change {
+
+	vo := reflect.ValueOf(anything)
+	switch vo.Kind() {
+	case reflect.Ptr:
+		extractChanges(vo.Elem().Interface())
+	case reflect.Slice:
+
+		panic("slice not supported")
+
+	case reflect.Struct:
+		extractChanges(vo.Elem().Interface())
+	}
+	return nil
 }

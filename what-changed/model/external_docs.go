@@ -14,6 +14,16 @@ type ExternalDocChanges struct {
     ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Example objects
+func (e *ExternalDocChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, e.Changes...)
+    if e.ExtensionChanges != nil {
+        changes = append(changes, e.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns a count of everything that changed
 func (e *ExternalDocChanges) TotalChanges() int {
     c := e.PropertyChanges.TotalChanges()

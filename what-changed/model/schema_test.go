@@ -43,6 +43,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "an OK message Changed", changes.Changes[0].New)
@@ -71,6 +72,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "a thing", changes.Changes[0].New)
 	assert.Equal(t, v3.DescriptionLabel, changes.Changes[0].Property)
@@ -99,6 +101,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "a thing", changes.Changes[0].Original)
 	assert.Equal(t, v3.DescriptionLabel, changes.Changes[0].Property)
@@ -125,6 +128,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 }
 
@@ -149,6 +153,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 }
 
@@ -238,6 +243,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
 }
@@ -268,6 +274,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].Original)
@@ -300,6 +307,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
@@ -389,6 +397,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "two", changes.Changes[0].New)
 	assert.Equal(t, v3.RequiredLabel, changes.Changes[0].Property)
@@ -419,6 +428,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "two", changes.Changes[0].Original)
 	assert.Equal(t, v3.RequiredLabel, changes.Changes[0].Property)
@@ -446,6 +456,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "d", changes.Changes[0].New)
 	assert.Equal(t, v3.EnumLabel, changes.Changes[0].Property)
@@ -473,6 +484,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "d", changes.Changes[0].Original)
 	assert.Equal(t, v3.EnumLabel, changes.Changes[0].Property)
@@ -506,6 +518,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "propB", changes.Changes[0].New)
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[0].Property)
@@ -539,6 +552,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Len(t, changes.Changes, 1)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "propB", changes.Changes[0].Original)
 	assert.Equal(t, v3.PropertiesLabel, changes.Changes[0].Property)
@@ -568,6 +582,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.IfChanges.PropertyChanges.TotalChanges())
 }
@@ -596,6 +611,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.IfLabel, changes.Changes[0].Property)
 }
@@ -624,6 +640,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.IfLabel, changes.Changes[0].Property)
 }
@@ -652,6 +669,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.ElseChanges.PropertyChanges.TotalChanges())
 }
@@ -680,6 +698,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ElseLabel, changes.Changes[0].Property)
 }
@@ -708,6 +727,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ElseLabel, changes.Changes[0].Property)
 }
@@ -736,6 +756,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.ThenChanges.PropertyChanges.TotalChanges())
 }
@@ -764,6 +785,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ThenLabel, changes.Changes[0].Property)
 }
@@ -792,6 +814,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ThenLabel, changes.Changes[0].Property)
 }
@@ -822,6 +845,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.DependentSchemasChanges["schemaOne"].PropertyChanges.TotalChanges())
 }
@@ -852,6 +876,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.PatternPropertiesChanges["schemaOne"].PropertyChanges.TotalChanges())
 }
@@ -880,6 +905,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.PropertyNamesChanges.PropertyChanges.TotalChanges())
 }
@@ -908,6 +934,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.PropertyNamesLabel, changes.Changes[0].Property)
 }
@@ -936,6 +963,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.PropertyNamesLabel, changes.Changes[0].Property)
 }
@@ -964,6 +992,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.ContainsChanges.PropertyChanges.TotalChanges())
 }
@@ -992,6 +1021,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ContainsLabel, changes.Changes[0].Property)
 }
@@ -1020,6 +1050,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ContainsLabel, changes.Changes[0].Property)
 }
@@ -1048,6 +1079,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.UnevaluatedPropertiesChanges.PropertyChanges.TotalChanges())
 }
@@ -1076,6 +1108,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.UnevaluatedPropertiesLabel, changes.Changes[0].Property)
 }
@@ -1104,6 +1137,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.UnevaluatedPropertiesLabel, changes.Changes[0].Property)
 }
@@ -1132,6 +1166,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.UnevaluatedItemsChanges.PropertyChanges.TotalChanges())
 }
@@ -1160,6 +1195,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.UnevaluatedItemsLabel, changes.Changes[0].Property)
 }
@@ -1188,6 +1224,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.UnevaluatedItemsLabel, changes.Changes[0].Property)
 }
@@ -1213,6 +1250,7 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
@@ -1239,6 +1277,7 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
@@ -1265,6 +1304,7 @@ components:
 
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
@@ -1292,6 +1332,7 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
@@ -1320,6 +1361,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 }
 
@@ -1349,6 +1391,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, Modified, changes.SchemaPropertyChanges["propA"].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.SchemaPropertyChanges["propA"].Changes[0].New)
@@ -1381,6 +1424,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "propN", changes.Changes[0].New)
@@ -1415,6 +1459,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AnyOfLabel, changes.Changes[0].Property)
@@ -1448,6 +1493,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 2, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AnyOfLabel, changes.Changes[0].Property)
@@ -1480,6 +1526,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.AnyOfChanges[0].Changes[0].New)
@@ -1512,6 +1559,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.OneOfLabel, changes.Changes[0].Property)
@@ -1545,6 +1593,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 2, changes.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.AllOfLabel, changes.Changes[0].Property)
@@ -1579,6 +1628,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges.Changes[0].Property)
 	assert.Equal(t, Modified, changes.ItemsChanges.Changes[0].ChangeType)
@@ -1612,6 +1662,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.TypeLabel, changes.ItemsChanges.Changes[0].Property)
 	assert.Equal(t, Modified, changes.ItemsChanges.Changes[0].ChangeType)
@@ -1645,6 +1696,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.TypeLabel, changes.NotChanges.Changes[0].Property)
 	assert.Equal(t, Modified, changes.NotChanges.Changes[0].ChangeType)
@@ -1678,6 +1730,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.PropertyNameLabel, changes.DiscriminatorChanges.Changes[0].Property)
 	assert.Equal(t, Modified, changes.DiscriminatorChanges.Changes[0].ChangeType)
@@ -1709,6 +1762,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
@@ -1741,6 +1795,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
@@ -1775,6 +1830,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.URLLabel, changes.ExternalDocChanges.Changes[0].Property)
 	assert.Equal(t, Modified, changes.ExternalDocChanges.Changes[0].ChangeType)
@@ -1806,6 +1862,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
@@ -1838,6 +1895,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
@@ -1869,6 +1927,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, "x-melody", changes.ExtensionChanges.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.ExtensionChanges.Changes[0].ChangeType)
@@ -1927,6 +1986,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
 	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
@@ -1956,6 +2016,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExampleLabel, changes.Changes[0].Property)
 	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
@@ -1988,6 +2049,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
@@ -2019,6 +2081,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
@@ -2052,6 +2115,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
@@ -2085,6 +2149,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
@@ -2118,6 +2183,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 2, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExamplesLabel, changes.Changes[0].Property)
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
@@ -2151,6 +2217,7 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.NameLabel, changes.XMLChanges.Changes[0].Property)
 	assert.Equal(t, Modified, changes.XMLChanges.Changes[0].ChangeType)
@@ -2210,6 +2277,7 @@ components:
 	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.XMLLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
@@ -2252,6 +2320,7 @@ components:
 	changes := CompareDocuments(leftDoc, rightDoc)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 
 }
@@ -2281,6 +2350,7 @@ components:
 	changes := CompareDocuments(leftDoc, rightDoc)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 
 }
@@ -2314,6 +2384,7 @@ components:
 	changes := CompareDocuments(leftDoc, rightDoc)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 
 }

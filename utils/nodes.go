@@ -5,6 +5,15 @@ package utils
 
 import "gopkg.in/yaml.v3"
 
+func CreateRefNode(ref string) *yaml.Node {
+    m := CreateEmptyMapNode()
+    nodes := make([]*yaml.Node, 2)
+    nodes[0] = CreateStringNode("$ref")
+    nodes[1] = CreateStringNode(ref)
+    m.Content = nodes
+    return m
+}
+
 func CreateEmptyMapNode() *yaml.Node {
     n := &yaml.Node{
         Kind: yaml.MappingNode,

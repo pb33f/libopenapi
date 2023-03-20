@@ -74,6 +74,7 @@ x-burgers: crispy`
     // compare
     extChanges := CompareOAuthFlow(&lDoc, &rDoc)
     assert.Equal(t, 3, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 3)
     assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
 
@@ -109,6 +110,7 @@ x-burgers: nice`
     // compare
     extChanges := CompareOAuthFlow(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
     assert.Equal(t, "taff", extChanges.Changes[0].New)
     assert.Equal(t, "tiff", extChanges.Changes[0].NewObject)
@@ -146,6 +148,7 @@ x-burgers: nice`
     // compare
     extChanges := CompareOAuthFlow(&rDoc, &lDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, "taff", extChanges.Changes[0].Original)
     assert.Equal(t, "tiff", extChanges.Changes[0].OriginalObject)
@@ -182,6 +185,7 @@ x-burgers: nice`
     // compare
     extChanges := CompareOAuthFlow(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, "raff", extChanges.Changes[0].New)
     assert.Equal(t, "raff", extChanges.Changes[0].NewObject)
@@ -255,6 +259,7 @@ x-coke: cola`
     // compare
     extChanges := CompareOAuthFlows(&lDoc, &rDoc)
     assert.Equal(t, 4, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 4)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -286,6 +291,7 @@ x-coke: cola`
     // compare
     extChanges := CompareOAuthFlows(&rDoc, &lDoc)
     assert.Equal(t, 4, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 4)
     assert.Equal(t, 4, extChanges.TotalBreakingChanges())
 }
 
@@ -325,5 +331,6 @@ x-coke: cherry`
     // compare
     extChanges := CompareOAuthFlows(&lDoc, &rDoc)
     assert.Equal(t, 5, extChanges.TotalChanges())
-	assert.Equal(t, 4, extChanges.TotalBreakingChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 5)
+    assert.Equal(t, 4, extChanges.TotalBreakingChanges())
 }

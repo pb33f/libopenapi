@@ -72,6 +72,7 @@ x-beer: very tasty`
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, Modified, extChanges.Changes[1].ChangeType)
@@ -103,6 +104,7 @@ scopes:
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ScopesLabel, extChanges.Changes[0].Property)
@@ -132,6 +134,7 @@ scopes:
 	// compare
 	extChanges := CompareSecuritySchemes(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ScopesLabel, extChanges.Changes[0].Property)
@@ -161,6 +164,7 @@ func TestCompareSecuritySchemes_v2_ModifyScope(t *testing.T) {
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.ScopesChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ScopesLabel, extChanges.ScopesChanges.Changes[0].Property)
@@ -226,6 +230,7 @@ x-beer: cool`
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
 	assert.Equal(t, 5, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, Modified, extChanges.Changes[1].ChangeType)
@@ -258,6 +263,7 @@ flows:
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -286,6 +292,7 @@ flows:
 	// compare
 	extChanges := CompareSecuritySchemes(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -317,6 +324,7 @@ flows:
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.OAuthFlowChanges.ImplicitChanges.Changes[0].ChangeType)
 }

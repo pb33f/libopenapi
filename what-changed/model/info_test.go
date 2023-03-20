@@ -48,6 +48,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.DescriptionLabel, extChanges.Changes[0].Property)
 }
@@ -88,6 +89,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.TitleLabel, extChanges.Changes[0].Property)
 }
@@ -127,6 +129,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.VersionLabel, extChanges.Changes[0].Property)
 }
@@ -164,6 +167,7 @@ contact:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.LicenseLabel, extChanges.Changes[0].Property)
 }
@@ -201,6 +205,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.LicenseLabel, extChanges.Changes[0].Property)
 }
@@ -240,6 +245,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, Modified, extChanges.LicenseChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.NameLabel, extChanges.LicenseChanges.Changes[0].Property)
 }
@@ -276,6 +282,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.ContactLabel, extChanges.Changes[0].Property)
 }
@@ -312,6 +319,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.ContactLabel, extChanges.Changes[0].Property)
 }
@@ -351,6 +359,7 @@ license:
     // compare.
     extChanges := CompareInfo(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, Modified, extChanges.ContactChanges.Changes[0].ChangeType)
     assert.Equal(t, v3.NameLabel, extChanges.ContactChanges.Changes[0].Property)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())

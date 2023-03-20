@@ -33,6 +33,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 
@@ -60,6 +61,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 
 }
@@ -86,6 +88,7 @@ name: buckaroo`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
@@ -112,6 +115,7 @@ name: buckaroo`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 
 }
@@ -137,6 +141,7 @@ func TestCompareLicense_URLModified(t *testing.T) {
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 
 }
@@ -163,6 +168,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[1].ChangeType)
 }

@@ -86,7 +86,7 @@ type Schema struct {
 	MinProperties        *int64                  `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
 	Required             []string                `json:"required,omitempty" yaml:"required,omitempty"`
 	Enum                 []any                   `json:"enum,omitempty" yaml:"enum,omitempty"`
-	AdditionalProperties any                     `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
+	AdditionalProperties any                     `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
 	Description          string                  `json:"description,omitempty" yaml:"description,omitempty"`
 	Default              any                     `json:"default,omitempty" yaml:"default,omitempty"`
 	Nullable             *bool                   `json:"nullable,omitempty" yaml:"nullable,omitempty"`
@@ -300,6 +300,7 @@ func NewSchema(schema *base.Schema) *Schema {
 		p := &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: sch.ValueNode,
 			Value:     sch.Value,
+			Reference: sch.GetReference(),
 		}}
 
 		bChan <- buildResult{idx: idx, s: p}

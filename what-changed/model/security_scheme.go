@@ -22,6 +22,22 @@ type SecuritySchemeChanges struct {
     ScopesChanges *ScopesChanges `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between SecurityRequirement objects
+func (ss *SecuritySchemeChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, ss.Changes...)
+    if ss.OAuthFlowChanges != nil {
+        changes = append(changes, ss.OAuthFlowChanges.GetAllChanges()...)
+    }
+    if ss.ScopesChanges != nil {
+        changes = append(changes, ss.ScopesChanges.GetAllChanges()...)
+    }
+    if ss.ExtensionChanges != nil {
+        changes = append(changes, ss.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges represents total changes found between two Swagger or OpenAPI SecurityScheme instances.
 func (ss *SecuritySchemeChanges) TotalChanges() int {
     c := ss.PropertyChanges.TotalChanges()

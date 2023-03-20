@@ -5,6 +5,9 @@ package low
 
 import (
 	"crypto/sha256"
+	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -558,3 +561,196 @@ func TestHashToString(t *testing.T) {
 		HashToString(sha256.Sum256([]byte("12345"))))
 
 }
+
+func TestReference_IsReference(t *testing.T) {
+	ref := Reference{
+		Reference: "#/components/schemas/SomeSchema",
+	}
+	assert.True(t, ref.IsReference())
+
+}
+
+func TestNodeReference_NodeLineNumber(t *testing.T) {
+
+	n := utils.CreateStringNode("pizza")
+	nr := NodeReference[string]{
+		Value:     "pizza",
+		ValueNode: n,
+	}
+
+	n.Line = 3
+	assert.Equal(t, 3, nr.NodeLineNumber())
+}
+
+func TestNodeReference_NodeLineNumberEmpty(t *testing.T) {
+
+	nr := NodeReference[string]{
+		Value: "pizza",
+	}
+	assert.Equal(t, 0, nr.NodeLineNumber())
+}
+
+func TestNodeReference_GetReference(t *testing.T) {
+
+	nr := NodeReference[string]{
+		Reference: "#/happy/sunday",
+	}
+	assert.Equal(t, "#/happy/sunday", nr.GetReference())
+}
+
+func TestNodeReference_SetReference(t *testing.T) {
+
+	nr := NodeReference[string]{}
+	nr.SetReference("#/happy/sunday")
+}
+
+func TestNodeReference_IsReference(t *testing.T) {
+
+	nr := NodeReference[string]{
+		ReferenceNode: true,
+	}
+	assert.True(t, nr.IsReference())
+}
+
+func TestNodeReference_GetKeyNode(t *testing.T) {
+
+	nr := NodeReference[string]{
+		KeyNode: utils.CreateStringNode("pizza"),
+	}
+	assert.Equal(t, "pizza", nr.GetKeyNode().Value)
+
+}
+
+func TestNodeReference_GetValueUntyped(t *testing.T) {
+
+	type anything struct {
+		thing string
+	}
+
+	nr := NodeReference[any]{
+		Value: anything{thing: "ding"},
+	}
+
+	assert.Equal(t, "{ding}", fmt.Sprint(nr.GetValueUntyped()))
+}
+
+func TestValueReference_NodeLineNumber(t *testing.T) {
+
+	n := utils.CreateStringNode("pizza")
+	nr := ValueReference[string]{
+		Value:     "pizza",
+		ValueNode: n,
+	}
+
+	n.Line = 3
+	assert.Equal(t, 3, nr.NodeLineNumber())
+}
+
+func TestValueReference_NodeLineNumber_Nil(t *testing.T) {
+
+	nr := ValueReference[string]{
+		Value: "pizza",
+	}
+
+	assert.Equal(t, 0, nr.NodeLineNumber())
+}
+
+func TestValueReference_GetReference(t *testing.T) {
+
+	nr := ValueReference[string]{
+		Reference: "#/happy/sunday",
+	}
+	assert.Equal(t, "#/happy/sunday", nr.GetReference())
+}
+
+func TestValueReference_SetReference(t *testing.T) {
+
+	nr := ValueReference[string]{}
+	nr.SetReference("#/happy/sunday")
+}
+
+func TestValueReference_GetValueUntyped(t *testing.T) {
+
+	type anything struct {
+		thing string
+	}
+
+	nr := ValueReference[any]{
+		Value: anything{thing: "ding"},
+	}
+
+	assert.Equal(t, "{ding}", fmt.Sprint(nr.GetValueUntyped()))
+}
+
+func TestValueReference_IsReference(t *testing.T) {
+
+	nr := NodeReference[string]{
+		ReferenceNode: true,
+	}
+	assert.True(t, nr.IsReference())
+}
+
+func TestValueReference_MarshalYAML_Ref(t *testing.T) {
+
+	nr := ValueReference[string]{
+		ReferenceNode: true,
+		Reference:     "#/burgers/beer",
+	}
+
+	data, _ := yaml.Marshal(nr)
+	assert.Equal(t, `$ref: '#/burgers/beer'`, strings.TrimSpace(string(data)))
+
+}
+
+func TestValueReference_MarshalYAML(t *testing.T) {
+
+	v := map[string]interface{}{
+		"beer": "burger",
+		"wine": "cheese",
+	}
+
+	var enc yaml.Node
+	enc.Encode(&v)
+
+	nr := ValueReference[any]{
+		Value:     v,
+		ValueNode: &enc,
+	}
+
+	data, _ := yaml.Marshal(nr)
+
+	expected := `beer: burger
+wine: cheese`
+
+	assert.Equal(t, expected, strings.TrimSpace(string(data)))
+}
+
+func TestKeyReference_GetValueUntyped(t *testing.T) {
+
+	type anything struct {
+		thing string
+	}
+
+	nr := KeyReference[any]{
+		Value: anything{thing: "ding"},
+	}
+
+	assert.Equal(t, "{ding}", fmt.Sprint(nr.GetValueUntyped()))
+}
+
+func TestKeyReference_GetKeyNode(t *testing.T) {
+	kn := utils.CreateStringNode("pizza")
+	kn.Line = 3
+
+	nr := KeyReference[any]{
+		KeyNode: kn,
+	}
+
+	assert.Equal(t, 3, nr.GetKeyNode().Line)
+	assert.Equal(t, "pizza", nr.GetKeyNode().Value)
+}
+
+
+
+
+

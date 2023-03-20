@@ -15,6 +15,16 @@ type ItemsChanges struct {
     ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Items objects
+func (i *ItemsChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, i.Changes...)
+    if i.ItemsChanges != nil {
+        changes = append(changes, i.ItemsChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes found between two Items objects
 // This is a recursive function because Items can contain Items. Be careful!
 func (i *ItemsChanges) TotalChanges() int {

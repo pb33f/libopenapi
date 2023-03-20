@@ -13,6 +13,11 @@ type ServerVariableChanges struct {
     *PropertyChanges
 }
 
+// GetAllChanges returns a slice of all changes made between SecurityRequirement objects
+func (s *ServerVariableChanges) GetAllChanges() []*Change {
+    return s.Changes
+}
+
 // CompareServerVariables compares a left and right OpenAPI ServerVariable object for changes.
 // If anything is found, returns a pointer to a ServerVariableChanges instance, otherwise returns nil.
 func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {

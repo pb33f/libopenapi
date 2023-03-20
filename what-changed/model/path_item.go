@@ -27,6 +27,46 @@ type PathItemChanges struct {
 	ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between PathItem objects
+func (p *PathItemChanges) GetAllChanges() []*Change {
+	var changes []*Change
+	changes = append(changes, p.Changes...)
+	if p.GetChanges != nil {
+		changes = append(changes, p.GetChanges.GetAllChanges()...)
+	}
+	if p.PutChanges != nil {
+		changes = append(changes, p.PutChanges.GetAllChanges()...)
+	}
+	if p.PostChanges != nil {
+		changes = append(changes, p.PostChanges.GetAllChanges()...)
+	}
+	if p.DeleteChanges != nil {
+		changes = append(changes, p.DeleteChanges.GetAllChanges()...)
+	}
+	if p.OptionsChanges != nil {
+		changes = append(changes, p.OptionsChanges.GetAllChanges()...)
+	}
+	if p.HeadChanges != nil {
+		changes = append(changes, p.HeadChanges.GetAllChanges()...)
+	}
+	if p.PatchChanges != nil {
+		changes = append(changes, p.PatchChanges.GetAllChanges()...)
+	}
+	if p.TraceChanges != nil {
+		changes = append(changes, p.TraceChanges.GetAllChanges()...)
+	}
+	for i := range p.ServerChanges {
+		changes = append(changes, p.ServerChanges[i].GetAllChanges()...)
+	}
+	for i := range p.ParameterChanges {
+		changes = append(changes, p.ParameterChanges[i].GetAllChanges()...)
+	}
+	if p.ExtensionChanges != nil {
+		changes = append(changes, p.ExtensionChanges.GetAllChanges()...)
+	}
+	return changes
+}
+
 // TotalChanges returns the total number of changes found between two Swagger or OpenAPI PathItems
 func (p *PathItemChanges) TotalChanges() int {
 	c := p.PropertyChanges.TotalChanges()

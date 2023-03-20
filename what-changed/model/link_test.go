@@ -76,6 +76,7 @@ x-cake: very tasty`
     // compare.
     extChanges := CompareLinks(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
     assert.Equal(t, Modified, extChanges.ExtensionChanges.Changes[0].ChangeType)
 
@@ -114,6 +115,7 @@ parameters:
     // compare.
     extChanges := CompareLinks(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, Modified, extChanges.ServerChanges.Changes[0].ChangeType)
 }
@@ -149,6 +151,7 @@ parameters:
     // compare.
     extChanges := CompareLinks(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -184,6 +187,7 @@ parameters:
     // compare.
     extChanges := CompareLinks(&rDoc, &lDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -221,6 +225,7 @@ parameters:
     // compare.
     extChanges := CompareLinks(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
     assert.Equal(t, "nice", extChanges.Changes[0].NewObject)
@@ -262,6 +267,7 @@ parameters:
     // compare.
     extChanges := CompareLinks(&lDoc, &rDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
     assert.Equal(t, "hot", extChanges.Changes[0].NewObject)
@@ -302,6 +308,7 @@ parameters:
     // compare.
     extChanges := CompareLinks(&rDoc, &lDoc)
     assert.Equal(t, 1, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 1)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
     assert.Equal(t, "hot", extChanges.Changes[0].OriginalObject)

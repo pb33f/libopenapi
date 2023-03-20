@@ -123,6 +123,7 @@ x-beer: really yummy`
 	extChanges := CompareHeadersV2(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -167,6 +168,7 @@ x-beer: yummy`
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
 
@@ -211,6 +213,7 @@ x-beer: yummy`
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
 
@@ -301,6 +304,7 @@ x-beer: yummy`
 	extChanges := CompareHeadersV3(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
 	assert.Equal(t, 5, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 
 }

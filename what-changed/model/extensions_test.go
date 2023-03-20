@@ -25,6 +25,7 @@ func TestCompareExtensions(t *testing.T) {
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "1", extChanges.Changes[0].Original)
 	assert.Equal(t, "2", extChanges.Changes[0].New)
@@ -49,6 +50,7 @@ x-test: 1`
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Len(t, extChanges.Changes, 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 2, *extChanges.Changes[0].Context.OriginalLine)
 	assert.Nil(t, extChanges.Changes[0].Context.NewLine)
@@ -73,6 +75,7 @@ x-test: 1`
 	extChanges := CompareExtensions(lExt, rExt)
 
 	assert.Len(t, extChanges.Changes, 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Nil(t, extChanges.Changes[0].Context.OriginalLine)
 	assert.Equal(t, 2, *extChanges.Changes[0].Context.NewLine)

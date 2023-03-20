@@ -50,6 +50,7 @@ type Document struct {
 	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
 	Security []*base.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
+	//Security []*base.SecurityRequirement `json:"-" yaml:"-"`
 
 	// Tags is a slice of base.Tag instances defined by the specification
 	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on
@@ -70,7 +71,7 @@ type Document struct {
 	// The default value for the $schema keyword within Schema Objects contained within this OAS document.
 	// This MUST be in the form of a URI.
 	// - https://spec.openapis.org/oas/v3.1.0#schema-object
-	JsonSchemaDialect string `json:"$schema,omitempty" yaml:"$schema,omitempty"`
+	JsonSchemaDialect string `json:"jsonSchemaDialect,omitempty" yaml:"jsonSchemaDialect,omitempty"`
 
 	// Webhooks is a 3.1+ property that is similar to callbacks, except, this defines incoming webhooks.
 	// The incoming webhooks that MAY be received as part of this API and that the API consumer MAY choose to implement.

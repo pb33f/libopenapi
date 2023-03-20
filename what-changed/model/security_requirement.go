@@ -15,6 +15,11 @@ type SecurityRequirementChanges struct {
     *PropertyChanges
 }
 
+// GetAllChanges returns a slice of all changes made between SecurityRequirement objects
+func (s *SecurityRequirementChanges) GetAllChanges() []*Change {
+    return s.Changes
+}
+
 // TotalChanges returns the total number of changes between two SecurityRequirement Objects.
 func (s *SecurityRequirementChanges) TotalChanges() int {
     return s.PropertyChanges.TotalChanges()

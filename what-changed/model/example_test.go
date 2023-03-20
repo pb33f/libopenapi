@@ -34,6 +34,7 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.SummaryLabel, extChanges.Changes[0].Property)
@@ -66,6 +67,7 @@ func TestCompareExamples_Map(t *testing.T) {
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 2)
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 }
@@ -94,6 +96,7 @@ func TestCompareExamples_MapAdded(t *testing.T) {
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -147,6 +150,7 @@ description: cure all`
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.DescriptionLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, "cure all", extChanges.Changes[0].New)
@@ -173,6 +177,7 @@ x-herbs: cure all`
 	extChanges := CompareExamples(&lDoc, &rDoc)
 
 	assert.Equal(t, extChanges.TotalChanges(), 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
 	assert.Equal(t, "x-herbs", extChanges.ExtensionChanges.Changes[0].Property)
 	assert.Equal(t, "cure all", extChanges.ExtensionChanges.Changes[0].New)

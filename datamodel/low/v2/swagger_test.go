@@ -20,7 +20,10 @@ func initTest() {
     data, _ := ioutil.ReadFile("../../../test_specs/petstorev2-complete.yaml")
     info, _ := datamodel.ExtractSpecInfo(data)
     var err []error
-    doc, err = CreateDocument(info)
+    doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+        AllowFileReferences:   false,
+        AllowRemoteReferences: false,
+    })
     wait := true
     for wait {
         select {
@@ -38,7 +41,10 @@ func BenchmarkCreateDocument(b *testing.B) {
     data, _ := ioutil.ReadFile("../../../test_specs/petstorev2-complete.yaml")
     info, _ := datamodel.ExtractSpecInfo(data)
     for i := 0; i < b.N; i++ {
-        doc, _ = CreateDocument(info)
+        doc, _ = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+            AllowFileReferences:   false,
+            AllowRemoteReferences: false,
+        })
     }
 }
 

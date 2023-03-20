@@ -84,6 +84,7 @@ x-windows: washed
 	// compare.
 	extChanges := ComparePaths(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -123,6 +124,7 @@ x-windows: dirty
 	// compare.
 	extChanges := ComparePaths(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/crispy/chips", extChanges.Changes[0].New)
@@ -164,6 +166,7 @@ x-windows: dirty
 	// compare.
 	extChanges := ComparePaths(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/crispy/chips", extChanges.Changes[0].Original)
@@ -240,6 +243,7 @@ x-windows: washed
 	// compare.
 	extChanges := ComparePaths(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -286,6 +290,7 @@ x-windows: dirty`
 	// compare.
 	extChanges := ComparePaths(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/mushy/peas", extChanges.Changes[0].New)
@@ -334,6 +339,7 @@ x-windows: dirty`
 	// compare.
 	extChanges := ComparePaths(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/mushy/peas", extChanges.Changes[0].Original)

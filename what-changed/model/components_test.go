@@ -75,6 +75,7 @@ thing2:
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 
 }
@@ -113,6 +114,7 @@ thing3:
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 
@@ -152,6 +154,7 @@ thing3:
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "thing3", extChanges.Changes[0].Original)
@@ -190,6 +193,7 @@ param4:
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "param4", extChanges.Changes[0].New)
@@ -228,6 +232,7 @@ param4:
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "param4", extChanges.Changes[0].Original)
@@ -263,6 +268,7 @@ resp3:
 	extChanges := CompareComponents(&lDoc, &rDoc)
 
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, "resp3", extChanges.Changes[0].New)
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
@@ -299,6 +305,7 @@ resp3:
 	extChanges := CompareComponents(&rDoc, &lDoc)
 
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, "resp3", extChanges.Changes[0].Original)
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
@@ -330,6 +337,7 @@ scheme2:
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, 1, extChanges.SecuritySchemeChanges["scheme1"].TotalChanges())
 	assert.Equal(t, v3.DescriptionLabel, extChanges.SecuritySchemeChanges["scheme1"].Changes[0].Property)
@@ -1088,4 +1096,5 @@ func TestCompareComponents_OpenAPI_Extensions_Modified(t *testing.T) {
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 }

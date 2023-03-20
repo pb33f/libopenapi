@@ -16,6 +16,19 @@ type TagChanges struct {
     ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Tag objects
+func (t *TagChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, t.Changes...)
+    if t.ExternalDocs != nil {
+        changes = append(changes, t.ExternalDocs.GetAllChanges()...)
+    }
+    if t.ExtensionChanges != nil {
+        changes = append(changes, t.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns a count of everything that changed within tags.
 func (t *TagChanges) TotalChanges() int {
     c := t.PropertyChanges.TotalChanges()

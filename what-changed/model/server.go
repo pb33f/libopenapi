@@ -14,6 +14,16 @@ type ServerChanges struct {
     ServerVariableChanges map[string]*ServerVariableChanges `json:"serverVariables,omitempty" yaml:"serverVariables,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between SecurityRequirement objects
+func (s *ServerChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, s.Changes...)
+    for k := range s.ServerVariableChanges {
+        changes = append(changes, s.ServerVariableChanges[k].GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns total changes found between two OpenAPI Server Objects
 func (s *ServerChanges) TotalChanges() int {
     c := s.PropertyChanges.TotalChanges()

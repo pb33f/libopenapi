@@ -14,7 +14,7 @@ import (
 type RequestBody struct {
 	Description string                `json:"description,omitempty" yaml:"description,omitempty"`
 	Content     map[string]*MediaType `json:"content,omitempty" yaml:"content,omitempty"`
-	Required    bool                  `json:"required,omitempty" yaml:"required,omitempty"`
+	Required    *bool                 `json:"required,omitempty" yaml:"required,renderZero,omitempty"`
 	Extensions  map[string]any        `json:"-" yaml:"-"`
 	low         *low.RequestBody
 }
@@ -24,7 +24,9 @@ func NewRequestBody(rb *low.RequestBody) *RequestBody {
 	r := new(RequestBody)
 	r.low = rb
 	r.Description = rb.Description.Value
-	r.Required = rb.Required.Value
+	if rb.Required.ValueNode != nil {
+		r.Required = &rb.Required.Value
+	}
 	r.Extensions = high.ExtractExtensions(rb.Extensions)
 	r.Content = ExtractContent(rb.Content.Value)
 	return r

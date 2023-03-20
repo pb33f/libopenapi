@@ -18,6 +18,28 @@ type OAuthFlowsChanges struct {
     ExtensionChanges         *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between OAuthFlows objects
+func (o *OAuthFlowsChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, o.Changes...)
+    if o.ImplicitChanges != nil {
+        changes = append(changes, o.ImplicitChanges.GetAllChanges()...)
+    }
+    if o.PasswordChanges != nil {
+        changes = append(changes, o.PasswordChanges.GetAllChanges()...)
+    }
+    if o.ClientCredentialsChanges != nil {
+        changes = append(changes, o.ClientCredentialsChanges.GetAllChanges()...)
+    }
+    if o.AuthorizationCodeChanges != nil {
+        changes = append(changes, o.AuthorizationCodeChanges.GetAllChanges()...)
+    }
+    if o.ExtensionChanges != nil {
+        changes = append(changes, o.ImplicitChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the number of changes made between two OAuthFlows instances.
 func (o *OAuthFlowsChanges) TotalChanges() int {
     c := o.PropertyChanges.TotalChanges()
@@ -135,6 +157,16 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 type OAuthFlowChanges struct {
     *PropertyChanges
     ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+}
+
+// GetAllChanges returns a slice of all changes made between OAuthFlow objects
+func (o *OAuthFlowChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, o.Changes...)
+    if o.ExtensionChanges != nil {
+        changes = append(changes, o.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
 }
 
 // TotalChanges returns the total number of changes made between two OAuthFlow objects

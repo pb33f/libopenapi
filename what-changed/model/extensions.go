@@ -13,6 +13,11 @@ type ExtensionChanges struct {
     *PropertyChanges
 }
 
+// GetAllChanges returns a slice of all changes made between Extension objects
+func (e *ExtensionChanges) GetAllChanges() []*Change {
+    return e.Changes
+}
+
 // TotalChanges returns the total number of object extensions that were made.
 func (e *ExtensionChanges) TotalChanges() int {
     return e.PropertyChanges.TotalChanges()

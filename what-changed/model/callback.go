@@ -27,6 +27,19 @@ func (c *CallbackChanges) TotalChanges() int {
     return d
 }
 
+// GetAllChanges returns a slice of all changes made between Callback objects
+func (c *CallbackChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, c.Changes...)
+    for k := range c.ExpressionChanges {
+        changes = append(changes, c.ExpressionChanges[k].GetAllChanges()...)
+    }
+    if c.ExtensionChanges != nil {
+        changes = append(changes, c.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalBreakingChanges returns a total count of all changes made between Callback objects
 func (c *CallbackChanges) TotalBreakingChanges() int {
     d := c.PropertyChanges.TotalBreakingChanges()

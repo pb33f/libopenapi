@@ -83,6 +83,7 @@ variables:
     // compare.
     extChanges := CompareServers(&lDoc, &rDoc)
     assert.Equal(t, 3, extChanges.TotalChanges())
+
     assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
 
@@ -120,6 +121,7 @@ variables:
     // compare.
     extChanges := CompareServers(&lDoc, &rDoc)
     assert.Equal(t, 2, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 2)
     assert.Equal(t, 0, extChanges.TotalBreakingChanges())
     assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
     assert.Equal(t, ObjectAdded, extChanges.ServerVariableChanges["thing"].Changes[0].ChangeType)
@@ -159,6 +161,7 @@ variables:
     // compare.
     extChanges := CompareServers(&rDoc, &lDoc)
     assert.Equal(t, 2, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 2)
     assert.Equal(t, 1, extChanges.TotalBreakingChanges())
     assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
     assert.Equal(t, ObjectRemoved, extChanges.ServerVariableChanges["thing"].Changes[0].ChangeType)

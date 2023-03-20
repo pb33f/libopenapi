@@ -13,6 +13,11 @@ type ContactChanges struct {
     *PropertyChanges
 }
 
+// GetAllChanges returns a slice of all changes made between Callback objects
+func (c *ContactChanges) GetAllChanges() []*Change {
+    return c.Changes
+}
+
 // TotalChanges represents the total number of changes that have occurred to a Contact object
 func (c *ContactChanges) TotalChanges() int {
     return c.PropertyChanges.TotalChanges()

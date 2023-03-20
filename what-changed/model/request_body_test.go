@@ -78,5 +78,6 @@ content:
     extChanges := CompareRequestBodies(&lDoc, &rDoc)
 
     assert.Equal(t, 4, extChanges.TotalChanges())
+    assert.Len(t, extChanges.GetAllChanges(), 4)
     assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }

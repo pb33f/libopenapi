@@ -13,6 +13,11 @@ type ExamplesChanges struct {
     *PropertyChanges
 }
 
+// GetAllChanges returns a slice of all changes made between Examples objects
+func (a *ExamplesChanges) GetAllChanges() []*Change {
+    return a.Changes
+}
+
 // TotalChanges represents the total number of changes made between Example instances.
 func (a *ExamplesChanges) TotalChanges() int {
     return a.PropertyChanges.TotalChanges()

@@ -15,6 +15,19 @@ type RequestBodyChanges struct {
     ExtensionChanges *ExtensionChanges            `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between RequestBody objects
+func (rb *RequestBodyChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, rb.Changes...)
+    for k := range rb.ContentChanges {
+        changes = append(changes, rb.ContentChanges[k].GetAllChanges()...)
+    }
+    if rb.ExtensionChanges != nil {
+        changes = append(changes, rb.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes found between two OpenAPI RequestBody objects
 func (rb *RequestBodyChanges) TotalChanges() int {
     c := rb.PropertyChanges.TotalChanges()

@@ -105,6 +105,7 @@ x-thing: ding-a-ling`
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 8, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 8)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 

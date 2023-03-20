@@ -30,6 +30,37 @@ type OperationChanges struct {
 	CallbackChanges    map[string]*CallbackChanges `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Operation objects
+func (o *OperationChanges) GetAllChanges() []*Change {
+	var changes []*Change
+	changes = append(changes, o.Changes...)
+	if o.ExternalDocChanges != nil {
+		changes = append(changes, o.ExternalDocChanges.GetAllChanges()...)
+	}
+	for k := range o.ParameterChanges {
+		changes = append(changes, o.ParameterChanges[k].GetAllChanges()...)
+	}
+	if o.ResponsesChanges != nil {
+		changes = append(changes, o.ResponsesChanges.GetAllChanges()...)
+	}
+	for k := range o.SecurityRequirementChanges {
+		changes = append(changes, o.SecurityRequirementChanges[k].GetAllChanges()...)
+	}
+	if o.RequestBodyChanges != nil {
+		changes = append(changes, o.RequestBodyChanges.GetAllChanges()...)
+	}
+	for k := range o.ServerChanges {
+		changes = append(changes, o.ServerChanges[k].GetAllChanges()...)
+	}
+	for k := range o.CallbackChanges {
+		changes = append(changes, o.CallbackChanges[k].GetAllChanges()...)
+	}
+	if o.ExtensionChanges != nil {
+		changes = append(changes, o.ExtensionChanges.GetAllChanges()...)
+	}
+	return changes
+}
+
 // TotalChanges returns the total number of changes made between two Swagger or OpenAPI Operation objects.
 func (o *OperationChanges) TotalChanges() int {
 	c := o.PropertyChanges.TotalChanges()

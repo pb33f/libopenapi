@@ -70,7 +70,7 @@ type Document interface {
 	// **IMPORTANT** This method only supports OpenAPI Documents. The Swagger model will not support mutations correctly
 	// and will not update when called. This choice has been made because we don't want to continue supporting Swagger,
 	// it's too old, so it should be motivation to upgrade to OpenAPI 3.
-	RenderAndReload() ([]byte, *Document, *DocumentModel[v3high.Document], []error)
+	RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error)
 
 	// Serialize will re-render a Document back into a []byte slice. If any modifications have been made to the
 	// underlying data model using low level APIs, then those changes will be reflected in the serialized output.
@@ -156,7 +156,7 @@ func (d *document) Serialize() ([]byte, error) {
 	}
 }
 
-func (d *document) RenderAndReload() ([]byte, *Document, *DocumentModel[v3high.Document], []error) {
+func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error) {
 	if d.highSwaggerModel != nil && d.highOpenAPI3Model == nil {
 		return nil, nil, nil, []error{errors.New("this method only supports OpenAPI 3 documents, not Swagger")}
 	}
@@ -166,15 +166,15 @@ func (d *document) RenderAndReload() ([]byte, *Document, *DocumentModel[v3high.D
 	}
 	newDoc, err := NewDocument(newBytes)
 	if err != nil {
-		return newBytes, &newDoc, nil, []error{err}
+		return newBytes, newDoc, nil, []error{err}
 	}
 	// build the model.
 	model, errs := newDoc.BuildV3Model()
 	if errs != nil {
-		return newBytes, &newDoc, model, errs
+		return newBytes, newDoc, model, errs
 	}
 	// this document is now dead, long live the new document!
-	return newBytes, &newDoc, model, nil
+	return newBytes, newDoc, model, nil
 }
 
 func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
@@ -278,14 +278,13 @@ func CompareDocuments(original, updated Document) (*model.DocumentChanges, []err
 		}
 		v3ModelRight, errs := updated.BuildV3Model()
 		if len(errs) > 0 {
-			errors = errs
+			errors = append(errors, errs...)
 		}
 		if v3ModelLeft != nil && v3ModelRight != nil {
 			return what_changed.CompareOpenAPIDocuments(v3ModelLeft.Model.GoLow(), v3ModelRight.Model.GoLow()), errors
 		} else {
-			return nil, errs
+			return nil, errors
 		}
-
 	}
 	if original.GetSpecInfo().SpecType == utils.OpenApi2 && updated.GetSpecInfo().SpecType == utils.OpenApi2 {
 		v2ModelLeft, errs := original.BuildV2Model()
@@ -294,13 +293,13 @@ func CompareDocuments(original, updated Document) (*model.DocumentChanges, []err
 		}
 		v2ModelRight, errs := updated.BuildV2Model()
 		if len(errs) > 0 {
-			errors = errs
+			errors = append(errors, errs...)
 		}
 		if v2ModelLeft != nil && v2ModelRight != nil {
 			return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), errors
 		} else {
-			return nil, errs
+			return nil, errors
 		}
 	}
-	return nil, nil
+	return nil, []error{fmt.Errorf("unable to compare documents, one or both documents are not of the same version")}
 }
