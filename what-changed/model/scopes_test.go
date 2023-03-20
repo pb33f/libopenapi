@@ -61,6 +61,7 @@ x-nugget: chicken`
 	// compare.
 	extChanges := CompareScopes(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "pie", extChanges.Changes[0].New)
@@ -89,6 +90,7 @@ x-nugget: chicken`
 	// compare.
 	extChanges := CompareScopes(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "sky", extChanges.Changes[0].New)
@@ -118,6 +120,7 @@ x-nugget: soup`
 	// compare.
 	extChanges := CompareScopes(&rDoc, &lDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "sky", extChanges.Changes[0].Original)

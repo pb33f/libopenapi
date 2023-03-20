@@ -30,6 +30,7 @@ func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 
 }
@@ -56,6 +57,7 @@ propertyName: chicken`
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
@@ -81,6 +83,7 @@ propertyName: chicken`
 	// compare.
 	extChanges := CompareDiscriminator(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
@@ -106,6 +109,7 @@ mapping:
 	// compare.
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 
 	for _, k := range extChanges.MappingChanges {
 		assert.Equal(t, ObjectAdded, k.ChangeType)

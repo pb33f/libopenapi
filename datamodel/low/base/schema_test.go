@@ -1468,6 +1468,31 @@ func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
 	assert.Equal(t, lHash, rHash)
 }
 
+func TestSchema_Hash_AdditionalPropsSliceNoMap(t *testing.T) {
+	left := `schema:
+  additionalProperties:
+    - hello`
+
+	right := `schema:
+  additionalProperties:
+    - hello`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+
+	assert.NotNil(t, lDoc)
+	assert.NotNil(t, rDoc)
+
+	lHash := lDoc.Value.Schema().Hash()
+	rHash := rDoc.Value.Schema().Hash()
+
+	assert.Equal(t, lHash, rHash)
+}
+
 func TestSchema_Hash_NotEqual(t *testing.T) {
 	left := `schema:
   title: an OK message - but different

@@ -66,6 +66,40 @@ func (d *DocumentChanges) TotalChanges() int {
 	return c
 }
 
+// GetAllChanges returns a slice of all changes made between Document objects
+func (d *DocumentChanges) GetAllChanges() []*Change {
+	var changes []*Change
+	changes = append(changes, d.Changes...)
+	if d.InfoChanges != nil {
+		changes = append(changes, d.InfoChanges.GetAllChanges()...)
+	}
+	if d.PathsChanges != nil {
+		changes = append(changes, d.PathsChanges.GetAllChanges()...)
+	}
+	for k := range d.TagChanges {
+		changes = append(changes, d.TagChanges[k].GetAllChanges()...)
+	}
+	if d.ExternalDocChanges != nil {
+		changes = append(changes, d.ExternalDocChanges.GetAllChanges()...)
+	}
+	for k := range d.WebhookChanges {
+		changes = append(changes, d.WebhookChanges[k].GetAllChanges()...)
+	}
+	for k := range d.ServerChanges {
+		changes = append(changes, d.ServerChanges[k].GetAllChanges()...)
+	}
+	for k := range d.SecurityRequirementChanges {
+		changes = append(changes, d.SecurityRequirementChanges[k].GetAllChanges()...)
+	}
+	if d.ComponentsChanges != nil {
+		changes = append(changes, d.ComponentsChanges.GetAllChanges()...)
+	}
+	if d.ExtensionChanges != nil {
+		changes = append(changes, d.ExtensionChanges.GetAllChanges()...)
+	}
+	return changes
+}
+
 // TotalBreakingChanges returns a total count of all breaking changes made in the Document
 func (d *DocumentChanges) TotalBreakingChanges() int {
 	c := d.PropertyChanges.TotalBreakingChanges()

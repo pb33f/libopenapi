@@ -38,6 +38,7 @@ x-testing: hiya!`
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Len(t, extChanges.ExtensionChanges.Changes, 1)
 	assert.Len(t, extChanges.Changes, 2)
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 3, extChanges.TotalChanges())
 
 	// validate property changes
@@ -94,6 +95,7 @@ url: https://quobix.com`
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Len(t, extChanges.ExtensionChanges.Changes, 1)
 	assert.Len(t, extChanges.Changes, 2)
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 
 	// validate property changes
 	urlChange := extChanges.Changes[0]
@@ -169,6 +171,7 @@ x-testing: hello`
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
@@ -194,6 +197,7 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 
@@ -219,6 +223,7 @@ description: something`
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
 
@@ -244,5 +249,6 @@ url: https://pb33f.io`
 	// compare
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }

@@ -50,15 +50,15 @@ func (c *ChangeContext) HasChanged() bool {
     if c.NewLine != nil && c.OriginalLine != nil && *c.NewLine != *c.OriginalLine {
         return true
     }
-    if c.NewColumn != nil && c.OriginalColumn != nil && *c.NewColumn != *c.OriginalColumn {
-        return true
-    }
+    //if c.NewColumn != nil && c.OriginalColumn != nil && *c.NewColumn != *c.OriginalColumn {
+    //    return true
+    //}
     if (c.NewLine == nil && c.OriginalLine != nil) || (c.NewLine != nil && c.OriginalLine == nil) {
         return true
     }
-    if (c.NewColumn == nil && c.OriginalColumn != nil) || (c.NewColumn != nil && c.OriginalColumn == nil) {
-        return true
-    }
+    //if (c.NewColumn == nil && c.OriginalColumn != nil) || (c.NewColumn != nil && c.OriginalColumn == nil) {
+    //    return true
+    //}
     return false
 }
 

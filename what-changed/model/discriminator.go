@@ -26,6 +26,16 @@ func (d *DiscriminatorChanges) TotalChanges() int {
     return l
 }
 
+// GetAllChanges returns a slice of all changes made between Callback objects
+func (c *DiscriminatorChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, c.Changes...)
+    if c.MappingChanges != nil {
+        changes = append(changes, c.MappingChanges...)
+    }
+    return changes
+}
+
 // TotalBreakingChanges returns the number of breaking changes made by the Discriminator
 func (d *DiscriminatorChanges) TotalBreakingChanges() int {
     return d.PropertyChanges.TotalBreakingChanges() + CountBreakingChanges(d.MappingChanges)

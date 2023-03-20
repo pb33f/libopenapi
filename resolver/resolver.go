@@ -72,10 +72,10 @@ func (resolver *Resolver) GetPolymorphicCircularErrors() []*index.CircularRefere
 		if !resolver.circularReferences[i].IsInfiniteLoop {
 			continue
 		}
-
-		if resolver.circularReferences[i].IsPolymorphicResult {
-			res = append(res, resolver.circularReferences[i])
+		if !resolver.circularReferences[i].IsPolymorphicResult {
+			continue
 		}
+		res = append(res, resolver.circularReferences[i])
 	}
 	return res
 }

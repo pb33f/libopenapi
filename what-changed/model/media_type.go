@@ -19,6 +19,25 @@ type MediaTypeChanges struct {
     EncodingChanges  map[string]*EncodingChanges `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between MediaType objects
+func (m *MediaTypeChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, m.Changes...)
+    if m.SchemaChanges != nil {
+        changes = append(changes, m.SchemaChanges.GetAllChanges()...)
+    }
+    for k := range m.ExampleChanges {
+        changes = append(changes, m.ExampleChanges[k].GetAllChanges()...)
+    }
+    for k := range m.EncodingChanges {
+        changes = append(changes, m.EncodingChanges[k].GetAllChanges()...)
+    }
+    if m.ExtensionChanges != nil {
+        changes = append(changes, m.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes between two MediaType instances.
 func (m *MediaTypeChanges) TotalChanges() int {
     c := m.PropertyChanges.TotalChanges()

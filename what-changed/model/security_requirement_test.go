@@ -69,6 +69,7 @@ biscuit:
 	// compare
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "biscuit", extChanges.Changes[0].NewObject)
@@ -101,6 +102,7 @@ biscuit:
 	// compare
 	extChanges := CompareSecurityRequirement(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -133,6 +135,7 @@ milk:
 	// compare
 	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[1].ChangeType)

@@ -18,6 +18,19 @@ type PathsChanges struct {
     ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Paths objects
+func (p *PathsChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, p.Changes...)
+    for k := range p.PathItemsChanges {
+        changes = append(changes, p.PathItemsChanges[k].GetAllChanges()...)
+    }
+    if p.ExtensionChanges != nil {
+        changes = append(changes, p.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes between two Swagger or OpenAPI Paths Objects
 func (p *PathsChanges) TotalChanges() int {
     c := p.PropertyChanges.TotalChanges()

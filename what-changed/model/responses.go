@@ -18,6 +18,22 @@ type ResponsesChanges struct {
     ExtensionChanges *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Responses objects
+func (r *ResponsesChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, r.Changes...)
+    for k := range r.ResponseChanges {
+        changes = append(changes, r.ResponseChanges[k].GetAllChanges()...)
+    }
+    if r.DefaultChanges != nil {
+        changes = append(changes, r.DefaultChanges.GetAllChanges()...)
+    }
+    if r.ExtensionChanges != nil {
+        changes = append(changes, r.ExtensionChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes found between two Swagger or OpenAPI Responses objects
 func (r *ResponsesChanges) TotalChanges() int {
     c := r.PropertyChanges.TotalChanges()

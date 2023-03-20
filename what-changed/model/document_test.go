@@ -85,6 +85,7 @@ produces:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 10, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 10)
 	assert.Equal(t, 6, extChanges.TotalBreakingChanges())
 }
 
@@ -113,6 +114,7 @@ produces:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -141,6 +143,7 @@ basePath: /api`
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 3, extChanges.TotalBreakingChanges())
 }
 
@@ -171,6 +174,7 @@ info:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, 3, extChanges.InfoChanges.TotalChanges())
 }
@@ -196,6 +200,7 @@ info:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.InfoLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
@@ -222,6 +227,7 @@ info:
 	// compare.
 	extChanges := CompareDocuments(rDoc, lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.InfoLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
@@ -248,6 +254,7 @@ externalDocs:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, 2, extChanges.ExternalDocChanges.TotalChanges())
 }
@@ -270,6 +277,7 @@ externalDocs:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
@@ -294,6 +302,7 @@ externalDocs:
 	// compare.
 	extChanges := CompareDocuments(rDoc, lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, extChanges.Changes[0].Property)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
@@ -367,6 +376,7 @@ security:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
 
@@ -399,6 +409,7 @@ definitions:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
 
@@ -459,6 +470,7 @@ securityDefinitions:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -527,6 +539,7 @@ parameters:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -594,6 +607,7 @@ responses:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -657,6 +671,7 @@ paths:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -689,6 +704,7 @@ paths:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
 
@@ -748,6 +764,7 @@ tags:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -801,6 +818,7 @@ jsonSchemaDialect: https://pb33f.io/schema/changed`
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 }
 
@@ -829,6 +847,7 @@ components:
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -858,6 +877,7 @@ components:
 	extChanges := CompareDocuments(rDoc, lDoc)
 
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -897,6 +917,7 @@ paths:
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -969,6 +990,7 @@ components:
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -1000,6 +1022,7 @@ servers:
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -1034,6 +1057,7 @@ components:
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -1072,6 +1096,7 @@ webhooks:
 	extChanges := CompareDocuments(lDoc, rDoc)
 
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -1114,6 +1139,7 @@ paths:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -57,6 +58,31 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 	assert.Len(t, circ, 3)
 	assert.Len(t, resolver.GetResolvingErrors(), 3)
 	assert.Len(t, resolver.GetCircularErrors(), 3)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
+	circular, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+
+	index := index.NewSpecIndexWithConfig(&rootNode, &index.SpecIndexConfig{
+		AllowRemoteLookup: true,
+		AllowFileLookup:   true,
+		BaseURL:           baseURL,
+	})
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0)
+	assert.Len(t, resolver.GetCircularErrors(), 0)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -168,6 +194,37 @@ components:
 
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
+}
+
+func TestResolver_ResolveComponents_PolyCircRef(t *testing.T) {
+	yml := `openapi: 3.1.0
+components:
+  schemas:
+    cheese:
+      description: cheese
+      anyOf:
+        - $ref: '#/components/schemas/crackers' 
+    crackers:
+      description: crackers
+      anyOf:
+       - $ref: '#/components/schemas/cheese'
+    tea:
+      description: tea`
+
+	var rootNode yaml.Node
+	yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	_ = resolver.CheckForCircularReferences()
+	resolver.circularReferences[0].IsInfiniteLoop = true // override
+	assert.Len(t, index.GetCircularReferences(), 1)
+	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 1)
+	assert.Equal(t, 2, index.GetCircularReferences()[0].LoopIndex)
+
 }
 
 func TestResolver_ResolveComponents_Missing(t *testing.T) {

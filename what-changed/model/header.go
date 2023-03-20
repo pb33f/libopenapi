@@ -23,6 +23,28 @@ type HeaderChanges struct {
     ItemsChanges *ItemsChanges `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
+// GetAllChanges returns a slice of all changes made between Header objects
+func (h *HeaderChanges) GetAllChanges() []*Change {
+    var changes []*Change
+    changes = append(changes, h.Changes...)
+    for k := range h.ExamplesChanges {
+        changes = append(changes, h.ExamplesChanges[k].GetAllChanges()...)
+    }
+    for k := range h.ContentChanges {
+        changes = append(changes, h.ContentChanges[k].GetAllChanges()...)
+    }
+    if h.ExtensionChanges != nil {
+        changes = append(changes, h.ExtensionChanges.GetAllChanges()...)
+    }
+    if h.SchemaChanges != nil {
+        changes = append(changes, h.SchemaChanges.GetAllChanges()...)
+    }
+    if h.ItemsChanges != nil {
+        changes = append(changes, h.ItemsChanges.GetAllChanges()...)
+    }
+    return changes
+}
+
 // TotalChanges returns the total number of changes made between two Header objects.
 func (h *HeaderChanges) TotalChanges() int {
     c := h.PropertyChanges.TotalChanges()

@@ -102,6 +102,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -152,6 +153,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "parameters", extChanges.Changes[0].Property)
@@ -205,6 +207,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "parameters", extChanges.Changes[0].Property)
@@ -264,6 +267,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -321,6 +325,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "jummy", extChanges.Changes[0].Original)
@@ -378,6 +383,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[1].ChangeType)
@@ -435,6 +441,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.TagsLabel, extChanges.Changes[0].Property)
@@ -471,6 +478,7 @@ schemes:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 6, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 6)
 	assert.Equal(t, 3, extChanges.TotalBreakingChanges())
 }
 
@@ -504,6 +512,7 @@ responses:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ResponsesChanges.ResponseChanges["200"].Changes[0].ChangeType)
 	assert.Equal(t, Modified, extChanges.ExternalDocChanges.Changes[0].ChangeType)
@@ -545,6 +554,7 @@ responses:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
@@ -574,6 +584,7 @@ responses:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[1].ChangeType)
@@ -605,6 +616,7 @@ responses:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[1].ChangeType)
@@ -640,6 +652,7 @@ security:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "crap", extChanges.SecurityRequirementChanges[0].Changes[0].New)
@@ -676,6 +689,7 @@ security:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "crap", extChanges.SecurityRequirementChanges[0].Changes[0].Original)
@@ -714,6 +728,7 @@ security:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "thongs", extChanges.Changes[0].New)
@@ -752,6 +767,7 @@ security:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "thongs", extChanges.Changes[0].Original)
@@ -831,6 +847,7 @@ func TestCompareOperations_V3_ModifyParam(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ParameterChanges[0].Changes[0].ChangeType)
 }
@@ -864,6 +881,7 @@ func TestCompareOperations_V3_AddParam(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -897,6 +915,7 @@ func TestCompareOperations_V3_RemoveParam(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -926,6 +945,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -955,6 +975,7 @@ parameters:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -985,6 +1006,7 @@ func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.ServerChanges[0].Changes[0].ChangeType)
 }
@@ -1018,6 +1040,7 @@ func TestCompareOperations_V3_ModifyCallback(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.
 		CallbackChanges["myCallback"].
@@ -1058,6 +1081,7 @@ func TestCompareOperations_V3_AddCallback(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -1092,6 +1116,7 @@ callbacks:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -1126,6 +1151,7 @@ callbacks:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -1163,6 +1189,7 @@ func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -1191,6 +1218,7 @@ func TestCompareOperations_V3_AddServer(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.ServerChanges[0].Changes[0].ChangeType)
 }
@@ -1219,6 +1247,7 @@ func TestCompareOperations_V3_RemoveServer(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.ServerChanges[0].Changes[0].ChangeType)
 }
@@ -1247,6 +1276,7 @@ servers:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.ServerChanges[0].Changes[0].ChangeType)
 }
@@ -1275,6 +1305,7 @@ servers:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.ServerChanges[0].Changes[0].ChangeType)
 }
@@ -1307,6 +1338,7 @@ security:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
 }
@@ -1335,6 +1367,7 @@ security:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Empty(t, extChanges.SecurityRequirementChanges)
 }
@@ -1363,6 +1396,7 @@ security: []`
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Empty(t, extChanges.SecurityRequirementChanges)
 }
@@ -1390,6 +1424,7 @@ func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.RequestBodyChanges.Changes[0].ChangeType)
 }
@@ -1417,6 +1452,7 @@ requestBody:
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
@@ -1442,6 +1478,7 @@ func TestCompareOperations_V3_ModifyExtension(t *testing.T) {
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ExtensionChanges.Changes[0].ChangeType)
 }
@@ -1469,6 +1506,7 @@ requestBody:
 	// compare.
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 }
