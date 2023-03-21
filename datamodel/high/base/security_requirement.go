@@ -76,14 +76,16 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 		i++
 	}
 	i = 0
-	for k := range s.low.Requirements.Value {
-		if k.Value == keys[i].key {
-			gh := s.low.Requirements.Value[k]
-			keys[i].line = k.KeyNode.Line
-			keys[i].lowKey = &k
-			keys[i].lowVal = &gh
+	if s.low != nil {
+		for k := range s.low.Requirements.Value {
+			if k.Value == keys[i].key {
+				gh := s.low.Requirements.Value[k]
+				keys[i].line = k.KeyNode.Line
+				keys[i].lowKey = &k
+				keys[i].lowVal = &gh
+			}
+			i++
 		}
-		i++
 	}
 	sort.Slice(keys, func(i, j int) bool {
 		return keys[i].line < keys[j].line
@@ -102,12 +104,14 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 		reqs := make([]*req, len(keys[k].val))
 		for t := range keys[k].val {
 			reqs[t] = &req{val: keys[k].val[t], line: 9999 + t}
-			for _ = range keys[k].lowVal.Value[t].Value {
-				fh := keys[k].val[t]
-				df := keys[k].lowVal.Value[t].Value
-				if fh == df {
-					reqs[t].line = keys[k].lowVal.Value[t].ValueNode.Line
-					break
+			if keys[k].lowVal != nil {
+				for _ = range keys[k].lowVal.Value[t].Value {
+					fh := keys[k].val[t]
+					df := keys[k].lowVal.Value[t].Value
+					if fh == df {
+						reqs[t].line = keys[k].lowVal.Value[t].ValueNode.Line
+						break
+					}
 				}
 			}
 		}
