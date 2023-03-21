@@ -71,30 +71,31 @@ func (k key) MarshalYAML() (interface{}, error) {
 }
 
 type test1 struct {
-    Thing      string              `yaml:"thing,omitempty"`
-    Thong      int                 `yaml:"thong,omitempty"`
-    Thrum      int64               `yaml:"thrum,omitempty"`
-    Thang      float32             `yaml:"thang,omitempty"`
-    Thung      float64             `yaml:"thung,omitempty"`
-    Thyme      bool                `yaml:"thyme,omitempty"`
-    Thurm      any                 `yaml:"thurm,omitempty"`
-    Thugg      *bool               `yaml:"thugg,omitempty"`
-    Thurr      *int64              `yaml:"thurr,omitempty"`
-    Thral      *float64            `yaml:"thral,omitempty"`
-    Tharg      []string            `yaml:"tharg,omitempty"`
-    Type       []string            `yaml:"type,omitempty"`
-    Throg      []*key              `yaml:"throg,omitempty"`
-    Thrug      map[string]string   `yaml:"thrug,omitempty"`
-    Thoom      []map[string]string `yaml:"thoom,omitempty"`
-    Thomp      map[key]string      `yaml:"thomp,omitempty"`
-    Thump      key                 `yaml:"thump,omitempty"`
-    Thane      key                 `yaml:"thane,omitempty"`
-    Thunk      key                 `yaml:"thunk,omitempty"`
-    Thrim      *key                `yaml:"thrim,omitempty"`
-    Thril      map[string]*key     `yaml:"thril,omitempty"`
-    Extensions map[string]any      `yaml:"-"`
-    ignoreMe   string              `yaml:"-"`
-    IgnoreMe   string              `yaml:"-"`
+    Thing      string                `yaml:"thing,omitempty"`
+    Thong      int                   `yaml:"thong,omitempty"`
+    Thrum      int64                 `yaml:"thrum,omitempty"`
+    Thang      float32               `yaml:"thang,omitempty"`
+    Thung      float64               `yaml:"thung,omitempty"`
+    Thyme      bool                  `yaml:"thyme,omitempty"`
+    Thurm      any                   `yaml:"thurm,omitempty"`
+    Thugg      *bool                 `yaml:"thugg,omitempty"`
+    Thurr      *int64                `yaml:"thurr,omitempty"`
+    Thral      *float64              `yaml:"thral,omitempty"`
+    Tharg      []string              `yaml:"tharg,omitempty"`
+    Type       []string              `yaml:"type,omitempty"`
+    Throg      []*key                `yaml:"throg,omitempty"`
+    Thrag      []map[string][]string `yaml:"thrag,omitempty"`
+    Thrug      map[string]string     `yaml:"thrug,omitempty"`
+    Thoom      []map[string]string   `yaml:"thoom,omitempty"`
+    Thomp      map[key]string        `yaml:"thomp,omitempty"`
+    Thump      key                   `yaml:"thump,omitempty"`
+    Thane      key                   `yaml:"thane,omitempty"`
+    Thunk      key                   `yaml:"thunk,omitempty"`
+    Thrim      *key                  `yaml:"thrim,omitempty"`
+    Thril      map[string]*key       `yaml:"thril,omitempty"`
+    Extensions map[string]any        `yaml:"-"`
+    ignoreMe   string                `yaml:"-"`
+    IgnoreMe   string                `yaml:"-"`
 }
 
 func (te *test1) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
@@ -647,5 +648,29 @@ func TestNewNodeBuilder_TestStructDefaultEncode(t *testing.T) {
 
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
+
+func TestNewNodeBuilder_TestSliceMapSliceStruct(t *testing.T) {
+
+    a := []map[string][]string{
+        {"pizza": {"beer", "wine"}},
+    }
+
+    t1 := test1{
+        Thrag: a,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thrag:
+    - pizza:
+        - beer
+        - wine`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
 
 
