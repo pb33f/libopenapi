@@ -18,7 +18,10 @@ func TestNewSecurityRequirement(t *testing.T) {
 
 	yml := `pizza:
     - cheese
-    - tomato`
+    - tomato
+cake:
+    - icing
+    - sponge`
 
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
@@ -30,9 +33,10 @@ func TestNewSecurityRequirement(t *testing.T) {
 	highExt := NewSecurityRequirement(&lowExt)
 
 	assert.Len(t, highExt.Requirements["pizza"], 2)
+	assert.Len(t, highExt.Requirements["cake"], 2)
 
 	wentLow := highExt.GoLow()
-	assert.Len(t, wentLow.Requirements.Value, 1)
+	assert.Len(t, wentLow.Requirements.Value, 2)
 	assert.NotNil(t, highExt.GoLowUntyped())
 
 	// render the high-level object as YAML

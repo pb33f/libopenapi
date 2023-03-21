@@ -152,16 +152,15 @@ info:
 
 func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 
-	bs, _ := ioutil.ReadFile("test_specs/burgershop.openapi.yaml")
+	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 	doc, _ := NewDocument(bs)
 	doc.BuildV3Model()
 
 	rend, newDoc, _, _ := doc.RenderAndReload()
-	os.WriteFile("rendered-bs.yaml", rend, 0644)
 
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
-	
+
 	// should noth be nil.
 	assert.Nil(t, errs)
 	assert.NotNil(t, rend)
@@ -171,13 +170,11 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 
 func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
-	bs, _ := ioutil.ReadFile("test_specs/stripe.yaml")
+	bs, _ := os.ReadFile("test_specs/stripe.yaml")
 	doc, _ := NewDocument(bs)
 	doc.BuildV3Model()
 
-	b, newDoc, _, _ := doc.RenderAndReload()
-
-	os.WriteFile("rendered-data.yaml", b, 0644)
+	_, newDoc, _, _ := doc.RenderAndReload()
 
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
