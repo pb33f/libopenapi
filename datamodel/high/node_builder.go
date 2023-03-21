@@ -432,48 +432,35 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
         for i := 0; i < m.Len(); i++ {
 
             sqi := m.Index(i).Interface()
+
+            // check if this is a reference.
             if glu, ok := sqi.(GoesLowUntyped); ok {
                 if glu != nil {
                     ut := glu.GoLowUntyped()
-
                     if !reflect.ValueOf(ut).IsNil() {
-
                         r := ut.(low.IsReferenced)
                         if ut != nil && r.GetReference() != "" &&
                             ut.(low.IsReferenced).IsReference() {
-
-                            rt := utils.CreateEmptyMapNode()
-
-                            nodes := make([]*yaml.Node, 2)
-                            nodes[0] = utils.CreateStringNode("$ref")
-                            nodes[1] = utils.CreateStringNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
-                            rt.Content = append(rt.Content, nodes...)
-                            sl.Content = append(sl.Content, rt)
+                            refNode := utils.CreateRefNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
+                            sl.Content = append(sl.Content, refNode)
                             skip = true
-
-                        } else {
-
-                            // TODO: pick up here in the AM looks like we need to correctly handle
-                            
-                            if er, ko := sqi.(Renderable); ko {
-                                rend, _ := er.(Renderable).MarshalYAML()
-                                sl.Content = append(sl.Content, rend.(*yaml.Node))
-                                skip = true
-                            }
-
-                            //}
                         }
                     }
                 }
-            } else {
+            }
+            if !skip {
                 if er, ko := sqi.(Renderable); ko {
                     rend, _ := er.(Renderable).MarshalYAML()
-                    sl.Content = append(sl.Content, rend.(*yaml.Node))
-                    skip = true
+                    // check if this is a pointer or not.
+                    if _, ok := rend.(*yaml.Node); ok {
+                        sl.Content = append(sl.Content, rend.(*yaml.Node))
+                    }
+                    if _, ok := rend.(yaml.Node); ok {
+                        k := rend.(yaml.Node)
+                        sl.Content = append(sl.Content, &k)
+                    }
                 }
-
             }
-
         }
 
         if len(sl.Content) > 0 {
