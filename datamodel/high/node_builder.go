@@ -286,19 +286,12 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 
     case reflect.String:
         val := value.(string)
-        if val == "" && !entry.RenderZero {
-            return parent
-        }
-
         valueNode = utils.CreateStringNode(val)
         valueNode.Line = line
         break
 
     case reflect.Bool:
         val := value.(bool)
-        if !val && !entry.RenderZero {
-            return parent
-        }
         if !val {
             valueNode = utils.CreateBoolNode("false")
         } else {
@@ -487,6 +480,10 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
             valueNode = r.GetValueNode()
             break
         }
+        if r, ok := value.(low.NodeReference[string]); ok {
+            valueNode = r.GetValueNode()
+            break
+        }
         return parent
 
     case reflect.Ptr:
@@ -554,18 +551,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 
     default:
         panic("not supported yet")
-        //vo := reflect.ValueOf(value)
-        //if vo.IsNil() {
-        //    return parent
-        //}
-        //var rawNode yaml.Node
-        //err := rawNode.Encode(value)
-        //if err != nil {
-        //    return parent
-        //} else {
-        //    valueNode = &rawNode
-        //    valueNode.Line = line
-        //}
     }
     if valueNode == nil {
         return parent

@@ -71,25 +71,25 @@ func (k key) MarshalYAML() (interface{}, error) {
 }
 
 type test1 struct {
-    Thing      string                `yaml:"thing,omitempty"`
-    Thong      int                   `yaml:"thong,omitempty"`
-    Thrum      int64                 `yaml:"thrum,omitempty"`
-    Thang      float32               `yaml:"thang,omitempty"`
-    Thung      float64               `yaml:"thung,omitempty"`
-    Thyme      bool                  `yaml:"thyme,omitempty"`
-    Thurm      any                   `yaml:"thurm,omitempty"`
-    Thugg      *bool                 `yaml:"thugg,omitempty"`
-    Thurr      *int64                `yaml:"thurr,omitempty"`
-    Thral      *float64              `yaml:"thral,omitempty"`
-    Tharg      []string              `yaml:"tharg,omitempty"`
-    Type       []string              `yaml:"type,omitempty"`
-    Throg      []*key                `yaml:"throg,omitempty"`
-    Thrag      []map[string][]string `yaml:"thrag,omitempty"`
-    Thrug      map[string]string     `yaml:"thrug,omitempty"`
-    Thoom      []map[string]string   `yaml:"thoom,omitempty"`
-    Thomp      map[key]string        `yaml:"thomp,omitempty"`
-    Thump      key                   `yaml:"thump,omitempty"`
-    Thane      key                   `yaml:"thane,omitempty"`
+    Thing string                `yaml:"thing,omitempty"`
+    Thong int                   `yaml:"thong,omitempty"`
+    Thrum int64                 `yaml:"thrum,omitempty"`
+    Thang float32               `yaml:"thang,omitempty"`
+    Thung float64               `yaml:"thung,omitempty"`
+    Thyme bool                  `yaml:"thyme,omitempty"`
+    Thurm any                   `yaml:"thurm,omitempty"`
+    Thugg *bool                 `yaml:"thugg,renderZero"`
+    Thurr *int64                `yaml:"thurr,omitempty"`
+    Thral *float64              `yaml:"thral,omitempty"`
+    Tharg []string              `yaml:"tharg,omitempty"`
+    Type  []string              `yaml:"type,omitempty"`
+    Throg []*key                `yaml:"throg,omitempty"`
+    Thrag []map[string][]string `yaml:"thrag,omitempty"`
+    Thrug map[string]string     `yaml:"thrug,omitempty"`
+    Thoom []map[string]string   `yaml:"thoom,omitempty"`
+    Thomp map[key]string        `yaml:"thomp,omitempty"`
+    Thump key                   `yaml:"thump,omitempty"`
+    Thane key                   `yaml:"thane,omitempty"`
     Thunk      key                   `yaml:"thunk,omitempty"`
     Thrim      *key                  `yaml:"thrim,omitempty"`
     Thril      map[string]*key       `yaml:"thril,omitempty"`
@@ -321,12 +321,32 @@ func TestNewNodeBuilder_EmptyString(t *testing.T) {
     assert.Nil(t, node)
 }
 
+func TestNewNodeBuilder_EmptyStringRenderZero(t *testing.T) {
+    t1 := new(test1)
+    nodeEnty := NodeEntry{RenderZero: true, Value: ""}
+    nb := NewNodeBuilder(t1, t1)
+    m := utils.CreateEmptyMapNode()
+    node := nb.AddYAMLNode(m, &nodeEnty)
+    assert.NotNil(t, node)
+}
+
 func TestNewNodeBuilder_Bool(t *testing.T) {
     t1 := new(test1)
     nb := NewNodeBuilder(t1, t1)
     nodeEnty := NodeEntry{}
     node := nb.AddYAMLNode(nil, &nodeEnty)
     assert.Nil(t, node)
+}
+
+func TestNewNodeBuilder_BoolRenderZero(t *testing.T) {
+    type yui struct {
+        Thrit bool `yaml:"thrit,renderZero"`
+    }
+    t1 := new(yui)
+    t1.Thrit = false
+    nb := NewNodeBuilder(t1, t1)
+    r := nb.Render()
+    assert.NotNil(t, r)
 }
 
 func TestNewNodeBuilder_Int(t *testing.T) {
@@ -373,6 +393,15 @@ func TestNewNodeBuilder_Float64(t *testing.T) {
     assert.Equal(t, "1234.232323", node.Content[1].Value)
 }
 
+func TestNewNodeBuilder_EmptyNode(t *testing.T) {
+    t1 := new(test1)
+    nb := NewNodeBuilder(t1, t1)
+    nb.Nodes = nil
+    m := nb.Render()
+    assert.Len(t, m.Content, 0)
+
+}
+
 func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
 
     t1 := test1{
@@ -382,7 +411,8 @@ func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
     }
 
     type test1low struct {
-        Thrug key `yaml:"thrug"`
+        Thrug key   `yaml:"thrug"`
+        Thugg *bool `yaml:"thugg"`
     }
 
     t2 := test1low{
@@ -414,7 +444,8 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
     }
 
     type test1low struct {
-        Thomp key `yaml:"thomp"`
+        Thomp key   `yaml:"thomp"`
+        Thugg *bool `yaml:"thugg"`
     }
 
     t2 := test1low{
@@ -452,21 +483,81 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
     }
 
     type test1low struct {
-        Thomp key `yaml:"thomp"`
+        Thomp low.NodeReference[map[key]string] `yaml:"thomp"`
+        Thugg *bool                             `yaml:"thugg"`
+    }
+
+    g := low.NodeReference[map[key]string]{
+        Value: map[key]string{
+            {v: "my", kn: utils.CreateStringNode("limes")}: "princess",
+        },
     }
 
     t2 := test1low{
-        Thomp: key{
-            v: map[key]string{
-                {
-                    v: key{
-                        v:  "ice",
-                        kn: utils.CreateStringNode("limes"),
-                    },
-                    kn: utils.CreateStringNode("meddy"),
-                    ln: 6}: "princess",
-            },
-            ln: 2,
+        Thomp: g,
+    }
+
+    nb := NewNodeBuilder(&t1, &t2)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thomp:
+    meddy: princess`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatchKeyNode(t *testing.T) {
+
+    t1 := test1{
+        Thomp: map[key]string{
+            {v: "who"}: "princess",
+        },
+    }
+
+    type test1low struct {
+        Thomp low.NodeReference[map[key]string] `yaml:"thomp"`
+        Thugg *bool                             `yaml:"thugg"`
+    }
+
+    g := low.NodeReference[map[key]string]{
+        Value: map[key]string{
+            {v: "my", kn: utils.CreateStringNode("limes")}: "princess",
+        },
+    }
+
+    t2 := test1low{
+        Thomp: g,
+    }
+
+    nb := NewNodeBuilder(&t1, &t2)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thomp:
+    meddy: princess`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch_NoWrap(t *testing.T) {
+
+    t1 := test1{
+        Thomp: map[key]string{
+            {v: "who"}: "princess",
+        },
+    }
+
+    type test1low struct {
+        Thomp map[key]string `yaml:"thomp"`
+        Thugg *bool          `yaml:"thugg"`
+    }
+
+    t2 := test1low{
+        Thomp: map[key]string{
+            {v: "my", kn: utils.CreateStringNode("meddy")}: "princess",
         },
     }
 
@@ -632,6 +723,30 @@ func TestNewNodeBuilder_TestStructPointer(t *testing.T) {
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
+func TestNewNodeBuilder_TestStructRef(t *testing.T) {
+
+    fkn := utils.CreateStringNode("pizzaBurgers")
+    fkn.Line = 22
+
+    t1 := test1{
+        Thurm: low.NodeReference[string]{
+            Reference:     "#/cash/money",
+            ReferenceNode: true,
+            KeyNode:       fkn,
+            ValueNode:     fkn,
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thurm: pizzaBurgers`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
 func TestNewNodeBuilder_TestStructDefaultEncode(t *testing.T) {
 
     f := 1
@@ -672,5 +787,20 @@ func TestNewNodeBuilder_TestSliceMapSliceStruct(t *testing.T) {
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
+func TestNewNodeBuilder_TestRenderZero(t *testing.T) {
 
+    f := false
+    t1 := test1{
+        Thugg: &f,
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thugg: false`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
 
