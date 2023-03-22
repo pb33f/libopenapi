@@ -70,26 +70,31 @@ func (k key) MarshalYAML() (interface{}, error) {
     return utils.CreateStringNode("pizza"), nil
 }
 
+type plug struct {
+    Name []string `yaml:"name,omitempty"`
+}
+
 type test1 struct {
-    Thing string                `yaml:"thing,omitempty"`
-    Thong int                   `yaml:"thong,omitempty"`
-    Thrum int64                 `yaml:"thrum,omitempty"`
-    Thang float32               `yaml:"thang,omitempty"`
-    Thung float64               `yaml:"thung,omitempty"`
-    Thyme bool                  `yaml:"thyme,omitempty"`
-    Thurm any                   `yaml:"thurm,omitempty"`
-    Thugg *bool                 `yaml:"thugg,renderZero"`
-    Thurr *int64                `yaml:"thurr,omitempty"`
-    Thral *float64              `yaml:"thral,omitempty"`
-    Tharg []string              `yaml:"tharg,omitempty"`
-    Type  []string              `yaml:"type,omitempty"`
-    Throg []*key                `yaml:"throg,omitempty"`
-    Thrag []map[string][]string `yaml:"thrag,omitempty"`
-    Thrug map[string]string     `yaml:"thrug,omitempty"`
-    Thoom []map[string]string   `yaml:"thoom,omitempty"`
-    Thomp map[key]string        `yaml:"thomp,omitempty"`
-    Thump key                   `yaml:"thump,omitempty"`
-    Thane key                   `yaml:"thane,omitempty"`
+    Thrig      map[string]*plug      `yaml:"thrig,omitempty"`
+    Thing      string                `yaml:"thing,omitempty"`
+    Thong      int                   `yaml:"thong,omitempty"`
+    Thrum      int64                 `yaml:"thrum,omitempty"`
+    Thang      float32               `yaml:"thang,omitempty"`
+    Thung      float64               `yaml:"thung,omitempty"`
+    Thyme      bool                  `yaml:"thyme,omitempty"`
+    Thurm      any                   `yaml:"thurm,omitempty"`
+    Thugg      *bool                 `yaml:"thugg,renderZero"`
+    Thurr      *int64                `yaml:"thurr,omitempty"`
+    Thral      *float64              `yaml:"thral,omitempty"`
+    Tharg      []string              `yaml:"tharg,omitempty"`
+    Type       []string              `yaml:"type,omitempty"`
+    Throg      []*key                `yaml:"throg,omitempty"`
+    Thrag      []map[string][]string `yaml:"thrag,omitempty"`
+    Thrug      map[string]string     `yaml:"thrug,omitempty"`
+    Thoom      []map[string]string   `yaml:"thoom,omitempty"`
+    Thomp      map[key]string        `yaml:"thomp,omitempty"`
+    Thump      key                   `yaml:"thump,omitempty"`
+    Thane      key                   `yaml:"thane,omitempty"`
     Thunk      key                   `yaml:"thunk,omitempty"`
     Thrim      *key                  `yaml:"thrim,omitempty"`
     Thril      map[string]*key       `yaml:"thril,omitempty"`
@@ -803,4 +808,69 @@ func TestNewNodeBuilder_TestRenderZero(t *testing.T) {
 
     assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
+
+func TestNewNodeBuilder_TestRenderServerVariableSimulation(t *testing.T) {
+
+    t1 := test1{
+        Thrig: map[string]*plug{
+            "pork": {Name: []string{"gammon", "bacon"}},
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t1)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thrig:
+    pork:
+        name:
+            - gammon
+            - bacon`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_ShouldHaveNotDoneTestsLikeThisOhWell(t *testing.T) {
+
+    m := make(map[low.KeyReference[string]]low.ValueReference[*key])
+
+    m[low.KeyReference[string]{
+        KeyNode: utils.CreateStringNode("pizza"),
+        Value:   "pizza",
+    }] = low.ValueReference[*key]{
+        ValueNode: utils.CreateStringNode("beer"),
+        Value:     &key{},
+    }
+
+    d := make(map[string]*key)
+    d["pizza"] = &key{}
+
+    type t1low struct {
+        Thril low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*key]]
+        Thugg *bool `yaml:"thugg"`
+    }
+
+    t1 := test1{
+        Thril: d,
+    }
+
+    t2 := t1low{
+        Thril: low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*key]]{
+            Value:     m,
+            ValueNode: utils.CreateStringNode("beer"),
+        },
+    }
+
+    nb := NewNodeBuilder(&t1, &t2)
+    node := nb.Render()
+
+    data, _ := yaml.Marshal(node)
+
+    desired := `thril:
+    pizza: pizza`
+
+    assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
 

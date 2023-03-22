@@ -201,6 +201,39 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 }
 
+//func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
+//
+//	bs, _ := os.ReadFile("test_specs/asana.yaml")
+//	doc, _ := NewDocument(bs)
+//	doc.BuildV3Model()
+//
+//	_, newDoc, _, _ := doc.RenderAndReload()
+//
+//	// compare documents
+//	compReport, errs := CompareDocuments(doc, newDoc)
+//
+//	// get flat list of changes.
+//	flatChanges := compReport.GetAllChanges()
+//
+//	// remove everything that is a description change (stripe has a lot of those from having 519 empty descriptions)
+//	var filtered []*model.Change
+//	for i := range flatChanges {
+//		if flatChanges[i].Property != "description" {
+//			filtered = append(filtered, flatChanges[i])
+//		}
+//	}
+//
+//	assert.Nil(t, errs)
+//	tc := compReport.TotalChanges()
+//	bc := compReport.TotalBreakingChanges()
+//	assert.Equal(t, 0, bc)
+//	assert.Equal(t, 519, tc)
+//
+//	// there should be no other changes than the 519 descriptions.
+//	assert.Equal(t, 0, len(filtered))
+//
+//}
+
 func TestDocument_RenderAndReload(t *testing.T) {
 
 	// load an OpenAPI 3 specification from bytes
