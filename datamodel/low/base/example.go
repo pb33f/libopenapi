@@ -118,5 +118,10 @@ func ExtractExampleValue(exp *yaml.Node) any {
 		v, _ := strconv.ParseFloat(exp.Value, 64)
 		return v
 	}
+	if utils.IsNodeMap(exp) {
+		var m map[string]interface{}
+		_ = exp.Decode(&m)
+		return m
+	}
 	return exp.Value
 }

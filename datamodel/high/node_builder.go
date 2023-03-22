@@ -437,6 +437,8 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
                             refNode := utils.CreateRefNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
                             sl.Content = append(sl.Content, refNode)
                             skip = true
+                        } else {
+                            skip = false
                         }
                     }
                 }
