@@ -41,5 +41,5 @@ cake:
 
 	// render the high-level object as YAML
 	highBytes, _ := highExt.Render()
-	assert.Equal(t, strings.TrimSpace(string(highBytes)), yml)
+	assert.Equal(t, yml, strings.TrimSpace(string(highBytes)))
 }
