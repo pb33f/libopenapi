@@ -77,14 +77,17 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 	}
 	i = 0
 	if s.low != nil {
-		for k := range s.low.Requirements.Value {
-			if k.Value == keys[i].key {
-				gh := s.low.Requirements.Value[k]
-				keys[i].line = k.KeyNode.Line
-				keys[i].lowKey = &k
-				keys[i].lowVal = &gh
+		for o := range keys {
+			kv := keys[o].key
+			for k := range s.low.Requirements.Value {
+				if k.Value == kv {
+					gh := s.low.Requirements.Value[k]
+					keys[o].line = k.KeyNode.Line
+					keys[o].lowKey = &k
+					keys[o].lowVal = &gh
+				}
+				i++
 			}
-			i++
 		}
 	}
 	sort.Slice(keys, func(i, j int) bool {
@@ -119,8 +122,11 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 			return reqs[i].line < reqs[j].line
 		})
 		sn := utils.CreateEmptySequenceNode()
+		sn.Line = keys[k].line + 1
 		for z := range reqs {
-			sn.Content = append(sn.Content, utils.CreateStringNode(reqs[z].val))
+			n := utils.CreateStringNode(reqs[z].val)
+			n.Line = reqs[z].line + 1
+			sn.Content = append(sn.Content, n)
 		}
 
 		m.Content = append(m.Content, l, sn)
