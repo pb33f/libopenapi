@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -201,38 +202,40 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 }
 
-//func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
-//
-//	bs, _ := os.ReadFile("test_specs/asana.yaml")
-//	doc, _ := NewDocument(bs)
-//	doc.BuildV3Model()
-//
-//	_, newDoc, _, _ := doc.RenderAndReload()
-//
-//	// compare documents
-//	compReport, errs := CompareDocuments(doc, newDoc)
-//
-//	// get flat list of changes.
-//	flatChanges := compReport.GetAllChanges()
-//
-//	// remove everything that is a description change (stripe has a lot of those from having 519 empty descriptions)
-//	var filtered []*model.Change
-//	for i := range flatChanges {
-//		if flatChanges[i].Property != "description" {
-//			filtered = append(filtered, flatChanges[i])
-//		}
-//	}
-//
-//	assert.Nil(t, errs)
-//	tc := compReport.TotalChanges()
-//	bc := compReport.TotalBreakingChanges()
-//	assert.Equal(t, 0, bc)
-//	assert.Equal(t, 519, tc)
-//
-//	// there should be no other changes than the 519 descriptions.
-//	assert.Equal(t, 0, len(filtered))
-//
-//}
+func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
+
+	bs, _ := os.ReadFile("test_specs/asana.yaml")
+	doc, _ := NewDocument(bs)
+	doc.BuildV3Model()
+
+	dat, newDoc, _, _ := doc.RenderAndReload()
+	assert.NotNil(t, dat)
+	//_ = os.WriteFile("asana_reloaded.yaml", dat, 0644)
+
+	// compare documents
+	compReport, errs := CompareDocuments(doc, newDoc)
+
+	// get flat list of changes.
+	flatChanges := compReport.GetAllChanges()
+
+	// remove everything that is an example set to "true" (asana has 45 of these). the lib converts this to a boolean.
+	var filtered []*model.Change
+	for i := range flatChanges {
+		if flatChanges[i].Property != "example" {
+			filtered = append(filtered, flatChanges[i])
+		}
+	}
+
+	assert.Nil(t, errs)
+	tc := compReport.TotalChanges()
+	bc := compReport.TotalBreakingChanges()
+	assert.Equal(t, 0, bc)
+	assert.Equal(t, 45, tc)
+
+	// there should be no other changes than the 519 example "true" re-renders
+	assert.Equal(t, 0, len(filtered))
+
+}
 
 func TestDocument_RenderAndReload(t *testing.T) {
 
@@ -466,3 +469,80 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 	assert.Equal(t, uint64.Schema().Minimum, byte.Schema().Minimum)
 }
 
+func TestDocument_ParamsAndRefsRender(t *testing.T) {
+	var d = `openapi: "3.1"
+components:
+    parameters:
+        limit:
+            description: I am a param
+        offset:
+            description: I am a param
+paths:
+    /webhooks:
+        get:
+            description: Get the compact representation of all webhooks your app has registered for the authenticated user in the given workspace.
+            operationId: getWebhooks
+            parameters:
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/offset'
+                - description: The workspace to query for webhooks in.
+                  example: "1331"
+                  in: query
+                  name: workspace
+                  required: true
+                  schema:
+                    type: string
+                - description: Only return webhooks for the given resource.
+                  example: "51648"
+                  in: query
+                  name: resource
+                  schema:
+                    type: string`
+
+	doc, err := NewDocument([]byte(d))
+	if err != nil {
+		panic(err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		panic(errs)
+	}
+
+	// render the document.
+	rend, _ := result.Model.Render()
+
+	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}
+func TestDocument_ExampleMap(t *testing.T) {
+	var d = `openapi: "3.1"
+components:
+    schemas:
+        ProjectRequest:
+            allOf:
+                - properties:
+                    custom_fields:
+                        additionalProperties:
+                            description: '"{custom_field_gid}" => Value (Can be text, number, etc.)'
+                            type: string
+                        description: An object where each key is a Custom Field gid and each value is an enum gid, string, or number.
+                        example:
+                            "4578152156": Not Started
+                            "5678904321": On Hold
+                        type: object`
+
+	doc, err := NewDocument([]byte(d))
+	if err != nil {
+		panic(err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		panic(errs)
+	}
+
+	// render the document.
+	rend, _ := result.Model.Render()
+
+	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}

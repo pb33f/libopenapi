@@ -1019,9 +1019,28 @@ func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSliceMap(t *testing
 	assert.Len(t, schemaBytes, 75)
 }
 
-/*
+func TestNewSchemaProxy_CheckDefaultBooleanFalse(t *testing.T) {
+	testSpec := `default: false`
 
- */
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
 
 func TestNewSchemaProxy_RenderAdditionalPropertiesFalse(t *testing.T) {
 	testSpec := `additionalProperties: false`
