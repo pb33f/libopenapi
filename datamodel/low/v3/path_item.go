@@ -20,7 +20,7 @@ import (
 // Describes the operations available on a single path. A Path Item MAY be empty, due to ACL constraints.
 // The path itself is still exposed to the documentation viewer, but they will not know which operations and parameters
 // are available.
-//  - https://spec.openapis.org/oas/v3.1.0#path-item-object
+//   - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
 	Description low.NodeReference[string]
 	Summary     low.NodeReference[string]
@@ -194,12 +194,24 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 		var op Operation
 
-
-
 		if ok, _, _ := utils.IsNodeRefValue(pathNode); ok {
+			// According to OpenAPI spec the only valid $ref for paths is
+			// reference for the whole pathItem. Unfortunately, internet is full of invalid specs
+			// even from trusted companies like DigitalOcean where they tend to
+			// use file $ref for each respective operation:
+			// /endpoint/call/name:
+			//   post:
+			//     $ref: 'file.yaml'
+			// Check if that is the case and resolve such thing properly too.
+
 			r, err := low.LocateRefNode(pathNode, idx)
 			if r != nil {
 				pathNode = r
+				if r.Tag == "" {
+					// If it's a node from file, tag is empty
+					pathNode = r.Content[0]
+				}
+
 				if err != nil {
 					if !idx.AllowCircularReferenceResolving() {
 						return fmt.Errorf("build schema failed: %s", err.Error())
@@ -241,12 +253,12 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	//all operations have been superficially built,
-	//now we need to build out the operation, we will do this asynchronously for speed.
+	// all operations have been superficially built,
+	// now we need to build out the operation, we will do this asynchronously for speed.
 	opBuildChan := make(chan bool)
 	opErrorChan := make(chan error)
 
-	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
+	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
 		er := op.Value.Build(op.ValueNode, idx)
 		if er != nil {
 			errCh <- er

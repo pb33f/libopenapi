@@ -19,7 +19,7 @@ import (
 // Holds the relative paths to the individual endpoints and their operations. The path is appended to the URL from the
 // Server Object in order to construct the full URL. The Paths MAY be empty, due to Access Control List (ACL)
 // constraints.
-//  - https://spec.openapis.org/oas/v3.1.0#paths-object
+//   - https://spec.openapis.org/oas/v3.1.0#paths-object
 type Paths struct {
 	PathItems  map[low.KeyReference[string]]low.ValueReference[*PathItem]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
@@ -71,11 +71,17 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 	bChan := make(chan pathBuildResult)
 	eChan := make(chan error)
-	var buildPathItem = func(cNode, pNode *yaml.Node, b chan<- pathBuildResult, e chan<- error) {
+	buildPathItem := func(cNode, pNode *yaml.Node, b chan<- pathBuildResult, e chan<- error) {
 		if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
 			r, err := low.LocateRefNode(pNode, idx)
 			if r != nil {
 				pNode = r
+				if r.Tag == "" {
+					// If it's a node from file, tag is empty
+					// If it's a reference we need to extract actual operation node
+					pNode = r.Content[0]
+				}
+
 				if err != nil {
 					if !idx.AllowCircularReferenceResolving() {
 						e <- fmt.Errorf("path item build failed: %s", err.Error())
@@ -153,7 +159,7 @@ func (p *Paths) Hash() [32]byte {
 	}
 	sort.Strings(l)
 	for k := range l {
-		f = append(f, fmt.Sprintf("%s-%s",l[k], low.GenerateHashString(keys[l[k]].Value)))
+		f = append(f, fmt.Sprintf("%s-%s", l[k], low.GenerateHashString(keys[l[k]].Value)))
 	}
 	ekeys := make([]string, len(p.Extensions))
 	z = 0
