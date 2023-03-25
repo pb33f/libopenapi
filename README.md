@@ -47,6 +47,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Using OpenAPI](https://pb33f.io/libopenapi/openapi/)
 - [Using Swagger](https://pb33f.io/libopenapi/swagger/)
 - [The Data Model](https://pb33f.io/libopenapi/model/)
+- [Modifying / Mutating the OpenAPI Model](https://pb33f.io/libopenapi/modifying/)
 - [Using Vendor Extensions](https://pb33f.io/libopenapi/extensions/)
 - [The Index](https://pb33f.io/libopenapi/index/)
 - [The Resolver](https://pb33f.io/libopenapi/resolver/)

@@ -31,7 +31,7 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
         var idxNode yaml.Node
         err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
         assert.NoError(t, err)
-        return index.NewSpecIndex(&idxNode)
+        return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
     }()
 
     const ref = "#/components/schemas/nice"
@@ -53,3 +53,14 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
     assert.Equal(t, "$ref: '#/components/schemas/nice'", strings.TrimSpace(string(rend)))
 
 }
+
+func TestCreateSchemaProxy(t *testing.T) {
+    sp := CreateSchemaProxy(&Schema{Description: "iAmASchema"})
+    assert.Equal(t, "iAmASchema", sp.rendered.Description)
+}
+
+func TestCreateSchemaProxyRef(t *testing.T) {
+    sp := CreateSchemaProxyRef("#/components/schemas/MySchema")
+    assert.Equal(t, "#/components/schemas/MySchema", sp.GetReference())
+}
+

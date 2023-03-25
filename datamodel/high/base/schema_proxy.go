@@ -48,11 +48,24 @@ type SchemaProxy struct {
 	schema     *low.NodeReference[*base.SchemaProxy]
 	buildError error
 	rendered   *Schema
+	refStr     string
 }
 
 // NewSchemaProxy creates a new high-level SchemaProxy from a low-level one.
 func NewSchemaProxy(schema *low.NodeReference[*base.SchemaProxy]) *SchemaProxy {
 	return &SchemaProxy{schema: schema}
+}
+
+// CreateSchemaProxy will create a new high-level SchemaProxy from a high-level Schema, this acts the same
+// as if the SchemaProxy is pre-rendered.
+func CreateSchemaProxy(schema *Schema) *SchemaProxy {
+	return &SchemaProxy{rendered: schema}
+}
+
+// CreateSchemaProxyRef will create a new high-level SchemaProxy from a reference string, this is used only when
+// building out new models from scratch that require a reference rather than a schema implementation.
+func CreateSchemaProxyRef(ref string) *SchemaProxy {
+	return &SchemaProxy{refStr: ref}
 }
 
 // Schema will create a new Schema instance using NewSchema from the low-level SchemaProxy backing this high-level one.
@@ -76,11 +89,20 @@ func (sp *SchemaProxy) Schema() *Schema {
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
 func (sp *SchemaProxy) IsReference() bool {
-	return sp.schema.Value.IsSchemaReference()
+	if sp.refStr != "" {
+		return true
+	}
+	if sp.schema != nil {
+		return sp.schema.Value.IsSchemaReference()
+	}
+	return false
 }
 
 // GetReference returns the location of the $ref if this SchemaProxy is a reference to another Schema.
 func (sp *SchemaProxy) GetReference() string {
+	if sp.refStr != "" {
+		return sp.refStr
+	}
 	return sp.schema.Value.GetSchemaReference()
 }
 

@@ -8,10 +8,12 @@ import (
     "github.com/pb33f/libopenapi/datamodel"
     "io/ioutil"
     "net/url"
+    "os"
     "strings"
     "testing"
 
     "github.com/pb33f/libopenapi/datamodel/high"
+    v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
     low "github.com/pb33f/libopenapi/datamodel/low/base"
     v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
     "github.com/pb33f/libopenapi/resolver"
@@ -598,4 +600,70 @@ components:
 
     // Output: schemaOne 'x-custom-cakes' (some cakes) has 2 cakes, 'someCake' has 10 candles and blue frosting
     //parameterOne 'x-custom-burgers' (some burgers) has 2 burgers, 'anotherBurger' has mayo sauce and a lamb patty
+}
+
+func ExampleNewDocument_modifyAndReRender() {
+
+    // How to read in an OpenAPI 3 Specification, into a Document,
+    // modify the document and then re-render it back to YAML bytes.
+
+    // load an OpenAPI 3 specification from bytes
+    petstore, _ := os.ReadFile("test_specs/petstorev3.json")
+
+    // create a new document from specification bytes
+    doc, err := NewDocument(petstore)
+
+    // if anything went wrong, an error is thrown
+    if err != nil {
+        panic(fmt.Sprintf("cannot create new document: %e", err))
+    }
+
+    // because we know this is a v3 spec, we can build a ready to go model from it.
+    v3Model, errors := doc.BuildV3Model()
+
+    // if anything went wrong when building the v3 model, a slice of errors will be returned
+    if len(errors) > 0 {
+        for i := range errors {
+            fmt.Printf("error: %e\n", errors[i])
+        }
+        panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+    }
+
+    // create a new path item and operation.
+    newPath := &v3high.PathItem{
+        Description: "this is a new path item",
+        Get: &v3high.Operation{
+            Description: "this is a get operation",
+            OperationId: "getNewThing",
+            RequestBody: &v3high.RequestBody{
+                Description: "this is a new request body",
+            },
+        },
+    }
+
+    // capture original number of paths
+    originalPaths := len(v3Model.Model.Paths.PathItems)
+
+    // add the path to the document
+    v3Model.Model.Paths.PathItems["/new/path"] = newPath
+
+    // render out the new path item to YAML
+    // renderedPathItem, _ := yaml.Marshal(newPath)
+
+    // render the document back to bytes and reload the model.
+    rawBytes, _, newModel, errs := doc.RenderAndReload()
+
+    // if anything went wrong when re-rendering the v3 model, a slice of errors will be returned
+    if len(errors) > 0 {
+        panic(fmt.Sprintf("cannot re-render document: %d errors reported", len(errs)))
+    }
+
+    // capture new number of paths after re-rendering
+    newPaths := len(newModel.Model.Paths.PathItems)
+
+    // print the number of paths and schemas in the document
+    fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
+    fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
+    // Output: There were 13 original paths. There are now 14 paths in the document
+    //The original spec had 31143 bytes, the new one has 27857
 }
