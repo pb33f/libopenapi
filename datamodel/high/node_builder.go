@@ -474,15 +474,16 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
     case reflect.Ptr:
         if r, ok := value.(Renderable); ok {
             if gl, lg := value.(GoesLowUntyped); lg {
-
-                ut := reflect.ValueOf(gl.GoLowUntyped())
-                if !ut.IsNil() {
-                    if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
-                        rvn := utils.CreateEmptyMapNode()
-                        rvn.Content = append(rvn.Content, utils.CreateStringNode("$ref"))
-                        rvn.Content = append(rvn.Content, utils.CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
-                        valueNode = rvn
-                        break
+                if gl.GoLowUntyped() != nil {
+                    ut := reflect.ValueOf(gl.GoLowUntyped())
+                    if !ut.IsNil() {
+                        if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
+                            rvn := utils.CreateEmptyMapNode()
+                            rvn.Content = append(rvn.Content, utils.CreateStringNode("$ref"))
+                            rvn.Content = append(rvn.Content, utils.CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
+                            valueNode = rvn
+                            break
+                        }
                     }
                 }
             }
@@ -600,6 +601,7 @@ func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, 
     return found, orderedCollection
 }
 
+// Renderable is an interface that can be implemented by types that provide a custom MarshaYAML method.
 type Renderable interface {
     MarshalYAML() (interface{}, error)
 }
