@@ -5,9 +5,12 @@ package model
 
 import (
     "github.com/pb33f/libopenapi/datamodel/low"
-    "github.com/pb33f/libopenapi/datamodel/low/v2"
-    "github.com/pb33f/libopenapi/datamodel/low/v3"
+    v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
     "reflect"
+)
+
+import (
+    "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
 
 // ResponseChanges represents changes found between two Swagger or OpenAPI Response objects.
@@ -23,7 +26,6 @@ type ResponseChanges struct {
     // OpenAPI Response Properties.
     ContentChanges map[string]*MediaTypeChanges `json:"content,omitempty" yaml:"content,omitempty"`
     LinkChanges    map[string]*LinkChanges      `json:"links,omitempty" yaml:"links,omitempty"`
-    ServerChanges  *ServerChanges               `json:"server,omitempty" yaml:"server,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between RequestBody objects
@@ -38,9 +40,6 @@ func (r *ResponseChanges) GetAllChanges() []*Change {
     }
     if r.ExamplesChanges != nil {
         changes = append(changes, r.ExamplesChanges.GetAllChanges()...)
-    }
-    if r.ServerChanges != nil {
-        changes = append(changes, r.ServerChanges.GetAllChanges()...)
     }
     for k := range r.HeadersChanges {
         changes = append(changes, r.HeadersChanges[k].GetAllChanges()...)
@@ -66,9 +65,6 @@ func (r *ResponseChanges) TotalChanges() int {
     if r.ExamplesChanges != nil {
         c += r.ExamplesChanges.TotalChanges()
     }
-    if r.ServerChanges != nil {
-        c += r.ServerChanges.TotalChanges()
-    }
     for k := range r.HeadersChanges {
         c += r.HeadersChanges[k].TotalChanges()
     }
@@ -87,9 +83,6 @@ func (r *ResponseChanges) TotalBreakingChanges() int {
     c := r.PropertyChanges.TotalBreakingChanges()
     if r.SchemaChanges != nil {
         c += r.SchemaChanges.TotalBreakingChanges()
-    }
-    if r.ServerChanges != nil {
-        c += r.ServerChanges.TotalBreakingChanges()
     }
     for k := range r.HeadersChanges {
         c += r.HeadersChanges[k].TotalBreakingChanges()

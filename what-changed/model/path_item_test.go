@@ -142,6 +142,7 @@ parameters:
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ParameterChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, v3.InLabel, extChanges.ParameterChanges[0].Changes[0].Property)
@@ -182,6 +183,7 @@ parameters:
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
@@ -221,6 +223,7 @@ parameters:
 	// compare.
 	extChanges := ComparePathItems(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 }
@@ -332,6 +335,7 @@ parameters:
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 7, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 7)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 func TestComparePathItem_V2_RemoveMethods(t *testing.T) {
@@ -371,6 +375,7 @@ parameters:
 	// compare.
 	extChanges := ComparePathItems(&rDoc, &lDoc)
 	assert.Equal(t, 7, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 7)
 	assert.Equal(t, 7, extChanges.TotalBreakingChanges())
 }
 
@@ -485,6 +490,7 @@ x-thing: dang.`
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 12, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 12)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -511,6 +517,7 @@ parameters:
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ParametersLabel, extChanges.Changes[0].Property)
@@ -537,8 +544,9 @@ parameters:
 	_ = rDoc.Build(rNode.Content[0], nil)
 
 	// compare.
-	extChanges := ComparePathItems(&rDoc, &lDoc)
+	extChanges := ComparePathItemsV3(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ParametersLabel, extChanges.Changes[0].Property)
@@ -581,6 +589,7 @@ trace:
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 8, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 8)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
@@ -621,6 +630,7 @@ trace:
 	// compare.
 	extChanges := ComparePathItems(&rDoc, &lDoc)
 	assert.Equal(t, 8, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 8)
 	assert.Equal(t, 8, extChanges.TotalBreakingChanges())
 }
 
@@ -653,5 +663,6 @@ func TestComparePathItem_V3_ChangeParam(t *testing.T) {
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
