@@ -215,10 +215,6 @@ func (s *Schema) Hash() [32]byte {
 					x = o.GetKeyNode().Value
 					l = o.GetKeyNode().Line
 					v = vo.MapIndex(k).Interface().(low.HasValueNodeUntyped).GetValueNode().Value
-				} else {
-					x = k.String()
-					l = 999
-					v = vo.MapIndex(k).Interface()
 				}
 				values = append(values, fmt.Sprintf("%d:%s:%s", l, x, low.GenerateHashString(v)))
 			}

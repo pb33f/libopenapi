@@ -124,6 +124,60 @@ value:
 
 }
 
+func TestExample_ExtractExampleValue_Map(t *testing.T) {
+
+	yml := `hot:
+    summer: nights
+    pizza: oven`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	val := ExtractExampleValue(idxNode.Content[0])
+	if v, ok := val.(map[string]interface{}); ok {
+		if r, rok := v["hot"].(map[string]interface{}); rok {
+			assert.Equal(t, "nights", r["summer"])
+			assert.Equal(t, "oven", r["pizza"])
+		} else {
+			assert.Fail(t, "failed to decode correctly.")
+		}
+	} else {
+		assert.Fail(t, "failed to decode correctly.")
+	}
+}
+
+func TestExample_ExtractExampleValue_Slice(t *testing.T) {
+
+	yml := `- hot:
+    summer: nights
+- hotter:
+    pizza: oven`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	val := ExtractExampleValue(idxNode.Content[0])
+	if v, ok := val.([]interface{}); ok {
+		for w := range v {
+			if r, rok := v[w].(map[string]interface{}); rok {
+				for k := range r {
+					if k == "hotter" {
+						assert.Equal(t, "oven", r[k].(map[string]interface{})["pizza"])
+					}
+					if k == "hot" {
+						assert.Equal(t, "nights", r[k].(map[string]interface{})["summer"])
+					}
+				}
+			} else {
+				assert.Fail(t, "failed to decode correctly.")
+			}
+		}
+
+	} else {
+		assert.Fail(t, "failed to decode correctly.")
+	}
+}
+
 func TestExample_Hash(t *testing.T) {
 
 	left := `summary: hot

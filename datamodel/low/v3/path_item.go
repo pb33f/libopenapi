@@ -6,13 +6,14 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
-	"sync"
 )
 
 // PathItem represents a low-level OpenAPI 3+ PathItem object.
@@ -195,8 +196,9 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 
 		var op Operation
-
-		if ok, _, _ := utils.IsNodeRefValue(pathNode); ok {
+		opIsRef := false
+		var opRefVal string
+		if ok, _, ref := utils.IsNodeRefValue(pathNode); ok {
 			// According to OpenAPI spec the only valid $ref for paths is
 			// reference for the whole pathItem. Unfortunately, internet is full of invalid specs
 			// even from trusted companies like DigitalOcean where they tend to
@@ -206,8 +208,13 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			//     $ref: 'file.yaml'
 			// Check if that is the case and resolve such thing properly too.
 
+			opIsRef = true
+			opRefVal = ref
 			r, err := low.LocateRefNode(pathNode, idx)
 			if r != nil {
+				if r.Kind == yaml.DocumentNode {
+					r = r.Content[0]
+				}
 				pathNode = r
 				if r.Tag == "" {
 					// If it's a node from file, tag is empty
@@ -231,6 +238,10 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			Value:     &op,
 			KeyNode:   currentNode,
 			ValueNode: pathNode,
+		}
+		if opIsRef {
+			opRef.Reference = opRefVal
+			opRef.ReferenceNode = true
 		}
 
 		ops = append(ops, opRef)
@@ -260,8 +271,11 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	opBuildChan := make(chan bool)
 	opErrorChan := make(chan error)
 
-	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
+	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error, ref string) {
 		er := op.Value.Build(op.ValueNode, idx)
+		if ref != "" {
+			op.Value.Reference.Reference = ref
+		}
 		if er != nil {
 			errCh <- er
 		}
@@ -273,7 +287,11 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	for _, op := range ops {
-		go buildOpFunc(op, opBuildChan, opErrorChan)
+		ref := ""
+		if op.ReferenceNode {
+			ref = op.Reference
+		}
+		go buildOpFunc(op, opBuildChan, opErrorChan, ref)
 	}
 
 	n := 0

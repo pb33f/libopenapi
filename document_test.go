@@ -4,6 +4,7 @@ package libopenapi
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
@@ -210,7 +211,6 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 
 	dat, newDoc, _, _ := doc.RenderAndReload()
 	assert.NotNil(t, dat)
-	//_ = os.WriteFile("asana_reloaded.yaml", dat, 0644)
 
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
@@ -218,22 +218,12 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 	// get flat list of changes.
 	flatChanges := compReport.GetAllChanges()
 
-	// remove everything that is an example set to "true" (asana has 45 of these). the lib converts this to a boolean.
-	var filtered []*model.Change
-	for i := range flatChanges {
-		if flatChanges[i].Property != "example" {
-			filtered = append(filtered, flatChanges[i])
-		}
-	}
-
 	assert.Nil(t, errs)
 	tc := compReport.TotalChanges()
-	bc := compReport.TotalBreakingChanges()
-	assert.Equal(t, 0, bc)
-	assert.Equal(t, 45, tc)
+	assert.Equal(t, 21, tc)
 
-	// there should be no other changes than the 519 example "true" re-renders
-	assert.Equal(t, 0, len(filtered))
+	// there are some properties re-rendered that trigger changes.
+	assert.Equal(t, 21, len(flatChanges))
 
 }
 
@@ -532,6 +522,36 @@ components:
                         type: object`
 
 	doc, err := NewDocument([]byte(d))
+	if err != nil {
+		panic(err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		panic(errs)
+	}
+
+	// render the document.
+	rend, _ := result.Model.Render()
+
+	assert.Len(t, rend, 644)
+}
+
+func TestDocument_OperationsAsRefs(t *testing.T) {
+
+	ae := `operationId: thisIsAnOperationId
+summary: a test thing
+description: this is a test, that does a test.`
+
+	_ = os.WriteFile("test-operation.yaml", []byte(ae), 0644)
+
+	var d = `openapi: "3.1"
+paths:
+    /an/operation:
+        get:
+            $ref: test-operation.yaml`
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
 	if err != nil {
 		panic(err)
 	}

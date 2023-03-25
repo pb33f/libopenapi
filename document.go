@@ -164,7 +164,7 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 	if err != nil {
 		return newBytes, nil, nil, []error{err}
 	}
-	newDoc, err := NewDocument(newBytes)
+	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
 	if err != nil {
 		return newBytes, newDoc, nil, []error{err}
 	}

@@ -93,8 +93,6 @@ func (n *NodeBuilder) add(key string, i int) {
                             u++
                         }
                     }
-                default:
-                    panic("not supported yet")
                 }
             }
             n.Nodes = append(n.Nodes, nodeEntry)
@@ -202,7 +200,6 @@ func (n *NodeBuilder) add(key string, i int) {
                         nodeEntry.Line = jk.GetKeyNode().Line
                         break
                     }
-                    panic("this should not break.")
                 }
                 if nb.GetValueNode() != nil {
                     nodeEntry.Line = nb.GetValueNode().Line
@@ -256,10 +253,7 @@ func (n *NodeBuilder) Render() *yaml.Node {
         node := n.Nodes[i]
         n.AddYAMLNode(m, node)
     }
-    if len(m.Content) > 0 {
-        return m
-    }
-    return nil
+   return m
 }
 
 // AddYAMLNode will add a new *yaml.Node to the parent node, using the tag, key and value provided.
@@ -366,14 +360,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
                     } else {
                         // this is a map, but it may be wrapped still.
                         bj := reflect.ValueOf(gh)
-                        //yh := bj.Interface()
-
-                        // if vg, jo := yh.(low.HasKeyNode); jo {
-                        //    fv := reflect.ValueOf(vg.GetKeyNode())
-                        //    orderedCollection = n.extractLowMapKeysWrapped(fv, x, orderedCollection, g)
-                        // } else {
                         orderedCollection = n.extractLowMapKeysWrapped(bj, x, orderedCollection, g)
-                        //}
                     }
                 } else {
                     // this is a map, without any low level details available (probably an extension map).
@@ -409,8 +396,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
         }
         if len(p.Content) > 0 {
             valueNode = p
-        } else {
-            return parent
         }
 
     case reflect.Slice:
@@ -423,9 +408,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
         sl := utils.CreateEmptySequenceNode()
         skip := false
         for i := 0; i < m.Len(); i++ {
-
             sqi := m.Index(i).Interface()
-
             // check if this is a reference.
             if glu, ok := sqi.(GoesLowUntyped); ok {
                 if glu != nil {
@@ -506,8 +489,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
             rawRender, _ := r.MarshalYAML()
             if rawRender != nil {
                 valueNode = rawRender.(*yaml.Node)
-            } else {
-                return parent
             }
         } else {
 
@@ -551,8 +532,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
             }
         }
 
-    default:
-        panic("not supported yet")
     }
     if valueNode == nil {
         return parent

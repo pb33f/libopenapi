@@ -123,5 +123,10 @@ func ExtractExampleValue(exp *yaml.Node) any {
 		_ = exp.Decode(&m)
 		return m
 	}
+	if utils.IsNodeArray(exp) {
+		var m []interface{}
+		_ = exp.Decode(&m)
+		return m
+	}
 	return exp.Value
 }

@@ -22,6 +22,8 @@ headers:
     description: a header
 examples:
   bam: alam
+server:
+  url: https://example.com
 x-toot: poot`
 	right := left
 
