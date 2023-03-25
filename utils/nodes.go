@@ -10,6 +10,7 @@ func CreateRefNode(ref string) *yaml.Node {
     nodes := make([]*yaml.Node, 2)
     nodes[0] = CreateStringNode("$ref")
     nodes[1] = CreateStringNode(ref)
+    nodes[1].Style = yaml.SingleQuotedStyle
     m.Content = nodes
     return m
 }
