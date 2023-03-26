@@ -32,11 +32,18 @@ jobs:
       - name: Test
         run: go test ./...
       - name: Coverage
-        uses: codecov/codecov-action@v3
+        run: |
+          go get github.com/axw/gocov/gocov
+          go get github.com/AlekSi/gocov-xml
+          go install github.com/axw/gocov/gocov
+          go install github.com/AlekSi/gocov-xml
+      - run: |
+          go test -v -coverprofile cover.out ./...
+          gocov convert cover.out | gocov-xml > coverage.xml
+      - uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage.xml
-          name: codecov-libopenapi
           flags: unittests
           fail_ci_if_error: true
           verbose: true
