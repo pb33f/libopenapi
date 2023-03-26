@@ -57,10 +57,12 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 func TestCreateSchemaProxy(t *testing.T) {
     sp := CreateSchemaProxy(&Schema{Description: "iAmASchema"})
     assert.Equal(t, "iAmASchema", sp.rendered.Description)
+    assert.False(t, sp.IsReference())
 }
 
 func TestCreateSchemaProxyRef(t *testing.T) {
     sp := CreateSchemaProxyRef("#/components/schemas/MySchema")
     assert.Equal(t, "#/components/schemas/MySchema", sp.GetReference())
+    assert.True(t, sp.IsReference())
 }
 
