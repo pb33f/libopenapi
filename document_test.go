@@ -504,6 +504,35 @@ paths:
 
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
 }
+
+func TestDocument_RemoteWithoutBaseURL(t *testing.T) {
+
+	// This test will push the index to do try and locate remote references that use relative references
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"`
+
+	config := datamodel.NewOpenDocumentConfiguration()
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	if err != nil {
+		panic(err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		panic(errs)
+	}
+
+	assert.Equal(t, "crs", result.Model.Paths.PathItems["/test"].Get.Parameters[0].Name)
+}
+
 func TestDocument_ExampleMap(t *testing.T) {
 	var d = `openapi: "3.1"
 components:
