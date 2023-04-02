@@ -328,11 +328,16 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 				if len(uri[0]) > 0 {
 					// if there is no base url defined, but we can know we have been requested remotely,
 					// set the base url to the remote url base path.
-					if newUrl == nil || newUrl.String() != uri[0] {
-						ur, _ := url.Parse(uri[0])
-						newUrl, _ = url.Parse(fmt.Sprintf("%s://%s%s", ur.Scheme, ur.Host, filepath.Dir(ur.Path)))
+					// first check if the first param is actually a URL
+					io, er := url.ParseRequestURI(uri[0])
+					if er != nil {
+						newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
+					} else {
+						if newUrl == nil || newUrl.String() != io.String() {
+							newUrl, _ = url.Parse(fmt.Sprintf("%s://%s%s", io.Scheme, io.Host, filepath.Dir(io.Path)))
+						}
+						newBasePath = filepath.Dir(filepath.Join(bd, uri[1]))
 					}
-					newBasePath = filepath.Dir(filepath.Join(bd, uri[1]))
 				} else {
 					newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
 				}
