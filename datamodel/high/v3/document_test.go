@@ -411,31 +411,6 @@ func TestAsanaAsDoc(t *testing.T) {
 	assert.Equal(t, 118, len(d.Paths.PathItems))
 }
 
-//func TestDigitalOceanAsDoc(t *testing.T) {
-//	data, _ := ioutil.ReadFile("../../../test_specs/digitalocean.yaml")
-//	info, _ := datamodel.ExtractSpecInfo(data)
-//	var err []error
-//
-//	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-//	config := datamodel.DocumentConfiguration{
-//		AllowFileReferences:   true,
-//		AllowRemoteReferences: true,
-//		BaseURL:               baseURL,
-//	}
-//
-//	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
-//	if err != nil {
-//		for e := range err {
-//			fmt.Println(err[e])
-//		}
-//		panic("broken something")
-//	}
-//	d := NewDocument(lowDoc)
-//	assert.NotNil(t, d)
-//	assert.Equal(t, 183, len(d.Paths.PathItems))
-//
-//}
-//
 //func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 //	data, _ := ioutil.ReadFile("../../../test_specs/digitalocean.yaml")
 //	info, _ := datamodel.ExtractSpecInfo(data)
@@ -677,5 +652,3 @@ components:
 
 	assert.Equal(t, desired, strings.TrimSpace(string(r)))
 }
-
-
