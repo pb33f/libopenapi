@@ -77,3 +77,41 @@ func (p *Parameter) MarshalYAML() (interface{}, error) {
     nb := high.NewNodeBuilder(p, p.low)
     return nb.Render(), nil
 }
+
+// IsExploded will return true if the parameter is exploded, false otherwise.
+func (p *Parameter) IsExploded() bool {
+    if p.Explode == nil {
+        return false
+    }
+    return *p.Explode
+}
+
+// IsDefaultFormEncoding will return true if the paramter has no exploded value, or has exploded set to true, and no style
+// or a style set to form. This combination is the default encoding/serialization style for parameters for OpenAPI 3+
+func (p *Parameter) IsDefaultFormEncoding() bool {
+    if p.Explode == nil && (p.Style == "" || p.Style == "form") {
+        return true
+    }
+    if p.Explode != nil && *p.Explode && (p.Style == "" || p.Style == "form") {
+        return true
+    }
+    return false
+}
+
+// IsDefaultHeaderEncoding will return true if the paramter has no exploded value, or has exploded set to false, and no style
+// or a style set to simple. This combination is the default encoding/serialization style for header parameters for OpenAPI 3+
+func (p *Parameter) IsDefaultHeaderEncoding() bool {
+    if p.Explode == nil && (p.Style == "" || p.Style == "simple") {
+        return true
+    }
+    if p.Explode != nil && !*p.Explode && (p.Style == "" || p.Style == "simple") {
+        return true
+    }
+    return false
+}
+
+// IsDefaultPathEncoding will return true if the paramter has no exploded value, or has exploded set to false, and no style
+// or a style set to simple. This combination is the default encoding/serialization style for path parameters for OpenAPI 3+
+func (p *Parameter) IsDefaultPathEncoding() bool {
+    return p.IsDefaultHeaderEncoding() // header default encoding and path default encoding are the same
+}

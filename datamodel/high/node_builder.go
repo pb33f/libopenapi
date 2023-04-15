@@ -26,9 +26,10 @@ type NodeEntry struct {
 // NodeBuilder is a structure used by libopenapi high-level objects, to render themselves back to YAML.
 // this allows high-level objects to be 'mutable' because all changes will be rendered out.
 type NodeBuilder struct {
-    Nodes []*NodeEntry
-    High  any
-    Low   any
+    Nodes   []*NodeEntry
+    High    any
+    Low     any
+    Resolve bool // If set to true, all references will be rendered inline
 }
 
 const renderZero = "renderZero"
@@ -235,7 +236,7 @@ func (n *NodeBuilder) Render() *yaml.Node {
     if fg, ok := n.Low.(low.IsReferenced); ok {
         g := reflect.ValueOf(fg)
         if !g.IsNil() {
-            if fg.IsReference() {
+            if fg.IsReference() && !n.Resolve {
                 m.Content = append(m.Content, n.renderReference()...)
                 return m
             }
@@ -253,7 +254,7 @@ func (n *NodeBuilder) Render() *yaml.Node {
         node := n.Nodes[i]
         n.AddYAMLNode(m, node)
     }
-   return m
+    return m
 }
 
 // AddYAMLNode will add a new *yaml.Node to the parent node, using the tag, key and value provided.
@@ -417,9 +418,13 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
                         r := ut.(low.IsReferenced)
                         if ut != nil && r.GetReference() != "" &&
                             ut.(low.IsReferenced).IsReference() {
-                            refNode := utils.CreateRefNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
-                            sl.Content = append(sl.Content, refNode)
-                            skip = true
+                            if !n.Resolve {
+                                refNode := utils.CreateRefNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
+                                sl.Content = append(sl.Content, refNode)
+                                skip = true
+                            } else {
+                                skip = false
+                            }
                         } else {
                             skip = false
                         }
@@ -428,7 +433,17 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
             }
             if !skip {
                 if er, ko := sqi.(Renderable); ko {
-                    rend, _ := er.(Renderable).MarshalYAML()
+                    var rend interface{}
+                    if !n.Resolve {
+                        rend, _ = er.(Renderable).MarshalYAML()
+                    } else {
+                        // try and render inline, if we can, otherwise treat as normal.
+                        if _, ko := er.(RenderableInline); ko {
+                            rend, _ = er.(RenderableInline).MarshalYAMLInline()
+                        } else {
+                            rend, _ = er.(Renderable).MarshalYAML()
+                        }
+                    }
                     // check if this is a pointer or not.
                     if _, ok := rend.(*yaml.Node); ok {
                         sl.Content = append(sl.Content, rend.(*yaml.Node))
@@ -478,16 +493,30 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
                     ut := reflect.ValueOf(gl.GoLowUntyped())
                     if !ut.IsNil() {
                         if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
-                            rvn := utils.CreateEmptyMapNode()
-                            rvn.Content = append(rvn.Content, utils.CreateStringNode("$ref"))
-                            rvn.Content = append(rvn.Content, utils.CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
-                            valueNode = rvn
-                            break
+                            if !n.Resolve {
+                                // TODO: use renderReference here.
+                                rvn := utils.CreateEmptyMapNode()
+                                rvn.Content = append(rvn.Content, utils.CreateStringNode("$ref"))
+                                rvn.Content = append(rvn.Content, utils.CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
+                                valueNode = rvn
+                                break
+                            }
                         }
                     }
                 }
             }
-            rawRender, _ := r.MarshalYAML()
+            var rawRender interface{}
+            if !n.Resolve {
+                rawRender, _ = r.MarshalYAML()
+            } else {
+                // try an inline render if we can, otherwise there is no option but to default to the
+                // full render.
+                if _, ko := r.(RenderableInline); ko {
+                    rawRender, _ = r.(RenderableInline).MarshalYAMLInline()
+                } else {
+                    rawRender, _ = r.MarshalYAML()
+                }
+            }
             if rawRender != nil {
                 valueNode = rawRender.(*yaml.Node)
             }
@@ -604,4 +633,9 @@ func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, 
 // Renderable is an interface that can be implemented by types that provide a custom MarshaYAML method.
 type Renderable interface {
     MarshalYAML() (interface{}, error)
+}
+
+// RenderableInline is an interface that can be implemented by types that provide a custom MarshaYAML method.
+type RenderableInline interface {
+    MarshalYAMLInline() (interface{}, error)
 }
