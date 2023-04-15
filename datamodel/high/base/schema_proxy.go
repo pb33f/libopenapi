@@ -4,11 +4,11 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+    "github.com/pb33f/libopenapi/datamodel/high"
+    "github.com/pb33f/libopenapi/datamodel/low"
+    "github.com/pb33f/libopenapi/datamodel/low/base"
+    "github.com/pb33f/libopenapi/utils"
+    "gopkg.in/yaml.v3"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -45,75 +45,75 @@ import (
 // it's not actually JSONSchema until 3.1, so lots of times a bad schema will break parsing. Errors are only found
 // when a schema is needed, so the rest of the document is parsed and ready to use.
 type SchemaProxy struct {
-	schema     *low.NodeReference[*base.SchemaProxy]
-	buildError error
-	rendered   *Schema
-	refStr     string
+    schema     *low.NodeReference[*base.SchemaProxy]
+    buildError error
+    rendered   *Schema
+    refStr     string
 }
 
 // NewSchemaProxy creates a new high-level SchemaProxy from a low-level one.
 func NewSchemaProxy(schema *low.NodeReference[*base.SchemaProxy]) *SchemaProxy {
-	return &SchemaProxy{schema: schema}
+    return &SchemaProxy{schema: schema}
 }
 
 // CreateSchemaProxy will create a new high-level SchemaProxy from a high-level Schema, this acts the same
 // as if the SchemaProxy is pre-rendered.
 func CreateSchemaProxy(schema *Schema) *SchemaProxy {
-	return &SchemaProxy{rendered: schema}
+    return &SchemaProxy{rendered: schema}
 }
 
 // CreateSchemaProxyRef will create a new high-level SchemaProxy from a reference string, this is used only when
 // building out new models from scratch that require a reference rather than a schema implementation.
 func CreateSchemaProxyRef(ref string) *SchemaProxy {
-	return &SchemaProxy{refStr: ref}
+    return &SchemaProxy{refStr: ref}
 }
 
 // Schema will create a new Schema instance using NewSchema from the low-level SchemaProxy backing this high-level one.
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
 func (sp *SchemaProxy) Schema() *Schema {
-	if sp.rendered == nil {
-		s := sp.schema.Value.Schema()
-		if s == nil {
-			sp.buildError = sp.schema.Value.GetBuildError()
-			return nil
-		}
-		sch := NewSchema(s)
-		sch.ParentProxy = sp
-		sp.rendered = sch
-		return sch
-	} else {
-		return sp.rendered
-	}
+    if sp.rendered == nil {
+        s := sp.schema.Value.Schema()
+        if s == nil {
+            sp.buildError = sp.schema.Value.GetBuildError()
+            return nil
+        }
+        sch := NewSchema(s)
+        sch.ParentProxy = sp
+        sp.rendered = sch
+        return sch
+    } else {
+        return sp.rendered
+    }
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
 func (sp *SchemaProxy) IsReference() bool {
-	if sp.refStr != "" {
-		return true
-	}
-	if sp.schema != nil {
-		return sp.schema.Value.IsSchemaReference()
-	}
-	return false
+    if sp.refStr != "" {
+        return true
+    }
+    if sp.schema != nil {
+        return sp.schema.Value.IsSchemaReference()
+    }
+    return false
 }
 
 // GetReference returns the location of the $ref if this SchemaProxy is a reference to another Schema.
 func (sp *SchemaProxy) GetReference() string {
-	if sp.refStr != "" {
-		return sp.refStr
-	}
-	return sp.schema.Value.GetSchemaReference()
+    if sp.refStr != "" {
+        return sp.refStr
+    }
+    return sp.schema.Value.GetSchemaReference()
 }
 
 // BuildSchema operates the same way as Schema, except it will return any error along with the *Schema
 func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
-	if sp.rendered != nil {
-		return sp.rendered, sp.buildError
-	}
-	schema := sp.Schema()
-	er := sp.buildError
-	return schema, er
+    if sp.rendered != nil {
+        return sp.rendered, sp.buildError
+    }
+    schema := sp.Schema()
+    er := sp.buildError
+    return schema, er
 }
 
 // GetBuildError returns any error that was thrown when calling Schema()
@@ -142,23 +142,36 @@ func (sp *SchemaProxy) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
 func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
-	var s *Schema
-	var err error
-	// if this schema isn't a reference, then build it out.
-	if !sp.IsReference() {
-		s, err = sp.BuildSchema()
-		if err != nil {
-			return nil, err
-		}
-		nb := high.NewNodeBuilder(s, s.low)
-		return nb.Render(), nil
-	} else {
-		// do not build out a reference, just marshal the reference.
-		mp := utils.CreateEmptyMapNode()
-		mp.Content = append(mp.Content,
-			utils.CreateStringNode("$ref"),
-			utils.CreateStringNode(sp.GetReference()))
-		return mp, nil
-	}
+    var s *Schema
+    var err error
+    // if this schema isn't a reference, then build it out.
+    if !sp.IsReference() {
+        s, err = sp.BuildSchema()
+        if err != nil {
+            return nil, err
+        }
+        nb := high.NewNodeBuilder(s, s.low)
+        return nb.Render(), nil
+    } else {
+        // do not build out a reference, just marshal the reference.
+        mp := utils.CreateEmptyMapNode()
+        mp.Content = append(mp.Content,
+            utils.CreateStringNode("$ref"),
+            utils.CreateStringNode(sp.GetReference()))
+        return mp, nil
+    }
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the ExternalDoc object. All of the
+// $ref values will be inlined instead of kept as is.
+func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
+    var s *Schema
+    var err error
+    s, err = sp.BuildSchema()
+    if err != nil {
+        return nil, err
+    }
+    nb := high.NewNodeBuilder(s, s.low)
+    nb.Resolve = true
+    return nb.Render(), nil
+}
