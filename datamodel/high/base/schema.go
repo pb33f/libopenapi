@@ -5,8 +5,9 @@ package base
 
 import (
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
@@ -68,6 +69,9 @@ type Schema struct {
 	// in 3.1 Items can be a Schema or a boolean
 	Items *DynamicValue[*SchemaProxy, bool] `json:"items,omitempty" yaml:"items,omitempty"`
 
+	// 3.1 only, part of the JSON Schema spec provides a way to identify a subschema
+	Anchor string `json:"$anchor,omitempty" yaml:"$anchor,omitempty"`
+
 	// Compatible with all versions
 	Not                  *SchemaProxy            `json:"not,omitempty" yaml:"not,omitempty"`
 	Properties           map[string]*SchemaProxy `json:"properties,omitempty" yaml:"properties,omitempty"`
@@ -77,26 +81,26 @@ type Schema struct {
 	Minimum              *int64                  `json:"minimum,omitempty" yaml:"minimum,omitempty"`
 	MaxLength            *int64                  `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
 	MinLength            *int64                  `json:"minLength,omitempty" yaml:"minLength,omitempty"`
-	Pattern              string         `json:"pattern,omitempty" yaml:"pattern,omitempty"`
-	Format               string         `json:"format,omitempty" yaml:"format,omitempty"`
-	MaxItems             *int64         `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
-	MinItems             *int64         `json:"minItems,omitempty" yaml:"minItems,omitempty"`
-	UniqueItems          *int64         `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
-	MaxProperties        *int64         `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
-	MinProperties        *int64         `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
-	Required             []string       `json:"required,omitempty" yaml:"required,omitempty"`
-	Enum                 []any          `json:"enum,omitempty" yaml:"enum,omitempty"`
-	AdditionalProperties any            `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
-	Description          string         `json:"description,omitempty" yaml:"description,omitempty"`
-	Default              any            `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
-	Nullable             *bool          `json:"nullable,omitempty" yaml:"nullable,omitempty"`
-	ReadOnly             bool           `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
-	WriteOnly            bool           `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
-	XML                  *XML           `json:"xml,omitempty" yaml:"xml,omitempty"`
-	ExternalDocs         *ExternalDoc   `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
-	Example              any            `json:"example,omitempty" yaml:"example,omitempty"`
-	Deprecated           *bool          `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	Extensions           map[string]any `json:"-" yaml:"-"`
+	Pattern              string                  `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	Format               string                  `json:"format,omitempty" yaml:"format,omitempty"`
+	MaxItems             *int64                  `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
+	MinItems             *int64                  `json:"minItems,omitempty" yaml:"minItems,omitempty"`
+	UniqueItems          *int64                  `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
+	MaxProperties        *int64                  `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
+	MinProperties        *int64                  `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	Required             []string                `json:"required,omitempty" yaml:"required,omitempty"`
+	Enum                 []any                   `json:"enum,omitempty" yaml:"enum,omitempty"`
+	AdditionalProperties any                     `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
+	Description          string                  `json:"description,omitempty" yaml:"description,omitempty"`
+	Default              any                     `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
+	Nullable             *bool                   `json:"nullable,omitempty" yaml:"nullable,omitempty"`
+	ReadOnly             bool                    `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
+	WriteOnly            bool                    `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
+	XML                  *XML                    `json:"xml,omitempty" yaml:"xml,omitempty"`
+	ExternalDocs         *ExternalDoc            `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	Example              any                     `json:"example,omitempty" yaml:"example,omitempty"`
+	Deprecated           *bool                   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Extensions           map[string]any          `json:"-" yaml:"-"`
 	low                  *base.Schema
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
@@ -281,6 +285,10 @@ func NewSchema(schema *base.Schema) *Schema {
 		enum = append(enum, fmt.Sprint(schema.Enum.Value[i].Value))
 	}
 	s.Enum = enum
+
+	if !schema.Anchor.IsEmpty() {
+		s.Anchor = schema.Anchor.Value
+	}
 
 	// async work.
 	// any polymorphic properties need to be handled in their own threads
