@@ -266,7 +266,8 @@ minLength: 1
 maxItems: 20
 minItems: 10
 maxProperties: 30
-minProperties: 1`
+minProperties: 1
+$anchor: anchor`
 
 	var compNode yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
@@ -310,6 +311,7 @@ minProperties: 1`
 	assert.True(t, compiled.WriteOnly)
 	assert.True(t, *compiled.Deprecated)
 	assert.True(t, *compiled.Nullable)
+	assert.Equal(t, "anchor", compiled.Anchor)
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 129, wentLow.AdditionalProperties.ValueNode.Line)
@@ -317,8 +319,7 @@ minProperties: 1`
 
 	// now render it out!
 	schemaBytes, _ := compiled.Render()
-	assert.Len(t, schemaBytes, 3460)
-
+	assert.Len(t, schemaBytes, 3476)
 }
 
 func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {

@@ -150,7 +150,8 @@ examples:
 contains:
   type: int
 maxContains: 10
-minContains: 1`
+minContains: 1
+$anchor: anchor`
 }
 
 func Test_Schema(t *testing.T) {
@@ -308,6 +309,7 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "string", sch.PropertyNames.Value.Schema().Type.Value.A)
 	assert.Equal(t, "boolean", sch.UnevaluatedItems.Value.Schema().Type.Value.A)
 	assert.Equal(t, "integer", sch.UnevaluatedProperties.Value.Schema().Type.Value.A)
+	assert.Equal(t, "anchor", sch.Anchor.Value)
 }
 
 func TestSchemaAllOfSequenceOrder(t *testing.T) {

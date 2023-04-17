@@ -90,6 +90,7 @@ type Schema struct {
 	PropertyNames         low.NodeReference[*SchemaProxy]
 	UnevaluatedItems      low.NodeReference[*SchemaProxy]
 	UnevaluatedProperties low.NodeReference[*SchemaProxy]
+	Anchor                low.NodeReference[string]
 
 	// Compatible with all versions
 	Title                low.NodeReference[string]
@@ -394,6 +395,9 @@ func (s *Schema) Hash() [32]byte {
 	if !s.UnevaluatedItems.IsEmpty() {
 		d = append(d, low.GenerateHashString(s.UnevaluatedItems.Value))
 	}
+	if !s.Anchor.IsEmpty() {
+		d = append(d, fmt.Sprint(s.Anchor.Value))
+	}
 
 	depSchemasKeys := make([]string, len(s.DependentSchemas.Value))
 	z = 0
@@ -514,6 +518,7 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //   - PropertyNames
 //   - UnevaluatedItems
 //   - UnevaluatedProperties
+//   - Anchor
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	s.Reference = new(low.Reference)
 	if h, _, _ := utils.IsNodeRefValue(root); h {
@@ -612,6 +617,14 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if schemaRefNode != nil {
 		s.SchemaTypeRef = low.NodeReference[string]{
 			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefLabel,
+		}
+	}
+
+	// handle anchor if set. (3.1)
+	_, anchorLabel, anchorNode := utils.FindKeyNodeFullTop(AnchorLabel, root.Content)
+	if anchorNode != nil {
+		s.Anchor = low.NodeReference[string]{
+			Value: anchorNode.Value, KeyNode: anchorLabel, ValueNode: anchorLabel,
 		}
 	}
 

@@ -39,11 +39,12 @@ const (
 	OneOfLabel                 = "oneOf"
 	NotLabel                   = "not"
 	TypeLabel                  = "type"
-	DiscriminatorLabel        = "discriminator"
-	ExclusiveMinimumLabel     = "exclusiveMinimum"
-	ExclusiveMaximumLabel     = "exclusiveMaximum"
-	SchemaLabel               = "schema"
-	SchemaTypeLabel           = "$schema"
+	DiscriminatorLabel         = "discriminator"
+	ExclusiveMinimumLabel      = "exclusiveMinimum"
+	ExclusiveMaximumLabel      = "exclusiveMaximum"
+	SchemaLabel                = "schema"
+	SchemaTypeLabel            = "$schema"
+	AnchorLabel                = "$anchor"
 )
 
 /*
