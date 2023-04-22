@@ -10,7 +10,7 @@ import (
 )
 
 // Server represents a high-level OpenAPI 3+ Server object, that is backed by a low level one.
-//  - https://spec.openapis.org/oas/v3.1.0#server-object
+//   - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
 	URL         string                     `json:"url,omitempty" yaml:"url,omitempty"`
 	Description string                     `json:"description,omitempty" yaml:"description,omitempty"`

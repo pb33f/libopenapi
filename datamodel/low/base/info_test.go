@@ -73,6 +73,7 @@ func TestLicense_Build(t *testing.T) {
 
 func TestInfo_Hash(t *testing.T) {
 	left := `title: princess b33f
+summary: a thing
 description: a thing
 termsOfService: https://pb33f.io
 x-princess: b33f
@@ -85,6 +86,7 @@ version: 1.2.3
 x-b33f: princess`
 
 	right := `title: princess b33f
+summary: a thing
 description: a thing
 termsOfService: https://pb33f.io
 x-princess: b33f
