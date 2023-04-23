@@ -40,6 +40,11 @@ like our _very kind_ sponsors:
 Need help? Have a question? Want to share your work? [Join our discord](https://discord.gg/x7VACVuEGP) and
 come say hi!
 
+## Check out the `libopenapi-validator`
+
+Need to validate requests, responses, parameters or schemas? Use the new 
+[libopenapi-validator](https://github.com/pb33f/libopenapi-validator) module.
+
 ## Documentation
 
 See all the documentation at https://pb33f.io/libopenapi/
@@ -48,6 +53,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Using OpenAPI](https://pb33f.io/libopenapi/openapi/)
 - [Using Swagger](https://pb33f.io/libopenapi/swagger/)
 - [The Data Model](https://pb33f.io/libopenapi/model/)
+- [Validation](https://pb33f.io/libopenapi/validation/)
 - [Modifying / Mutating the OpenAPI Model](https://pb33f.io/libopenapi/modifying/)
 - [Using Vendor Extensions](https://pb33f.io/libopenapi/extensions/)
 - [The Index](https://pb33f.io/libopenapi/index/)
