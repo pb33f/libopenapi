@@ -46,7 +46,8 @@
     }
   },
   "patternProperties": {
-    "^x-": {}
+    "^x-": {
+    }
   },
   "additionalProperties": false,
   "definitions": {
@@ -90,7 +91,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -110,7 +112,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -129,7 +132,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -153,7 +157,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -177,7 +182,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -321,7 +327,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -395,7 +402,8 @@
         },
         "enum": {
           "type": "array",
-          "items": {},
+          "items": {
+          },
           "minItems": 1,
           "uniqueItems": false
         },
@@ -502,7 +510,8 @@
         "format": {
           "type": "string"
         },
-        "default": {},
+        "default": {
+        },
         "nullable": {
           "type": "boolean",
           "default": false
@@ -518,7 +527,8 @@
           "type": "boolean",
           "default": false
         },
-        "example": {},
+        "example": {
+        },
         "externalDocs": {
           "$ref": "#/definitions/ExternalDocumentation"
         },
@@ -531,7 +541,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -575,7 +586,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -622,7 +634,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -639,7 +652,8 @@
             }
           ]
         },
-        "example": {},
+        "example": {
+        },
         "examples": {
           "type": "object",
           "additionalProperties": {
@@ -661,7 +675,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false,
       "allOf": [
@@ -679,14 +694,16 @@
         "description": {
           "type": "string"
         },
-        "value": {},
+        "value": {
+        },
         "externalValue": {
           "type": "string",
           "format": "uri-reference"
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -740,7 +757,8 @@
           "minProperties": 1,
           "maxProperties": 1
         },
-        "example": {},
+        "example": {
+        },
         "examples": {
           "type": "object",
           "additionalProperties": {
@@ -756,7 +774,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false,
       "allOf": [
@@ -774,7 +793,8 @@
         "^\\/": {
           "$ref": "#/definitions/PathItem"
         },
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -815,7 +835,8 @@
         "^(get|put|post|delete|options|head|patch|trace)$": {
           "$ref": "#/definitions/Operation"
         },
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -901,7 +922,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -930,7 +952,8 @@
             }
           ]
         },
-        "^x-": {}
+        "^x-": {
+        }
       },
       "minProperties": 1,
       "additionalProperties": false
@@ -961,7 +984,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -980,7 +1004,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1104,7 +1129,8 @@
           "minProperties": 1,
           "maxProperties": 1
         },
-        "example": {},
+        "example": {
+        },
         "examples": {
           "type": "object",
           "additionalProperties": {
@@ -1120,7 +1146,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false,
       "required": [
@@ -1242,7 +1269,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1292,7 +1320,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1320,7 +1349,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false,
       "oneOf": [
@@ -1372,7 +1402,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1398,7 +1429,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1419,7 +1451,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1446,7 +1479,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1473,7 +1507,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1500,7 +1535,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1532,7 +1568,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false
     },
@@ -1548,9 +1585,11 @@
         },
         "parameters": {
           "type": "object",
-          "additionalProperties": {}
+          "additionalProperties": {
+          }
         },
-        "requestBody": {},
+        "requestBody": {
+        },
         "description": {
           "type": "string"
         },
@@ -1559,7 +1598,8 @@
         }
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       },
       "additionalProperties": false,
       "not": {
@@ -1576,7 +1616,8 @@
         "$ref": "#/definitions/PathItem"
       },
       "patternProperties": {
-        "^x-": {}
+        "^x-": {
+        }
       }
     },
     "Encoding": {
