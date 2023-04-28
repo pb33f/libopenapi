@@ -84,7 +84,7 @@ type Schema struct {
     Format               string                  `json:"format,omitempty" yaml:"format,omitempty"`
     MaxItems             *int64                  `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
     MinItems             *int64                  `json:"minItems,omitempty" yaml:"minItems,omitempty"`
-    UniqueItems          *int64                  `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
+    UniqueItems          *bool                   `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
     MaxProperties        *int64                  `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
     MinProperties        *int64                  `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
     Required             []string                `json:"required,omitempty" yaml:"required,omitempty"`
@@ -171,13 +171,15 @@ func NewSchema(schema *base.Schema) *Schema {
     if !schema.MinContains.IsEmpty() {
         s.MinContains = &schema.MinContains.Value
     }
+    if !schema.UniqueItems.IsEmpty() {
+        s.UniqueItems = &schema.UniqueItems.Value
+    }
     if !schema.Contains.IsEmpty() {
         s.Contains = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
             ValueNode: schema.Contains.ValueNode,
             Value:     schema.Contains.Value,
         }}
     }
-
     if !schema.If.IsEmpty() {
         s.If = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
             ValueNode: schema.If.ValueNode,
