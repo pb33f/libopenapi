@@ -665,5 +665,5 @@ func ExampleNewDocument_modifyAndReRender() {
     fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
     fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
     // Output: There were 13 original paths. There are now 14 paths in the document
-    //The original spec had 31143 bytes, the new one has 27857
+    //The original spec had 31143 bytes, the new one has 27841
 }

@@ -4,6 +4,7 @@
 package high
 
 import (
+    "fmt"
     "github.com/pb33f/libopenapi/datamodel/low"
     "github.com/pb33f/libopenapi/utils"
     "gopkg.in/yaml.v3"
@@ -16,11 +17,12 @@ import (
 
 // NodeEntry represents a single node used by NodeBuilder.
 type NodeEntry struct {
-    Tag        string
-    Key        string
-    Value      any
-    Line       int
-    RenderZero bool
+    Tag         string
+    Key         string
+    Value       any
+    StringValue string
+    Line        int
+    RenderZero  bool
 }
 
 // NodeBuilder is a structure used by libopenapi high-level objects, to render themselves back to YAML.
@@ -131,8 +133,11 @@ func (n *NodeBuilder) add(key string, i int) {
     switch value.Kind() {
     case reflect.Float64, reflect.Float32:
         nodeEntry.Value = value.Float()
+        x := float64(int(value.Float()*100)) / 100 // trim this down
+        nodeEntry.StringValue = strconv.FormatFloat(x, 'f', -1, 64)
     case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
         nodeEntry.Value = value.Int()
+        nodeEntry.StringValue = value.String()
     case reflect.String:
         nodeEntry.Value = value.String()
     case reflect.Bool:
@@ -316,7 +321,13 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
         break
 
     case reflect.Float64:
-        val := strconv.FormatFloat(value.(float64), 'f', -1, 64)
+
+        precision := -1
+        if entry.StringValue != "" && strings.Contains(entry.StringValue, ".") {
+            precision = len(strings.Split(fmt.Sprint(entry.StringValue), ".")[1])
+        }
+
+        val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
         valueNode = utils.CreateFloatNode(val)
         valueNode.Line = line
         break
