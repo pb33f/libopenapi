@@ -4,7 +4,6 @@
 package base
 
 import (
-    "fmt"
     "gopkg.in/yaml.v3"
     "sync"
 
@@ -288,7 +287,7 @@ func NewSchema(schema *base.Schema) *Schema {
 
     // TODO: check this behavior.
     for i := range schema.Enum.Value {
-        enum = append(enum, fmt.Sprint(schema.Enum.Value[i].Value))
+        enum = append(enum, schema.Enum.Value[i].Value)
     }
     s.Enum = enum
 
