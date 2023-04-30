@@ -337,11 +337,6 @@ func TestSetField_Default_Helper(t *testing.T) {
 
 func TestHandleSlicesOfInts(t *testing.T) {
 
-    type cake struct {
-        thing int
-    }
-
-    // this should be ignored, no custom objects in here my friend.
     type internal struct {
         Thing NodeReference[[]ValueReference[any]]
     }
@@ -359,6 +354,26 @@ func TestHandleSlicesOfInts(t *testing.T) {
     assert.NoError(t, try)
     assert.Equal(t, int64(5), ins.Thing.Value[0].Value)
     assert.Equal(t, 1.234, ins.Thing.Value[1].Value)
+}
+
+func TestHandleSlicesOfBools(t *testing.T) {
+    type internal struct {
+        Thing NodeReference[[]ValueReference[any]]
+    }
+
+    yml := `thing:
+  - true
+  - false`
+
+    ins := new(internal)
+    var rootNode yaml.Node
+    mErr := yaml.Unmarshal([]byte(yml), &rootNode)
+    assert.NoError(t, mErr)
+
+    try := BuildModel(rootNode.Content[0], ins)
+    assert.NoError(t, try)
+    assert.Equal(t, true, ins.Thing.Value[0].Value)
+    assert.Equal(t, false, ins.Thing.Value[1].Value)
 }
 
 func TestSetField_Ignore(t *testing.T) {
