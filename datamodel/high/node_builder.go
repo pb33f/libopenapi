@@ -321,12 +321,10 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
         break
 
     case reflect.Float64:
-
         precision := -1
         if entry.StringValue != "" && strings.Contains(entry.StringValue, ".") {
             precision = len(strings.Split(fmt.Sprint(entry.StringValue), ".")[1])
         }
-
         val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
         valueNode = utils.CreateFloatNode(val)
         valueNode.Line = line
