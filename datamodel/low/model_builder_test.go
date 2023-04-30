@@ -357,7 +357,8 @@ func TestHandleSlicesOfInts(t *testing.T) {
 
     try := BuildModel(rootNode.Content[0], ins)
     assert.NoError(t, try)
-    assert.Equal(t, 0, ins.Thing)
+    assert.Equal(t, int64(5), ins.Thing.Value[0].Value)
+    assert.Equal(t, 1.234, ins.Thing.Value[1].Value)
 }
 
 func TestSetField_Ignore(t *testing.T) {
