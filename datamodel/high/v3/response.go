@@ -13,7 +13,7 @@ import (
 //
 // Describes a single response from an API Operation, including design-time, static links to
 // operations based on the response.
-//  - https://spec.openapis.org/oas/v3.1.0#response-object
+//   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
 	Description string                `json:"description,omitempty" yaml:"description,omitempty"`
 	Headers     map[string]*Header    `json:"headers,omitempty" yaml:"headers,omitempty"`
@@ -60,8 +60,19 @@ func (r *Response) Render() ([]byte, error) {
 	return yaml.Marshal(r)
 }
 
+func (r *Response) RenderInline() ([]byte, error) {
+	d, _ := r.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the Response object.
 func (r *Response) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(r, r.low)
+	return nb.Render(), nil
+}
+
+func (r *Response) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(r, r.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }
