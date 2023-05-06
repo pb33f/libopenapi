@@ -72,9 +72,20 @@ func (p *Parameter) Render() ([]byte, error) {
 	return yaml.Marshal(p)
 }
 
+func (p *Parameter) RenderInline() ([]byte, error) {
+	d, _ := p.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the Encoding object.
 func (p *Parameter) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(p, p.low)
+	return nb.Render(), nil
+}
+
+func (p *Parameter) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(p, p.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }
 

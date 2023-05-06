@@ -55,8 +55,20 @@ func (t *Tag) Render() ([]byte, error) {
 	return yaml.Marshal(t)
 }
 
+// Render will return a YAML representation of the Info object as a byte slice.
+func (t *Tag) RenderInline() ([]byte, error) {
+	d, _ := t.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the Info object.
 func (t *Tag) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(t, t.low)
+	return nb.Render(), nil
+}
+
+func (t *Tag) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(t, t.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }

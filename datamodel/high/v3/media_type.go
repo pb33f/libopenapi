@@ -4,18 +4,19 @@
 package v3
 
 import (
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"gopkg.in/yaml.v3"
-	"sync"
 )
 
 // MediaType represents a high-level OpenAPI MediaType object that is backed by a low-level one.
 //
 // Each Media Type Object provides schema and examples for the media type identified by its key.
-//  - https://spec.openapis.org/oas/v3.1.0#media-type-object
+//   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
 	Schema     *base.SchemaProxy        `json:"schema,omitempty" yaml:"schema,omitempty"`
 	Example    any                      `json:"example,omitempty" yaml:"example,omitempty"`
@@ -54,9 +55,20 @@ func (m *MediaType) Render() ([]byte, error) {
 	return yaml.Marshal(m)
 }
 
+func (m *MediaType) RenderInline() ([]byte, error) {
+	d, _ := m.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the MediaType object.
 func (m *MediaType) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(m, m.low)
+	return nb.Render(), nil
+}
+
+func (m *MediaType) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(m, m.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }
 
