@@ -86,7 +86,7 @@ func TestSpecIndex_Asana(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean(t *testing.T) {
-	do, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	do, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
 
@@ -603,7 +603,6 @@ func TestSpecIndex_FindComponenth(t *testing.T) {
 	assert.Nil(t, index.FindComponent("I-do-not-exist", nil))
 }
 
-
 func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 	yml := `components:
   schemas:
@@ -633,21 +632,21 @@ func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing
 	index := new(SpecIndex)
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
-    a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
-    assert.Error(t, err)
-    assert.Nil(t, a)
+	a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
+	assert.Error(t, err)
+	assert.Nil(t, a)
 	assert.Nil(t, b)
 }
 
 // Discovered in issue https://github.com/pb33f/libopenapi/issues/37
 func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
-    index := new(SpecIndex)
-    index.seenRemoteSources = make(map[string]*yaml.Node)
-    index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
-    a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
-    assert.NoError(t, err)
-    assert.NotNil(t, a)
-    assert.NotNil(t, b)
+	index := new(SpecIndex)
+	index.seenRemoteSources = make(map[string]*yaml.Node)
+	index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
+	a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
+	assert.NoError(t, err)
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
 }
 
 // Discovered in issue https://github.com/daveshanley/vacuum/issues/225
@@ -669,47 +668,47 @@ func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
 
 func TestSpecIndex_CheckBadURLRef(t *testing.T) {
 
-    yml := `openapi: 3.1.0
+	yml := `openapi: 3.1.0
 paths:
   /cakes:
     post:
       parameters:
         - $ref: 'httpsss://badurl'`
 
-    var rootNode yaml.Node
+	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
-    assert.Len(t, index.refErrors, 2)
+	assert.Len(t, index.refErrors, 2)
 }
 
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
 
-    yml := `openapi: 3.1.0
+	yml := `openapi: 3.1.0
 paths:
   /cakes:
     post:
       parameters:
         - $ref: 'httpsss://badurl'`
 
-    var rootNode yaml.Node
+	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-    c := CreateClosedAPIIndexConfig()
-    idx := NewSpecIndexWithConfig(&rootNode, c)
+	c := CreateClosedAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
 
-    assert.Len(t, idx.refErrors, 2)
-    assert.Equal(t, "remote lookups are not permitted, "+
-        "please set AllowRemoteLookup to true in the configuration", idx.refErrors[0].Error())
+	assert.Len(t, idx.refErrors, 2)
+	assert.Equal(t, "remote lookups are not permitted, "+
+		"please set AllowRemoteLookup to true in the configuration", idx.refErrors[0].Error())
 }
 
 func TestSpecIndex_CheckIndexDiscoversNoComponentLocalFileReference(t *testing.T) {
 
-    _ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
-    defer os.Remove("coffee-time.yaml")
+	_ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
+	defer os.Remove("coffee-time.yaml")
 
-    yml := `openapi: 3.0.3
+	yml := `openapi: 3.0.3
 paths:
   /cakes:
     post:

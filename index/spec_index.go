@@ -32,6 +32,8 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 	}
 	config.remoteLock = &sync.Mutex{}
 	index.config = config
+	index.parentIndex = config.ParentIndex
+	index.uri = config.uri
 	if rootNode == nil || len(rootNode.Content) <= 0 {
 		return index
 	}
@@ -47,7 +49,7 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 // defaults to allowing remote references and file references. This is a potential security risk and should be controlled by
 // providing a SpecIndexConfig that explicitly sets the AllowRemoteLookup and AllowFileLookup to true.
 // This function also does not support specifications with relative references that may not exist locally.
-//  - https://github.com/pb33f/libopenapi/issues/73
+//   - https://github.com/pb33f/libopenapi/issues/73
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
 	index.config = CreateOpenAPIIndexConfig()
