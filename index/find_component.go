@@ -267,11 +267,16 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 			return nil // no component found
 		}
 		res, _ := path.Find(index.root)
+
 		if len(res) == 1 {
+			resNode := res[0]
+			if res[0].Kind == yaml.DocumentNode {
+				resNode = res[0].Content[0]
+			}
 			ref := &Reference{
 				Definition:            componentId,
 				Name:                  name,
-				Node:                  res[0],
+				Node:                  resNode,
 				Path:                  friendlySearch,
 				RequiredRefProperties: index.extractDefinitionRequiredRefProperties(res[0], map[string][]string{}),
 			}
@@ -283,8 +288,7 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 }
 
 func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
-	lookupFunction ExternalLookupFunction, parent *yaml.Node,
-) *Reference {
+	lookupFunction ExternalLookupFunction, parent *yaml.Node) *Reference {
 	if len(uri) > 0 {
 		index.externalLock.RLock()
 		externalSpecIndex := index.externalSpecIndex[uri[0]]
@@ -349,21 +353,29 @@ func (index *SpecIndex) performExternalLookup(uri []string, componentId string,
 					BasePath:          newBasePath,
 					AllowRemoteLookup: index.config.AllowRemoteLookup,
 					AllowFileLookup:   index.config.AllowFileLookup,
+					ParentIndex:       index,
 					seenRemoteSources: index.config.seenRemoteSources,
 					remoteLock:        index.config.remoteLock,
+					uri:               uri,
 				}
 
 				var newIndex *SpecIndex
-				newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
-				index.refLock.Lock()
-				index.externalLock.Lock()
-				index.externalSpecIndex[uri[0]] = newIndex
-				index.externalLock.Unlock()
-				newIndex.relativePath = path
-				newIndex.parentIndex = index
-				index.AddChild(newIndex)
-				index.refLock.Unlock()
-				externalSpecIndex = newIndex
+				seen := index.SearchAncestryForSeenURI(uri[0])
+				if seen == nil {
+
+					newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
+					index.refLock.Lock()
+					index.externalLock.Lock()
+					index.externalSpecIndex[uri[0]] = newIndex
+					index.externalLock.Unlock()
+					newIndex.relativePath = path
+					newIndex.parentIndex = index
+					index.AddChild(newIndex)
+					index.refLock.Unlock()
+					externalSpecIndex = newIndex
+				} else {
+					externalSpecIndex = seen
+				}
 			}
 		}
 

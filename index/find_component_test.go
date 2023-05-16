@@ -6,6 +6,7 @@ package index
 import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"os"
 	"testing"
 )
 
@@ -24,6 +25,22 @@ func TestSpecIndex_performExternalLookup(t *testing.T) {
 	c := CreateOpenAPIIndexConfig()
 	index := NewSpecIndexWithConfig(&rootNode, c)
 	assert.Len(t, index.GetPathsNode().Content, 1)
+}
+
+func TestSpecIndex_CheckCircularIndex(t *testing.T) {
+	yml, _ := os.ReadFile("../test_specs/first.yaml")
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.BasePath = "../test_specs"
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Nil(t, index.uri)
+	assert.NotNil(t, index.children[0].uri)
+	assert.NotNil(t, index.children[0].children[0].uri)
+	assert.NotNil(t, index.SearchIndexForReference("second.yaml#/properties/property2"))
+	assert.NotNil(t, index.SearchIndexForReference("second.yaml"))
+	assert.Nil(t, index.SearchIndexForReference("fourth.yaml"))
 }
 
 func TestSpecIndex_performExternalLookup_invalidURL(t *testing.T) {

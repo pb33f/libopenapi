@@ -1,0 +1,33 @@
+openapi: 3.0.0
+info:
+  title: title
+  description: description
+  version: 0.0.0
+
+paths:
+
+  /items:
+    get:
+      tags:
+        - items
+      summary: summary
+      description: description
+      parameters: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: Schema
+                description: description
+                type: object
+
+                additionalProperties:
+                  type: object
+                  title: first title
+                  description: first description
+                  additionalProperties: false
+                  properties:
+                    second:
+                      $ref: "second.yaml"
