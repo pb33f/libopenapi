@@ -1,0 +1,31 @@
+title: second doc title
+description: second doc description
+type: object
+
+additionalProperties: false
+
+properties:
+
+  property1:
+    title: title
+    description: property 1 description
+    type: array
+    items:
+      title: item
+      description: third description
+      type: object
+      additionalProperties: false
+      properties:
+        details:
+          $ref: "third.yaml"
+
+  property2:
+    title: title
+    description: property 2 description
+    type: object
+    additionalProperties: false
+    properties:
+      property:
+        title: title
+        description: tasty description
+        type: integer
