@@ -123,6 +123,22 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	assert.Len(t, index.GetAllExternalIndexes(), 291)
 	assert.NotNil(t, index)
+
+	ref := index.SearchIndexForReference("resources/apps/apps_list_instanceSizes.yml")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "operationId", ref[0].Node.Content[0].Value)
+
+	ref = index.SearchIndexForReference("examples/ruby/domains_create.yml")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "lang", ref[0].Node.Content[0].Value)
+
+	ref = index.SearchIndexForReference("../../shared/responses/server_error.yml")
+	assert.NotNil(t, ref)
+	assert.Equal(t, "description", ref[0].Node.Content[0].Value)
+
+	ref = index.SearchIndexForReference("../models/options.yml")
+	assert.NotNil(t, ref)
+
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
