@@ -27,7 +27,7 @@ import (
 //
 // The Responses Object MUST contain at least one response code, and if only one response code is provided it SHOULD
 // be the response for a successful operation call.
-//  - https://spec.openapis.org/oas/v3.1.0#responses-object
+//   - https://spec.openapis.org/oas/v3.1.0#responses-object
 //
 // This structure is identical to the v2 version, however they use different response types, hence
 // the duplication. Perhaps in the future we could use generics here, but for now to keep things
