@@ -17,7 +17,7 @@ import (
 //
 // Describes a single response from an API Operation, including design-time, static links to
 // operations based on the response.
-//  - https://spec.openapis.org/oas/v3.1.0#response-object
+//   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
 	Description low.NodeReference[string]
 	Headers     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Header]]
@@ -58,7 +58,7 @@ func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	r.Extensions = low.ExtractExtensions(root)
 
 	//extract headers
-	headers, lN, kN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
+	headers, lN, kN, err := low.ExtractMapExtensions[*Header](HeadersLabel, root, idx, true)
 	if err != nil {
 		return err
 	}

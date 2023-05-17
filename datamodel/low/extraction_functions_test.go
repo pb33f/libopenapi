@@ -973,6 +973,106 @@ one:
 
 }
 
+func TestExtractMap_NoLookupWithExtensions(t *testing.T) {
+
+	yml := `components:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  x-choo: choo`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapNoLookupExtensions[*test_Good](cNode.Content[0], idx, true)
+	assert.NoError(t, err)
+	assert.Len(t, things, 2)
+
+	for k, v := range things {
+		if k.Value == "x-hey" {
+			continue
+		}
+		assert.Equal(t, "one", k.Value)
+		assert.Len(t, v.ValueNode.Content, 2)
+	}
+}
+
+func TestExtractMap_NoLookupWithoutExtensions(t *testing.T) {
+
+	yml := `components:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  x-choo: choo`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, err := ExtractMapNoLookupExtensions[*test_Good](cNode.Content[0], idx, false)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+
+	for k, _ := range things {
+		assert.Equal(t, "one", k.Value)
+	}
+}
+
+func TestExtractMap_WithExtensions(t *testing.T) {
+
+	yml := `components:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  x-choo: choo`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapExtensions[*test_Good]("one", cNode.Content[0], idx, true)
+	assert.NoError(t, err)
+	assert.Len(t, things, 1)
+}
+
+func TestExtractMap_WithoutExtensions(t *testing.T) {
+
+	yml := `components:`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	yml = `x-hey: you
+one:
+  x-choo: choo`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+
+	things, _, _, err := ExtractMapExtensions[*test_Good]("one", cNode.Content[0], idx, false)
+	assert.NoError(t, err)
+	assert.Len(t, things, 0)
+}
+
 func TestExtractMapFlatNoLookup_Ref(t *testing.T) {
 
 	yml := `components:
