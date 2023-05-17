@@ -64,7 +64,6 @@ default:
 	assert.Equal(t, "c009b2046101bc03df802b4cf23f78176931137e6115bf7b445ca46856c06b51",
 		low.GenerateHashString(&n))
 
-
 }
 
 func TestResponses_NoDefault(t *testing.T) {
@@ -214,6 +213,30 @@ func TestResponses_Build_FailBadLinks(t *testing.T) {
 
 	err = n.Build(idxNode.Content[0], idx)
 	assert.Error(t, err)
+
+}
+
+func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
+
+	yml := `"200":
+  headers:
+    x-header1:
+      schema:
+        type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Responses
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "string",
+		n.FindResponseByCode("200").Value.FindHeader("x-header1").Value.Schema.Value.Schema().Type.Value.A)
 
 }
 

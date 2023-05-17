@@ -354,14 +354,15 @@ func ExtractExample(expNode, expLabel *yaml.Node) NodeReference[any] {
 	return ref
 }
 
-// ExtractMapNoLookup will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
+// ExtractMapNoLookupExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
 // refers to the fact that there is no key supplied as part of the extraction, there  is no lookup performed and the
-// root yaml.Node pointer is used directly.
+// root yaml.Node pointer is used directly. Pass a true bit to includeExtensions to include extension keys in the map.
 //
 // This is useful when the node to be extracted, is already known and does not require a search.
-func ExtractMapNoLookup[PT Buildable[N], N any](
+func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 	root *yaml.Node,
 	idx *index.SpecIndex,
+	includeExtensions bool,
 ) (map[KeyReference[string]]ValueReference[PT], error) {
 	valueMap := make(map[KeyReference[string]]ValueReference[PT])
 	var circError error
@@ -369,9 +370,11 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 		var currentKey *yaml.Node
 		skip := false
 		for i, node := range root.Content {
-			if strings.HasPrefix(strings.ToLower(node.Value), "x-") {
-				skip = true
-				continue
+			if !includeExtensions {
+				if strings.HasPrefix(strings.ToLower(node.Value), "x-") {
+					skip = true
+					continue
+				}
 			}
 			if skip {
 				skip = false
@@ -430,6 +433,19 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 		return valueMap, circError
 	}
 	return valueMap, nil
+
+}
+
+// ExtractMapNoLookup will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
+// refers to the fact that there is no key supplied as part of the extraction, there  is no lookup performed and the
+// root yaml.Node pointer is used directly.
+//
+// This is useful when the node to be extracted, is already known and does not require a search.
+func ExtractMapNoLookup[PT Buildable[N], N any](
+	root *yaml.Node,
+	idx *index.SpecIndex,
+) (map[KeyReference[string]]ValueReference[PT], error) {
+	return ExtractMapNoLookupExtensions[PT, N](root, idx, false)
 }
 
 type mappingResult[T any] struct {
@@ -437,15 +453,17 @@ type mappingResult[T any] struct {
 	v ValueReference[T]
 }
 
-// ExtractMap will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
-// used to locate the node to be extracted from the root node supplied.
+// ExtractMapExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
+// used to locate the node to be extracted from the root node supplied. Supply a bit to decide if extensions should
+// be included or not. required in some use cases.
 //
 // The second return value is the yaml.Node found for the 'label' and the third return value is the yaml.Node
 // found for the value extracted from the label node.
-func ExtractMap[PT Buildable[N], N any](
+func ExtractMapExtensions[PT Buildable[N], N any](
 	label string,
 	root *yaml.Node,
 	idx *index.SpecIndex,
+	extensions bool,
 ) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
 	//var isReference bool
 	var referenceValue string
@@ -547,8 +565,10 @@ func ExtractMap[PT Buildable[N], N any](
 				}
 			}
 
-			if strings.HasPrefix(currentLabelNode.Value, "x-") {
-				continue // yo, don't pay any attention to extensions, not here anyway.
+			if !extensions {
+				if strings.HasPrefix(currentLabelNode.Value, "x-") {
+					continue // yo, don't pay any attention to extensions, not here anyway.
+				}
 			}
 			totalKeys++
 			go buildMap(currentLabelNode, en, bChan, eChan, referenceValue)
@@ -570,6 +590,19 @@ func ExtractMap[PT Buildable[N], N any](
 		return valueMap, labelNode, valueNode, nil
 	}
 	return nil, labelNode, valueNode, nil
+}
+
+// ExtractMap will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
+// used to locate the node to be extracted from the root node supplied.
+//
+// The second return value is the yaml.Node found for the 'label' and the third return value is the yaml.Node
+// found for the value extracted from the label node.
+func ExtractMap[PT Buildable[N], N any](
+	label string,
+	root *yaml.Node,
+	idx *index.SpecIndex,
+) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
+	return ExtractMapExtensions[PT, N](label, root, idx, false)
 }
 
 // ExtractExtensions will extract any 'x-' prefixed key nodes from a root node into a map. Requirements have been pre-cast:
