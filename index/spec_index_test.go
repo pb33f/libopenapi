@@ -102,7 +102,6 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
-
 	// this is a full checkout of the digitalocean API repo.
 	tmp, _ := os.MkdirTemp("", "openapi")
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
@@ -138,7 +137,6 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	ref = index.SearchIndexForReference("../models/options.yml")
 	assert.NotNil(t, ref)
-
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
@@ -341,7 +339,6 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 }
 
 func TestSpecIndex_GetAllParametersFromOperations(t *testing.T) {
-
 	yml := `openapi: 3.0.0
 servers:
   - url: http://localhost:8080
@@ -667,7 +664,6 @@ func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
 
 // Discovered in issue https://github.com/daveshanley/vacuum/issues/225
 func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
-
 	cwd, _ := os.Getwd()
 	index := new(SpecIndex)
 	index.config = &SpecIndexConfig{BasePath: cwd}
@@ -683,7 +679,6 @@ func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
 }
 
 func TestSpecIndex_CheckBadURLRef(t *testing.T) {
-
 	yml := `openapi: 3.1.0
 paths:
   /cakes:
@@ -700,7 +695,6 @@ paths:
 }
 
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
-
 	yml := `openapi: 3.1.0
 paths:
   /cakes:
@@ -720,7 +714,6 @@ paths:
 }
 
 func TestSpecIndex_CheckIndexDiscoversNoComponentLocalFileReference(t *testing.T) {
-
 	_ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
 	defer os.Remove("coffee-time.yaml")
 
@@ -975,7 +968,6 @@ paths:
 	assert.Len(t, idx.paramInlineDuplicateNames, 2)
 	assert.Len(t, idx.operationParamErrors, 0)
 	assert.Len(t, idx.refErrors, 0)
-
 }
 
 func TestSpecIndex_ParamsWithDuplicateNamesAndSameInTypes(t *testing.T) {
@@ -1106,4 +1098,48 @@ func ExampleNewSpecIndex() {
 	// 10335 total schemas
 	// 1516 enums
 	// 828 polymorphic references
+}
+
+func TestSpecIndex_GetAllPathsHavePathAndParent(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+ title: Test
+ version: 0.0.1
+servers:
+ - url: http://localhost:35123
+paths:
+ /test:
+  get:
+     responses:
+       "200":
+         description: OK
+  post:
+     responses:
+       "200":
+         description: OK
+ /test2:
+  delete:
+     responses:
+       "200":
+         description: OK
+  put:
+     responses:
+       "200":
+         description: OK`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	paths := idx.GetAllPaths()
+
+	assert.Equal(t, "$.paths./test.get", paths["/test"]["get"].Path)
+	assert.Equal(t, 9, paths["/test"]["get"].ParentNode.Line)
+	assert.Equal(t, "$.paths./test.post", paths["/test"]["post"].Path)
+	assert.Equal(t, 13, paths["/test"]["post"].ParentNode.Line)
+	assert.Equal(t, "$.paths./test2.delete", paths["/test2"]["delete"].Path)
+	assert.Equal(t, 18, paths["/test2"]["delete"].ParentNode.Line)
+	assert.Equal(t, "$.paths./test2.put", paths["/test2"]["put"].Path)
+	assert.Equal(t, 22, paths["/test2"]["put"].ParentNode.Line)
 }
