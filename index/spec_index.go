@@ -14,12 +14,13 @@ package index
 
 import (
 	"fmt"
+	"strings"
+	"sync"
+
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"sync"
 )
 
 // NewSpecIndexWithConfig will create a new index of an OpenAPI or Swagger spec. It uses the same logic as NewSpecIndex
@@ -215,7 +216,6 @@ func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]
 // The first elements of at the top of the slice, are all the inline references (using GetAllInlineSchemas),
 // and then following on are all the references extracted from the components section (using GetAllComponentSchemas).
 func (index *SpecIndex) GetAllSchemas() []*Reference {
-
 	componentSchemas := index.GetAllComponentSchemas()
 	inlineSchemas := index.GetAllInlineSchemas()
 
@@ -929,6 +929,8 @@ func (index *SpecIndex) GetOperationCount() int {
 							Definition: m.Value,
 							Name:       m.Value,
 							Node:       method.Content[y+1],
+							Path:       fmt.Sprintf("$.paths.%s.%s", p.Value, m.Value),
+							ParentNode: m,
 						}
 						index.pathRefsLock.Lock()
 						if index.pathRefs[p.Value] == nil {
