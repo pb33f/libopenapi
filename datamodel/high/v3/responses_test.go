@@ -4,13 +4,14 @@
 package v3
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 // this test exists because the sample contract doesn't contain a
@@ -64,6 +65,36 @@ func TestResponses_MarshalYAML(t *testing.T) {
 	r := NewResponses(&n)
 
 	rend, _ := r.Render()
+	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
+
+}
+
+func TestResponses_MarshalYAMLInline(t *testing.T) {
+
+	yml := `"201":
+    description: this is a response
+    content:
+        something/thing:
+            example: cake
+"404":
+    description: this is a 404
+    content:
+        something/thing:
+            example: why do you need an example?
+"200":
+    description: OK! not bad.`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.Responses
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	r := NewResponses(&n)
+
+	rend, _ := r.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
 
 }
