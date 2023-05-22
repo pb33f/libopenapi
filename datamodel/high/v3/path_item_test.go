@@ -4,13 +4,14 @@
 package v3
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/low"
-    v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
-    "strings"
-    "testing"
+	"strings"
+	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 // this test exists because the sample contract doesn't contain a
@@ -18,26 +19,26 @@ import (
 // with hard coded line and column numbers in them, changing the spec above the bottom will
 // create pointless test changes. So here is a standalone test. you know... for science.
 func TestPathItem(t *testing.T) {
-    yml := `servers:
+	yml := `servers:
   - description: so many options for things in places.`
 
-    var idxNode yaml.Node
-    _ = yaml.Unmarshal([]byte(yml), &idxNode)
-    idx := index.NewSpecIndex(&idxNode)
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
 
-    var n v3.PathItem
-    _ = low.BuildModel(&idxNode, &n)
-    _ = n.Build(idxNode.Content[0], idx)
+	var n v3.PathItem
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
 
-    r := NewPathItem(&n)
+	r := NewPathItem(&n)
 
-    assert.Len(t, r.Servers, 1)
-    assert.Equal(t, "so many options for things in places.", r.Servers[0].Description)
-    assert.Equal(t, 1, r.GoLow().Servers.KeyNode.Line)
+	assert.Len(t, r.Servers, 1)
+	assert.Equal(t, "so many options for things in places.", r.Servers[0].Description)
+	assert.Equal(t, 1, r.GoLow().Servers.KeyNode.Line)
 }
 
 func TestPathItem_GetOperations(t *testing.T) {
-    yml := `get:
+	yml := `get:
   description: get
 put:
   description: put
@@ -55,46 +56,46 @@ trace:
   description: trace
 `
 
-    var idxNode yaml.Node
-    _ = yaml.Unmarshal([]byte(yml), &idxNode)
-    idx := index.NewSpecIndex(&idxNode)
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
 
-    var n v3.PathItem
-    _ = low.BuildModel(&idxNode, &n)
-    _ = n.Build(idxNode.Content[0], idx)
+	var n v3.PathItem
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
 
-    r := NewPathItem(&n)
+	r := NewPathItem(&n)
 
-    assert.Len(t, r.GetOperations(), 8)
+	assert.Len(t, r.GetOperations(), 8)
 }
 
 func TestPathItem_MarshalYAML(t *testing.T) {
 
-    pi := &PathItem{
-        Description: "a path item",
-        Summary:     "It's a test, don't worry about it, Jim",
-        Servers: []*Server{
-            {
-                Description: "a server",
-            },
-        },
-        Parameters: []*Parameter{
-            {
-                Name: "I am a query parameter",
-                In:   "query",
-            },
-        },
-        Get: &Operation{
-            Description: "a get operation",
-        },
-        Post: &Operation{
-            Description: "a post operation",
-        },
-    }
+	pi := &PathItem{
+		Description: "a path item",
+		Summary:     "It's a test, don't worry about it, Jim",
+		Servers: []*Server{
+			{
+				Description: "a server",
+			},
+		},
+		Parameters: []*Parameter{
+			{
+				Name: "I am a query parameter",
+				In:   "query",
+			},
+		},
+		Get: &Operation{
+			Description: "a get operation",
+		},
+		Post: &Operation{
+			Description: "a post operation",
+		},
+	}
 
-    rend, _ := pi.Render()
+	rend, _ := pi.Render()
 
-    desired := `description: a path item
+	desired := `description: a path item
 summary: It's a test, don't worry about it, Jim
 get:
     description: a get operation
@@ -106,5 +107,46 @@ parameters:
     - name: I am a query parameter
       in: query`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+}
+
+func TestPathItem_MarshalYAMLInline(t *testing.T) {
+
+	pi := &PathItem{
+		Description: "a path item",
+		Summary:     "It's a test, don't worry about it, Jim",
+		Servers: []*Server{
+			{
+				Description: "a server",
+			},
+		},
+		Parameters: []*Parameter{
+			{
+				Name: "I am a query parameter",
+				In:   "query",
+			},
+		},
+		Get: &Operation{
+			Description: "a get operation",
+		},
+		Post: &Operation{
+			Description: "a post operation",
+		},
+	}
+
+	rend, _ := pi.RenderInline()
+
+	desired := `description: a path item
+summary: It's a test, don't worry about it, Jim
+get:
+    description: a get operation
+post:
+    description: a post operation
+servers:
+    - description: a server
+parameters:
+    - name: I am a query parameter
+      in: query`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 }

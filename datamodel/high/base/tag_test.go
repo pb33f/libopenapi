@@ -5,12 +5,13 @@ package base
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestNewTag(t *testing.T) {
@@ -46,8 +47,18 @@ x-hack: code`
 
 }
 
-func ExampleNewTag() {
+func TestTag_RenderInline(t *testing.T) {
 
+	tag := &Tag{
+		Name: "cake",
+	}
+
+	tri, _ := tag.RenderInline()
+
+	assert.Equal(t, "name: cake", strings.TrimSpace(string(tri)))
+}
+
+func ExampleNewTag() {
 	// create an example schema object
 	// this can be either JSON or YAML.
 	yml := `
