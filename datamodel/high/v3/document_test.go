@@ -478,6 +478,24 @@ func TestDocument_MarshalYAML(t *testing.T) {
 
 }
 
+func TestDocument_MarshalYAMLInline(t *testing.T) {
+
+	// create a new document
+	initTest()
+	h := NewDocument(lowDoc)
+
+	// render the document to YAML inline
+	r, _ := h.RenderInline()
+
+	info, _ := datamodel.ExtractSpecInfo(r)
+	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	assert.Nil(t, e)
+
+	highDoc := NewDocument(lDoc)
+	testBurgerShop(t, highDoc, false)
+
+}
+
 func TestDocument_MarshalYAML_TestRefs(t *testing.T) {
 
 	// create a new document
