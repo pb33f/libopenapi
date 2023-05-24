@@ -95,7 +95,7 @@ func TestPaths_MarshalYAMLInline(t *testing.T) {
 	high := NewPaths(&n)
 	assert.NotNil(t, high)
 
-	rend, _ := high.Render()
+	rend, _ := high.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
 
 	// mutate
