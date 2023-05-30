@@ -26,12 +26,12 @@ type Schema struct {
     SchemaTypeRef string `json:"$schema,omitempty" yaml:"$schema,omitempty"`
 
     // In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
-    // In version 3.1, ExclusiveMaximum is an integer.
-    ExclusiveMaximum *DynamicValue[bool, int64] `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
+    // In version 3.1, ExclusiveMaximum is a number.
+    ExclusiveMaximum *DynamicValue[bool, float64] `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
 
-    // In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
-    // In version 3.1, ExclusiveMinimum is an integer.
-    ExclusiveMinimum *DynamicValue[bool, int64] `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
+	// In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
+    // In version 3.1, ExclusiveMinimum is a number.
+    ExclusiveMinimum *DynamicValue[bool, float64] `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
 
     // In versions 2 and 3.0, this Type is a single value, so array will only ever have one value
     // in version 3.1, Type can be multiple values
@@ -74,9 +74,9 @@ type Schema struct {
     Not                  *SchemaProxy            `json:"not,omitempty" yaml:"not,omitempty"`
     Properties           map[string]*SchemaProxy `json:"properties,omitempty" yaml:"properties,omitempty"`
     Title                string                  `json:"title,omitempty" yaml:"title,omitempty"`
-    MultipleOf           *int64                  `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
-    Maximum              *int64                  `json:"maximum,omitempty" yaml:"maximum,omitempty"`
-    Minimum              *int64                  `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+    MultipleOf           *float64                `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
+    Maximum              *float64                `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+    Minimum              *float64                `json:"minimum,omitempty" yaml:"minimum,omitempty"`
     MaxLength            *int64                  `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
     MinLength            *int64                  `json:"minLength,omitempty" yaml:"minLength,omitempty"`
     Pattern              string                  `json:"pattern,omitempty" yaml:"pattern,omitempty"`
@@ -121,26 +121,26 @@ func NewSchema(schema *base.Schema) *Schema {
     }
     // if we're dealing with a 3.0 spec using a bool
     if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsA() {
-        s.ExclusiveMaximum = &DynamicValue[bool, int64]{
+        s.ExclusiveMaximum = &DynamicValue[bool, float64]{
             A: schema.ExclusiveMaximum.Value.A,
         }
     }
     // if we're dealing with a 3.1 spec using an int
     if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsB() {
-        s.ExclusiveMaximum = &DynamicValue[bool, int64]{
+        s.ExclusiveMaximum = &DynamicValue[bool, float64]{
             N: 1,
             B: schema.ExclusiveMaximum.Value.B,
         }
     }
     // if we're dealing with a 3.0 spec using a bool
     if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsA() {
-        s.ExclusiveMinimum = &DynamicValue[bool, int64]{
+        s.ExclusiveMinimum = &DynamicValue[bool, float64]{
             A: schema.ExclusiveMinimum.Value.A,
         }
     }
     // if we're dealing with a 3.1 spec, using an int
     if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsB() {
-        s.ExclusiveMinimum = &DynamicValue[bool, int64]{
+        s.ExclusiveMinimum = &DynamicValue[bool, float64]{
             N: 1,
             B: schema.ExclusiveMinimum.Value.B,
         }
