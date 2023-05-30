@@ -500,8 +500,8 @@ required: [cake, fish]`
     assert.Nil(t, schemaProxy.GetBuildError())
 
     assert.True(t, compiled.ExclusiveMaximum.A)
-    assert.Equal(t, int64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum.B)
-    assert.Equal(t, int64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
+    assert.Equal(t, float64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum.B)
+    assert.Equal(t, float64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
     assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
 
     assert.Equal(t, "nice", compiled.AdditionalProperties.(*SchemaProxy).Schema().Description)
@@ -515,7 +515,7 @@ required: [cake, fish]`
 }
 
 func TestSchemaProxy_GoLow(t *testing.T) {
-    const ymlComponents = `components:
+	const ymlComponents = `components:
     schemas:
      rice:
        type: string
@@ -586,25 +586,47 @@ type: number
     assert.Nil(t, highSchema.ExclusiveMaximum)
 }
 
-func TestSchemaNumberMultipleOf(t *testing.T) {
+func TestSchemaNumberMultipleOfInt(t *testing.T) {
     yml := `
 type: number
 multipleOf: 5
 `
     highSchema := getHighSchema(t, yml)
 
-    value := int64(5)
+	value := float64(5)
     assert.EqualValues(t, &value, highSchema.MultipleOf)
 }
 
-func TestSchemaNumberMinimum(t *testing.T) {
+func TestSchemaNumberMultipleOfFloat(t *testing.T) {
+    yml := `
+type: number
+multipleOf: 0.5
+`
+    highSchema := getHighSchema(t, yml)
+
+    value := 0.5
+    assert.EqualValues(t, &value, highSchema.MultipleOf)
+}
+
+func TestSchemaNumberMinimumInt(t *testing.T) {
     yml := `
 type: number
 minimum: 5
 `
     highSchema := getHighSchema(t, yml)
 
-    value := int64(5)
+	value := float64(5)
+    assert.EqualValues(t, &value, highSchema.Minimum)
+}
+
+func TestSchemaNumberMinimumFloat(t *testing.T) {
+    yml := `
+type: number
+minimum: 0.5
+`
+    highSchema := getHighSchema(t, yml)
+
+    value := 0.5
     assert.EqualValues(t, &value, highSchema.Minimum)
 }
 
@@ -615,7 +637,7 @@ minimum: 0
 `
     highSchema := getHighSchema(t, yml)
 
-    value := int64(0)
+	value := float64(0)
     assert.EqualValues(t, &value, highSchema.Minimum)
 }
 
@@ -638,7 +660,7 @@ maximum: 5
 `
     highSchema := getHighSchema(t, yml)
 
-    value := int64(5)
+	value := float64(5)
     assert.EqualValues(t, &value, highSchema.Maximum)
 }
 
@@ -649,7 +671,7 @@ maximum: 0
 `
     highSchema := getHighSchema(t, yml)
 
-    value := int64(0)
+	value := float64(0)
     assert.EqualValues(t, &value, highSchema.Maximum)
 }
 

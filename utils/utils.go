@@ -408,6 +408,14 @@ func IsNodeFloatValue(node *yaml.Node) bool {
 	return node.Tag == "!!float"
 }
 
+// IsNodeNumberValue will check if a node can be parsed as a float value.
+func IsNodeNumberValue(node *yaml.Node) bool {
+	if node == nil {
+		return false
+	}
+	return IsNodeIntValue(node) || IsNodeFloatValue(node)
+}
+
 // IsNodeBoolValue will check is a node is a bool
 func IsNodeBoolValue(node *yaml.Node) bool {
 	if node == nil {

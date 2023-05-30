@@ -213,7 +213,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 
     case reflect.TypeOf(NodeReference[float32]{}):
 
-        if utils.IsNodeFloatValue(valueNode) {
+        if utils.IsNodeNumberValue(valueNode) {
             if field.CanSet() {
                 fv, _ := strconv.ParseFloat(valueNode.Value, 32)
                 nr := NodeReference[float32]{
@@ -227,7 +227,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 
     case reflect.TypeOf(NodeReference[float64]{}):
 
-        if utils.IsNodeFloatValue(valueNode) {
+        if utils.IsNodeNumberValue(valueNode) {
             if field.CanSet() {
                 fv, _ := strconv.ParseFloat(valueNode.Value, 64)
                 nr := NodeReference[float64]{

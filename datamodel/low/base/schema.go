@@ -52,10 +52,10 @@ type Schema struct {
     SchemaTypeRef low.NodeReference[string]
 
     // In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
-    ExclusiveMaximum low.NodeReference[*SchemaDynamicValue[bool, int64]]
+    ExclusiveMaximum low.NodeReference[*SchemaDynamicValue[bool, float64]]
 
     // In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
-    ExclusiveMinimum low.NodeReference[*SchemaDynamicValue[bool, int64]]
+    ExclusiveMinimum low.NodeReference[*SchemaDynamicValue[bool, float64]]
 
     // In versions 2 and 3.0, this Type is a single value, so array will only ever have one value
     // in version 3.1, Type can be multiple values
@@ -94,9 +94,9 @@ type Schema struct {
 
     // Compatible with all versions
     Title                low.NodeReference[string]
-    MultipleOf           low.NodeReference[int64]
-    Maximum              low.NodeReference[int64]
-    Minimum              low.NodeReference[int64]
+    MultipleOf           low.NodeReference[float64]
+    Maximum              low.NodeReference[float64]
+    Minimum              low.NodeReference[float64]
     MaxLength            low.NodeReference[int64]
     MinLength            low.NodeReference[int64]
     Pattern              low.NodeReference[string]
@@ -575,18 +575,18 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
     if exMinValue != nil {
         if utils.IsNodeBoolValue(exMinValue) {
             val, _ := strconv.ParseBool(exMinValue.Value)
-            s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
+            s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
                 KeyNode:   exMinLabel,
                 ValueNode: exMinValue,
-                Value:     &SchemaDynamicValue[bool, int64]{N: 0, A: val},
+                Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
             }
         }
         if utils.IsNodeIntValue(exMinValue) {
-            val, _ := strconv.ParseInt(exMinValue.Value, 10, 64)
-            s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
+            val, _ := strconv.ParseFloat(exMinValue.Value, 64)
+            s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
                 KeyNode:   exMinLabel,
                 ValueNode: exMinValue,
-                Value:     &SchemaDynamicValue[bool, int64]{N: 1, B: val},
+                Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
             }
         }
     }
@@ -596,18 +596,18 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
     if exMaxValue != nil {
         if utils.IsNodeBoolValue(exMaxValue) {
             val, _ := strconv.ParseBool(exMaxValue.Value)
-            s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
+            s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
                 KeyNode:   exMaxLabel,
                 ValueNode: exMaxValue,
-                Value:     &SchemaDynamicValue[bool, int64]{N: 0, A: val},
+                Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
             }
         }
         if utils.IsNodeIntValue(exMaxValue) {
-            val, _ := strconv.ParseInt(exMaxValue.Value, 10, 64)
-            s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, int64]]{
+            val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
+            s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
                 KeyNode:   exMaxLabel,
                 ValueNode: exMaxValue,
-                Value:     &SchemaDynamicValue[bool, int64]{N: 1, B: val},
+                Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
             }
         }
     }
