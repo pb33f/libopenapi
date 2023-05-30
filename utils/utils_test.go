@@ -570,6 +570,23 @@ func TestIsNodeFloatValue(t *testing.T) {
     assert.False(t, IsNodeFloatValue(n))
 }
 
+func TestIsNodeNumberValue(t *testing.T) {
+    n := &yaml.Node{
+        Tag: "!!float",
+    }
+    assert.True(t, IsNodeNumberValue(n))
+    n.Tag = "!!pizza"
+    assert.False(t, IsNodeNumberValue(n))
+
+    n = &yaml.Node{
+        Tag: "!!int",
+    }
+    assert.True(t, IsNodeNumberValue(n))
+    n.Tag = "!!pizza"
+    assert.False(t, IsNodeNumberValue(n))
+    assert.False(t, IsNodeNumberValue(nil))
+}
+
 func TestIsNodeFloatValue_Nil(t *testing.T) {
     assert.False(t, IsNodeFloatValue(nil))
 }
