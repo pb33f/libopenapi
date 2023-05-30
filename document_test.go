@@ -3,6 +3,7 @@
 package libopenapi
 
 import (
+	"errors"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -22,7 +23,7 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 	assert.Equal(t, "2.0.1", doc.GetVersion())
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 0)
+	assert.NoError(t, docErr)
 	assert.NotNil(t, v2Doc)
 	assert.NotNil(t, doc.GetSpecInfo())
 
@@ -37,7 +38,9 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 1)
+	var errs *MultiError
+	assert.True(t, errors.As(docErr, &errs))
+	assert.Equal(t, errs.Count(), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -51,7 +54,9 @@ definitions:
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 2)
+	var errs *MultiError
+	assert.True(t, errors.As(docErr, &errs))
+	assert.Equal(t, errs.Count(), 2)
 	assert.Nil(t, v2Doc)
 }
 
@@ -62,7 +67,9 @@ func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 1)
+	var errs *MultiError
+	assert.True(t, errors.As(docErr, &errs))
+	assert.Equal(t, errs.Count(), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -70,14 +77,18 @@ func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
 
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV2Model()
-	assert.Len(t, err, 1)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 1)
 }
 
 func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
 
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV3Model()
-	assert.Len(t, err, 1)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 1)
 }
 
 func TestLoadDocument_Empty(t *testing.T) {
@@ -94,7 +105,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.Equal(t, "3.0.1", doc.GetVersion())
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 0)
+	assert.NoError(t, docErr)
 	assert.NotNil(t, v3Doc)
 }
 
@@ -108,7 +119,9 @@ paths:
 	assert.NoError(t, err)
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 2)
+	var errs *MultiError
+	assert.True(t, errors.As(docErr, &errs))
+	assert.Equal(t, errs.Count(), 2)
 	assert.Nil(t, v3Doc)
 }
 
@@ -161,10 +174,10 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 	rend, newDoc, _, _ := doc.RenderAndReload()
 
 	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
+	compReport, err := CompareDocuments(doc, newDoc)
 
-	// should noth be nil.
-	assert.Nil(t, errs)
+	// should both be nil.
+	assert.NoError(t, err)
 	assert.NotNil(t, rend)
 	assert.Nil(t, compReport)
 
@@ -179,7 +192,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 	_, newDoc, _, _ := doc.RenderAndReload()
 
 	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
+	compReport, err := CompareDocuments(doc, newDoc)
 
 	// get flat list of changes.
 	flatChanges := compReport.GetAllChanges()
@@ -192,7 +205,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		}
 	}
 
-	assert.Nil(t, errs)
+	assert.NoError(t, err)
 	tc := compReport.TotalChanges()
 	bc := compReport.TotalBreakingChanges()
 	assert.Equal(t, 0, bc)
@@ -213,12 +226,12 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 	assert.NotNil(t, dat)
 
 	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
+	compReport, err := CompareDocuments(doc, newDoc)
 
 	// get flat list of changes.
 	flatChanges := compReport.GetAllChanges()
 
-	assert.Nil(t, errs)
+	assert.Nil(t, err)
 	tc := compReport.TotalChanges()
 	assert.Equal(t, 21, tc)
 
@@ -283,9 +296,11 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 	doc, _ := NewDocument(petstore)
 	doc.BuildV2Model()
 	doc.BuildV2Model()
-	_, _, _, e := doc.RenderAndReload()
-	assert.Len(t, e, 1)
-	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e[0].Error())
+	_, _, _, err := doc.RenderAndReload()
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 1)
+	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", errs.Unwrap()[0].Error())
 
 }
 
@@ -294,24 +309,28 @@ func TestDocument_BuildModelPreBuild(t *testing.T) {
 	doc, _ := NewDocument(petstore)
 	doc.BuildV3Model()
 	doc.BuildV3Model()
-	_, _, _, e := doc.RenderAndReload()
-	assert.Len(t, e, 0)
+	_, _, _, err := doc.RenderAndReload()
+	assert.NoError(t, err)
 }
 
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := ioutil.ReadFile("test_specs/circular-tests.yaml")
 	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
+	m, err := doc.BuildV3Model()
 	assert.NotNil(t, m)
-	assert.Len(t, e, 3)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 3)
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
 	petstore, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
+	m, err := doc.BuildV3Model()
 	assert.Nil(t, m)
-	assert.Len(t, e, 9)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 9)
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
@@ -357,9 +376,9 @@ paths:
 		panic(err)
 	}
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
+	result, err := doc.BuildV3Model()
+	if err != nil {
+		panic(err)
 	}
 
 	// extract operation.
@@ -376,8 +395,10 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, errors, 9)
+	changes, err := CompareDocuments(originalDoc, updatedDoc)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 9)
 	assert.Nil(t, changes)
 }
 
@@ -387,8 +408,10 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 9)
+	changes, err := CompareDocuments(updatedDoc, originalDoc)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 9)
 	assert.Nil(t, changes)
 
 }
@@ -399,8 +422,10 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/petstorev2-badref.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 2)
+	changes, err := CompareDocuments(updatedDoc, originalDoc)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 2)
 	assert.Nil(t, changes)
 
 }
@@ -411,8 +436,10 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/petstorev3.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 1)
+	changes, err := CompareDocuments(updatedDoc, originalDoc)
+	var errs *MultiError
+	assert.True(t, errors.As(err, &errs))
+	assert.Equal(t, errs.Count(), 1)
 	assert.Nil(t, changes)
 
 }
@@ -429,14 +456,15 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := document.BuildV3Model()
+	v3Model, err := document.BuildV3Model()
 
-	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
+	// if anything went wrong when building the v3 model, a MultiError will be returned
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
 		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", errs.Count()))
 	}
 
 	// get a count of the number of paths and schemas.
@@ -494,9 +522,9 @@ paths:
 		panic(err)
 	}
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
+	result, err := doc.BuildV3Model()
+	if err != nil {
+		panic(err)
 	}
 
 	// render the document.
@@ -525,9 +553,9 @@ paths:
 		panic(err)
 	}
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
+	result, err := doc.BuildV3Model()
+	if err != nil {
+		panic(err)
 	}
 
 	assert.Equal(t, "crs", result.Model.Paths.PathItems["/test"].Get.Parameters[0].Name)
@@ -555,9 +583,9 @@ components:
 		panic(err)
 	}
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
+	result, err := doc.BuildV3Model()
+	if err != nil {
+		panic(err)
 	}
 
 	// render the document.
@@ -586,9 +614,9 @@ paths:
 		panic(err)
 	}
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
+	result, err := doc.BuildV3Model()
+	if err != nil {
+		panic(err)
 	}
 
 	// render the document.

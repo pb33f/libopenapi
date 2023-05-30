@@ -4,13 +4,14 @@
 package libopenapi
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -18,6 +19,7 @@ import (
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func ExampleNewDocument_fromOpenAPI3Document() {
@@ -36,14 +38,16 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := document.BuildV3Model()
+	v3Model, err := document.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
+			panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", errs.Count()))
 		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+		panic("error returned was not of type '*MultiError'")
 	}
 
 	// get a count of the number of paths and schemas.
@@ -78,10 +82,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	}
 
 	// only errors will be thrown, so just capture them and print the number of errors.
-	_, errors := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
+	if err != nil {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	}
 	// Output: Error building Digital Ocean spec errors reported
@@ -115,10 +119,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	}
 
 	// only errors will be thrown, so just capture them and print the number of errors.
-	_, errors := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
+	if err != nil {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	} else {
 		fmt.Println("Digital Ocean spec built successfully")
@@ -142,14 +146,16 @@ func ExampleNewDocument_fromSwaggerDocument() {
 	}
 
 	// because we know this is a v2 spec, we can build a ready to go model from it.
-	v2Model, errors := document.BuildV2Model()
+	v2Model, err := document.BuildV2Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
+			panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", errs.Count()))
 		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+		panic("error returned was not of type '*MultiError'")
 	}
 
 	// get a count of the number of paths and schemas.
@@ -175,36 +181,34 @@ func ExampleNewDocument_fromUnknownVersion() {
 	}
 
 	var paths, schemas int
-	var errors []error
+	errs := MultiError{}
 
 	// We don't know which type of document this is, so we can use the spec info to inform us
 	if document.GetSpecInfo().SpecType == utils.OpenApi3 {
-		v3Model, errs := document.BuildV3Model()
-		if len(errs) > 0 {
-			errors = errs
+		v3Model, err := document.BuildV3Model()
+		if err != nil {
+			errs.Append(err)
 		}
-		if len(errors) <= 0 {
+		if errs.Count() <= 0 {
 			paths = len(v3Model.Model.Paths.PathItems)
 			schemas = len(v3Model.Model.Components.Schemas)
 		}
 	}
 	if document.GetSpecInfo().SpecType == utils.OpenApi2 {
-		v2Model, errs := document.BuildV2Model()
-		if len(errs) > 0 {
-			errors = errs
+		v2Model, err := document.BuildV2Model()
+		if err != nil {
+			errs.Append(err)
 		}
-		if len(errors) <= 0 {
+		if errs.Count() <= 0 {
 			paths = len(v2Model.Model.Paths.PathItems)
 			schemas = len(v2Model.Model.Definitions.Definitions)
 		}
 	}
 
 	// if anything went wrong when building the model, report errors.
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if errs.Count() > 0 {
+		errs.Print()
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", errs.Count()))
 	}
 
 	// print the number of paths and schemas in the document
@@ -236,14 +240,16 @@ info:
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := document.BuildV3Model()
+	v3Model, err := document.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
+			panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", errs.Count()))
 		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+		panic("error returned was not of type '*MultiError'")
 	}
 
 	// mutate the title, to do this we currently need to drop down to the low-level API.
@@ -305,14 +311,16 @@ func ExampleCompareDocuments_openAPI() {
 	}
 
 	// Compare documents for all changes made
-	documentChanges, errs := CompareDocuments(originalDoc, updatedDoc)
+	documentChanges, err := CompareDocuments(originalDoc, updatedDoc)
 
 	// If anything went wrong when building models for documents.
-	if len(errs) > 0 {
-		for i := range errs {
-			fmt.Printf("error: %e\n", errs[i])
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
+			panic(fmt.Sprintf("cannot compare documents: %d errors reported", errs.Count()))
 		}
-		panic(fmt.Sprintf("cannot compare documents: %d errors reported", len(errs)))
+		panic("error returned was not of type '*MultiError'")
 	}
 
 	// Extract SchemaChanges from components changes.
@@ -352,14 +360,16 @@ func ExampleCompareDocuments_swagger() {
 	}
 
 	// Compare documents for all changes made
-	documentChanges, errs := CompareDocuments(originalDoc, updatedDoc)
+	documentChanges, err := CompareDocuments(originalDoc, updatedDoc)
 
 	// If anything went wrong when building models for documents.
-	if len(errs) > 0 {
-		for i := range errs {
-			fmt.Printf("error: %e\n", errs[i])
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
+			panic(fmt.Sprintf("cannot compare documents: %d errors reported", errs.Count()))
 		}
-		panic(fmt.Sprintf("cannot compare documents: %d errors reported", len(errs)))
+		panic("error returned was not of type '*MultiError'")
 	}
 
 	// Extract SchemaChanges from components changes.
@@ -426,10 +436,16 @@ components:
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
-	_, errs := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
 	// extract resolving error
-	resolvingError := errs[0]
+	var errs *MultiError
+	var resolvingError error
+	if errors.As(err, &errs) {
+		resolvingError = errs.Unwrap()[0]
+	} else {
+		panic("error returned was not of type '*MultiError'")
+	}
 
 	// resolving error is a pointer to *resolver.ResolvingError
 	// which provides access to rich details about the error.
@@ -475,12 +491,9 @@ components:
 	doc, err := NewDocument([]byte(spec))
 
 	// if anything went wrong, an error is thrown
-	if err != nil {
-		panic(fmt.Sprintf("cannot create new document: %e", err))
-	}
-	_, errs := doc.BuildV3Model()
-
-	assert.Len(t, errs, 0)
+	require.NoError(t, err)
+	_, err = doc.BuildV3Model()
+	assert.NoError(t, err)
 }
 
 // If you're using complex types with OpenAPI Extensions, it's simple to unpack extensions into complex
@@ -618,14 +631,15 @@ func ExampleNewDocument_modifyAndReRender() {
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := doc.BuildV3Model()
+	v3Model, err := doc.BuildV3Model()
 
-	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			errs.Print()
+			panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", errs.Count()))
 		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+		panic("error returned was not of type '*MultiError'")
 	}
 
 	// create a new path item and operation.
@@ -647,15 +661,19 @@ func ExampleNewDocument_modifyAndReRender() {
 	v3Model.Model.Paths.PathItems["/new/path"] = newPath
 
 	// render the document back to bytes and reload the model.
-	rawBytes, _, newModel, errs := doc.RenderAndReload()
-
-	// if anything went wrong when re-rendering the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		panic(fmt.Sprintf("cannot re-render document: %d errors reported", len(errs)))
-	}
+	rawBytes, _, newModel, err := doc.RenderAndReload()
 
 	// capture new number of paths after re-rendering
 	newPaths := len(newModel.Model.Paths.PathItems)
+
+	// if anything went wrong when re-rendering the v3 model, a slice of errors will be returned
+	if err != nil {
+		var errs *MultiError
+		if errors.As(err, &errs) {
+			panic(fmt.Sprintf("cannot re-render document: %d errors reported", errs.Count()))
+		}
+		panic("error returned was not of type '*MultiError'")
+	}
 
 	// print the number of paths and schemas in the document
 	fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
