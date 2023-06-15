@@ -5,6 +5,7 @@ package base
 
 import (
 	"crypto/sha256"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
@@ -16,14 +17,18 @@ import (
 //	v2 - https://swagger.io/specification/v2/#licenseObject
 //	v3 - https://spec.openapis.org/oas/v3.1.0#license-object
 type License struct {
-	Name low.NodeReference[string]
-	URL  low.NodeReference[string]
+	Name       low.NodeReference[string]
+	URL        low.NodeReference[string]
+	Identifier low.NodeReference[string]
 	*low.Reference
 }
 
-// Build is not implemented for License (there is nothing to build)
+// Build out a license, complain if both a URL and identifier are present as they are mutually exclusive
 func (l *License) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	l.Reference = new(low.Reference)
+	if l.URL.Value != "" && l.Identifier.Value != "" {
+		return fmt.Errorf("license cannot have both a URL and an identifier, they are mutually exclusive")
+	}
 	return nil
 }
 
@@ -35,6 +40,9 @@ func (l *License) Hash() [32]byte {
 	}
 	if !l.URL.IsEmpty() {
 		f = append(f, l.URL.Value)
+	}
+	if !l.Identifier.IsEmpty() {
+		f = append(f, l.Identifier.Value)
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
