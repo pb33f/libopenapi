@@ -514,6 +514,9 @@ func IsHttpVerb(verb string) bool {
 	return false
 }
 
+// define bracket name expression
+var bracketNameExp = regexp.MustCompile("^(\\w+)\\[(\\w+)\\]$")
+
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
@@ -521,8 +524,8 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
-		reg, _ := regexp.MatchString("[%=;~.]", segs[i])
-		if reg {
+		pathCharExp, _ := regexp.MatchString("[%=;~.]", segs[i])
+		if pathCharExp {
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
 			if len(cleaned) > 0 {
@@ -530,6 +533,19 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				continue
 			}
 		} else {
+
+			// check for brackets in the name, and if found, rewire the path to encapsulate them
+			// correctly. https://github.com/pb33f/libopenapi/issues/112
+			brackets := bracketNameExp.FindStringSubmatch(segs[i])
+
+			if len(brackets) > 0 {
+				segs[i] = bracketNameExp.ReplaceAllString(segs[i], "['$1[$2]']")
+				if len(cleaned) > 0 {
+					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+					continue
+				}
+			}
+
 			intVal, err := strconv.ParseInt(segs[i], 10, 32)
 			if err == nil && intVal <= 99 {
 				segs[i] = fmt.Sprintf("[%d]", intVal)
