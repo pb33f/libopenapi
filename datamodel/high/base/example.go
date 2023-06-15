@@ -11,7 +11,8 @@ import (
 )
 
 // Example represents a high-level Example object as defined by OpenAPI 3+
-//  v3 - https://spec.openapis.org/oas/v3.1.0#example-object
+//
+//	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
 	Summary       string         `json:"summary,omitempty" yaml:"summary,omitempty"`
 	Description   string         `json:"description,omitempty" yaml:"description,omitempty"`

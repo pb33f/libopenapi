@@ -16,8 +16,9 @@ import (
 //
 // When using arrays, XML element names are not inferred (for singular/plural forms) and the name property SHOULD be
 // used to add that information. See examples for expected behavior.
-//  v2 - https://swagger.io/specification/v2/#xmlObject
-//  v3 - https://swagger.io/specification/#xml-object
+//
+//	v2 - https://swagger.io/specification/v2/#xmlObject
+//	v3 - https://swagger.io/specification/#xml-object
 type XML struct {
 	Name       low.NodeReference[string]
 	Namespace  low.NodeReference[string]

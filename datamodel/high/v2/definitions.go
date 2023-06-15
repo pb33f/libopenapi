@@ -14,7 +14,7 @@ import (
 //
 // An object to hold data types that can be consumed and produced by operations. These data types can be primitives,
 // arrays or models.
-//  - https://swagger.io/specification/v2/#definitionsObject
+//   - https://swagger.io/specification/v2/#definitionsObject
 type Definitions struct {
 	Definitions map[string]*highbase.SchemaProxy
 	low         *low.Definitions

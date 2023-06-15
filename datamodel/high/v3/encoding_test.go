@@ -4,64 +4,64 @@
 package v3
 
 import (
-    "github.com/stretchr/testify/assert"
-    "strings"
-    "testing"
+	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
 )
 
 func TestEncoding_MarshalYAML(t *testing.T) {
 
-    explode := true
-    encoding := &Encoding{
-        ContentType: "application/json",
-        Headers:     map[string]*Header{"x-pizza-time": {Description: "oh yes please"}},
-        Style:       "simple",
-        Explode:     &explode,
-    }
+	explode := true
+	encoding := &Encoding{
+		ContentType: "application/json",
+		Headers:     map[string]*Header{"x-pizza-time": {Description: "oh yes please"}},
+		Style:       "simple",
+		Explode:     &explode,
+	}
 
-    rend, _ := encoding.Render()
+	rend, _ := encoding.Render()
 
-    desired := `contentType: application/json
+	desired := `contentType: application/json
 headers:
     x-pizza-time:
         description: oh yes please
 style: simple
 explode: true`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
-    explode = false
-    encoding.Explode = &explode
-    rend, _ = encoding.Render()
+	explode = false
+	encoding.Explode = &explode
+	rend, _ = encoding.Render()
 
-    desired = `contentType: application/json
+	desired = `contentType: application/json
 headers:
     x-pizza-time:
         description: oh yes please
 style: simple`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
-    encoding.Explode = nil
-    rend, _ = encoding.Render()
+	encoding.Explode = nil
+	rend, _ = encoding.Render()
 
-    desired = `contentType: application/json
+	desired = `contentType: application/json
 headers:
     x-pizza-time:
         description: oh yes please
 style: simple`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
-    encoding.Explode = &explode
-    rend, _ = encoding.Render()
+	encoding.Explode = &explode
+	rend, _ = encoding.Render()
 
-    desired = `contentType: application/json
+	desired = `contentType: application/json
 headers:
     x-pizza-time:
         description: oh yes please
 style: simple`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
 }

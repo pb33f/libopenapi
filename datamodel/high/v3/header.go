@@ -13,7 +13,7 @@ import (
 )
 
 // Header represents a high-level OpenAPI 3+ Header object that is backed by a low-level one.
-//  - https://spec.openapis.org/oas/v3.1.0#header-object
+//   - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
 	Description     string                       `json:"description,omitempty" yaml:"description,omitempty"`
 	Required        bool                         `json:"required,omitempty" yaml:"required,omitempty"`

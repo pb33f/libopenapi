@@ -58,8 +58,9 @@ func ExtractExtensions(extensions map[low.KeyReference[string]]low.ValueReferenc
 // `low` represents the HIGH type of the object that contains the extensions.
 //
 // to use:
-//  schema := schemaProxy.Schema() // any high-level object that has extensions
-//  extensions, err := UnpackExtensions[MyComplexType, low.Schema](schema)
+//
+//	schema := schemaProxy.Schema() // any high-level object that has extensions
+//	extensions, err := UnpackExtensions[MyComplexType, low.Schema](schema)
 func UnpackExtensions[T any, R low.HasExtensions[T]](low GoesLow[R]) (map[string]*T, error) {
 	m := make(map[string]*T)
 	ext := low.GoLow().GetExtensions()
@@ -75,4 +76,3 @@ func UnpackExtensions[T any, R low.HasExtensions[T]](low GoesLow[R]) (map[string
 	}
 	return m, nil
 }
-

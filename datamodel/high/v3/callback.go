@@ -17,7 +17,7 @@ import (
 // PathItem Object that describes a set of requests that may be initiated by the API provider and the expected
 // responses. The key value used to identify the path item object is an expression, evaluated at runtime,
 // that identifies a URL to use for the callback operation.
-//  - https://spec.openapis.org/oas/v3.1.0#callback-object
+//   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
 	Expression map[string]*PathItem `json:"-" yaml:"-"`
 	Extensions map[string]any       `json:"-" yaml:"-"`

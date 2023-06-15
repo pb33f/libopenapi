@@ -24,7 +24,7 @@ import (
 //
 // For computing links, and providing instructions to execute them, a runtime expression is used for accessing values
 // in an operation and using them as parameters while invoking the linked operation.
-//  - https://spec.openapis.org/oas/v3.1.0#link-object
+//   - https://spec.openapis.org/oas/v3.1.0#link-object
 type Link struct {
 	OperationRef low.NodeReference[string]
 	OperationId  low.NodeReference[string]

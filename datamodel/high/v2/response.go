@@ -11,7 +11,7 @@ import (
 
 // Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
 // Response describes a single response from an API Operation
-//  - https://swagger.io/specification/v2/#responseObject
+//   - https://swagger.io/specification/v2/#responseObject
 type Response struct {
 	Description string
 	Schema      *base.SchemaProxy

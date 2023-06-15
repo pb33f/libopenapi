@@ -18,7 +18,7 @@ import (
 // SecurityScheme allows the definition of a security scheme that can be used by the operations. Supported schemes are
 // basic authentication, an API key (either as a header or as a query parameter) and OAuth2's common flows
 // (implicit, password, application and access code)
-//  - https://swagger.io/specification/v2/#securityDefinitionsObject
+//   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityScheme struct {
 	Type             low.NodeReference[string]
 	Description      low.NodeReference[string]

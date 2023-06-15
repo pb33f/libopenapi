@@ -4,30 +4,30 @@
 package v3
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/high/base"
-    "github.com/stretchr/testify/assert"
-    "strings"
-    "testing"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
 )
 
 func TestHeader_MarshalYAML(t *testing.T) {
 
-    header := &Header{
-        Description:     "A header",
-        Required:        true,
-        Deprecated:      true,
-        AllowEmptyValue: true,
-        Style:           "simple",
-        Explode:         true,
-        AllowReserved:   true,
-        Example:         "example",
-        Examples:        map[string]*base.Example{"example": {Value: "example"}},
-        Extensions:      map[string]interface{}{"x-burgers": "why not?"},
-    }
+	header := &Header{
+		Description:     "A header",
+		Required:        true,
+		Deprecated:      true,
+		AllowEmptyValue: true,
+		Style:           "simple",
+		Explode:         true,
+		AllowReserved:   true,
+		Example:         "example",
+		Examples:        map[string]*base.Example{"example": {Value: "example"}},
+		Extensions:      map[string]interface{}{"x-burgers": "why not?"},
+	}
 
-    rend, _ := header.Render()
+	rend, _ := header.Render()
 
-    desired := `description: A header
+	desired := `description: A header
 required: true
 deprecated: true
 allowEmptyValue: true
@@ -40,6 +40,6 @@ examples:
         value: example
 x-burgers: why not?`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
 }

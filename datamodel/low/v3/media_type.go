@@ -18,7 +18,7 @@ import (
 // MediaType represents a low-level OpenAPI MediaType object.
 //
 // Each Media Type Object provides schema and examples for the media type identified by its key.
-//  - https://spec.openapis.org/oas/v3.1.0#media-type-object
+//   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
 	Schema     low.NodeReference[*base.SchemaProxy]
 	Example    low.NodeReference[any]

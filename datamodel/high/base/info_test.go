@@ -200,5 +200,3 @@ x-cake:
 	bytes, _ := highInfo.Render()
 	assert.Len(t, bytes, 275)
 }
-
-
