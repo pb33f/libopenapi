@@ -17,7 +17,8 @@ import (
 // which is used to inform the consumer of the document of an alternative schema based on the value associated with it.
 //
 // When using the discriminator, inline schemas will not be considered.
-//  v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
+//
+//	v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
 	PropertyName low.NodeReference[string]
 	Mapping      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]

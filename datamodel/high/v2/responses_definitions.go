@@ -10,7 +10,7 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 //
 // ResponsesDefinitions is an object to hold responses to be reused across operations. Response definitions can be
 // referenced to the ones defined here. It does not define global operation responses
-//  - https://swagger.io/specification/v2/#responsesDefinitionsObject
+//   - https://swagger.io/specification/v2/#responsesDefinitionsObject
 type ResponsesDefinitions struct {
 	Definitions map[string]*Response
 	low         *low.ResponsesDefinitions

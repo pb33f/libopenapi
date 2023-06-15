@@ -28,18 +28,18 @@ const (
 //
 // Holds a set of reusable objects for different aspects of the OAS. All objects defined within the components object
 // will have no effect on the API unless they are explicitly referenced from properties outside the components object.
-//  - https://spec.openapis.org/oas/v3.1.0#components-object
+//   - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
-	Schemas map[string]*highbase.SchemaProxy `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	Responses map[string]*Response `json:"responses,omitempty" yaml:"responses,omitempty"`
-	Parameters map[string]*Parameter        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Examples   map[string]*highbase.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
-	RequestBodies   map[string]*RequestBody    `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
-	Headers         map[string]*Header         `json:"headers,omitempty" yaml:"headers,omitempty"`
-	SecuritySchemes map[string]*SecurityScheme `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
-	Links           map[string]*Link           `json:"links,omitempty" yaml:"links,omitempty"`
-	Callbacks       map[string]*Callback       `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
-	Extensions      map[string]any             `json:"-" yaml:"-"`
+	Schemas         map[string]*highbase.SchemaProxy `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	Responses       map[string]*Response             `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Parameters      map[string]*Parameter            `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Examples        map[string]*highbase.Example     `json:"examples,omitempty" yaml:"examples,omitempty"`
+	RequestBodies   map[string]*RequestBody          `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	Headers         map[string]*Header               `json:"headers,omitempty" yaml:"headers,omitempty"`
+	SecuritySchemes map[string]*SecurityScheme       `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Links           map[string]*Link                 `json:"links,omitempty" yaml:"links,omitempty"`
+	Callbacks       map[string]*Callback             `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Extensions      map[string]any                   `json:"-" yaml:"-"`
 	low             *low.Components
 }
 

@@ -18,7 +18,7 @@ import (
 //
 // Items is a limited subset of JSON-Schema's items object. It is used by parameter definitions that are not
 // located in "body". Items, is actually identical to a Header, except it does not have description.
-//  - https://swagger.io/specification/v2/#itemsObject
+//   - https://swagger.io/specification/v2/#itemsObject
 type Items struct {
 	Type             low.NodeReference[string]
 	Format           low.NodeReference[string]

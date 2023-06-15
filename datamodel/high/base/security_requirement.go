@@ -17,7 +17,7 @@ import (
 // security schemes declared in it which are all required (that is, there is a logical AND between the schemes).
 //
 // The name used for each property MUST correspond to a security scheme declared in the Security Definitions
-//  - https://swagger.io/specification/v2/#securityDefinitionsObject
+//   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
 	Requirements map[string][]string `json:"-" yaml:"-"`
 	low          *base.SecurityRequirement
@@ -108,7 +108,7 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 		for t := range keys[k].val {
 			reqs[t] = &req{val: keys[k].val[t], line: 9999 + t}
 			if keys[k].lowVal != nil {
-				for _ = range keys[k].lowVal.Value[t].Value {
+				for range keys[k].lowVal.Value[t].Value {
 					fh := keys[k].val[t]
 					df := keys[k].lowVal.Value[t].Value
 					if fh == df {

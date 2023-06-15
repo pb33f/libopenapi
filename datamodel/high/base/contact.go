@@ -10,8 +10,9 @@ import (
 )
 
 // Contact represents a high-level representation of the Contact definitions found at
-//  v2 - https://swagger.io/specification/v2/#contactObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#contact-object
+//
+//	v2 - https://swagger.io/specification/v2/#contactObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#contact-object
 type Contact struct {
 	Name  string       `json:"name,omitempty" yaml:"name,omitempty"`
 	URL   string       `json:"url,omitempty" yaml:"url,omitempty"`
@@ -47,6 +48,3 @@ func (c *Contact) MarshalYAML() (interface{}, error) {
 	nb := low2.NewNodeBuilder(c, c.low)
 	return nb.Render(), nil
 }
-
-
-

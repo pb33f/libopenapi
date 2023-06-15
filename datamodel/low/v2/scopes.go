@@ -17,7 +17,7 @@ import (
 // Scopes is a low-level representation of a Swagger / OpenAPI 2 OAuth2 Scopes object.
 //
 // Scopes lists the available scopes for an OAuth2 security scheme.
-//  - https://swagger.io/specification/v2/#scopesObject
+//   - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
 	Values     map[low.KeyReference[string]]low.ValueReference[string]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]

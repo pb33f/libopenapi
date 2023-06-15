@@ -14,7 +14,7 @@ import (
 )
 
 // Server represents a low-level OpenAPI 3+ Server object.
-//  - https://spec.openapis.org/oas/v3.1.0#server-object
+//   - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]

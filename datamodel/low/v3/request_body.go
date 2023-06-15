@@ -14,7 +14,7 @@ import (
 )
 
 // RequestBody represents a low-level OpenAPI 3+ RequestBody object.
-//  - https://spec.openapis.org/oas/v3.1.0#request-body-object
+//   - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
 	Description low.NodeReference[string]
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]

@@ -16,8 +16,9 @@ import (
 // ExternalDoc represents a low-level External Documentation object as defined by OpenAPI 2 and 3
 //
 // Allows referencing an external resource for extended documentation.
-//  v2 - https://swagger.io/specification/v2/#externalDocumentationObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
+//
+//	v2 - https://swagger.io/specification/v2/#externalDocumentationObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
 type ExternalDoc struct {
 	Description low.NodeReference[string]
 	URL         low.NodeReference[string]

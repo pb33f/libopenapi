@@ -15,7 +15,7 @@ import (
 
 // Examples represents a low-level Swagger / OpenAPI 2 Example object.
 // Allows sharing examples for operation responses
-//  - https://swagger.io/specification/v2/#exampleObject
+//   - https://swagger.io/specification/v2/#exampleObject
 type Examples struct {
 	Values map[low.KeyReference[string]]low.ValueReference[any]
 }

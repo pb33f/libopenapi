@@ -1024,7 +1024,7 @@ one:
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
-	for k, _ := range things {
+	for k := range things {
 		assert.Equal(t, "one", k.Value)
 	}
 }

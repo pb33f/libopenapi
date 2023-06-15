@@ -4,17 +4,17 @@
 package v2
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/low"
-    v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
-    "testing"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+	"testing"
 )
 
 func TestPathItem_GetOperations(t *testing.T) {
 
-    yml := `get:
+	yml := `get:
   description: get
 put:
   description: put
@@ -30,15 +30,15 @@ options:
   description: options
 `
 
-    var idxNode yaml.Node
-    _ = yaml.Unmarshal([]byte(yml), &idxNode)
-    idx := index.NewSpecIndex(&idxNode)
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
 
-    var n v2.PathItem
-    _ = low.BuildModel(&idxNode, &n)
-    _ = n.Build(idxNode.Content[0], idx)
+	var n v2.PathItem
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
 
-    r := NewPathItem(&n)
+	r := NewPathItem(&n)
 
-    assert.Len(t, r.GetOperations(), 7)
+	assert.Len(t, r.GetOperations(), 7)
 }

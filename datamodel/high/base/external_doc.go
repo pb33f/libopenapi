@@ -12,8 +12,9 @@ import (
 // ExternalDoc represents a high-level External Documentation object as defined by OpenAPI 2 and 3
 //
 // Allows referencing an external resource for extended documentation.
-//  v2 - https://swagger.io/specification/v2/#externalDocumentationObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
+//
+//	v2 - https://swagger.io/specification/v2/#externalDocumentationObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
 type ExternalDoc struct {
 	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
 	URL         string         `json:"url,omitempty" yaml:"url,omitempty"`

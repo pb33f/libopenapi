@@ -32,14 +32,17 @@ const (
 )
 
 // OpenAPI3SchemaData is an embedded version of the OpenAPI 3 Schema
+//
 //go:embed schemas/oas3-schema.json
 var OpenAPI3SchemaData string // embedded OAS3 schema
 
 // OpenAPI31SchemaData is an embedded version of the OpenAPI 3.1 Schema
+//
 //go:embed schemas/oas31-schema.json
 var OpenAPI31SchemaData string // embedded OAS31 schema
 
 // OpenAPI2SchemaData is an embedded version of the OpenAPI 2 (Swagger) Schema
+//
 //go:embed schemas/swagger2-schema.json
 var OpenAPI2SchemaData string // embedded OAS3 schema
 

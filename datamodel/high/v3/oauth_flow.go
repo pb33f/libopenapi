@@ -10,7 +10,7 @@ import (
 )
 
 // OAuthFlow represents a high-level OpenAPI 3+ OAuthFlow object that is backed by a low-level one.
-//  - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
+//   - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
 type OAuthFlow struct {
 	AuthorizationUrl string            `json:"authorizationUrl,omitempty" yaml:"authorizationUrl,omitempty"`
 	TokenUrl         string            `json:"tokenUrl,omitempty" yaml:"tokenUrl,omitempty"`

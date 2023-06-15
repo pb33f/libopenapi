@@ -11,7 +11,7 @@ import (
 
 // Operation represents a high-level Swagger / OpenAPI 2 Operation object, backed by a low-level one.
 // It describes a single API operation on a path.
-//  - https://swagger.io/specification/v2/#operationObject
+//   - https://swagger.io/specification/v2/#operationObject
 type Operation struct {
 	Tags         []string
 	Summary      string

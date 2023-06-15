@@ -18,7 +18,7 @@ import (
 // Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
 //
 // A unique parameter is defined by a combination of a name and location.
-//  - https://spec.openapis.org/oas/v3.1.0#parameter-object
+//   - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
 	Name            low.NodeReference[string]
 	In              low.NodeReference[string]

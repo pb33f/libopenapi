@@ -10,8 +10,9 @@ import (
 )
 
 // License is a high-level representation of a License object as defined by OpenAPI 2 and OpenAPI 3
-//  v2 - https://swagger.io/specification/v2/#licenseObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#license-object
+//
+//	v2 - https://swagger.io/specification/v2/#licenseObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#license-object
 type License struct {
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	URL  string `json:"url,omitempty" yaml:"url,omitempty"`

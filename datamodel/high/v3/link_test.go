@@ -4,27 +4,27 @@
 package v3
 
 import (
-    "github.com/stretchr/testify/assert"
-    "strings"
-    "testing"
+	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
 )
 
 func TestLink_MarshalYAML(t *testing.T) {
-    link := Link{
-        OperationRef: "somewhere",
-        OperationId:  "somewhereOutThere",
-        Parameters: map[string]string{
-            "over": "theRainbow",
-        },
-        RequestBody: "hello?",
-        Description: "are you there?",
-        Server: &Server{
-            URL: "https://pb33f.io",
-        },
-    }
+	link := Link{
+		OperationRef: "somewhere",
+		OperationId:  "somewhereOutThere",
+		Parameters: map[string]string{
+			"over": "theRainbow",
+		},
+		RequestBody: "hello?",
+		Description: "are you there?",
+		Server: &Server{
+			URL: "https://pb33f.io",
+		},
+	}
 
-    dat, _ := link.Render()
-    desired := `operationRef: somewhere
+	dat, _ := link.Render()
+	desired := `operationRef: somewhere
 operationId: somewhereOutThere
 parameters:
     over: theRainbow
@@ -33,5 +33,5 @@ description: are you there?
 server:
     url: https://pb33f.io`
 
-    assert.Equal(t, desired, strings.TrimSpace(string(dat)))
+	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
 }

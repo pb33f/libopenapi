@@ -9,4 +9,3 @@
 // beats, particularly when polymorphism is used. By re-using the same superset Schema across versions, we can ensure
 // that all the latest features are collected, without damaging backwards compatibility.
 package base
-

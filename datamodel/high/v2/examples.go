@@ -7,7 +7,7 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 
 // Example represents a high-level Swagger / OpenAPI 2 Example object, backed by a low level one.
 // Allows sharing examples for operation responses
-//  - https://swagger.io/specification/v2/#exampleObject
+//   - https://swagger.io/specification/v2/#exampleObject
 type Example struct {
 	Values map[string]any
 	low    *low.Examples

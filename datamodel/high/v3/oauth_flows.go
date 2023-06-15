@@ -10,7 +10,7 @@ import (
 )
 
 // OAuthFlows represents a high-level OpenAPI 3+ OAuthFlows object that is backed by a low-level one.
-//  - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
+//   - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
 type OAuthFlows struct {
 	Implicit          *OAuthFlow     `json:"implicit,omitempty" yaml:"implicit,omitempty"`
 	Password          *OAuthFlow     `json:"password,omitempty" yaml:"password,omitempty"`
@@ -63,4 +63,3 @@ func (o *OAuthFlows) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(o, o.low)
 	return nb.Render(), nil
 }
-

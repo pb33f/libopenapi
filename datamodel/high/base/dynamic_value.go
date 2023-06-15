@@ -44,7 +44,6 @@ func (d *DynamicValue[A, B]) RenderInline() ([]byte, error) {
 	return yaml.Marshal(d)
 }
 
-
 // MarshalYAML will create a ready to render YAML representation of the DynamicValue object.
 func (d *DynamicValue[A, B]) MarshalYAML() (interface{}, error) {
 	// this is a custom renderer, we can't use the NodeBuilder out of the gate.

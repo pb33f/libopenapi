@@ -20,7 +20,7 @@ import (
 // The path itself is still exposed to the tooling, but will not know which operations and parameters
 // are available.
 //
-//  - https://swagger.io/specification/v2/#pathItemObject
+//   - https://swagger.io/specification/v2/#pathItemObject
 type PathItem struct {
 	Ref        low.NodeReference[string]
 	Get        low.NodeReference[*Operation]

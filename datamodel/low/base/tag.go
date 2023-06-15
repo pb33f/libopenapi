@@ -17,8 +17,8 @@ import (
 //
 // Adds metadata to a single tag that is used by the Operation Object. It is not mandatory to have a Tag Object per
 // tag defined in the Operation Object instances.
-//  - v2: https://swagger.io/specification/v2/#tagObject
-//  - v3: https://swagger.io/specification/#tag-object
+//   - v2: https://swagger.io/specification/v2/#tagObject
+//   - v3: https://swagger.io/specification/#tag-object
 type Tag struct {
 	Name         low.NodeReference[string]
 	Description  low.NodeReference[string]

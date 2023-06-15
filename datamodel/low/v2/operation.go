@@ -17,7 +17,7 @@ import (
 // Operation represents a low-level Swagger / OpenAPI 2 Operation object.
 //
 // It describes a single API operation on a path.
-//  - https://swagger.io/specification/v2/#operationObject
+//   - https://swagger.io/specification/v2/#operationObject
 type Operation struct {
 	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]

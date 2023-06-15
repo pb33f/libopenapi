@@ -19,7 +19,7 @@ import (
 // PathItem Object that describes a set of requests that may be initiated by the API provider and the expected
 // responses. The key value used to identify the path item object is an expression, evaluated at runtime,
 // that identifies a URL to use for the callback operation.
-//  - https://spec.openapis.org/oas/v3.1.0#callback-object
+//   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
 	Expression low.ValueReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
@@ -61,9 +61,9 @@ func (cb *Callback) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			Value:   currentCB.Value,
 			KeyNode: currentCB,
 		}] = low.ValueReference[*PathItem]{
-			Value:       callback,
-			ValueNode:   callbackNode,
-			Reference:   rv,
+			Value:     callback,
+			ValueNode: callbackNode,
+			Reference: rv,
 		}
 	}
 	if len(callbacks) > 0 {
