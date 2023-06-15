@@ -16,7 +16,7 @@ import (
 )
 
 // Header represents a low-level OpenAPI 3+ Header object.
-//  - https://spec.openapis.org/oas/v3.1.0#header-object
+//   - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
 	Description     low.NodeReference[string]
 	Required        low.NodeReference[bool]

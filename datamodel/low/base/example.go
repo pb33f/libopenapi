@@ -16,7 +16,8 @@ import (
 )
 
 // Example represents a low-level Example object as defined by OpenAPI 3+
-//  v3 - https://spec.openapis.org/oas/v3.1.0#example-object
+//
+//	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
 	Summary       low.NodeReference[string]
 	Description   low.NodeReference[string]

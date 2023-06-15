@@ -65,7 +65,7 @@ func TestOperation_MarshalYAML(t *testing.T) {
 		},
 		OperationId: "slice",
 		Parameters: []*Parameter{
-			&Parameter{
+			{
 				Name: "mice",
 			},
 		},
@@ -103,7 +103,7 @@ func TestOperation_MarshalYAMLInline(t *testing.T) {
 		},
 		OperationId: "slice",
 		Parameters: []*Parameter{
-			&Parameter{
+			{
 				Name: "mice",
 			},
 		},

@@ -4,18 +4,18 @@
 package datamodel
 
 import (
-    "github.com/stretchr/testify/assert"
-    "testing"
+	"github.com/stretchr/testify/assert"
+	"testing"
 )
 
 func TestNewClosedDocumentConfiguration(t *testing.T) {
-    cfg := NewClosedDocumentConfiguration()
-    assert.False(t, cfg.AllowRemoteReferences)
-    assert.False(t, cfg.AllowFileReferences)
+	cfg := NewClosedDocumentConfiguration()
+	assert.False(t, cfg.AllowRemoteReferences)
+	assert.False(t, cfg.AllowFileReferences)
 }
 
 func TestNewOpenDocumentConfiguration(t *testing.T) {
-    cfg := NewOpenDocumentConfiguration()
-    assert.True(t, cfg.AllowRemoteReferences)
-    assert.True(t, cfg.AllowFileReferences)
+	cfg := NewOpenDocumentConfiguration()
+	assert.True(t, cfg.AllowRemoteReferences)
+	assert.True(t, cfg.AllowFileReferences)
 }

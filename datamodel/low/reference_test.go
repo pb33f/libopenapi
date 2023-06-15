@@ -51,7 +51,7 @@ func TestNodeReference_Mutate(t *testing.T) {
 func TestNodeReference_RefNode(t *testing.T) {
 	nr := new(NodeReference[string])
 	nr.KeyNode = &yaml.Node{
-		Content: []*yaml.Node{&yaml.Node{
+		Content: []*yaml.Node{{
 			Value: "$ref",
 		}},
 	}
@@ -749,8 +749,3 @@ func TestKeyReference_GetKeyNode(t *testing.T) {
 	assert.Equal(t, 3, nr.GetKeyNode().Line)
 	assert.Equal(t, "pizza", nr.GetKeyNode().Value)
 }
-
-
-
-
-

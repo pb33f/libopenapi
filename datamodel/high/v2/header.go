@@ -10,7 +10,7 @@ import (
 
 // Header Represents a high-level Swagger / OpenAPI 2 Header object, backed by a low-level one.
 // A Header is essentially identical to a Parameter, except it does not contain 'name' or 'in' properties.
-//  - https://swagger.io/specification/v2/#headerObject
+//   - https://swagger.io/specification/v2/#headerObject
 type Header struct {
 	Type             string
 	Format           string

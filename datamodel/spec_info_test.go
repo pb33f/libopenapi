@@ -4,31 +4,31 @@
 package datamodel
 
 import (
-    "fmt"
-    "io/ioutil"
-    "testing"
+	"fmt"
+	"io/ioutil"
+	"testing"
 
-    "github.com/pb33f/libopenapi/utils"
-    "github.com/stretchr/testify/assert"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
-    // OpenApi3 is used by all OpenAPI 3+ docs
-    OpenApi3 = "openapi"
+	// OpenApi3 is used by all OpenAPI 3+ docs
+	OpenApi3 = "openapi"
 
-    // OpenApi2 is used by all OpenAPI 2 docs, formerly known as swagger.
-    OpenApi2 = "swagger"
+	// OpenApi2 is used by all OpenAPI 2 docs, formerly known as swagger.
+	OpenApi2 = "swagger"
 
-    // AsyncApi is used by akk AsyncAPI docs, all versions.
-    AsyncApi = "asyncapi"
+	// AsyncApi is used by akk AsyncAPI docs, all versions.
+	AsyncApi = "asyncapi"
 )
 
 func TestSpecInfo_GetJSONParsingChannel(t *testing.T) {
 
-    // dumb, but we need to ensure coverage is as high as we can make it.
-    bchan := make(chan bool)
-    si := &SpecInfo{JsonParsingChannel: bchan}
-    assert.Equal(t, si.GetJSONParsingChannel(), bchan)
+	// dumb, but we need to ensure coverage is as high as we can make it.
+	bchan := make(chan bool)
+	si := &SpecInfo{JsonParsingChannel: bchan}
+	assert.Equal(t, si.GetJSONParsingChannel(), bchan)
 
 }
 
@@ -115,147 +115,147 @@ info:
   version: '0.1.0'`
 
 func TestExtractSpecInfo_ValidJSON(t *testing.T) {
-    r, e := ExtractSpecInfo([]byte(goodJSON))
-    assert.Greater(t, len(*r.SpecJSONBytes), 0)
-    assert.Error(t, e)
+	r, e := ExtractSpecInfo([]byte(goodJSON))
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
+	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_InvalidJSON(t *testing.T) {
-    _, e := ExtractSpecInfo([]byte(badJSON))
-    assert.Error(t, e)
+	_, e := ExtractSpecInfo([]byte(badJSON))
+	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_Nothing(t *testing.T) {
-    _, e := ExtractSpecInfo([]byte(""))
-    assert.Error(t, e)
+	_, e := ExtractSpecInfo([]byte(""))
+	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_ValidYAML(t *testing.T) {
-    r, e := ExtractSpecInfo([]byte(goodYAML))
-    assert.Greater(t, len(*r.SpecJSONBytes), 0)
-    assert.Error(t, e)
+	r, e := ExtractSpecInfo([]byte(goodYAML))
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
+	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
-    _, e := ExtractSpecInfo([]byte(badYAML))
-    assert.Error(t, e)
+	_, e := ExtractSpecInfo([]byte(badYAML))
+	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_InvalidOpenAPIVersion(t *testing.T) {
-    _, e := ExtractSpecInfo([]byte(OpenApiOne))
-    assert.Error(t, e)
+	_, e := ExtractSpecInfo([]byte(OpenApiOne))
+	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 
-    r, e := ExtractSpecInfo([]byte(OpenApi3Spec))
-    assert.Nil(t, e)
-    assert.Equal(t, utils.OpenApi3, r.SpecType)
-    assert.Equal(t, "3.0.1", r.Version)
-    assert.Greater(t, len(*r.SpecJSONBytes), 0)
-    assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.0/schema/2021-09-28")
+	r, e := ExtractSpecInfo([]byte(OpenApi3Spec))
+	assert.Nil(t, e)
+	assert.Equal(t, utils.OpenApi3, r.SpecType)
+	assert.Equal(t, "3.0.1", r.Version)
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.0/schema/2021-09-28")
 }
 
 func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
 
-    r, e := ExtractSpecInfo([]byte(OpenApiWat))
-    assert.Nil(t, e)
-    assert.Equal(t, OpenApi3, r.SpecType)
-    assert.Equal(t, "3.2", r.Version)
+	r, e := ExtractSpecInfo([]byte(OpenApiWat))
+	assert.Nil(t, e)
+	assert.Equal(t, OpenApi3, r.SpecType)
+	assert.Equal(t, "3.2", r.Version)
 }
 
 func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 
-    r, e := ExtractSpecInfo([]byte(OpenApi31))
-    assert.Nil(t, e)
-    assert.Equal(t, OpenApi3, r.SpecType)
-    assert.Equal(t, "3.1", r.Version)
-    assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-10-07")
+	r, e := ExtractSpecInfo([]byte(OpenApi31))
+	assert.Nil(t, e)
+	assert.Equal(t, OpenApi3, r.SpecType)
+	assert.Equal(t, "3.1", r.Version)
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-10-07")
 }
 
 func TestExtractSpecInfo_OpenAPIFalse(t *testing.T) {
 
-    spec, e := ExtractSpecInfo([]byte(OpenApiFalse))
-    assert.NoError(t, e)
-    assert.Equal(t, "false", spec.Version)
+	spec, e := ExtractSpecInfo([]byte(OpenApiFalse))
+	assert.NoError(t, e)
+	assert.Equal(t, "false", spec.Version)
 }
 
 func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
 
-    r, e := ExtractSpecInfo([]byte(OpenApi2Spec))
-    assert.Nil(t, e)
-    assert.Equal(t, OpenApi2, r.SpecType)
-    assert.Equal(t, "2.0.1", r.Version)
-    assert.Greater(t, len(*r.SpecJSONBytes), 0)
-    assert.Contains(t, r.APISchema, "http://swagger.io/v2/schema.json#")
+	r, e := ExtractSpecInfo([]byte(OpenApi2Spec))
+	assert.Nil(t, e)
+	assert.Equal(t, OpenApi2, r.SpecType)
+	assert.Equal(t, "2.0.1", r.Version)
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
+	assert.Contains(t, r.APISchema, "http://swagger.io/v2/schema.json#")
 }
 
 func TestExtractSpecInfo_OpenAPI2_OddVersion(t *testing.T) {
 
-    _, e := ExtractSpecInfo([]byte(OpenApi2SpecOdd))
-    assert.NotNil(t, e)
-    assert.Equal(t,
-        "spec is defined as a swagger (openapi 2.0) spec, but is an openapi 3 or unknown version", e.Error())
+	_, e := ExtractSpecInfo([]byte(OpenApi2SpecOdd))
+	assert.NotNil(t, e)
+	assert.Equal(t,
+		"spec is defined as a swagger (openapi 2.0) spec, but is an openapi 3 or unknown version", e.Error())
 }
 
 func TestExtractSpecInfo_AsyncAPI(t *testing.T) {
 
-    r, e := ExtractSpecInfo([]byte(AsyncAPISpec))
-    assert.Nil(t, e)
-    assert.Equal(t, AsyncApi, r.SpecType)
-    assert.Equal(t, "2.0.0", r.Version)
-    assert.Greater(t, len(*r.SpecJSONBytes), 0)
+	r, e := ExtractSpecInfo([]byte(AsyncAPISpec))
+	assert.Nil(t, e)
+	assert.Equal(t, AsyncApi, r.SpecType)
+	assert.Equal(t, "2.0.0", r.Version)
+	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 }
 
 func TestExtractSpecInfo_AsyncAPI_OddVersion(t *testing.T) {
 
-    _, e := ExtractSpecInfo([]byte(AsyncAPISpecOdd))
-    assert.NotNil(t, e)
-    assert.Equal(t,
-        "spec is defined as asyncapi, but has a major version that is invalid", e.Error())
+	_, e := ExtractSpecInfo([]byte(AsyncAPISpecOdd))
+	assert.NotNil(t, e)
+	assert.Equal(t,
+		"spec is defined as asyncapi, but has a major version that is invalid", e.Error())
 }
 
 func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
 
-    yml := `openapi:
+	yml := `openapi:
  should: fail`
 
-    _, err := ExtractSpecInfo([]byte(yml))
-    assert.Error(t, err)
+	_, err := ExtractSpecInfo([]byte(yml))
+	assert.Error(t, err)
 }
 
 func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
 
-    yml := `swagger:
+	yml := `swagger:
  should: fail`
 
-    _, err := ExtractSpecInfo([]byte(yml))
-    assert.Error(t, err)
+	_, err := ExtractSpecInfo([]byte(yml))
+	assert.Error(t, err)
 }
 
 func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
 
-    yml := `asyncapi:
+	yml := `asyncapi:
  should: fail`
 
-    _, err := ExtractSpecInfo([]byte(yml))
-    assert.Error(t, err)
+	_, err := ExtractSpecInfo([]byte(yml))
+	assert.Error(t, err)
 }
 
 func ExampleExtractSpecInfo() {
 
-    // load bytes from openapi spec file.
-    bytes, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+	// load bytes from openapi spec file.
+	bytes, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
 
-    // create a new *SpecInfo instance from loaded bytes
-    specInfo, err := ExtractSpecInfo(bytes)
-    if err != nil {
-        panic(fmt.Sprintf("cannot extract spec info: %e", err))
-    }
+	// create a new *SpecInfo instance from loaded bytes
+	specInfo, err := ExtractSpecInfo(bytes)
+	if err != nil {
+		panic(fmt.Sprintf("cannot extract spec info: %e", err))
+	}
 
-    // print out the version, format and filetype
-    fmt.Printf("the version of the spec is %s, the format is %s and the file type is %s",
-        specInfo.Version, specInfo.SpecFormat, specInfo.SpecFileType)
+	// print out the version, format and filetype
+	fmt.Printf("the version of the spec is %s, the format is %s and the file type is %s",
+		specInfo.Version, specInfo.SpecFormat, specInfo.SpecFileType)
 
-    // Output: the version of the spec is 3.0.2, the format is oas3 and the file type is json
+	// Output: the version of the spec is 3.0.2, the format is oas3 and the file type is json
 }

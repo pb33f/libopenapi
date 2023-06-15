@@ -10,7 +10,7 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 //
 // ParameterDefinitions holds parameters to be reused across operations. Parameter definitions can be
 // referenced to the ones defined here. It does not define global operation parameters
-//  - https://swagger.io/specification/v2/#parametersDefinitionsObject
+//   - https://swagger.io/specification/v2/#parametersDefinitionsObject
 type ParameterDefinitions struct {
 	Definitions map[string]*Parameter
 	low         *low.ParameterDefinitions

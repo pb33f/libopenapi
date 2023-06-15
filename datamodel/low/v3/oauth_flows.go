@@ -14,7 +14,7 @@ import (
 )
 
 // OAuthFlows represents a low-level OpenAPI 3+ OAuthFlows object.
-//  - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
+//   - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
 type OAuthFlows struct {
 	Implicit          low.NodeReference[*OAuthFlow]
 	Password          low.NodeReference[*OAuthFlow]
@@ -87,7 +87,7 @@ func (o *OAuthFlows) Hash() [32]byte {
 }
 
 // OAuthFlow represents a low-level OpenAPI 3+ OAuthFlow object.
-//  - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
+//   - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
 type OAuthFlow struct {
 	AuthorizationUrl low.NodeReference[string]
 	TokenUrl         low.NodeReference[string]
