@@ -573,6 +573,7 @@ summary: a test thing
 description: this is a test, that does a test.`
 
 	_ = os.WriteFile("test-operation.yaml", []byte(ae), 0644)
+	defer os.Remove("test-operation.yaml")
 
 	var d = `openapi: "3.1"
 paths:
@@ -592,6 +593,32 @@ paths:
 
 	// render the document.
 	rend, _ := result.Model.Render()
+
+	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}
+
+func TestDocument_InputAsJSON(t *testing.T) {
+
+	var d = `{
+  "openapi": "3.1",
+  "paths": {
+    "/an/operation": {
+      "get": {
+        "operationId": "thisIsAnOperationId"
+      }
+    }
+  }
+}`
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = doc.BuildV3Model()
+
+	// render the document.
+	rend, _, _, _ := doc.RenderAndReload()
 
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
 }

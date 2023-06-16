@@ -503,6 +503,19 @@ func ConvertYAMLtoJSON(yamlData []byte) ([]byte, error) {
 	return jsonData, nil
 }
 
+// ConvertYAMLtoJSONPretty will do exactly what you think it will. It will deserialize YAML into serialized JSON.
+// However, this version will a apply prefix/indentation to the JSON.
+func ConvertYAMLtoJSONPretty(yamlData []byte, prefix string, indent string) ([]byte, error) {
+	var decodedYaml map[string]interface{}
+	err := yaml.Unmarshal(yamlData, &decodedYaml)
+	if err != nil {
+		return nil, err
+	}
+	// if the data can be decoded, it can be encoded (that's my view anyway). no need for an error check.
+	jsonData, _ := json.MarshalIndent(decodedYaml, prefix, indent)
+	return jsonData, nil
+}
+
 // IsHttpVerb will check if an operation is valid or not.
 func IsHttpVerb(verb string) bool {
 	verbs := []string{"get", "post", "put", "patch", "delete", "options", "trace", "head"}

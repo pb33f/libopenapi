@@ -637,6 +637,14 @@ func TestConvertYAMLtoJSON(t *testing.T) {
 	assert.Nil(t, str)
 }
 
+func TestConvertYAMLtoJSONPretty(t *testing.T) {
+	str, err := ConvertYAMLtoJSONPretty([]byte("hello: there"), "", "  ")
+	assert.NoError(t, err)
+	assert.NotNil(t, str)
+	assert.Equal(t, "{\n  \"hello\": \"there\"\n}", string(str))
+
+}
+
 func TestIsHttpVerb(t *testing.T) {
 	assert.True(t, IsHttpVerb("get"))
 	assert.True(t, IsHttpVerb("post"))

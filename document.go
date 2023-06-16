@@ -160,10 +160,23 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 	if d.highSwaggerModel != nil && d.highOpenAPI3Model == nil {
 		return nil, nil, nil, []error{errors.New("this method only supports OpenAPI 3 documents, not Swagger")}
 	}
-	newBytes, err := d.highOpenAPI3Model.Model.Render()
-	if err != nil {
-		return newBytes, nil, nil, []error{err}
+
+	var newBytes []byte
+	var renderError error
+
+	// render the model as the correct type based on the source.
+	// https://github.com/pb33f/libopenapi/issues/105
+	if d.info.SpecFileType == datamodel.JSONFileType {
+		newBytes, renderError = d.highOpenAPI3Model.Model.RenderJSON()
 	}
+	if d.info.SpecFileType == datamodel.YAMLFileType {
+		newBytes, renderError = d.highOpenAPI3Model.Model.Render()
+	}
+
+	if renderError != nil {
+		return newBytes, nil, nil, []error{renderError}
+	}
+
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
 	if err != nil {
 		return newBytes, newDoc, nil, []error{err}

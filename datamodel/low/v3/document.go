@@ -108,18 +108,3 @@ func (d *Document) GetExternalDocs() *low.NodeReference[any] {
 		Value:     d.ExternalDocs.Value,
 	}
 }
-
-// TODO: this is early prototype mutation/modification code, keeping it around for later.
-//func (d *Document) AddTag() *base.Tag {
-//	t := base.NewTag()
-//	//d.Tags.KeyNode
-//	t.Name.Value = "nice new tag"
-//
-//	dat, _ := yaml.Marshal(t)
-//	var inject yaml.Node
-//	_ = yaml.Unmarshal(dat, &inject)
-//
-//	d.Tags.ValueNode.Content = append(d.Tags.ValueNode.Content, inject.Content[0])
-//
-//	return t
-//}
