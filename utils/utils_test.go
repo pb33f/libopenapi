@@ -3,7 +3,7 @@ package utils
 import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"io/ioutil"
+	"os"
 	"sync"
 	"testing"
 )
@@ -18,7 +18,7 @@ var (
 
 func getPetstore() petstore {
 	once.Do(func() {
-		psBytes, _ = ioutil.ReadFile("../test_specs/petstorev3.json")
+		psBytes, _ = os.ReadFile("../test_specs/petstorev3.json")
 	})
 	return psBytes
 }
@@ -785,7 +785,7 @@ func TestIsNodeRefValue_False(t *testing.T) {
 func TestCheckEnumForDuplicates_Success(t *testing.T) {
 	yml := "- yes\n- no\n- crisps"
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 0)
 
 }
@@ -793,7 +793,7 @@ func TestCheckEnumForDuplicates_Success(t *testing.T) {
 func TestCheckEnumForDuplicates_Fail(t *testing.T) {
 	yml := "- yes\n- no\n- crisps\n- no"
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 1)
 
 }
@@ -802,7 +802,7 @@ func TestCheckEnumForDuplicates_FailMultiple(t *testing.T) {
 	yml := "- yes\n- no\n- crisps\n- no\n- rice\n- yes\n- no"
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 3)
 }
 
@@ -810,4 +810,14 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Brackets(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/OhNoWhy[HaveYouDoneThis]")
 	assert.Equal(t, "$.components.schemas['OhNoWhy[HaveYouDoneThis]']", path)
 	assert.Equal(t, "OhNoWhy[HaveYouDoneThis]", segment)
+}
+
+func TestDetermineYAMLWhitespaceLength(t *testing.T) {
+	someBytes, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	assert.Equal(t, 2, DetermineWhitespaceLength(string(someBytes)))
+}
+
+func TestDetermineJSONWhitespaceLength(t *testing.T) {
+	someBytes, _ := os.ReadFile("../test_specs/petstorev3.json")
+	assert.Equal(t, 2, DetermineWhitespaceLength(string(someBytes)))
 }

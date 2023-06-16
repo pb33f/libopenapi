@@ -22,6 +22,7 @@ type NodeEntry struct {
 	Value       any
 	StringValue string
 	Line        int
+	Style       yaml.Style
 	RenderZero  bool
 }
 
@@ -88,6 +89,7 @@ func (n *NodeBuilder) add(key string, i int) {
 						for k := range originalExtensions {
 							if k.Value == extKey {
 								if originalExtensions[k].ValueNode.Line != 0 {
+									nodeEntry.Style = originalExtensions[k].ValueNode.Style
 									nodeEntry.Line = originalExtensions[k].ValueNode.Line + u
 								} else {
 									nodeEntry.Line = 999999 + b + u
@@ -173,31 +175,43 @@ func (n *NodeBuilder) add(key string, i int) {
 		lowFieldValue := reflect.ValueOf(n.Low).Elem().FieldByName(key)
 		fLow := lowFieldValue.Interface()
 		value = reflect.ValueOf(fLow)
+
+		type lineStyle struct {
+			line  int
+			style yaml.Style
+		}
+
 		switch value.Kind() {
 
 		case reflect.Slice:
 			l := value.Len()
-			lines := make([]int, l)
+			lines := make([]lineStyle, l)
 			for g := 0; g < l; g++ {
 				qw := value.Index(g).Interface()
 				if we, wok := qw.(low.HasKeyNode); wok {
-					lines[g] = we.GetKeyNode().Line
+					lines[g] = lineStyle{we.GetKeyNode().Line, we.GetKeyNode().Style}
 				}
 			}
-			sort.Ints(lines)
-			nodeEntry.Line = lines[0] // pick the lowest line number so this key is sorted in order.
+			sort.Slice(lines, func(i, j int) bool {
+				return lines[i].line < lines[j].line
+			})
+			nodeEntry.Line = lines[0].line // pick the lowest line number so this key is sorted in order.
+			nodeEntry.Style = lines[0].style
 			break
 		case reflect.Map:
 
 			l := value.Len()
-			lines := make([]int, l)
+			lines := make([]lineStyle, l)
 			for q, ky := range value.MapKeys() {
 				if we, wok := ky.Interface().(low.HasKeyNode); wok {
-					lines[q] = we.GetKeyNode().Line
+					lines[q] = lineStyle{we.GetKeyNode().Line, we.GetKeyNode().Style}
 				}
 			}
-			sort.Ints(lines)
-			nodeEntry.Line = lines[0] // pick the lowest line number, sort in order
+			sort.Slice(lines, func(i, j int) bool {
+				return lines[i].line < lines[j].line
+			})
+			nodeEntry.Line = lines[0].line // pick the lowest line number, sort in order
+			nodeEntry.Style = lines[0].style
 
 		case reflect.Struct:
 			y := value.Interface()
@@ -206,11 +220,13 @@ func (n *NodeBuilder) add(key string, i int) {
 				if nb.IsReference() {
 					if jk, kj := y.(low.HasKeyNode); kj {
 						nodeEntry.Line = jk.GetKeyNode().Line
+						nodeEntry.Style = jk.GetKeyNode().Style
 						break
 					}
 				}
 				if nb.GetValueNode() != nil {
 					nodeEntry.Line = nb.GetValueNode().Line
+					nodeEntry.Style = nb.GetValueNode().Style
 				}
 			}
 		default:
@@ -290,6 +306,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		val := value.(string)
 		valueNode = utils.CreateStringNode(val)
 		valueNode.Line = line
+		valueNode.Style = entry.Style
 		break
 
 	case reflect.Bool:

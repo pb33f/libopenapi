@@ -622,3 +622,54 @@ func TestDocument_InputAsJSON(t *testing.T) {
 
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
 }
+
+func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
+
+	var d = `{
+    "openapi": "3.1",
+    "paths": {
+        "/an/operation": {
+            "get": {
+                "operationId": "thisIsAnOperationId"
+            }
+        }
+    }
+}`
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = doc.BuildV3Model()
+
+	// render the document.
+	rend, _, _, _ := doc.RenderAndReload()
+
+	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}
+
+func TestDocument_RenderWithIndention(t *testing.T) {
+
+	spec := `openapi: "3.1.0"
+info:
+      title: Test
+      version: 1.0.0
+paths:
+      /test:
+            get:
+                  operationId: 'test'`
+
+	config := datamodel.NewOpenDocumentConfiguration()
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = doc.BuildV3Model()
+
+	rend, _, _, _ := doc.RenderAndReload()
+
+	assert.Equal(t, spec, strings.TrimSpace(string(rend)))
+}
