@@ -162,7 +162,6 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 	}
 
 	var newBytes []byte
-	var renderError error
 
 	// render the model as the correct type based on the source.
 	// https://github.com/pb33f/libopenapi/issues/105
@@ -174,14 +173,10 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 				jsonIndent += " "
 			}
 		}
-		newBytes, renderError = d.highOpenAPI3Model.Model.RenderJSON(jsonIndent)
+		newBytes = d.highOpenAPI3Model.Model.RenderJSON(jsonIndent)
 	}
 	if d.info.SpecFileType == datamodel.YAMLFileType {
-		newBytes, renderError = d.highOpenAPI3Model.Model.RenderWithIndention(d.info.OriginalIndentation)
-	}
-
-	if renderError != nil {
-		return newBytes, nil, nil, []error{renderError}
+		newBytes = d.highOpenAPI3Model.Model.RenderWithIndention(d.info.OriginalIndentation)
 	}
 
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)

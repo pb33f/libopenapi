@@ -505,7 +505,7 @@ func ConvertYAMLtoJSON(yamlData []byte) ([]byte, error) {
 }
 
 // ConvertYAMLtoJSONPretty will do exactly what you think it will. It will deserialize YAML into serialized JSON.
-// However, this version will a apply prefix/indentation to the JSON.
+// However, this version will apply prefix/indentation to the JSON.
 func ConvertYAMLtoJSONPretty(yamlData []byte, prefix string, indent string) ([]byte, error) {
 	var decodedYaml map[string]interface{}
 	err := yaml.Unmarshal(yamlData, &decodedYaml)
