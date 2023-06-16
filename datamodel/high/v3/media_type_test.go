@@ -46,58 +46,58 @@ func TestMediaType_MarshalYAMLInline(t *testing.T) {
     required:
         - name
         - photoUrls
-    type: object
+    type: "object"
     properties:
         id:
-            type: integer
-            format: int64
+            type: "integer"
+            format: "int64"
             example: 10
         name:
-            type: string
-            example: doggie
+            type: "string"
+            example: "doggie"
         category:
-            type: object
+            type: "object"
             properties:
                 id:
-                    type: integer
-                    format: int64
+                    type: "integer"
+                    format: "int64"
                     example: 1
                 name:
-                    type: string
-                    example: Dogs
+                    type: "string"
+                    example: "Dogs"
             xml:
-                name: category
+                name: "category"
         photoUrls:
-            type: array
+            type: "array"
             xml:
                 wrapped: true
             items:
-                type: string
+                type: "string"
                 xml:
-                    name: photoUrl
+                    name: "photoUrl"
         tags:
-            type: array
+            type: "array"
             xml:
                 wrapped: true
             items:
-                type: object
+                type: "object"
                 properties:
                     id:
-                        type: integer
-                        format: int64
+                        type: "integer"
+                        format: "int64"
                     name:
-                        type: string
+                        type: "string"
                 xml:
-                    name: tag
+                    name: "tag"
         status:
-            type: string
-            description: pet status in the store
+            type: "string"
+            description: "pet status in the store"
             enum:
                 - available
                 - pending
                 - sold
     xml:
-        name: pet
+        name: "pet"
 example: testing a nice mutation`
 
 	yml, _ = mt.RenderInline()

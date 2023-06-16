@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -673,4 +674,20 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 		seen[enum.Value] = enum
 	}
 	return res
+}
+
+// DetermineWhitespaceLength will determine the length of the whitespace for a JSON or YAML file.
+func DetermineWhitespaceLength(input string) int {
+	exp := regexp.MustCompile(`\n( +)`)
+	whiteSpace := exp.FindAllStringSubmatch(input, -1)
+	var filtered []string
+	for i := range whiteSpace {
+		filtered = append(filtered, whiteSpace[i][1])
+	}
+	sort.Strings(filtered)
+	if len(filtered) > 0 {
+		return len(filtered[0])
+	} else {
+		return 0
+	}
 }

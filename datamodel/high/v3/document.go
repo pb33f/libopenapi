@@ -10,6 +10,7 @@
 package v3
 
 import (
+	"bytes"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -154,13 +155,26 @@ func (d *Document) Render() ([]byte, error) {
 	return yaml.Marshal(d)
 }
 
+// RenderWithIndention will return a YAML representation of the Document object as a byte slice.
+// the rendering will use the original indention of the document.
+func (d *Document) RenderWithIndention(indent int) ([]byte, error) {
+	var buf bytes.Buffer
+	yamlEncoder := yaml.NewEncoder(&buf)
+	yamlEncoder.SetIndent(indent)
+	err := yamlEncoder.Encode(d)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 // RenderJSON will return a JSON representation of the Document object as a byte slice.
-func (d *Document) RenderJSON() ([]byte, error) {
+func (d *Document) RenderJSON(indention string) ([]byte, error) {
 	yamlData, err := yaml.Marshal(d)
 	if err != nil {
 		return yamlData, err
 	}
-	return utils.ConvertYAMLtoJSONPretty(yamlData, "", "  ")
+	return utils.ConvertYAMLtoJSONPretty(yamlData, "", indention)
 }
 
 func (d *Document) RenderInline() ([]byte, error) {

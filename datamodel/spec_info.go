@@ -22,18 +22,19 @@ const (
 // SpecInfo represents a 'ready-to-process' OpenAPI Document. The RootNode is the most important property
 // used by the library, this contains the top of the document tree that every single low model is based off.
 type SpecInfo struct {
-	SpecType           string                  `json:"type"`
-	Version            string                  `json:"version"`
-	SpecFormat         string                  `json:"format"`
-	SpecFileType       string                  `json:"fileType"`
-	SpecBytes          *[]byte                 `json:"bytes"` // the original byte array
-	RootNode           *yaml.Node              `json:"-"`     // reference to the root node of the spec.
-	SpecJSONBytes      *[]byte                 `json:"-"`     // original bytes converted to JSON
-	SpecJSON           *map[string]interface{} `json:"-"`     // standard JSON map of original bytes
-	Error              error                   `json:"-"`     // something go wrong?
-	APISchema          string                  `json:"-"`     // API Schema for supplied spec type (2 or 3)
-	Generated          time.Time               `json:"-"`
-	JsonParsingChannel chan bool               `json:"-"`
+	SpecType            string                  `json:"type"`
+	Version             string                  `json:"version"`
+	SpecFormat          string                  `json:"format"`
+	SpecFileType        string                  `json:"fileType"`
+	SpecBytes           *[]byte                 `json:"bytes"` // the original byte array
+	RootNode            *yaml.Node              `json:"-"`     // reference to the root node of the spec.
+	SpecJSONBytes       *[]byte                 `json:"-"`     // original bytes converted to JSON
+	SpecJSON            *map[string]interface{} `json:"-"`     // standard JSON map of original bytes
+	Error               error                   `json:"-"`     // something go wrong?
+	APISchema           string                  `json:"-"`     // API Schema for supplied spec type (2 or 3)
+	Generated           time.Time               `json:"-"`
+	JsonParsingChannel  chan bool               `json:"-"`
+	OriginalIndentation int                     `json:"-"` // the original whitespace
 }
 
 // GetJSONParsingChannel returns a channel that will close once async JSON parsing is completed.
@@ -176,6 +177,9 @@ func ExtractSpecInfo(spec []byte) (*SpecInfo, error) {
 		specVersion.Error = errors.New("spec type not supported by libopenapi, sorry")
 		return specVersion, specVersion.Error
 	}
+
+	// detect the original whitespace indentation
+	specVersion.OriginalIndentation = utils.DetermineWhitespaceLength(string(spec))
 
 	return specVersion, nil
 }
