@@ -6,7 +6,6 @@ package libopenapi
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -26,7 +25,7 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 	// How to read in an OpenAPI 3 Specification, into a Document.
 
 	// load an OpenAPI 3 specification from bytes
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
@@ -62,7 +61,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	// from files or the network
 
 	// load in the Digital Ocean OpenAPI specification
-	digitalOcean, _ := ioutil.ReadFile("test_specs/digitalocean.yaml")
+	digitalOcean, _ := os.ReadFile("test_specs/digitalocean.yaml")
 
 	// create a DocumentConfiguration that prevents loading file and remote references
 	config := datamodel.DocumentConfiguration{
@@ -94,7 +93,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	// from files or the network
 
 	// load in the Digital Ocean OpenAPI specification
-	digitalOcean, _ := ioutil.ReadFile("test_specs/digitalocean.yaml")
+	digitalOcean, _ := os.ReadFile("test_specs/digitalocean.yaml")
 
 	// Digital Ocean needs a baseURL to be set, so we can resolve relative references.
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
@@ -132,7 +131,7 @@ func ExampleNewDocument_fromSwaggerDocument() {
 	// How to read in a Swagger / OpenAPI 2 Specification, into a Document.
 
 	// load a Swagger specification from bytes
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev2.json")
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
@@ -165,7 +164,7 @@ func ExampleNewDocument_fromSwaggerDocument() {
 func ExampleNewDocument_fromUnknownVersion() {
 
 	// load an unknown version of an OpenAPI spec
-	petstore, _ := ioutil.ReadFile("test_specs/burgershop.openapi.yaml")
+	petstore, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
@@ -226,7 +225,7 @@ info:
     name: Some Person
     email: some@emailaddress.com
   license:
-    url: http://some-place-on-the-internet.com/license
+    url: https://some-place-on-the-internet.com/license
 `
 	// create a new document from specification bytes
 	document, err := NewDocument([]byte(spec))
@@ -284,10 +283,10 @@ func ExampleCompareDocuments_openAPI() {
 	// How to compare two different OpenAPI specifications.
 
 	// load an original OpenAPI 3 specification from bytes
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/burgershop.openapi.yaml")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 
 	// load an **updated** OpenAPI 3 specification from bytes
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 
 	// create a new document from original specification bytes
 	originalDoc, err := NewDocument(burgerShopOriginal)
@@ -331,10 +330,10 @@ func ExampleCompareDocuments_swagger() {
 	// How to compare two different Swagger specifications.
 
 	// load an original OpenAPI 3 specification from bytes
-	petstoreOriginal, _ := ioutil.ReadFile("test_specs/petstorev2-complete.yaml")
+	petstoreOriginal, _ := os.ReadFile("test_specs/petstorev2-complete.yaml")
 
 	// load an **updated** OpenAPI 3 specification from bytes
-	petstoreUpdated, _ := ioutil.ReadFile("test_specs/petstorev2-complete-modified.yaml")
+	petstoreUpdated, _ := os.ReadFile("test_specs/petstorev2-complete-modified.yaml")
 
 	// create a new document from original specification bytes
 	originalDoc, err := NewDocument(petstoreOriginal)
@@ -647,9 +646,6 @@ func ExampleNewDocument_modifyAndReRender() {
 	// add the path to the document
 	v3Model.Model.Paths.PathItems["/new/path"] = newPath
 
-	// render out the new path item to YAML
-	// renderedPathItem, _ := yaml.Marshal(newPath)
-
 	// render the document back to bytes and reload the model.
 	rawBytes, _, newModel, errs := doc.RenderAndReload()
 
@@ -665,5 +661,5 @@ func ExampleNewDocument_modifyAndReRender() {
 	fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
 	fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
 	// Output: There were 13 original paths. There are now 14 paths in the document
-	//The original spec had 31143 bytes, the new one has 27841
+	//The original spec had 31143 bytes, the new one has 31027
 }

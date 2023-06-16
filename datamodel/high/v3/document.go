@@ -14,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -151,6 +152,15 @@ func (d *Document) GoLow() *low.Document {
 // Render will return a YAML representation of the Document object as a byte slice.
 func (d *Document) Render() ([]byte, error) {
 	return yaml.Marshal(d)
+}
+
+// RenderJSON will return a JSON representation of the Document object as a byte slice.
+func (d *Document) RenderJSON() ([]byte, error) {
+	yamlData, err := yaml.Marshal(d)
+	if err != nil {
+		return yamlData, err
+	}
+	return utils.ConvertYAMLtoJSONPretty(yamlData, "", "  ")
 }
 
 func (d *Document) RenderInline() ([]byte, error) {
