@@ -129,3 +129,39 @@ requestBody:
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
 }
+
+func TestOperation_EmptySecurity(t *testing.T) {
+	yml := `
+security: []`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n v3.Operation
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	r := NewOperation(&n)
+
+	assert.NotNil(t, r.Security)
+	assert.Len(t, r.Security, 0)
+
+}
+
+func TestOperation_NoSecurity(t *testing.T) {
+	yml := `operationId: test`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n v3.Operation
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	r := NewOperation(&n)
+
+	assert.Nil(t, r.Security)
+
+}

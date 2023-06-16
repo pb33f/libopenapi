@@ -286,3 +286,23 @@ x-mint: sweet`
 	assert.Nil(t, n.FindSecurityRequirement("I do not exist"))
 
 }
+
+func TestOperation_EmptySecurity(t *testing.T) {
+
+	yml := `
+security: []`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Operation
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Len(t, n.Security.Value, 0)
+
+}

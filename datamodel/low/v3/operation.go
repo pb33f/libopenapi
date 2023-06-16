@@ -110,9 +110,21 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if sErr != nil {
 		return sErr
 	}
-	if sec != nil {
+
+	// if security is defined and requirements are provided.
+	if sln != nil && len(svn.Content) > 0 && sec != nil {
 		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
 			Value:     sec,
+			KeyNode:   sln,
+			ValueNode: svn,
+		}
+	}
+
+	// if security is set, but no requirements are defined.
+	// https://github.com/pb33f/libopenapi/issues/111
+	if sln != nil && len(svn.Content) == 0 && sec == nil {
+		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
+			Value:     []low.ValueReference[*base.SecurityRequirement]{}, // empty
 			KeyNode:   sln,
 			ValueNode: svn,
 		}

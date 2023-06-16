@@ -68,7 +68,11 @@ func NewOperation(operation *low.Operation) *Operation {
 		for s := range operation.Security.Value {
 			sec = append(sec, base.NewSecurityRequirement(operation.Security.Value[s].Value))
 		}
-		o.Security = sec
+		if len(sec) > 0 {
+			o.Security = sec
+		} else {
+			o.Security = []*base.SecurityRequirement{} // security is defined, but empty.
+		}
 	}
 	var servers []*Server
 	for i := range operation.Servers.Value {
