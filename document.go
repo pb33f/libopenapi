@@ -167,10 +167,17 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 	// render the model as the correct type based on the source.
 	// https://github.com/pb33f/libopenapi/issues/105
 	if d.info.SpecFileType == datamodel.JSONFileType {
-		newBytes, renderError = d.highOpenAPI3Model.Model.RenderJSON()
+		jsonIndent := "  "
+		i := d.info.OriginalIndentation
+		if i > 2 {
+			for l := 0; l < i-2; l++ {
+				jsonIndent += " "
+			}
+		}
+		newBytes, renderError = d.highOpenAPI3Model.Model.RenderJSON(jsonIndent)
 	}
 	if d.info.SpecFileType == datamodel.YAMLFileType {
-		newBytes, renderError = d.highOpenAPI3Model.Model.Render()
+		newBytes, renderError = d.highOpenAPI3Model.Model.RenderWithIndention(d.info.OriginalIndentation)
 	}
 
 	if renderError != nil {
