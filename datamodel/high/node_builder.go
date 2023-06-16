@@ -199,19 +199,15 @@ func (n *NodeBuilder) add(key string, i int) {
 			nodeEntry.Style = lines[0].style
 			break
 		case reflect.Map:
-
 			l := value.Len()
-			lines := make([]lineStyle, l)
+			line := make([]int, l)
 			for q, ky := range value.MapKeys() {
 				if we, wok := ky.Interface().(low.HasKeyNode); wok {
-					lines[q] = lineStyle{we.GetKeyNode().Line, we.GetKeyNode().Style}
+					line[q] = we.GetKeyNode().Line
 				}
 			}
-			sort.Slice(lines, func(i, j int) bool {
-				return lines[i].line < lines[j].line
-			})
-			nodeEntry.Line = lines[0].line // pick the lowest line number, sort in order
-			nodeEntry.Style = lines[0].style
+			sort.Ints(line)
+			nodeEntry.Line = line[0]
 
 		case reflect.Struct:
 			y := value.Interface()

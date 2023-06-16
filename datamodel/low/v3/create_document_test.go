@@ -2,7 +2,7 @@ package v3
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -16,7 +16,7 @@ func initTest() {
 	if doc != nil {
 		return
 	}
-	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
+	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
 	// deprecated function test.
@@ -27,7 +27,7 @@ func initTest() {
 }
 
 func BenchmarkCreateDocument(b *testing.B) {
-	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
+	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		doc, _ = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -38,7 +38,7 @@ func BenchmarkCreateDocument(b *testing.B) {
 }
 
 func BenchmarkCreateDocument_Circular(b *testing.B) {
-	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
+	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -53,7 +53,7 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 
 func BenchmarkCreateDocument_k8s(b *testing.B) {
 
-	data, _ := ioutil.ReadFile("../../../test_specs/k8s.json")
+	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
 	for i := 0; i < b.N; i++ {
@@ -70,7 +70,7 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 
 func TestCircularReferenceError(t *testing.T) {
 
-	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
+	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
@@ -81,7 +81,7 @@ func TestCircularReferenceError(t *testing.T) {
 }
 
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
-	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
 	for i := 0; i < b.N; i++ {
@@ -96,7 +96,7 @@ func BenchmarkCreateDocument_Stripe(b *testing.B) {
 }
 
 func BenchmarkCreateDocument_Petstore(b *testing.B) {
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -111,7 +111,7 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 
 func TestCreateDocumentStripe(t *testing.T) {
 
-	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
@@ -133,6 +133,26 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, "https://pb33f.io/schema", doc.JsonSchemaDialect.Value)
 	assert.Len(t, doc.GetExtensions(), 1)
 }
+
+//func TestCreateDocumentHash(t *testing.T) {
+//	data, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
+//	info, _ := datamodel.ExtractSpecInfo(data)
+//	d, _ := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+//		AllowFileReferences:   false,
+//		AllowRemoteReferences: false,
+//		BasePath:              "/here",
+//	})
+//
+//	dataB, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
+//	infoB, _ := datamodel.ExtractSpecInfo(dataB)
+//	e, _ := CreateDocumentFromConfig(infoB, &datamodel.DocumentConfiguration{
+//		AllowFileReferences:   false,
+//		AllowRemoteReferences: false,
+//		BasePath:              "/here",
+//	})
+//
+//	assert.Equal(t, d.Hash(), e.Hash())
+//}
 
 func TestCreateDocument_Info(t *testing.T) {
 	initTest()
@@ -653,7 +673,7 @@ func ExampleCreateDocument() {
 	// How to create a low-level OpenAPI 3 Document
 
 	// load petstore into bytes
-	petstoreBytes, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	petstoreBytes, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 
 	// read in specification
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)

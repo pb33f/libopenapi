@@ -1055,6 +1055,86 @@ components:
 	assert.Equal(t, v3.ContainsLabel, changes.Changes[0].Property)
 }
 
+func TestCompareSchemas_UnevaluatedProperties_Bool(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: false`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: true`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_UnevaluatedProperties_Bool_Schema(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: false`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties:
+        type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_UnevaluatedProperties_Schema_Bool(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: false`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties:
+        type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(right, left)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
 func TestCompareSchemas_UnevaluatedProperties(t *testing.T) {
 	left := `openapi: 3.1
 components:
