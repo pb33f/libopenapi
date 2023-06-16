@@ -4,7 +4,9 @@
 package v3
 
 import (
-	"io/ioutil"
+	"fmt"
+	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -18,7 +20,7 @@ import (
 var lowDoc *lowv3.Document
 
 func initTest() {
-	data, _ := ioutil.ReadFile("../../../test_specs/burgershop.openapi.yaml")
+	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -379,30 +381,30 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 }
 
 func TestStripeAsDoc(t *testing.T) {
-	data, _ := ioutil.ReadFile("../../../test_specs/stripe.yaml")
+	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowDoc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	assert.Len(t, err, 3)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 }
 
 func TestK8sAsDoc(t *testing.T) {
-	data, _ := ioutil.ReadFile("../../../test_specs/k8s.json")
+	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowSwag, err := lowv2.CreateDocument(info)
+	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
 	assert.Len(t, err, 0)
 	assert.NotNil(t, d)
 }
 
 func TestAsanaAsDoc(t *testing.T) {
-	data, _ := ioutil.ReadFile("../../../test_specs/asana.yaml")
+	data, _ := os.ReadFile("../../../test_specs/asana.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowDoc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}
@@ -411,36 +413,36 @@ func TestAsanaAsDoc(t *testing.T) {
 	assert.Equal(t, 118, len(d.Paths.PathItems))
 }
 
-//func TestDigitalOceanAsDocFromSHA(t *testing.T) {
-//	data, _ := ioutil.ReadFile("../../../test_specs/digitalocean.yaml")
-//	info, _ := datamodel.ExtractSpecInfo(data)
-//	var err []error
-//
-//	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/82e1d558e15a59edc1d47d2c5544e7138f5b3cbf/specification")
-//	config := datamodel.DocumentConfiguration{
-//		AllowFileReferences:   true,
-//		AllowRemoteReferences: true,
-//		BaseURL:               baseURL,
-//	}
-//
-//	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
-//	if err != nil {
-//		for e := range err {
-//			fmt.Println(err[e])
-//		}
-//		panic("broken something")
-//	}
-//	d := NewDocument(lowDoc)
-//	assert.NotNil(t, d)
-//	assert.Equal(t, 183, len(d.Paths.PathItems))
-//
-//}
-
-func TestPetstoreAsDoc(t *testing.T) {
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+func TestDigitalOceanAsDocFromSHA(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowDoc, err = lowv3.CreateDocument(info)
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/82e1d558e15a59edc1d47d2c5544e7138f5b3cbf/specification")
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BaseURL:               baseURL,
+	}
+
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
+	if err != nil {
+		for e := range err {
+			fmt.Println(err[e])
+		}
+		panic("broken something")
+	}
+	d := NewDocument(lowDoc)
+	assert.NotNil(t, d)
+	assert.Equal(t, 183, len(d.Paths.PathItems))
+
+}
+
+func TestPetstoreAsDoc(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err []error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}
@@ -450,10 +452,10 @@ func TestPetstoreAsDoc(t *testing.T) {
 }
 
 func TestCircularReferencesDoc(t *testing.T) {
-	data, _ := ioutil.ReadFile("../../../test_specs/circular-tests.yaml")
+	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowDoc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	assert.Len(t, err, 3)
 	d := NewDocument(lowDoc)
 	assert.Len(t, d.Components.Schemas, 9)
@@ -476,6 +478,62 @@ func TestDocument_MarshalYAML(t *testing.T) {
 	highDoc := NewDocument(lDoc)
 	testBurgerShop(t, highDoc, false)
 
+}
+
+func TestDocument_MarshalIndention(t *testing.T) {
+
+	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+
+	highDoc := NewDocument(lowDoc)
+	rendered := highDoc.RenderWithIndention(2)
+
+	assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+
+	rendered = highDoc.RenderWithIndention(4)
+
+	assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
+
+}
+
+func TestDocument_MarshalIndention_Error(t *testing.T) {
+
+	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+
+	highDoc := NewDocument(lowDoc)
+	rendered := highDoc.RenderWithIndention(2)
+
+	assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+
+	rendered = highDoc.RenderWithIndention(4)
+
+	assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
+
+}
+
+func TestDocument_MarshalJSON(t *testing.T) {
+
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+
+	highDoc := NewDocument(lowDoc)
+
+	rendered := highDoc.RenderJSON("  ")
+
+	// now read back in the JSON
+	info, _ = datamodel.ExtractSpecInfo(rendered)
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	newDoc := NewDocument(lowDoc)
+
+	assert.Equal(t, len(newDoc.Paths.PathItems), len(highDoc.Paths.PathItems))
+	assert.Equal(t, len(newDoc.Components.Schemas), len(highDoc.Components.Schemas))
 }
 
 func TestDocument_MarshalYAMLInline(t *testing.T) {

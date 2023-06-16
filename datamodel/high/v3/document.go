@@ -157,24 +157,19 @@ func (d *Document) Render() ([]byte, error) {
 
 // RenderWithIndention will return a YAML representation of the Document object as a byte slice.
 // the rendering will use the original indention of the document.
-func (d *Document) RenderWithIndention(indent int) ([]byte, error) {
+func (d *Document) RenderWithIndention(indent int) []byte {
 	var buf bytes.Buffer
 	yamlEncoder := yaml.NewEncoder(&buf)
 	yamlEncoder.SetIndent(indent)
-	err := yamlEncoder.Encode(d)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	_ = yamlEncoder.Encode(d)
+	return buf.Bytes()
 }
 
 // RenderJSON will return a JSON representation of the Document object as a byte slice.
-func (d *Document) RenderJSON(indention string) ([]byte, error) {
-	yamlData, err := yaml.Marshal(d)
-	if err != nil {
-		return yamlData, err
-	}
-	return utils.ConvertYAMLtoJSONPretty(yamlData, "", indention)
+func (d *Document) RenderJSON(indention string) []byte {
+	yamlData, _ := yaml.Marshal(d)
+	dat, _ := utils.ConvertYAMLtoJSONPretty(yamlData, "", indention)
+	return dat
 }
 
 func (d *Document) RenderInline() ([]byte, error) {

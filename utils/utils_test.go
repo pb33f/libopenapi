@@ -645,6 +645,11 @@ func TestConvertYAMLtoJSONPretty(t *testing.T) {
 
 }
 
+func TestConvertYAMLtoJSONPrettyError(t *testing.T) {
+	_, err := ConvertYAMLtoJSONPretty([]byte("BAD"), "", "  ")
+	assert.Error(t, err)
+}
+
 func TestIsHttpVerb(t *testing.T) {
 	assert.True(t, IsHttpVerb("get"))
 	assert.True(t, IsHttpVerb("post"))
@@ -820,4 +825,9 @@ func TestDetermineYAMLWhitespaceLength(t *testing.T) {
 func TestDetermineJSONWhitespaceLength(t *testing.T) {
 	someBytes, _ := os.ReadFile("../test_specs/petstorev3.json")
 	assert.Equal(t, 2, DetermineWhitespaceLength(string(someBytes)))
+}
+
+func TestDetermineJSONWhitespaceLength_None(t *testing.T) {
+	someBytes := []byte(`{"hello": "world"}`)
+	assert.Equal(t, 0, DetermineWhitespaceLength(string(someBytes)))
 }
