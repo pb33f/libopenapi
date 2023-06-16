@@ -6,6 +6,7 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 
@@ -684,6 +685,10 @@ func GenerateHashString(v any) string {
 		if h != nil {
 			return fmt.Sprintf(HASH, h.Hash())
 		}
+	}
+	// if we get here, we're a primitive, check if we're a pointer and de-point
+	if reflect.TypeOf(v).Kind() == reflect.Ptr {
+		v = reflect.ValueOf(v).Elem().Interface()
 	}
 	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
 }
