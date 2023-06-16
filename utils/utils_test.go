@@ -797,3 +797,9 @@ func TestCheckEnumForDuplicates_FailMultiple(t *testing.T) {
 	yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 3)
 }
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Brackets(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/OhNoWhy[HaveYouDoneThis]")
+	assert.Equal(t, "$.components.schemas['OhNoWhy[HaveYouDoneThis]']", path)
+	assert.Equal(t, "OhNoWhy[HaveYouDoneThis]", segment)
+}

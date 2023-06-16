@@ -1597,6 +1597,9 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
 	assert.True(t, *res.Value.Schema().UnevaluatedProperties.Value.B)
 
+	assert.Equal(t, "571bd1853c22393131e2dcadce86894da714ec14968895c8b7ed18154b2be8cd",
+		low.GenerateHashString(res.Value.Schema().UnevaluatedProperties.Value))
+
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {

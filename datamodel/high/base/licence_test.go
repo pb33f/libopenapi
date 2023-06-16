@@ -57,3 +57,42 @@ url: https://pb33f.io/not-real
 	assert.Equal(t, yml, string(bytes))
 
 }
+
+func TestLicense_Render_Identifier(t *testing.T) {
+
+	highL := &License{Name: "MIT", Identifier: "MIT"}
+	dat, _ := highL.Render()
+
+	// unmarshal yaml into a *yaml.Node instance
+	var cNode yaml.Node
+	_ = yaml.Unmarshal(dat, &cNode)
+
+	// build low
+	var lowLicense lowbase.License
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowLicense)
+
+	// build high
+	highLicense := NewLicense(&lowLicense)
+
+	assert.Equal(t, "MIT", highLicense.Name)
+	assert.Equal(t, "MIT", highLicense.Identifier)
+
+}
+
+func TestLicense_Render_IdentifierAndURL_Error(t *testing.T) {
+
+	// this should fail because you can't have both an identifier and a URL
+	highL := &License{Name: "MIT", Identifier: "MIT", URL: "https://pb33f.io"}
+	dat, _ := highL.Render()
+
+	// unmarshal yaml into a *yaml.Node instance
+	var cNode yaml.Node
+	_ = yaml.Unmarshal(dat, &cNode)
+
+	// build low
+	var lowLicense lowbase.License
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowLicense)
+	err := lowLicense.Build(cNode.Content[0], nil)
+
+	assert.Error(t, err)
+}
