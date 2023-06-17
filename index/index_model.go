@@ -76,6 +76,13 @@ type SpecIndexConfig struct {
 	// a breakglass to be used to prevent loops, checking the tree before recursing down.
 	ParentIndex *SpecIndex
 
+	// If set to true, the index will not be built out, which means only the foundational elements will be
+	// parsed and added to the index. This is useful to avoid building out an index if the specification is
+	// broken up into references and you want it fully resolved.
+	//
+	// Use the `BuildIndex()` method on the index to build it out once resolved/ready.
+	AvoidBuildIndex bool
+
 	// private fields
 	seenRemoteSources *syncmap.Map
 	remoteLock        *sync.Mutex

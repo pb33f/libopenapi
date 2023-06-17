@@ -24,6 +24,10 @@ type DocumentConfiguration struct {
 
 	// AllowRemoteReferences will allow the index to lookup remote references. This is disabled by default.
 	AllowRemoteReferences bool
+
+	// AvoidIndexBuild will avoid building the index. This is disabled by default, only use if you are sure you don't need it.
+	// This is useful for developers building out models that should be indexed later on.
+	AvoidIndexBuild bool
 }
 
 func NewOpenDocumentConfiguration() *DocumentConfiguration {
