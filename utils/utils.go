@@ -233,7 +233,8 @@ func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNo
 		if i%2 != 0 {
 			continue
 		}
-		if strings.ToLower(key) == strings.ToLower(v.Value) {
+
+		if strings.EqualFold(key, v.Value) {
 			return v, nodes[i+1] // next node is what we need.
 		}
 	}
