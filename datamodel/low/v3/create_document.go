@@ -52,6 +52,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		BasePath:          cwd,
 		AllowFileLookup:   config.AllowFileReferences,
 		AllowRemoteLookup: config.AllowRemoteReferences,
+		AvoidBuildIndex:   config.AvoidIndexBuild,
 	})
 	doc.Index = idx
 

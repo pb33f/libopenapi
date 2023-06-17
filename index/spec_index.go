@@ -39,7 +39,7 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 		return index
 	}
 	boostrapIndexCollections(rootNode, index)
-	return createNewIndex(rootNode, index)
+	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }
 
 // NewSpecIndex will create a new index of an OpenAPI or Swagger spec. It's not resolved or converted into anything
@@ -55,10 +55,10 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
 	index.config = CreateOpenAPIIndexConfig()
 	boostrapIndexCollections(rootNode, index)
-	return createNewIndex(rootNode, index)
+	return createNewIndex(rootNode, index, false)
 }
 
-func createNewIndex(rootNode *yaml.Node, index *SpecIndex) *SpecIndex {
+func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *SpecIndex {
 	// there is no node! return an empty index.
 	if rootNode == nil {
 		return index
@@ -82,6 +82,23 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex) *SpecIndex {
 	index.ExtractExternalDocuments(index.root)
 	index.GetPathCount()
 
+	// build out the index.
+	if !avoidBuildOut {
+		index.BuildIndex()
+	}
+
+	// do a copy!
+	index.config.seenRemoteSources.Range(func(k, v any) bool {
+		index.seenRemoteSources[k.(string)] = v.(*yaml.Node)
+		return true
+	})
+	return index
+}
+
+// BuildIndex will run all of the count operations required to build up maps of everything. It's what makes the index
+// useful for looking up things, the count operations are all run in parallel and then the final calculations are run
+// the index is ready.
+func (index *SpecIndex) BuildIndex() {
 	countFuncs := []func() int{
 		index.GetOperationCount,
 		index.GetComponentSchemaCount,
@@ -111,13 +128,6 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex) *SpecIndex {
 	index.GetInlineDuplicateParamCount()
 	index.GetAllDescriptionsCount()
 	index.GetTotalTagsCount()
-
-	// do a copy!
-	index.config.seenRemoteSources.Range(func(k, v any) bool {
-		index.seenRemoteSources[k.(string)] = v.(*yaml.Node)
-		return true
-	})
-	return index
 }
 
 // GetRootNode returns document root node.
