@@ -166,14 +166,8 @@ type SpecIndex struct {
 	operationTagsCount                  int                                           // number of unique tags in operations
 	globalTagsCount                     int                                           // number of global tags defined
 	totalTagsCount                      int                                           // number unique tags in spec
-	securitySchemesCount                int                                           // security schemes
-	globalRequestBodiesCount            int                                           // component request bodies
-	globalResponsesCount                int                                           // component responses
-	globalHeadersCount                  int                                           // component headers
-	globalExamplesCount                 int                                           // component examples
 	globalLinksCount                    int                                           // component links
 	globalCallbacksCount                int                                           // component callbacks
-	globalCallbacks                     int                                           // component callbacks.
 	pathCount                           int                                           // number of paths
 	operationCount                      int                                           // number of operations
 	operationParamCount                 int                                           // number of params defined in operations
@@ -185,9 +179,7 @@ type SpecIndex struct {
 	root                                *yaml.Node                                    // the root document
 	pathsNode                           *yaml.Node                                    // paths node
 	tagsNode                            *yaml.Node                                    // tags node
-	componentsNode                      *yaml.Node                                    // components node
 	parametersNode                      *yaml.Node                                    // components/parameters node
-	allParametersNode                   map[string]*Reference                         // all parameters node
 	allParameters                       map[string]*Reference                         // all parameters (components/defs)
 	schemasNode                         *yaml.Node                                    // components/schemas node
 	allInlineSchemaDefinitions          []*Reference                                  // all schemas found in document outside of components (openapi) or definitions (swagger).
@@ -207,7 +199,6 @@ type SpecIndex struct {
 	allLinks                            map[string]*Reference                         // all links
 	callbacksNode                       *yaml.Node                                    // components/callbacks node
 	allCallbacks                        map[string]*Reference                         // all components examples
-	externalDocumentsNode               *yaml.Node                                    // external documents node
 	allExternalDocuments                map[string]*Reference                         // all external documents
 	externalSpecIndex                   map[string]*SpecIndex                         // create a primary index of all external specs and componentIds
 	refErrors                           []error                                       // errors when indexing references
