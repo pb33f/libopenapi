@@ -3,7 +3,10 @@
 
 package datamodel
 
-import "net/url"
+import (
+	"net/http"
+	"net/url"
+)
 
 // DocumentConfiguration is used to configure the document creation process. It was added in v0.6.0 to allow
 // for more fine-grained control over controls and new features.
@@ -14,6 +17,10 @@ type DocumentConfiguration struct {
 	// The BaseURL will be the root from which relative references will be resolved from if they can't be found locally.
 	// Schema must be set to "http/https".
 	BaseURL *url.URL
+
+	// RemoteDocumentGetter is a function that will be used to retrieve remote documents. If not set, the default
+	// remote document getter will be used.
+	RemoteDocumentGetter func(url string) (*http.Response, error)
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from.
 	// It's usually the location of the root specification.

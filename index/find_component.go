@@ -5,9 +5,6 @@ package index
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -15,6 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 )
 
 // FindComponent will locate a component by its reference, returns nil if nothing is found.
@@ -87,8 +88,10 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 
 var httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
 
-func getRemoteDoc(u string, d chan []byte, e chan error) {
-	resp, err := httpClient.Get(u)
+type RemoteDocumentGetter = func(url string) (*http.Response, error)
+
+func getRemoteDoc(g RemoteDocumentGetter, u string, d chan []byte, e chan error) {
+	resp, err := g(u)
 	if err != nil {
 		e <- err
 		close(e)
@@ -121,7 +124,11 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 		go func(uri string) {
 			bc := make(chan []byte)
 			ec := make(chan error)
-			go getRemoteDoc(uri, bc, ec)
+			var getter RemoteDocumentGetter = httpClient.Get
+			if index.config != nil && index.config.RemoteDocumentGetter != nil {
+				getter = index.config.RemoteDocumentGetter
+			}
+			go getRemoteDoc(getter, uri, bc, ec)
 			select {
 			case v := <-bc:
 				body = v
