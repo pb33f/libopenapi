@@ -435,7 +435,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 			if glu, ok := sqi.(GoesLowUntyped); ok {
 				if glu != nil {
 					ut := glu.GoLowUntyped()
-					if !reflect.ValueOf(ut).IsNil() {
+					if ut != nil && !reflect.ValueOf(ut).IsNil() {
 						r := ut.(low.IsReferenced)
 						if ut != nil && r.GetReference() != "" &&
 							ut.(low.IsReferenced).IsReference() {
