@@ -4,12 +4,10 @@
 package base
 
 import (
-	"gopkg.in/yaml.v3"
-	"sync"
-
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"gopkg.in/yaml.v3"
 )
 
 // Schema represents a JSON Schema that support Swagger, OpenAPI 3 and OpenAPI 3.1
@@ -315,7 +313,6 @@ func NewSchema(schema *base.Schema) *Schema {
 	// any properties each need to be processed in their own thread.
 	// we go as fast as we can.
 	polyCompletedChan := make(chan bool)
-	propsChan := make(chan bool)
 	errChan := make(chan error)
 
 	type buildResult struct {
@@ -355,11 +352,9 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	// props async
-	var plock sync.Mutex
-	buildProps := func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*base.SchemaProxy], c chan bool,
+	buildProps := func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*base.SchemaProxy],
 		props map[string]*SchemaProxy, sw int,
 	) {
-		plock.Lock()
 		props[k.Value] = &SchemaProxy{
 			schema: &lowmodel.NodeReference[*base.SchemaProxy]{
 				Value:     v.Value,
@@ -367,7 +362,6 @@ func NewSchema(schema *base.Schema) *Schema {
 				ValueNode: v.ValueNode,
 			},
 		}
-		plock.Unlock()
 
 		switch sw {
 		case 0:
@@ -377,21 +371,20 @@ func NewSchema(schema *base.Schema) *Schema {
 		case 2:
 			s.PatternProperties = props
 		}
-		c <- true
 	}
 
 	props := make(map[string]*SchemaProxy)
 	for k, v := range schema.Properties.Value {
-		go buildProps(k, v, propsChan, props, 0)
+		buildProps(k, v, props, 0)
 	}
 
 	dependents := make(map[string]*SchemaProxy)
 	for k, v := range schema.DependentSchemas.Value {
-		go buildProps(k, v, propsChan, dependents, 1)
+		buildProps(k, v, dependents, 1)
 	}
 	patternProps := make(map[string]*SchemaProxy)
 	for k, v := range schema.PatternProperties.Value {
-		go buildProps(k, v, propsChan, patternProps, 2)
+		buildProps(k, v, patternProps, 2)
 	}
 
 	var allOf []*SchemaProxy
@@ -439,18 +432,13 @@ func NewSchema(schema *base.Schema) *Schema {
 
 	completeChildren := 0
 	completedProps := 0
-	totalProps := len(schema.Properties.Value) + len(schema.DependentSchemas.Value) + len(schema.PatternProperties.Value)
+	totalProps := len(schema.DependentSchemas.Value) + len(schema.PatternProperties.Value)
 	if totalProps+children > 0 {
 	allDone:
 		for true {
 			select {
 			case <-polyCompletedChan:
 				completeChildren++
-				if totalProps == completedProps && children == completeChildren {
-					break allDone
-				}
-			case <-propsChan:
-				completedProps++
 				if totalProps == completedProps && children == completeChildren {
 					break allDone
 				}
