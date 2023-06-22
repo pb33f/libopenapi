@@ -431,15 +431,13 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	completeChildren := 0
-	completedProps := 0
-	totalProps := len(schema.DependentSchemas.Value) + len(schema.PatternProperties.Value)
-	if totalProps+children > 0 {
+	if children > 0 {
 	allDone:
 		for true {
 			select {
 			case <-polyCompletedChan:
 				completeChildren++
-				if totalProps == completedProps && children == completeChildren {
+				if  children == completeChildren {
 					break allDone
 				}
 			}

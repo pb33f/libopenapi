@@ -233,10 +233,10 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight map[low.KeyRefer
 	checkLeft := func(k string, doneChan chan bool, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
 		rhash := g[k]
 		if rhash == "" {
+			chLock.Lock()
 			if p[k].GetValueNode().Value == "" {
 				p[k].GetValueNode().Value = k
 			}
-			chLock.Lock()
 			CreateChange(changes, ObjectRemoved, label,
 				p[k].GetValueNode(), nil, true,
 				p[k].GetValue(), nil)
@@ -293,10 +293,10 @@ func checkRightValue[T any](k string, doneChan chan bool, f map[string]string, p
 
 	lhash := f[k]
 	if lhash == "" {
+		lock.Lock()
 		if p[k].GetValueNode().Value == "" {
 			p[k].GetValueNode().Value = k // this is kinda dirty, but I don't want to duplicate code so sue me.
 		}
-		lock.Lock()
 		CreateChange(changes, ObjectAdded, label,
 			nil, p[k].GetValueNode(), false,
 			nil, p[k].GetValue())
