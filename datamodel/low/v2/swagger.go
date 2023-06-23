@@ -143,10 +143,10 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	// build an index
 	idx := index.NewSpecIndexWithConfig(info.RootNode, &index.SpecIndexConfig{
-		BaseURL:              config.BaseURL,
-		RemoteDocumentGetter: config.RemoteDocumentGetter,
-		AllowRemoteLookup:    config.AllowRemoteReferences,
-		AllowFileLookup:      config.AllowFileReferences,
+		BaseURL:           config.BaseURL,
+		RemoteURLHandler:  config.RemoteURLHandler,
+		AllowRemoteLookup: config.AllowRemoteReferences,
+		AllowFileLookup:   config.AllowFileReferences,
 	})
 	doc.Index = idx
 	doc.SpecInfo = info

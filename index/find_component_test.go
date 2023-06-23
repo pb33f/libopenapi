@@ -4,10 +4,14 @@
 package index
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"reflect"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"os"
-	"testing"
 )
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {
@@ -142,4 +146,60 @@ paths:
 	assert.Equal(t, "crs", crsParam.Node.Content[1].Value)
 	assert.Equal(t, "query", crsParam.Node.Content[3].Value)
 	assert.Equal(t, "form", crsParam.Node.Content[9].Value)
+}
+
+func TestSpecIndex_LocateRemoteDocsWithRemoteURLHandler(t *testing.T) {
+	// This test will push the index to do try and locate remote references that use relative references
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	// extract crs param from index
+	crsParam := index.GetMappedReferences()["https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"]
+	assert.NotNil(t, crsParam)
+	assert.True(t, crsParam.IsRemote)
+	assert.Equal(t, "crs", crsParam.Node.Content[1].Value)
+	assert.Equal(t, "query", crsParam.Node.Content[3].Value)
+	assert.Equal(t, "form", crsParam.Node.Content[9].Value)
+}
+
+func TestGetRemoteDoc(t *testing.T) {
+	// Mock HTTP server
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Write([]byte(`OK`))
+	}))
+	// Close the server when test finishes
+	defer server.Close()
+
+	// Channel for data and error
+	dataChan := make(chan []byte)
+	errorChan := make(chan error)
+
+	go getRemoteDoc(http.Get, server.URL, dataChan, errorChan)
+
+	data := <-dataChan
+	err := <-errorChan
+
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	expectedData := []byte(`OK`)
+	if !reflect.DeepEqual(data, expectedData) {
+		t.Errorf("Expected %v, got %v", expectedData, data)
+	}
 }
