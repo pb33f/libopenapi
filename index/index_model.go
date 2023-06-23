@@ -61,9 +61,9 @@ type SpecIndexConfig struct {
 	// More details on relative references can be found in issue #73: https://github.com/pb33f/libopenapi/issues/73
 	BaseURL *url.URL // set the Base URL for resolving relative references if the spec is exploded.
 
-	// If resolving remotely, the RemoteDocumentGetter will be used to fetch the remote document.
+	// If resolving remotely, the RemoteURLHandler will be used to fetch the remote document.
 	// If not set, the default http client will be used.
-	RemoteDocumentGetter func(url string) (*http.Response, error)
+	RemoteURLHandler func(url string) (*http.Response, error)
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
