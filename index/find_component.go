@@ -88,9 +88,9 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 
 var httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
 
-type RemoteDocumentGetter = func(url string) (*http.Response, error)
+type RemoteURLHandler = func(url string) (*http.Response, error)
 
-func getRemoteDoc(g RemoteDocumentGetter, u string, d chan []byte, e chan error) {
+func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
 	resp, err := g(u)
 	if err != nil {
 		e <- err
@@ -124,9 +124,9 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 		go func(uri string) {
 			bc := make(chan []byte)
 			ec := make(chan error)
-			var getter RemoteDocumentGetter = httpClient.Get
-			if index.config != nil && index.config.RemoteDocumentGetter != nil {
-				getter = index.config.RemoteDocumentGetter
+			var getter RemoteURLHandler = httpClient.Get
+			if index.config != nil && index.config.RemoteURLHandler != nil {
+				getter = index.config.RemoteURLHandler
 			}
 			go getRemoteDoc(getter, uri, bc, ec)
 			select {

@@ -18,9 +18,9 @@ type DocumentConfiguration struct {
 	// Schema must be set to "http/https".
 	BaseURL *url.URL
 
-	// RemoteDocumentGetter is a function that will be used to retrieve remote documents. If not set, the default
+	// RemoteURLHandler is a function that will be used to retrieve remote documents. If not set, the default
 	// remote document getter will be used.
-	RemoteDocumentGetter func(url string) (*http.Response, error)
+	RemoteURLHandler func(url string) (*http.Response, error)
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from.
 	// It's usually the location of the root specification.

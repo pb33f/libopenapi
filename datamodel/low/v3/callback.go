@@ -6,11 +6,12 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Callback represents a low-level Callback object for OpenAPI 3+.
