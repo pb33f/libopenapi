@@ -63,6 +63,7 @@ type SpecIndexConfig struct {
 
 	// If resolving remotely, the RemoteURLHandler will be used to fetch the remote document.
 	// If not set, the default http client will be used.
+	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
 	RemoteURLHandler func(url string) (*http.Response, error)
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
