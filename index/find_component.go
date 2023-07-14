@@ -5,7 +5,7 @@ package index
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -99,7 +99,7 @@ func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
 		return
 	}
 	var body []byte
-	body, _ = ioutil.ReadAll(resp.Body)
+	body, _ = io.ReadAll(resp.Body)
 	d <- body
 	close(e)
 	close(d)
@@ -128,7 +128,28 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 			if index.config != nil && index.config.RemoteURLHandler != nil {
 				getter = index.config.RemoteURLHandler
 			}
-			go getRemoteDoc(getter, uri, bc, ec)
+
+			// if we have a remote handler, use it instead of the default.
+			if index.config != nil && index.config.RemoteHandler != nil {
+				go func() {
+					remoteFS := index.config.RemoteHandler
+					remoteFile, rErr := remoteFS.Open(uri)
+					if rErr != nil {
+						e := fmt.Errorf("unable to open remote file: %s", rErr)
+						ec <- e
+						return
+					}
+					b, ioErr := io.ReadAll(remoteFile)
+					if ioErr != nil {
+						e := fmt.Errorf("unable to read remote file bytes: %s", ioErr)
+						ec <- e
+						return
+					}
+					bc <- b
+				}()
+			} else {
+				go getRemoteDoc(getter, uri, bc, ec)
+			}
 			select {
 			case v := <-bc:
 				body = v
@@ -137,16 +158,18 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
 				err = er
 				break
 			}
-			var remoteDoc yaml.Node
-			er := yaml.Unmarshal(body, &remoteDoc)
-			if er != nil {
-				err = er
-				d <- true
-				return
-			}
-			parsedRemoteDocument = &remoteDoc
-			if index.config != nil {
-				index.config.seenRemoteSources.Store(uri, &remoteDoc)
+			if len(body) > 0 {
+				var remoteDoc yaml.Node
+				er := yaml.Unmarshal(body, &remoteDoc)
+				if er != nil {
+					err = er
+					d <- true
+					return
+				}
+				parsedRemoteDocument = &remoteDoc
+				if index.config != nil {
+					index.config.seenRemoteSources.Store(uri, &remoteDoc)
+				}
 			}
 			d <- true
 		}(uri[0])

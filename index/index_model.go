@@ -4,6 +4,7 @@
 package index
 
 import (
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -65,6 +66,11 @@ type SpecIndexConfig struct {
 	// If not set, the default http client will be used.
 	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
 	RemoteURLHandler func(url string) (*http.Response, error)
+
+	// RemoteHandler is a function that will be used to fetch remote documents, it trumps the RemoteURLHandler
+	// and will be used instead if it is set.
+	// Resolves[#85] https://github.com/pb33f/libopenapi/issues/85
+	RemoteHandler fs.FS
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
