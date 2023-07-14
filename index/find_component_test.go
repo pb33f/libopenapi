@@ -4,6 +4,10 @@
 package index
 
 import (
+	"errors"
+	"fmt"
+	"io"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -202,4 +206,149 @@ func TestGetRemoteDoc(t *testing.T) {
 	if !reflect.DeepEqual(data, expectedData) {
 		t.Errorf("Expected %v, got %v", expectedData, data)
 	}
+}
+
+type FS struct{}
+type FSBadOpen struct{}
+type FSBadRead struct{}
+
+type file struct {
+	name string
+	data string
+}
+
+type openFile struct {
+	f      *file
+	offset int64
+}
+
+func (f *openFile) Close() error               { return nil }
+func (f *openFile) Stat() (fs.FileInfo, error) { return nil, nil }
+func (f *openFile) Read(b []byte) (int, error) {
+	if f.offset >= int64(len(f.f.data)) {
+		return 0, io.EOF
+	}
+	if f.offset < 0 {
+		return 0, &fs.PathError{Op: "read", Path: f.f.name, Err: fs.ErrInvalid}
+	}
+	n := copy(b, f.f.data[f.offset:])
+	f.offset += int64(n)
+	return n, nil
+}
+
+type badFileOpen struct{}
+
+func (f *badFileOpen) Close() error               { return errors.New("bad file close") }
+func (f *badFileOpen) Stat() (fs.FileInfo, error) { return nil, errors.New("bad file stat") }
+func (f *badFileOpen) Read(b []byte) (int, error) {
+	return 0, nil
+}
+
+type badFileRead struct {
+	f      *file
+	offset int64
+}
+
+func (f *badFileRead) Close() error               { return errors.New("bad file close") }
+func (f *badFileRead) Stat() (fs.FileInfo, error) { return nil, errors.New("bad file stat") }
+func (f *badFileRead) Read(b []byte) (int, error) {
+	return 0, fmt.Errorf("bad file read")
+}
+
+func (f FS) Open(name string) (fs.File, error) {
+
+	data := `type: string
+name: something
+in: query`
+
+	return &openFile{&file{"test.yaml", data}, 0}, nil
+}
+
+func (f FSBadOpen) Open(name string) (fs.File, error) {
+	return nil, errors.New("bad file open")
+}
+
+func (f FSBadRead) Open(name string) (fs.File, error) {
+	return &badFileRead{&file{}, 0}, nil
+}
+
+func TestSpecIndex_UseRemoteHandler(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test Remote Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://i-dont-exist-but-it-does-not-matter.com/some-place/some-file.yaml"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.RemoteHandler = FS{}
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	// extract crs param from index
+	crsParam := index.GetMappedReferences()["https://i-dont-exist-but-it-does-not-matter.com/some-place/some-file.yaml"]
+	assert.NotNil(t, crsParam)
+	assert.True(t, crsParam.IsRemote)
+	assert.Equal(t, "string", crsParam.Node.Content[1].Value)
+	assert.Equal(t, "something", crsParam.Node.Content[3].Value)
+	assert.Equal(t, "query", crsParam.Node.Content[5].Value)
+}
+
+func TestSpecIndex_UseRemoteHandler_Error_Open(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test Remote Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://-i-cannot-be-opened.com"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.RemoteHandler = FSBadOpen{}
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, "unable to open remote file: bad file open", index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'https://-i-cannot-be-opened.com' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
+}
+
+func TestSpecIndex_UseRemoteHandler_Error_Read(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test Remote Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://-i-cannot-be-opened.com"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.RemoteHandler = FSBadRead{}
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, "unable to read remote file bytes: bad file read", index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'https://-i-cannot-be-opened.com' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
 }
