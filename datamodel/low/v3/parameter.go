@@ -59,6 +59,8 @@ func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // Build will extract examples, extensions and content/media types.
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 

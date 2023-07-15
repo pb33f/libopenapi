@@ -20,7 +20,7 @@ x-cake: hot`
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	var n Example
 	err := low.BuildModel(idxNode.Content[0], &n)
@@ -46,7 +46,7 @@ x-cake: hot`
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	var n Example
 	err := low.BuildModel(idxNode.Content[0], &n)
@@ -73,7 +73,7 @@ value:
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	var n Example
 	err := low.BuildModel(idxNode.Content[0], &n)
@@ -104,7 +104,39 @@ value:
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+
+	var n Example
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "hot", n.Summary.Value)
+	assert.Equal(t, "cakes", n.Description.Value)
+
+	if v, ok := n.Value.Value.([]interface{}); ok {
+		assert.Equal(t, "wow", v[0])
+		assert.Equal(t, "such array", v[1])
+	} else {
+		assert.Fail(t, "failed to decode correctly.")
+	}
+}
+
+func TestExample_Build_Success_MergeNode(t *testing.T) {
+
+	yml := `x-things: &things
+  summary: hot
+  description: cakes
+  value:
+    - wow
+    - such array
+<<: *things`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	var n Example
 	err := low.BuildModel(idxNode.Content[0], &n)

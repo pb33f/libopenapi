@@ -103,6 +103,8 @@ func (i *Items) Hash() [32]byte {
 
 // Build will build out items and default value.
 func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	i.Extensions = low.ExtractExtensions(root)
 	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
 	if iErr != nil {

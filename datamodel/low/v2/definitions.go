@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -71,6 +72,8 @@ func (s *SecurityDefinitions) FindSecurityDefinition(securityDef string) *low.Va
 
 // Build will extract all definitions into SchemaProxy instances.
 func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	errorChan := make(chan error)
 	resultChan := make(chan definitionResult[*base.SchemaProxy])
 	var defLabel *yaml.Node
