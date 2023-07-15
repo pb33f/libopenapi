@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -31,6 +32,8 @@ type XML struct {
 
 // Build will extract extensions from the XML instance.
 func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	x.Reference = new(low.Reference)
 	x.Extensions = low.ExtractExtensions(root)
 	return nil

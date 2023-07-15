@@ -67,10 +67,19 @@ type SpecIndexConfig struct {
 	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
 	RemoteURLHandler func(url string) (*http.Response, error)
 
-	// RemoteHandler is a function that will be used to fetch remote documents, it trumps the RemoteURLHandler
-	// and will be used instead if it is set.
+	// FSHandler is an entity that implements the `fs.FS` interface that will be used to fetch local or remote documents.
+	// This is useful if you want to use a custom file system handler, or if you want to use a custom http client or
+	// custom network implementation for a lookup.
+	//
+	// libopenapi will pass the path to the FSHandler, and it will be up to the handler to determine how to fetch
+	// the document. This is really useful if your application has a custom file system or uses a database for storing
+	// documents.
+	//
+	// Is the FSHandler is set, it will be used for all lookups, regardless of whether they are local or remote.
+	// it also overrides the RemoteURLHandler if set.
+	//
 	// Resolves[#85] https://github.com/pb33f/libopenapi/issues/85
-	RemoteHandler fs.FS
+	FSHandler fs.FS
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.

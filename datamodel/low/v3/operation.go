@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -55,6 +56,8 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 

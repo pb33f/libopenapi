@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -36,6 +37,8 @@ type Operation struct {
 
 // Build will extract external docs, extensions, parameters, responses and security requirements.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	o.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs

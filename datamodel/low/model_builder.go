@@ -23,6 +23,8 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 	if node == nil {
 		return nil
 	}
+	node = utils.NodeAlias(node)
+	utils.CheckForMergeNodes(node)
 
 	if reflect.ValueOf(model).Type().Kind() != reflect.Pointer {
 		return fmt.Errorf("cannot build model on non-pointer: %v", reflect.ValueOf(model).Type().Kind())
@@ -51,6 +53,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 		kind := field.Kind()
 		switch kind {
 		case reflect.Struct, reflect.Slice, reflect.Map, reflect.Pointer:
+			vn = utils.NodeAlias(vn)
 			err := SetField(&field, vn, kn)
 			if err != nil {
 				return err
@@ -213,31 +216,31 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 
 	case reflect.TypeOf(NodeReference[float32]{}):
 
-        if utils.IsNodeNumberValue(valueNode) {
-            if field.CanSet() {
-                fv, _ := strconv.ParseFloat(valueNode.Value, 32)
-                nr := NodeReference[float32]{
-                    Value:     float32(fv),
-                    ValueNode: valueNode,
-                    KeyNode:   keyNode,
-                }
-                field.Set(reflect.ValueOf(nr))
-            }
-        }
+		if utils.IsNodeNumberValue(valueNode) {
+			if field.CanSet() {
+				fv, _ := strconv.ParseFloat(valueNode.Value, 32)
+				nr := NodeReference[float32]{
+					Value:     float32(fv),
+					ValueNode: valueNode,
+					KeyNode:   keyNode,
+				}
+				field.Set(reflect.ValueOf(nr))
+			}
+		}
 
 	case reflect.TypeOf(NodeReference[float64]{}):
 
-        if utils.IsNodeNumberValue(valueNode) {
-            if field.CanSet() {
-                fv, _ := strconv.ParseFloat(valueNode.Value, 64)
-                nr := NodeReference[float64]{
-                    Value:     fv,
-                    ValueNode: valueNode,
-                    KeyNode:   keyNode,
-                }
-                field.Set(reflect.ValueOf(nr))
-            }
-        }
+		if utils.IsNodeNumberValue(valueNode) {
+			if field.CanSet() {
+				fv, _ := strconv.ParseFloat(valueNode.Value, 64)
+				nr := NodeReference[float64]{
+					Value:     fv,
+					ValueNode: valueNode,
+					KeyNode:   keyNode,
+				}
+				field.Set(reflect.ValueOf(nr))
+			}
+		}
 
 	case reflect.TypeOf([]NodeReference[string]{}):
 

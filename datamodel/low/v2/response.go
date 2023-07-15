@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -43,6 +44,8 @@ func (r *Response) FindHeader(hType string) *low.ValueReference[*Header] {
 
 // Build will extract schema, extensions, examples and headers from node
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	r.Extensions = low.ExtractExtensions(root)
 	s, err := base.ExtractSchema(root, idx)
 	if err != nil {

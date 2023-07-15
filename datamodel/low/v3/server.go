@@ -35,6 +35,8 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 
 // Build will extract server variables from the supplied node.
 func (s *Server) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	s.Extensions = low.ExtractExtensions(root)
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)

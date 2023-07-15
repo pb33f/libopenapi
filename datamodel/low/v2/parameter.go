@@ -95,6 +95,8 @@ func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // Build will extract out extensions, schema, items and default value
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
 	sch, sErr := base.ExtractSchema(root, idx)
 	if sErr != nil {

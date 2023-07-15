@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strings"
 )
@@ -25,6 +26,8 @@ type License struct {
 
 // Build out a license, complain if both a URL and identifier are present as they are mutually exclusive
 func (l *License) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
 	if l.URL.Value != "" && l.Identifier.Value != "" {
 		return fmt.Errorf("license cannot have both a URL and an identifier, they are mutually exclusive")

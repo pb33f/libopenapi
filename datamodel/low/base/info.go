@@ -6,6 +6,7 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"sort"
 	"strings"
 
@@ -45,6 +46,8 @@ func (i *Info) GetExtensions() map[low.KeyReference[string]]low.ValueReference[a
 
 // Build will extract out the Contact and Info objects from the supplied root node.
 func (i *Info) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	i.Reference = new(low.Reference)
 	i.Extensions = low.ExtractExtensions(root)
 

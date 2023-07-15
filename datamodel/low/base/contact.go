@@ -23,7 +23,7 @@ type Contact struct {
 }
 
 // Build is not implemented for Contact (there is nothing to build).
-func (c *Contact) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (c *Contact) Build(_ *yaml.Node, _ *index.SpecIndex) error {
 	c.Reference = new(low.Reference)
 	// not implemented.
 	return nil

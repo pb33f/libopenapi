@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -48,6 +49,8 @@ func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.Value
 
 // Build will extract OAuthFlows and extensions from the node.
 func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	ss.Reference = new(low.Reference)
 	ss.Extensions = low.ExtractExtensions(root)
 

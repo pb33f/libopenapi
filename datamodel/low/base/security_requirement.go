@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -28,6 +29,8 @@ type SecurityRequirement struct {
 
 // Build will extract security requirements from the node (the structure is odd, to be honest)
 func (s *SecurityRequirement) Build(root *yaml.Node, _ *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	var labelNode *yaml.Node
 	valueMap := make(map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])

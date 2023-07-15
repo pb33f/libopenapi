@@ -288,12 +288,41 @@ paths:
 	_ = yaml.Unmarshal([]byte(spec), &rootNode)
 
 	c := CreateOpenAPIIndexConfig()
-	c.RemoteHandler = FS{}
+	c.FSHandler = FS{}
 
 	index := NewSpecIndexWithConfig(&rootNode, c)
 
 	// extract crs param from index
 	crsParam := index.GetMappedReferences()["https://i-dont-exist-but-it-does-not-matter.com/some-place/some-file.yaml"]
+	assert.NotNil(t, crsParam)
+	assert.True(t, crsParam.IsRemote)
+	assert.Equal(t, "string", crsParam.Node.Content[1].Value)
+	assert.Equal(t, "something", crsParam.Node.Content[3].Value)
+	assert.Equal(t, "query", crsParam.Node.Content[5].Value)
+}
+
+func TestSpecIndex_UseFileHandler(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test Remote Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "some-file-that-does-not-exist.yaml"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.FSHandler = FS{}
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	// extract crs param from index
+	crsParam := index.GetMappedReferences()["some-file-that-does-not-exist.yaml"]
 	assert.NotNil(t, crsParam)
 	assert.True(t, crsParam.IsRemote)
 	assert.Equal(t, "string", crsParam.Node.Content[1].Value)
@@ -317,7 +346,7 @@ paths:
 	_ = yaml.Unmarshal([]byte(spec), &rootNode)
 
 	c := CreateOpenAPIIndexConfig()
-	c.RemoteHandler = FSBadOpen{}
+	c.FSHandler = FSBadOpen{}
 	c.RemoteURLHandler = httpClient.Get
 
 	index := NewSpecIndexWithConfig(&rootNode, c)
@@ -325,6 +354,32 @@ paths:
 	assert.Len(t, index.GetReferenceIndexErrors(), 2)
 	assert.Equal(t, "unable to open remote file: bad file open", index.GetReferenceIndexErrors()[0].Error())
 	assert.Equal(t, "component 'https://-i-cannot-be-opened.com' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
+}
+
+func TestSpecIndex_UseFileHandler_Error_Open(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test File Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "I-can-never-be-opened.yaml"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.FSHandler = FSBadOpen{}
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, "unable to open file: bad file open", index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'I-can-never-be-opened.yaml' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
 }
 
 func TestSpecIndex_UseRemoteHandler_Error_Read(t *testing.T) {
@@ -343,7 +398,7 @@ paths:
 	_ = yaml.Unmarshal([]byte(spec), &rootNode)
 
 	c := CreateOpenAPIIndexConfig()
-	c.RemoteHandler = FSBadRead{}
+	c.FSHandler = FSBadRead{}
 	c.RemoteURLHandler = httpClient.Get
 
 	index := NewSpecIndexWithConfig(&rootNode, c)
@@ -351,4 +406,30 @@ paths:
 	assert.Len(t, index.GetReferenceIndexErrors(), 2)
 	assert.Equal(t, "unable to read remote file bytes: bad file read", index.GetReferenceIndexErrors()[0].Error())
 	assert.Equal(t, "component 'https://-i-cannot-be-opened.com' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
+}
+
+func TestSpecIndex_UseFileHandler_Error_Read(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test File Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "I-am-impossible-to-open-forever.yaml"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.FSHandler = FSBadRead{}
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, "unable to read file bytes: bad file read", index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'I-am-impossible-to-open-forever.yaml' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
 }
