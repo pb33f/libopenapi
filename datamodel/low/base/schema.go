@@ -62,11 +62,11 @@ type Schema struct {
 	// Reference to the '$schema' dialect setting (3.1 only)
 	SchemaTypeRef low.NodeReference[string]
 
-    // In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
-    ExclusiveMaximum low.NodeReference[*SchemaDynamicValue[bool, float64]]
+	// In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
+	ExclusiveMaximum low.NodeReference[*SchemaDynamicValue[bool, float64]]
 
-    // In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
-    ExclusiveMinimum low.NodeReference[*SchemaDynamicValue[bool, float64]]
+	// In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
+	ExclusiveMinimum low.NodeReference[*SchemaDynamicValue[bool, float64]]
 
 	// In versions 2 and 3.0, this Type is a single value, so array will only ever have one value
 	// in version 3.1, Type can be multiple values
@@ -103,37 +103,37 @@ type Schema struct {
 	UnevaluatedProperties low.NodeReference[*SchemaDynamicValue[*SchemaProxy, *bool]]
 	Anchor                low.NodeReference[string]
 
-    // Compatible with all versions
-    Title                low.NodeReference[string]
-    MultipleOf           low.NodeReference[float64]
-    Maximum              low.NodeReference[float64]
-    Minimum              low.NodeReference[float64]
-    MaxLength            low.NodeReference[int64]
-    MinLength            low.NodeReference[int64]
-    Pattern              low.NodeReference[string]
-    Format               low.NodeReference[string]
-    MaxItems             low.NodeReference[int64]
-    MinItems             low.NodeReference[int64]
-    UniqueItems          low.NodeReference[bool]
-    MaxProperties        low.NodeReference[int64]
-    MinProperties        low.NodeReference[int64]
-    Required             low.NodeReference[[]low.ValueReference[string]]
-    Enum                 low.NodeReference[[]low.ValueReference[any]]
-    Not                  low.NodeReference[*SchemaProxy]
-    Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
-    AdditionalProperties low.NodeReference[any]
-    Description          low.NodeReference[string]
-    ContentEncoding      low.NodeReference[string]
-    ContentMediaType     low.NodeReference[string]
-    Default              low.NodeReference[any]
-    Nullable             low.NodeReference[bool]
-    ReadOnly             low.NodeReference[bool]
-    WriteOnly            low.NodeReference[bool]
-    XML                  low.NodeReference[*XML]
-    ExternalDocs         low.NodeReference[*ExternalDoc]
-    Example              low.NodeReference[any]
-    Deprecated           low.NodeReference[bool]
-    Extensions           map[low.KeyReference[string]]low.ValueReference[any]
+	// Compatible with all versions
+	Title                low.NodeReference[string]
+	MultipleOf           low.NodeReference[float64]
+	Maximum              low.NodeReference[float64]
+	Minimum              low.NodeReference[float64]
+	MaxLength            low.NodeReference[int64]
+	MinLength            low.NodeReference[int64]
+	Pattern              low.NodeReference[string]
+	Format               low.NodeReference[string]
+	MaxItems             low.NodeReference[int64]
+	MinItems             low.NodeReference[int64]
+	UniqueItems          low.NodeReference[bool]
+	MaxProperties        low.NodeReference[int64]
+	MinProperties        low.NodeReference[int64]
+	Required             low.NodeReference[[]low.ValueReference[string]]
+	Enum                 low.NodeReference[[]low.ValueReference[any]]
+	Not                  low.NodeReference[*SchemaProxy]
+	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
+	AdditionalProperties low.NodeReference[any]
+	Description          low.NodeReference[string]
+	ContentEncoding      low.NodeReference[string]
+	ContentMediaType     low.NodeReference[string]
+	Default              low.NodeReference[any]
+	Nullable             low.NodeReference[bool]
+	ReadOnly             low.NodeReference[bool]
+	WriteOnly            low.NodeReference[bool]
+	XML                  low.NodeReference[*XML]
+	ExternalDocs         low.NodeReference[*ExternalDoc]
+	Example              low.NodeReference[any]
+	Deprecated           low.NodeReference[bool]
+	Extensions           map[low.KeyReference[string]]low.ValueReference[any]
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
 	ParentProxy *SchemaProxy
@@ -531,6 +531,8 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //   - UnevaluatedProperties
 //   - Anchor
 func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, err := low.LocateRefNode(root, idx)
@@ -581,47 +583,47 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-    // determine exclusive minimum type, bool (3.0) or int (3.1)
-    _, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
-    if exMinValue != nil {
-        if utils.IsNodeBoolValue(exMinValue) {
-            val, _ := strconv.ParseBool(exMinValue.Value)
-            s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-                KeyNode:   exMinLabel,
-                ValueNode: exMinValue,
-                Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
-            }
-        }
-        if utils.IsNodeIntValue(exMinValue) {
-            val, _ := strconv.ParseFloat(exMinValue.Value, 64)
-            s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-                KeyNode:   exMinLabel,
-                ValueNode: exMinValue,
-                Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
-            }
-        }
-    }
+	// determine exclusive minimum type, bool (3.0) or int (3.1)
+	_, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
+	if exMinValue != nil {
+		if utils.IsNodeBoolValue(exMinValue) {
+			val, _ := strconv.ParseBool(exMinValue.Value)
+			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+				KeyNode:   exMinLabel,
+				ValueNode: exMinValue,
+				Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+			}
+		}
+		if utils.IsNodeIntValue(exMinValue) {
+			val, _ := strconv.ParseFloat(exMinValue.Value, 64)
+			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+				KeyNode:   exMinLabel,
+				ValueNode: exMinValue,
+				Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+			}
+		}
+	}
 
-    // determine exclusive maximum type, bool (3.0) or int (3.1)
-    _, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
-    if exMaxValue != nil {
-        if utils.IsNodeBoolValue(exMaxValue) {
-            val, _ := strconv.ParseBool(exMaxValue.Value)
-            s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-                KeyNode:   exMaxLabel,
-                ValueNode: exMaxValue,
-                Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
-            }
-        }
-        if utils.IsNodeIntValue(exMaxValue) {
-            val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
-            s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-                KeyNode:   exMaxLabel,
-                ValueNode: exMaxValue,
-                Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
-            }
-        }
-    }
+	// determine exclusive maximum type, bool (3.0) or int (3.1)
+	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
+	if exMaxValue != nil {
+		if utils.IsNodeBoolValue(exMaxValue) {
+			val, _ := strconv.ParseBool(exMaxValue.Value)
+			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+				KeyNode:   exMaxLabel,
+				ValueNode: exMaxValue,
+				Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+			}
+		}
+		if utils.IsNodeIntValue(exMaxValue) {
+			val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
+			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+				KeyNode:   exMaxLabel,
+				ValueNode: exMaxValue,
+				Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+			}
+		}
+	}
 
 	// handle schema reference type if set. (3.1)
 	_, schemaRefLabel, schemaRefNode := utils.FindKeyNodeFullTop(SchemaTypeLabel, root.Content)

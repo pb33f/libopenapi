@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -54,6 +55,8 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 
 // Build will extract headers, extensions, content and links from node.
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
 

@@ -571,20 +571,20 @@ func TestIsNodeFloatValue(t *testing.T) {
 }
 
 func TestIsNodeNumberValue(t *testing.T) {
-    n := &yaml.Node{
-        Tag: "!!float",
-    }
-    assert.True(t, IsNodeNumberValue(n))
-    n.Tag = "!!pizza"
-    assert.False(t, IsNodeNumberValue(n))
+	n := &yaml.Node{
+		Tag: "!!float",
+	}
+	assert.True(t, IsNodeNumberValue(n))
+	n.Tag = "!!pizza"
+	assert.False(t, IsNodeNumberValue(n))
 
-    n = &yaml.Node{
-        Tag: "!!int",
-    }
-    assert.True(t, IsNodeNumberValue(n))
-    n.Tag = "!!pizza"
-    assert.False(t, IsNodeNumberValue(n))
-    assert.False(t, IsNodeNumberValue(nil))
+	n = &yaml.Node{
+		Tag: "!!int",
+	}
+	assert.True(t, IsNodeNumberValue(n))
+	n.Tag = "!!pizza"
+	assert.False(t, IsNodeNumberValue(n))
+	assert.False(t, IsNodeNumberValue(nil))
 }
 
 func TestIsNodeFloatValue_Nil(t *testing.T) {
@@ -765,6 +765,69 @@ func TestIsNodeRefValue(t *testing.T) {
 	assert.Equal(t, "$ref", node.Value)
 	assert.Equal(t, "'#/somewhere/out-there'", val)
 
+}
+
+func TestIsNodeAlias(t *testing.T) {
+
+	yml := `things:
+  &anchorA
+  - Stuff
+  - Junk
+thangs: *anchorA`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	ref, a := IsNodeAlias(node.Content[0].Content[3])
+
+	assert.True(t, a)
+	assert.Len(t, ref.Content, 2)
+
+}
+
+func TestNodeAlias(t *testing.T) {
+
+	yml := `things:
+  &anchorA
+  - Stuff
+  - Junk
+thangs: *anchorA`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	ref := NodeAlias(node.Content[0].Content[3])
+
+	assert.Len(t, ref.Content, 2)
+
+}
+
+func TestCheckForMergeNodes(t *testing.T) {
+
+	yml := `x-common-definitions:
+  life_cycle_types: &life_cycle_types_def
+    type: string
+    enum: ["Onboarding", "Monitoring", "Re-Assessment"]
+    description: The type of life cycle
+<<: *life_cycle_types_def`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	mainNode := node.Content[0]
+
+	CheckForMergeNodes(mainNode)
+
+	_, _, enumVal := FindKeyNodeFullTop("enum", mainNode.Content)
+	_, _, descriptionVal := FindKeyNodeFullTop("description", mainNode.Content)
+
+	assert.Equal(t, "The type of life cycle", descriptionVal.Value)
+	assert.Len(t, enumVal.Content, 3)
+
+}
+
+func TestCheckForMergeNodes_Empty_NoPanic(t *testing.T) {
+	CheckForMergeNodes(nil)
 }
 
 func TestIsNodeRefValue_False(t *testing.T) {

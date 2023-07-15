@@ -127,6 +127,8 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 }
 
 func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	co.Reference = new(low.Reference)
 	co.Extensions = low.ExtractExtensions(root)
 

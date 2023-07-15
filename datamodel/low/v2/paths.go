@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -51,6 +52,8 @@ func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions and paths from node.
 func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node

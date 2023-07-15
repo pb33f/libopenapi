@@ -109,6 +109,8 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 // Build extracts extensions, parameters, servers and each http method defined.
 // everything is extracted asynchronously for speed.
 func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
@@ -232,7 +234,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 			}
 		}
 		wg.Add(1)
-		go low.BuildModelAsync(pathNode, &op, &wg, &errors)
+		low.BuildModelAsync(pathNode, &op, &wg, &errors)
 
 		opRef := low.NodeReference[*Operation]{
 			Value:     &op,

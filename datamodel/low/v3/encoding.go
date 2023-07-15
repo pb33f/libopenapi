@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strings"
 )
@@ -58,6 +59,8 @@ func (en *Encoding) Hash() [32]byte {
 
 // Build will extract all Header objects from supplied node.
 func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	en.Reference = new(low.Reference)
 	headers, hL, hN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
 	if err != nil {
