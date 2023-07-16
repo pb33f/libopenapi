@@ -802,6 +802,33 @@ thangs: *anchorA`
 
 }
 
+func TestNodeAlias_Nil(t *testing.T) {
+	ref := NodeAlias(nil)
+	assert.Nil(t, ref)
+}
+
+func TestNodeAlias_IsNodeAlias_Nil(t *testing.T) {
+
+	_, isAlias := IsNodeAlias(nil)
+	assert.False(t, isAlias)
+
+}
+
+func TestNodeAlias_IsNodeAlias_False(t *testing.T) {
+
+	yml := `things:
+  - Stuff
+  - Junk
+thangs: none`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	_, isAlias := IsNodeAlias(node.Content[0].Content[3])
+	assert.False(t, isAlias)
+
+}
+
 func TestCheckForMergeNodes(t *testing.T) {
 
 	yml := `x-common-definitions:
@@ -844,6 +871,15 @@ func TestIsNodeRefValue_False(t *testing.T) {
 	}
 
 	ref, node, val := IsNodeRefValue(h)
+
+	assert.False(t, ref)
+	assert.Nil(t, node)
+	assert.Empty(t, val)
+}
+
+func TestIsNodeRefValue_Nil(t *testing.T) {
+
+	ref, node, val := IsNodeRefValue(nil)
 
 	assert.False(t, ref)
 	assert.Nil(t, node)
