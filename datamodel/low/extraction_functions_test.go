@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package low
@@ -6,7 +6,6 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -57,7 +56,7 @@ func TestLocateRefNode(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/components/schemas/cake'`
 
@@ -79,7 +78,7 @@ func TestLocateRefNode_BadNode(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `yes: mate` // useless.
 
@@ -103,7 +102,7 @@ func TestLocateRefNode_Path(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/paths/~1burger~1time'`
 
@@ -124,7 +123,7 @@ func TestLocateRefNode_Path_NotFound(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/paths/~1burger~1time-somethingsomethingdarkside-somethingsomethingcomplete'`
 
@@ -141,7 +140,7 @@ type pizza struct {
 	Description NodeReference[string]
 }
 
-func (p *pizza) Build(n *yaml.Node, idx *index.SpecIndex) error {
+func (p *pizza) Build(_ *yaml.Node, _ *index.SpecIndex) error {
 	return nil
 }
 
@@ -155,7 +154,7 @@ func TestExtractObject(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `tags:
   description: hello pizza`
@@ -179,7 +178,7 @@ func TestExtractObject_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `tags:
   $ref: '#/components/schemas/pizza'`
@@ -205,7 +204,7 @@ func TestExtractObject_DoubleRef(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `tags:
   $ref: '#/components/schemas/pizza'`
@@ -232,7 +231,7 @@ func TestExtractObject_DoubleRef_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
 	resolv := resolver.NewResolver(idx)
@@ -262,7 +261,7 @@ func TestExtractObject_DoubleRef_Circular_Fail(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
 	resolv := resolver.NewResolver(idx)
@@ -292,7 +291,7 @@ func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
 	resolv := resolver.NewResolver(idx)
@@ -322,7 +321,7 @@ func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
 	resolv := resolver.NewResolver(idx)
@@ -379,7 +378,7 @@ func TestExtractObject_BadLowLevelModel(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `thing:
   dontWork: 123`
@@ -400,7 +399,7 @@ func TestExtractObject_BadBuild(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `thing:
   dontWork: 123`
@@ -421,7 +420,7 @@ func TestExtractObject_BadLabel(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `thing:
   dontWork: 123`
@@ -448,7 +447,7 @@ func TestExtractObject_PathIsCircular(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -481,7 +480,7 @@ func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// disable circular ref checking.
 	idx.SetAllowCircularReferenceResolving(true)
@@ -513,7 +512,7 @@ func TestExtractObjectRaw(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `description: hello pizza`
 
@@ -536,7 +535,7 @@ func TestExtractObjectRaw_With_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/components/schemas/pizza'`
 
@@ -562,7 +561,7 @@ func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -588,7 +587,7 @@ func TestExtractObjectRaw_RefBroken(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/components/schemas/lost-in-space'`
 
@@ -610,7 +609,7 @@ func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `dontWork: 1'`
 
@@ -631,7 +630,7 @@ func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `almostWork: 1'`
 
@@ -653,7 +652,7 @@ func TestExtractArray(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `things:
   - description: one
@@ -683,7 +682,7 @@ func TestExtractArray_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/components/schemas/things'`
 
@@ -710,7 +709,7 @@ func TestExtractArray_Ref_Unbuildable(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `$ref: '#/components/schemas/things'`
 
@@ -734,7 +733,7 @@ func TestExtractArray_Ref_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -762,7 +761,7 @@ func TestExtractArray_Ref_Bad(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -790,7 +789,7 @@ func TestExtractArray_Ref_Nested(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -819,7 +818,7 @@ func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -850,7 +849,7 @@ func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `limes: 
   - $ref: '#/components/schemas/thangs'`
@@ -875,7 +874,7 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -901,7 +900,7 @@ func TestExtractArray_BadBuild(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `limes: 
   - dontWork: 1`
@@ -958,7 +957,7 @@ func TestExtractMapFlatNoLookup(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -981,7 +980,7 @@ func TestExtractMap_NoLookupWithExtensions(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1011,14 +1010,14 @@ func TestExtractMap_NoLookupWithExtensions_UsingMerge(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-yeah: &yeah
   night: fun
 x-hey: you
 one:
   x-choo: choo
-  <<: *yeah`
+<<: *yeah`
 
 	var cNode yaml.Node
 	e := yaml.Unmarshal([]byte(yml), &cNode)
@@ -1026,15 +1025,8 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 3)
+	assert.Len(t, things, 4)
 
-	for k, v := range things {
-		if k.Value == "x-hey" || k.Value == "x-yeah" || k.Value == "night" || k.Value == "<<" {
-			continue
-		}
-		assert.Equal(t, "one", k.Value)
-		assert.Len(t, v.ValueNode.Content, 6)
-	}
 }
 
 func TestExtractMap_NoLookupWithoutExtensions(t *testing.T) {
@@ -1044,7 +1036,7 @@ func TestExtractMap_NoLookupWithoutExtensions(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1070,7 +1062,7 @@ func TestExtractMap_WithExtensions(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1092,7 +1084,7 @@ func TestExtractMap_WithoutExtensions(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1117,7 +1109,7 @@ func TestExtractMapFlatNoLookup_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1143,7 +1135,7 @@ func TestExtractMapFlatNoLookup_Ref_Bad(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1171,7 +1163,7 @@ func TestExtractMapFlatNoLookup_Ref_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -1201,7 +1193,7 @@ func TestExtractMapFlatNoLookup_Ref_BadBuild(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 hello:
@@ -1227,7 +1219,7 @@ func TestExtractMapFlatNoLookup_Ref_AlmostBuild(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1250,7 +1242,7 @@ func TestExtractMapFlat(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1277,7 +1269,7 @@ func TestExtractMapFlat_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `x-hey: you
 one:
@@ -1307,7 +1299,7 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `one:
   nice:
@@ -1337,7 +1329,7 @@ func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `one:
   nice:
@@ -1364,7 +1356,7 @@ func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `one:
   nice:
@@ -1392,7 +1384,7 @@ func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -1424,7 +1416,7 @@ func TestExtractMapFlat_Ref_Error(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `one:
   $ref: '#/components/schemas/stank'`
@@ -1451,7 +1443,7 @@ func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -1480,7 +1472,7 @@ func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -1510,7 +1502,7 @@ func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `one:
   $ref: '#/components/schemas/somewhere-else'`
@@ -1536,7 +1528,7 @@ func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	yml = `one:
   $ref: '#/components/schemas/somewhere-else'`
@@ -1562,7 +1554,7 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	resolve := resolver.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
@@ -1591,7 +1583,7 @@ func TestLocateRefNode_RemoteFile(t *testing.T) {
     hey:
       AlmostWork: 999`
 
-	_ = ioutil.WriteFile("remote.yaml", []byte(ymlRemote), 0665)
+	_ = os.WriteFile("remote.yaml", []byte(ymlRemote), 0665)
 	defer os.Remove("remote.yaml")
 
 	ymlLocal := `$ref: '#/components/schemas/hey'`
@@ -1599,7 +1591,7 @@ func TestLocateRefNode_RemoteFile(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(ymlFile), &idxNode) // an empty index.
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	var cNode yaml.Node
 	e := yaml.Unmarshal([]byte(ymlLocal), &cNode)
