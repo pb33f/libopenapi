@@ -1591,7 +1591,7 @@ func TestLocateRefNode_RemoteFile(t *testing.T) {
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(ymlFile), &idxNode) // an empty index.
 	assert.NoError(t, mErr)
-	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
 
 	var cNode yaml.Node
 	e := yaml.Unmarshal([]byte(ymlLocal), &cNode)
