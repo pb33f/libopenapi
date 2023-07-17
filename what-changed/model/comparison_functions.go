@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"reflect"
 	"strings"
 	"sync"
@@ -160,8 +161,15 @@ func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, b
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if (l == nil || l.Value == "") && r != nil && r.Value != "" {
-		CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
+	if (l == nil || l.Value == "") && (r != nil && (r.Value != "" || utils.IsNodeArray(r)) || utils.IsNodeMap(r)) {
+		if r != nil {
+			if l != nil && len(l.Content) < len(r.Content) {
+				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
+			}
+			if l == nil {
+				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
+			}
+		}
 	}
 }
 
@@ -174,6 +182,46 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, 
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && r != nil && r.Value != "" && (r.Value != l.Value || r.Tag != l.Tag) {
 		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeArray(l) && r != nil && !utils.IsNodeArray(r) {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeMap(l) && r != nil && !utils.IsNodeMap(r) {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
+		if len(l.Content) != len(r.Content) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+			return
+		}
+
+		// there is no way to know how to compare the content of the array, without
+		// rendering the yaml.Node to a string and comparing the string.
+		leftBytes, _ := yaml.Marshal(l)
+		rightBytes, _ := yaml.Marshal(r)
+
+		if string(leftBytes) != string(rightBytes) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		}
+		return
+	}
+	if l != nil && utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
+		if len(l.Content) != len(r.Content) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+			return
+		}
+		// there is no way to know how to compare the content of the array, without
+		// rendering the yaml.Node to a string and comparing the string.
+		leftBytes, _ := yaml.Marshal(l)
+		rightBytes, _ := yaml.Marshal(r)
+
+		if string(leftBytes) != string(rightBytes) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		}
+		return
 	}
 }
 
