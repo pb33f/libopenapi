@@ -1,0 +1,85 @@
+openapi: 3.0.2
+info:
+  title: Example
+  version: 0.0.1
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message
+    Example:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          title: Name
+          pattern: ^[a-zA-Z0-9_\-]+$
+          description: Name of the Example.
+        description:
+          type: string
+          title: Description
+          description: Brief description of this Example. Optional.
+security:
+  - bearerAuth: []
+paths:
+  /system/examples/{id}:
+    get:
+      tags:
+        &a1
+        - Examples
+      summary: Get a list of Example objects
+      parameters:
+        &id
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique ID
+      description: Get a list of Example objects
+      responses:
+        &a2
+        "200":
+          description: a list of Example objects
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+                    description: number of items present in the items array
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Example"
+        "401":
+          description: Unauthorized
+        "500":
+          description: Unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      tags: *a1
+      parameters: *id
+      summary: Create Example
+      description: Create Example
+      requestBody:
+        description: New Example object
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Example"
+      responses: *a2
