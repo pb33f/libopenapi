@@ -690,29 +690,36 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 		panic("cannot build document")
 	}
 
-	examplePath := document.Paths.Value.FindPath("/system/examples/{id}")
+	examplePath := document.Paths.GetValue().FindPath("/system/examples/{id}")
 	assert.NotNil(t, examplePath)
 
 	// Check tag reference
-	getOp := examplePath.Value.Get.Value
+	getOp := examplePath.GetValue().Get.GetValue()
 	assert.NotNil(t, getOp)
-	postOp := examplePath.Value.Get.Value
+	postOp := examplePath.GetValue().Get.GetValue()
 	assert.NotNil(t, postOp)
-	assert.Equal(t, 1, len(getOp.GetTags().Value))
-	assert.Equal(t, 1, len(postOp.GetTags().Value))
-	assert.Equal(t, getOp.GetTags().Value, postOp.GetTags().Value)
+	assert.Equal(t, 1, len(getOp.GetTags().GetValue()))
+	assert.Equal(t, 1, len(postOp.GetTags().GetValue()))
+	assert.Equal(t, getOp.GetTags().GetValue(), postOp.GetTags().GetValue())
 
-	// Check paramter reference
-
+	// Check parameter reference
 	getParams := examplePath.Value.Get.Value.Parameters.Value
 	assert.NotNil(t, getParams)
 	postParams := examplePath.Value.Post.Value.Parameters.Value
 	assert.NotNil(t, postParams)
-
 	assert.Equal(t, 1, len(getParams))
 	assert.Equal(t, 1, len(postParams))
 	assert.Equal(t, getParams, postParams)
 
+	// check post request body
+	responses := examplePath.GetValue().Get.GetValue().GetResponses().Value.(*Responses)
+	assert.NotNil(t, responses)
+	jsonGet := responses.FindResponseByCode("200").GetValue().FindContent("application/json")
+	assert.NotNil(t, jsonGet)
+
+	// Should this work? It doesn't
+	//postJsonType := examplePath.GetValue().Post.GetValue().RequestBody.GetValue().FindContent("application/json")
+	//assert.NotNil(t, postJsonType)
 }
 
 func ExampleCreateDocument() {
