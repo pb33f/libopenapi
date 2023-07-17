@@ -669,6 +669,52 @@ externalDocs:
 	assert.Len(t, err, 1)
 }
 
+func TestCreateDocument_YamlAnchor(t *testing.T) {
+	// load petstore into bytes
+	anchorDocument, _ := os.ReadFile("../../../test_specs/yaml-anchor.yaml")
+
+	// read in specification
+	info, _ := datamodel.ExtractSpecInfo(anchorDocument)
+
+	// build low-level document model
+	document, errors := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+	})
+
+	// if something went wrong, a slice of errors is returned
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %s\n", errors[i].Error())
+		}
+		panic("cannot build document")
+	}
+
+	examplePath := document.Paths.Value.FindPath("/system/examples/{id}")
+	assert.NotNil(t, examplePath)
+
+	// Check tag reference
+	getOp := examplePath.Value.Get.Value
+	assert.NotNil(t, getOp)
+	postOp := examplePath.Value.Get.Value
+	assert.NotNil(t, postOp)
+	assert.Equal(t, 1, len(getOp.GetTags().Value))
+	assert.Equal(t, 1, len(postOp.GetTags().Value))
+	assert.Equal(t, getOp.GetTags().Value, postOp.GetTags().Value)
+
+	// Check paramter reference
+
+	getParams := examplePath.Value.Get.Value.Parameters.Value
+	assert.NotNil(t, getParams)
+	postParams := examplePath.Value.Post.Value.Parameters.Value
+	assert.NotNil(t, postParams)
+
+	assert.Equal(t, 1, len(getParams))
+	assert.Equal(t, 1, len(postParams))
+	assert.Equal(t, getParams, postParams)
+
+}
+
 func ExampleCreateDocument() {
 	// How to create a low-level OpenAPI 3 Document
 
