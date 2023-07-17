@@ -2468,3 +2468,234 @@ components:
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 
 }
+
+func TestCompareSchemas_Schema_AddExamplesArray_AllOf(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      allOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c" ]`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      allOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c","d","e"]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExampleMap_AllOf(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      description: payload thing
+      allOf:
+        - type: object
+          description: allOf thing
+          example:
+            - name: chicken`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      description: payload thing
+      allOf:
+        - type: object
+          description: allOf thing
+          example:
+            - name: nuggets`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_Schema_AddExamplesArray(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c" ]`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c","d","e"]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExamplesMap(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example: 
+            oh: my`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example:
+            oh: why`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExamples(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    containerShared:
+     description: Shared properties by request payload and response
+     type: object
+     properties:
+       close_time:
+         example: '2020-07-09T00:17:55Z'
+       container_type:
+         type: string
+         enum:
+           - default
+           - case
+         example: default
+       custom_fields:
+         type:
+           - array
+           - 'null'
+         items:
+           type: object`
+	right := `openapi: 3.0
+components:
+  schemas:
+    containerShared:
+     description: Shared properties by request payload and response
+     type: object
+     properties:
+       close_time:
+         example: '2020-07-09T00:17:55Z'
+       container_type:
+         type: string
+         enum:
+           - default
+           - case
+         example: default
+       custom_fields:
+         type:
+           - array
+           - 'null'
+         items:
+           type: object
+         example:
+           - name: auditedAt
+             source: global
+             dataType: text
+             requiredToResolve: false`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+/*
+   containerShared:
+     description: Shared properties by request payload and response
+     type: object
+     properties:
+       close_time:
+         description: Date and time (in UTC) when the container was closed.
+         type: string
+         format: date-time
+         example: '2020-07-09T00:17:55Z'
+       container_type:
+         description: |-
+           The container type. Valid values are 'default' or 'case'. Containers with the 'default'
+           type are events in the user interface.
+         type: string
+         enum:
+           - default
+           - case
+         example: default
+       custom_fields:
+         type:
+           - array
+           - 'null'
+         description: |-
+           JSON objects contains key/value pairs for custom container fields. There may be
+           required fields defined in the administration settings. See the Administrator's Guide for
+           details.
+         items:
+           $ref: '#/components/schemas/custom-field'
+         example:
+           - name: auditedAt
+             source: global
+             dataType: text
+             requiredToResolve: false
+*/
