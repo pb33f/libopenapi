@@ -189,6 +189,11 @@ func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Nod
     } else {
         query = "$"
     }
+    
+    query, err := url.PathUnescape(query)
+    if err != nil {
+        return nil, nil, err
+    }
 
     // remove any URL encoding
     query = strings.Replace(query, "~1", "./", 1)
@@ -282,6 +287,11 @@ func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node,
         query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
     } else {
         query = "$"
+    }
+
+    query, err := url.PathUnescape(query)
+    if err != nil {
+        return nil, nil, err
     }
 
     // remove any URL encoding
