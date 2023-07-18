@@ -2663,39 +2663,3 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 
 }
-
-/*
-   containerShared:
-     description: Shared properties by request payload and response
-     type: object
-     properties:
-       close_time:
-         description: Date and time (in UTC) when the container was closed.
-         type: string
-         format: date-time
-         example: '2020-07-09T00:17:55Z'
-       container_type:
-         description: |-
-           The container type. Valid values are 'default' or 'case'. Containers with the 'default'
-           type are events in the user interface.
-         type: string
-         enum:
-           - default
-           - case
-         example: default
-       custom_fields:
-         type:
-           - array
-           - 'null'
-         description: |-
-           JSON objects contains key/value pairs for custom container fields. There may be
-           required fields defined in the administration settings. See the Administrator's Guide for
-           details.
-         items:
-           $ref: '#/components/schemas/custom-field'
-         example:
-           - name: auditedAt
-             source: global
-             dataType: text
-             requiredToResolve: false
-*/
