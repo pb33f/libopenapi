@@ -48,3 +48,141 @@ func Test_CheckForModification(t *testing.T) {
 		})
 	}
 }
+
+func Test_CheckForModification_ArrayMap(t *testing.T) {
+	tests := []struct {
+		name   string
+		left   any
+		right  any
+		differ bool
+	}{
+		{"Same slice", []string{"cake"}, []string{"cake"}, false},
+		{"bigger slice right", []string{"cake"}, []string{"cake", "cheese"}, true},
+		{"bigger slice left", []string{"cake", "burgers"}, []string{"cake"}, true},
+		{"different slice left", "cake", []string{"cake"}, true},
+		{"different slice right", []string{"cake"}, "cake", true},
+		{"different slice value", []string{"cake"}, []string{"burgers"}, true},
+		{"same map", map[string]string{"pie": "cake"}, map[string]string{"pie": "cake"}, false},
+		{"different map", map[string]string{"pie": "cake"}, map[string]string{"pizza": "burgers"}, true},
+		{"different map left", "pie", map[string]string{"pie": "cake"}, true},
+		{"different map right", map[string]string{"pie": "cake"}, "burgers", true},
+		{"different map", map[string]string{"pie": "cake"}, map[string]string{"pizza": "time"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var lNode, rNode yaml.Node
+			encA, _ := yaml.Marshal(tt.left)
+			encB, _ := yaml.Marshal(tt.right)
+			_ = yaml.Unmarshal(encA, &lNode)
+			_ = yaml.Unmarshal(encB, &rNode)
+
+			changes := []*Change{}
+			CheckForModification(lNode.Content[0], rNode.Content[0], tt.name, &changes, false, "old", "new")
+
+			if tt.differ {
+				assert.Len(t, changes, 1)
+			} else {
+				assert.Empty(t, changes)
+			}
+		})
+	}
+}
+
+func Test_CheckMapsRemoval(t *testing.T) {
+
+	mapA := make(map[string]string)
+	mapB := make(map[string]string)
+
+	mapA["key"] = "value"
+	mapB["key"] = "shmalue"
+
+	tests := []struct {
+		name   string
+		left   map[string]string
+		right  map[string]string
+		differ bool
+	}{
+		{"Same map", mapA, mapB, false},
+		{"Different map", mapA, mapB, false},
+		{"Add map", nil, mapA, false},
+		{"Remove map", mapA, nil, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var lNode, rNode yaml.Node
+			encA, _ := yaml.Marshal(tt.left)
+			encB, _ := yaml.Marshal(tt.right)
+			_ = yaml.Unmarshal(encA, &lNode)
+			_ = yaml.Unmarshal(encB, &rNode)
+
+			changes := []*Change{}
+
+			r := rNode.Content[0]
+			if len(r.Content) == 0 {
+				r = nil
+			}
+			CheckForRemoval(lNode.Content[0], r, "test", &changes, false, "old", "new")
+
+			if tt.differ {
+				assert.Len(t, changes, 1)
+			} else {
+				assert.Empty(t, changes)
+			}
+		})
+	}
+}
+
+func Test_CheckMapsAddition(t *testing.T) {
+
+	mapA := make(map[string]string)
+	mapB := make(map[string]string)
+
+	mapA["key"] = "value"
+	mapB["key"] = "shmalue"
+
+	tests := []struct {
+		name   string
+		left   map[string]string
+		right  map[string]string
+		differ bool
+		empty  bool
+	}{
+		{"Same map", mapA, mapB, false, false},
+		{"Different map", mapA, mapB, false, false},
+		{"Add map", nil, mapA, true, false},
+		{"Add map value", nil, mapB, true, true},
+		{"Remove map", mapA, nil, false, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var lNode, rNode yaml.Node
+			encA, _ := yaml.Marshal(tt.left)
+			encB, _ := yaml.Marshal(tt.right)
+			_ = yaml.Unmarshal(encA, &lNode)
+			_ = yaml.Unmarshal(encB, &rNode)
+
+			changes := []*Change{}
+
+			r := rNode.Content[0]
+			l := lNode.Content[0]
+			if len(r.Content) == 0 {
+				r = nil
+			}
+			if len(l.Content) == 0 {
+				if !tt.empty {
+					l = nil
+				}
+			}
+			CheckForAddition(l, r, "test", &changes, false, "old", "new")
+
+			if tt.differ {
+				assert.Len(t, changes, 1)
+			} else {
+				assert.Empty(t, changes)
+			}
+		})
+	}
+}
