@@ -181,6 +181,50 @@ paths:
 	assert.Equal(t, "form", crsParam.Node.Content[9].Value)
 }
 
+func TestSpecIndex_LocateRemoteDocsWithMalformedEscapedCharacters(t *testing.T) {
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://petstore3.swagger.io/api/v3/openapi.yaml#/paths/~1pet~1%$petId%7D/get/parameters"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, `invalid URL escape "%$p"`, index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'https://petstore3.swagger.io/api/v3/openapi.yaml#/paths/~1pet~1%$petId%7D/get/parameters' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
+}
+
+func TestSpecIndex_LocateRemoteDocsWithEscapedCharacters(t *testing.T) {
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "https://petstore3.swagger.io/api/v3/openapi.yaml#/paths/~1pet~1%7BpetId%7D/get/parameters"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Len(t, index.GetReferenceIndexErrors(), 0)
+}
+
 func TestGetRemoteDoc(t *testing.T) {
 	// Mock HTTP server
 	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
