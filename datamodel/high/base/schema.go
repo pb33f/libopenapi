@@ -23,13 +23,13 @@ type Schema struct {
 	// 3.1 only, used to define a dialect for this schema, label is '$schema'.
 	SchemaTypeRef string `json:"$schema,omitempty" yaml:"$schema,omitempty"`
 
-    // In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
-    // In version 3.1, ExclusiveMaximum is a number.
-    ExclusiveMaximum *DynamicValue[bool, float64] `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
+	// In versions 2 and 3.0, this ExclusiveMaximum can only be a boolean.
+	// In version 3.1, ExclusiveMaximum is a number.
+	ExclusiveMaximum *DynamicValue[bool, float64] `json:"exclusiveMaximum,omitempty" yaml:"exclusiveMaximum,omitempty"`
 
 	// In versions 2 and 3.0, this ExclusiveMinimum can only be a boolean.
-    // In version 3.1, ExclusiveMinimum is a number.
-    ExclusiveMinimum *DynamicValue[bool, float64] `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
+	// In version 3.1, ExclusiveMinimum is a number.
+	ExclusiveMinimum *DynamicValue[bool, float64] `json:"exclusiveMinimum,omitempty" yaml:"exclusiveMinimum,omitempty"`
 
 	// In versions 2 and 3.0, this Type is a single value, so array will only ever have one value
 	// in version 3.1, Type can be multiple values
@@ -108,62 +108,62 @@ type Schema struct {
 
 // NewSchema will create a new high-level schema from a low-level one.
 func NewSchema(schema *base.Schema) *Schema {
-    s := new(Schema)
-    s.low = schema
-    s.Title = schema.Title.Value
-    if !schema.MultipleOf.IsEmpty() {
-        s.MultipleOf = &schema.MultipleOf.Value
-    }
-    if !schema.Maximum.IsEmpty() {
-        s.Maximum = &schema.Maximum.Value
-    }
-    if !schema.Minimum.IsEmpty() {
-        s.Minimum = &schema.Minimum.Value
-    }
-    // if we're dealing with a 3.0 spec using a bool
-    if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsA() {
-        s.ExclusiveMaximum = &DynamicValue[bool, float64]{
-            A: schema.ExclusiveMaximum.Value.A,
-        }
-    }
-    // if we're dealing with a 3.1 spec using an int
-    if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsB() {
-        s.ExclusiveMaximum = &DynamicValue[bool, float64]{
-            N: 1,
-            B: schema.ExclusiveMaximum.Value.B,
-        }
-    }
-    // if we're dealing with a 3.0 spec using a bool
-    if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsA() {
-        s.ExclusiveMinimum = &DynamicValue[bool, float64]{
-            A: schema.ExclusiveMinimum.Value.A,
-        }
-    }
-    // if we're dealing with a 3.1 spec, using an int
-    if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsB() {
-        s.ExclusiveMinimum = &DynamicValue[bool, float64]{
-            N: 1,
-            B: schema.ExclusiveMinimum.Value.B,
-        }
-    }
-    if !schema.MaxLength.IsEmpty() {
-        s.MaxLength = &schema.MaxLength.Value
-    }
-    if !schema.MinLength.IsEmpty() {
-        s.MinLength = &schema.MinLength.Value
-    }
-    if !schema.MaxItems.IsEmpty() {
-        s.MaxItems = &schema.MaxItems.Value
-    }
-    if !schema.MinItems.IsEmpty() {
-        s.MinItems = &schema.MinItems.Value
-    }
-    if !schema.MaxProperties.IsEmpty() {
-        s.MaxProperties = &schema.MaxProperties.Value
-    }
-    if !schema.MinProperties.IsEmpty() {
-        s.MinProperties = &schema.MinProperties.Value
-    }
+	s := new(Schema)
+	s.low = schema
+	s.Title = schema.Title.Value
+	if !schema.MultipleOf.IsEmpty() {
+		s.MultipleOf = &schema.MultipleOf.Value
+	}
+	if !schema.Maximum.IsEmpty() {
+		s.Maximum = &schema.Maximum.Value
+	}
+	if !schema.Minimum.IsEmpty() {
+		s.Minimum = &schema.Minimum.Value
+	}
+	// if we're dealing with a 3.0 spec using a bool
+	if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsA() {
+		s.ExclusiveMaximum = &DynamicValue[bool, float64]{
+			A: schema.ExclusiveMaximum.Value.A,
+		}
+	}
+	// if we're dealing with a 3.1 spec using an int
+	if !schema.ExclusiveMaximum.IsEmpty() && schema.ExclusiveMaximum.Value.IsB() {
+		s.ExclusiveMaximum = &DynamicValue[bool, float64]{
+			N: 1,
+			B: schema.ExclusiveMaximum.Value.B,
+		}
+	}
+	// if we're dealing with a 3.0 spec using a bool
+	if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsA() {
+		s.ExclusiveMinimum = &DynamicValue[bool, float64]{
+			A: schema.ExclusiveMinimum.Value.A,
+		}
+	}
+	// if we're dealing with a 3.1 spec, using an int
+	if !schema.ExclusiveMinimum.IsEmpty() && schema.ExclusiveMinimum.Value.IsB() {
+		s.ExclusiveMinimum = &DynamicValue[bool, float64]{
+			N: 1,
+			B: schema.ExclusiveMinimum.Value.B,
+		}
+	}
+	if !schema.MaxLength.IsEmpty() {
+		s.MaxLength = &schema.MaxLength.Value
+	}
+	if !schema.MinLength.IsEmpty() {
+		s.MinLength = &schema.MinLength.Value
+	}
+	if !schema.MaxItems.IsEmpty() {
+		s.MaxItems = &schema.MaxItems.Value
+	}
+	if !schema.MinItems.IsEmpty() {
+		s.MinItems = &schema.MinItems.Value
+	}
+	if !schema.MaxProperties.IsEmpty() {
+		s.MaxProperties = &schema.MaxProperties.Value
+	}
+	if !schema.MinProperties.IsEmpty() {
+		s.MinProperties = &schema.MinProperties.Value
+	}
 
 	if !schema.MaxContains.IsEmpty() {
 		s.MaxContains = &schema.MaxContains.Value
@@ -219,6 +219,7 @@ func NewSchema(schema *base.Schema) *Schema {
 					Value:     schema.UnevaluatedProperties.Value.A,
 				},
 			},
+			N: 0,
 		}
 	}
 
@@ -226,6 +227,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	if !schema.UnevaluatedProperties.IsEmpty() && schema.UnevaluatedProperties.Value.IsB() {
 		s.UnevaluatedProperties = &DynamicValue[*SchemaProxy, *bool]{
 			B: schema.UnevaluatedProperties.Value.B,
+			N: 1,
 		}
 	}
 
@@ -437,7 +439,7 @@ func NewSchema(schema *base.Schema) *Schema {
 			select {
 			case <-polyCompletedChan:
 				completeChildren++
-				if  children == completeChildren {
+				if children == completeChildren {
 					break allDone
 				}
 			}
