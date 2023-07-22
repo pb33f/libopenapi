@@ -189,6 +189,17 @@ why:
 	assert.Len(t, *r.SpecBytes, 55)
 }
 
+func TestExtractSpecInfo_AnyDocument_JSON(t *testing.T) {
+
+	random := `{ "something" : "yeah"}`
+
+	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
+	assert.Nil(t, e)
+	assert.NotNil(t, r.RootNode)
+	assert.Equal(t, "something", r.RootNode.Content[0].Content[0].Value)
+	assert.Len(t, *r.SpecBytes, 23)
+}
+
 func TestExtractSpecInfo_AnyDocumentFromConfig(t *testing.T) {
 
 	random := `something: yeah
