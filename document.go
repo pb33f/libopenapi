@@ -112,7 +112,11 @@ type DocumentModel[T v2high.Swagger | v3high.Document] struct {
 // then you can use the NewDocumentWithConfiguration() function instead, which allows you to set a configuration that
 // will allow you to control if file or remote references are allowed.
 func NewDocument(specByteArray []byte) (Document, error) {
-	info, err := datamodel.ExtractSpecInfo(specByteArray)
+	return NewDocumentWithTypeCheck(specByteArray, false)
+}
+
+func NewDocumentWithTypeCheck(specByteArray []byte, bypassCheck bool) (Document, error) {
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(specByteArray, bypassCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +129,14 @@ func NewDocument(specByteArray []byte) (Document, error) {
 // NewDocumentWithConfiguration is the same as NewDocument, except it's a convenience function that calls NewDocument
 // under the hood and then calls SetConfiguration() on the returned Document.
 func NewDocumentWithConfiguration(specByteArray []byte, configuration *datamodel.DocumentConfiguration) (Document, error) {
-	d, err := NewDocument(specByteArray)
+	var d Document
+	var err error
+	if configuration != nil && configuration.BypassDocumentCheck {
+		d, err = NewDocumentWithTypeCheck(specByteArray, true)
+	} else {
+		d, err = NewDocument(specByteArray)
+	}
+
 	if d != nil {
 		d.SetConfiguration(configuration)
 	}
