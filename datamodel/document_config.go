@@ -36,6 +36,10 @@ type DocumentConfiguration struct {
 	// AvoidIndexBuild will avoid building the index. This is disabled by default, only use if you are sure you don't need it.
 	// This is useful for developers building out models that should be indexed later on.
 	AvoidIndexBuild bool
+
+	// BypassDocumentCheck will bypass the document check. This is disabled by default. This will allow any document to
+	// passed in and used. Only enable this when parsing non openapi documents.
+	BypassDocumentCheck bool
 }
 
 func NewOpenDocumentConfiguration() *DocumentConfiguration {

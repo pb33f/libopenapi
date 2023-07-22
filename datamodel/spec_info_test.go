@@ -173,6 +173,40 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-10-07")
 }
 
+func TestExtractSpecInfo_AnyDocument(t *testing.T) {
+
+	random := `something: yeah
+nothing:
+  - one
+  - two
+why:
+  yes: no`
+
+	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
+	assert.Nil(t, e)
+	assert.NotNil(t, r.RootNode)
+	assert.Equal(t, "something", r.RootNode.Content[0].Content[0].Value)
+	assert.Len(t, *r.SpecBytes, 55)
+}
+
+func TestExtractSpecInfo_AnyDocumentFromConfig(t *testing.T) {
+
+	random := `something: yeah
+nothing:
+  - one
+  - two
+why:
+  yes: no`
+
+	r, e := ExtractSpecInfoWithConfig([]byte(random), &DocumentConfiguration{
+		BypassDocumentCheck: true,
+	})
+	assert.Nil(t, e)
+	assert.NotNil(t, r.RootNode)
+	assert.Equal(t, "something", r.RootNode.Content[0].Content[0].Value)
+	assert.Len(t, *r.SpecBytes, 55)
+}
+
 func TestExtractSpecInfo_OpenAPIFalse(t *testing.T) {
 
 	spec, e := ExtractSpecInfo([]byte(OpenApiFalse))
