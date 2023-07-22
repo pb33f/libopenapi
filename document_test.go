@@ -291,8 +291,12 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 
 func TestDocument_BuildModelPreBuild(t *testing.T) {
 	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
-	_, e := NewDocument(petstore)
-	assert.Len(t, e, 0)
+	doc, e := NewDocument(petstore)
+	assert.NoError(t, e)
+	doc.BuildV3Model()
+	doc.BuildV3Model()
+	_, _, _, er := doc.RenderAndReload()
+	assert.Len(t, er, 0)
 }
 
 func TestDocument_AnyDoc(t *testing.T) {
