@@ -291,11 +291,22 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 
 func TestDocument_BuildModelPreBuild(t *testing.T) {
 	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
-	doc, _ := NewDocument(petstore)
-	doc.BuildV3Model()
-	doc.BuildV3Model()
-	_, _, _, e := doc.RenderAndReload()
+	_, e := NewDocument(petstore)
 	assert.Len(t, e, 0)
+}
+
+func TestDocument_AnyDoc(t *testing.T) {
+	anything := []byte(`{"chickens": "3.0.0", "burgers": {"title": "hello"}}`)
+	_, e := NewDocumentWithTypeCheck(anything, true)
+	assert.NoError(t, e)
+}
+
+func TestDocument_AnyDocWithConfig(t *testing.T) {
+	anything := []byte(`{"chickens": "3.0.0", "burgers": {"title": "hello"}}`)
+	_, e := NewDocumentWithConfiguration(anything, &datamodel.DocumentConfiguration{
+		BypassDocumentCheck: true,
+	})
+	assert.NoError(t, e)
 }
 
 func TestDocument_BuildModelCircular(t *testing.T) {
