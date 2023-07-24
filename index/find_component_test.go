@@ -477,3 +477,29 @@ paths:
 	assert.Equal(t, "unable to read file bytes: bad file read", index.GetReferenceIndexErrors()[0].Error())
 	assert.Equal(t, "component 'I-am-impossible-to-open-forever.yaml' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
 }
+
+func TestSpecIndex_UseFileHandler_ErrorReference(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+info:
+  title: Test File Handler
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "exisiting.yaml#/paths/~1pet~1%$petId%7D/get/parameters"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.FSHandler = FS{}
+	c.RemoteURLHandler = httpClient.Get
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, `invalid URL escape "%$p"`, index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'exisiting.yaml#/paths/~1pet~1%$petId%7D/get/parameters' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
+}
