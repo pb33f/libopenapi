@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -272,6 +273,8 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	// now we need to build out the operation, we will do this asynchronously for speed.
 	opBuildChan := make(chan bool)
 	opErrorChan := make(chan error)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error, ref string) {
 		er := op.Value.Build(op.KeyNode, op.ValueNode, idx)
@@ -279,9 +282,16 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			op.Value.Reference.Reference = ref
 		}
 		if er != nil {
-			errCh <- er
+			select {
+			case errCh <- er:
+			case <-ctx.Done():
+			}
+			return
 		}
-		ch <- true
+		select {
+		case ch <- true:
+		case <-ctx.Done():
+		}
 	}
 
 	if len(ops) <= 0 {
@@ -298,12 +308,15 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	n := 0
 	total := len(ops)
+FORLOOP1:
 	for n < total {
 		select {
 		case buildError := <-opErrorChan:
 			return buildError
 		case <-opBuildChan:
 			n++
+		case <-ctx.Done():
+			break FORLOOP1
 		}
 	}
 
