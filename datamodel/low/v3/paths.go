@@ -4,11 +4,14 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -63,90 +66,126 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
-	skip := false
-	var currentNode *yaml.Node
 
-	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
-
-	// build each new path, in a new thread.
+	// Translate YAML nodes to pathsMap using `TranslatePipeline`.
 	type pathBuildResult struct {
 		k low.KeyReference[string]
 		v low.ValueReference[*PathItem]
 	}
+	type nodeItem struct {
+		currentNode *yaml.Node
+		pathNode    *yaml.Node
+	}
+	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
+	in := make(chan nodeItem)
+	out := make(chan pathBuildResult)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var wg sync.WaitGroup
+	wg.Add(2) // input and output goroutines.
 
-	bChan := make(chan pathBuildResult)
-	eChan := make(chan error)
-	buildPathItem := func(cNode, pNode *yaml.Node, b chan<- pathBuildResult, e chan<- error) {
-		if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
-			r, err := low.LocateRefNode(pNode, idx)
-			if r != nil {
-				pNode = r
-				if r.Tag == "" {
-					// If it's a node from file, tag is empty
-					// If it's a reference we need to extract actual operation node
-					pNode = r.Content[0]
-				}
+	// TranslatePipeline input.
+	go func() {
+		defer func() {
+			close(in)
+			wg.Done()
+		}()
+		skip := false
+		var currentNode *yaml.Node
+		for i, pathNode := range root.Content {
+			if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
+				skip = true
+				continue
+			}
+			if skip {
+				skip = false
+				continue
+			}
+			if i%2 == 0 {
+				currentNode = pathNode
+				continue
+			}
 
-				if err != nil {
-					if !idx.AllowCircularReferenceResolving() {
-						e <- fmt.Errorf("path item build failed: %s", err.Error())
-						return
-					}
-				}
-			} else {
-				e <- fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
-					pNode.Content[1].Value, pNode.Content[1].Line, pNode.Content[1].Column)
+			select {
+			case in <- nodeItem{
+				currentNode: currentNode,
+				pathNode:    pathNode,
+			}:
+			case <-ctx.Done():
 				return
 			}
 		}
+	}()
 
-		path := new(PathItem)
-		_ = low.BuildModel(pNode, path)
-		err := path.Build(cNode, pNode, idx)
-		if err != nil {
-			e <- err
-			return
+	// TranslatePipeline output.
+	go func() {
+		defer func() {
+			cancel()
+			wg.Done()
+		}()
+		for {
+			select {
+			case result, ok := <-out:
+				if !ok {
+					return
+				}
+				pathsMap[result.k] = result.v
+			case <-ctx.Done():
+				return
+			}
 		}
-		b <- pathBuildResult{
-			k: low.KeyReference[string]{
-				Value:   cNode.Value,
-				KeyNode: cNode,
-			},
-			v: low.ValueReference[*PathItem]{
-				Value:     path,
-				ValueNode: pNode,
-			},
-		}
+	}()
+
+	err := datamodel.TranslatePipeline[nodeItem, pathBuildResult](in, out,
+		func(value nodeItem) (pathBuildResult, error) {
+			pNode := value.pathNode
+			cNode := value.currentNode
+
+			if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
+				r, err := low.LocateRefNode(pNode, idx)
+				if r != nil {
+					pNode = r
+					if r.Tag == "" {
+						// If it's a node from file, tag is empty
+						// If it's a reference we need to extract actual operation node
+						pNode = r.Content[0]
+					}
+
+					if err != nil {
+						if !idx.AllowCircularReferenceResolving() {
+							return pathBuildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
+						}
+					}
+				} else {
+					return pathBuildResult{}, fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
+						pNode.Content[1].Value, pNode.Content[1].Line, pNode.Content[1].Column)
+				}
+			}
+
+			path := new(PathItem)
+			_ = low.BuildModel(pNode, path)
+			err := path.Build(cNode, pNode, idx)
+			if err != nil {
+				return pathBuildResult{}, err
+			}
+
+			return pathBuildResult{
+				k: low.KeyReference[string]{
+					Value:   cNode.Value,
+					KeyNode: cNode,
+				},
+				v: low.ValueReference[*PathItem]{
+					Value:     path,
+					ValueNode: pNode,
+				},
+			}, nil
+		},
+	)
+	wg.Wait()
+	if err != nil {
+		return err
 	}
 
-	pathCount := 0
-	for i, pathNode := range root.Content {
-		if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
-			skip = true
-			continue
-		}
-		if skip {
-			skip = false
-			continue
-		}
-		if i%2 == 0 {
-			currentNode = pathNode
-			continue
-		}
-		pathCount++
-		go buildPathItem(currentNode, pathNode, bChan, eChan)
-	}
-
-	completedItems := 0
-	for completedItems < pathCount {
-		select {
-		case err := <-eChan:
-			return err
-		case res := <-bChan:
-			completedItems++
-			pathsMap[res.k] = res.v
-		}
-	}
 	p.PathItems = pathsMap
 	return nil
 }
