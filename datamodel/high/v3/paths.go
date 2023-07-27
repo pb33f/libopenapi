@@ -6,8 +6,10 @@ package v3
 import (
 	"sort"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -21,42 +23,37 @@ import (
 type Paths struct {
 	PathItems  map[string]*PathItem `json:"-" yaml:"-"`
 	Extensions map[string]any       `json:"-" yaml:"-"`
-	low        *low.Paths
+	low        *v3low.Paths
 }
 
 // NewPaths creates a new high-level instance of Paths from a low-level one.
-func NewPaths(paths *low.Paths) *Paths {
+func NewPaths(paths *v3low.Paths) *Paths {
 	p := new(Paths)
 	p.low = paths
 	p.Extensions = high.ExtractExtensions(paths.Extensions)
 	items := make(map[string]*PathItem)
 
-	// build paths async for speed.
 	type pRes struct {
-		k string
-		v *PathItem
+		key   string
+		value *PathItem
 	}
-	var buildPathItem = func(key string, item *low.PathItem, c chan<- pRes) {
-		c <- pRes{key, NewPathItem(item)}
+
+	translateFunc := func(key low.KeyReference[string], value low.ValueReference[*v3low.PathItem]) (pRes, error) {
+		return pRes{key: key.Value, value: NewPathItem(value.Value)}, nil
 	}
-	rChan := make(chan pRes)
-	for k := range paths.PathItems {
-		go buildPathItem(k.Value, paths.PathItems[k].Value, rChan)
+	resultFunc := func(value pRes) error {
+		items[value.key] = value.value
+		return nil
 	}
-	pathsBuilt := 0
-	for pathsBuilt < len(paths.PathItems) {
-		select {
-		case r := <-rChan:
-			pathsBuilt++
-			items[r.k] = r.v
-		}
-	}
+	_ = datamodel.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pRes](
+		paths.PathItems, translateFunc, resultFunc,
+	)
 	p.PathItems = items
 	return p
 }
 
 // GoLow returns the low-level Paths instance used to create the high-level one.
-func (p *Paths) GoLow() *low.Paths {
+func (p *Paths) GoLow() *v3low.Paths {
 	return p.low
 }
 
