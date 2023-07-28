@@ -19,6 +19,20 @@ type continueError struct {
 
 var Continue = &continueError{error: errors.New("Continue")}
 
+type jobStatus[OUT any] struct {
+	done   chan struct{}
+	cont   bool
+	result OUT
+}
+
+type tpJobStatus[IN any, OUT any] struct {
+	done   chan struct{}
+	cont   bool
+	eof    bool
+	input  IN
+	result OUT
+}
+
 // TranslateSliceParallel iterates a slice in parallel and calls translate()
 // asynchronously.
 // translate() may return `datamodel.Continue` to continue iteration.
@@ -29,16 +43,10 @@ func TranslateSliceParallel[IN any, OUT any](in []IN, translate TranslateSliceFu
 		return nil
 	}
 
-	type jobStatus struct {
-		done   chan struct{}
-		cont   bool
-		result OUT
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	concurrency := runtime.NumCPU()
-	jobChan := make(chan *jobStatus, concurrency)
+	jobChan := make(chan *jobStatus[OUT], concurrency)
 	var reterr error
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -51,7 +59,7 @@ func TranslateSliceParallel[IN any, OUT any](in []IN, translate TranslateSliceFu
 			wg.Done()
 		}()
 		for idx, valueIn := range in {
-			j := &jobStatus{
+			j := &jobStatus[OUT]{
 				done: make(chan struct{}),
 			}
 			select {
@@ -190,19 +198,11 @@ func TranslateMapParallel[K comparable, V any, OUT any](m map[K]V, translate Tra
 // Caller must close `in` channel to indicate EOF.
 // TranslatePipeline closes `out` channel to indicate EOF.
 func TranslatePipeline[IN any, OUT any](in <-chan IN, out chan<- OUT, translate TranslateFunc[IN, OUT]) error {
-	type jobStatus struct {
-		done   chan struct{}
-		cont   bool
-		eof    bool
-		input  IN
-		result OUT
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	concurrency := runtime.NumCPU()
-	workChan := make(chan *jobStatus)
-	resultChan := make(chan *jobStatus)
+	workChan := make(chan *tpJobStatus[IN, OUT])
+	resultChan := make(chan *tpJobStatus[IN, OUT])
 	var reterr error
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -257,7 +257,7 @@ func TranslatePipeline[IN any, OUT any](in <-chan IN, out chan<- OUT, translate 
 				if !ok {
 					return
 				}
-				j := &jobStatus{
+				j := &tpJobStatus[IN, OUT]{
 					done:  make(chan struct{}),
 					input: value,
 				}
