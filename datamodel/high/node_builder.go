@@ -627,30 +627,32 @@ func (n *NodeBuilder) extractLowMapKeysWrapped(iu reflect.Value, x string, order
 }
 
 func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, orderedCollection []*NodeEntry, m reflect.Value, k reflect.Value) (bool, []*NodeEntry) {
-	for j, ky := range fg.MapKeys() {
-		hu := ky.Interface()
-		if we, wok := hu.(low.HasKeyNode); wok {
-			er := we.GetKeyNode().Value
-			if er == x {
-				found = true
-				orderedCollection = append(orderedCollection, &NodeEntry{
-					Tag:   x,
-					Key:   x,
-					Line:  we.GetKeyNode().Line,
-					Value: m.MapIndex(k).Interface(),
-				})
-			}
-		} else {
-			uu := ky.Interface()
-			if uu == x {
-				// this is a map, without any low level details available
-				found = true
-				orderedCollection = append(orderedCollection, &NodeEntry{
-					Tag:   uu.(string),
-					Key:   uu.(string),
-					Line:  9999 + j,
-					Value: m.MapIndex(k).Interface(),
-				})
+	if !fg.IsZero() {
+		for j, ky := range fg.MapKeys() {
+			hu := ky.Interface()
+			if we, wok := hu.(low.HasKeyNode); wok {
+				er := we.GetKeyNode().Value
+				if er == x {
+					found = true
+					orderedCollection = append(orderedCollection, &NodeEntry{
+						Tag:   x,
+						Key:   x,
+						Line:  we.GetKeyNode().Line,
+						Value: m.MapIndex(k).Interface(),
+					})
+				}
+			} else {
+				uu := ky.Interface()
+				if uu == x {
+					// this is a map, without any low level details available
+					found = true
+					orderedCollection = append(orderedCollection, &NodeEntry{
+						Tag:   uu.(string),
+						Key:   uu.(string),
+						Line:  9999 + j,
+						Value: m.MapIndex(k).Interface(),
+					})
+				}
 			}
 		}
 	}
