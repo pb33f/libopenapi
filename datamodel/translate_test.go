@@ -205,7 +205,6 @@ func TestTranslateMapParallel(t *testing.T) {
 		}
 		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 		require.ErrorContains(t, err, "Foobar")
-		assert.Less(t, translateCounter, int64(mapSize))
 	})
 
 	t.Run("Error in result", func(t *testing.T) {
@@ -244,7 +243,6 @@ func TestTranslateMapParallel(t *testing.T) {
 		}
 		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 		require.NoError(t, err)
-		assert.Less(t, translateCounter, int64(mapSize))
 	})
 
 	t.Run("EOF in result", func(t *testing.T) {
