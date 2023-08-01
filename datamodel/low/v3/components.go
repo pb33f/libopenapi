@@ -38,6 +38,11 @@ type Components struct {
 	*low.Reference
 }
 
+type componentBuildResult[T any] struct {
+	key   low.KeyReference[string]
+	value low.ValueReference[T]
+}
+
 // GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
 func (co *Components) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
 	return co.Extensions
@@ -210,22 +215,18 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return reterr
 }
 
-type componentBuildResult[T any] struct {
-	k low.KeyReference[string]
-	v low.ValueReference[T]
-}
-
 // extractComponentValues converts all the YAML nodes of a component type to
 // low level model.
 // Process each node in parallel.
-func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (retval low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]], _ error) {
+func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]], error) {
+	var emptyResult low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]]
 	_, nodeLabel, nodeValue := utils.FindKeyNodeFullTop(label, root.Content)
 	if nodeValue == nil {
-		return retval, nil
+		return emptyResult, nil
 	}
 	componentValues := make(map[low.KeyReference[string]]low.ValueReference[T])
 	if utils.IsNodeArray(nodeValue) {
-		return retval, fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
+		return emptyResult, fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
 	}
 
 	type inputValue struct {
@@ -270,14 +271,14 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	// Collect output.
 	go func() {
 		for result := range out {
-			componentValues[result.k] = result.v
+			componentValues[result.key] = result.value
 		}
 		cancel()
 		wg.Done()
 	}()
 
 	// Translate.
-	translateFunc := func(value inputValue) (retval componentBuildResult[T], _ error) {
+	translateFunc := func(value inputValue) (componentBuildResult[T], error) {
 		var n T = new(N)
 		currentLabel := value.currentLabel
 		node := value.node
@@ -290,21 +291,21 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			node, err = low.LocateRefNode(node, idx)
 		}
 		if err != nil {
-			return retval, err
+			return componentBuildResult[T]{}, err
 		}
 
 		// build.
 		_ = low.BuildModel(node, n)
 		err = n.Build(currentLabel, node, idx)
 		if err != nil {
-			return retval, err
+			return componentBuildResult[T]{}, err
 		}
 		return componentBuildResult[T]{
-			k: low.KeyReference[string]{
+			key: low.KeyReference[string]{
 				KeyNode: currentLabel,
 				Value:   currentLabel.Value,
 			},
-			v: low.ValueReference[T]{
+			value: low.ValueReference[T]{
 				Value:     n,
 				ValueNode: node,
 			},
@@ -313,7 +314,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	err := datamodel.TranslatePipeline[inputValue, componentBuildResult[T]](in, out, translateFunc)
 	wg.Wait()
 	if err != nil {
-		return retval, err
+		return emptyResult, err
 	}
 
 	results := low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]]{
