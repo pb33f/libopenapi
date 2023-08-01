@@ -4,15 +4,19 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Components represents a low-level OpenAPI 3+ Components Object, that is backed by a low-level one.
@@ -126,74 +130,84 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 	return low.FindItemInMap[*Callback](callback, co.Callbacks.Value)
 }
 
+// Build converts root YAML node containing components to low level model.
+// Process each component in parallel.
 func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	co.Reference = new(low.Reference)
 	co.Extensions = low.ExtractExtensions(root)
 
-	// build out components asynchronously for speed. There could be some significant weight here.
-	skipChan := make(chan bool)
-	errorChan := make(chan error)
-	paramChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Parameter]])
-	schemaChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]])
-	responsesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]])
-	examplesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]])
-	requestBodiesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*RequestBody]])
-	headersChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Header]])
-	securitySchemesChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SecurityScheme]])
-	linkChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Link]])
-	callbackChan := make(chan low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]])
+	var reterr error
+	var ceMutex sync.Mutex
+	var wg sync.WaitGroup
+	wg.Add(9)
 
-	go extractComponentValues[*base.SchemaProxy](SchemasLabel, root, skipChan, errorChan, schemaChan, idx)
-	go extractComponentValues[*Parameter](ParametersLabel, root, skipChan, errorChan, paramChan, idx)
-	go extractComponentValues[*Response](ResponsesLabel, root, skipChan, errorChan, responsesChan, idx)
-	go extractComponentValues[*base.Example](base.ExamplesLabel, root, skipChan, errorChan, examplesChan, idx)
-	go extractComponentValues[*RequestBody](RequestBodiesLabel, root, skipChan, errorChan, requestBodiesChan, idx)
-	go extractComponentValues[*Header](HeadersLabel, root, skipChan, errorChan, headersChan, idx)
-	go extractComponentValues[*SecurityScheme](SecuritySchemesLabel, root, skipChan, errorChan, securitySchemesChan, idx)
-	go extractComponentValues[*Link](LinksLabel, root, skipChan, errorChan, linkChan, idx)
-	go extractComponentValues[*Callback](CallbacksLabel, root, skipChan, errorChan, callbackChan, idx)
-
-	n := 0
-	total := 9
-
-	for n < total {
-		select {
-		case buildError := <-errorChan:
-			return buildError
-		case <-skipChan:
-			n++
-		case params := <-paramChan:
-			co.Parameters = params
-			n++
-		case schemas := <-schemaChan:
-			co.Schemas = schemas
-			n++
-		case responses := <-responsesChan:
-			co.Responses = responses
-			n++
-		case examples := <-examplesChan:
-			co.Examples = examples
-			n++
-		case reqBody := <-requestBodiesChan:
-			co.RequestBodies = reqBody
-			n++
-		case headers := <-headersChan:
-			co.Headers = headers
-			n++
-		case sScheme := <-securitySchemesChan:
-			co.SecuritySchemes = sScheme
-			n++
-		case links := <-linkChan:
-			co.Links = links
-			n++
-		case callbacks := <-callbackChan:
-			co.Callbacks = callbacks
-			n++
+	captureError := func(err error) {
+		ceMutex.Lock()
+		defer ceMutex.Unlock()
+		if err != nil {
+			reterr = err
 		}
 	}
-	return nil
+
+	go func() {
+		schemas, err := extractComponentValues[*base.SchemaProxy](SchemasLabel, root, idx)
+		captureError(err)
+		co.Schemas = schemas
+		wg.Done()
+	}()
+	go func() {
+		parameters, err := extractComponentValues[*Parameter](ParametersLabel, root, idx)
+		captureError(err)
+		co.Parameters = parameters
+		wg.Done()
+	}()
+	go func() {
+		responses, err := extractComponentValues[*Response](ResponsesLabel, root, idx)
+		captureError(err)
+		co.Responses = responses
+		wg.Done()
+	}()
+	go func() {
+		examples, err := extractComponentValues[*base.Example](base.ExamplesLabel, root, idx)
+		captureError(err)
+		co.Examples = examples
+		wg.Done()
+	}()
+	go func() {
+		requestBodies, err := extractComponentValues[*RequestBody](RequestBodiesLabel, root, idx)
+		captureError(err)
+		co.RequestBodies = requestBodies
+		wg.Done()
+	}()
+	go func() {
+		headers, err := extractComponentValues[*Header](HeadersLabel, root, idx)
+		captureError(err)
+		co.Headers = headers
+		wg.Done()
+	}()
+	go func() {
+		securitySchemes, err := extractComponentValues[*SecurityScheme](SecuritySchemesLabel, root, idx)
+		captureError(err)
+		co.SecuritySchemes = securitySchemes
+		wg.Done()
+	}()
+	go func() {
+		links, err := extractComponentValues[*Link](LinksLabel, root, idx)
+		captureError(err)
+		co.Links = links
+		wg.Done()
+	}()
+	go func() {
+		callbacks, err := extractComponentValues[*Callback](CallbacksLabel, root, idx)
+		captureError(err)
+		co.Callbacks = callbacks
+		wg.Done()
+	}()
+
+	wg.Wait()
+	return reterr
 }
 
 type componentBuildResult[T any] struct {
@@ -201,81 +215,105 @@ type componentBuildResult[T any] struct {
 	v low.ValueReference[T]
 }
 
-func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node,
-	skip chan bool, errorChan chan<- error, resultChan chan<- low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]], idx *index.SpecIndex) {
+// extractComponentValues converts all the YAML nodes of a component type to
+// low level model.
+// Process each node in parallel.
+func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (retval low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]], _ error) {
 	_, nodeLabel, nodeValue := utils.FindKeyNodeFullTop(label, root.Content)
 	if nodeValue == nil {
-		skip <- true
-		return
+		return retval, nil
 	}
-	var currentLabel *yaml.Node
 	componentValues := make(map[low.KeyReference[string]]low.ValueReference[T])
 	if utils.IsNodeArray(nodeValue) {
-		errorChan <- fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
-		return
+		return retval, fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
 	}
 
-	// for every component, build in a new thread!
-	bChan := make(chan componentBuildResult[T])
-	eChan := make(chan error)
-	var buildComponent = func(parentLabel string, label *yaml.Node, value *yaml.Node, c chan componentBuildResult[T], ec chan<- error) {
+	type inputValue struct {
+		node         *yaml.Node
+		currentLabel *yaml.Node
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	in := make(chan inputValue)
+	out := make(chan componentBuildResult[T])
+	var wg sync.WaitGroup
+	wg.Add(2) // input and output goroutines.
+
+	// Send input.
+	go func() {
+		defer wg.Done()
+		var currentLabel *yaml.Node
+		for i, node := range nodeValue.Content {
+			// always ignore extensions
+			if i%2 == 0 {
+				currentLabel = node
+				continue
+			}
+			// only check for lowercase extensions as 'X-' is still valid as a key (annoyingly).
+			if strings.HasPrefix(currentLabel.Value, "x-") {
+				continue
+			}
+
+			select {
+			case in <- inputValue{
+				node:         node,
+				currentLabel: currentLabel,
+			}:
+			case <-ctx.Done():
+				return
+			}
+		}
+		close(in)
+	}()
+
+	// Collect output.
+	go func() {
+		for result := range out {
+			componentValues[result.k] = result.v
+		}
+		cancel()
+		wg.Done()
+	}()
+
+	// Translate.
+	translateFunc := func(value inputValue) (retval componentBuildResult[T], _ error) {
 		var n T = new(N)
+		currentLabel := value.currentLabel
+		node := value.node
 
 		// if this is a reference, extract it (although components with references is an antipattern)
 		// If you're building components as references... pls... stop, this code should not need to be here.
 		// TODO: check circular crazy on this. It may explode
 		var err error
-		if h, _, _ := utils.IsNodeRefValue(value); h && parentLabel != SchemasLabel {
-			value, err = low.LocateRefNode(value, idx)
+		if h, _, _ := utils.IsNodeRefValue(node); h && label != SchemasLabel {
+			node, err = low.LocateRefNode(node, idx)
 		}
 		if err != nil {
-			ec <- err
-			return
+			return retval, err
 		}
 
 		// build.
-		_ = low.BuildModel(value, n)
-		// todo: label is a key or?
-		err = n.Build(label, value, idx)
+		_ = low.BuildModel(node, n)
+		err = n.Build(currentLabel, node, idx)
 		if err != nil {
-			ec <- err
-			return
+			return retval, err
 		}
-		c <- componentBuildResult[T]{
+		return componentBuildResult[T]{
 			k: low.KeyReference[string]{
-				KeyNode: label,
-				Value:   label.Value,
+				KeyNode: currentLabel,
+				Value:   currentLabel.Value,
 			},
 			v: low.ValueReference[T]{
 				Value:     n,
-				ValueNode: value,
+				ValueNode: node,
 			},
-		}
+		}, nil
 	}
-	totalComponents := 0
-	for i, v := range nodeValue.Content {
-		// always ignore extensions
-		if i%2 == 0 {
-			currentLabel = v
-			continue
-		}
-		// only check for lowercase extensions as 'X-' is still valid as a key (annoyingly).
-		if strings.HasPrefix(currentLabel.Value, "x-") {
-			continue
-		}
-		totalComponents++
-		go buildComponent(label, currentLabel, v, bChan, eChan)
-	}
-
-	completedComponents := 0
-	for completedComponents < totalComponents {
-		select {
-		case e := <-eChan:
-			errorChan <- e
-		case r := <-bChan:
-			componentValues[r.k] = r.v
-			completedComponents++
-		}
+	err := datamodel.TranslatePipeline[inputValue, componentBuildResult[T]](in, out, translateFunc)
+	wg.Wait()
+	if err != nil {
+		return retval, err
 	}
 
 	results := low.NodeReference[map[low.KeyReference[string]]low.ValueReference[T]]{
@@ -283,5 +321,5 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 		ValueNode: nodeValue,
 		Value:     componentValues,
 	}
-	resultChan <- results
+	return results, nil
 }
