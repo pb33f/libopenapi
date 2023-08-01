@@ -68,17 +68,17 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	p.Extensions = low.ExtractExtensions(root)
 
 	// Translate YAML nodes to pathsMap using `TranslatePipeline`.
-	type pathBuildResult struct {
+	type buildResult struct {
 		k low.KeyReference[string]
 		v low.ValueReference[*PathItem]
 	}
-	type nodeItem struct {
+	type inputValue struct {
 		currentNode *yaml.Node
 		pathNode    *yaml.Node
 	}
 	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
-	in := make(chan nodeItem)
-	out := make(chan pathBuildResult)
+	in := make(chan inputValue)
+	out := make(chan buildResult)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var wg sync.WaitGroup
@@ -107,7 +107,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			}
 
 			select {
-			case in <- nodeItem{
+			case in <- inputValue{
 				currentNode: currentNode,
 				pathNode:    pathNode,
 			}:
@@ -136,8 +136,8 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}()
 
-	err := datamodel.TranslatePipeline[nodeItem, pathBuildResult](in, out,
-		func(value nodeItem) (pathBuildResult, error) {
+	err := datamodel.TranslatePipeline[inputValue, buildResult](in, out,
+		func(value inputValue) (buildResult, error) {
 			pNode := value.pathNode
 			cNode := value.currentNode
 
@@ -153,11 +153,11 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 					if err != nil {
 						if !idx.AllowCircularReferenceResolving() {
-							return pathBuildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
+							return buildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
 						}
 					}
 				} else {
-					return pathBuildResult{}, fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
+					return buildResult{}, fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
 						pNode.Content[1].Value, pNode.Content[1].Line, pNode.Content[1].Column)
 				}
 			}
@@ -166,10 +166,10 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			_ = low.BuildModel(pNode, path)
 			err := path.Build(cNode, pNode, idx)
 			if err != nil {
-				return pathBuildResult{}, err
+				return buildResult{}, err
 			}
 
-			return pathBuildResult{
+			return buildResult{
 				k: low.KeyReference[string]{
 					Value:   cNode.Value,
 					KeyNode: cNode,
