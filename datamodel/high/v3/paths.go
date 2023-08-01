@@ -33,19 +33,19 @@ func NewPaths(paths *v3low.Paths) *Paths {
 	p.Extensions = high.ExtractExtensions(paths.Extensions)
 	items := make(map[string]*PathItem)
 
-	type pRes struct {
+	type pathItemResult struct {
 		key   string
 		value *PathItem
 	}
 
-	translateFunc := func(key low.KeyReference[string], value low.ValueReference[*v3low.PathItem]) (pRes, error) {
-		return pRes{key: key.Value, value: NewPathItem(value.Value)}, nil
+	translateFunc := func(key low.KeyReference[string], value low.ValueReference[*v3low.PathItem]) (pathItemResult, error) {
+		return pathItemResult{key: key.Value, value: NewPathItem(value.Value)}, nil
 	}
-	resultFunc := func(value pRes) error {
+	resultFunc := func(value pathItemResult) error {
 		items[value.key] = value.value
 		return nil
 	}
-	_ = datamodel.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pRes](
+	_ = datamodel.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pathItemResult](
 		paths.PathItems, translateFunc, resultFunc,
 	)
 	p.PathItems = items

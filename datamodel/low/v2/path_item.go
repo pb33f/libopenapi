@@ -6,13 +6,14 @@ package v2
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
-	"sync"
 )
 
 // PathItem represents a low-level Swagger / OpenAPI 2 PathItem object.
