@@ -59,20 +59,18 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
-	// skip := false
-	// var currentNode *yaml.Node
 
 	// Translate YAML nodes to pathsMap using `TranslatePipeline`.
 	type pathBuildResult struct {
 		key   low.KeyReference[string]
 		value low.ValueReference[*PathItem]
 	}
-	type nodeItem struct {
+	type buildInput struct {
 		currentNode *yaml.Node
 		pathNode    *yaml.Node
 	}
 	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
-	in := make(chan nodeItem)
+	in := make(chan buildInput)
 	out := make(chan pathBuildResult)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -102,7 +100,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			}
 
 			select {
-			case in <- nodeItem{
+			case in <- buildInput{
 				currentNode: currentNode,
 				pathNode:    pathNode,
 			}:
@@ -131,7 +129,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}()
 
-	translateFunc := func(value nodeItem) (retval pathBuildResult, _ error) {
+	translateFunc := func(value buildInput) (retval pathBuildResult, _ error) {
 		pNode := value.pathNode
 		cNode := value.currentNode
 		path := new(PathItem)
@@ -151,7 +149,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			},
 		}, nil
 	}
-	err := datamodel.TranslatePipeline[nodeItem, pathBuildResult](in, out, translateFunc)
+	err := datamodel.TranslatePipeline[buildInput, pathBuildResult](in, out, translateFunc)
 	wg.Wait()
 	if err != nil {
 		return err
