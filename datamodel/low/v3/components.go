@@ -43,6 +43,11 @@ type componentBuildResult[T any] struct {
 	value low.ValueReference[T]
 }
 
+type inputValue struct {
+	node         *yaml.Node
+	currentLabel *yaml.Node
+}
+
 // GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
 func (co *Components) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
 	return co.Extensions
@@ -227,11 +232,6 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	componentValues := make(map[low.KeyReference[string]]low.ValueReference[T])
 	if utils.IsNodeArray(nodeValue) {
 		return emptyResult, fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
-	}
-
-	type inputValue struct {
-		node         *yaml.Node
-		currentLabel *yaml.Node
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
