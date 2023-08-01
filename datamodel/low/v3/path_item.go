@@ -4,13 +4,13 @@
 package v3
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -271,58 +271,24 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	// all operations have been superficially built,
 	// now we need to build out the operation, we will do this asynchronously for speed.
-	opBuildChan := make(chan bool)
-	opErrorChan := make(chan error)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error, ref string) {
-		er := op.Value.Build(op.KeyNode, op.ValueNode, idx)
-		if ref != "" {
-			op.Value.Reference.Reference = ref
-		}
-		if er != nil {
-			select {
-			case errCh <- er:
-			case <-ctx.Done():
-			}
-			return
-		}
-		select {
-		case ch <- true:
-		case <-ctx.Done():
-		}
-	}
-
-	if len(ops) <= 0 {
-		return nil // nothing to do.
-	}
-
-	for _, op := range ops {
+	translateFunc := func(_ int, op low.NodeReference[*Operation]) (any, error) {
 		ref := ""
 		if op.ReferenceNode {
 			ref = op.Reference
 		}
-		go buildOpFunc(op, opBuildChan, opErrorChan, ref)
-	}
 
-	n := 0
-	total := len(ops)
-FORLOOP1:
-	for n < total {
-		select {
-		case buildError := <-opErrorChan:
-			return buildError
-		case <-opBuildChan:
-			n++
-		case <-ctx.Done():
-			break FORLOOP1
+		err := op.Value.Build(op.KeyNode, op.ValueNode, idx)
+		if ref != "" {
+			op.Value.Reference.Reference = ref
 		}
+		if err != nil {
+			return nil, err
+		}
+		return nil, nil
 	}
-
-	// make sure we don't exit before the path is finished building.
-	if len(ops) > 0 {
-		wg.Wait()
+	err := datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](ops, translateFunc, nil)
+	if err != nil {
+		return err
 	}
 	return nil
 }

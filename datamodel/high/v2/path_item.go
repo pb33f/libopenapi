@@ -4,6 +4,8 @@
 package v2
 
 import (
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 )
@@ -40,71 +42,61 @@ func NewPathItem(pathItem *low.PathItem) *PathItem {
 		}
 		p.Parameters = params
 	}
-	var buildOperation = func(method string, op *low.Operation, resChan chan<- asyncResult[*Operation]) {
-		resChan <- asyncResult[*Operation]{
-			key:    method,
-			result: NewOperation(op),
-		}
+	var buildOperation = func(method string, op *low.Operation) *Operation {
+		return NewOperation(op)
 	}
-	totalOperations := 0
-	resChan := make(chan asyncResult[*Operation])
+
+	var wg sync.WaitGroup
 	if !pathItem.Get.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.GetLabel, pathItem.Get.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Get = buildOperation(low.GetLabel, pathItem.Get.Value)
+			wg.Done()
+		}()
 	}
 	if !pathItem.Put.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.PutLabel, pathItem.Put.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Put = buildOperation(low.PutLabel, pathItem.Put.Value)
+			wg.Done()
+		}()
 	}
 	if !pathItem.Post.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.PostLabel, pathItem.Post.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Post = buildOperation(low.PostLabel, pathItem.Post.Value)
+			wg.Done()
+		}()
 	}
 	if !pathItem.Patch.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.PatchLabel, pathItem.Patch.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Patch = buildOperation(low.PatchLabel, pathItem.Patch.Value)
+			wg.Done()
+		}()
 	}
 	if !pathItem.Delete.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.DeleteLabel, pathItem.Delete.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Delete = buildOperation(low.DeleteLabel, pathItem.Delete.Value)
+			wg.Done()
+		}()
 	}
 	if !pathItem.Head.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.HeadLabel, pathItem.Head.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Head = buildOperation(low.HeadLabel, pathItem.Head.Value)
+			wg.Done()
+		}()
 	}
 	if !pathItem.Options.IsEmpty() {
-		totalOperations++
-		go buildOperation(low.OptionsLabel, pathItem.Options.Value, resChan)
+		wg.Add(1)
+		go func() {
+			p.Options = buildOperation(low.OptionsLabel, pathItem.Options.Value)
+			wg.Done()
+		}()
 	}
-	completedOperations := 0
-	for completedOperations < totalOperations {
-		select {
-		case r := <-resChan:
-			switch r.key {
-			case low.GetLabel:
-				completedOperations++
-				p.Get = r.result
-			case low.PutLabel:
-				completedOperations++
-				p.Put = r.result
-			case low.PostLabel:
-				completedOperations++
-				p.Post = r.result
-			case low.PatchLabel:
-				completedOperations++
-				p.Patch = r.result
-			case low.DeleteLabel:
-				completedOperations++
-				p.Delete = r.result
-			case low.HeadLabel:
-				completedOperations++
-				p.Head = r.result
-			case low.OptionsLabel:
-				completedOperations++
-				p.Options = r.result
-			}
-		}
-	}
+	wg.Wait()
 	return p
 }
 
