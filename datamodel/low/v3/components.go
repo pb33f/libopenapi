@@ -43,7 +43,7 @@ type componentBuildResult[T any] struct {
 	value low.ValueReference[T]
 }
 
-type inputValue struct {
+type componentInput struct {
 	node         *yaml.Node
 	currentLabel *yaml.Node
 }
@@ -236,7 +236,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	in := make(chan inputValue)
+	in := make(chan componentInput)
 	out := make(chan componentBuildResult[T])
 	var wg sync.WaitGroup
 	wg.Add(2) // input and output goroutines.
@@ -257,7 +257,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			}
 
 			select {
-			case in <- inputValue{
+			case in <- componentInput{
 				node:         node,
 				currentLabel: currentLabel,
 			}:
@@ -278,7 +278,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 	}()
 
 	// Translate.
-	translateFunc := func(value inputValue) (componentBuildResult[T], error) {
+	translateFunc := func(value componentInput) (componentBuildResult[T], error) {
 		var n T = new(N)
 		currentLabel := value.currentLabel
 		node := value.node
@@ -311,7 +311,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 			},
 		}, nil
 	}
-	err := datamodel.TranslatePipeline[inputValue, componentBuildResult[T]](in, out, translateFunc)
+	err := datamodel.TranslatePipeline[componentInput, componentBuildResult[T]](in, out, translateFunc)
 	wg.Wait()
 	if err != nil {
 		return emptyResult, err
