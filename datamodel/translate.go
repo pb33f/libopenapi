@@ -25,7 +25,7 @@ type jobStatus[OUT any] struct {
 	result OUT
 }
 
-type tpJobStatus[IN any, OUT any] struct {
+type pipelineJobStatus[IN any, OUT any] struct {
 	done   chan struct{}
 	cont   bool
 	eof    bool
@@ -201,8 +201,8 @@ func TranslatePipeline[IN any, OUT any](in <-chan IN, out chan<- OUT, translate 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	concurrency := runtime.NumCPU()
-	workChan := make(chan *tpJobStatus[IN, OUT])
-	resultChan := make(chan *tpJobStatus[IN, OUT])
+	workChan := make(chan *pipelineJobStatus[IN, OUT])
+	resultChan := make(chan *pipelineJobStatus[IN, OUT])
 	var reterr error
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -257,7 +257,7 @@ func TranslatePipeline[IN any, OUT any](in <-chan IN, out chan<- OUT, translate 
 				if !ok {
 					return
 				}
-				j := &tpJobStatus[IN, OUT]{
+				j := &pipelineJobStatus[IN, OUT]{
 					done:  make(chan struct{}),
 					input: value,
 				}
