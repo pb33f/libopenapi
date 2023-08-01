@@ -69,15 +69,15 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	// Translate YAML nodes to pathsMap using `TranslatePipeline`.
 	type buildResult struct {
-		k low.KeyReference[string]
-		v low.ValueReference[*PathItem]
+		key low.KeyReference[string]
+		value low.ValueReference[*PathItem]
 	}
-	type inputValue struct {
+	type buildInput struct {
 		currentNode *yaml.Node
 		pathNode    *yaml.Node
 	}
 	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
-	in := make(chan inputValue)
+	in := make(chan buildInput)
 	out := make(chan buildResult)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -107,7 +107,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			}
 
 			select {
-			case in <- inputValue{
+			case in <- buildInput{
 				currentNode: currentNode,
 				pathNode:    pathNode,
 			}:
@@ -129,15 +129,15 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 				if !ok {
 					return
 				}
-				pathsMap[result.k] = result.v
+				pathsMap[result.key] = result.value
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
-	err := datamodel.TranslatePipeline[inputValue, buildResult](in, out,
-		func(value inputValue) (buildResult, error) {
+	err := datamodel.TranslatePipeline[buildInput, buildResult](in, out,
+		func(value buildInput) (buildResult, error) {
 			pNode := value.pathNode
 			cNode := value.currentNode
 
@@ -170,11 +170,11 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			}
 
 			return buildResult{
-				k: low.KeyReference[string]{
+				key: low.KeyReference[string]{
 					Value:   cNode.Value,
 					KeyNode: cNode,
 				},
-				v: low.ValueReference[*PathItem]{
+				value: low.ValueReference[*PathItem]{
 					Value:     path,
 					ValueNode: pNode,
 				},
