@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -45,29 +47,19 @@ func NewResponses(responses *low.Responses) *Responses {
 	}
 	codes := make(map[string]*Response)
 
-	// struct to hold response and code sent over chan.
 	type respRes struct {
 		code string
 		resp *Response
 	}
 
-	// build each response async for speed
-	rChan := make(chan respRes)
-	var buildResponse = func(code string, resp *low.Response, c chan respRes) {
-		c <- respRes{code: code, resp: NewResponse(resp)}
+	translateFunc := func(key lowbase.KeyReference[string], value lowbase.ValueReference[*low.Response]) (respRes, error) {
+		return respRes{code: key.Value, resp: NewResponse(value.Value)}, nil
 	}
-	for k, v := range responses.Codes {
-		go buildResponse(k.Value, v.Value, rChan)
+	resultFunc := func(value respRes) error {
+		codes[value.code] = value.resp
+		return nil
 	}
-	totalCodes := len(responses.Codes)
-	codesParsed := 0
-	for codesParsed < totalCodes {
-		select {
-		case re := <-rChan:
-			codesParsed++
-			codes[re.code] = re.resp
-		}
-	}
+	_ = datamodel.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response], respRes](responses.Codes, translateFunc, resultFunc)
 	r.Codes = codes
 	return r
 }
