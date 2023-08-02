@@ -1,7 +1,6 @@
 package datamodel_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -10,7 +9,6 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
@@ -49,10 +47,27 @@ func TestTranslateSliceParallel(t *testing.T) {
 					return nil
 				}
 				err := datamodel.TranslateSliceParallel[int, string](sl, translateFunc, resultFunc)
-				time.Sleep(10 * time.Millisecond) // DEBUG
 				require.NoError(t, err)
 				assert.Equal(t, int64(mapSize), translateCounter)
 				assert.Equal(t, mapSize, resultCounter)
+			})
+
+			t.Run("nil", func(t *testing.T) {
+				var sl []int
+				var translateCounter int64
+				translateFunc := func(_, value int) (string, error) {
+					atomic.AddInt64(&translateCounter, 1)
+					return "", nil
+				}
+				var resultCounter int
+				resultFunc := func(value string) error {
+					resultCounter++
+					return nil
+				}
+				err := datamodel.TranslateSliceParallel[int, string](sl, translateFunc, resultFunc)
+				require.NoError(t, err)
+				assert.Zero(t, translateCounter)
+				assert.Zero(t, resultCounter)
 			})
 
 			t.Run("Error in translate", func(t *testing.T) {
@@ -188,6 +203,24 @@ func TestTranslateMapParallel(t *testing.T) {
 		assert.Equal(t, expectedResults, results)
 	})
 
+	t.Run("nil", func(t *testing.T) {
+		var m map[string]int
+		var translateCounter int64
+		translateFunc := func(_ string, value int) (string, error) {
+			atomic.AddInt64(&translateCounter, 1)
+			return "", nil
+		}
+		var resultCounter int
+		resultFunc := func(value string) error {
+			resultCounter++
+			return nil
+		}
+		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
+		require.NoError(t, err)
+		assert.Zero(t, translateCounter)
+		assert.Zero(t, resultCounter)
+	})
+
 	t.Run("Error in translate", func(t *testing.T) {
 		m := make(map[string]int)
 		for i := 0; i < mapSize; i++ {
@@ -303,43 +336,39 @@ func TestTranslatePipeline(t *testing.T) {
 				var inputErr error
 				in := make(chan int)
 				out := make(chan string)
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+				done := make(chan struct{})
 				var wg sync.WaitGroup
 				wg.Add(2) // input and output goroutines.
 
 				// Send input.
 				go func() {
-					defer wg.Done()
+					defer func() {
+						close(in)
+						wg.Done()
+					}()
 					for i := 0; i < itemCount; i++ {
 						select {
 						case in <- i:
-						case <-ctx.Done():
-							inputErr = errors.New("Context canceled unexpectedly")
+						case <-done:
+							inputErr = errors.New("Exited unexpectedly")
+							return
 						}
 					}
-					close(in)
 				}()
 
 				// Collect output.
 				var resultCounter int
 				go func() {
-					defer func() {
-						cancel()
-						wg.Done()
-					}()
 					for {
-						select {
-						case result, ok := <-out:
-							if !ok {
-								return
-							}
-							assert.Equal(t, strconv.Itoa(resultCounter), result)
-							resultCounter++
-						case <-ctx.Done():
-							return
+						result, ok := <-out
+						if !ok {
+							break
 						}
+						assert.Equal(t, strconv.Itoa(resultCounter), result)
+						resultCounter++
 					}
+					close(done)
+					wg.Done()
 				}()
 
 				err := datamodel.TranslatePipeline[int, string](in, out,
@@ -356,41 +385,36 @@ func TestTranslatePipeline(t *testing.T) {
 			t.Run("Error in translate", func(t *testing.T) {
 				in := make(chan int)
 				out := make(chan string)
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+				done := make(chan struct{})
 				var wg sync.WaitGroup
 				wg.Add(2) // input and output goroutines.
 
 				// Send input.
 				go func() {
-					defer wg.Done()
 					for i := 0; i < itemCount; i++ {
 						select {
 						case in <- i:
-						case <-ctx.Done():
-							// Context expected to cancel after the first translate.
+						case <-done:
+							// Expected to exit after the first translate.
 						}
 					}
 					close(in)
+					wg.Done()
 				}()
 
 				// Collect output.
 				var resultCounter int
 				go func() {
 					defer func() {
-						cancel()
+						close(done)
 						wg.Done()
 					}()
 					for {
-						select {
-						case _, ok := <-out:
-							if !ok {
-								return
-							}
-							resultCounter++
-						case <-ctx.Done():
+						_, ok := <-out
+						if !ok {
 							return
 						}
+						resultCounter++
 					}
 				}()
 
@@ -408,8 +432,7 @@ func TestTranslatePipeline(t *testing.T) {
 				var inputErr error
 				in := make(chan int)
 				out := make(chan string)
-				ctx, cancel := context.WithCancel(context.Background())
-				defer cancel()
+				done := make(chan struct{})
 				var wg sync.WaitGroup
 				wg.Add(2) // input and output goroutines.
 
@@ -419,8 +442,8 @@ func TestTranslatePipeline(t *testing.T) {
 					for i := 0; i < itemCount; i++ {
 						select {
 						case in <- i:
-						case <-ctx.Done():
-							inputErr = errors.New("Context canceled unexpectedly")
+						case <-done:
+							inputErr = errors.New("Exited unexpectedly")
 						}
 					}
 					close(in)
@@ -429,21 +452,15 @@ func TestTranslatePipeline(t *testing.T) {
 				// Collect output.
 				var resultCounter int
 				go func() {
-					defer func() {
-						cancel()
-						wg.Done()
-					}()
 					for {
-						select {
-						case _, ok := <-out:
-							if !ok {
-								return
-							}
-							resultCounter++
-						case <-ctx.Done():
-							return
+						_, ok := <-out
+						if !ok {
+							break
 						}
+						resultCounter++
 					}
+					close(done)
+					wg.Done()
 				}()
 
 				err := datamodel.TranslatePipeline[int, string](in, out,

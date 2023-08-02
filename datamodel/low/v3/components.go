@@ -4,7 +4,6 @@
 package v3
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -234,16 +233,18 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 		return emptyResult, fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	in := make(chan componentInput)
 	out := make(chan componentBuildResult[T])
+	done := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(2) // input and output goroutines.
 
 	// Send input.
 	go func() {
-		defer wg.Done()
+		defer func() {
+			close(in)
+			wg.Done()
+		}()
 		var currentLabel *yaml.Node
 		for i, node := range nodeValue.Content {
 			// always ignore extensions
@@ -261,11 +262,10 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 				node:         node,
 				currentLabel: currentLabel,
 			}:
-			case <-ctx.Done():
+			case <-done:
 				return
 			}
 		}
-		close(in)
 	}()
 
 	// Collect output.
@@ -273,7 +273,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 		for result := range out {
 			componentValues[result.key] = result.value
 		}
-		cancel()
+		close(done)
 		wg.Done()
 	}()
 
