@@ -4,7 +4,6 @@
 package v2
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -72,8 +71,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
 	in := make(chan buildInput)
 	out := make(chan pathBuildResult)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	done := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(2) // input and output goroutines.
 
@@ -104,7 +102,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 				currentNode: currentNode,
 				pathNode:    pathNode,
 			}:
-			case <-ctx.Done():
+			case <-done:
 				return
 			}
 		}
@@ -112,31 +110,25 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	// TranslatePipeline output.
 	go func() {
-		defer func() {
-			cancel()
-			wg.Done()
-		}()
 		for {
-			select {
-			case result, ok := <-out:
-				if !ok {
-					return
-				}
-				pathsMap[result.key] = result.value
-			case <-ctx.Done():
-				return
+			result, ok := <-out
+			if !ok {
+				break
 			}
+			pathsMap[result.key] = result.value
 		}
+		close(done)
+		wg.Done()
 	}()
 
-	translateFunc := func(value buildInput) (retval pathBuildResult, _ error) {
+	translateFunc := func(value buildInput) (pathBuildResult, error) {
 		pNode := value.pathNode
 		cNode := value.currentNode
 		path := new(PathItem)
 		_ = low.BuildModel(pNode, path)
 		err := path.Build(cNode, pNode, idx)
 		if err != nil {
-			return retval, err
+			return pathBuildResult{}, err
 		}
 		return pathBuildResult{
 			key: low.KeyReference[string]{
