@@ -142,9 +142,6 @@ func TranslateMapParallel[K comparable, V any, OUT any](m map[K]V, translate Tra
 	go func() {
 		defer wg.Done()
 		for k, v := range m {
-			if ctx.Err() != nil {
-				return
-			}
 			wg.Add(1)
 			go func(k K, v V) {
 				defer wg.Done()
