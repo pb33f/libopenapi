@@ -4,7 +4,6 @@
 package v3
 
 import (
-	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -69,7 +68,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	// Translate YAML nodes to pathsMap using `TranslatePipeline`.
 	type buildResult struct {
-		key low.KeyReference[string]
+		key   low.KeyReference[string]
 		value low.ValueReference[*PathItem]
 	}
 	type buildInput struct {
@@ -79,8 +78,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
 	in := make(chan buildInput)
 	out := make(chan buildResult)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	done := make(chan struct{})
 	var wg sync.WaitGroup
 	wg.Add(2) // input and output goroutines.
 
@@ -111,7 +109,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 				currentNode: currentNode,
 				pathNode:    pathNode,
 			}:
-			case <-ctx.Done():
+			case <-done:
 				return
 			}
 		}
@@ -119,21 +117,15 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	// TranslatePipeline output.
 	go func() {
-		defer func() {
-			cancel()
-			wg.Done()
-		}()
 		for {
-			select {
-			case result, ok := <-out:
-				if !ok {
-					return
-				}
-				pathsMap[result.key] = result.value
-			case <-ctx.Done():
-				return
+			result, ok := <-out
+			if !ok {
+				break
 			}
+			pathsMap[result.key] = result.value
 		}
+		close(done)
+		wg.Done()
 	}()
 
 	err := datamodel.TranslatePipeline[buildInput, buildResult](in, out,

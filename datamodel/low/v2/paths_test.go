@@ -4,11 +4,13 @@
 package v2
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPaths_Build(t *testing.T) {
@@ -33,10 +35,10 @@ func TestPaths_Build(t *testing.T) {
 func TestPaths_FindPathAndKey(t *testing.T) {
 
 	yml := `/no/sleep:
-  get: 
+  get:
     description: til brooklyn
 /no/pizza:
-  post: 
+  post:
     description: because i'm fat`
 
 	var idxNode yaml.Node
@@ -57,7 +59,7 @@ func TestPaths_Hash(t *testing.T) {
 
 	yml := `/data/dog:
   get:
-    description: does data kinda, ish. 
+    description: does data kinda, ish.
 /snow/flake:
   get:
     description: does data
@@ -80,7 +82,7 @@ x-milk: creamy`
     description: does data the best
 /data/dog:
   get:
-    description: does data kinda, ish. 
+    description: does data kinda, ish.
 /snow/flake:
   get:
     description: does data
@@ -98,4 +100,29 @@ x-milk: creamy`
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.Len(t, n.GetExtensions(), 1)
 
+}
+
+// Test parse failure among many paths.
+// This stresses `TranslatePipeline`'s error handling.
+func TestPaths_Build_Fail_Many(t *testing.T) {
+	var yml string
+	for i := 0; i < 1000; i++ {
+		format := `"/fresh/code%d":
+  parameters:
+    $ref: break
+`
+		yml += fmt.Sprintf(format, i)
+	}
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Paths
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
 }
