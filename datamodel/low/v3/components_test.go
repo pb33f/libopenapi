@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"fmt"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 var testComponentsYaml = `
@@ -38,7 +40,7 @@ var testComponentsYaml = `
       description: nine of many
     ten:
       description: ten of many
-  headers: 
+  headers:
     eleven:
       description: eleven of many
     twelve:
@@ -53,7 +55,7 @@ var testComponentsYaml = `
       description: fifteen of many
     sixteen:
       description: sixteen of many
-  callbacks: 
+  callbacks:
     seventeen:
       '{reference}':
         post:
@@ -124,7 +126,7 @@ func TestComponents_Build_Success_Skip(t *testing.T) {
 func TestComponents_Build_Fail(t *testing.T) {
 
 	yml := `
-  parameters: 
+  parameters:
     schema:
       $ref: '#/this is a problem.'`
 
@@ -164,10 +166,39 @@ func TestComponents_Build_ParameterFail(t *testing.T) {
 
 }
 
+// Test parse failure among many parameters.
+// This stresses `TranslatePipeline`'s error handling.
+func TestComponents_Build_ParameterFail_Many(t *testing.T) {
+	yml := `
+  parameters:
+`
+
+	for i := 0; i < 1000; i++ {
+		format := `
+    pizza%d:
+      schema:
+        $ref: '#/this is a problem.'
+`
+		yml += fmt.Sprintf(format, i)
+	}
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
+}
+
 func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 
 	yml := `
-  parameters: 
+  parameters:
     - schema:
         $ref: #/this is a problem.`
 

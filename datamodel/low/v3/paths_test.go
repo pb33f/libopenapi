@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -21,15 +22,15 @@ func TestPaths_Build(t *testing.T) {
   post:
     description: post method
   put:
-    description: put method    
+    description: put method
   delete:
     description: delete method
   options:
     description: options method
   patch:
-    description: patch method  
+    description: patch method
   head:
-    description: head method  
+    description: head method
   trace:
     description: trace method
   servers:
@@ -128,7 +129,7 @@ func TestPaths_Build_FailRefDeadEnd(t *testing.T) {
     $ref: '#/nowhere'
 "/some/path":
   get:
-    $ref: '#/no/path'    
+    $ref: '#/no/path'
 "/another/path":
   $ref: '#/~1some~1path'`
 
@@ -239,7 +240,7 @@ func TestPathItem_Build_GoodRef(t *testing.T) {
  get:
    $ref: '#/~1cakes/get'
 "/cakes":
- description: cakes are awesome 
+ description: cakes are awesome
  get:
    description: get method from /cakes`
 
@@ -269,7 +270,7 @@ func TestPathItem_Build_BadRef(t *testing.T) {
  get:
    $ref: '#/~1cakes/NotFound'
 "/cakes":
- description: cakes are awesome 
+ description: cakes are awesome
  get:
    description: get method from /cakes`
 
@@ -477,4 +478,28 @@ x-france: french`
 	assert.Nil(t, a)
 	assert.Nil(t, b)
 
+}
+
+// Test parse failure among many paths.
+// This stresses `TranslatePipeline`'s error handling.
+func TestPaths_Build_Fail_Many(t *testing.T) {
+	var yml string
+	for i := 0; i < 1000; i++ {
+		format := `"/fresh/code%d":
+  parameters:
+    $ref: break
+`
+		yml += fmt.Sprintf(format, i)
+	}
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Paths
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(idxNode.Content[0], idx)
+	assert.Error(t, err)
 }
