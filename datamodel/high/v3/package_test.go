@@ -5,9 +5,11 @@ package v3
 
 import (
 	"fmt"
+	"io/ioutil"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"io/ioutil"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // An example of how to create a new high-level OpenAPI 3+ document from an OpenAPI specification.
@@ -36,6 +38,6 @@ func Example_createHighLevelOpenAPIDocument() {
 
 	// Print out some details
 	fmt.Printf("Petstore contains %d paths and %d component schemas",
-		len(doc.Paths.PathItems), len(doc.Components.Schemas))
+		orderedmap.Len(doc.Paths.PathItems), len(doc.Components.Schemas))
 	// Output: Petstore contains 13 paths and 8 component schemas
 }

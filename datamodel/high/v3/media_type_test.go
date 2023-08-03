@@ -28,7 +28,7 @@ func TestMediaType_MarshalYAMLInline(t *testing.T) {
 
 	// create a new document and extract a media type object from it.
 	d := NewDocument(lowDoc)
-	mt := d.Paths.PathItems["/pet"].Put.RequestBody.Content["application/json"]
+	mt := d.Paths.PathItems.GetOrZero("/pet").Put.RequestBody.Content["application/json"]
 
 	// render out the media type
 	yml, _ := mt.Render()
@@ -118,7 +118,7 @@ func TestMediaType_MarshalYAML(t *testing.T) {
 
 	// create a new document and extract a media type object from it.
 	d := NewDocument(lowDoc)
-	mt := d.Paths.PathItems["/pet"].Put.RequestBody.Content["application/json"]
+	mt := d.Paths.PathItems.GetOrZero("/pet").Put.RequestBody.Content["application/json"]
 
 	// render out the media type
 	yml, _ := mt.Render()
