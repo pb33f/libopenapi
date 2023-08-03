@@ -4,11 +4,13 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"reflect"
 	"sync"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // PathsChanges represents changes found between two Swagger or OpenAPI Paths Objects.
@@ -75,12 +77,16 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v2.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v2.PathItem])
-		for k := range lPath.PathItems {
-			lKeys[k.Value] = lPath.PathItems[k]
+		laction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v2.PathItem]]) error {
+			lKeys[pair.Key().Value] = pair.Value()
+			return nil
 		}
-		for k := range rPath.PathItems {
-			rKeys[k.Value] = rPath.PathItems[k]
+		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v2.PathItem]](lPath.PathItems, laction)
+		raction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v2.PathItem]]) error {
+			rKeys[pair.Key().Value] = pair.Value()
+			return nil
 		}
+		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v2.PathItem]](rPath.PathItems, raction)
 
 		// run every comparison in a thread.
 		var mLock sync.Mutex
@@ -146,12 +152,16 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v3.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v3.PathItem])
-		for k := range lPath.PathItems {
-			lKeys[k.Value] = lPath.PathItems[k]
+		laction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v3.PathItem]]) error {
+			lKeys[pair.Key().Value] = pair.Value()
+			return nil
 		}
-		for k := range rPath.PathItems {
-			rKeys[k.Value] = rPath.PathItems[k]
+		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v3.PathItem]](lPath.PathItems, laction)
+		raction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v3.PathItem]]) error {
+			rKeys[pair.Key().Value] = pair.Value()
+			return nil
 		}
+		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v3.PathItem]](rPath.PathItems, raction)
 
 		// run every comparison in a thread.
 		var mLock sync.Mutex

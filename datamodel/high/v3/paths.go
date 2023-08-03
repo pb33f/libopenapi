@@ -6,10 +6,10 @@ package v3
 import (
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -21,8 +21,8 @@ import (
 // constraints.
 //   - https://spec.openapis.org/oas/v3.1.0#paths-object
 type Paths struct {
-	PathItems  map[string]*PathItem `json:"-" yaml:"-"`
-	Extensions map[string]any       `json:"-" yaml:"-"`
+	PathItems  orderedmap.Map[string, *PathItem] `json:"-" yaml:"-"`
+	Extensions map[string]any                    `json:"-" yaml:"-"`
 	low        *v3low.Paths
 }
 
@@ -31,21 +31,21 @@ func NewPaths(paths *v3low.Paths) *Paths {
 	p := new(Paths)
 	p.low = paths
 	p.Extensions = high.ExtractExtensions(paths.Extensions)
-	items := make(map[string]*PathItem)
+	items := orderedmap.New[string, *PathItem]()
 
 	type pathItemResult struct {
 		key   string
 		value *PathItem
 	}
 
-	translateFunc := func(key low.KeyReference[string], value low.ValueReference[*v3low.PathItem]) (pathItemResult, error) {
-		return pathItemResult{key: key.Value, value: NewPathItem(value.Value)}, nil
+	translateFunc := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v3low.PathItem]]) (pathItemResult, error) {
+		return pathItemResult{key: pair.Key().Value, value: NewPathItem(pair.Value().Value)}, nil
 	}
 	resultFunc := func(value pathItemResult) error {
-		items[value.key] = value.value
+		items.Set(value.key, value.value)
 		return nil
 	}
-	_ = datamodel.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pathItemResult](
+	_ = orderedmap.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pathItemResult](
 		paths.PathItems, translateFunc, resultFunc,
 	)
 	p.PathItems = items
@@ -84,7 +84,9 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	for k, pi := range p.PathItems {
+	action := func(pair orderedmap.Pair[string, *PathItem]) error {
+		k := pair.Key()
+		pi := pair.Value()
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		if p.low != nil {
 			lpi := p.low.FindPath(k)
@@ -93,7 +95,9 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 			}
 		}
 		mapped = append(mapped, &pathItem{pi, k, ln, nil})
+		return nil
 	}
+	_ = orderedmap.For[string, *PathItem](p.PathItems, action)
 
 	nb := high.NewNodeBuilder(p, p.low)
 	extNode := nb.Render()
@@ -138,7 +142,9 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	for k, pi := range p.PathItems {
+	action := func(pair orderedmap.Pair[string, *PathItem]) error {
+		k := pair.Key()
+		pi := pair.Value()
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		if p.low != nil {
 			lpi := p.low.FindPath(k)
@@ -147,7 +153,9 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 			}
 		}
 		mapped = append(mapped, &pathItem{pi, k, ln, nil})
+		return nil
 	}
+	_ = orderedmap.For[string, *PathItem](p.PathItems, action)
 
 	nb := high.NewNodeBuilder(p, p.low)
 	nb.Resolve = true

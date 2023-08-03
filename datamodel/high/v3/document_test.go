@@ -14,6 +14,7 @@ import (
 	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
 	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -330,7 +331,7 @@ func TestNewDocument_Paths(t *testing.T) {
 }
 
 func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
-	burgersOp := h.Paths.PathItems["/burgers"]
+	burgersOp := h.Paths.PathItems.GetOrZero("/burgers")
 
 	assert.Len(t, burgersOp.GetOperations(), 1)
 	assert.Equal(t, "meaty", burgersOp.Extensions["x-burger-meta"])
@@ -410,7 +411,7 @@ func TestAsanaAsDoc(t *testing.T) {
 	}
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
-	assert.Equal(t, 118, len(d.Paths.PathItems))
+	assert.Equal(t, 118, orderedmap.Len(d.Paths.PathItems))
 }
 
 func TestDigitalOceanAsDocFromSHA(t *testing.T) {
@@ -434,7 +435,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	}
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
-	assert.Equal(t, 183, len(d.Paths.PathItems))
+	assert.Equal(t, 183, orderedmap.Len(d.Paths.PathItems))
 
 }
 
@@ -448,7 +449,7 @@ func TestPetstoreAsDoc(t *testing.T) {
 	}
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
-	assert.Equal(t, 13, len(d.Paths.PathItems))
+	assert.Equal(t, 13, orderedmap.Len(d.Paths.PathItems))
 }
 
 func TestCircularReferencesDoc(t *testing.T) {
@@ -532,7 +533,7 @@ func TestDocument_MarshalJSON(t *testing.T) {
 	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	newDoc := NewDocument(lowDoc)
 
-	assert.Equal(t, len(newDoc.Paths.PathItems), len(highDoc.Paths.PathItems))
+	assert.Equal(t, orderedmap.Len(newDoc.Paths.PathItems), orderedmap.Len(highDoc.Paths.PathItems))
 	assert.Equal(t, len(newDoc.Components.Schemas), len(highDoc.Components.Schemas))
 }
 

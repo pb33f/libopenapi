@@ -6,6 +6,7 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 	"sync"
@@ -13,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -24,29 +26,36 @@ import (
 // constraints.
 //   - https://spec.openapis.org/oas/v3.1.0#paths-object
 type Paths struct {
-	PathItems  map[low.KeyReference[string]]low.ValueReference[*PathItem]
+	PathItems  orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
 }
 
 // FindPath will attempt to locate a PathItem using the provided path string.
-func (p *Paths) FindPath(path string) *low.ValueReference[*PathItem] {
-	for k, j := range p.PathItems {
-		if k.Value == path {
-			return &j
+func (p *Paths) FindPath(path string) (result *low.ValueReference[*PathItem]) {
+	action := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*PathItem]]) error {
+		if pair.Key().Value == path {
+			result = pair.ValuePtr()
+			return io.EOF
 		}
+		return nil
 	}
-	return nil
+	_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*PathItem]](p.PathItems, action)
+	return result
 }
 
 // FindPathAndKey attempts to locate a PathItem instance, given a path key.
-func (p *Paths) FindPathAndKey(path string) (*low.KeyReference[string], *low.ValueReference[*PathItem]) {
-	for k, j := range p.PathItems {
-		if k.Value == path {
-			return &k, &j
+func (p *Paths) FindPathAndKey(path string) (key *low.KeyReference[string], value *low.ValueReference[*PathItem]) {
+	action := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*PathItem]]) error {
+		if pair.Key().Value == path {
+			key = pair.KeyPtr()
+			value = pair.ValuePtr()
+			return io.EOF
 		}
+		return nil
 	}
-	return nil, nil
+	_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*PathItem]](p.PathItems, action)
+	return key, value
 }
 
 // FindExtension will attempt to locate an extension using the specified string.
@@ -75,7 +84,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		currentNode *yaml.Node
 		pathNode    *yaml.Node
 	}
-	pathsMap := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
+	pathsMap := orderedmap.New[low.KeyReference[string], low.ValueReference[*PathItem]]()
 	in := make(chan buildInput)
 	out := make(chan buildResult)
 	done := make(chan struct{})
@@ -122,7 +131,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			if !ok {
 				break
 			}
-			pathsMap[result.key] = result.value
+			pathsMap.Set(result.key, result.value)
 		}
 		close(done)
 		wg.Done()
@@ -185,14 +194,19 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the PathItem object
 func (p *Paths) Hash() [32]byte {
 	var f []string
-	l := make([]string, len(p.PathItems))
+	l := make([]string, orderedmap.Len(p.PathItems))
 	keys := make(map[string]low.ValueReference[*PathItem])
 	z := 0
-	for k := range p.PathItems {
-		keys[k.Value] = p.PathItems[k]
-		l[z] = k.Value
+
+	action := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*PathItem]]) error {
+		k := pair.Key().Value
+		keys[k] = pair.Value()
+		l[z] = k
 		z++
+		return nil
 	}
+	_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*PathItem]](p.PathItems, action)
+
 	sort.Strings(l)
 	for k := range l {
 		f = append(f, fmt.Sprintf("%s-%s", l[k], low.GenerateHashString(keys[l[k]].Value)))

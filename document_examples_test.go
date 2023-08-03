@@ -5,11 +5,13 @@ package libopenapi
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/orderedmap"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -47,7 +49,7 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 	}
 
 	// get a count of the number of paths and schemas.
-	paths := len(v3Model.Model.Paths.PathItems)
+	paths := orderedmap.Len(v3Model.Model.Paths.PathItems)
 	schemas := len(v3Model.Model.Components.Schemas)
 
 	// print the number of paths and schemas in the document
@@ -153,7 +155,7 @@ func ExampleNewDocument_fromSwaggerDocument() {
 	}
 
 	// get a count of the number of paths and schemas.
-	paths := len(v2Model.Model.Paths.PathItems)
+	paths := orderedmap.Len(v2Model.Model.Paths.PathItems)
 	schemas := len(v2Model.Model.Definitions.Definitions)
 
 	// print the number of paths and schemas in the document
@@ -184,7 +186,7 @@ func ExampleNewDocument_fromUnknownVersion() {
 			errors = errs
 		}
 		if len(errors) <= 0 {
-			paths = len(v3Model.Model.Paths.PathItems)
+			paths = orderedmap.Len(v3Model.Model.Paths.PathItems)
 			schemas = len(v3Model.Model.Components.Schemas)
 		}
 	}
@@ -194,7 +196,7 @@ func ExampleNewDocument_fromUnknownVersion() {
 			errors = errs
 		}
 		if len(errors) <= 0 {
-			paths = len(v2Model.Model.Paths.PathItems)
+			paths = orderedmap.Len(v2Model.Model.Paths.PathItems)
 			schemas = len(v2Model.Model.Definitions.Definitions)
 		}
 	}
@@ -539,7 +541,7 @@ components:
         burgers:
           someBurger:
             sauce: ketchup
-            patty: meat 
+            patty: meat
           anotherBurger:
             sauce: mayo
             patty: lamb`
@@ -641,10 +643,10 @@ func ExampleNewDocument_modifyAndReRender() {
 	}
 
 	// capture original number of paths
-	originalPaths := len(v3Model.Model.Paths.PathItems)
+	originalPaths := orderedmap.Len(v3Model.Model.Paths.PathItems)
 
 	// add the path to the document
-	v3Model.Model.Paths.PathItems["/new/path"] = newPath
+	v3Model.Model.Paths.PathItems.Set("/new/path", newPath)
 
 	// render the document back to bytes and reload the model.
 	rawBytes, _, newModel, errs := doc.RenderAndReload()
@@ -655,7 +657,7 @@ func ExampleNewDocument_modifyAndReRender() {
 	}
 
 	// capture new number of paths after re-rendering
-	newPaths := len(newModel.Model.Paths.PathItems)
+	newPaths := orderedmap.Len(newModel.Model.Paths.PathItems)
 
 	// print the number of paths and schemas in the document
 	fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)

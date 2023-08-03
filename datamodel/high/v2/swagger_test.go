@@ -204,7 +204,7 @@ func TestNewSwaggerDocument_Paths(t *testing.T) {
 	highDoc := NewSwaggerDocument(doc)
 	assert.Len(t, highDoc.Paths.PathItems, 15)
 
-	upload := highDoc.Paths.PathItems["/pet/{petId}/uploadImage"]
+	upload := highDoc.Paths.PathItems.GetOrZero("/pet/{petId}/uploadImage")
 	assert.Equal(t, "man", upload.Extensions["x-potato"])
 	assert.Nil(t, upload.Get)
 	assert.Nil(t, upload.Put)
@@ -262,7 +262,7 @@ func TestNewSwaggerDocument_Responses(t *testing.T) {
 
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
-	upload := highDoc.Paths.PathItems["/pet/{petId}/uploadImage"].Post
+	upload := highDoc.Paths.PathItems.GetOrZero("/pet/{petId}/uploadImage").Post
 
 	assert.Len(t, upload.Responses.Codes, 1)
 

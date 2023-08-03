@@ -4,13 +4,22 @@ package libopenapi
 
 import (
 	"fmt"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
-	"os"
-	"strings"
-	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/what-changed/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadDocument_Simple_V2(t *testing.T) {
@@ -244,12 +253,12 @@ func TestDocument_RenderAndReload(t *testing.T) {
 
 	// mutate the model
 	h := m.Model
-	h.Paths.PathItems["/pet/findByStatus"].Get.OperationId = "findACakeInABakery"
-	h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description = "a nice bucket of mice"
-	h.Paths.PathItems["/pet/findByTags"].Get.Tags =
-		append(h.Paths.PathItems["/pet/findByTags"].Get.Tags, "gurgle", "giggle")
+	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId = "findACakeInABakery"
+	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes["400"].Description = "a nice bucket of mice"
+	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags =
+		append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
 
-	h.Paths.PathItems["/pet/{petId}"].Delete.Security = append(h.Paths.PathItems["/pet/{petId}"].Delete.Security,
+	h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security = append(h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security,
 		&base.SecurityRequirement{Requirements: map[string][]string{
 			"pizza-and-cake": {"read:abook", "write:asong"},
 		}})
@@ -262,13 +271,13 @@ func TestDocument_RenderAndReload(t *testing.T) {
 	assert.NotNil(t, bytes)
 
 	h = newDocModel.Model
-	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems["/pet/findByStatus"].Get.OperationId)
+	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId)
 	assert.Equal(t, "a nice bucket of mice",
-		h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description)
-	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
+		h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes["400"].Description)
+	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
 
-	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
-	yu := h.Paths.PathItems["/pet/{petId}"].Delete.Security
+	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
+	yu := h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security
 	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements["pizza-and-cake"][0])
 	assert.Equal(t, "I am a teapot, filled with love.",
 		h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example)
@@ -479,7 +488,7 @@ paths:
 	}
 
 	// extract operation.
-	operation := result.Model.Paths.PathItems["/something"].Get
+	operation := result.Model.Paths.PathItems.GetOrZero("/something").Get
 
 	// print it out.
 	fmt.Printf("param1: %s, is reference? %t, original reference %s",
@@ -647,7 +656,7 @@ paths:
 //		panic(errs)
 //	}
 //
-//	assert.Equal(t, "crs", result.Model.Paths.PathItems["/test"].Get.Parameters[0].Name)
+//	assert.Equal(t, "crs", result.Model.Paths.PathItems.GetOrZero("/test").Get.Parameters[0].Name)
 //}
 
 func TestDocument_ExampleMap(t *testing.T) {
@@ -857,4 +866,60 @@ components:
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
 
+}
+
+// Ensure document ordering is preserved after building and loading.
+func TestDocument_Render_PreserveOrder(t *testing.T) {
+	t.Run("Paths", func(t *testing.T) {
+		const pathCount = 100
+		doc, err := NewDocument([]byte(`openapi: 3.1.0`))
+		require.NoError(t, err)
+		model, errs := doc.BuildV3Model()
+		require.Empty(t, errs)
+		pathItems := orderedmap.New[string, *v3high.PathItem]()
+		model.Model.Paths = &v3high.Paths{
+			PathItems: pathItems,
+		}
+		for i := 0; i < pathCount; i++ {
+			pathItem := &v3high.PathItem{
+				Get: &v3high.Operation{
+					Parameters: make([]*v3high.Parameter, 0),
+				},
+			}
+			pathName := fmt.Sprintf("/foobar/%d", i)
+			pathItems.Set(pathName, pathItem)
+		}
+
+		checkOrder := func(t *testing.T, doc Document) {
+			model, errs := doc.BuildV3Model()
+			require.Empty(t, errs)
+			pathItems := model.Model.Paths.PathItems
+			require.Equal(t, pathCount, orderedmap.Len(pathItems))
+
+			var i int
+			_ = orderedmap.For(model.Model.Paths.PathItems, func(pair orderedmap.Pair[string, *v3high.PathItem]) error {
+				pathName := fmt.Sprintf("/foobar/%d", i)
+				assert.Equal(t, pathName, pair.Key())
+				i++
+				return nil
+			})
+			assert.Equal(t, pathCount, i)
+		}
+
+		checkOrder(t, doc)
+		yamlBytes, doc, _, errs := doc.RenderAndReload()
+		require.Empty(t, errs)
+
+		t.Run("Unmarshalled YAML ordering", func(t *testing.T) {
+			// Reload YAML into new Document, verify ordering.
+			doc2, err := NewDocument(yamlBytes)
+			require.NoError(t, err)
+			checkOrder(t, doc2)
+		})
+
+		t.Run("Reloaded document ordering", func(t *testing.T) {
+			// Verify ordering of reloaded document after call to RenderAndReload().
+			checkOrder(t, doc)
+		})
+	})
 }
