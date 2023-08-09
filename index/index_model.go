@@ -198,6 +198,7 @@ type SpecIndex struct {
 	parametersNode                      *yaml.Node                                    // components/parameters node
 	allParameters                       map[string]*Reference                         // all parameters (components/defs)
 	schemasNode                         *yaml.Node                                    // components/schemas node
+	allRefSchemaDefinitions             []*Reference                                  // all schemas found that are references.
 	allInlineSchemaDefinitions          []*Reference                                  // all schemas found in document outside of components (openapi) or definitions (swagger).
 	allInlineSchemaObjectDefinitions    []*Reference                                  // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
 	allComponentSchemaDefinitions       map[string]*Reference                         // all schemas found in components (openapi) or definitions (swagger).

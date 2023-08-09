@@ -44,6 +44,7 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.Len(t, index.GetPolyAllOfReferences(), 0)
 	assert.Len(t, index.GetPolyOneOfReferences(), 275)
 	assert.Len(t, index.GetPolyAnyOfReferences(), 553)
+	assert.Len(t, index.GetAllReferenceSchemas(), 696)
 	assert.NotNil(t, index.GetRootServersNode())
 	assert.Len(t, index.GetAllRootServers(), 1)
 
@@ -282,7 +283,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 6, index.GetPathCount())
 
 	assert.Equal(t, 6, len(index.GetAllComponentSchemas()))
-	assert.Equal(t, 31, len(index.GetAllSchemas()))
+	assert.Equal(t, 47, len(index.GetAllSchemas()))
 
 	assert.Equal(t, 34, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
@@ -1062,7 +1063,7 @@ func ExampleNewSpecIndex() {
 	var rootNode yaml.Node
 
 	// load in the stripe OpenAPI specification into bytes (it's pretty meaty)
-	stripeSpec, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripeSpec, _ := os.ReadFile("../test_specs/stripe.yaml")
 
 	// unmarshal spec into our rootNode
 	_ = yaml.Unmarshal(stripeSpec, &rootNode)
@@ -1075,6 +1076,7 @@ func ExampleNewSpecIndex() {
 		"%d paths\n"+
 		"%d operations\n"+
 		"%d component schemas\n"+
+		"%d reference schemas\n"+
 		"%d inline schemas\n"+
 		"%d inline schemas that are objects or arrays\n"+
 		"%d total schemas\n"+
@@ -1084,6 +1086,7 @@ func ExampleNewSpecIndex() {
 		len(index.GetAllPaths()),
 		index.GetOperationCount(),
 		len(index.GetAllComponentSchemas()),
+		len(index.GetAllReferenceSchemas()),
 		len(index.GetAllInlineSchemas()),
 		len(index.GetAllInlineSchemaObjects()),
 		len(index.GetAllSchemas()),
@@ -1093,9 +1096,10 @@ func ExampleNewSpecIndex() {
 	// 246 paths
 	// 402 operations
 	// 537 component schemas
+	// 696 reference schemas
 	// 9798 inline schemas
 	// 711 inline schemas that are objects or arrays
-	// 10335 total schemas
+	// 11031 total schemas
 	// 1516 enums
 	// 828 polymorphic references
 }

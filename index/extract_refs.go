@@ -43,6 +43,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			if i%2 == 0 && n.Value == "schema" && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
 				if isRef {
+					// record this reference
+					ref := &Reference{
+						Node: node.Content[i+1],
+						Path: fmt.Sprintf("$.%s.schema", strings.Join(seenPath, ".")),
+					}
+					index.allRefSchemaDefinitions = append(index.allRefSchemaDefinitions, ref)
 					continue
 				}
 				ref := &Reference{
