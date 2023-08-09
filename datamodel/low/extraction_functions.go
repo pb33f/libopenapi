@@ -698,6 +698,9 @@ func AreEqual(l, r Hashable) bool {
 // GenerateHashString will generate a SHA36 hash of any object passed in. If the object is Hashable
 // then the underlying Hash() method will be called.
 func GenerateHashString(v any) string {
+	if v == nil {
+		return ""
+	}
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
 			return fmt.Sprintf(HASH, h.Hash())
