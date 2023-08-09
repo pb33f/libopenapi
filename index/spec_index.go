@@ -14,6 +14,7 @@ package index
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 
@@ -245,9 +246,9 @@ func (index *SpecIndex) GetAllSchemas() []*Reference {
 		combined[i] = refSchemas[x]
 		i++
 	}
-	//sort.Slice(combined, func(i, j int) bool {
-	//	return combined[i].Node.Line < combined[j].Node.Line
-	//})
+	sort.Slice(combined, func(i, j int) bool {
+		return combined[i].Node.Line < combined[j].Node.Line
+	})
 	return combined
 }
 
