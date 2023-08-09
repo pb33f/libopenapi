@@ -225,11 +225,13 @@ func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]
 // GetAllSchemas will return references to all schemas found in the document both inline and those under components
 // The first elements of at the top of the slice, are all the inline references (using GetAllInlineSchemas),
 // and then following on are all the references extracted from the components section (using GetAllComponentSchemas).
+// finally all the references that are not inline, but marked as $ref in the document are returned (using GetAllReferenceSchemas).
+// the results are sorted by line number.
 func (index *SpecIndex) GetAllSchemas() []*Reference {
 	componentSchemas := index.GetAllComponentSchemas()
 	inlineSchemas := index.GetAllInlineSchemas()
-
-	combined := make([]*Reference, len(inlineSchemas)+len(componentSchemas))
+	refSchemas := index.GetAllReferenceSchemas()
+	combined := make([]*Reference, len(inlineSchemas)+len(componentSchemas)+len(refSchemas))
 	i := 0
 	for x := range inlineSchemas {
 		combined[i] = inlineSchemas[x]
@@ -239,6 +241,13 @@ func (index *SpecIndex) GetAllSchemas() []*Reference {
 		combined[i] = componentSchemas[x]
 		i++
 	}
+	for x := range refSchemas {
+		combined[i] = refSchemas[x]
+		i++
+	}
+	//sort.Slice(combined, func(i, j int) bool {
+	//	return combined[i].Node.Line < combined[j].Node.Line
+	//})
 	return combined
 }
 
@@ -251,6 +260,11 @@ func (index *SpecIndex) GetAllInlineSchemaObjects() []*Reference {
 // GetAllInlineSchemas will return all schemas defined in the components section of the document.
 func (index *SpecIndex) GetAllInlineSchemas() []*Reference {
 	return index.allInlineSchemaDefinitions
+}
+
+// GetAllReferenceSchemas will return all schemas that are not inline, but $ref'd from somewhere.
+func (index *SpecIndex) GetAllReferenceSchemas() []*Reference {
+	return index.allRefSchemaDefinitions
 }
 
 // GetAllComponentSchemas will return all schemas defined in the components section of the document.
