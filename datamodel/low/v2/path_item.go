@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -20,7 +21,7 @@ import (
 // The path itself is still exposed to the tooling, but will not know which operations and parameters
 // are available.
 //
-//  - https://swagger.io/specification/v2/#pathItemObject
+//   - https://swagger.io/specification/v2/#pathItemObject
 type PathItem struct {
 	Ref        low.NodeReference[string]
 	Get        low.NodeReference[*Operation]
@@ -47,6 +48,8 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 // Build will extract extensions, parameters and operations for all methods. Every method is handled
 // asynchronously, in order to keep things moving quickly for complex operations.
 func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
 	skip := false
 	var currentNode *yaml.Node
@@ -120,7 +123,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 
 		wg.Add(1)
 
-		go low.BuildModelAsync(pathNode, &op, &wg, &errors)
+		low.BuildModelAsync(pathNode, &op, &wg, &errors)
 
 		opRef := low.NodeReference[*Operation]{
 			Value:     &op,

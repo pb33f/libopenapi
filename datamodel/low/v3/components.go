@@ -19,7 +19,7 @@ import (
 //
 // Holds a set of reusable objects for different aspects of the OAS. All objects defined within the components object
 // will have no effect on the API unless they are explicitly referenced from properties outside the components object.
-//  - https://spec.openapis.org/oas/v3.1.0#components-object
+//   - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
 	Schemas         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]]
 	Responses       low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Response]]
@@ -127,6 +127,8 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 }
 
 func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	co.Reference = new(low.Reference)
 	co.Extensions = low.ExtractExtensions(root)
 

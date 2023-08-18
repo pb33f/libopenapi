@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -24,7 +25,7 @@ import (
 //
 // For computing links, and providing instructions to execute them, a runtime expression is used for accessing values
 // in an operation and using them as parameters while invoking the linked operation.
-//  - https://spec.openapis.org/oas/v3.1.0#link-object
+//   - https://spec.openapis.org/oas/v3.1.0#link-object
 type Link struct {
 	OperationRef low.NodeReference[string]
 	OperationId  low.NodeReference[string]
@@ -53,6 +54,8 @@ func (l *Link) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions and servers from the node.
 func (l *Link) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
 	l.Extensions = low.ExtractExtensions(root)
 	// extract server.

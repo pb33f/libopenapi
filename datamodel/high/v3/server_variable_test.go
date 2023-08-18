@@ -4,40 +4,40 @@
 package v3
 
 import (
-    "github.com/stretchr/testify/assert"
-    "strings"
-    "testing"
+	"github.com/stretchr/testify/assert"
+	"strings"
+	"testing"
 )
 
 func TestServerVariable_MarshalYAML(t *testing.T) {
 
-    svar := &ServerVariable{
-        Enum:        []string{"one", "two", "three"},
-        Description: "money day",
-    }
+	svar := &ServerVariable{
+		Enum:        []string{"one", "two", "three"},
+		Description: "money day",
+	}
 
-    desired := `enum:
+	desired := `enum:
     - one
     - two
     - three
 description: money day`
 
-    svarRend, _ := svar.Render()
+	svarRend, _ := svar.Render()
 
-    assert.Equal(t, desired, strings.TrimSpace(string(svarRend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(svarRend)))
 
-    // mutate
+	// mutate
 
-    svar.Default = "is moments away"
+	svar.Default = "is moments away"
 
-    desired = `enum:
+	desired = `enum:
     - one
     - two
     - three
 default: is moments away
 description: money day`
 
-    svarRend, _ = svar.Render()
+	svarRend, _ = svar.Render()
 
-    assert.Equal(t, desired, strings.TrimSpace(string(svarRend)))
+	assert.Equal(t, desired, strings.TrimSpace(string(svarRend)))
 }

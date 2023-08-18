@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
 )
 
 // OAuthFlows represents a low-level OpenAPI 3+ OAuthFlows object.
-//  - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
+//   - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
 type OAuthFlows struct {
 	Implicit          low.NodeReference[*OAuthFlow]
 	Password          low.NodeReference[*OAuthFlow]
@@ -36,6 +37,8 @@ func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions and all OAuthFlow types from the supplied node.
 func (o *OAuthFlows) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 
@@ -87,7 +90,7 @@ func (o *OAuthFlows) Hash() [32]byte {
 }
 
 // OAuthFlow represents a low-level OpenAPI 3+ OAuthFlow object.
-//  - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
+//   - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
 type OAuthFlow struct {
 	AuthorizationUrl low.NodeReference[string]
 	TokenUrl         low.NodeReference[string]

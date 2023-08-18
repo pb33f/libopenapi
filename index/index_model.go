@@ -4,12 +4,14 @@
 package index
 
 import (
-	"golang.org/x/sync/syncmap"
-	"gopkg.in/yaml.v3"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
 	"sync"
+
+	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Constants used to determine if resolving is local, file based or remote file based.
@@ -60,6 +62,25 @@ type SpecIndexConfig struct {
 	// More details on relative references can be found in issue #73: https://github.com/pb33f/libopenapi/issues/73
 	BaseURL *url.URL // set the Base URL for resolving relative references if the spec is exploded.
 
+	// If resolving remotely, the RemoteURLHandler will be used to fetch the remote document.
+	// If not set, the default http client will be used.
+	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
+	RemoteURLHandler func(url string) (*http.Response, error)
+
+	// FSHandler is an entity that implements the `fs.FS` interface that will be used to fetch local or remote documents.
+	// This is useful if you want to use a custom file system handler, or if you want to use a custom http client or
+	// custom network implementation for a lookup.
+	//
+	// libopenapi will pass the path to the FSHandler, and it will be up to the handler to determine how to fetch
+	// the document. This is really useful if your application has a custom file system or uses a database for storing
+	// documents.
+	//
+	// Is the FSHandler is set, it will be used for all lookups, regardless of whether they are local or remote.
+	// it also overrides the RemoteURLHandler if set.
+	//
+	// Resolves[#85] https://github.com/pb33f/libopenapi/issues/85
+	FSHandler fs.FS
+
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
 
@@ -75,6 +96,13 @@ type SpecIndexConfig struct {
 	// ParentIndex allows the index to be created with knowledge of a parent, before being parsed. This allows
 	// a breakglass to be used to prevent loops, checking the tree before recursing down.
 	ParentIndex *SpecIndex
+
+	// If set to true, the index will not be built out, which means only the foundational elements will be
+	// parsed and added to the index. This is useful to avoid building out an index if the specification is
+	// broken up into references and you want it fully resolved.
+	//
+	// Use the `BuildIndex()` method on the index to build it out once resolved/ready.
+	AvoidBuildIndex bool
 
 	// private fields
 	seenRemoteSources *syncmap.Map
@@ -154,14 +182,8 @@ type SpecIndex struct {
 	operationTagsCount                  int                                           // number of unique tags in operations
 	globalTagsCount                     int                                           // number of global tags defined
 	totalTagsCount                      int                                           // number unique tags in spec
-	securitySchemesCount                int                                           // security schemes
-	globalRequestBodiesCount            int                                           // component request bodies
-	globalResponsesCount                int                                           // component responses
-	globalHeadersCount                  int                                           // component headers
-	globalExamplesCount                 int                                           // component examples
 	globalLinksCount                    int                                           // component links
 	globalCallbacksCount                int                                           // component callbacks
-	globalCallbacks                     int                                           // component callbacks.
 	pathCount                           int                                           // number of paths
 	operationCount                      int                                           // number of operations
 	operationParamCount                 int                                           // number of params defined in operations
@@ -173,11 +195,10 @@ type SpecIndex struct {
 	root                                *yaml.Node                                    // the root document
 	pathsNode                           *yaml.Node                                    // paths node
 	tagsNode                            *yaml.Node                                    // tags node
-	componentsNode                      *yaml.Node                                    // components node
 	parametersNode                      *yaml.Node                                    // components/parameters node
-	allParametersNode                   map[string]*Reference                         // all parameters node
 	allParameters                       map[string]*Reference                         // all parameters (components/defs)
 	schemasNode                         *yaml.Node                                    // components/schemas node
+	allRefSchemaDefinitions             []*Reference                                  // all schemas found that are references.
 	allInlineSchemaDefinitions          []*Reference                                  // all schemas found in document outside of components (openapi) or definitions (swagger).
 	allInlineSchemaObjectDefinitions    []*Reference                                  // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
 	allComponentSchemaDefinitions       map[string]*Reference                         // all schemas found in components (openapi) or definitions (swagger).
@@ -195,7 +216,6 @@ type SpecIndex struct {
 	allLinks                            map[string]*Reference                         // all links
 	callbacksNode                       *yaml.Node                                    // components/callbacks node
 	allCallbacks                        map[string]*Reference                         // all components examples
-	externalDocumentsNode               *yaml.Node                                    // external documents node
 	allExternalDocuments                map[string]*Reference                         // all external documents
 	externalSpecIndex                   map[string]*SpecIndex                         // create a primary index of all external specs and componentIds
 	refErrors                           []error                                       // errors when indexing references

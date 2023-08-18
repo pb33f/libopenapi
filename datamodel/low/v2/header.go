@@ -17,7 +17,7 @@ import (
 // Header Represents a low-level Swagger / OpenAPI 2 Header object.
 //
 // A Header is essentially identical to a Parameter, except it does not contain 'name' or 'in' properties.
-//  - https://swagger.io/specification/v2/#headerObject
+//   - https://swagger.io/specification/v2/#headerObject
 type Header struct {
 	Type             low.NodeReference[string]
 	Format           low.NodeReference[string]
@@ -52,6 +52,8 @@ func (h *Header) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 
 // Build will build out items, extensions and default value from the supplied node.
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	h.Extensions = low.ExtractExtensions(root)
 	items, err := low.ExtractObject[*Items](ItemsLabel, root, idx)
 	if err != nil {

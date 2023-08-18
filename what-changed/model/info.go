@@ -17,15 +17,15 @@ type InfoChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Info objects
 func (i *InfoChanges) GetAllChanges() []*Change {
-    var changes []*Change
-    changes = append(changes, i.Changes...)
-    if i.ContactChanges != nil {
-        changes = append(changes, i.ContactChanges.GetAllChanges()...)
-    }
-    if i.LicenseChanges != nil {
-        changes = append(changes, i.LicenseChanges.GetAllChanges()...)
-    }
-    return changes
+	var changes []*Change
+	changes = append(changes, i.Changes...)
+	if i.ContactChanges != nil {
+		changes = append(changes, i.ContactChanges.GetAllChanges()...)
+	}
+	if i.LicenseChanges != nil {
+		changes = append(changes, i.LicenseChanges.GetAllChanges()...)
+	}
+	return changes
 }
 
 // TotalChanges represents the total number of changes made to an Info object.

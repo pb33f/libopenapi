@@ -6,13 +6,13 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
-	"strconv"
-	"strings"
-
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 // FindItemInMap accepts a string key and a collection of KeyReference[string] and ValueReference[T]. Every
@@ -22,7 +22,7 @@ func FindItemInMap[T any](item string, collection map[KeyReference[string]]Value
 		if n.Value == item {
 			return &o
 		}
-		if strings.ToLower(n.Value) == strings.ToLower(item) {
+		if strings.EqualFold(item, n.Value) {
 			return &o
 		}
 	}
@@ -85,14 +85,14 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 							found[rv].Node.Column)
 					}
 				}
-				return found[rv].Node, nil
+				return utils.NodeAlias(found[rv].Node), nil
 			}
 		}
 
 		// perform a search for the reference in the index
 		foundRefs := idx.SearchIndexForReference(rv)
 		if len(foundRefs) > 0 {
-			return foundRefs[0].Node, nil
+			return utils.NodeAlias(foundRefs[0].Node), nil
 		}
 
 		// let's try something else to find our references.
@@ -105,7 +105,7 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 				nodes, fErr := path.Find(idx.GetRootNode())
 				if fErr == nil {
 					if len(nodes) > 0 {
-						return nodes[0], nil
+						return utils.NodeAlias(nodes[0]), nil
 					}
 				}
 			}
@@ -122,6 +122,7 @@ func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecInd
 	var circError error
 	var isReference bool
 	var referenceValue string
+	root = utils.NodeAlias(root)
 	if h, _, rv := utils.IsNodeRefValue(root); h {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
@@ -166,6 +167,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 	var circError error
 	var isReference bool
 	var referenceValue string
+	root = utils.NodeAlias(root)
 	if rf, rl, refVal := utils.IsNodeRefValue(root); rf {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
@@ -250,6 +252,7 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 ) {
 	var ln, vn *yaml.Node
 	var circError error
+	root = utils.NodeAlias(root)
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		ref, err := LocateRefNode(root, idx)
 		if ref != nil {
@@ -369,7 +372,10 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 	if utils.IsNodeMap(root) {
 		var currentKey *yaml.Node
 		skip := false
-		for i, node := range root.Content {
+		rlen := len(root.Content)
+
+		for i := 0; i < rlen; i++ {
+			node := root.Content[i]
 			if !includeExtensions {
 				if strings.HasPrefix(strings.ToLower(node.Value), "x-") {
 					skip = true
@@ -384,6 +390,14 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 				currentKey = node
 				continue
 			}
+
+			if currentKey.Tag == "!!merge" && currentKey.Value == "<<" {
+				root.Content = append(root.Content, utils.NodeAlias(node).Content...)
+				rlen = len(root.Content)
+				currentKey = nil
+				continue
+			}
+			node = utils.NodeAlias(node)
 
 			var isReference bool
 			var referenceValue string
@@ -469,6 +483,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	var referenceValue string
 	var labelNode, valueNode *yaml.Node
 	var circError error
+	root = utils.NodeAlias(root)
 	if rf, rl, rv := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		ref, err := LocateRefNode(root, idx)
@@ -514,6 +529,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 
 		buildMap := func(label *yaml.Node, value *yaml.Node, c chan mappingResult[PT], ec chan<- error, ref string) {
 			var n PT = new(N)
+			value = utils.NodeAlias(value)
 			_ = BuildModel(value, n)
 			err := n.Build(value, idx)
 			if err != nil {
@@ -543,6 +559,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 
 		totalKeys := 0
 		for i, en := range valueNode.Content {
+			en = utils.NodeAlias(en)
 			referenceValue = ""
 			if i%2 == 0 {
 				currentLabelNode = en
@@ -619,6 +636,7 @@ func ExtractMap[PT Buildable[N], N any](
 //
 //	int64, float64, bool, string
 func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[any] {
+	root = utils.NodeAlias(root)
 	extensions := utils.FindExtensionNodes(root.Content)
 	extensionMap := make(map[KeyReference[string]]ValueReference[any])
 	for _, ext := range extensions {
@@ -680,10 +698,17 @@ func AreEqual(l, r Hashable) bool {
 // GenerateHashString will generate a SHA36 hash of any object passed in. If the object is Hashable
 // then the underlying Hash() method will be called.
 func GenerateHashString(v any) string {
+	if v == nil {
+		return ""
+	}
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
 			return fmt.Sprintf(HASH, h.Hash())
 		}
+	}
+	// if we get here, we're a primitive, check if we're a pointer and de-point
+	if reflect.TypeOf(v).Kind() == reflect.Ptr {
+		v = reflect.ValueOf(v).Elem().Interface()
 	}
 	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
 }

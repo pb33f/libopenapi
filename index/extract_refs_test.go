@@ -111,3 +111,26 @@ components:
 	assert.Len(t, idx.allInlineSchemaDefinitions, 21)
 	assert.Len(t, idx.allInlineSchemaObjectDefinitions, 7)
 }
+
+// https://github.com/pb33f/libopenapi/issues/112
+func TestSpecIndex_ExtractRefs_CheckReferencesWithBracketsInName(t *testing.T) {
+
+	yml := `openapi: 3.0.0
+components:
+  schemas:
+    Cake[Burger]:
+      type: string
+      description: A cakey burger
+    Happy:
+      type: object
+      properties:
+        mingo:
+          $ref: '#/components/schemas/Cake[Burger]'
+   `
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Len(t, idx.allMappedRefs, 1)
+	assert.Equal(t, "Cake[Burger]", idx.allMappedRefs["#/components/schemas/Cake[Burger]"].Name)
+}

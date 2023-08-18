@@ -18,7 +18,7 @@ import (
 // Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
 //
 // A unique parameter is defined by a combination of a name and location.
-//  - https://spec.openapis.org/oas/v3.1.0#parameter-object
+//   - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
 	Name            low.NodeReference[string]
 	In              low.NodeReference[string]
@@ -59,6 +59,8 @@ func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // Build will extract examples, extensions and content/media types.
 func (p *Parameter) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 

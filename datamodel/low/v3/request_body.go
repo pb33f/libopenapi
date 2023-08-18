@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
 )
 
 // RequestBody represents a low-level OpenAPI 3+ RequestBody object.
-//  - https://spec.openapis.org/oas/v3.1.0#request-body-object
+//   - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
 	Description low.NodeReference[string]
 	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
@@ -40,6 +41,8 @@ func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType]
 
 // Build will extract extensions and MediaType objects from the node.
 func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	rb.Reference = new(low.Reference)
 	rb.Extensions = low.ExtractExtensions(root)
 

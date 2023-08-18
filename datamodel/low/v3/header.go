@@ -16,7 +16,7 @@ import (
 )
 
 // Header represents a low-level OpenAPI 3+ Header object.
-//  - https://spec.openapis.org/oas/v3.1.0#header-object
+//   - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
 	Description     low.NodeReference[string]
 	Required        low.NodeReference[bool]
@@ -96,6 +96,8 @@ func (h *Header) Hash() [32]byte {
 
 // Build will extract extensions, examples, schema and content/media types from node.
 func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	h.Reference = new(low.Reference)
 	h.Extensions = low.ExtractExtensions(root)
 

@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"reflect"
 	"strings"
 	"sync"
@@ -144,7 +145,7 @@ func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if l != nil && l.Value != "" && (r == nil || r.Value == "") {
+	if l != nil && l.Value != "" && (r == nil || r.Value == "" && !utils.IsNodeArray(r) && !utils.IsNodeMap(r)) {
 		CreateChange(changes, PropertyRemoved, label, l, r, breaking, orig, new)
 		return
 	}
@@ -160,8 +161,15 @@ func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, b
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if (l == nil || l.Value == "") && r != nil && r.Value != "" {
-		CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
+	if (l == nil || l.Value == "") && (r != nil && (r.Value != "" || utils.IsNodeArray(r)) || utils.IsNodeMap(r)) {
+		if r != nil {
+			if l != nil && (len(l.Content) < len(r.Content)) && len(l.Content) <= 0 {
+				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
+			}
+			if l == nil {
+				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
+			}
+		}
 	}
 }
 
@@ -174,6 +182,50 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, 
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
 	if l != nil && l.Value != "" && r != nil && r.Value != "" && (r.Value != l.Value || r.Tag != l.Tag) {
 		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeArray(l) && r != nil && !utils.IsNodeArray(r) {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && !utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeMap(l) && r != nil && !utils.IsNodeMap(r) {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && !utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
+		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
+		if len(l.Content) != len(r.Content) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+			return
+		}
+
+		// there is no way to know how to compare the content of the array, without
+		// rendering the yaml.Node to a string and comparing the string.
+		leftBytes, _ := yaml.Marshal(l)
+		rightBytes, _ := yaml.Marshal(r)
+
+		if string(leftBytes) != string(rightBytes) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		}
+		return
+	}
+	if l != nil && utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
+		// there is no way to know how to compare the content of the map, without
+		// rendering the yaml.Node to a string and comparing the string.
+		leftBytes, _ := yaml.Marshal(l)
+		rightBytes, _ := yaml.Marshal(r)
+
+		if string(leftBytes) != string(rightBytes) {
+			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
+		}
+		return
 	}
 }
 
@@ -233,10 +285,10 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight map[low.KeyRefer
 	checkLeft := func(k string, doneChan chan bool, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
 		rhash := g[k]
 		if rhash == "" {
+			chLock.Lock()
 			if p[k].GetValueNode().Value == "" {
 				p[k].GetValueNode().Value = k
 			}
-			chLock.Lock()
 			CreateChange(changes, ObjectRemoved, label,
 				p[k].GetValueNode(), nil, true,
 				p[k].GetValue(), nil)
@@ -293,10 +345,10 @@ func checkRightValue[T any](k string, doneChan chan bool, f map[string]string, p
 
 	lhash := f[k]
 	if lhash == "" {
+		lock.Lock()
 		if p[k].GetValueNode().Value == "" {
 			p[k].GetValueNode().Value = k // this is kinda dirty, but I don't want to duplicate code so sue me.
 		}
-		lock.Lock()
 		CreateChange(changes, ObjectAdded, label,
 			nil, p[k].GetValueNode(), false,
 			nil, p[k].GetValue())

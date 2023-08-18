@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -195,9 +196,9 @@ func FindFirstKeyNode(key string, nodes []*yaml.Node, depth int) (keyNode *yaml.
 	for i, v := range nodes {
 		if key != "" && key == v.Value {
 			if i+1 >= len(nodes) {
-				return v, nodes[i] // this is the node we need.
+				return v, NodeAlias(nodes[i]) // this is the node we need.
 			}
-			return v, nodes[i+1] // next node is what we need.
+			return v, NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 		if len(v.Content) > 0 {
 			depth++
@@ -233,7 +234,8 @@ func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNo
 		if i%2 != 0 {
 			continue
 		}
-		if strings.ToLower(key) == strings.ToLower(v.Value) {
+
+		if strings.EqualFold(key, v.Value) {
 			return v, nodes[i+1] // next node is what we need.
 		}
 	}
@@ -281,12 +283,12 @@ func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelN
 			if key == v.Content[x].Value {
 				if IsNodeMap(v) {
 					if x+1 == len(v.Content) {
-						return v, v.Content[x], v.Content[x]
+						return v, v.Content[x], NodeAlias(v.Content[x])
 					}
-					return v, v.Content[x], v.Content[x+1]
+					return v, v.Content[x], NodeAlias(v.Content[x+1])
 				}
 				if IsNodeArray(v) {
-					return v, v.Content[x], v.Content[x]
+					return v, v.Content[x], NodeAlias(v.Content[x])
 				}
 			}
 		}
@@ -302,7 +304,7 @@ func FindKeyNodeFullTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, lab
 			continue
 		}
 		if i%2 == 0 && key == nodes[i].Value {
-			return nodes[i], nodes[i], nodes[i+1] // next node is what we need.
+			return nodes[i], nodes[i], NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 	}
 	return nil, nil, nil
@@ -320,7 +322,7 @@ func FindExtensionNodes(nodes []*yaml.Node) []*ExtensionNode {
 			if i+1 < len(nodes) {
 				extensions = append(extensions, &ExtensionNode{
 					Key:   v,
-					Value: nodes[i+1],
+					Value: NodeAlias(nodes[i+1]),
 				})
 			}
 		}
@@ -361,12 +363,38 @@ func IsNodeMap(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	return node.Tag == "!!map"
+	n := NodeAlias(node)
+	return n.Tag == "!!map"
+}
+
+// IsNodeAlias checks if the node is an alias, and lifts out the anchor
+func IsNodeAlias(node *yaml.Node) (*yaml.Node, bool) {
+	if node == nil {
+		return nil, false
+	}
+	if node.Kind == yaml.AliasNode {
+		node = node.Alias
+		return node, true
+	}
+	return node, false
+}
+
+// NodeAlias checks if the node is an alias, and lifts out the anchor
+func NodeAlias(node *yaml.Node) *yaml.Node {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.AliasNode {
+		node = node.Alias
+		return node
+	}
+	return node
 }
 
 // IsNodePolyMorphic will return true if the node contains polymorphic keys.
 func IsNodePolyMorphic(node *yaml.Node) bool {
-	for i, v := range node.Content {
+	n := NodeAlias(node)
+	for i, v := range n.Content {
 		if i%2 == 0 {
 			if v.Value == "anyOf" || v.Value == "oneOf" || v.Value == "allOf" {
 				return true
@@ -381,7 +409,8 @@ func IsNodeArray(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	return node.Tag == "!!seq"
+	n := NodeAlias(node)
+	return n.Tag == "!!seq"
 }
 
 // IsNodeStringValue checks if a node is a string value
@@ -389,7 +418,8 @@ func IsNodeStringValue(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	return node.Tag == "!!str"
+	n := NodeAlias(node)
+	return n.Tag == "!!str"
 }
 
 // IsNodeIntValue will check if a node is an int value
@@ -397,7 +427,8 @@ func IsNodeIntValue(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	return node.Tag == "!!int"
+	n := NodeAlias(node)
+	return n.Tag == "!!int"
 }
 
 // IsNodeFloatValue will check is a node is a float value.
@@ -405,7 +436,16 @@ func IsNodeFloatValue(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	return node.Tag == "!!float"
+	n := NodeAlias(node)
+	return n.Tag == "!!float"
+}
+
+// IsNodeNumberValue will check if a node can be parsed as a float value.
+func IsNodeNumberValue(node *yaml.Node) bool {
+	if node == nil {
+		return false
+	}
+	return IsNodeIntValue(node) || IsNodeFloatValue(node)
 }
 
 // IsNodeBoolValue will check is a node is a bool
@@ -413,18 +453,20 @@ func IsNodeBoolValue(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	return node.Tag == "!!bool"
+	n := NodeAlias(node)
+	return n.Tag == "!!bool"
 }
 
 func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
+
 	if node == nil {
 		return false, nil, ""
 	}
-
-	for i, r := range node.Content {
+	n := NodeAlias(node)
+	for i, r := range n.Content {
 		if i%2 == 0 {
 			if r.Value == "$ref" {
-				return true, r, node.Content[i+1].Value
+				return true, r, n.Content[i+1].Value
 			}
 		}
 	}
@@ -494,6 +536,19 @@ func ConvertYAMLtoJSON(yamlData []byte) ([]byte, error) {
 	return jsonData, nil
 }
 
+// ConvertYAMLtoJSONPretty will do exactly what you think it will. It will deserialize YAML into serialized JSON.
+// However, this version will apply prefix/indentation to the JSON.
+func ConvertYAMLtoJSONPretty(yamlData []byte, prefix string, indent string) ([]byte, error) {
+	var decodedYaml map[string]interface{}
+	err := yaml.Unmarshal(yamlData, &decodedYaml)
+	if err != nil {
+		return nil, err
+	}
+	// if the data can be decoded, it can be encoded (that's my view anyway). no need for an error check.
+	jsonData, _ := json.MarshalIndent(decodedYaml, prefix, indent)
+	return jsonData, nil
+}
+
 // IsHttpVerb will check if an operation is valid or not.
 func IsHttpVerb(verb string) bool {
 	verbs := []string{"get", "post", "put", "patch", "delete", "options", "trace", "head"}
@@ -505,6 +560,9 @@ func IsHttpVerb(verb string) bool {
 	return false
 }
 
+// define bracket name expression
+var bracketNameExp = regexp.MustCompile("^(\\w+)\\[(\\w+)\\]$")
+
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
@@ -512,8 +570,8 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
-		reg, _ := regexp.MatchString("[%=;~.]", segs[i])
-		if reg {
+		pathCharExp, _ := regexp.MatchString("[%=;~.]", segs[i])
+		if pathCharExp {
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
 			if len(cleaned) > 0 {
@@ -521,6 +579,19 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				continue
 			}
 		} else {
+
+			// check for brackets in the name, and if found, rewire the path to encapsulate them
+			// correctly. https://github.com/pb33f/libopenapi/issues/112
+			brackets := bracketNameExp.FindStringSubmatch(segs[i])
+
+			if len(brackets) > 0 {
+				segs[i] = bracketNameExp.ReplaceAllString(segs[i], "['$1[$2]']")
+				if len(cleaned) > 0 {
+					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+					continue
+				}
+			}
+
 			intVal, err := strconv.ParseInt(segs[i], 10, 32)
 			if err == nil && intVal <= 99 {
 				segs[i] = fmt.Sprintf("[%d]", intVal)
@@ -635,4 +706,43 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 		seen[enum.Value] = enum
 	}
 	return res
+}
+
+// DetermineWhitespaceLength will determine the length of the whitespace for a JSON or YAML file.
+func DetermineWhitespaceLength(input string) int {
+	exp := regexp.MustCompile(`\n( +)`)
+	whiteSpace := exp.FindAllStringSubmatch(input, -1)
+	var filtered []string
+	for i := range whiteSpace {
+		filtered = append(filtered, whiteSpace[i][1])
+	}
+	sort.Strings(filtered)
+	if len(filtered) > 0 {
+		return len(filtered[0])
+	} else {
+		return 0
+	}
+}
+
+// CheckForMergeNodes will check the top level of the schema for merge nodes. If any are found, then the merged nodes
+// will be appended to the end of the rest of the nodes in the schema.
+// Note: this is a destructive operation, so the in-memory node structure will be modified
+func CheckForMergeNodes(node *yaml.Node) {
+	if node == nil {
+		return
+	}
+	total := len(node.Content)
+	for i := 0; i < total; i++ {
+		mn := node.Content[i]
+		if i%2 == 0 {
+			if mn.Tag == "!!merge" {
+				an := node.Content[i+1].Alias
+				if an != nil {
+					node.Content = append(node.Content, an.Content...) // append the merged nodes
+					total = len(node.Content)
+					i += 2
+				}
+			}
+		}
+	}
 }

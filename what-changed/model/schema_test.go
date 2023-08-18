@@ -1055,6 +1055,86 @@ components:
 	assert.Equal(t, v3.ContainsLabel, changes.Changes[0].Property)
 }
 
+func TestCompareSchemas_UnevaluatedProperties_Bool(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: false`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: true`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_UnevaluatedProperties_Bool_Schema(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: false`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties:
+        type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_UnevaluatedProperties_Schema_Bool(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties: false`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      unevaluatedProperties:
+        type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(right, left)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
+
 func TestCompareSchemas_UnevaluatedProperties(t *testing.T) {
 	left := `openapi: 3.1
 components:
@@ -2386,5 +2466,200 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExamplesArray_AllOf(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      allOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c" ]`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      allOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c","d","e"]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExampleMap_AllOf(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      description: payload thing
+      allOf:
+        - type: object
+          description: allOf thing
+          example:
+            - name: chicken`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      description: payload thing
+      allOf:
+        - type: object
+          description: allOf thing
+          example:
+            - name: nuggets`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+}
+
+func TestCompareSchemas_Schema_AddExamplesArray(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c" ]`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example: [ "a", "b", "c","d","e"]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExamplesMap(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example: 
+            oh: my`
+	right := `openapi: 3.0
+components:
+  schemas:
+    SomePayload:
+      type: object
+      oneOf:
+        - type: array
+          items:
+            type: string
+          example:
+            oh: why`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+}
+
+func TestCompareSchemas_Schema_AddExamples(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    containerShared:
+     description: Shared properties by request payload and response
+     type: object
+     properties:
+       close_time:
+         example: '2020-07-09T00:17:55Z'
+       container_type:
+         type: string
+         enum:
+           - default
+           - case
+         example: default
+       custom_fields:
+         type:
+           - array
+           - 'null'
+         items:
+           type: object`
+	right := `openapi: 3.0
+components:
+  schemas:
+    containerShared:
+     description: Shared properties by request payload and response
+     type: object
+     properties:
+       close_time:
+         example: '2020-07-09T00:17:55Z'
+       container_type:
+         type: string
+         enum:
+           - default
+           - case
+         example: default
+       custom_fields:
+         type:
+           - array
+           - 'null'
+         items:
+           type: object
+         example:
+           - name: auditedAt
+             source: global
+             dataType: text
+             requiredToResolve: false`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	changes := CompareDocuments(leftDoc, rightDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
 
 }

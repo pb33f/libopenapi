@@ -109,17 +109,67 @@ func (d *Document) GetExternalDocs() *low.NodeReference[any] {
 	}
 }
 
-// TODO: this is early prototype mutation/modification code, keeping it around for later.
-//func (d *Document) AddTag() *base.Tag {
-//	t := base.NewTag()
-//	//d.Tags.KeyNode
-//	t.Name.Value = "nice new tag"
-//
-//	dat, _ := yaml.Marshal(t)
-//	var inject yaml.Node
-//	_ = yaml.Unmarshal(dat, &inject)
-//
-//	d.Tags.ValueNode.Content = append(d.Tags.ValueNode.Content, inject.Content[0])
-//
-//	return t
+// TODO: some behavior in this hash is not correct, disabled for now
+// Hash will return a consistent SHA256 Hash of the Document object
+//func (d *Document) Hash() [32]byte {
+//	var f []string
+//	if d.Version.Value != "" {
+//		f = append(f, d.Version.Value)
+//	}
+//	if d.Info.Value != nil {
+//		f = append(f, low.GenerateHashString(d.Info.Value))
+//	}
+//	if d.JsonSchemaDialect.Value != "" {
+//		f = append(f, d.JsonSchemaDialect.Value)
+//	}
+//	keys := make([]string, len(d.Webhooks.Value))
+//	z := 0
+//	for k := range d.Webhooks.Value {
+//		keys[z] = fmt.Sprintf("%s-%s", k.Value, low.GenerateHashString(d.Webhooks.Value[k].Value))
+//		z++
+//	}
+//	z = 0
+//	sort.Strings(keys)
+//	f = append(f, keys...)
+//	keys = make([]string, len(d.Servers.Value))
+//	for k := range d.Servers.Value {
+//		keys[z] = fmt.Sprintf("%s", low.GenerateHashString(d.Servers.Value[k].Value))
+//		z++
+//	}
+//	sort.Strings(keys)
+//	f = append(f, keys...)
+//	if d.Paths.Value != nil {
+//		f = append(f, low.GenerateHashString(d.Paths.Value))
+//	}
+//	if d.Components.Value != nil {
+//		f = append(f, low.GenerateHashString(d.Components.Value))
+//	}
+//	keys = make([]string, len(d.Security.Value))
+//	z = 0
+//	for k := range d.Security.Value {
+//		keys[z] = fmt.Sprintf("%s", low.GenerateHashString(d.Security.Value[k].Value))
+//		z++
+//	}
+//	sort.Strings(keys)
+//	f = append(f, keys...)
+//	keys = make([]string, len(d.Tags.Value))
+//	z = 0
+//	for k := range d.Tags.Value {
+//		keys[z] = fmt.Sprintf("%s", low.GenerateHashString(d.Tags.Value[k].Value))
+//		z++
+//	}
+//	sort.Strings(keys)
+//	f = append(f, keys...)
+//	if d.ExternalDocs.Value != nil {
+//		f = append(f, low.GenerateHashString(d.ExternalDocs.Value))
+//	}
+//	keys = make([]string, len(d.Extensions))
+//	z = 0
+//	for k := range d.Extensions {
+//		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(d.Extensions[k].Value))))
+//		z++
+//	}
+//	sort.Strings(keys)
+//	f = append(f, keys...)
+//	return sha256.Sum256([]byte(strings.Join(f, "|")))
 //}

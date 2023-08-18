@@ -16,7 +16,8 @@ import (
 )
 
 // Example represents a low-level Example object as defined by OpenAPI 3+
-//  v3 - https://spec.openapis.org/oas/v3.1.0#example-object
+//
+//	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
 	Summary       low.NodeReference[string]
 	Description   low.NodeReference[string]
@@ -60,6 +61,8 @@ func (ex *Example) Hash() [32]byte {
 
 // Build extracts extensions and example value
 func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)
 	ex.Extensions = low.ExtractExtensions(root)
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)

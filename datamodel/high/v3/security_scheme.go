@@ -18,7 +18,7 @@ import (
 // authorization code) as defined in RFC6749 (https://www.rfc-editor.org/rfc/rfc6749), and OpenID Connect Discovery.
 // Please note that as of 2020, the implicit  flow is about to be deprecated by OAuth 2.0 Security Best Current Practice.
 // Recommended for most use case is Authorization Code Grant flow with PKCE.
-//  - https://spec.openapis.org/oas/v3.1.0#security-scheme-object
+//   - https://spec.openapis.org/oas/v3.1.0#security-scheme-object
 type SecurityScheme struct {
 	Type             string         `json:"type,omitempty" yaml:"type,omitempty"`
 	Description      string         `json:"description,omitempty" yaml:"description,omitempty"`

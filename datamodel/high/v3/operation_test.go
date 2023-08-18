@@ -4,9 +4,10 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -64,7 +65,7 @@ func TestOperation_MarshalYAML(t *testing.T) {
 		},
 		OperationId: "slice",
 		Parameters: []*Parameter{
-			&Parameter{
+			{
 				Name: "mice",
 			},
 		},
@@ -88,5 +89,79 @@ requestBody:
     description: dice`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+
+}
+
+func TestOperation_MarshalYAMLInline(t *testing.T) {
+
+	op := &Operation{
+		Tags:        []string{"test"},
+		Summary:     "nice",
+		Description: "rice",
+		ExternalDocs: &base.ExternalDoc{
+			Description: "spice",
+		},
+		OperationId: "slice",
+		Parameters: []*Parameter{
+			{
+				Name: "mice",
+			},
+		},
+		RequestBody: &RequestBody{
+			Description: "dice",
+		},
+	}
+
+	rend, _ := op.RenderInline()
+
+	desired := `tags:
+    - test
+summary: nice
+description: rice
+externalDocs:
+    description: spice
+operationId: slice
+parameters:
+    - name: mice
+requestBody:
+    description: dice`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+
+}
+
+func TestOperation_EmptySecurity(t *testing.T) {
+	yml := `
+security: []`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n v3.Operation
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	r := NewOperation(&n)
+
+	assert.NotNil(t, r.Security)
+	assert.Len(t, r.Security, 0)
+
+}
+
+func TestOperation_NoSecurity(t *testing.T) {
+	yml := `operationId: test`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n v3.Operation
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(idxNode.Content[0], idx)
+
+	r := NewOperation(&n)
+
+	assert.Nil(t, r.Security)
 
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -16,8 +17,9 @@ import (
 // ExternalDoc represents a low-level External Documentation object as defined by OpenAPI 2 and 3
 //
 // Allows referencing an external resource for extended documentation.
-//  v2 - https://swagger.io/specification/v2/#externalDocumentationObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
+//
+//	v2 - https://swagger.io/specification/v2/#externalDocumentationObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
 type ExternalDoc struct {
 	Description low.NodeReference[string]
 	URL         low.NodeReference[string]
@@ -32,6 +34,8 @@ func (ex *ExternalDoc) FindExtension(ext string) *low.ValueReference[any] {
 
 // Build will extract extensions from the ExternalDoc instance.
 func (ex *ExternalDoc) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)
 	ex.Extensions = low.ExtractExtensions(root)
 	return nil

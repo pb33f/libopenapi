@@ -18,7 +18,7 @@ import (
 //
 // Items is a limited subset of JSON-Schema's items object. It is used by parameter definitions that are not
 // located in "body". Items, is actually identical to a Header, except it does not have description.
-//  - https://swagger.io/specification/v2/#itemsObject
+//   - https://swagger.io/specification/v2/#itemsObject
 type Items struct {
 	Type             low.NodeReference[string]
 	Format           low.NodeReference[string]
@@ -103,6 +103,8 @@ func (i *Items) Hash() [32]byte {
 
 // Build will build out items and default value.
 func (i *Items) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	i.Extensions = low.ExtractExtensions(root)
 	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
 	if iErr != nil {

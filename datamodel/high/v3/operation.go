@@ -68,7 +68,11 @@ func NewOperation(operation *low.Operation) *Operation {
 		for s := range operation.Security.Value {
 			sec = append(sec, base.NewSecurityRequirement(operation.Security.Value[s].Value))
 		}
-		o.Security = sec
+		if len(sec) > 0 {
+			o.Security = sec
+		} else {
+			o.Security = []*base.SecurityRequirement{} // security is defined, but empty.
+		}
 	}
 	var servers []*Server
 	for i := range operation.Servers.Value {
@@ -101,8 +105,19 @@ func (o *Operation) Render() ([]byte, error) {
 	return yaml.Marshal(o)
 }
 
+func (o *Operation) RenderInline() ([]byte, error) {
+	d, _ := o.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the Operation object.
 func (o *Operation) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(o, o.low)
+	return nb.Render(), nil
+}
+
+func (o *Operation) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(o, o.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }

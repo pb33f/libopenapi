@@ -10,10 +10,12 @@
 package v3
 
 import (
+	"bytes"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -153,8 +155,36 @@ func (d *Document) Render() ([]byte, error) {
 	return yaml.Marshal(d)
 }
 
+// RenderWithIndention will return a YAML representation of the Document object as a byte slice.
+// the rendering will use the original indention of the document.
+func (d *Document) RenderWithIndention(indent int) []byte {
+	var buf bytes.Buffer
+	yamlEncoder := yaml.NewEncoder(&buf)
+	yamlEncoder.SetIndent(indent)
+	_ = yamlEncoder.Encode(d)
+	return buf.Bytes()
+}
+
+// RenderJSON will return a JSON representation of the Document object as a byte slice.
+func (d *Document) RenderJSON(indention string) []byte {
+	yamlData, _ := yaml.Marshal(d)
+	dat, _ := utils.ConvertYAMLtoJSONPretty(yamlData, "", indention)
+	return dat
+}
+
+func (d *Document) RenderInline() ([]byte, error) {
+	di, _ := d.MarshalYAMLInline()
+	return yaml.Marshal(di)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the Document object.
 func (d *Document) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(d, d.low)
+	return nb.Render(), nil
+}
+
+func (d *Document) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(d, d.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }

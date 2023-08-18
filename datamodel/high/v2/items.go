@@ -10,7 +10,7 @@ import (
 // Items is a high-level representation of a Swagger / OpenAPI 2 Items object, backed by a low level one.
 // Items is a limited subset of JSON-Schema's items object. It is used by parameter definitions that are not
 // located in "body"
-//  - https://swagger.io/specification/v2/#itemsObject
+//   - https://swagger.io/specification/v2/#itemsObject
 type Items struct {
 	Type             string
 	Format           string

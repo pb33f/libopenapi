@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -17,7 +18,7 @@ import (
 // Operation represents a low-level Swagger / OpenAPI 2 Operation object.
 //
 // It describes a single API operation on a path.
-//  - https://swagger.io/specification/v2/#operationObject
+//   - https://swagger.io/specification/v2/#operationObject
 type Operation struct {
 	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]
@@ -36,6 +37,8 @@ type Operation struct {
 
 // Build will extract external docs, extensions, parameters, responses and security requirements.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	o.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs

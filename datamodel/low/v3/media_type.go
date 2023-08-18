@@ -18,7 +18,7 @@ import (
 // MediaType represents a low-level OpenAPI MediaType object.
 //
 // Each Media Type Object provides schema and examples for the media type identified by its key.
-//  - https://spec.openapis.org/oas/v3.1.0#media-type-object
+//   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
 	Schema     low.NodeReference[*base.SchemaProxy]
 	Example    low.NodeReference[any]
@@ -55,6 +55,8 @@ func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueRefe
 
 // Build will extract examples, extensions, schema and encoding from node.
 func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	mt.Reference = new(low.Reference)
 	mt.Extensions = low.ExtractExtensions(root)
 

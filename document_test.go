@@ -291,11 +291,26 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 
 func TestDocument_BuildModelPreBuild(t *testing.T) {
 	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
-	doc, _ := NewDocument(petstore)
+	doc, e := NewDocument(petstore)
+	assert.NoError(t, e)
 	doc.BuildV3Model()
 	doc.BuildV3Model()
-	_, _, _, e := doc.RenderAndReload()
-	assert.Len(t, e, 0)
+	_, _, _, er := doc.RenderAndReload()
+	assert.Len(t, er, 0)
+}
+
+func TestDocument_AnyDoc(t *testing.T) {
+	anything := []byte(`{"chickens": "3.0.0", "burgers": {"title": "hello"}}`)
+	_, e := NewDocumentWithTypeCheck(anything, true)
+	assert.NoError(t, e)
+}
+
+func TestDocument_AnyDocWithConfig(t *testing.T) {
+	anything := []byte(`{"chickens": "3.0.0", "burgers": {"title": "hello"}}`)
+	_, e := NewDocumentWithConfiguration(anything, &datamodel.DocumentConfiguration{
+		BypassDocumentCheck: true,
+	})
+	assert.NoError(t, e)
 }
 
 func TestDocument_BuildModelCircular(t *testing.T) {
@@ -505,33 +520,34 @@ paths:
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
 }
 
-func TestDocument_RemoteWithoutBaseURL(t *testing.T) {
-
-	// This test will push the index to do try and locate remote references that use relative references
-	spec := `openapi: 3.0.2
-info:
-  title: Test
-  version: 1.0.0
-paths:
-  /test:
-    get:
-      parameters:
-        - $ref: "https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"`
-
-	config := datamodel.NewOpenDocumentConfiguration()
-
-	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
-	if err != nil {
-		panic(err)
-	}
-
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
-
-	assert.Equal(t, "crs", result.Model.Paths.PathItems["/test"].Get.Parameters[0].Name)
-}
+// disabled for now as the host is timing out
+//func TestDocument_RemoteWithoutBaseURL(t *testing.T) {
+//
+//	// This test will push the index to do try and locate remote references that use relative references
+//	spec := `openapi: 3.0.2
+//info:
+//  title: Test
+//  version: 1.0.0
+//paths:
+//  /test:
+//    get:
+//      parameters:
+//        - $ref: "https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"`
+//
+//	config := datamodel.NewOpenDocumentConfiguration()
+//
+//	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+//	if err != nil {
+//		panic(err)
+//	}
+//
+//	result, errs := doc.BuildV3Model()
+//	if len(errs) > 0 {
+//		panic(errs)
+//	}
+//
+//	assert.Equal(t, "crs", result.Model.Paths.PathItems["/test"].Get.Parameters[0].Name)
+//}
 
 func TestDocument_ExampleMap(t *testing.T) {
 	var d = `openapi: "3.1"
@@ -573,6 +589,7 @@ summary: a test thing
 description: this is a test, that does a test.`
 
 	_ = os.WriteFile("test-operation.yaml", []byte(ae), 0644)
+	defer os.Remove("test-operation.yaml")
 
 	var d = `openapi: "3.1"
 paths:
@@ -594,4 +611,81 @@ paths:
 	rend, _ := result.Model.Render()
 
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}
+
+func TestDocument_InputAsJSON(t *testing.T) {
+
+	var d = `{
+  "openapi": "3.1",
+  "paths": {
+    "/an/operation": {
+      "get": {
+        "operationId": "thisIsAnOperationId"
+      }
+    }
+  }
+}`
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = doc.BuildV3Model()
+
+	// render the document.
+	rend, _, _, _ := doc.RenderAndReload()
+
+	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}
+
+func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
+
+	var d = `{
+    "openapi": "3.1",
+    "paths": {
+        "/an/operation": {
+            "get": {
+                "operationId": "thisIsAnOperationId"
+            }
+        }
+    }
+}`
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = doc.BuildV3Model()
+
+	// render the document.
+	rend, _, _, _ := doc.RenderAndReload()
+
+	assert.Equal(t, d, strings.TrimSpace(string(rend)))
+}
+
+func TestDocument_RenderWithIndention(t *testing.T) {
+
+	spec := `openapi: "3.1.0"
+info:
+      title: Test
+      version: 1.0.0
+paths:
+      /test:
+            get:
+                  operationId: 'test'`
+
+	config := datamodel.NewOpenDocumentConfiguration()
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	if err != nil {
+		panic(err)
+	}
+
+	_, _ = doc.BuildV3Model()
+
+	rend, _, _, _ := doc.RenderAndReload()
+
+	assert.Equal(t, spec, strings.TrimSpace(string(rend)))
 }

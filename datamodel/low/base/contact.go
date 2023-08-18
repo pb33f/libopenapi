@@ -12,8 +12,9 @@ import (
 )
 
 // Contact represents a low-level representation of the Contact definitions found at
-//  v2 - https://swagger.io/specification/v2/#contactObject
-//  v3 - https://spec.openapis.org/oas/v3.1.0#contact-object
+//
+//	v2 - https://swagger.io/specification/v2/#contactObject
+//	v3 - https://spec.openapis.org/oas/v3.1.0#contact-object
 type Contact struct {
 	Name  low.NodeReference[string]
 	URL   low.NodeReference[string]
@@ -22,7 +23,7 @@ type Contact struct {
 }
 
 // Build is not implemented for Contact (there is nothing to build).
-func (c *Contact) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (c *Contact) Build(_ *yaml.Node, _ *index.SpecIndex) error {
 	c.Reference = new(low.Reference)
 	// not implemented.
 	return nil
@@ -42,4 +43,3 @@ func (c *Contact) Hash() [32]byte {
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
-

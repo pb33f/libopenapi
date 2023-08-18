@@ -73,3 +73,24 @@ func TestSchemaProxy_Build_HashInline(t *testing.T) {
 	assert.Equal(t, "6da88c34ba124c41f977db66a4fc5c1a951708d285c81bb0d47c3206f4c27ca8",
 		low.GenerateHashString(&sch))
 }
+
+func TestSchemaProxy_Build_UsingMergeNodes(t *testing.T) {
+
+	yml := `
+x-common-definitions:
+  life_cycle_types: &life_cycle_types_def
+    type: string
+    enum: ["Onboarding", "Monitoring", "Re-Assessment"]
+    description: The type of life cycle
+<<: *life_cycle_types_def`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.Len(t, sch.Schema().Enum.Value, 3)
+	assert.Equal(t, "The type of life cycle", sch.Schema().Description.Value)
+
+}

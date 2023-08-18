@@ -1,0 +1,48 @@
+openapi: 3.0.2
+info:
+  title: Example
+  version: 0.0.1
+components:
+  schemas:
+    Example:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+          title: Name
+          pattern: ^[a-zA-Z0-9_\-]+$
+          description: Name of the Example.
+        description:
+          type: string
+          title: Description
+          description: Brief description of this Example. Optional.
+paths:
+  /system/examples/{id}:
+    get:
+      tags:
+        &a1
+        - Examples
+      parameters:
+        &id
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        &a2
+        "200":
+          description: a list of Example objects
+          content:
+            &example
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Example'
+    post:
+      tags: *a1
+      parameters: *id
+      responses: *a2
+      requestBody:
+        content: *example

@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -17,7 +18,7 @@ import (
 //
 // ParameterDefinitions holds parameters to be reused across operations. Parameter definitions can be
 // referenced to the ones defined here. It does not define global operation parameters
-//  - https://swagger.io/specification/v2/#parametersDefinitionsObject
+//   - https://swagger.io/specification/v2/#parametersDefinitionsObject
 type ParameterDefinitions struct {
 	Definitions map[low.KeyReference[string]]low.ValueReference[*Parameter]
 }
@@ -26,7 +27,7 @@ type ParameterDefinitions struct {
 //
 // ResponsesDefinitions is an object to hold responses to be reused across operations. Response definitions can be
 // referenced to the ones defined here. It does not define global operation responses
-//  - https://swagger.io/specification/v2/#responsesDefinitionsObject
+//   - https://swagger.io/specification/v2/#responsesDefinitionsObject
 type ResponsesDefinitions struct {
 	Definitions map[low.KeyReference[string]]low.ValueReference[*Response]
 }
@@ -35,7 +36,7 @@ type ResponsesDefinitions struct {
 //
 // A declaration of the security schemes available to be used in the specification. This does not enforce the security
 // schemes on the operations and only serves to provide the relevant details for each scheme
-//  - https://swagger.io/specification/v2/#securityDefinitionsObject
+//   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityDefinitions struct {
 	Definitions map[low.KeyReference[string]]low.ValueReference[*SecurityScheme]
 }
@@ -44,7 +45,7 @@ type SecurityDefinitions struct {
 //
 // An object to hold data types that can be consumed and produced by operations. These data types can be primitives,
 // arrays or models.
-//  - https://swagger.io/specification/v2/#definitionsObject
+//   - https://swagger.io/specification/v2/#definitionsObject
 type Definitions struct {
 	Schemas map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]
 }
@@ -71,6 +72,8 @@ func (s *SecurityDefinitions) FindSecurityDefinition(securityDef string) *low.Va
 
 // Build will extract all definitions into SchemaProxy instances.
 func (d *Definitions) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	errorChan := make(chan error)
 	resultChan := make(chan definitionResult[*base.SchemaProxy])
 	var defLabel *yaml.Node

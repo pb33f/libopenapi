@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -18,7 +19,7 @@ import (
 //
 // An Operation is perhaps the most important object of the entire specification. Everything of value
 // happens here. The entire being for existence of this library and the specification, is this Operation.
-//  - https://spec.openapis.org/oas/v3.1.0#operation-object
+//   - https://spec.openapis.org/oas/v3.1.0#operation-object
 type Operation struct {
 	Tags         low.NodeReference[[]low.ValueReference[string]]
 	Summary      low.NodeReference[string]
@@ -55,6 +56,8 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
 func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 
@@ -110,9 +113,21 @@ func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if sErr != nil {
 		return sErr
 	}
-	if sec != nil {
+
+	// if security is defined and requirements are provided.
+	if sln != nil && len(svn.Content) > 0 && sec != nil {
 		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
 			Value:     sec,
+			KeyNode:   sln,
+			ValueNode: svn,
+		}
+	}
+
+	// if security is set, but no requirements are defined.
+	// https://github.com/pb33f/libopenapi/issues/111
+	if sln != nil && len(svn.Content) == 0 && sec == nil {
+		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
+			Value:     []low.ValueReference[*base.SecurityRequirement]{}, // empty
 			KeyNode:   sln,
 			ValueNode: svn,
 		}

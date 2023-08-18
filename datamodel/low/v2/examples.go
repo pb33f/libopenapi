@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -15,7 +16,7 @@ import (
 
 // Examples represents a low-level Swagger / OpenAPI 2 Example object.
 // Allows sharing examples for operation responses
-//  - https://swagger.io/specification/v2/#exampleObject
+//   - https://swagger.io/specification/v2/#exampleObject
 type Examples struct {
 	Values map[low.KeyReference[string]]low.ValueReference[any]
 }
@@ -27,6 +28,8 @@ func (e *Examples) FindExample(name string) *low.ValueReference[any] {
 
 // Build will extract all examples and will attempt to unmarshal content into a map or slice based on type.
 func (e *Examples) Build(root *yaml.Node, _ *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	var keyNode, currNode *yaml.Node
 	var err error
 	e.Values = make(map[low.KeyReference[string]]low.ValueReference[any])

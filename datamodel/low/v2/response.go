@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -17,7 +18,7 @@ import (
 // Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
 //
 // Response describes a single response from an API Operation
-//  - https://swagger.io/specification/v2/#responseObject
+//   - https://swagger.io/specification/v2/#responseObject
 type Response struct {
 	Description low.NodeReference[string]
 	Schema      low.NodeReference[*base.SchemaProxy]
@@ -43,6 +44,8 @@ func (r *Response) FindHeader(hType string) *low.ValueReference[*Header] {
 
 // Build will extract schema, extensions, examples and headers from node
 func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
+	root = utils.NodeAlias(root)
+	utils.CheckForMergeNodes(root)
 	r.Extensions = low.ExtractExtensions(root)
 	s, err := base.ExtractSchema(root, idx)
 	if err != nil {
