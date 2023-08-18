@@ -102,7 +102,6 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
-
 	// this is a full checkout of the digitalocean API repo.
 	tmp, _ := os.MkdirTemp("", "openapi")
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
@@ -138,7 +137,6 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	ref = index.SearchIndexForReference("../models/options.yml")
 	assert.NotNil(t, ref)
-
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
@@ -284,7 +282,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 6, index.GetPathCount())
 
 	assert.Equal(t, 6, len(index.GetAllComponentSchemas()))
-	assert.Equal(t, 31, len(index.GetAllSchemas()))
+	assert.Equal(t, 33, len(index.GetAllSchemas()))
 
 	assert.Equal(t, 34, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
@@ -341,7 +339,6 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 }
 
 func TestSpecIndex_GetAllParametersFromOperations(t *testing.T) {
-
 	yml := `openapi: 3.0.0
 servers:
   - url: http://localhost:8080
@@ -667,7 +664,6 @@ func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
 
 // Discovered in issue https://github.com/daveshanley/vacuum/issues/225
 func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
-
 	cwd, _ := os.Getwd()
 	index := new(SpecIndex)
 	index.config = &SpecIndexConfig{BasePath: cwd}
@@ -683,7 +679,6 @@ func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
 }
 
 func TestSpecIndex_CheckBadURLRef(t *testing.T) {
-
 	yml := `openapi: 3.1.0
 paths:
   /cakes:
@@ -700,7 +695,6 @@ paths:
 }
 
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
-
 	yml := `openapi: 3.1.0
 paths:
   /cakes:
@@ -720,7 +714,6 @@ paths:
 }
 
 func TestSpecIndex_CheckIndexDiscoversNoComponentLocalFileReference(t *testing.T) {
-
 	_ = ioutil.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
 	defer os.Remove("coffee-time.yaml")
 
@@ -975,7 +968,6 @@ paths:
 	assert.Len(t, idx.paramInlineDuplicateNames, 2)
 	assert.Len(t, idx.operationParamErrors, 0)
 	assert.Len(t, idx.refErrors, 0)
-
 }
 
 func TestSpecIndex_ParamsWithDuplicateNamesAndSameInTypes(t *testing.T) {
@@ -1101,9 +1093,9 @@ func ExampleNewSpecIndex() {
 	// 246 paths
 	// 402 operations
 	// 537 component schemas
-	// 9798 inline schemas
-	// 711 inline schemas that are objects or arrays
-	// 10335 total schemas
+	// 11749 inline schemas
+	// 2612 inline schemas that are objects or arrays
+	// 12286 total schemas
 	// 1516 enums
 	// 828 polymorphic references
 }

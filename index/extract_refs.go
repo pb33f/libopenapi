@@ -6,9 +6,11 @@ package index
 import (
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"strings"
+
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -40,14 +42,22 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			// check if we're dealing with an inline schema definition, that isn't part of an array
 			// (which means it's being used as a value in an array, and it's not a label)
 			// https://github.com/pb33f/libopenapi/issues/76
-			if i%2 == 0 && n.Value == "schema" && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+			schemaContainingNodes := []string{"schema", "items", "additionalProperties", "contains", "not", "unevaluatedItems", "unevaluatedProperties"}
+			if i%2 == 0 && slices.Contains(schemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
 				if isRef {
 					continue
 				}
+
+				if n.Value == "additionalProperties" || n.Value == "unevaluatedProperties" {
+					if utils.IsNodeBoolValue(node.Content[i+1]) {
+						continue
+					}
+				}
+
 				ref := &Reference{
 					Node: node.Content[i+1],
-					Path: fmt.Sprintf("$.%s.schema", strings.Join(seenPath, ".")),
+					Path: fmt.Sprintf("$.%s.%s", strings.Join(seenPath, "."), n.Value),
 				}
 				index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
 
@@ -61,14 +71,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 			}
 
-			// Perform the same check for all properties in an inline schema definition
+			// Perform the same check for all maps of schemas like properties and patternProperties
 			// https://github.com/pb33f/libopenapi/issues/76
-			if i%2 == 0 && n.Value == "properties" && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
-				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
-				if isRef {
-					continue
-				}
-
+			mapOfSchemaContainingNodes := []string{"properties", "patternProperties"}
+			if i%2 == 0 && slices.Contains(mapOfSchemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 				// for each property add it to our schema definitions
 				label := ""
 				for h, prop := range node.Content[i+1].Content {
@@ -78,15 +84,47 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						continue
 					}
 
+					isRef, _, _ := utils.IsNodeRefValue(prop)
+					if isRef {
+						continue
+					}
+
 					ref := &Reference{
 						Node: prop,
-						Path: fmt.Sprintf("$.%s.properties.%s", strings.Join(seenPath, "."), label),
+						Path: fmt.Sprintf("$.%s.%s.%s", strings.Join(seenPath, "."), n.Value, label),
 					}
 					index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
 
 					// check if the schema is an object or an array,
 					// and if so, add it to the list of inline schema object definitions.
-					k, v := utils.FindKeyNodeTop("type", node.Content[i+1].Content)
+					k, v := utils.FindKeyNodeTop("type", prop.Content)
+					if k != nil && v != nil {
+						if v.Value == "object" || v.Value == "array" {
+							index.allInlineSchemaObjectDefinitions = append(index.allInlineSchemaObjectDefinitions, ref)
+						}
+					}
+				}
+			}
+
+			// Perform the same check for all arrays of schemas like allOf, anyOf, oneOf
+			arrayOfSchemaContainingNodes := []string{"allOf", "anyOf", "oneOf", "prefixItems"}
+			if i%2 == 0 && slices.Contains(arrayOfSchemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+				// for each element in the array, add it to our schema definitions
+				for h, element := range node.Content[i+1].Content {
+					isRef, _, _ := utils.IsNodeRefValue(element)
+					if isRef {
+						continue
+					}
+
+					ref := &Reference{
+						Node: element,
+						Path: fmt.Sprintf("$.%s.%s[%d]", strings.Join(seenPath, "."), n.Value, h),
+					}
+					index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
+
+					// check if the schema is an object or an array,
+					// and if so, add it to the list of inline schema object definitions.
+					k, v := utils.FindKeyNodeTop("type", element.Content)
 					if k != nil && v != nil {
 						if v.Value == "object" || v.Value == "array" {
 							index.allInlineSchemaObjectDefinitions = append(index.allInlineSchemaObjectDefinitions, ref)
@@ -336,7 +374,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			if i < len(node.Content)-1 {
 				next := node.Content[i+1]
 
-				if i%2 != 0 && next != nil && !utils.IsNodeArray(next) && !utils.IsNodeMap(next) {
+				if i%2 != 0 && next != nil && !utils.IsNodeArray(next) && !utils.IsNodeMap(next) && len(seenPath) > 0 {
 					seenPath = seenPath[:len(seenPath)-1]
 				}
 			}
@@ -360,7 +398,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Reference {
 	var found []*Reference
 
-	//run this async because when things get recursive, it can take a while
+	// run this async because when things get recursive, it can take a while
 	c := make(chan bool)
 
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
@@ -413,7 +451,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	for r := range refsToCheck {
 		// expand our index of all mapped refs
 		go locate(refsToCheck[r], r, mappedRefsInSequence)
-		//locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
+		// locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
 	}
 
 	completedRefs := 0
