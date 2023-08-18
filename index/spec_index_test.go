@@ -283,7 +283,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 6, index.GetPathCount())
 
 	assert.Equal(t, 6, len(index.GetAllComponentSchemas()))
-	assert.Equal(t, 51, len(index.GetAllSchemas()))
+	assert.Equal(t, 56, len(index.GetAllSchemas()))
 
 	assert.Equal(t, 34, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
