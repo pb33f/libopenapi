@@ -1096,10 +1096,10 @@ func ExampleNewSpecIndex() {
 	// 246 paths
 	// 402 operations
 	// 537 component schemas
-	// 873 reference schemas
+	// 1972 reference schemas
 	// 11749 inline schemas
 	// 2612 inline schemas that are objects or arrays
-	// 13159 total schemas
+	// 14258 total schemas
 	// 1516 enums
 	// 828 polymorphic references
 }
