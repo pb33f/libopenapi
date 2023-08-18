@@ -44,13 +44,14 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			// https://github.com/pb33f/libopenapi/issues/76
 			schemaContainingNodes := []string{"schema", "items", "additionalProperties", "contains", "not", "unevaluatedItems", "unevaluatedProperties"}
 			if i%2 == 0 && slices.Contains(schemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+				ref := &Reference{
+					Node: node.Content[i+1],
+					Path: fmt.Sprintf("$.%s.%s", strings.Join(seenPath, "."), n.Value),
+				}
+
 				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
 				if isRef {
 					// record this reference
-					ref := &Reference{
-						Node: node.Content[i+1],
-						Path: fmt.Sprintf("$.%s.schema", strings.Join(seenPath, ".")),
-					}
 					index.allRefSchemaDefinitions = append(index.allRefSchemaDefinitions, ref)
 					continue
 				}
@@ -61,10 +62,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 				}
 
-				ref := &Reference{
-					Node: node.Content[i+1],
-					Path: fmt.Sprintf("$.%s.%s", strings.Join(seenPath, "."), n.Value),
-				}
 				index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
 
 				// check if the schema is an object or an array,
@@ -89,16 +86,18 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						label = prop.Value
 						continue
 					}
-
-					isRef, _, _ := utils.IsNodeRefValue(prop)
-					if isRef {
-						continue
-					}
-
 					ref := &Reference{
 						Node: prop,
 						Path: fmt.Sprintf("$.%s.%s.%s", strings.Join(seenPath, "."), n.Value, label),
 					}
+
+					isRef, _, _ := utils.IsNodeRefValue(prop)
+					if isRef {
+						// record this reference
+						index.allRefSchemaDefinitions = append(index.allRefSchemaDefinitions, ref)
+						continue
+					}
+
 					index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
 
 					// check if the schema is an object or an array,
@@ -117,14 +116,15 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			if i%2 == 0 && slices.Contains(arrayOfSchemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 				// for each element in the array, add it to our schema definitions
 				for h, element := range node.Content[i+1].Content {
-					isRef, _, _ := utils.IsNodeRefValue(element)
-					if isRef {
-						continue
-					}
-
 					ref := &Reference{
 						Node: element,
 						Path: fmt.Sprintf("$.%s.%s[%d]", strings.Join(seenPath, "."), n.Value, h),
+					}
+
+					isRef, _, _ := utils.IsNodeRefValue(element)
+					if isRef { // record this reference
+						index.allRefSchemaDefinitions = append(index.allRefSchemaDefinitions, ref)
+						continue
 					}
 					index.allInlineSchemaDefinitions = append(index.allInlineSchemaDefinitions, ref)
 
