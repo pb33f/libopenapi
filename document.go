@@ -250,7 +250,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
 	}
 
 	lowDoc, err := v2low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
-	err = errorutils.Filtered(err, circularReferenceErrorFilter(d.config.AllowCircularReferenceResolving))
+	err = errorutils.Filtered(err, d.errorFilter)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +283,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 	}
 
 	lowDoc, err = v3low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
-	err = errorutils.Filtered(err, circularReferenceErrorFilter(d.config.AllowCircularReferenceResolving))
+	err = errorutils.Filtered(err, d.errorFilter)
 	if err != nil {
 		return nil, err
 	}
