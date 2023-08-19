@@ -19,13 +19,14 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 
 	yml := `swagger: 2.0.1`
 	doc, err := NewDocument([]byte(yml))
-	assert.NoError(t, err)
-	assert.Equal(t, "2.0.1", doc.GetVersion())
+	require.NoError(t, err)
+	require.Equal(t, "2.0.1", doc.GetVersion())
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, errorutils.Unwrap(docErr), 0)
-	assert.NotNil(t, v2Doc)
-	assert.NotNil(t, doc.GetSpecInfo())
+	require.Nil(t, docErr)
+	require.Len(t, errorutils.Unwrap(docErr), 0)
+	require.NotNil(t, v2Doc)
+	require.NotNil(t, doc.GetSpecInfo())
 
 	fmt.Print()
 
@@ -301,8 +302,9 @@ func TestDocument_BuildModelPreBuild(t *testing.T) {
 	assert.NoError(t, e)
 	doc.BuildV3Model()
 	doc.BuildV3Model()
-	_, _, _, er := doc.RenderAndReload()
-	assert.Len(t, er, 0)
+	_, _, _, err := doc.RenderAndReload()
+	assert.Nil(t, err)
+	assert.Len(t, errorutils.Unwrap(err), 0)
 }
 
 func TestDocument_AnyDoc(t *testing.T) {
@@ -321,18 +323,20 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
-	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
+	doc, err := NewDocument(petstore)
+	assert.NoError(t, err)
+	m, err := doc.BuildV3Model()
 	assert.NotNil(t, m)
-	assert.Len(t, e, 3)
+	assert.Len(t, errorutils.Unwrap(err), 3)
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
-	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
+	doc, err := NewDocument(petstore)
+	require.NoError(t, err)
+	m, err := doc.BuildV3Model()
 	assert.Nil(t, m)
-	assert.Len(t, e, 9)
+	assert.Len(t, errorutils.Unwrap(err), 9)
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
@@ -344,9 +348,11 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 }
 `
 	jsonModified := `{"info":{"title":"The magic API - but now, altered!"},"openapi":"3.0"}`
-	doc, _ := NewDocument([]byte(json))
+	doc, err := NewDocument([]byte(json))
+	require.NoError(t, err)
 
-	v3Doc, _ := doc.BuildV3Model()
+	v3Doc, err := doc.BuildV3Model()
+	require.NoError(t, err)
 
 	// eventually this will be encapsulated up high.
 	// mutation does not replace low model, eventually pointers will be used.
@@ -391,11 +397,17 @@ paths:
 func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 	burgerShopOriginal, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
-	originalDoc, _ := NewDocument(burgerShopOriginal)
-	updatedDoc, _ := NewDocument(burgerShopUpdated)
+	originalDoc, _ := NewDocument(burgerShopOriginal,
+		WithAllowRemoteReferences(true),
+		WithAllowFileReferences(true),
+	)
+	updatedDoc, _ := NewDocument(burgerShopUpdated,
+		WithAllowRemoteReferences(true),
+		WithAllowFileReferences(true),
+	)
 	changes, err := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, err, 9)
-	assert.Nil(t, changes)
+	require.Len(t, errorutils.Unwrap(err), 9)
+	require.Nil(t, changes)
 }
 
 func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
@@ -405,9 +417,8 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, err := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, err, 9)
-	assert.Nil(t, changes)
-
+	require.Len(t, errorutils.Unwrap(err), 9)
+	require.Nil(t, changes)
 }
 
 func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
@@ -417,8 +428,8 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, err := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errorutils.Unwrap(err), 2)
-	assert.Nil(t, changes)
+	require.Len(t, errorutils.Unwrap(err), 2)
+	require.Nil(t, changes)
 
 }
 
@@ -434,9 +445,8 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 	require.NoError(t, err)
 
 	changes, err := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errorutils.Unwrap(err), 1)
-	assert.Nil(t, changes)
-
+	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Nil(t, changes)
 }
 
 func TestSchemaRefIsFollowed(t *testing.T) {
@@ -565,7 +575,8 @@ components:
 	require.NoError(t, err)
 
 	// render the document.
-	rend, _ := result.Model.Render()
+	rend, err := result.Model.Render()
+	require.NoError(t, err)
 
 	assert.Len(t, rend, 644)
 }
