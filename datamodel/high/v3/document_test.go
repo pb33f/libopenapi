@@ -22,7 +22,7 @@ var lowDoc *lowv3.Document
 func initTest() {
 	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -383,7 +383,7 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 func TestStripeAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	assert.Len(t, err, 3)
 	d := NewDocument(lowDoc)
@@ -393,7 +393,7 @@ func TestStripeAsDoc(t *testing.T) {
 func TestK8sAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
 	assert.Len(t, err, 0)
@@ -403,7 +403,7 @@ func TestK8sAsDoc(t *testing.T) {
 func TestAsanaAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/asana.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
@@ -416,7 +416,7 @@ func TestAsanaAsDoc(t *testing.T) {
 func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/82e1d558e15a59edc1d47d2c5544e7138f5b3cbf/specification")
 	config := datamodel.DocumentConfiguration{
@@ -427,9 +427,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
 	if err != nil {
-		for e := range err {
-			fmt.Println(err[e])
-		}
+		fmt.Printf("error: %v\n", err)
 		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
@@ -441,7 +439,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 func TestPetstoreAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
@@ -454,7 +452,7 @@ func TestPetstoreAsDoc(t *testing.T) {
 func TestCircularReferencesDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	assert.Len(t, err, 3)
 	d := NewDocument(lowDoc)
@@ -616,7 +614,7 @@ components:
                 numPatties: 1`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -670,7 +668,7 @@ components:
             required: true`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -699,7 +697,7 @@ components:
 `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,

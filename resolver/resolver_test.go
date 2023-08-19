@@ -3,8 +3,8 @@ package resolver
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -17,7 +17,7 @@ func TestNewResolver(t *testing.T) {
 }
 
 func Benchmark_ResolveDocumentStripe(b *testing.B) {
-	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
 	for n := 0; n < b.N; n++ {
 		var rootNode yaml.Node
 		yaml.Unmarshal(stripe, &rootNode)
@@ -28,7 +28,7 @@ func Benchmark_ResolveDocumentStripe(b *testing.B) {
 }
 
 func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/circular-tests.yaml")
+	circular, _ := os.ReadFile("../test_specs/circular-tests.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(circular, &rootNode)
 
@@ -45,7 +45,7 @@ func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
 }
 
 func TestResolver_CheckForCircularReferences(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/circular-tests.yaml")
+	circular, _ := os.ReadFile("../test_specs/circular-tests.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(circular, &rootNode)
 
@@ -64,7 +64,7 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 }
 
 func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	circular, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(circular, &rootNode)
 
@@ -89,7 +89,7 @@ func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
 }
 
 func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/swagger-valid-recursive-model.yaml")
+	circular, _ := os.ReadFile("../test_specs/swagger-valid-recursive-model.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(circular, &rootNode)
 
@@ -106,7 +106,7 @@ func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
 }
 
 func TestResolver_CircularReferencesRequiredInvalid(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/swagger-invalid-recursive-model.yaml")
+	circular, _ := os.ReadFile("../test_specs/swagger-invalid-recursive-model.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(circular, &rootNode)
 
@@ -133,7 +133,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 }
 
 func TestResolver_ResolveComponents_Stripe(t *testing.T) {
-	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(stripe, &rootNode)
 
@@ -150,7 +150,7 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 }
 
 func TestResolver_ResolveComponents_BurgerShop(t *testing.T) {
-	mixedref, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	mixedref, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(mixedref, &rootNode)
 
@@ -261,7 +261,7 @@ components:
 }
 
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
-	mixedref, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+	mixedref, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	yaml.Unmarshal(mixedref, &rootNode)
 
@@ -282,7 +282,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 }
 
 func TestResolver_ResolveComponents_k8s(t *testing.T) {
-	k8s, _ := ioutil.ReadFile("../test_specs/k8s.json")
+	k8s, _ := os.ReadFile("../test_specs/k8s.json")
 	var rootNode yaml.Node
 	yaml.Unmarshal(k8s, &rootNode)
 
@@ -301,7 +301,7 @@ func ExampleNewResolver() {
 	var rootNode yaml.Node
 
 	//  load in the Stripe OpenAPI spec (lots of polymorphic complexity in here)
-	stripeBytes, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripeBytes, _ := os.ReadFile("../test_specs/stripe.yaml")
 
 	// unmarshal bytes into our rootNode.
 	_ = yaml.Unmarshal(stripeBytes, &rootNode)

@@ -18,7 +18,7 @@ import (
 )
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
-	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(stripe, &rootNode)
 
@@ -65,7 +65,7 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 }
 
 func TestSpecIndex_Asana(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/asana.yaml")
+	asana, _ := os.ReadFile("../test_specs/asana.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(asana, &rootNode)
 
@@ -112,7 +112,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
-	doLocal, _ := ioutil.ReadFile(spec)
+	doLocal, _ := os.ReadFile(spec)
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(doLocal, &rootNode)
 
@@ -141,7 +141,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	asana, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(asana, &rootNode)
 
@@ -156,7 +156,7 @@ func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 }
 
 func TestSpecIndex_BaseURLError(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+	asana, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(asana, &rootNode)
 
@@ -173,7 +173,7 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 }
 
 func TestSpecIndex_k8s(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/k8s.json")
+	asana, _ := os.ReadFile("../test_specs/k8s.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(asana, &rootNode)
 
@@ -198,7 +198,7 @@ func TestSpecIndex_k8s(t *testing.T) {
 }
 
 func TestSpecIndex_PetstoreV2(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/petstorev2.json")
+	asana, _ := os.ReadFile("../test_specs/petstorev2.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(asana, &rootNode)
 
@@ -222,7 +222,7 @@ func TestSpecIndex_PetstoreV2(t *testing.T) {
 }
 
 func TestSpecIndex_XSOAR(t *testing.T) {
-	xsoar, _ := ioutil.ReadFile("../test_specs/xsoar.json")
+	xsoar, _ := os.ReadFile("../test_specs/xsoar.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(xsoar, &rootNode)
 
@@ -240,7 +240,7 @@ func TestSpecIndex_XSOAR(t *testing.T) {
 }
 
 func TestSpecIndex_PetstoreV3(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(petstore, &rootNode)
 
@@ -268,7 +268,7 @@ func TestSpecIndex_PetstoreV3(t *testing.T) {
 var mappedRefs = 15
 
 func TestSpecIndex_BurgerShop(t *testing.T) {
-	burgershop, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	burgershop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(burgershop, &rootNode)
 
@@ -366,7 +366,7 @@ paths:
 }
 
 func TestSpecIndex_BurgerShop_AllTheComponents(t *testing.T) {
-	burgershop, _ := ioutil.ReadFile("../test_specs/all-the-components.yaml")
+	burgershop, _ := os.ReadFile("../test_specs/all-the-components.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(burgershop, &rootNode)
 
@@ -435,7 +435,7 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 }
 
 func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
-	spec, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+	spec, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(spec, &rootNode)
 
@@ -463,7 +463,7 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 }
 
 func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
-	asana, _ := ioutil.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
+	asana, _ := os.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(asana, &rootNode)
 

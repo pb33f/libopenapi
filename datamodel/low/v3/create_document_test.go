@@ -18,7 +18,7 @@ func initTest() {
 	}
 	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	// deprecated function test.
 	doc, err = CreateDocument(info)
 	if err != nil {
@@ -179,7 +179,7 @@ func TestCreateDocument_WebHooks_Error(t *testing.T) {
       $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -568,7 +568,7 @@ components:
           $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -587,7 +587,7 @@ webhooks:
     $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -603,7 +603,7 @@ components:
       $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -619,7 +619,7 @@ paths:
     $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -633,7 +633,7 @@ tags:
   - $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -647,7 +647,7 @@ security:
   $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -661,7 +661,7 @@ externalDocs:
   $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -677,16 +677,14 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(anchorDocument)
 
 	// build low-level document model
-	document, errors := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
 
-	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
-		}
+	// if something went wrong, a slice of err is returned
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
 		panic("cannot build document")
 	}
 
@@ -732,16 +730,14 @@ func ExampleCreateDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
 
-	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
-		}
+	// if something went wrong, a slice of err is returned
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
 		panic("cannot build document")
 	}
 

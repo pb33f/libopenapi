@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/internal/errorutils"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 )
@@ -17,7 +18,7 @@ import (
 //
 // Deprecated: Use CreateDocumentFromConfig instead. This function will be removed in a later version, it
 // defaults to allowing file and remote references, and does not support relative file references.
-func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
+func CreateDocument(info *datamodel.SpecInfo) (*Document, error) {
 	config := datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -26,15 +27,15 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 }
 
 // CreateDocumentFromConfig Create a new document from the provided SpecInfo and DocumentConfiguration pointer.
-func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, []error) {
+func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, error) {
 	return createDocument(info, config)
 }
 
-func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, []error) {
+func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, error) {
 	_, labelNode, versionNode := utils.FindKeyNodeFull(OpenAPILabel, info.RootNode.Content)
 	var version low.NodeReference[string]
 	if versionNode == nil {
-		return nil, []error{errors.New("no openapi version/tag found, cannot create document")}
+		return nil, errors.New("no openapi version/tag found, cannot create document")
 	}
 	version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
 	doc := Document{Version: version}
@@ -109,7 +110,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		go runExtraction(info, &doc, idx, f, &errs, &wg)
 	}
 	wg.Wait()
-	return &doc, errs
+	return &doc, errorutils.Join(errs...)
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {

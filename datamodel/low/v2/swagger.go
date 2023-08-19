@@ -16,6 +16,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/internal/errorutils"
 	"github.com/pb33f/libopenapi/resolver"
 	"gopkg.in/yaml.v3"
 )
@@ -123,21 +124,21 @@ func (s *Swagger) GetExtensions() map[low.KeyReference[string]]low.ValueReferenc
 
 // CreateDocumentFromConfig will create a new Swagger document from the provided SpecInfo and DocumentConfiguration.
 func CreateDocumentFromConfig(info *datamodel.SpecInfo,
-	configuration *datamodel.DocumentConfiguration) (*Swagger, []error) {
+	configuration *datamodel.DocumentConfiguration) (*Swagger, error) {
 	return createDocument(info, configuration)
 }
 
 // CreateDocument will create a new Swagger document from the provided SpecInfo.
 //
 // Deprecated: Use CreateDocumentFromConfig instead.
-func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
+func CreateDocument(info *datamodel.SpecInfo) (*Swagger, error) {
 	return createDocument(info, &datamodel.DocumentConfiguration{
 		AllowRemoteReferences: true,
 		AllowFileReferences:   true,
 	})
 }
 
-func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Swagger, []error) {
+func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Swagger, error) {
 	doc := Swagger{Swagger: low.ValueReference[string]{Value: info.Version, ValueNode: info.RootNode}}
 	doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])
 
@@ -151,7 +152,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	doc.Index = idx
 	doc.SpecInfo = info
 
-	var errors []error
+	var errs []error
 
 	// build out swagger scalar variables.
 	_ = low.BuildModel(info.RootNode.Content[0], &doc)
@@ -159,7 +160,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	// extract externalDocs
 	extDocs, err := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode, idx)
 	if err != nil {
-		errors = append(errors, err)
+		errs = append(errs, err)
 	}
 
 	doc.ExternalDocs = extDocs
@@ -170,7 +171,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	if len(resolvingErrors) > 0 {
 		for r := range resolvingErrors {
-			errors = append(errors, resolvingErrors[r])
+			errs = append(errs, resolvingErrors[r])
 		}
 	}
 
@@ -196,11 +197,11 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 			completedExtractions++
 		case e := <-errChan:
 			completedExtractions++
-			errors = append(errors, e)
+			errs = append(errs, e)
 		}
 	}
 
-	return &doc, errors
+	return &doc, errorutils.Join(errs...)
 }
 
 func (s *Swagger) GetExternalDocs() *low.NodeReference[any] {

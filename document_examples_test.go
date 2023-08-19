@@ -4,8 +4,8 @@
 package libopenapi
 
 import (
+	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
 	"net/url"
 	"os"
 	"strings"
@@ -15,6 +15,7 @@ import (
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -36,14 +37,11 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := document.BuildV3Model()
+	v3Model, err := document.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if err != nil {
+		panic(fmt.Errorf("cannot create v3 model from document: %w", err))
 	}
 
 	// get a count of the number of paths and schemas.
@@ -64,7 +62,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	digitalOcean, _ := os.ReadFile("test_specs/digitalocean.yaml")
 
 	// create a DocumentConfiguration that prevents loading file and remote references
-	config := datamodel.DocumentConfiguration{
+	config := Configuration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	}
@@ -78,10 +76,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	}
 
 	// only errors will be thrown, so just capture them and print the number of errors.
-	_, errors := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
+	if err != nil {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	}
 	// Output: Error building Digital Ocean spec errors reported
@@ -100,7 +98,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 
 	// create a DocumentConfiguration that allows loading file and remote references, and sets the baseURL
 	// to somewhere that can resolve the relative references.
-	config := datamodel.DocumentConfiguration{
+	config := Configuration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
 		BaseURL:               baseURL,
@@ -115,10 +113,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	}
 
 	// only errors will be thrown, so just capture them and print the number of errors.
-	_, errors := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
+	if err != nil {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	} else {
 		fmt.Println("Digital Ocean spec built successfully")
@@ -142,14 +140,11 @@ func ExampleNewDocument_fromSwaggerDocument() {
 	}
 
 	// because we know this is a v2 spec, we can build a ready to go model from it.
-	v2Model, errors := document.BuildV2Model()
+	v2Model, err := document.BuildV2Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if err != nil {
+		panic(fmt.Errorf("cannot create v3 model from document: %w", err))
 	}
 
 	// get a count of the number of paths and schemas.
@@ -175,36 +170,32 @@ func ExampleNewDocument_fromUnknownVersion() {
 	}
 
 	var paths, schemas int
-	var errors []error
+	var errs []error
 
 	// We don't know which type of document this is, so we can use the spec info to inform us
 	if document.GetSpecInfo().SpecType == utils.OpenApi3 {
-		v3Model, errs := document.BuildV3Model()
-		if len(errs) > 0 {
-			errors = errs
-		}
-		if len(errors) <= 0 {
+		v3Model, err := document.BuildV3Model()
+		if err != nil {
+			errs = append(errs, err)
+		} else {
 			paths = len(v3Model.Model.Paths.PathItems)
 			schemas = len(v3Model.Model.Components.Schemas)
 		}
 	}
 	if document.GetSpecInfo().SpecType == utils.OpenApi2 {
-		v2Model, errs := document.BuildV2Model()
-		if len(errs) > 0 {
-			errors = errs
-		}
-		if len(errors) <= 0 {
+		v2Model, err := document.BuildV2Model()
+		if err != nil {
+			errs = append(errs)
+		} else {
 			paths = len(v2Model.Model.Paths.PathItems)
 			schemas = len(v2Model.Model.Definitions.Definitions)
+
 		}
 	}
 
 	// if anything went wrong when building the model, report errors.
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if err != nil {
+		panic(fmt.Errorf("cannot create v3 model from document: %w", err))
 	}
 
 	// print the number of paths and schemas in the document
@@ -236,14 +227,11 @@ info:
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := document.BuildV3Model()
+	v3Model, err := document.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if err != nil {
+		panic(fmt.Errorf("cannot create v3 model from document: %w", err))
 	}
 
 	// mutate the title, to do this we currently need to drop down to the low-level API.
@@ -305,14 +293,11 @@ func ExampleCompareDocuments_openAPI() {
 	}
 
 	// Compare documents for all changes made
-	documentChanges, errs := CompareDocuments(originalDoc, updatedDoc)
+	documentChanges, err := CompareDocuments(originalDoc, updatedDoc)
 
 	// If anything went wrong when building models for documents.
-	if len(errs) > 0 {
-		for i := range errs {
-			fmt.Printf("error: %e\n", errs[i])
-		}
-		panic(fmt.Sprintf("cannot compare documents: %d errors reported", len(errs)))
+	if err != nil {
+		panic(fmt.Errorf("cannot compare documents: %w", err))
 	}
 
 	// Extract SchemaChanges from components changes.
@@ -352,14 +337,11 @@ func ExampleCompareDocuments_swagger() {
 	}
 
 	// Compare documents for all changes made
-	documentChanges, errs := CompareDocuments(originalDoc, updatedDoc)
+	documentChanges, err := CompareDocuments(originalDoc, updatedDoc)
 
 	// If anything went wrong when building models for documents.
-	if len(errs) > 0 {
-		for i := range errs {
-			fmt.Printf("error: %e\n", errs[i])
-		}
-		panic(fmt.Sprintf("cannot compare documents: %d errors reported", len(errs)))
+	if err != nil {
+		panic(fmt.Errorf("cannot compare documents: %w", err))
 	}
 
 	// Extract SchemaChanges from components changes.
@@ -426,14 +408,20 @@ components:
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
-	_, errs := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
 	// extract resolving error
-	resolvingError := errs[0]
-
 	// resolving error is a pointer to *resolver.ResolvingError
 	// which provides access to rich details about the error.
-	circularReference := resolvingError.(*resolver.ResolvingError).CircularReference
+	var (
+		resolvingError    *resolver.ResolvingError
+		circularReference *index.CircularReferenceResult
+	)
+	if errors.As(err, &resolvingError) {
+		circularReference = resolvingError.CircularReference
+	} else {
+		panic("cannot extract resolving error")
+	}
 
 	// capture the journey with all details
 	var buf strings.Builder
@@ -478,9 +466,9 @@ components:
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
-	_, errs := doc.BuildV3Model()
+	_, err = doc.BuildV3Model()
 
-	assert.Len(t, errs, 0)
+	assert.NoError(t, err)
 }
 
 // If you're using complex types with OpenAPI Extensions, it's simple to unpack extensions into complex
@@ -618,14 +606,11 @@ func ExampleNewDocument_modifyAndReRender() {
 	}
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := doc.BuildV3Model()
+	v3Model, err := doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if err != nil {
+		panic(fmt.Errorf("cannot create v3 model from document: %w", err))
 	}
 
 	// create a new path item and operation.
@@ -647,11 +632,11 @@ func ExampleNewDocument_modifyAndReRender() {
 	v3Model.Model.Paths.PathItems["/new/path"] = newPath
 
 	// render the document back to bytes and reload the model.
-	rawBytes, _, newModel, errs := doc.RenderAndReload()
+	rawBytes, _, newModel, err := doc.RenderAndReload()
 
 	// if anything went wrong when re-rendering the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		panic(fmt.Sprintf("cannot re-render document: %d errors reported", len(errs)))
+	if err != nil {
+		panic(fmt.Sprintf("cannot re-render document: %v", err))
 	}
 
 	// capture new number of paths after re-rendering

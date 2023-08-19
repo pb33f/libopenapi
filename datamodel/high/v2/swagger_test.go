@@ -4,20 +4,21 @@
 package v2
 
 import (
+	"os"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/stretchr/testify/assert"
 
-	"io/ioutil"
 	"testing"
 )
 
 var doc *v2.Swagger
 
 func initTest() {
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev2-complete.yaml")
+	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	doc, err = v2.CreateDocument(info)
 	if err != nil {
 		panic("broken something")

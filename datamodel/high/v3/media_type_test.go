@@ -4,7 +4,7 @@
 package v3
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 
@@ -18,9 +18,9 @@ import (
 
 func TestMediaType_MarshalYAMLInline(t *testing.T) {
 	// load the petstore spec
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = v3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
 	if err != nil {
 		panic("broken something")
@@ -108,9 +108,9 @@ example: testing a nice mutation`
 
 func TestMediaType_MarshalYAML(t *testing.T) {
 	// load the petstore spec
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = v3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
 	if err != nil {
 		panic("broken something")

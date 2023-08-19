@@ -5,13 +5,14 @@ package model
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // These tests require full documents to be tested properly. schemas are perhaps the most complex
@@ -172,17 +173,19 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
 	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
 
-	var err []error
+	var err error
 	var leftDoc, rightDoc *v2.Swagger
 	leftDoc, err = v2.CreateDocument(leftInfo)
-	rightDoc, err = v2.CreateDocument(rightInfo)
-
-	if len(err) > 0 {
-		for i := range err {
-			fmt.Printf("error: %v\n", err[i])
-		}
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
 		panic("failed to create doc")
 	}
+	rightDoc, err = v2.CreateDocument(rightInfo)
+	if err != nil {
+		fmt.Printf("error: %v\n", err)
+		panic("failed to create doc")
+	}
+
 	return leftDoc, rightDoc
 }
 

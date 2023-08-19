@@ -4,14 +4,15 @@ package libopenapi
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/what-changed/model"
-	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/internal/errorutils"
+	"github.com/pb33f/libopenapi/what-changed/model"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestLoadDocument_Simple_V2(t *testing.T) {
@@ -22,7 +23,7 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 	assert.Equal(t, "2.0.1", doc.GetVersion())
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 0)
+	assert.Len(t, errorutils.Unwrap(docErr), 0)
 	assert.NotNil(t, v2Doc)
 	assert.NotNil(t, doc.GetSpecInfo())
 
@@ -37,7 +38,7 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 1)
+	assert.Len(t, errorutils.Unwrap(docErr), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -48,11 +49,11 @@ definitions:
   thing:
     $ref: bork`
 	doc, err := NewDocument([]byte(yml))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 2)
-	assert.Nil(t, v2Doc)
+	require.Len(t, errorutils.Unwrap(docErr), 2)
+	require.Nil(t, v2Doc)
 }
 
 func TestLoadDocument_Simple_V3_Error(t *testing.T) {
@@ -62,7 +63,7 @@ func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 1)
+	assert.Len(t, errorutils.Unwrap(docErr), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -70,14 +71,14 @@ func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
 
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV2Model()
-	assert.Len(t, err, 1)
+	assert.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
 
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV3Model()
-	assert.Len(t, err, 1)
+	assert.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestLoadDocument_Empty(t *testing.T) {
@@ -94,7 +95,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.Equal(t, "3.0.1", doc.GetVersion())
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 0)
+	assert.Len(t, errorutils.Unwrap(docErr), 0)
 	assert.NotNil(t, v3Doc)
 }
 
@@ -108,7 +109,7 @@ paths:
 	assert.NoError(t, err)
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 2)
+	assert.Len(t, errorutils.Unwrap(docErr), 2)
 	assert.Nil(t, v3Doc)
 }
 
@@ -154,32 +155,38 @@ info:
 
 func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 
-	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
-	doc, _ := NewDocument(bs)
-	doc.BuildV3Model()
+	bs, err := os.ReadFile("test_specs/burgershop.openapi.yaml")
+	require.NoError(t, err)
+	doc, err := NewDocument(bs)
+	require.NoError(t, err)
+	_, err = doc.BuildV3Model()
+	require.NoError(t, err)
 
-	rend, newDoc, _, _ := doc.RenderAndReload()
+	rend, newDoc, _, err := doc.RenderAndReload()
+	require.NoError(t, err)
+	assert.NotNil(t, rend)
 
 	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
-
-	// should noth be nil.
-	assert.Nil(t, errs)
-	assert.NotNil(t, rend)
+	compReport, err := CompareDocuments(doc, newDoc)
+	// should both be nil.
+	require.NoError(t, err)
 	assert.Nil(t, compReport)
-
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 	bs, _ := os.ReadFile("test_specs/stripe.yaml")
-	doc, _ := NewDocument(bs)
-	doc.BuildV3Model()
+	doc, err := NewDocument(bs)
+	require.NoError(t, err)
+	_, err = doc.BuildV3Model()
+	require.NoError(t, err)
 
-	_, newDoc, _, _ := doc.RenderAndReload()
+	_, newDoc, _, err := doc.RenderAndReload()
+	require.NoError(t, err)
 
 	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
+	compReport, err := CompareDocuments(doc, newDoc)
+	require.NoError(t, err)
 
 	// get flat list of changes.
 	flatChanges := compReport.GetAllChanges()
@@ -192,7 +199,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		}
 	}
 
-	assert.Nil(t, errs)
+	assert.Nil(t, err)
 	tc := compReport.TotalChanges()
 	bc := compReport.TotalBreakingChanges()
 	assert.Equal(t, 0, bc)
@@ -213,12 +220,12 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 	assert.NotNil(t, dat)
 
 	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
+	compReport, err := CompareDocuments(doc, newDoc)
 
 	// get flat list of changes.
 	flatChanges := compReport.GetAllChanges()
 
-	assert.Nil(t, errs)
+	assert.Nil(t, err)
 	tc := compReport.TotalChanges()
 	assert.Equal(t, 21, tc)
 
@@ -230,7 +237,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 func TestDocument_RenderAndReload(t *testing.T) {
 
 	// load an OpenAPI 3 specification from bytes
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
 	// create a new document from specification bytes
 	doc, err := NewDocument(petstore)
@@ -279,18 +286,17 @@ func TestDocument_RenderAndReload(t *testing.T) {
 
 }
 func TestDocument_RenderAndReload_Swagger(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev2.json")
 	doc, _ := NewDocument(petstore)
 	doc.BuildV2Model()
 	doc.BuildV2Model()
 	_, _, _, e := doc.RenderAndReload()
-	assert.Len(t, e, 1)
-	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e[0].Error())
-
+	assert.Error(t, e)
+	assert.ErrorIs(t, e, ErrOpenAPI3Operation)
 }
 
 func TestDocument_BuildModelPreBuild(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 	doc, e := NewDocument(petstore)
 	assert.NoError(t, e)
 	doc.BuildV3Model()
@@ -307,14 +313,14 @@ func TestDocument_AnyDoc(t *testing.T) {
 
 func TestDocument_AnyDocWithConfig(t *testing.T) {
 	anything := []byte(`{"chickens": "3.0.0", "burgers": {"title": "hello"}}`)
-	_, e := NewDocumentWithConfiguration(anything, &datamodel.DocumentConfiguration{
+	_, e := NewDocumentWithConfiguration(anything, &Configuration{
 		BypassDocumentCheck: true,
 	})
 	assert.NoError(t, e)
 }
 
 func TestDocument_BuildModelCircular(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/circular-tests.yaml")
+	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
 	doc, _ := NewDocument(petstore)
 	m, e := doc.BuildV3Model()
 	assert.NotNil(t, m)
@@ -322,7 +328,7 @@ func TestDocument_BuildModelCircular(t *testing.T) {
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
+	petstore, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	doc, _ := NewDocument(petstore)
 	m, e := doc.BuildV3Model()
 	assert.Nil(t, m)
@@ -368,14 +374,10 @@ paths:
         - $ref: '#/components/parameters/Param1'`
 
 	doc, err := NewDocument([]byte(data))
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	result, err := doc.BuildV3Model()
+	require.NoError(t, err)
 
 	// extract operation.
 	operation := result.Model.Paths.PathItems["/something"].Get
@@ -387,72 +389,67 @@ paths:
 }
 
 func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, errors, 9)
+	changes, err := CompareDocuments(originalDoc, updatedDoc)
+	assert.Len(t, err, 9)
 	assert.Nil(t, changes)
 }
 
 func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 9)
+	changes, err := CompareDocuments(updatedDoc, originalDoc)
+	assert.Len(t, err, 9)
 	assert.Nil(t, changes)
 
 }
 
 func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/petstorev2-badref.json")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/petstorev2-badref.json")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/petstorev2-badref.json")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/petstorev2-badref.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 2)
+	changes, err := CompareDocuments(updatedDoc, originalDoc)
+	assert.Len(t, errorutils.Unwrap(err), 2)
 	assert.Nil(t, changes)
 
 }
 
 func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/petstorev2.json")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/petstorev3.json")
-	originalDoc, _ := NewDocument(burgerShopOriginal)
-	updatedDoc, _ := NewDocument(burgerShopUpdated)
-	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 1)
+	burgerShopOriginal, err := os.ReadFile("test_specs/petstorev2.json")
+	require.NoError(t, err)
+	burgerShopUpdated, err := os.ReadFile("test_specs/petstorev3.json")
+	require.NoError(t, err)
+	originalDoc, err := NewDocument(burgerShopOriginal)
+	require.NoError(t, err)
+	updatedDoc, err := NewDocument(burgerShopUpdated)
+	require.NoError(t, err)
+
+	changes, err := CompareDocuments(updatedDoc, originalDoc)
+	assert.Len(t, errorutils.Unwrap(err), 1)
 	assert.Nil(t, changes)
 
 }
 
 func TestSchemaRefIsFollowed(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/ref-followed.yaml")
+	petstore, _ := os.ReadFile("test_specs/ref-followed.yaml")
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
-
-	// if anything went wrong, an error is thrown
-	if err != nil {
-		panic(fmt.Sprintf("cannot create new document: %e", err))
-	}
+	require.NoError(t, err, "cannot create new document")
 
 	// because we know this is a v3 spec, we can build a ready to go model from it.
-	v3Model, errors := document.BuildV3Model()
-
-	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
-	}
+	v3Model, err := document.BuildV3Model()
+	// if anything went wrong when building the v3 model, a slice of err will be returned
+	require.NoError(t, err, "cannot create v3 model from document")
 
 	// get a count of the number of paths and schemas.
 	schemas := v3Model.Model.Components.Schemas
@@ -505,17 +502,14 @@ paths:
                     type: string`
 
 	doc, err := NewDocument([]byte(d))
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	result, err := doc.BuildV3Model()
+	require.NoError(t, err)
 
 	// render the document.
-	rend, _ := result.Model.Render()
+	rend, err := result.Model.Render()
+	require.NoError(t, err)
 
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
 }
@@ -541,10 +535,8 @@ paths:
 //		panic(err)
 //	}
 //
-//	result, errs := doc.BuildV3Model()
-//	if len(errs) > 0 {
-//		panic(errs)
-//	}
+//	result, err := doc.BuildV3Model()
+//	require.NoError(t, err)
 //
 //	assert.Equal(t, "crs", result.Model.Paths.PathItems["/test"].Get.Parameters[0].Name)
 //}
@@ -567,14 +559,10 @@ components:
                         type: object`
 
 	doc, err := NewDocument([]byte(d))
-	if err != nil {
-		panic(err)
-	}
+	require.NoError(t, err)
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	result, err := doc.BuildV3Model()
+	require.NoError(t, err)
 
 	// render the document.
 	rend, _ := result.Model.Render()
@@ -597,15 +585,14 @@ paths:
         get:
             $ref: test-operation.yaml`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
-	if err != nil {
-		panic(err)
-	}
+	doc, err := NewDocument([]byte(d),
+		WithAllowFileReferences(true),
+		WithAllowRemoteReferences(true),
+	)
+	require.NoError(t, err)
 
-	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	result, err := doc.BuildV3Model()
+	require.NoError(t, err)
 
 	// render the document.
 	rend, _ := result.Model.Render()
@@ -626,10 +613,11 @@ func TestDocument_InputAsJSON(t *testing.T) {
   }
 }`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
-	if err != nil {
-		panic(err)
-	}
+	doc, err := NewDocument([]byte(d),
+		WithAllowFileReferences(true),
+		WithAllowRemoteReferences(true),
+	)
+	require.NoError(t, err)
 
 	_, _ = doc.BuildV3Model()
 
@@ -652,10 +640,11 @@ func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
     }
 }`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
-	if err != nil {
-		panic(err)
-	}
+	doc, err := NewDocument([]byte(d),
+		WithAllowFileReferences(true),
+		WithAllowRemoteReferences(true),
+	)
+	require.NoError(t, err)
 
 	_, _ = doc.BuildV3Model()
 
@@ -676,12 +665,11 @@ paths:
             get:
                   operationId: 'test'`
 
-	config := datamodel.NewOpenDocumentConfiguration()
-
-	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
-	if err != nil {
-		panic(err)
-	}
+	doc, err := NewDocument([]byte(spec),
+		WithAllowFileReferences(true),
+		WithAllowRemoteReferences(true),
+	)
+	require.NoError(t, err)
 
 	_, _ = doc.BuildV3Model()
 

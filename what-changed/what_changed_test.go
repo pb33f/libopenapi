@@ -5,18 +5,19 @@ package what_changed
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"testing"
 )
 
 func TestCompareOpenAPIDocuments(t *testing.T) {
 
-	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
-	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
+	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	modified, _ := os.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
 
@@ -32,8 +33,8 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 
 func TestCompareSwaggerDocuments(t *testing.T) {
 
-	original, _ := ioutil.ReadFile("../test_specs/petstorev2-complete.yaml")
-	modified, _ := ioutil.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
+	original, _ := os.ReadFile("../test_specs/petstorev2-complete.yaml")
+	modified, _ := os.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
 
@@ -51,8 +52,8 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 
 func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 
-	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
-	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
+	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	modified, _ := os.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
 
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
@@ -66,8 +67,8 @@ func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 
 func Benchmark_CompareSwaggerDocuments(b *testing.B) {
 
-	original, _ := ioutil.ReadFile("../test_specs/petstorev2-complete.yaml")
-	modified, _ := ioutil.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
+	original, _ := os.ReadFile("../test_specs/petstorev2-complete.yaml")
+	modified, _ := os.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
 
@@ -81,8 +82,8 @@ func Benchmark_CompareSwaggerDocuments(b *testing.B) {
 
 func Benchmark_CompareOpenAPIDocuments_NoChange(b *testing.B) {
 
-	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
-	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	modified, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
@@ -96,8 +97,8 @@ func Benchmark_CompareOpenAPIDocuments_NoChange(b *testing.B) {
 
 func Benchmark_CompareK8s(b *testing.B) {
 
-	original, _ := ioutil.ReadFile("../test_specs/k8s.json")
-	modified, _ := ioutil.ReadFile("../test_specs/k8s.json")
+	original, _ := os.ReadFile("../test_specs/k8s.json")
+	modified, _ := os.ReadFile("../test_specs/k8s.json")
 
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
@@ -111,8 +112,8 @@ func Benchmark_CompareK8s(b *testing.B) {
 
 func Benchmark_CompareStripe(b *testing.B) {
 
-	original, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
-	modified, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	original, _ := os.ReadFile("../test_specs/stripe.yaml")
+	modified, _ := os.ReadFile("../test_specs/stripe.yaml")
 
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
 	infoMod, _ := datamodel.ExtractSpecInfo(modified)
@@ -127,10 +128,10 @@ func Benchmark_CompareStripe(b *testing.B) {
 func ExampleCompareOpenAPIDocuments() {
 
 	// Read in a 'left' (original) OpenAPI specification
-	original, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
 	// Read in a 'right' (modified) OpenAPI specification
-	modified, _ := ioutil.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
+	modified, _ := os.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
 
 	// Extract SpecInfo from bytes
 	infoOriginal, _ := datamodel.ExtractSpecInfo(original)
