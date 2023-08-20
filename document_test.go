@@ -321,7 +321,7 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
-	doc, err := NewDocument(petstore)
+	doc, err := NewDocument(petstore, WithAllowCircularReferenceResolving(false))
 	require.NoError(t, err)
 	m, err := doc.BuildV3Model()
 
