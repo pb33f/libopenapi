@@ -40,9 +40,9 @@ type Configuration struct {
 	// passed in and used. Only enable this when parsing non openapi documents.
 	BypassDocumentCheck bool
 
-	// AllowCircularReferences will allow circular references to be resolved. This is disabled by default.
-	// Will return an error in case of circular references.
-	AllowCircularReferenceResolving bool
+	// ForbidCircularReferenceResolving will forbid circular references to be resolved. This is disabled by default.
+	// Will return an error in case of circular references if set to true.
+	ForbidCircularReferenceResolving bool
 }
 
 func (c *Configuration) toModelConfig() *datamodel.DocumentConfiguration {
@@ -109,11 +109,11 @@ func WithBypassDocumentCheck(bypass bool) ConfigurationOption {
 	}
 }
 
-// WithAllowCircularReferenceResolving returns an error for every detected circular reference if set to false.
-// If set to true, circular references will be resolved (default behavior).
-func WithAllowCircularReferenceResolving(allow bool) ConfigurationOption {
+// WithForbidCircularReferenceResolving returns an error for every detected circular reference if set to true.
+// If set to false, circular references will be resolved (default behavior).
+func WithForbidCircularReferenceResolving(forbidden bool) ConfigurationOption {
 	return func(o *Configuration) error {
-		o.AllowCircularReferenceResolving = allow
+		o.ForbidCircularReferenceResolving = forbidden
 		return nil
 	}
 }

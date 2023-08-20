@@ -177,8 +177,10 @@ paths:
 
 	// extract crs param from index
 	crsParam := index.GetMappedReferences()["https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"]
-	assert.NotNil(t, crsParam)
+	require.NotNil(t, crsParam)
 	assert.True(t, crsParam.IsRemote)
+	require.NotNil(t, crsParam.Node)
+	require.GreaterOrEqual(t, len(crsParam.Node.Content), 10)
 	assert.Equal(t, "crs", crsParam.Node.Content[1].Value)
 	assert.Equal(t, "query", crsParam.Node.Content[3].Value)
 	assert.Equal(t, "form", crsParam.Node.Content[9].Value)

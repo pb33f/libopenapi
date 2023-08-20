@@ -174,7 +174,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 	bs, _ := os.ReadFile("test_specs/stripe.yaml")
-	doc, err := NewDocument(bs, WithAllowCircularReferenceResolving(true))
+	doc, err := NewDocument(bs)
 	require.NoError(t, err)
 	_, err = doc.BuildV3Model()
 	require.NoError(t, err)
@@ -321,9 +321,10 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
-	doc, err := NewDocument(petstore, WithAllowCircularReferenceResolving(false))
+	doc, err := NewDocument(petstore, WithForbidCircularReferenceResolving(true))
 	require.NoError(t, err)
 	m, err := doc.BuildV3Model()
+	require.Error(t, err)
 
 	// top level library does not return broken objects
 	// with an error, only one or the other

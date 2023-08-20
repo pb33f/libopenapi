@@ -32,18 +32,15 @@ func isCircularErr(err error) bool {
 // returns a filter function that checks if a given error is a circular reference error
 // and in case that circular references are allowed or not, it returns false
 // in order to skip the error or true in order to keep the error in the wrapped error list.
-func circularReferenceErrorFilter(refAllowed bool) func(error) (keep bool) {
+func circularReferenceErrorFilter(forbidden bool) func(error) (keep bool) {
 	return func(err error) bool {
 		if err == nil {
 			return false
 		}
 
 		if isCircularErr(err) {
-			if refAllowed {
-				return false
-			} else {
-				return true
-			}
+			// if forbidded -> keep the error and pass it to the user
+			return forbidden
 		}
 
 		// keep unknown error

@@ -401,7 +401,7 @@ components:
         - testThing
 `
 	// create a new document from specification bytes
-	doc, err := NewDocument([]byte(spec), WithAllowCircularReferenceResolving(false))
+	doc, err := NewDocument([]byte(spec), WithForbidCircularReferenceResolving(true))
 
 	// if anything went wrong, an error is thrown
 	if err != nil {

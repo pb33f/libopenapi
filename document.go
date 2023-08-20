@@ -92,7 +92,7 @@ type document struct {
 
 	// skip optional errors like circular reference errors.
 	// if configured
-	errorFilter func(error) bool
+	errorFilter []func(error) bool
 }
 
 // DocumentModel represents either a Swagger document (version 2) or an OpenAPI document (version 3) that is
@@ -118,12 +118,12 @@ type DocumentModel[T v2high.Swagger | v3high.Document] struct {
 func NewDocument(specByteArray []byte, options ...ConfigurationOption) (Document, error) {
 	// sane defaults directly visible to the user.
 	config := &Configuration{
-		RemoteURLHandler:                http.Get,
-		AllowFileReferences:             false,
-		AllowRemoteReferences:           false,
-		AvoidIndexBuild:                 false,
-		BypassDocumentCheck:             false,
-		AllowCircularReferenceResolving: true,
+		RemoteURLHandler:                 http.Get,
+		AllowFileReferences:              false,
+		AllowRemoteReferences:            false,
+		AvoidIndexBuild:                  false,
+		BypassDocumentCheck:              false,
+		ForbidCircularReferenceResolving: false,
 	}
 
 	var err error
@@ -150,7 +150,7 @@ func NewDocumentWithConfiguration(specByteArray []byte, config *Configuration) (
 		info:              info,
 		highOpenAPI3Model: nil,
 		highSwaggerModel:  nil,
-		errorFilter:       defaultErrorFilter,
+		errorFilter:       []func(error) bool{defaultErrorFilter},
 	}
 
 	d.SetConfiguration(config)
@@ -162,14 +162,19 @@ func (d *document) SetConfiguration(config *Configuration) {
 	d.config = config
 
 	if config == nil {
-		d.errorFilter = defaultErrorFilter
+		d.errorFilter = []func(error) bool{defaultErrorFilter}
 		return
 	}
 
-	d.errorFilter = errorutils.AndFilter(
+	if config.RemoteURLHandler == nil {
+		// set default handler if
+		config.RemoteURLHandler = http.Get
+	}
+
+	d.errorFilter = []func(error) bool{
 		// more filters can be added here if needed
-		circularReferenceErrorFilter(config.AllowCircularReferenceResolving),
-	)
+		circularReferenceErrorFilter(config.ForbidCircularReferenceResolving),
+	}
 }
 
 func NewDocumentWithTypeCheck(specByteArray []byte, bypassCheck bool) (Document, error) {
@@ -250,7 +255,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
 	}
 
 	lowDoc, err := v2low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
-	err = errorutils.Filtered(err, d.errorFilter)
+	err = errorutils.Filtered(err, d.errorFilter...)
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +287,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 	}
 
 	lowDoc, err = v3low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
-	err = errorutils.Filtered(err, d.errorFilter)
+	err = errorutils.Filtered(err, d.errorFilter...)
 	if err != nil {
 		return nil, err
 	}

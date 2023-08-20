@@ -81,12 +81,12 @@ func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
 	require.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
-	assert.Len(t, circ, 0)
-	assert.Len(t, resolver.GetResolvingErrors(), 0)
-	assert.Len(t, resolver.GetCircularErrors(), 0)
+	require.Len(t, circ, 0)
+	require.Len(t, resolver.GetResolvingErrors(), 0)
+	require.Len(t, resolver.GetCircularErrors(), 0)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 }
 
 func TestResolver_CircularReferencesRequiredValid(t *testing.T) {

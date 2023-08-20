@@ -5,7 +5,7 @@ func Filtered(err error, filters ...func(error) (keep bool)) error {
 		return nil
 	}
 	errs := ShallowUnwrap(err)
-	filtered := Filter(errs, AndFilter(filters...))
+	filtered := Filter(errs, and(filters...))
 	if len(filtered) == 0 {
 		return nil
 	}
@@ -14,21 +14,26 @@ func Filtered(err error, filters ...func(error) (keep bool)) error {
 
 func Filter(errs []error, filter func(error) (keep bool)) []error {
 	var result []error
+	var keep bool
 	for _, err := range errs {
-		if filter(err) {
+		keep = filter(err)
+		if keep {
 			result = append(result, err)
 		}
 	}
 	return result
 }
 
-func AndFilter(filters ...func(error) (keep bool)) func(error) (keep bool) {
+func and(filters ...func(error) (keep bool)) func(error) (keep bool) {
 	return func(err error) bool {
+		var keep bool
 		for _, filter := range filters {
-			if !filter(err) {
+			keep = filter(err)
+			if !keep {
 				return false
 			}
 		}
+		// all true -> true
 		return true
 	}
 }
