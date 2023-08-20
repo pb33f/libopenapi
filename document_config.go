@@ -109,6 +109,8 @@ func WithBypassDocumentCheck(bypass bool) ConfigurationOption {
 	}
 }
 
+// WithAllowCircularReferenceResolving returns an error for every detected circular reference if set to false.
+// If set to true, circular references will be resolved (default behavior).
 func WithAllowCircularReferenceResolving(allow bool) ConfigurationOption {
 	return func(o *Configuration) error {
 		o.AllowCircularReferenceResolving = allow
