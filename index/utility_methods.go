@@ -441,9 +441,8 @@ func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bo
 		}
 
 	}
-	if strings.HasSuffix(p, "/") {
-		p = p[:len(p)-1]
-	}
+	p = strings.TrimSuffix(p, "/")
+
 	return p
 
 }
