@@ -108,3 +108,10 @@ func WithBypassDocumentCheck(bypass bool) ConfigurationOption {
 		return nil
 	}
 }
+
+func WithAllowCircularReferenceResolving(allow bool) ConfigurationOption {
+	return func(o *Configuration) error {
+		o.AllowCircularReferenceResolving = allow
+		return nil
+	}
+}

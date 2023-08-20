@@ -177,7 +177,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 	bs, _ := os.ReadFile("test_specs/stripe.yaml")
-	doc, err := NewDocument(bs)
+	doc, err := NewDocument(bs, WithAllowCircularReferenceResolving(true))
 	require.NoError(t, err)
 	_, err = doc.BuildV3Model()
 	require.NoError(t, err)
@@ -208,14 +208,14 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 	// there should be no other changes than the 519 descriptions.
 	assert.Equal(t, 0, len(filtered))
-
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 
 	bs, _ := os.ReadFile("test_specs/asana.yaml")
 	doc, _ := NewDocument(bs)
-	doc.BuildV3Model()
+	_, err := doc.BuildV3Model()
+	require.NoError(t, err)
 
 	dat, newDoc, _, _ := doc.RenderAndReload()
 	assert.NotNil(t, dat)
@@ -300,9 +300,11 @@ func TestDocument_BuildModelPreBuild(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 	doc, e := NewDocument(petstore)
 	assert.NoError(t, e)
-	doc.BuildV3Model()
-	doc.BuildV3Model()
-	_, _, _, err := doc.RenderAndReload()
+	_, err := doc.BuildV3Model()
+	require.NoError(t, err)
+	_, err = doc.BuildV3Model()
+	require.NoError(t, err)
+	_, _, _, err = doc.RenderAndReload()
 	assert.Nil(t, err)
 	assert.Len(t, errorutils.Unwrap(err), 0)
 }
@@ -324,7 +326,7 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
 	doc, err := NewDocument(petstore)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	m, err := doc.BuildV3Model()
 	assert.NotNil(t, m)
 	assert.Len(t, errorutils.Unwrap(err), 3)

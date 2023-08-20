@@ -1,3 +1,4 @@
 test-operation.yaml
 .idea/
 *.iml
+__debug_bin*
