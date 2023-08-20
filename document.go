@@ -251,6 +251,9 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
 
 	lowDoc, err := v2low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
 	err = errorutils.Filtered(err, d.errorFilter)
+	if err != nil {
+		return nil, err
+	}
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
 	d.highSwaggerModel = &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
@@ -280,6 +283,10 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 
 	lowDoc, err = v3low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
 	err = errorutils.Filtered(err, d.errorFilter)
+	if err != nil {
+		return nil, err
+	}
+
 	highDoc := v3high.NewDocument(lowDoc)
 	d.highOpenAPI3Model = &DocumentModel[v3high.Document]{
 		Model: *highDoc,

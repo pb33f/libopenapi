@@ -110,7 +110,13 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		go runExtraction(info, &doc, idx, f, &errs, &wg)
 	}
 	wg.Wait()
-	return &doc, errorutils.Join(errs...)
+
+	err := errorutils.Join(errs...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
