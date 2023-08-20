@@ -1,18 +1,23 @@
 package errorutils
 
+import (
+	"fmt"
+	"strings"
+)
+
+// MultiError is a collection of errors.
+// It never contains nil values.
 type MultiError struct {
 	errs []error
 }
 
 func (e *MultiError) Error() string {
-	var b []byte
+	var b strings.Builder
+	b.Grow(len(e.errs) * 16)
 	for i, err := range e.errs {
-		if i > 0 {
-			b = append(b, '\n')
-		}
-		b = append(b, err.Error()...)
+		b.WriteString(fmt.Sprintf("[%d] %v\n", i, err))
 	}
-	return string(b)
+	return b.String()
 }
 
 func (e *MultiError) Unwrap() []error {

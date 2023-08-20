@@ -9,6 +9,7 @@ import (
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -77,7 +78,7 @@ func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
 	})
 
 	resolver := NewResolver(index)
-	assert.NotNil(t, resolver)
+	require.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
