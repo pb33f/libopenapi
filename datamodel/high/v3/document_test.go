@@ -386,7 +386,7 @@ func TestStripeAsDoc(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	assert.Len(t, errorutils.Unwrap(err), 3)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 3)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 }
@@ -397,7 +397,7 @@ func TestK8sAsDoc(t *testing.T) {
 	var err error
 	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
-	assert.Len(t, errorutils.Unwrap(err), 0)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 0)
 	assert.NotNil(t, d)
 }
 
@@ -452,7 +452,7 @@ func TestCircularReferencesDoc(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	assert.Len(t, errorutils.Unwrap(err), 3)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 3)
 	d := NewDocument(lowDoc)
 	assert.Len(t, d.Components.Schemas, 9)
 	assert.Len(t, d.Index.GetCircularReferences(), 3)

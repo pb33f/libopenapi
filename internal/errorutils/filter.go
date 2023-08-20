@@ -4,7 +4,7 @@ func Filtered(err error, filters ...func(error) (keep bool)) error {
 	if err == nil {
 		return nil
 	}
-	errs := Unwrap(err)
+	errs := ShallowUnwrap(err)
 	filtered := Filter(errs, AndFilter(filters...))
 	if len(filtered) == 0 {
 		return nil

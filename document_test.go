@@ -24,7 +24,7 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 
 	v2Doc, docErr := doc.BuildV2Model()
 	require.Nil(t, docErr)
-	require.Len(t, errorutils.Unwrap(docErr), 0)
+	require.Len(t, errorutils.ShallowUnwrap(docErr), 0)
 	require.NotNil(t, v2Doc)
 	require.NotNil(t, doc.GetSpecInfo())
 }
@@ -36,7 +36,7 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, errorutils.Unwrap(docErr), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(docErr), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -50,7 +50,7 @@ definitions:
 	require.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	require.Len(t, errorutils.Unwrap(docErr), 2)
+	require.Len(t, errorutils.ShallowUnwrap(docErr), 2)
 	require.Nil(t, v2Doc)
 }
 
@@ -61,7 +61,7 @@ func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, errorutils.Unwrap(docErr), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(docErr), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -69,14 +69,14 @@ func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
 
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV2Model()
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
 
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV3Model()
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestLoadDocument_Empty(t *testing.T) {
@@ -93,7 +93,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.Equal(t, "3.0.1", doc.GetVersion())
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, errorutils.Unwrap(docErr), 0)
+	assert.Len(t, errorutils.ShallowUnwrap(docErr), 0)
 	assert.NotNil(t, v3Doc)
 }
 
@@ -107,7 +107,7 @@ paths:
 	assert.NoError(t, err)
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, errorutils.Unwrap(docErr), 2)
+	assert.Len(t, errorutils.ShallowUnwrap(docErr), 2)
 	assert.Nil(t, v3Doc)
 }
 
@@ -302,7 +302,7 @@ func TestDocument_BuildModelPreBuild(t *testing.T) {
 	require.NoError(t, err)
 	_, _, _, err = doc.RenderAndReload()
 	assert.Nil(t, err)
-	assert.Len(t, errorutils.Unwrap(err), 0)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 0)
 }
 
 func TestDocument_AnyDoc(t *testing.T) {
@@ -328,7 +328,7 @@ func TestDocument_BuildModelCircular(t *testing.T) {
 	// top level library does not return broken objects
 	// with an error, only one or the other
 	assert.Nil(t, m)
-	assert.Len(t, errorutils.Unwrap(err), 3)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 3)
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
@@ -337,7 +337,7 @@ func TestDocument_BuildModelBad(t *testing.T) {
 	require.NoError(t, err)
 	m, err := doc.BuildV3Model()
 	assert.Nil(t, m)
-	assert.Len(t, errorutils.Unwrap(err), 9)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 9)
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
@@ -407,7 +407,7 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 		WithAllowFileReferences(true),
 	)
 	changes, err := CompareDocuments(originalDoc, updatedDoc)
-	require.Len(t, errorutils.Unwrap(err), 9)
+	require.Len(t, errorutils.ShallowUnwrap(err), 9)
 	require.Nil(t, changes)
 }
 
@@ -418,7 +418,7 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, err := CompareDocuments(updatedDoc, originalDoc)
-	require.Len(t, errorutils.Unwrap(err), 9)
+	require.Len(t, errorutils.ShallowUnwrap(err), 9)
 	require.Nil(t, changes)
 }
 
@@ -429,7 +429,7 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, err := CompareDocuments(updatedDoc, originalDoc)
-	require.Len(t, errorutils.Unwrap(err), 2)
+	require.Len(t, errorutils.ShallowUnwrap(err), 2)
 	require.Nil(t, changes)
 
 }
@@ -446,7 +446,7 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 	require.NoError(t, err)
 
 	changes, err := CompareDocuments(updatedDoc, originalDoc)
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 	require.Nil(t, changes)
 }
 

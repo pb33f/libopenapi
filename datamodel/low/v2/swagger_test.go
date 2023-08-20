@@ -193,7 +193,7 @@ func TestCreateDocument_ExternalDocsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_TagsBad(t *testing.T) {
@@ -211,7 +211,7 @@ func TestCreateDocument_TagsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_PathsBad(t *testing.T) {
@@ -233,7 +233,7 @@ func TestCreateDocument_PathsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_SecurityBad(t *testing.T) {
@@ -251,7 +251,7 @@ func TestCreateDocument_SecurityBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
@@ -269,7 +269,7 @@ func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_ResponsesBad(t *testing.T) {
@@ -287,7 +287,7 @@ func TestCreateDocument_ResponsesBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_ParametersBad(t *testing.T) {
@@ -305,7 +305,7 @@ func TestCreateDocument_ParametersBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_DefinitionsBad(t *testing.T) {
@@ -323,7 +323,7 @@ func TestCreateDocument_DefinitionsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_InfoBad(t *testing.T) {
@@ -341,7 +341,7 @@ func TestCreateDocument_InfoBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, errorutils.Unwrap(err), 1)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCircularReferenceError(t *testing.T) {
@@ -350,6 +350,6 @@ func TestCircularReferenceError(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	circDoc, err := CreateDocument(info)
 	assert.NotNil(t, circDoc)
-	assert.Len(t, errorutils.Unwrap(err), 3)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 3)
 
 }

@@ -24,6 +24,7 @@ func (e *MultiError) Unwrap() []error {
 	return e.errs
 }
 
+// Join should be used at the end of top level functions to join all errors.
 func Join(errs ...error) error {
 	var result MultiError
 
@@ -39,35 +40,39 @@ func Join(errs ...error) error {
 
 	result.errs = make([]error, 0, size)
 	for _, err := range errs {
-		// try to keep MultiError flat
-		if multi, ok := err.(*MultiError); ok {
-			result.errs = append(result.errs, multi.Unwrap()...)
-		} else {
-			result.errs = append(result.errs, err)
+		if err == nil {
+			continue
 		}
+		// try to keep MultiError flat
+		result.errs = append(result.errs, deepUnwrapMultiError(err)...)
 	}
 	return &result
 }
 
-// Unwrap recursively unwraps errors and flattens them into a slice of errors.
-func Unwrap(err error) []error {
+func ShallowUnwrap(err error) []error {
+	if err == nil {
+		return nil
+	}
+	unwrap, ok := err.(interface{ Unwrap() []error })
+	if !ok {
+		return []error{err}
+	}
+
+	return unwrap.Unwrap()
+}
+
+func deepUnwrapMultiError(err error) []error {
 	if err == nil {
 		return nil
 	}
 	var result []error
-	if unwrap, ok := err.(interface{ Unwrap() []error }); ok {
-		// ignore wrapping error - no hierarchy
-		for _, e := range unwrap.Unwrap() {
-			result = append(result, Unwrap(e)...)
+
+	if multi, ok := err.(*MultiError); ok {
+		for _, e := range multi.Unwrap() {
+			result = append(result, deepUnwrapMultiError(e)...)
 		}
-		return result
-	} else if unwrap, ok := err.(interface{ Unwrap() error }); ok {
-		// add parent error to result
+	} else {
 		result = append(result, err)
-		result = append(result, Unwrap(unwrap.Unwrap())...)
-		return result
 	}
-	// no unwrapping needed, as it's not wrapped
-	result = append(result, err)
 	return result
 }

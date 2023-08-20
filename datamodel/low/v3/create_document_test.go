@@ -76,7 +76,7 @@ func TestCircularReferenceError(t *testing.T) {
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, errorutils.Unwrap(err), 3)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 3)
 
 	// lower level packages return errors and potentially a document.
 	assert.NotNil(t, circDoc)
@@ -116,7 +116,7 @@ func TestCreateDocumentStripe(t *testing.T) {
 		AllowRemoteReferences: false,
 		BasePath:              "/here",
 	})
-	assert.Len(t, errorutils.Unwrap(err), 3)
+	assert.Len(t, errorutils.ShallowUnwrap(err), 3)
 
 	assert.Equal(t, "3.0.0", d.Version.Value)
 	assert.Equal(t, "Stripe API", d.Info.Value.Title.Value)
@@ -182,7 +182,7 @@ func TestCreateDocument_WebHooks_Error(t *testing.T) {
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_Servers(t *testing.T) {
@@ -572,7 +572,7 @@ components:
 		AllowRemoteReferences: false,
 	})
 	require.NoError(t, err)
-	require.Len(t, errorutils.Unwrap(err), 0)
+	require.Len(t, errorutils.ShallowUnwrap(err), 0)
 
 	ob := doc.Components.Value.FindSchema("bork").Value
 	ob.Schema()
@@ -591,7 +591,7 @@ webhooks:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_Components_Error_Extract(t *testing.T) {
@@ -607,7 +607,7 @@ components:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 
 }
 
@@ -623,7 +623,7 @@ paths:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_Tags_Errors(t *testing.T) {
@@ -637,7 +637,7 @@ tags:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_Security_Error(t *testing.T) {
@@ -651,7 +651,7 @@ security:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
@@ -665,7 +665,7 @@ externalDocs:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	require.Len(t, errorutils.Unwrap(err), 1)
+	require.Len(t, errorutils.ShallowUnwrap(err), 1)
 }
 
 func TestCreateDocument_YamlAnchor(t *testing.T) {
@@ -746,7 +746,7 @@ func ExampleCreateDocument() {
 }
 
 func panicOnUnknown(err error) {
-	for _, err := range errorutils.Unwrap(err) {
+	for _, err := range errorutils.ShallowUnwrap(err) {
 		var resolvErr *resolver.ResolvingError
 		if errors.As(err, &resolvErr) && resolvErr.CircularReference != nil {
 			continue
