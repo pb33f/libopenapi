@@ -6,9 +6,10 @@ package index
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"strings"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -111,9 +112,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				index.linesWithRefs[n.Line] = true
 
 				fp := make([]string, len(seenPath))
-				for x, foundPathNode := range seenPath {
-					fp[x] = foundPathNode
-				}
+				copy(fp, seenPath)
 
 				value := node.Content[i+1].Value
 
