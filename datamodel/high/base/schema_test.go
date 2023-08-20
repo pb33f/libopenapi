@@ -499,10 +499,10 @@ required: [cake, fish]`
 	assert.NotNil(t, compiled)
 	assert.Nil(t, schemaProxy.GetBuildError())
 
-    assert.True(t, compiled.ExclusiveMaximum.A)
-    assert.Equal(t, float64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum.B)
-    assert.Equal(t, float64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
-    assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
+	assert.True(t, compiled.ExclusiveMaximum.A)
+	assert.Equal(t, float64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum.B)
+	assert.Equal(t, float64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
+	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
 
 	assert.Equal(t, "nice", compiled.AdditionalProperties.(*SchemaProxy).Schema().Description)
 
@@ -587,25 +587,25 @@ type: number
 }
 
 func TestSchemaNumberMultipleOfInt(t *testing.T) {
-    yml := `
+	yml := `
 type: number
 multipleOf: 5
 `
 	highSchema := getHighSchema(t, yml)
 
 	value := float64(5)
-    assert.EqualValues(t, &value, highSchema.MultipleOf)
+	assert.EqualValues(t, &value, highSchema.MultipleOf)
 }
 
 func TestSchemaNumberMultipleOfFloat(t *testing.T) {
-    yml := `
+	yml := `
 type: number
 multipleOf: 0.5
 `
-    highSchema := getHighSchema(t, yml)
+	highSchema := getHighSchema(t, yml)
 
-    value := 0.5
-    assert.EqualValues(t, &value, highSchema.MultipleOf)
+	value := 0.5
+	assert.EqualValues(t, &value, highSchema.MultipleOf)
 }
 
 func TestSchemaNumberMinimumInt(t *testing.T) {
@@ -616,17 +616,17 @@ minimum: 5
 	highSchema := getHighSchema(t, yml)
 
 	value := float64(5)
-    assert.EqualValues(t, &value, highSchema.Minimum)
+	assert.EqualValues(t, &value, highSchema.Minimum)
 }
 
 func TestSchemaNumberMinimumFloat(t *testing.T) {
-    yml := `
+	yml := `
 type: number
 minimum: 0.5
 `
-    highSchema := getHighSchema(t, yml)
+	highSchema := getHighSchema(t, yml)
 
-    value := 0.5
+	value := 0.5
 	assert.EqualValues(t, &value, highSchema.Minimum)
 }
 
@@ -638,7 +638,7 @@ minimum: 0
 	highSchema := getHighSchema(t, yml)
 
 	value := float64(0)
-    assert.EqualValues(t, &value, highSchema.Minimum)
+	assert.EqualValues(t, &value, highSchema.Minimum)
 }
 
 func TestSchemaNumberExclusiveMinimum(t *testing.T) {
@@ -661,7 +661,7 @@ maximum: 5
 	highSchema := getHighSchema(t, yml)
 
 	value := float64(5)
-    assert.EqualValues(t, &value, highSchema.Maximum)
+	assert.EqualValues(t, &value, highSchema.Maximum)
 }
 
 func TestSchemaNumberMaximumZero(t *testing.T) {
@@ -672,7 +672,7 @@ maximum: 0
 	highSchema := getHighSchema(t, yml)
 
 	value := float64(0)
-    assert.EqualValues(t, &value, highSchema.Maximum)
+	assert.EqualValues(t, &value, highSchema.Maximum)
 }
 
 func TestSchemaNumberExclusiveMaximum(t *testing.T) {
