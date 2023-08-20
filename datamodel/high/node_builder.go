@@ -5,14 +5,15 @@ package high
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // NodeEntry represents a single node used by NodeBuilder.
@@ -197,7 +198,6 @@ func (n *NodeBuilder) add(key string, i int) {
 			})
 			nodeEntry.Line = lines[0].line // pick the lowest line number so this key is sorted in order.
 			nodeEntry.Style = lines[0].style
-			break
 		case reflect.Map:
 			l := value.Len()
 			line := make([]int, l)
@@ -303,8 +303,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		valueNode = utils.CreateStringNode(val)
 		valueNode.Line = line
 		valueNode.Style = entry.Style
-		break
-
 	case reflect.Bool:
 		val := value.(bool)
 		if !val {
@@ -313,26 +311,18 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 			valueNode = utils.CreateBoolNode("true")
 		}
 		valueNode.Line = line
-		break
-
 	case reflect.Int:
 		val := strconv.Itoa(value.(int))
 		valueNode = utils.CreateIntNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Int64:
 		val := strconv.FormatInt(value.(int64), 10)
 		valueNode = utils.CreateIntNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Float32:
 		val := strconv.FormatFloat(float64(value.(float32)), 'f', 2, 64)
 		valueNode = utils.CreateFloatNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Float64:
 		precision := -1
 		if entry.StringValue != "" && strings.Contains(entry.StringValue, ".") {
@@ -341,8 +331,6 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
 		valueNode = utils.CreateFloatNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Map:
 
 		// the keys will be rendered randomly, if we don't find out the original line
@@ -373,7 +361,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 						fg := reflect.ValueOf(pr.GetValueUntyped())
 						found := false
 						found, orderedCollection = n.extractLowMapKeys(fg, x, found, orderedCollection, m, k)
-						if found != true {
+						if !found {
 							// this is something new, add it.
 							orderedCollection = append(orderedCollection, &NodeEntry{
 								Tag:   x,
@@ -456,13 +444,13 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 				if er, ko := sqi.(Renderable); ko {
 					var rend interface{}
 					if !n.Resolve {
-						rend, _ = er.(Renderable).MarshalYAML()
+						rend, _ = er.MarshalYAML()
 					} else {
 						// try and render inline, if we can, otherwise treat as normal.
 						if _, ko := er.(RenderableInline); ko {
 							rend, _ = er.(RenderableInline).MarshalYAMLInline()
 						} else {
-							rend, _ = er.(Renderable).MarshalYAML()
+							rend, _ = er.MarshalYAML()
 						}
 					}
 					// check if this is a pointer or not.
