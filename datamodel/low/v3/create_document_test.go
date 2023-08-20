@@ -7,7 +7,9 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/internal/errorutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var doc *Document
@@ -46,7 +48,7 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 			AllowRemoteReferences: false,
 		})
 		if err != nil {
-			panic("this should not error")
+			panic(fmt.Errorf("this should not error: %w", err))
 		}
 	}
 }
@@ -76,8 +78,10 @@ func TestCircularReferenceError(t *testing.T) {
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.NotNil(t, circDoc)
-	assert.Len(t, err, 3)
+	assert.Len(t, errorutils.Unwrap(err), 3)
+	// do not rely on potentially broken data when an error is returned.
+	// one should never rely on a returned pointer in case of an error.
+	assert.Nil(t, circDoc)
 }
 
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
@@ -118,7 +122,7 @@ func TestCreateDocumentStripe(t *testing.T) {
 		AllowRemoteReferences: false,
 		BasePath:              "/here",
 	})
-	assert.Len(t, err, 3)
+	assert.Len(t, errorutils.Unwrap(err), 3)
 
 	assert.Equal(t, "3.0.0", d.Version.Value)
 	assert.Equal(t, "Stripe API", d.Info.Value.Title.Value)
@@ -184,7 +188,7 @@ func TestCreateDocument_WebHooks_Error(t *testing.T) {
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestCreateDocument_Servers(t *testing.T) {
@@ -573,7 +577,8 @@ components:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 0)
+	require.NoError(t, err)
+	require.Len(t, errorutils.Unwrap(err), 0)
 
 	ob := doc.Components.Value.FindSchema("bork").Value
 	ob.Schema()
@@ -592,7 +597,7 @@ webhooks:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestCreateDocument_Components_Error_Extract(t *testing.T) {
@@ -608,7 +613,7 @@ components:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 
 }
 
@@ -624,7 +629,7 @@ paths:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestCreateDocument_Tags_Errors(t *testing.T) {
@@ -638,7 +643,7 @@ tags:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestCreateDocument_Security_Error(t *testing.T) {
@@ -652,7 +657,7 @@ security:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
@@ -666,7 +671,7 @@ externalDocs:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	require.Len(t, errorutils.Unwrap(err), 1)
 }
 
 func TestCreateDocument_YamlAnchor(t *testing.T) {
