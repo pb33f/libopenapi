@@ -563,7 +563,7 @@ func IsHttpVerb(verb string) bool {
 var (
 	// define bracket name expression
 	bracketNameExp = regexp.MustCompile(`^(\w+)\[(\w+)\]$`)
-	pathCharRegex  = regexp.MustCompile(`[%=;~.]`)
+	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
 )
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
@@ -574,7 +574,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 
 	for i := range segs {
-		if pathCharRegex.MatchString(segs[i]) {
+		if pathCharExp.MatchString(segs[i]) {
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
 			if len(cleaned) > 0 {
@@ -612,11 +612,9 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	_, err := strconv.ParseInt(name, 10, 32)
 	var replaced string
 	if err != nil {
-		replaced = strings.ReplaceAll(fmt.Sprintf("%s",
-			strings.Join(cleaned, ".")), "#", "$")
+		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
 	} else {
-		replaced = strings.ReplaceAll(fmt.Sprintf("%s",
-			strings.Join(cleaned, ".")), "#", "$")
+		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
 	}
 
 	if len(replaced) > 0 {
@@ -663,18 +661,22 @@ func RenderCodeSnippet(startNode *yaml.Node, specData []string, before, after in
 	return buf.String()
 }
 
+var (
+	// compile only once
+	pascalCase         = regexp.MustCompile("^[A-Z][a-z]+(?:[A-Z][a-z]+)*$")
+	camelCase          = regexp.MustCompile("^[a-z]+(?:[A-Z][a-z]+)*$")
+	screamingSnakeCase = regexp.MustCompile("^[A-Z]+(_[A-Z]+)*$")
+	snakeCase          = regexp.MustCompile("^[a-z]+(_[a-z]+)*$")
+	kebabCase          = regexp.MustCompile("^[a-z]+(-[a-z]+)*$")
+	screamingKebabCase = regexp.MustCompile("^[A-Z]+(-[A-Z]+)*$")
+)
+
 func DetectCase(input string) Case {
 	trim := strings.TrimSpace(input)
 	if trim == "" {
 		return UnknownCase
 	}
 
-	pascalCase := regexp.MustCompile("^[A-Z][a-z]+(?:[A-Z][a-z]+)*$")
-	camelCase := regexp.MustCompile("^[a-z]+(?:[A-Z][a-z]+)*$")
-	screamingSnakeCase := regexp.MustCompile("^[A-Z]+(_[A-Z]+)*$")
-	snakeCase := regexp.MustCompile("^[a-z]+(_[a-z]+)*$")
-	kebabCase := regexp.MustCompile("^[a-z]+(-[a-z]+)*$")
-	screamingKebabCase := regexp.MustCompile("^[A-Z]+(-[A-Z]+)*$")
 	if pascalCase.MatchString(trim) {
 		return PascalCase
 	}
@@ -711,10 +713,11 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	return res
 }
 
+var whitespaceExp = regexp.MustCompile(`\n( +)`)
+
 // DetermineWhitespaceLength will determine the length of the whitespace for a JSON or YAML file.
 func DetermineWhitespaceLength(input string) int {
-	exp := regexp.MustCompile(`\n( +)`)
-	whiteSpace := exp.FindAllStringSubmatch(input, -1)
+	whiteSpace := whitespaceExp.FindAllStringSubmatch(input, -1)
 	var filtered []string
 	for i := range whiteSpace {
 		filtered = append(filtered, whiteSpace[i][1])
