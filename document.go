@@ -123,7 +123,7 @@ func NewDocument(specByteArray []byte, options ...ConfigurationOption) (Document
 		AllowRemoteReferences:           false,
 		AvoidIndexBuild:                 false,
 		BypassDocumentCheck:             false,
-		AllowCircularReferenceResolving: false,
+		AllowCircularReferenceResolving: true,
 	}
 
 	var err error
