@@ -1,10 +1,11 @@
 package low
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 type hotdog struct {
@@ -379,6 +380,7 @@ func TestHandleSlicesOfBools(t *testing.T) {
 func TestSetField_Ignore(t *testing.T) {
 
 	type Complex struct {
+		//lint:ignore U1000 only used in test
 		name string
 	}
 	type internal struct {

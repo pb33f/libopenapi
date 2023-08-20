@@ -165,8 +165,7 @@ func buildComponent[N any, O any](comp int, key string, orig O, c chan component
 // build out a schema
 func buildSchema(key lowmodel.KeyReference[string], orig lowmodel.ValueReference[*base.SchemaProxy],
 	c chan componentResult[*highbase.SchemaProxy]) {
-	var sch *highbase.SchemaProxy
-	sch = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+	var sch *highbase.SchemaProxy = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 		Value:     orig.Value,
 		ValueNode: orig.ValueNode,
 	})

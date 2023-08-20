@@ -435,7 +435,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	completeChildren := 0
 	if children > 0 {
 	allDone:
-		for true {
+		for {
 			select {
 			case <-polyCompletedChan:
 				completeChildren++

@@ -178,21 +178,21 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		// the only thing we now care about is handling operations, filter out anything that's not a verb.
 		switch currentNode.Value {
 		case GetLabel:
-			break
+			// valid path label
 		case PostLabel:
-			break
+			// valid path label
 		case PutLabel:
-			break
+			// valid path label
 		case PatchLabel:
-			break
+			// valid path label
 		case DeleteLabel:
-			break
+			// valid path label
 		case HeadLabel:
-			break
+			// valid path label
 		case OptionsLabel:
-			break
+			// valid path label
 		case TraceLabel:
-			break
+			// valid path label
 		default:
 			continue // ignore everything else.
 		}

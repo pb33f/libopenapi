@@ -259,10 +259,7 @@ func (n ValueReference[T]) SetReference(ref string) {
 
 // IsReference will return true if the key node contains a $ref
 func (n ValueReference[T]) IsReference() bool {
-	if n.Reference != "" {
-		return true
-	}
-	return false
+	return n.Reference != ""
 }
 
 func (n ValueReference[T]) MarshalYAML() (interface{}, error) {

@@ -6,13 +6,14 @@ package v2
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
-	"sync"
 )
 
 // PathItem represents a low-level Swagger / OpenAPI 2 PathItem object.
@@ -102,19 +103,19 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		// the only thing we now care about is handling operations, filter out anything that's not a verb.
 		switch currentNode.Value {
 		case GetLabel:
-			break
+			// valid label
 		case PostLabel:
-			break
+			// valid label
 		case PutLabel:
-			break
+			// valid label
 		case PatchLabel:
-			break
+			// valid label
 		case DeleteLabel:
-			break
+			// valid label
 		case HeadLabel:
-			break
+			// valid label
 		case OptionsLabel:
-			break
+			// valid label
 		default:
 			continue // ignore everything else.
 		}
