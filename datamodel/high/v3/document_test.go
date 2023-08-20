@@ -4,7 +4,6 @@
 package v3
 
 import (
-	"fmt"
 	"net/url"
 	"os"
 	"strings"
@@ -16,6 +15,7 @@ import (
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/internal/errorutils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var lowDoc *lowv3.Document
@@ -427,10 +427,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	}
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
-	if err != nil {
-		fmt.Printf("error: %v\n", err)
-		panic("broken something")
-	}
+	require.NoError(t, err)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 	assert.Equal(t, 183, len(d.Paths.PathItems))
