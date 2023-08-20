@@ -111,12 +111,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	}
 	wg.Wait()
 
-	err := errorutils.Join(errs...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &doc, nil
+	// circular errors need to be returned with struct
+	return &doc, errorutils.Join(errs...)
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {

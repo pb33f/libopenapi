@@ -166,7 +166,7 @@ func (d *document) SetConfiguration(config *Configuration) {
 		return
 	}
 
-	d.errorFilter = errorutils.And(
+	d.errorFilter = errorutils.AndFilter(
 		// more filters can be added here if needed
 		circularReferenceErrorFilter(config.AllowCircularReferenceResolving),
 	)

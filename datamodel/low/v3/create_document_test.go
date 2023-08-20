@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"testing"
@@ -8,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/internal/errorutils"
+	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -47,9 +49,7 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 			AllowFileReferences:   false,
 			AllowRemoteReferences: false,
 		})
-		if err != nil {
-			panic(fmt.Errorf("this should not error: %w", err))
-		}
+		panicOnUnknown(err)
 	}
 }
 
@@ -64,9 +64,7 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 			AllowFileReferences:   false,
 			AllowRemoteReferences: false,
 		})
-		if err != nil {
-			panic("this should not error")
-		}
+		panicOnUnknown(err)
 	}
 }
 
@@ -79,9 +77,9 @@ func TestCircularReferenceError(t *testing.T) {
 		AllowRemoteReferences: false,
 	})
 	assert.Len(t, errorutils.Unwrap(err), 3)
-	// do not rely on potentially broken data when an error is returned.
-	// one should never rely on a returned pointer in case of an error.
-	assert.Nil(t, circDoc)
+
+	// lower level packages return errors and potentially a document.
+	assert.NotNil(t, circDoc)
 }
 
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
@@ -93,9 +91,7 @@ func BenchmarkCreateDocument_Stripe(b *testing.B) {
 			AllowFileReferences:   false,
 			AllowRemoteReferences: false,
 		})
-		if err != nil {
-			panic("this should not error")
-		}
+		panicOnUnknown(err)
 	}
 }
 
@@ -107,9 +103,7 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 			AllowFileReferences:   false,
 			AllowRemoteReferences: false,
 		})
-		if err != nil {
-			panic("this should not error")
-		}
+		panicOnUnknown(err)
 	}
 }
 
@@ -749,4 +743,15 @@ func ExampleCreateDocument() {
 	// print out email address from the info > contact object.
 	fmt.Print(document.Info.Value.Contact.Value.Email.Value)
 	// Output: apiteam@swagger.io
+}
+
+func panicOnUnknown(err error) {
+	for _, err := range errorutils.Unwrap(err) {
+		var resolvErr *resolver.ResolvingError
+		if errors.As(err, &resolvErr) && resolvErr.CircularReference != nil {
+			continue
+		} else if err != nil {
+			panic(fmt.Errorf("this should not error: %w", err))
+		}
+	}
 }

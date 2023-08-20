@@ -27,9 +27,6 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 	require.Len(t, errorutils.Unwrap(docErr), 0)
 	require.NotNil(t, v2Doc)
 	require.NotNil(t, doc.GetSpecInfo())
-
-	fmt.Print()
-
 }
 
 func TestLoadDocument_Simple_V2_Error(t *testing.T) {
@@ -200,7 +197,6 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		}
 	}
 
-	assert.Nil(t, err)
 	tc := compReport.TotalChanges()
 	bc := compReport.TotalBreakingChanges()
 	assert.Equal(t, 0, bc)
@@ -328,7 +324,10 @@ func TestDocument_BuildModelCircular(t *testing.T) {
 	doc, err := NewDocument(petstore)
 	require.NoError(t, err)
 	m, err := doc.BuildV3Model()
-	assert.NotNil(t, m)
+
+	// top level library does not return broken objects
+	// with an error, only one or the other
+	assert.Nil(t, m)
 	assert.Len(t, errorutils.Unwrap(err), 3)
 }
 

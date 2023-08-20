@@ -23,9 +23,13 @@ func TestUnwrapError(t *testing.T) {
 }
 
 func TestUnwrapHierarchyError(t *testing.T) {
-	err1 := fmt.Errorf("foo: %w", errors.New("bar"))
-	err2 := Join(nil, fmt.Errorf("barr: %w", errors.New("fo")))
-	err := Join(err1, err2)
+	err1 := errors.New("bar")
+	err2 := fmt.Errorf("foo: %w", err1)
+
+	err3 := errors.New("fo")
+	err4 := fmt.Errorf("barr: %w", err3)
+
+	err := Join(Join(nil, err2), Join(nil, err4, nil))
 
 	errs := Unwrap(err)
 	require.Len(t, errs, 4)

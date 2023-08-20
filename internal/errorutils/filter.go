@@ -5,7 +5,7 @@ func Filtered(err error, filters ...func(error) (keep bool)) error {
 		return nil
 	}
 	errs := Unwrap(err)
-	filtered := Filter(errs, And(filters...))
+	filtered := Filter(errs, AndFilter(filters...))
 	if len(filtered) == 0 {
 		return nil
 	}
@@ -22,7 +22,7 @@ func Filter(errs []error, filter func(error) (keep bool)) []error {
 	return result
 }
 
-func And(filters ...func(error) (keep bool)) func(error) (keep bool) {
+func AndFilter(filters ...func(error) (keep bool)) func(error) (keep bool) {
 	return func(err error) bool {
 		for _, filter := range filters {
 			if !filter(err) {

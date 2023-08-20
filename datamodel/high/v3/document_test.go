@@ -14,6 +14,7 @@ import (
 	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
 	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/internal/errorutils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -385,7 +386,7 @@ func TestStripeAsDoc(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	assert.Len(t, err, 3)
+	assert.Len(t, errorutils.Unwrap(err), 3)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 }
@@ -396,7 +397,7 @@ func TestK8sAsDoc(t *testing.T) {
 	var err error
 	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
-	assert.Len(t, err, 0)
+	assert.Len(t, errorutils.Unwrap(err), 0)
 	assert.NotNil(t, d)
 }
 
@@ -454,7 +455,7 @@ func TestCircularReferencesDoc(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	assert.Len(t, err, 3)
+	assert.Len(t, errorutils.Unwrap(err), 3)
 	d := NewDocument(lowDoc)
 	assert.Len(t, d.Components.Schemas, 9)
 	assert.Len(t, d.Index.GetCircularReferences(), 3)
