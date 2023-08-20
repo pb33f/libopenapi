@@ -17,31 +17,31 @@ func AreValuesCorrectlyTyped(valType string, values interface{}) map[string]stri
 
 	results := make(map[string]string)
 	for _, v := range arr {
-		switch v.(type) {
+		switch t := v.(type) {
 		case string:
 			if valType != "string" {
-				results[v.(string)] = fmt.Sprintf("enum value '%v' is a "+
-					"string, but it's defined as a '%v'", v, valType)
+				results[t] = fmt.Sprintf("enum value '%v' is a "+
+					"string, but it's defined as a '%v'", t, valType)
 			}
 		case int64:
 			if valType != "integer" && valType != "number" {
 				results[fmt.Sprintf("%v", v)] = fmt.Sprintf("enum value '%v' is a "+
-					"integer, but it's defined as a '%v'", v, valType)
+					"integer, but it's defined as a '%v'", t, valType)
 			}
 		case int:
 			if valType != "integer" && valType != "number" {
 				results[fmt.Sprintf("%v", v)] = fmt.Sprintf("enum value '%v' is a "+
-					"integer, but it's defined as a '%v'", v, valType)
+					"integer, but it's defined as a '%v'", t, valType)
 			}
 		case float64:
 			if valType != "number" {
 				results[fmt.Sprintf("%v", v)] = fmt.Sprintf("enum value '%v' is a "+
-					"number, but it's defined as a '%v'", v, valType)
+					"number, but it's defined as a '%v'", t, valType)
 			}
 		case bool:
 			if valType != "boolean" {
 				results[fmt.Sprintf("%v", v)] = fmt.Sprintf("enum value '%v' is a "+
-					"boolean, but it's defined as a '%v'", v, valType)
+					"boolean, but it's defined as a '%v'", t, valType)
 			}
 		}
 	}

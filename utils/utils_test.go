@@ -1,11 +1,12 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 type petstore []byte
@@ -168,57 +169,51 @@ func TestConvertInterfaceToStringArray_NoType(t *testing.T) {
 }
 
 func TestConvertInterfaceToStringArray_Invalid(t *testing.T) {
-	var d interface{}
-	d = "I am a carrot"
+	var d interface{} = "I am a carrot"
 	parsed := ConvertInterfaceToStringArray(d)
 	assert.Nil(t, parsed)
 }
 
 func TestConvertInterfaceArrayToStringArray(t *testing.T) {
-	var d interface{}
 	m := []string{"maddox", "is", "my", "little", "champion"}
-	d = m
+	var d interface{} = m
 	parsed := ConvertInterfaceArrayToStringArray(d)
 	assert.Equal(t, "little", parsed[3])
 }
 
 func TestConvertInterfaceArrayToStringArray_NoType(t *testing.T) {
-	var d interface{}
 	m := make([]interface{}, 4)
 	m[0] = "melody"
 	m[1] = "is"
 	m[2] = "my"
 	m[3] = "baby"
-	d = m
+	var d interface{} = m
 	parsed := ConvertInterfaceArrayToStringArray(d)
 	assert.Equal(t, "baby", parsed[3])
 }
 
 func TestConvertInterfaceArrayToStringArray_Invalid(t *testing.T) {
-	var d interface{}
-	d = "weed is good"
+	var d interface{} = "weed is good"
 	parsed := ConvertInterfaceArrayToStringArray(d)
 	assert.Nil(t, parsed)
 }
 
 func TestExtractValueFromInterfaceMap(t *testing.T) {
-	var d interface{}
 	m := make(map[string][]string)
 	m["melody"] = []string{"is", "my", "baby"}
-	d = m
+	var d interface{} = m
 	parsed := ExtractValueFromInterfaceMap("melody", d)
 	assert.Equal(t, "baby", parsed.([]string)[2])
 }
 
 func TestExtractValueFromInterfaceMap_NoType(t *testing.T) {
-	var d interface{}
 	m := make(map[string]interface{})
 	n := make([]interface{}, 3)
 	n[0] = "maddy"
 	n[1] = "the"
 	n[2] = "champion"
 	m["maddy"] = n
-	d = m
+	var d interface{} = m
 	parsed := ExtractValueFromInterfaceMap("maddy", d)
 	assert.Equal(t, "champion", parsed.([]interface{})[2])
 }
@@ -229,12 +224,11 @@ func TestExtractValueFromInterfaceMap_Flat(t *testing.T) {
 	m["maddy"] = "niblet"
 	d = m
 	parsed := ExtractValueFromInterfaceMap("maddy", d)
-	assert.Equal(t, "niblet", parsed.(interface{}))
+	assert.Equal(t, "niblet", parsed)
 }
 
 func TestExtractValueFromInterfaceMap_NotFound(t *testing.T) {
-	var d interface{}
-	d = "not a map"
+	var d interface{} = "not a map"
 	parsed := ExtractValueFromInterfaceMap("melody", d)
 	assert.Nil(t, parsed)
 }
