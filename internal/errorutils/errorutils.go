@@ -39,7 +39,10 @@ func Join(errs ...error) error {
 
 	result.errs = make([]error, 0, size)
 	for _, err := range errs {
-		if err != nil {
+		// try to keep MultiError flat
+		if multi, ok := err.(*MultiError); ok {
+			result.errs = append(result.errs, multi.Unwrap()...)
+		} else {
 			result.errs = append(result.errs, err)
 		}
 	}

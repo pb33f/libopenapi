@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -115,7 +116,8 @@ components:
           $ref: 'https://pb33f.io/site.webmanifest#/valid-but-missing'`
 
 	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	err := yaml.Unmarshal([]byte(yml), &rootNode)
+	require.NoError(t, err)
 
 	c := CreateOpenAPIIndexConfig()
 	index := NewSpecIndexWithConfig(&rootNode, c)
