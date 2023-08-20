@@ -10,16 +10,17 @@ import (
 
 func TestUnwrapErrors(t *testing.T) {
 	err := Join(errors.New("foo"), errors.New("bar"))
+	require.NotEmpty(t, err.Error())
 
-	errs := Unwrap(err)
+	errs := ShallowUnwrap(err)
 	require.Len(t, errs, 2)
 }
 
 func TestUnwrapError(t *testing.T) {
 	err := fmt.Errorf("foo: %w", errors.New("bar"))
 
-	errs := Unwrap(err)
-	require.Len(t, errs, 2)
+	errs := ShallowUnwrap(err)
+	require.Len(t, errs, 1)
 }
 
 func TestUnwrapHierarchyError(t *testing.T) {
@@ -31,11 +32,15 @@ func TestUnwrapHierarchyError(t *testing.T) {
 
 	err := Join(Join(nil, err2), Join(nil, err4, nil))
 
-	errs := Unwrap(err)
-	require.Len(t, errs, 4)
+	errs := ShallowUnwrap(err)
+	require.Len(t, errs, 2)
 }
 
 func TestJoinNils(t *testing.T) {
 	err := Join(nil, nil)
 	require.Nil(t, err)
+}
+
+func TestDeepMultiErrorUnwrapNil(t *testing.T) {
+	require.Nil(t, deepUnwrapMultiError(nil))
 }
