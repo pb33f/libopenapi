@@ -190,15 +190,12 @@ func CompareComponents(l, r any) *ComponentsChanges {
 				case v3.SchemasLabel:
 					completedComponents++
 					cc.SchemaChanges = res.result.(map[string]*SchemaChanges)
-					break
 				case v3.SecuritySchemesLabel:
 					completedComponents++
 					cc.SecuritySchemeChanges = res.result.(map[string]*SecuritySchemeChanges)
-					break
 				case v3.ResponsesLabel, v3.ParametersLabel, v3.ExamplesLabel, v3.RequestBodiesLabel, v3.HeadersLabel,
 					v3.LinksLabel, v3.CallbacksLabel:
 					completedComponents++
-					break
 				}
 			}
 		}

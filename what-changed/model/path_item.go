@@ -348,25 +348,18 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 			switch n.label {
 			case v3.GetLabel:
 				pc.GetChanges = n.changes
-				break
 			case v3.PutLabel:
 				pc.PutChanges = n.changes
-				break
 			case v3.PostLabel:
 				pc.PostChanges = n.changes
-				break
 			case v3.DeleteLabel:
 				pc.DeleteChanges = n.changes
-				break
 			case v3.OptionsLabel:
 				pc.OptionsChanges = n.changes
-				break
 			case v2.HeadLabel:
 				pc.HeadChanges = n.changes
-				break
 			case v2.PatchLabel:
 				pc.PatchChanges = n.changes
-				break
 			}
 			completedOperations++
 		}
@@ -602,28 +595,20 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			switch n.label {
 			case v3.GetLabel:
 				pc.GetChanges = n.changes
-				break
 			case v3.PutLabel:
 				pc.PutChanges = n.changes
-				break
 			case v3.PostLabel:
 				pc.PostChanges = n.changes
-				break
 			case v3.DeleteLabel:
 				pc.DeleteChanges = n.changes
-				break
 			case v3.OptionsLabel:
 				pc.OptionsChanges = n.changes
-				break
 			case v3.HeadLabel:
 				pc.HeadChanges = n.changes
-				break
 			case v3.PatchLabel:
 				pc.PatchChanges = n.changes
-				break
 			case v3.TraceLabel:
 				pc.TraceChanges = n.changes
-				break
 			}
 			completedOperations++
 		}
