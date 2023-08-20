@@ -560,8 +560,11 @@ func IsHttpVerb(verb string) bool {
 	return false
 }
 
-// define bracket name expression
-var bracketNameExp = regexp.MustCompile("^(\\w+)\\[(\\w+)\\]$")
+var (
+	// define bracket name expression
+	bracketNameExp = regexp.MustCompile(`^(\w+)\[(\w+)\]$`)
+	pathCharRegex  = regexp.MustCompile(`[%=;~.]`)
+)
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
@@ -569,9 +572,9 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	var cleaned []string
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
+
 	for i := range segs {
-		pathCharExp, _ := regexp.MatchString("[%=;~.]", segs[i])
-		if pathCharExp {
+		if pathCharRegex.MatchString(segs[i]) {
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
 			if len(cleaned) > 0 {
