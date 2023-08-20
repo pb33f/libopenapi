@@ -185,17 +185,16 @@ func ExampleNewDocument_fromUnknownVersion() {
 	if document.GetSpecInfo().SpecType == utils.OpenApi2 {
 		v2Model, err := document.BuildV2Model()
 		if err != nil {
-			errs = append(errs)
+			errs = append(errs, err)
 		} else {
 			paths = len(v2Model.Model.Paths.PathItems)
 			schemas = len(v2Model.Model.Definitions.Definitions)
-
 		}
 	}
 
 	// if anything went wrong when building the model, report errors.
-	if err != nil {
-		panic(fmt.Errorf("cannot create v3 model from document: %w", err))
+	if len(errs) > 0 {
+		panic(fmt.Errorf("cannot create v3 model from document: %v", errs))
 	}
 
 	// print the number of paths and schemas in the document
