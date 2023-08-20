@@ -1,49 +1,82 @@
-name: Build
+name: Build & Test
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
+    paths:
+      - '**.go'
+      - '**.yaml'
+      - '**.yml'
+      - '**.toml'
+      - '**.json'
+      - 'go.mod'
+      - 'go.sum'
   pull_request:
-    branches:
-      - main
+    # The branches below must be a subset of the branches above
+    branches: [ "main" ]
+    paths:
+      - '**.go'
+      - '**.yaml'
+      - '**.yml'
+      - '**.toml'
+      - '**.json'
+      - 'go.mod'
+      - 'go.sum'
 
 jobs:
   build:
-    name: Build
-    runs-on: ubuntu-latest
+    name: Build & Test
+    strategy:
+      matrix:
+        go-version: ['stable', 'oldstable']
+        platform: ['ubuntu-latest']
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      # required for security related workflows
+      security-events: write
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
     steps:
-      - name: Set up Go 1.x
-        uses: actions/setup-go@v3
-        with:
-          go-version: 1.19
-        id: go
-
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Get dependencies
-        run: |
-          go get -v -t -d ./...
-          if [ -f Gopkg.toml ]; then
-              curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
-              dep ensure
-          fi
-      - name: Test
-        run: go test ./...
-      - name: Coverage
-        run: |
-          go get github.com/axw/gocov/gocov
-          go get github.com/AlekSi/gocov-xml
-          go install github.com/axw/gocov/gocov
-          go install github.com/AlekSi/gocov-xml
-      - run: |
-          go test -v -coverprofile cover.out ./...
-          gocov convert cover.out | gocov-xml > coverage.xml
-      - uses: codecov/codecov-action@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ matrix.go-version }}
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Install govulncheck
+        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+
+      - name: Run govulncheck
+        run: govulncheck ./...
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          # we let the report trigger content trigger a failure using the GitHub Security features.
+          args: '-no-fail -fmt sarif -out results.sarif ./...'
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: results.sarif
+    
+      - name: Build
+        run: go build ./...
+
+      - name: Test & Code Coverage
+        run: go test ./... -timeout 20m -race -count=1 -covermode=atomic -coverprofile=coverage.txt
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
-          flags: unittests
+          files: ./coverage.txt
           fail_ci_if_error: false
           verbose: true
+
