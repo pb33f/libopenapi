@@ -44,7 +44,7 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.Len(t, index.GetPolyAllOfReferences(), 0)
 	assert.Len(t, index.GetPolyOneOfReferences(), 275)
 	assert.Len(t, index.GetPolyAnyOfReferences(), 553)
-	assert.Len(t, index.GetAllReferenceSchemas(), 696)
+	assert.Len(t, index.GetAllReferenceSchemas(), 1972)
 	assert.NotNil(t, index.GetRootServersNode())
 	assert.Len(t, index.GetAllRootServers(), 1)
 
@@ -283,7 +283,7 @@ func TestSpecIndex_BurgerShop(t *testing.T) {
 	assert.Equal(t, 6, index.GetPathCount())
 
 	assert.Equal(t, 6, len(index.GetAllComponentSchemas()))
-	assert.Equal(t, 47, len(index.GetAllSchemas()))
+	assert.Equal(t, 56, len(index.GetAllSchemas()))
 
 	assert.Equal(t, 34, len(index.GetAllSequencedReferences()))
 	assert.NotNil(t, index.GetSchemasNode())
@@ -1096,10 +1096,10 @@ func ExampleNewSpecIndex() {
 	// 246 paths
 	// 402 operations
 	// 537 component schemas
-	// 696 reference schemas
-	// 9798 inline schemas
-	// 711 inline schemas that are objects or arrays
-	// 11031 total schemas
+	// 1972 reference schemas
+	// 11749 inline schemas
+	// 2612 inline schemas that are objects or arrays
+	// 14258 total schemas
 	// 1516 enums
 	// 828 polymorphic references
 }
