@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/stretchr/testify v1.8.0
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
+	golang.org/x/exp v0.0.0-20230811145659-89c5cff77bcb
 	golang.org/x/sync v0.1.0
 	gopkg.in/yaml.v3 v3.0.1
 )
