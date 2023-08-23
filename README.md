@@ -20,19 +20,26 @@ complex specifications you can think of.
 If your company is using `libopenapi`, please considering [supporting this project](https://github.com/sponsors/daveshanley), 
 like our _very kind_ sponsors:
 
-<p align="center">
-	<a href="//www.speakeasyapi.dev"><img src=".github/sponsors/speakeasy.png" alt="Speakeasy" height="100px"/></a>
-    <br/>
-    <a href="//www.speakeasyapi.dev">Speakeasy</a>
-</p>
+<a href="https://speakeasyapi.dev/?utm_source=libopenapi+repo&utm_medium=github+sponsorship">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/speakeasy-github-sponsor-dark.svg">
+  <img alt="speakeasy'" src=".github/sponsors/speakeasy-github-sponsor-light.svg">
+</picture>
+</a>
+
+[Speakeasy](https://speakeasyapi.dev/?utm_source=libopenapi+repo&utm_medium=github+sponsorship)
+
+---
 
 `libopenapi` is pretty new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
 
-- [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
 - [github.com/daveshanley/vacuum](https://github.com/daveshanley/vacuum) - "The world's fastest and most scalable OpenAPI/Swagger linter/quality tool"
-- [github.com/pb33f/openapi-changes](https://github.com/pb33f/openapi-changes) - "The world's **sexiest** OpenAPI diff tool"
+- [github.com/pb33f/openapi-changes](https://github.com/pb33f/openapi-changes) - "The world's **sexiest** OpenAPI breaking changes detector"
+- [github.com/pb33f/wiretap](https://github.com/pb33f/openapi-changes) - "The world's **coolest** OpenAPI compliance analysis tool"
+- [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
 - [github.com/speakeasy-api/speakeasy](https://github.com/speakeasy-api/speakeasy) - "Speakeasy CLI makes validating OpenAPI docs and generating idiomatic SDKs easy!"
-
+- [github.com/apicat/apicat](https://github.com/apicat/apicat) - "AI-powered API development tool"
+- 
 ---
 
 ## Come chat with us
