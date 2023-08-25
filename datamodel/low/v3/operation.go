@@ -55,7 +55,7 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 }
 
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
-func (o *Operation) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (o *Operation) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)

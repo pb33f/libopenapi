@@ -58,7 +58,7 @@ func (en *Encoding) Hash() [32]byte {
 }
 
 // Build will extract all Header objects from supplied node.
-func (en *Encoding) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (en *Encoding) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	en.Reference = new(low.Reference)

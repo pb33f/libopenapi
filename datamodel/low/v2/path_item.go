@@ -47,7 +47,7 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 
 // Build will extract extensions, parameters and operations for all methods. Every method is handled
 // asynchronously, in order to keep things moving quickly for complex operations.
-func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
