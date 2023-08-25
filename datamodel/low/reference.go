@@ -38,7 +38,7 @@ type IsReferenced interface {
 //
 // Used by generic functions when automatically building out structs based on yaml.Node inputs.
 type Buildable[T any] interface {
-	Build(node *yaml.Node, idx *index.SpecIndex) error
+	Build(key, value *yaml.Node, idx *index.SpecIndex) error
 	*T
 }
 
