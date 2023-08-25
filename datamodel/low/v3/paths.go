@@ -58,7 +58,7 @@ func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[
 }
 
 // Build will extract extensions and all PathItems. This happens asynchronously for speed.
-func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)

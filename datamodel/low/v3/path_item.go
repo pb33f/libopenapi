@@ -108,7 +108,7 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 
 // Build extracts extensions, parameters, servers and each http method defined.
 // everything is extracted asynchronously for speed.
-func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)

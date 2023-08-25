@@ -45,7 +45,7 @@ func (r *Responses) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 }
 
 // Build will extract default response and all Response objects for each code
-func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Responses) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
