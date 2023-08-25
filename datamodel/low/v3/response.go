@@ -54,7 +54,7 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 }
 
 // Build will extract headers, extensions, content and links from node.
-func (r *Response) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Response) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	r.Reference = new(low.Reference)

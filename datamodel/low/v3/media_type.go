@@ -54,7 +54,7 @@ func (mt *MediaType) GetAllExamples() map[low.KeyReference[string]]low.ValueRefe
 }
 
 // Build will extract examples, extensions, schema and encoding from node.
-func (mt *MediaType) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (mt *MediaType) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	mt.Reference = new(low.Reference)

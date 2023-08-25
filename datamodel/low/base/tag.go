@@ -34,7 +34,7 @@ func (t *Tag) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and external docs for the Tag.
-func (t *Tag) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (t *Tag) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	t.Reference = new(low.Reference)

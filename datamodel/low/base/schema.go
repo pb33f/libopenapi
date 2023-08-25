@@ -752,7 +752,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if extDocNode != nil {
 		var exDoc ExternalDoc
 		_ = low.BuildModel(extDocNode, &exDoc)
-		_ = exDoc.Build(extDocNode, idx) // throws no errors, can't check for one.
+		_ = exDoc.Build(extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
 		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
 	}
 

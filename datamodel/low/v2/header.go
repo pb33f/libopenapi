@@ -51,7 +51,7 @@ func (h *Header) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 }
 
 // Build will build out items, extensions and default value from the supplied node.
-func (h *Header) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	h.Extensions = low.ExtractExtensions(root)

@@ -36,7 +36,7 @@ func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and all OAuthFlow types from the supplied node.
-func (o *OAuthFlows) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (o *OAuthFlows) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
@@ -116,7 +116,7 @@ func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions from the node.
-func (o *OAuthFlow) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (o *OAuthFlow) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 	return nil
