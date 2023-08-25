@@ -19,7 +19,7 @@ description: something`
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(nil, idxNode.Content[0], nil)
+	err := sch.Build(&idxNode, idxNode.Content[0], nil)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "db2a35dd6fb3d9481d0682571b9d687616bb2a34c1887f7863f0b2e769ca7b23",
@@ -27,6 +27,7 @@ description: something`
 
 	assert.Equal(t, "something", sch.Schema().Description.Value)
 	assert.Empty(t, sch.GetSchemaReference())
+	assert.NotNil(t, sch.GetKeyNode())
 	assert.NotNil(t, sch.GetValueNode())
 	assert.False(t, sch.IsSchemaReference())
 	assert.False(t, sch.IsReference())
