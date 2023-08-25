@@ -54,10 +54,12 @@ type SchemaProxy struct {
 }
 
 // Build will prepare the SchemaProxy for rendering, it does not build the Schema, only sets up internal state.
-func (sp *SchemaProxy) Build(root *yaml.Node, idx *index.SpecIndex) error {
-	sp.vn = root
+// Key maybe nil if absent.
+func (sp *SchemaProxy) Build(key, value *yaml.Node, idx *index.SpecIndex) error {
+	sp.kn = key
+	sp.vn = value
 	sp.idx = idx
-	if rf, _, r := utils.IsNodeRefValue(root); rf {
+	if rf, _, r := utils.IsNodeRefValue(value); rf {
 		sp.isReference = true
 		sp.referenceLookup = r
 	}
@@ -125,6 +127,11 @@ func (sp *SchemaProxy) SetReference(ref string) {
 // IsSchemaReference()
 func (sp *SchemaProxy) GetSchemaReference() string {
 	return sp.referenceLookup
+}
+
+// GetKeyNode will return the yaml.Node pointer that is a key for value node.
+func (sp *SchemaProxy) GetKeyNode() *yaml.Node {
+	return sp.kn
 }
 
 // GetValueNode will return the yaml.Node pointer used by the proxy to generate the Schema.
