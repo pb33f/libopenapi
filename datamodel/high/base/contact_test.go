@@ -70,7 +70,7 @@ email: buckaroo@pb33f.io
 	// build low
 	var lowContact lowbase.Contact
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowContact)
-	_ = lowContact.Build(cNode.Content[0], nil)
+	_ = lowContact.Build(nil, cNode.Content[0], nil)
 
 	// build high
 	highContact := NewContact(&lowContact)

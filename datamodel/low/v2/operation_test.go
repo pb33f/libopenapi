@@ -26,7 +26,7 @@ func TestOperation_Build_ExternalDocs(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -45,7 +45,7 @@ func TestOperation_Build_Params(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -64,7 +64,7 @@ func TestOperation_Build_Responses(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -83,7 +83,7 @@ func TestOperation_Build_Security(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -126,7 +126,7 @@ x-smoke: not for a while`
 
 	var n Operation
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `summary: a nice day
 tags:
@@ -164,7 +164,7 @@ security:
 
 	var n2 Operation
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

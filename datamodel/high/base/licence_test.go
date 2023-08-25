@@ -44,7 +44,7 @@ url: https://pb33f.io/not-real
 	// build low
 	var lowLicense lowbase.License
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowLicense)
-	_ = lowLicense.Build(cNode.Content[0], nil)
+	_ = lowLicense.Build(nil, cNode.Content[0], nil)
 
 	// build high
 	highLicense := NewLicense(&lowLicense)
@@ -92,7 +92,7 @@ func TestLicense_Render_IdentifierAndURL_Error(t *testing.T) {
 	// build low
 	var lowLicense lowbase.License
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowLicense)
-	err := lowLicense.Build(cNode.Content[0], nil)
+	err := lowLicense.Build(nil, cNode.Content[0], nil)
 
 	assert.Error(t, err)
 }

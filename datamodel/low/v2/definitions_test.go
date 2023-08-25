@@ -25,7 +25,7 @@ func TestDefinitions_Schemas_Build_Error(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -44,7 +44,7 @@ func TestDefinitions_Parameters_Build_Error(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -63,7 +63,7 @@ func TestDefinitions_Hash(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 	assert.Equal(t, "26d23786e6873e1a337f8e9be85f7de1490e4ff6cd303c3b15e593a25a6a149d",
 		low.GenerateHashString(&n))
 
@@ -83,7 +83,7 @@ func TestDefinitions_Responses_Build_Error(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -102,7 +102,7 @@ func TestDefinitions_Security_Build_Error(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }

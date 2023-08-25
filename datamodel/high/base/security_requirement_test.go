@@ -28,7 +28,7 @@ cake:
 	var lowExt lowbase.SecurityRequirement
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowExt)
 
-	_ = lowExt.Build(cNode.Content[0], nil)
+	_ = lowExt.Build(nil, cNode.Content[0], nil)
 
 	highExt := NewSecurityRequirement(&lowExt)
 

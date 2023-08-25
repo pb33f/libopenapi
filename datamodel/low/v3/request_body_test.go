@@ -28,7 +28,7 @@ x-requesto: presto`
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "a nice request", n.Description.Value)
 	assert.True(t, n.Required.Value)
@@ -51,7 +51,7 @@ func TestRequestBody_Fail(t *testing.T) {
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -75,7 +75,7 @@ x-toast: nice
 
 	var n RequestBody
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `description: nice toast
 content:
@@ -94,7 +94,7 @@ x-toast: nice`
 
 	var n2 RequestBody
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

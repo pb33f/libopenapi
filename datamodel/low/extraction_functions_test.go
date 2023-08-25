@@ -140,7 +140,7 @@ type pizza struct {
 	Description NodeReference[string]
 }
 
-func (p *pizza) Build(_ *yaml.Node, _ *index.SpecIndex) error {
+func (p *pizza) Build(_, _ *yaml.Node, _ *index.SpecIndex) error {
 	return nil
 }
 
@@ -341,7 +341,7 @@ type test_borked struct {
 	DontWork int
 }
 
-func (t test_borked) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (t test_borked) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	return fmt.Errorf("I am always going to fail, every thing")
 }
 
@@ -349,7 +349,7 @@ type test_noGood struct {
 	DontWork int
 }
 
-func (t *test_noGood) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (t *test_noGood) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	return fmt.Errorf("I am always going to fail a core build")
 }
 
@@ -357,7 +357,7 @@ type test_almostGood struct {
 	AlmostWork NodeReference[int]
 }
 
-func (t *test_almostGood) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (t *test_almostGood) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	return fmt.Errorf("I am always going to fail a build out")
 }
 
@@ -365,7 +365,7 @@ type test_Good struct {
 	AlmostWork NodeReference[int]
 }
 
-func (t *test_Good) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (t *test_Good) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
@@ -519,7 +519,7 @@ func TestExtractObjectRaw(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err, _, _ := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, _, _ := ExtractObjectRaw[*pizza](nil, cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, tag)
 	assert.Equal(t, "hello pizza", tag.Description.Value)
@@ -542,7 +542,7 @@ func TestExtractObjectRaw_With_Ref(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err, isRef, rv := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, isRef, rv := ExtractObjectRaw[*pizza](nil, cNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, tag)
 	assert.Equal(t, "hello", tag.Description.Value)
@@ -572,7 +572,7 @@ func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err, _, _ := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, _, _ := ExtractObjectRaw[*pizza](nil, cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.NotNil(t, tag)
 
@@ -594,7 +594,7 @@ func TestExtractObjectRaw_RefBroken(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	tag, err, _, _ := ExtractObjectRaw[*pizza](cNode.Content[0], idx)
+	tag, err, _, _ := ExtractObjectRaw[*pizza](nil, cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Nil(t, tag)
 
@@ -616,7 +616,7 @@ func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	_, err, _, _ := ExtractObjectRaw[*test_noGood](cNode.Content[0], idx)
+	_, err, _, _ := ExtractObjectRaw[*test_noGood](nil, cNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -637,7 +637,7 @@ func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
 	var cNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &cNode)
 
-	_, err, _, _ := ExtractObjectRaw[*test_almostGood](cNode.Content[0], idx)
+	_, err, _, _ := ExtractObjectRaw[*test_almostGood](nil, cNode.Content[0], idx)
 	assert.Error(t, err)
 
 }

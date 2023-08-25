@@ -38,8 +38,8 @@ default:
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
@@ -76,8 +76,8 @@ x-ting: tang`
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
@@ -117,8 +117,8 @@ x-apple: pie`
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&rDoc, &lDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
@@ -153,8 +153,8 @@ func TestCompareResponses_V2_RemoveSchema(t *testing.T) {
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -187,8 +187,8 @@ default:
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -221,8 +221,8 @@ default:
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -259,8 +259,8 @@ default:
 	var rDoc v2.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
@@ -289,8 +289,8 @@ default:
 	var rDoc v3.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
@@ -323,8 +323,8 @@ x-coffee: yum
 	var rDoc v3.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 4, extChanges.TotalChanges())
@@ -357,8 +357,8 @@ default:
 	var rDoc v3.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -392,8 +392,8 @@ default:
 	var rDoc v3.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -429,8 +429,8 @@ default:
 	var rDoc v3.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
@@ -462,8 +462,8 @@ func TestCompareResponses_V3_AddRemoveMediaType(t *testing.T) {
 	var rDoc v3.Responses
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponses(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())

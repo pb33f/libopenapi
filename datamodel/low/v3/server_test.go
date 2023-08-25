@@ -30,7 +30,7 @@ variables:
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "ec69dfcf68ad8988f3804e170ee6c4a7ad2e4ac51084796eea93168820827546",
@@ -63,7 +63,7 @@ description: high quality software for developers.`
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
 	assert.Equal(t, "high quality software for developers.", n.Description.Value)

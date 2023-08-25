@@ -33,7 +33,7 @@ x-linky: slinky
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "#/someref", n.OperationRef.Value)
@@ -75,7 +75,7 @@ server:
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -99,7 +99,7 @@ x-mcdonalds: bigmac`
 
 	var n Link
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `parameters:
   bacon: eggs
@@ -118,7 +118,7 @@ server:
 
 	var n2 Link
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

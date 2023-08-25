@@ -39,7 +39,7 @@ default:
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "default response", n.Default.Value.Description.Value)
 
@@ -92,7 +92,7 @@ x-shoes: old`
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 
 	// check hash
 	assert.Equal(t, "54ab66e6cb8bd226940f421c2387e45215b84c946182435dfe2a3036043fa07c",
@@ -116,7 +116,7 @@ func TestResponses_Build_FailCodes_WrongType(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -134,7 +134,7 @@ func TestResponses_Build_FailCodes(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -151,7 +151,7 @@ func TestResponses_Build_FailDefault(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -171,7 +171,7 @@ func TestResponses_Build_FailBadHeader(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -191,7 +191,7 @@ func TestResponses_Build_FailBadContent(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -211,7 +211,7 @@ func TestResponses_Build_FailBadLinks(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -232,7 +232,7 @@ func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "string",
@@ -267,7 +267,7 @@ links:
 
 	var n Response
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `description: nice toast
 x-ham: jam
@@ -294,7 +294,7 @@ links:
 
 	var n2 Response
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

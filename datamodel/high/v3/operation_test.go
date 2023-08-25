@@ -43,7 +43,7 @@ callbacks:
 
 	var n v3.Operation
 	_ = low.BuildModel(&idxNode, &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	r := NewOperation(&n)
 
@@ -140,7 +140,7 @@ security: []`
 
 	var n v3.Operation
 	_ = low.BuildModel(&idxNode, &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	r := NewOperation(&n)
 
@@ -158,7 +158,7 @@ func TestOperation_NoSecurity(t *testing.T) {
 
 	var n v3.Operation
 	_ = low.BuildModel(&idxNode, &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	r := NewOperation(&n)
 
