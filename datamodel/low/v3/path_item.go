@@ -142,7 +142,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 				if utils.IsNodeMap(srvN) {
 					srvr := new(Server)
 					_ = low.BuildModel(srvN, srvr)
-					srvr.Build(srvN, idx)
+					srvr.Build(ln, srvN, idx)
 					servers = append(servers, low.ValueReference[*Server]{
 						Value:     srvr,
 						ValueNode: srvN,
@@ -274,7 +274,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	opErrorChan := make(chan error)
 
 	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error, ref string) {
-		er := op.Value.Build(op.ValueNode, idx)
+		er := op.Value.Build(op.KeyNode, op.ValueNode, idx)
 		if ref != "" {
 			op.Value.Reference.Reference = ref
 		}

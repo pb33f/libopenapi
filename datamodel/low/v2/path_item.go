@@ -157,7 +157,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	opErrorChan := make(chan error)
 
 	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
-		er := op.Value.Build(op.ValueNode, idx)
+		er := op.Value.Build(op.KeyNode, op.ValueNode, idx)
 		if er != nil {
 			errCh <- er
 		}

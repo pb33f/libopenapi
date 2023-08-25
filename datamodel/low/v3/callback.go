@@ -57,7 +57,7 @@ func (cb *Callback) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		if strings.HasPrefix(currentCB.Value, "x-") {
 			continue // ignore extension.
 		}
-		callback, eErr, _, rv := low.ExtractObjectRaw[*PathItem](callbackNode, idx)
+		callback, eErr, _, rv := low.ExtractObjectRaw[*PathItem](currentCB, callbackNode, idx)
 		if eErr != nil {
 			return eErr
 		}

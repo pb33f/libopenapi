@@ -38,7 +38,7 @@ func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.Value
 }
 
 // Build will extract extensions and scopes from the node.
-func (ss *SecurityScheme) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (ss *SecurityScheme) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ss.Extensions = low.ExtractExtensions(root)

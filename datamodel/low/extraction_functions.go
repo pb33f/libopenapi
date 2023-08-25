@@ -118,7 +118,7 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 
 // ExtractObjectRaw will extract a typed Buildable[N] object from a root yaml.Node. The 'raw' aspect is
 // that there is no NodeReference wrapper around the result returned, just the raw object.
-func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecIndex) (T, error, bool, string) {
+func ExtractObjectRaw[T Buildable[N], N any](key, root *yaml.Node, idx *index.SpecIndex) (T, error, bool, string) {
 	var circError error
 	var isReference bool
 	var referenceValue string
@@ -143,7 +143,7 @@ func ExtractObjectRaw[T Buildable[N], N any](root *yaml.Node, idx *index.SpecInd
 	if err != nil {
 		return n, err, isReference, referenceValue
 	}
-	err = n.Build(root, idx)
+	err = n.Build(key, root, idx)
 	if err != nil {
 		return n, err, isReference, referenceValue
 	}
@@ -211,7 +211,7 @@ func ExtractObject[T Buildable[N], N any](label string, root *yaml.Node, idx *in
 	if ln == nil {
 		return NodeReference[T]{}, nil
 	}
-	err = n.Build(vn, idx)
+	err = n.Build(ln, vn, idx)
 	if err != nil {
 		return NodeReference[T]{}, err
 	}
@@ -316,7 +316,7 @@ func ExtractArray[T Buildable[N], N any](label string, root *yaml.Node, idx *ind
 			if err != nil {
 				return []ValueReference[T]{}, ln, vn, err
 			}
-			berr := n.Build(node, idx)
+			berr := n.Build(ln, node, idx)
 			if berr != nil {
 				return nil, ln, vn, berr
 			}
@@ -423,7 +423,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 			if err != nil {
 				return nil, err
 			}
-			berr := n.Build(node, idx)
+			berr := n.Build(currentKey, node, idx)
 			if berr != nil {
 				return nil, berr
 			}
@@ -531,7 +531,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 			var n PT = new(N)
 			value = utils.NodeAlias(value)
 			_ = BuildModel(value, n)
-			err := n.Build(value, idx)
+			err := n.Build(label, value, idx)
 			if err != nil {
 				ec <- err
 				return

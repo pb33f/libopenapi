@@ -27,7 +27,7 @@ func (r *Responses) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 }
 
 // Build will extract default value and extensions from node.
-func (r *Responses) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Responses) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	r.Extensions = low.ExtractExtensions(root)
