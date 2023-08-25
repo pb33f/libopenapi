@@ -117,7 +117,7 @@ func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 	if vn != nil {
 		ir := base.Info{}
 		_ = low.BuildModel(vn, &ir)
-		_ = ir.Build(vn, idx)
+		_ = ir.Build(ln, vn, idx)
 		nr := low.NodeReference[*base.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
@@ -172,7 +172,7 @@ func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInde
 				if utils.IsNodeMap(srvN) {
 					srvr := Server{}
 					_ = low.BuildModel(srvN, &srvr)
-					_ = srvr.Build(srvN, idx)
+					_ = srvr.Build(ln, srvN, idx)
 					servers = append(servers, low.ValueReference[*Server]{
 						Value:     &srvr,
 						ValueNode: srvN,
@@ -198,7 +198,7 @@ func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 				if utils.IsNodeMap(tagN) {
 					tag := base.Tag{}
 					_ = low.BuildModel(tagN, &tag)
-					if err := tag.Build(tagN, idx); err != nil {
+					if err := tag.Build(ln, tagN, idx); err != nil {
 						return err
 					}
 					tags = append(tags, low.ValueReference[*base.Tag]{
@@ -221,7 +221,7 @@ func extractPaths(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex)
 	_, ln, vn := utils.FindKeyNodeFull(PathsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := Paths{}
-		err := ir.Build(vn, idx)
+		err := ir.Build(ln, vn, idx)
 		if err != nil {
 			return err
 		}
