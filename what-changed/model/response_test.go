@@ -36,8 +36,8 @@ x-toot: poot`
 	var rDoc v2.Response
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
@@ -74,8 +74,8 @@ x-toot: poot`
 	var rDoc v2.Response
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Equal(t, 5, extChanges.TotalChanges())
@@ -108,8 +108,8 @@ examples:
 	var rDoc v2.Response
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
@@ -142,8 +142,8 @@ examples:
 	var rDoc v2.Response
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponse(&rDoc, &lDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
@@ -176,8 +176,8 @@ x-toot: poot`
 	var rDoc v3.Response
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
@@ -222,8 +222,8 @@ x-toot: pooty`
 	var rDoc v3.Response
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 

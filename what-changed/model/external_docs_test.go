@@ -31,8 +31,8 @@ x-testing: hiya!`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
@@ -88,8 +88,8 @@ url: https://quobix.com`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
@@ -139,8 +139,8 @@ x-testing: hello`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
@@ -165,8 +165,8 @@ x-testing: hello`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
@@ -191,8 +191,8 @@ url: https://pb33f.io`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
@@ -217,8 +217,8 @@ description: something`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)
@@ -243,8 +243,8 @@ url: https://pb33f.io`
 	var rDoc lowbase.ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareExternalDocs(&lDoc, &rDoc)

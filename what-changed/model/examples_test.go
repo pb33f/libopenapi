@@ -26,8 +26,8 @@ func TestCompareExamplesV2(t *testing.T) {
 	var rDoc v2.Examples
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareExamplesV2(&lDoc, &rDoc)
 	assert.Equal(t, extChanges.TotalChanges(), 1)
@@ -54,8 +54,8 @@ yummy: coffee`
 	var rDoc v2.Examples
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareExamplesV2(&lDoc, &rDoc)
 	assert.Equal(t, extChanges.TotalChanges(), 1)
@@ -79,8 +79,8 @@ yummy: coffee`
 	var rDoc v2.Examples
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareExamplesV2(&rDoc, &lDoc)
 	assert.Equal(t, extChanges.TotalChanges(), 1)
@@ -103,8 +103,8 @@ func TestCompareExamplesV2_Identical(t *testing.T) {
 	var rDoc v2.Examples
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	extChanges := CompareExamplesV2(&rDoc, &lDoc)
 	assert.Nil(t, extChanges)

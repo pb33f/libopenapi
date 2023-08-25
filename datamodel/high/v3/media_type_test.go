@@ -161,7 +161,7 @@ func TestMediaType_Examples(t *testing.T) {
 
 	var n v3.MediaType
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	r := NewMediaType(&n)
 

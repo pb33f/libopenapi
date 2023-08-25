@@ -32,7 +32,7 @@ x-cli-name: chicken cli`
 
 	var lowInfo lowbase.Info
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowInfo)
-	_ = lowInfo.Build(cNode.Content[0], nil)
+	_ = lowInfo.Build(nil, cNode.Content[0], nil)
 
 	highInfo := NewInfo(&lowInfo)
 
@@ -74,7 +74,7 @@ version: 1.2.3`
 	// build out the low-level model
 	var lowInfo lowbase.Info
 	_ = lowmodel.BuildModel(&node, &lowInfo)
-	_ = lowInfo.Build(node.Content[0], nil)
+	_ = lowInfo.Build(nil, node.Content[0], nil)
 
 	// build the high level model
 	highInfo := NewInfo(&lowInfo)
@@ -97,7 +97,7 @@ url: https://opensource.org/licenses/MIT`
 	// build out the low-level model
 	var lowLicense lowbase.License
 	_ = lowmodel.BuildModel(node.Content[0], &lowLicense)
-	_ = lowLicense.Build(node.Content[0], nil)
+	_ = lowLicense.Build(nil, node.Content[0], nil)
 
 	// build the high level model
 	highLicense := NewLicense(&lowLicense)
@@ -140,7 +140,7 @@ func TestInfo_Render(t *testing.T) {
 	// build low
 	var lowInfo lowbase.Info
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowInfo)
-	_ = lowInfo.Build(cNode.Content[0], nil)
+	_ = lowInfo.Build(nil, cNode.Content[0], nil)
 
 	// build high
 	highInfo := NewInfo(&lowInfo)
@@ -181,7 +181,7 @@ x-cake:
 	// build low
 	var lowInfo lowbase.Info
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowInfo)
-	_ = lowInfo.Build(cNode.Content[0], nil)
+	_ = lowInfo.Build(nil, cNode.Content[0], nil)
 
 	// build high
 	highInfo := NewInfo(&lowInfo)

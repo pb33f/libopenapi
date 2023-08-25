@@ -30,7 +30,7 @@ x-tasty: herbs
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "herbs", n.FindExtension("x-tasty").Value)
 	assert.Equal(t, "https://pb33f.io/auth", n.AuthorizationUrl.Value)
@@ -54,7 +54,7 @@ x-tasty: herbs`
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "herbs", n.FindExtension("x-tasty").Value)
 	assert.Equal(t, "https://pb33f.io/auth", n.Implicit.Value.AuthorizationUrl.Value)
@@ -74,7 +74,7 @@ func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -91,7 +91,7 @@ func TestOAuthFlow_Build_Password(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://pb33f.io/auth", n.Password.Value.AuthorizationUrl.Value)
 }
@@ -109,7 +109,7 @@ func TestOAuthFlow_Build_Password_Fail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -126,7 +126,7 @@ func TestOAuthFlow_Build_ClientCredentials(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://pb33f.io/auth", n.ClientCredentials.Value.AuthorizationUrl.Value)
 }
@@ -144,7 +144,7 @@ func TestOAuthFlow_Build_ClientCredentials_Fail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -161,7 +161,7 @@ func TestOAuthFlow_Build_AuthCode(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://pb33f.io/auth", n.AuthorizationCode.Value.AuthorizationUrl.Value)
 }
@@ -179,7 +179,7 @@ func TestOAuthFlow_Build_AuthCode_Fail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -198,7 +198,7 @@ x-sleepy: tired`
 
 	var n OAuthFlow
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `refreshUrl: https://pb33f.io/refresh
 tokenUrl: https://pb33f.io/token
@@ -213,7 +213,7 @@ scopes:
 
 	var n2 OAuthFlow
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
@@ -239,7 +239,7 @@ x-code: cody
 
 	var n OAuthFlows
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `authorizationCode:
   authorizationUrl: https://pb33f.io/auth
@@ -258,7 +258,7 @@ password:
 
 	var n2 OAuthFlows
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
