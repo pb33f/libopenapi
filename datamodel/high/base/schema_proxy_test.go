@@ -40,7 +40,7 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
 
 	lowProxy := new(lowbase.SchemaProxy)
-	err := lowProxy.Build(node.Content[0], idx)
+	err := lowProxy.Build(nil, node.Content[0], idx)
 	assert.NoError(t, err)
 
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{

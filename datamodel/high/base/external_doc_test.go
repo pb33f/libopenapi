@@ -26,7 +26,7 @@ x-hack: code`
 	var lowExt lowbase.ExternalDoc
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowExt)
 
-	_ = lowExt.Build(cNode.Content[0], nil)
+	_ = lowExt.Build(nil, cNode.Content[0], nil)
 
 	highExt := NewExternalDoc(&lowExt)
 
@@ -61,7 +61,7 @@ x-hack: code`
 	_ = lowmodel.BuildModel(node.Content[0], &lowExt)
 
 	// build out low-level properties (like extensions)
-	_ = lowExt.Build(node.Content[0], nil)
+	_ = lowExt.Build(nil, node.Content[0], nil)
 
 	// create new high-level ExternalDoc
 	highExt := NewExternalDoc(&lowExt)

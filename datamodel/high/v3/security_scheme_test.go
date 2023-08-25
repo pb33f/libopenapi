@@ -31,7 +31,7 @@ func TestSecurityScheme_MarshalYAML(t *testing.T) {
 
 	var n v3.SecurityScheme
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	r := NewSecurityScheme(&n)
 

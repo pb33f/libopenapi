@@ -36,7 +36,7 @@ options:
 
 	var n v2.PathItem
 	_ = low.BuildModel(&idxNode, &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	r := NewPathItem(&n)
 

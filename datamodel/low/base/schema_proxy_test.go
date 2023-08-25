@@ -19,7 +19,7 @@ description: something`
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(idxNode.Content[0], nil)
+	err := sch.Build(nil, idxNode.Content[0], nil)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "db2a35dd6fb3d9481d0682571b9d687616bb2a34c1887f7863f0b2e769ca7b23",
@@ -50,7 +50,7 @@ func TestSchemaProxy_Build_CheckRef(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(idxNode.Content[0], nil)
+	err := sch.Build(nil, idxNode.Content[0], nil)
 	assert.NoError(t, err)
 	assert.True(t, sch.IsSchemaReference())
 	assert.Equal(t, "wat", sch.GetSchemaReference())
@@ -66,7 +66,7 @@ func TestSchemaProxy_Build_HashInline(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(idxNode.Content[0], nil)
+	err := sch.Build(nil, idxNode.Content[0], nil)
 	assert.NoError(t, err)
 	assert.False(t, sch.IsSchemaReference())
 	assert.NotNil(t, sch.Schema())
@@ -88,7 +88,7 @@ x-common-definitions:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(idxNode.Content[0], nil)
+	err := sch.Build(nil, idxNode.Content[0], nil)
 	assert.NoError(t, err)
 	assert.Len(t, sch.Schema().Enum.Value, 3)
 	assert.Equal(t, "The type of life cycle", sch.Schema().Description.Value)

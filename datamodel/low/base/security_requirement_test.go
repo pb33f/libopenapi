@@ -33,8 +33,8 @@ one:
 	var idxNode2 yaml.Node
 	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
 
-	_ = sr.Build(idxNode.Content[0], nil)
-	_ = sr2.Build(idxNode2.Content[0], nil)
+	_ = sr.Build(nil, idxNode.Content[0], nil)
+	_ = sr2.Build(nil, idxNode2.Content[0], nil)
 
 	assert.Len(t, sr.Requirements.Value, 2)
 	assert.Len(t, sr.GetKeys(), 2)
