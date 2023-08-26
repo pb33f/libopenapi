@@ -66,20 +66,18 @@ jobs:
           # Path to SARIF file relative to the root of the repository
           sarif_file: results.sarif
     
-      - name: Build
-        run: go build ./...
 
-      - name: Test & Race Detection
-        run: go test -v -timeout 10m -race  ./...
+      - name: Test
+        run: go test -v -race ./...
 
-      - name: Test & Code Coverage
-        run: go test -v -timeout 10m covermode=atomic -coverprofile=coverage.txt ./...
+      - name: Code Coverage
+        run: go test -v covermode=atomic -coverprofile=coverage.out ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.txt
+          files: ./coverage.out
           fail_ci_if_error: false
           verbose: true
 
