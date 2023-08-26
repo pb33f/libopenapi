@@ -25,7 +25,7 @@ func TestParameter_Build(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -44,7 +44,7 @@ func TestParameter_Build_Items(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -63,7 +63,7 @@ func TestParameter_DefaultSlice(t *testing.T) {
 	var n Parameter
 	_ = low.BuildModel(&idxNode, &n)
 
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 	assert.Len(t, n.Default.Value.([]any), 3)
 }
 
@@ -80,7 +80,7 @@ func TestParameter_DefaultMap(t *testing.T) {
 	var n Parameter
 	_ = low.BuildModel(&idxNode, &n)
 
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 	assert.Len(t, n.Default.Value.(map[string]any), 2)
 }
 
@@ -95,7 +95,7 @@ func TestParameter_NoDefaultNoError(t *testing.T) {
 	var n Parameter
 	_ = low.BuildModel(&idxNode, &n)
 
-	err := n.Build(idxNode.Content[0], idx)
+	err := n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 }
 
@@ -136,7 +136,7 @@ required: true`
 
 	var n Parameter
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `items:
  type: int
@@ -174,7 +174,7 @@ allowEmptyValue: true
 
 	var n2 Parameter
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

@@ -51,7 +51,7 @@ func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and paths from node.
-func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
@@ -71,7 +71,7 @@ func (p *Paths) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	var buildPathItem = func(cNode, pNode *yaml.Node, b chan<- pathBuildResult, e chan<- error) {
 		path := new(PathItem)
 		_ = low.BuildModel(pNode, path)
-		err := path.Build(pNode, idx)
+		err := path.Build(cNode, pNode, idx)
 		if err != nil {
 			e <- err
 			return

@@ -36,8 +36,8 @@ func TestCompareCallback(t *testing.T) {
 	var rDoc v3.Callback
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareCallback(&lDoc, &rDoc)
@@ -82,8 +82,8 @@ func TestCompareCallback_Add(t *testing.T) {
 	var rDoc v3.Callback
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareCallback(&lDoc, &rDoc)
@@ -133,8 +133,8 @@ func TestCompareCallback_Modify(t *testing.T) {
 	var rDoc v3.Callback
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareCallback(&lDoc, &rDoc)
@@ -183,8 +183,8 @@ func TestCompareCallback_Remove(t *testing.T) {
 	var rDoc v3.Callback
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareCallback(&rDoc, &lDoc)

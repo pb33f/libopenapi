@@ -60,7 +60,7 @@ func (ex *Example) Hash() [32]byte {
 }
 
 // Build extracts extensions and example value
-func (ex *Example) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (ex *Example) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)

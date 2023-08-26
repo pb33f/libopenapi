@@ -40,7 +40,7 @@ func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType]
 }
 
 // Build will extract extensions and MediaType objects from the node.
-func (rb *RequestBody) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (rb *RequestBody) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	rb.Reference = new(low.Reference)

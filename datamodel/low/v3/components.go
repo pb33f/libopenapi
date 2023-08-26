@@ -235,7 +235,8 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 
 		// build.
 		_ = low.BuildModel(value, n)
-		err = n.Build(value, idx)
+		// todo: label is a key or?
+		err = n.Build(label, value, idx)
 		if err != nil {
 			ec <- err
 			return

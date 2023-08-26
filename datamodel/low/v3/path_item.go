@@ -108,7 +108,7 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 
 // Build extracts extensions, parameters, servers and each http method defined.
 // everything is extracted asynchronously for speed.
-func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
@@ -142,7 +142,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 				if utils.IsNodeMap(srvN) {
 					srvr := new(Server)
 					_ = low.BuildModel(srvN, srvr)
-					srvr.Build(srvN, idx)
+					srvr.Build(ln, srvN, idx)
 					servers = append(servers, low.ValueReference[*Server]{
 						Value:     srvr,
 						ValueNode: srvN,
@@ -274,7 +274,7 @@ func (p *PathItem) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	opErrorChan := make(chan error)
 
 	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error, ref string) {
-		er := op.Value.Build(op.ValueNode, idx)
+		er := op.Value.Build(op.KeyNode, op.ValueNode, idx)
 		if ref != "" {
 			op.Value.Reference.Reference = ref
 		}

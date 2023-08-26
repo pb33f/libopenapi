@@ -37,8 +37,8 @@ x-beer: tasty`
 	var rDoc v2.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -66,8 +66,8 @@ x-beer: very tasty`
 	var rDoc v2.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -98,8 +98,8 @@ scopes:
 	var rDoc v2.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -128,8 +128,8 @@ scopes:
 	var rDoc v2.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&rDoc, &lDoc)
@@ -158,8 +158,8 @@ func TestCompareSecuritySchemes_v2_ModifyScope(t *testing.T) {
 	var rDoc v2.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -193,8 +193,8 @@ description: a thing`
 	var rDoc v3.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -224,8 +224,8 @@ x-beer: cool`
 	var rDoc v3.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -257,8 +257,8 @@ flows:
 	var rDoc v3.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)
@@ -286,8 +286,8 @@ flows:
 	var rDoc v3.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&rDoc, &lDoc)
@@ -318,8 +318,8 @@ flows:
 	var rDoc v3.SecurityScheme
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(nil, lNode.Content[0], nil)
+	_ = rDoc.Build(nil, rNode.Content[0], nil)
 
 	// compare
 	extChanges := CompareSecuritySchemes(&lDoc, &rDoc)

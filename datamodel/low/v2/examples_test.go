@@ -27,7 +27,7 @@ nothing: int`
 
 	var n Examples
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(nil, idxNode.Content[0], idx)
 
 	yml2 := `anything:
   cake: burger
@@ -43,7 +43,7 @@ yes:
 
 	var n2 Examples
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(idxNode2.Content[0], idx2)
+	_ = n2.Build(nil, idxNode2.Content[0], idx2)
 
 	assert.Equal(t, n.Hash(), n2.Hash())
 

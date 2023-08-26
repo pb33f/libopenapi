@@ -33,7 +33,7 @@ func (ex *ExternalDoc) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions from the ExternalDoc instance.
-func (ex *ExternalDoc) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (ex *ExternalDoc) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)
