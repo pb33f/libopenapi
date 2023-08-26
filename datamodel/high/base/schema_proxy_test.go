@@ -4,16 +4,18 @@
 package base
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestSchemaProxy_MarshalYAML(t *testing.T) {
+	t.Parallel()
 	const ymlComponents = `components:
     schemas:
      rice:
@@ -55,12 +57,14 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 }
 
 func TestCreateSchemaProxy(t *testing.T) {
+	t.Parallel()
 	sp := CreateSchemaProxy(&Schema{Description: "iAmASchema"})
 	assert.Equal(t, "iAmASchema", sp.rendered.Description)
 	assert.False(t, sp.IsReference())
 }
 
 func TestCreateSchemaProxyRef(t *testing.T) {
+	t.Parallel()
 	sp := CreateSchemaProxyRef("#/components/schemas/MySchema")
 	assert.Equal(t, "#/components/schemas/MySchema", sp.GetReference())
 	assert.True(t, sp.IsReference())

@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestExamples_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `something: string
 yes:
   - more

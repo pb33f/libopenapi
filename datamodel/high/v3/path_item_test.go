@@ -19,6 +19,7 @@ import (
 // with hard coded line and column numbers in them, changing the spec above the bottom will
 // create pointless test changes. So here is a standalone test. you know... for science.
 func TestPathItem(t *testing.T) {
+	t.Parallel()
 	yml := `servers:
   - description: so many options for things in places.`
 
@@ -38,6 +39,7 @@ func TestPathItem(t *testing.T) {
 }
 
 func TestPathItem_GetOperations(t *testing.T) {
+	t.Parallel()
 	yml := `get:
   description: get
 put:
@@ -70,6 +72,7 @@ trace:
 }
 
 func TestPathItem_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	pi := &PathItem{
 		Description: "a path item",
@@ -111,6 +114,7 @@ parameters:
 }
 
 func TestPathItem_MarshalYAMLInline(t *testing.T) {
+	t.Parallel()
 
 	pi := &PathItem{
 		Description: "a path item",

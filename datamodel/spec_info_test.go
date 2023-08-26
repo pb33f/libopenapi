@@ -24,6 +24,7 @@ const (
 )
 
 func TestSpecInfo_GetJSONParsingChannel(t *testing.T) {
+	t.Parallel()
 
 	// dumb, but we need to ensure coverage is as high as we can make it.
 	bchan := make(chan bool)
@@ -115,39 +116,46 @@ info:
   version: '0.1.0'`
 
 func TestExtractSpecInfo_ValidJSON(t *testing.T) {
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(goodJSON))
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_InvalidJSON(t *testing.T) {
+	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(badJSON))
 	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_Nothing(t *testing.T) {
+	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(""))
 	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_ValidYAML(t *testing.T) {
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(goodYAML))
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
+	t.Parallel()
+	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(badYAML))
 	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_InvalidOpenAPIVersion(t *testing.T) {
+	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(OpenApiOne))
 	assert.Error(t, e)
 }
 
 func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
-
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(OpenApi3Spec))
 	assert.Nil(t, e)
 	assert.Equal(t, utils.OpenApi3, r.SpecType)
@@ -157,7 +165,7 @@ func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 }
 
 func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
-
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(OpenApiWat))
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
@@ -165,7 +173,7 @@ func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
 }
 
 func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
-
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(OpenApi31))
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
@@ -174,7 +182,7 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 }
 
 func TestExtractSpecInfo_AnyDocument(t *testing.T) {
-
+	t.Parallel()
 	random := `something: yeah
 nothing:
   - one
@@ -190,7 +198,7 @@ why:
 }
 
 func TestExtractSpecInfo_AnyDocument_JSON(t *testing.T) {
-
+	t.Parallel()
 	random := `{ "something" : "yeah"}`
 
 	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
@@ -201,7 +209,7 @@ func TestExtractSpecInfo_AnyDocument_JSON(t *testing.T) {
 }
 
 func TestExtractSpecInfo_AnyDocumentFromConfig(t *testing.T) {
-
+	t.Parallel()
 	random := `something: yeah
 nothing:
   - one
@@ -219,14 +227,14 @@ why:
 }
 
 func TestExtractSpecInfo_OpenAPIFalse(t *testing.T) {
-
+	t.Parallel()
 	spec, e := ExtractSpecInfo([]byte(OpenApiFalse))
 	assert.NoError(t, e)
 	assert.Equal(t, "false", spec.Version)
 }
 
 func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
-
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(OpenApi2Spec))
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi2, r.SpecType)
@@ -236,7 +244,7 @@ func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
 }
 
 func TestExtractSpecInfo_OpenAPI2_OddVersion(t *testing.T) {
-
+	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(OpenApi2SpecOdd))
 	assert.NotNil(t, e)
 	assert.Equal(t,
@@ -244,7 +252,7 @@ func TestExtractSpecInfo_OpenAPI2_OddVersion(t *testing.T) {
 }
 
 func TestExtractSpecInfo_AsyncAPI(t *testing.T) {
-
+	t.Parallel()
 	r, e := ExtractSpecInfo([]byte(AsyncAPISpec))
 	assert.Nil(t, e)
 	assert.Equal(t, AsyncApi, r.SpecType)
@@ -253,7 +261,7 @@ func TestExtractSpecInfo_AsyncAPI(t *testing.T) {
 }
 
 func TestExtractSpecInfo_AsyncAPI_OddVersion(t *testing.T) {
-
+	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(AsyncAPISpecOdd))
 	assert.NotNil(t, e)
 	assert.Equal(t,
@@ -261,7 +269,7 @@ func TestExtractSpecInfo_AsyncAPI_OddVersion(t *testing.T) {
 }
 
 func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
-
+	t.Parallel()
 	yml := `openapi:
  should: fail`
 
@@ -270,7 +278,7 @@ func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
 }
 
 func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
-
+	t.Parallel()
 	yml := `swagger:
  should: fail`
 
@@ -279,7 +287,7 @@ func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
 }
 
 func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
-
+	t.Parallel()
 	yml := `asyncapi:
  should: fail`
 

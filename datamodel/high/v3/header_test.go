@@ -4,14 +4,15 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestHeader_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	header := &Header{
 		Description:     "A header",
 		Required:        true,

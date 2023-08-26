@@ -4,13 +4,14 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEncoding_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	explode := true
 	encoding := &Encoding{
 		ContentType: "application/json",

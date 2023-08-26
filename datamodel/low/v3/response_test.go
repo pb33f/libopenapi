@@ -4,15 +4,17 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestResponses_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   description: some response
   headers:
@@ -67,7 +69,7 @@ default:
 }
 
 func TestResponses_NoDefault(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   description: some response
   headers:
@@ -90,9 +92,10 @@ x-shoes: old`
 
 	var n Responses
 	err := low.BuildModel(&idxNode, &n)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	err = n.Build(nil, idxNode.Content[0], idx)
+	require.NoError(t, err)
 
 	// check hash
 	assert.Equal(t, "54ab66e6cb8bd226940f421c2387e45215b84c946182435dfe2a3036043fa07c",
@@ -104,7 +107,7 @@ x-shoes: old`
 }
 
 func TestResponses_Build_FailCodes_WrongType(t *testing.T) {
-
+	t.Parallel()
 	yml := `- "200":
   $ref: #bork`
 
@@ -122,7 +125,7 @@ func TestResponses_Build_FailCodes_WrongType(t *testing.T) {
 }
 
 func TestResponses_Build_FailCodes(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   $ref: #bork`
 
@@ -140,7 +143,7 @@ func TestResponses_Build_FailCodes(t *testing.T) {
 }
 
 func TestResponses_Build_FailDefault(t *testing.T) {
-
+	t.Parallel()
 	yml := `- default`
 
 	var idxNode yaml.Node
@@ -157,7 +160,7 @@ func TestResponses_Build_FailDefault(t *testing.T) {
 }
 
 func TestResponses_Build_FailBadHeader(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   headers:
     header1: 
@@ -177,7 +180,7 @@ func TestResponses_Build_FailBadHeader(t *testing.T) {
 }
 
 func TestResponses_Build_FailBadContent(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   content:
     flim/flam: 
@@ -197,7 +200,7 @@ func TestResponses_Build_FailBadContent(t *testing.T) {
 }
 
 func TestResponses_Build_FailBadLinks(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   links:
     aLink: 
@@ -217,7 +220,7 @@ func TestResponses_Build_FailBadLinks(t *testing.T) {
 }
 
 func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
-
+	t.Parallel()
 	yml := `"200":
   headers:
     x-header1:
@@ -241,7 +244,7 @@ func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
 }
 
 func TestResponse_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: nice toast
 headers:
   heady:

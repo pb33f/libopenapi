@@ -14,6 +14,7 @@ import (
 )
 
 func TestNewInfo(t *testing.T) {
+	t.Parallel()
 	var cNode yaml.Node
 
 	yml := `title: chicken
@@ -108,6 +109,7 @@ url: https://opensource.org/licenses/MIT`
 }
 
 func TestInfo_Render(t *testing.T) {
+	t.Parallel()
 
 	ext := make(map[string]any)
 	ext["x-pizza"] = "pepperoni"

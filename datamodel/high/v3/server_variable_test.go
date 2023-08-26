@@ -4,12 +4,14 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestServerVariable_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	svar := &ServerVariable{
 		Enum:        []string{"one", "two", "three"},

@@ -4,14 +4,15 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestLicense_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `url: https://pb33f.io
 description: the ranch`
 
@@ -33,7 +34,7 @@ description: the ranch`
 }
 
 func TestLicense_WithIdentifier_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `identifier: MIT
 description: the ranch`
 
@@ -58,7 +59,7 @@ description: the ranch`
 }
 
 func TestLicense_WithIdentifierAndURL_Error(t *testing.T) {
-
+	t.Parallel()
 	left := `identifier: MIT
 url: https://pb33f.io
 description: the ranch`
@@ -69,6 +70,7 @@ description: the ranch`
 	// create low level objects
 	var lDoc License
 	err := low.BuildModel(lNode.Content[0], &lDoc)
+	assert.NoError(t, err)
 
 	err = lDoc.Build(nil, lNode.Content[0], nil)
 

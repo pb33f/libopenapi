@@ -15,7 +15,7 @@ import (
 )
 
 func TestNewTag(t *testing.T) {
-
+	t.Parallel()
 	var cNode yaml.Node
 
 	yml := `name: chicken
@@ -48,7 +48,7 @@ x-hack: code`
 }
 
 func TestTag_RenderInline(t *testing.T) {
-
+	t.Parallel()
 	tag := &Tag{
 		Name: "cake",
 	}

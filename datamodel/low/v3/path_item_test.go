@@ -4,15 +4,16 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPathItem_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: a path item
 summary: it's another path item
 servers:

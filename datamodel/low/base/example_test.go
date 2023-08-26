@@ -4,15 +4,16 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestExample_Build_Success_NoValue(t *testing.T) {
-
+	t.Parallel()
 	yml := `summary: hot
 description: cakes
 x-cake: hot`
@@ -37,7 +38,7 @@ x-cake: hot`
 }
 
 func TestExample_Build_Success_Simple(t *testing.T) {
-
+	t.Parallel()
 	yml := `summary: hot
 description: cakes
 value: a string example
@@ -63,7 +64,7 @@ x-cake: hot`
 }
 
 func TestExample_Build_Success_Object(t *testing.T) {
-
+	t.Parallel()
 	yml := `summary: hot
 description: cakes
 value:
@@ -94,7 +95,7 @@ value:
 }
 
 func TestExample_Build_Success_Array(t *testing.T) {
-
+	t.Parallel()
 	yml := `summary: hot
 description: cakes
 value:
@@ -124,7 +125,7 @@ value:
 }
 
 func TestExample_Build_Success_MergeNode(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-things: &things
   summary: hot
   description: cakes
@@ -157,7 +158,7 @@ func TestExample_Build_Success_MergeNode(t *testing.T) {
 }
 
 func TestExample_ExtractExampleValue_Map(t *testing.T) {
-
+	t.Parallel()
 	yml := `hot:
     summer: nights
     pizza: oven`
@@ -179,7 +180,7 @@ func TestExample_ExtractExampleValue_Map(t *testing.T) {
 }
 
 func TestExample_ExtractExampleValue_Slice(t *testing.T) {
-
+	t.Parallel()
 	yml := `- hot:
     summer: nights
 - hotter:
@@ -211,7 +212,7 @@ func TestExample_ExtractExampleValue_Slice(t *testing.T) {
 }
 
 func TestExample_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `summary: hot
 description: cakes
 x-burger: nice
@@ -245,9 +246,9 @@ x-burger: nice`
 }
 
 func TestExtractExampleValue(t *testing.T) {
+	t.Parallel()
 	assert.True(t, ExtractExampleValue(&yaml.Node{Tag: "!!bool", Value: "true"}).(bool))
 	assert.Equal(t, int64(10), ExtractExampleValue(&yaml.Node{Tag: "!!int", Value: "10"}).(int64))
 	assert.Equal(t, 33.2, ExtractExampleValue(&yaml.Node{Tag: "!!float", Value: "33.2"}).(float64))
 	assert.Equal(t, "WHAT A NICE COW", ExtractExampleValue(&yaml.Node{Tag: "!!str", Value: "WHAT A NICE COW"}))
-
 }

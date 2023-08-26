@@ -4,14 +4,16 @@
 package base
 
 import (
+	"testing"
+
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestLicense_Render(t *testing.T) {
+	t.Parallel()
 
 	highL := &License{Name: "MIT", URL: "https://pb33f.io"}
 	dat, _ := highL.Render()
@@ -33,6 +35,7 @@ func TestLicense_Render(t *testing.T) {
 }
 
 func TestLicense_RenderEqual(t *testing.T) {
+	t.Parallel()
 
 	yml := `name: MIT
 url: https://pb33f.io/not-real
@@ -59,6 +62,7 @@ url: https://pb33f.io/not-real
 }
 
 func TestLicense_Render_Identifier(t *testing.T) {
+	t.Parallel()
 
 	highL := &License{Name: "MIT", Identifier: "MIT"}
 	dat, _ := highL.Render()
@@ -80,6 +84,7 @@ func TestLicense_Render_Identifier(t *testing.T) {
 }
 
 func TestLicense_Render_IdentifierAndURL_Error(t *testing.T) {
+	t.Parallel()
 
 	// this should fail because you can't have both an identifier and a URL
 	highL := &License{Name: "MIT", Identifier: "MIT", URL: "https://pb33f.io"}

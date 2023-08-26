@@ -17,6 +17,7 @@ import (
 )
 
 func TestMediaType_MarshalYAMLInline(t *testing.T) {
+	t.Parallel()
 	// load the petstore spec
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
@@ -107,6 +108,7 @@ example: testing a nice mutation`
 }
 
 func TestMediaType_MarshalYAML(t *testing.T) {
+	t.Parallel()
 	// load the petstore spec
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
@@ -143,6 +145,7 @@ example: testing a nice mutation`
 }
 
 func TestMediaType_Examples(t *testing.T) {
+	t.Parallel()
 	yml := `examples:
     pbjBurger:
         summary: A horrible, nutty, sticky mess.

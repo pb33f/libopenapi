@@ -20,6 +20,7 @@ import (
 // create pointless test changes. So here is a standalone test. you know... for science.
 
 func TestNewResponses(t *testing.T) {
+	t.Parallel()
 
 	yml := `default:
   description: default response`
@@ -40,6 +41,7 @@ func TestNewResponses(t *testing.T) {
 }
 
 func TestResponses_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	yml := `"201":
     description: this is a response
@@ -70,6 +72,7 @@ func TestResponses_MarshalYAML(t *testing.T) {
 }
 
 func TestResponses_MarshalYAMLInline(t *testing.T) {
+	t.Parallel()
 
 	yml := `"201":
     description: this is a response

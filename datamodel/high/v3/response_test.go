@@ -19,7 +19,7 @@ import (
 // with hard coded line and column numbers in them, changing the spec above the bottom will
 // create pointless test changes. So here is a standalone test. you know... for science.
 func TestNewResponse(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: this is a response
 headers:
   someHeader:
@@ -51,6 +51,7 @@ links:
 }
 
 func TestResponse_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	yml := `description: this is a response
 headers:
@@ -79,6 +80,7 @@ links:
 }
 
 func TestResponse_MarshalYAMLInline(t *testing.T) {
+	t.Parallel()
 
 	yml := `description: this is a response
 headers:

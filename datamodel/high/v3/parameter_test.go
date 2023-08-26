@@ -12,7 +12,7 @@ import (
 )
 
 func TestParameter_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	explode := true
 	param := Parameter{
 		Name:          "chicken",
@@ -46,7 +46,7 @@ x-burgers: why not?`
 }
 
 func TestParameter_MarshalYAMLInline(t *testing.T) {
-
+	t.Parallel()
 	explode := true
 	param := Parameter{
 		Name:          "chicken",
@@ -80,7 +80,7 @@ x-burgers: why not?`
 }
 
 func TestParameter_IsExploded(t *testing.T) {
-
+	t.Parallel()
 	explode := true
 	param := Parameter{
 		Explode: &explode,
@@ -101,7 +101,7 @@ func TestParameter_IsExploded(t *testing.T) {
 }
 
 func TestParameter_IsDefaultFormEncoding(t *testing.T) {
-
+	t.Parallel()
 	param := Parameter{}
 	assert.True(t, param.IsDefaultFormEncoding())
 
@@ -128,7 +128,7 @@ func TestParameter_IsDefaultFormEncoding(t *testing.T) {
 }
 
 func TestParameter_IsDefaultHeaderEncoding(t *testing.T) {
-
+	t.Parallel()
 	param := Parameter{}
 	assert.True(t, param.IsDefaultHeaderEncoding())
 
@@ -158,7 +158,7 @@ func TestParameter_IsDefaultHeaderEncoding(t *testing.T) {
 }
 
 func TestParameter_IsDefaultPathEncoding(t *testing.T) {
-
+	t.Parallel()
 	param := Parameter{}
 	assert.True(t, param.IsDefaultPathEncoding())
 

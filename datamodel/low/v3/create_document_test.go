@@ -69,7 +69,7 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 }
 
 func TestCircularReferenceError(t *testing.T) {
-
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -108,7 +108,7 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 }
 
 func TestCreateDocumentStripe(t *testing.T) {
-
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -173,6 +173,7 @@ func TestCreateDocument_WebHooks(t *testing.T) {
 }
 
 func TestCreateDocument_WebHooks_Error(t *testing.T) {
+	t.Parallel()
 	yml := `webhooks:
       $ref: #bork`
 
@@ -557,6 +558,7 @@ func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
 }
 
 func TestCreateDocument_Components_Error(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 components:
   schemas:
@@ -580,6 +582,7 @@ components:
 }
 
 func TestCreateDocument_Webhooks_Error(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 webhooks:
   aHook:
@@ -595,6 +598,7 @@ webhooks:
 }
 
 func TestCreateDocument_Components_Error_Extract(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 components:
   parameters:
@@ -612,6 +616,7 @@ components:
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 paths:
   /p:
@@ -627,6 +632,7 @@ paths:
 }
 
 func TestCreateDocument_Tags_Errors(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 tags:
   - $ref: #bork`
@@ -641,6 +647,7 @@ tags:
 }
 
 func TestCreateDocument_Security_Error(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 security:
   $ref: #bork`
@@ -655,6 +662,7 @@ security:
 }
 
 func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
+	t.Parallel()
 	yml := `openapi: 3.0
 externalDocs:
   $ref: #bork`
@@ -669,6 +677,7 @@ externalDocs:
 }
 
 func TestCreateDocument_YamlAnchor(t *testing.T) {
+	t.Parallel()
 	// load petstore into bytes
 	anchorDocument, _ := os.ReadFile("../../../test_specs/yaml-anchor.yaml")
 

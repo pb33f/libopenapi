@@ -4,16 +4,17 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestOperation_Build_ExternalDocs(t *testing.T) {
-
+	t.Parallel()
 	yml := `externalDocs:
   $ref: break`
 
@@ -32,7 +33,7 @@ func TestOperation_Build_ExternalDocs(t *testing.T) {
 }
 
 func TestOperation_Build_Params(t *testing.T) {
-
+	t.Parallel()
 	yml := `parameters:
   $ref: break`
 
@@ -51,7 +52,7 @@ func TestOperation_Build_Params(t *testing.T) {
 }
 
 func TestOperation_Build_Responses(t *testing.T) {
-
+	t.Parallel()
 	yml := `responses:
   $ref: break`
 
@@ -70,7 +71,7 @@ func TestOperation_Build_Responses(t *testing.T) {
 }
 
 func TestOperation_Build_Security(t *testing.T) {
-
+	t.Parallel()
 	yml := `security:
   $ref: break`
 
@@ -89,7 +90,7 @@ func TestOperation_Build_Security(t *testing.T) {
 }
 
 func TestOperation_Hash_n_Grab(t *testing.T) {
-
+	t.Parallel()
 	yml := `tags:
   - nice
   - hat

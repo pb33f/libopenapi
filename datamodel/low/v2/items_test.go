@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestItems_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `items:
   $ref: break`
 
@@ -30,7 +31,7 @@ func TestItems_Build(t *testing.T) {
 }
 
 func TestItems_DefaultAsSlice(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-thing: thing
 default:
   - pizza
@@ -49,7 +50,7 @@ default:
 }
 
 func TestItems_DefaultAsMap(t *testing.T) {
-
+	t.Parallel()
 	yml := `default:
   hot: pizza
   tasty: beer`
@@ -67,7 +68,7 @@ func TestItems_DefaultAsMap(t *testing.T) {
 }
 
 func TestItems_Hash_n_Grab(t *testing.T) {
-
+	t.Parallel()
 	yml := `type: string
 format: left
 collectionFormat: nice

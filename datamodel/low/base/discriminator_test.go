@@ -4,13 +4,15 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestDiscriminator_FindMappingValue(t *testing.T) {
+	t.Parallel()
 	yml := `propertyName: freshCakes
 mapping:
   something: nothing`
@@ -28,7 +30,7 @@ mapping:
 }
 
 func TestDiscriminator_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `propertyName: freshCakes
 mapping:
   something: nothing`

@@ -4,17 +4,18 @@
 package v3
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestCallback_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	cb := &Callback{
 		Expression: map[string]*PathItem{
 			"https://pb33f.io": {

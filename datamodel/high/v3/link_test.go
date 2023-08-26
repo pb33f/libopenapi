@@ -4,12 +4,14 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLink_MarshalYAML(t *testing.T) {
+	t.Parallel()
 	link := Link{
 		OperationRef: "somewhere",
 		OperationId:  "somewhereOutThere",

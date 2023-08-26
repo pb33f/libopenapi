@@ -5,15 +5,16 @@ package base
 
 import (
 	"fmt"
+	"testing"
+
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestNewContact(t *testing.T) {
-
+	t.Parallel()
 	var cNode yaml.Node
 
 	yml := `name: pizza
@@ -58,7 +59,7 @@ email: buckaroo@pb33f.io`
 }
 
 func TestContact_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	yml := `name: Buckaroo
 url: https://pb33f.io
 email: buckaroo@pb33f.io

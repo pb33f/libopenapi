@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestResponses_Build_Response(t *testing.T) {
-
+	t.Parallel()
 	yml := `- $ref: break`
 
 	var idxNode yaml.Node
@@ -30,7 +31,7 @@ func TestResponses_Build_Response(t *testing.T) {
 }
 
 func TestResponses_Build_Response_Default(t *testing.T) {
-
+	t.Parallel()
 	yml := `default:
   $ref: break`
 
@@ -49,7 +50,7 @@ func TestResponses_Build_Response_Default(t *testing.T) {
 }
 
 func TestResponses_Build_WrongType(t *testing.T) {
-
+	t.Parallel()
 	yml := `- $ref: break`
 
 	var idxNode yaml.Node
@@ -67,7 +68,7 @@ func TestResponses_Build_WrongType(t *testing.T) {
 }
 
 func TestResponses_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `default:
   description: I am a potato
 200:

@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestHeader_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `items:
   $ref: break`
 
@@ -31,7 +32,7 @@ func TestHeader_Build(t *testing.T) {
 }
 
 func TestHeader_DefaultAsSlice(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-ext: thing
 default:
   - why
@@ -52,7 +53,7 @@ default:
 }
 
 func TestHeader_DefaultAsObject(t *testing.T) {
-
+	t.Parallel()
 	yml := `default:
   lets:
     create:
@@ -71,7 +72,7 @@ func TestHeader_DefaultAsObject(t *testing.T) {
 }
 
 func TestHeader_NoDefault(t *testing.T) {
-
+	t.Parallel()
 	yml := `minimum: 12`
 
 	var idxNode yaml.Node
@@ -86,7 +87,7 @@ func TestHeader_NoDefault(t *testing.T) {
 }
 
 func TestHeader_Hash_n_Grab(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: head
 type: string
 format: left

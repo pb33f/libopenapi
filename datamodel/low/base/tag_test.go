@@ -4,15 +4,16 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestTag_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `name: a tag
 description: a description
 externalDocs: 
@@ -38,7 +39,7 @@ x-coffee: tasty`
 }
 
 func TestTag_Build_Error(t *testing.T) {
-
+	t.Parallel()
 	yml := `name: a tag
 description: a description
 externalDocs: 
@@ -57,7 +58,7 @@ externalDocs:
 }
 
 func TestTag_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `name: melody
 description: my princess
 externalDocs:

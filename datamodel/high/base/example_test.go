@@ -5,16 +5,17 @@ package base
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestNewExample(t *testing.T) {
-
+	t.Parallel()
 	var cNode yaml.Node
 
 	yml := `summary: an example
@@ -49,6 +50,7 @@ x-hack: code`
 }
 
 func TestExtractExamples(t *testing.T) {
+	t.Parallel()
 	var cNode yaml.Node
 
 	yml := `summary: herbs`

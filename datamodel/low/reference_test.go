@@ -6,9 +6,10 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
@@ -17,11 +18,13 @@ import (
 )
 
 func TestNodeReference_IsEmpty(t *testing.T) {
+	t.Parallel()
 	nr := new(NodeReference[string])
 	assert.True(t, nr.IsEmpty())
 }
 
 func TestNodeReference_GenerateMapKey(t *testing.T) {
+	t.Parallel()
 	nr := new(NodeReference[string])
 	nr.ValueNode = &yaml.Node{
 		Line:   22,
@@ -31,6 +34,7 @@ func TestNodeReference_GenerateMapKey(t *testing.T) {
 }
 
 func TestNodeReference_Mutate(t *testing.T) {
+	t.Parallel()
 	nr := new(NodeReference[string])
 	nr.ValueNode = &yaml.Node{
 		Line:   22,
@@ -49,6 +53,7 @@ func TestNodeReference_Mutate(t *testing.T) {
 }
 
 func TestNodeReference_RefNode(t *testing.T) {
+	t.Parallel()
 	nr := new(NodeReference[string])
 	nr.KeyNode = &yaml.Node{
 		Content: []*yaml.Node{{
@@ -59,6 +64,7 @@ func TestNodeReference_RefNode(t *testing.T) {
 }
 
 func TestValueReference_Mutate(t *testing.T) {
+	t.Parallel()
 	nr := new(ValueReference[string])
 	nr.ValueNode = &yaml.Node{
 		Line:   22,
@@ -70,11 +76,13 @@ func TestValueReference_Mutate(t *testing.T) {
 }
 
 func TestValueReference_IsEmpty(t *testing.T) {
+	t.Parallel()
 	nr := new(ValueReference[string])
 	assert.True(t, nr.IsEmpty())
 }
 
 func TestValueReference_GenerateMapKey(t *testing.T) {
+	t.Parallel()
 	nr := new(ValueReference[string])
 	nr.ValueNode = &yaml.Node{
 		Line:   22,
@@ -86,11 +94,13 @@ func TestValueReference_GenerateMapKey(t *testing.T) {
 }
 
 func TestKeyReference_IsEmpty(t *testing.T) {
+	t.Parallel()
 	nr := new(KeyReference[string])
 	assert.True(t, nr.IsEmpty())
 }
 
 func TestKeyReference_GenerateMapKey(t *testing.T) {
+	t.Parallel()
 	nr := new(KeyReference[string])
 	nr.KeyNode = &yaml.Node{
 		Line:   22,
@@ -100,6 +110,7 @@ func TestKeyReference_GenerateMapKey(t *testing.T) {
 }
 
 func TestIsCircular_LookupFromJourney(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -137,7 +148,7 @@ func TestIsCircular_LookupFromJourney(t *testing.T) {
 }
 
 func TestIsCircular_LookupFromJourney_Optional(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -170,6 +181,7 @@ func TestIsCircular_LookupFromJourney_Optional(t *testing.T) {
 }
 
 func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -206,6 +218,7 @@ func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
 }
 
 func TestIsCircular_LookupFromLoopPoint_Optional(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -238,6 +251,7 @@ func TestIsCircular_LookupFromLoopPoint_Optional(t *testing.T) {
 }
 
 func TestIsCircular_FromRefLookup(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -279,6 +293,7 @@ func TestIsCircular_FromRefLookup(t *testing.T) {
 }
 
 func TestIsCircular_FromRefLookup_Optional(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     NotCircle:
@@ -315,14 +330,17 @@ func TestIsCircular_FromRefLookup_Optional(t *testing.T) {
 }
 
 func TestIsCircular_NoNode(t *testing.T) {
+	t.Parallel()
 	assert.False(t, IsCircular(nil, nil))
 }
 
 func TestGetCircularReferenceResult_NoNode(t *testing.T) {
+	t.Parallel()
 	assert.Nil(t, GetCircularReferenceResult(nil, nil))
 }
 
 func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -361,6 +379,7 @@ func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_FromJourney_Optional(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -395,6 +414,7 @@ func TestGetCircularReferenceResult_FromJourney_Optional(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -433,6 +453,7 @@ func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_FromLoopPoint_Optional(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -467,6 +488,7 @@ func TestGetCircularReferenceResult_FromLoopPoint_Optional(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_FromMappedRef(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -503,6 +525,7 @@ func TestGetCircularReferenceResult_FromMappedRef(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_FromMappedRef_Optional(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -535,6 +558,7 @@ func TestGetCircularReferenceResult_FromMappedRef_Optional(t *testing.T) {
 }
 
 func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     NotCircle:
@@ -557,12 +581,14 @@ func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
 }
 
 func TestHashToString(t *testing.T) {
+	t.Parallel()
 	assert.Equal(t, "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
 		HashToString(sha256.Sum256([]byte("12345"))))
 
 }
 
 func TestReference_IsReference(t *testing.T) {
+	t.Parallel()
 	ref := Reference{
 		Reference: "#/components/schemas/SomeSchema",
 	}
@@ -571,6 +597,7 @@ func TestReference_IsReference(t *testing.T) {
 }
 
 func TestNodeReference_NodeLineNumber(t *testing.T) {
+	t.Parallel()
 
 	n := utils.CreateStringNode("pizza")
 	nr := NodeReference[string]{
@@ -583,6 +610,7 @@ func TestNodeReference_NodeLineNumber(t *testing.T) {
 }
 
 func TestNodeReference_NodeLineNumberEmpty(t *testing.T) {
+	t.Parallel()
 
 	nr := NodeReference[string]{
 		Value: "pizza",
@@ -591,6 +619,7 @@ func TestNodeReference_NodeLineNumberEmpty(t *testing.T) {
 }
 
 func TestNodeReference_GetReference(t *testing.T) {
+	t.Parallel()
 
 	nr := NodeReference[string]{
 		Reference: "#/happy/sunday",
@@ -599,12 +628,14 @@ func TestNodeReference_GetReference(t *testing.T) {
 }
 
 func TestNodeReference_SetReference(t *testing.T) {
+	t.Parallel()
 
 	nr := NodeReference[string]{}
 	nr.SetReference("#/happy/sunday")
 }
 
 func TestNodeReference_IsReference(t *testing.T) {
+	t.Parallel()
 
 	nr := NodeReference[string]{
 		ReferenceNode: true,
@@ -613,6 +644,7 @@ func TestNodeReference_IsReference(t *testing.T) {
 }
 
 func TestNodeReference_GetKeyNode(t *testing.T) {
+	t.Parallel()
 
 	nr := NodeReference[string]{
 		KeyNode: utils.CreateStringNode("pizza"),
@@ -622,6 +654,7 @@ func TestNodeReference_GetKeyNode(t *testing.T) {
 }
 
 func TestNodeReference_GetValueUntyped(t *testing.T) {
+	t.Parallel()
 
 	type anything struct {
 		thing string
@@ -635,6 +668,7 @@ func TestNodeReference_GetValueUntyped(t *testing.T) {
 }
 
 func TestValueReference_NodeLineNumber(t *testing.T) {
+	t.Parallel()
 
 	n := utils.CreateStringNode("pizza")
 	nr := ValueReference[string]{
@@ -647,6 +681,7 @@ func TestValueReference_NodeLineNumber(t *testing.T) {
 }
 
 func TestValueReference_NodeLineNumber_Nil(t *testing.T) {
+	t.Parallel()
 
 	nr := ValueReference[string]{
 		Value: "pizza",
@@ -656,6 +691,7 @@ func TestValueReference_NodeLineNumber_Nil(t *testing.T) {
 }
 
 func TestValueReference_GetReference(t *testing.T) {
+	t.Parallel()
 
 	nr := ValueReference[string]{
 		Reference: "#/happy/sunday",
@@ -664,12 +700,14 @@ func TestValueReference_GetReference(t *testing.T) {
 }
 
 func TestValueReference_SetReference(t *testing.T) {
+	t.Parallel()
 
 	nr := ValueReference[string]{}
 	nr.SetReference("#/happy/sunday")
 }
 
 func TestValueReference_GetValueUntyped(t *testing.T) {
+	t.Parallel()
 
 	type anything struct {
 		thing string
@@ -683,6 +721,7 @@ func TestValueReference_GetValueUntyped(t *testing.T) {
 }
 
 func TestValueReference_IsReference(t *testing.T) {
+	t.Parallel()
 
 	nr := NodeReference[string]{
 		ReferenceNode: true,
@@ -691,6 +730,7 @@ func TestValueReference_IsReference(t *testing.T) {
 }
 
 func TestValueReference_MarshalYAML_Ref(t *testing.T) {
+	t.Parallel()
 
 	nr := ValueReference[string]{
 		ReferenceNode: true,
@@ -703,6 +743,7 @@ func TestValueReference_MarshalYAML_Ref(t *testing.T) {
 }
 
 func TestValueReference_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	v := map[string]interface{}{
 		"beer": "burger",
@@ -726,6 +767,7 @@ wine: cheese`
 }
 
 func TestKeyReference_GetValueUntyped(t *testing.T) {
+	t.Parallel()
 
 	type anything struct {
 		thing string
@@ -739,6 +781,7 @@ func TestKeyReference_GetValueUntyped(t *testing.T) {
 }
 
 func TestKeyReference_GetKeyNode(t *testing.T) {
+	t.Parallel()
 	kn := utils.CreateStringNode("pizza")
 	kn.Line = 3
 

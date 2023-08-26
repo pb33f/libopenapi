@@ -378,7 +378,7 @@ func TestHandleSlicesOfBools(t *testing.T) {
 }
 
 func TestSetField_Ignore(t *testing.T) {
-
+	t.Parallel()
 	type Complex struct {
 		//lint:ignore U1000 only used in test
 		name string
@@ -403,7 +403,7 @@ func TestSetField_Ignore(t *testing.T) {
 }
 
 func TestBuildModelAsync(t *testing.T) {
-
+	t.Parallel()
 	type internal struct {
 		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
 	}
@@ -428,7 +428,7 @@ func TestBuildModelAsync(t *testing.T) {
 }
 
 func TestBuildModelAsync_Error(t *testing.T) {
-
+	t.Parallel()
 	type internal struct {
 		Thing []NodeReference[any]
 	}

@@ -4,14 +4,16 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestOAuthFlows_Build(t *testing.T) {
+	t.Parallel()
 
 	yml := `authorizationUrl: https://pb33f.io/auth
 tokenUrl: https://pb33f.io/token
@@ -41,6 +43,7 @@ x-tasty: herbs
 }
 
 func TestOAuthFlow_Build_Implicit(t *testing.T) {
+	t.Parallel()
 
 	yml := `implicit:
   authorizationUrl: https://pb33f.io/auth
@@ -62,6 +65,7 @@ x-tasty: herbs`
 }
 
 func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {
+	t.Parallel()
 
 	yml := `implicit:
   $ref: #bork"`
@@ -79,6 +83,7 @@ func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_Password(t *testing.T) {
+	t.Parallel()
 
 	yml := `password:
   authorizationUrl: https://pb33f.io/auth`
@@ -97,6 +102,7 @@ func TestOAuthFlow_Build_Password(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_Password_Fail(t *testing.T) {
+	t.Parallel()
 
 	yml := `password:
   $ref: #bork"`
@@ -114,6 +120,7 @@ func TestOAuthFlow_Build_Password_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_ClientCredentials(t *testing.T) {
+	t.Parallel()
 
 	yml := `clientCredentials:
   authorizationUrl: https://pb33f.io/auth`
@@ -132,6 +139,7 @@ func TestOAuthFlow_Build_ClientCredentials(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_ClientCredentials_Fail(t *testing.T) {
+	t.Parallel()
 
 	yml := `clientCredentials:
   $ref: #bork"`
@@ -149,6 +157,7 @@ func TestOAuthFlow_Build_ClientCredentials_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_AuthCode(t *testing.T) {
+	t.Parallel()
 
 	yml := `authorizationCode:
   authorizationUrl: https://pb33f.io/auth`
@@ -167,6 +176,7 @@ func TestOAuthFlow_Build_AuthCode(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_AuthCode_Fail(t *testing.T) {
+	t.Parallel()
 
 	yml := `authorizationCode:
   $ref: #bork"`
@@ -184,6 +194,7 @@ func TestOAuthFlow_Build_AuthCode_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Hash(t *testing.T) {
+	t.Parallel()
 
 	yml := `authorizationUrl: https://pb33f.io/auth
 tokenUrl: https://pb33f.io/token
@@ -221,6 +232,7 @@ scopes:
 }
 
 func TestOAuthFlows_Hash(t *testing.T) {
+	t.Parallel()
 
 	yml := `implicit:
   authorizationUrl: https://pb33f.io/auth

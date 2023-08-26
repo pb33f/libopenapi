@@ -4,15 +4,16 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestRequestBody_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: a nice request
 required: true
 content:
@@ -39,7 +40,7 @@ x-requesto: presto`
 }
 
 func TestRequestBody_Fail(t *testing.T) {
-
+	t.Parallel()
 	yml := `content:
   $ref: #illegal`
 
@@ -56,7 +57,7 @@ func TestRequestBody_Fail(t *testing.T) {
 }
 
 func TestRequestBody_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: nice toast
 content:
   jammy/toast:

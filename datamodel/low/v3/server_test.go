@@ -4,15 +4,16 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestServer_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-coffee: hot
 url: https://pb33f.io
 description: high quality software for developers.
@@ -51,7 +52,7 @@ variables:
 }
 
 func TestServer_Build_NoVars(t *testing.T) {
-
+	t.Parallel()
 	yml := `url: https://pb33f.io
 description: high quality software for developers.`
 

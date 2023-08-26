@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPathItem_Build_Params(t *testing.T) {
-
+	t.Parallel()
 	yml := `parameters:
   $ref: break`
 
@@ -31,7 +32,7 @@ func TestPathItem_Build_Params(t *testing.T) {
 }
 
 func TestPathItem_Build_MethodFail(t *testing.T) {
-
+	t.Parallel()
 	yml := `post:
   $ref: break`
 
@@ -50,7 +51,7 @@ func TestPathItem_Build_MethodFail(t *testing.T) {
 }
 
 func TestPathItem_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `get:
   description: get me up
 put:

@@ -4,14 +4,15 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestContact_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `url: https://pb33f.io
 description: the ranch
 email: buckaroo@pb33f.io`

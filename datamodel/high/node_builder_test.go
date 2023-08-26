@@ -4,13 +4,14 @@
 package high
 
 import (
+	"reflect"
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"reflect"
-	"strings"
-	"testing"
 )
 
 type key struct {
@@ -238,7 +239,7 @@ x-pizza: time`
 }
 
 func TestNewNodeBuilder_Type(t *testing.T) {
-
+	t.Parallel()
 	t1 := test1{
 		Type: []string{"chicken", "soup"},
 	}
@@ -256,7 +257,7 @@ func TestNewNodeBuilder_Type(t *testing.T) {
 }
 
 func TestNewNodeBuilder_IsReferenced(t *testing.T) {
-
+	t.Parallel()
 	t1 := key{
 		Name:   "cotton",
 		ref:    true,
@@ -275,7 +276,7 @@ func TestNewNodeBuilder_IsReferenced(t *testing.T) {
 }
 
 func TestNewNodeBuilder_Extensions(t *testing.T) {
-
+	t.Parallel()
 	t1 := test1{
 		Thing: "ding",
 		Extensions: map[string]any{
@@ -293,7 +294,7 @@ func TestNewNodeBuilder_Extensions(t *testing.T) {
 }
 
 func TestNewNodeBuilder_LowValueNode(t *testing.T) {
-
+	t.Parallel()
 	t1 := test1{
 		Thing: "ding",
 		Extensions: map[string]any{
@@ -312,7 +313,7 @@ func TestNewNodeBuilder_LowValueNode(t *testing.T) {
 }
 
 func TestNewNodeBuilder_NoValue(t *testing.T) {
-
+	t.Parallel()
 	t1 := test1{
 		Thing: "",
 	}
@@ -324,6 +325,7 @@ func TestNewNodeBuilder_NoValue(t *testing.T) {
 }
 
 func TestNewNodeBuilder_EmptyString(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nodeEnty := NodeEntry{}
 	nb := NewNodeBuilder(t1, t1)
@@ -332,6 +334,7 @@ func TestNewNodeBuilder_EmptyString(t *testing.T) {
 }
 
 func TestNewNodeBuilder_EmptyStringRenderZero(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nodeEnty := NodeEntry{RenderZero: true, Value: ""}
 	nb := NewNodeBuilder(t1, t1)
@@ -341,6 +344,7 @@ func TestNewNodeBuilder_EmptyStringRenderZero(t *testing.T) {
 }
 
 func TestNewNodeBuilder_Bool(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
 	nodeEnty := NodeEntry{}
@@ -349,6 +353,7 @@ func TestNewNodeBuilder_Bool(t *testing.T) {
 }
 
 func TestNewNodeBuilder_BoolRenderZero(t *testing.T) {
+	t.Parallel()
 	type yui struct {
 		Thrit bool `yaml:"thrit,renderZero"`
 	}
@@ -360,6 +365,7 @@ func TestNewNodeBuilder_BoolRenderZero(t *testing.T) {
 }
 
 func TestNewNodeBuilder_Int(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
 	p := utils.CreateEmptyMapNode()
@@ -371,6 +377,7 @@ func TestNewNodeBuilder_Int(t *testing.T) {
 }
 
 func TestNewNodeBuilder_Int64(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
 	p := utils.CreateEmptyMapNode()
@@ -382,6 +389,7 @@ func TestNewNodeBuilder_Int64(t *testing.T) {
 }
 
 func TestNewNodeBuilder_Float32(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
 	p := utils.CreateEmptyMapNode()
@@ -393,6 +401,7 @@ func TestNewNodeBuilder_Float32(t *testing.T) {
 }
 
 func TestNewNodeBuilder_Float64(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
 	p := utils.CreateEmptyMapNode()
@@ -404,6 +413,7 @@ func TestNewNodeBuilder_Float64(t *testing.T) {
 }
 
 func TestNewNodeBuilder_EmptyNode(t *testing.T) {
+	t.Parallel()
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
 	nb.Nodes = nil
@@ -413,6 +423,7 @@ func TestNewNodeBuilder_EmptyNode(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thrug: map[string]string{
@@ -446,6 +457,7 @@ func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thomp: map[key]string{
@@ -485,6 +497,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thomp: map[key]string{
@@ -519,6 +532,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatchKeyNode(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thomp: map[key]string{
@@ -553,6 +567,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatchKeyNode(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch_NoWrap(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thomp: map[key]string{
@@ -583,6 +598,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch_NoWrap(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MissingLabel(t *testing.T) {
+	t.Parallel()
 
 	t1 := new(test1)
 	nb := NewNodeBuilder(t1, t1)
@@ -594,6 +610,7 @@ func TestNewNodeBuilder_MissingLabel(t *testing.T) {
 }
 
 func TestNewNodeBuilder_ExtensionMap(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thing: "ding",
@@ -615,6 +632,7 @@ func TestNewNodeBuilder_ExtensionMap(t *testing.T) {
 }
 
 func TestNewNodeBuilder_MapKeyHasValueThatHasValueMismatch(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Extensions: map[string]any{
@@ -640,6 +658,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMismatch(t *testing.T) {
 }
 
 func TestNewNodeBuilder_SliceRef(t *testing.T) {
+	t.Parallel()
 
 	c := key{ref: true, refStr: "#/red/robin/yummmmm", Name: "milky"}
 	ty := []*key{&c}
@@ -659,6 +678,7 @@ func TestNewNodeBuilder_SliceRef(t *testing.T) {
 }
 
 func TestNewNodeBuilder_SliceRef_Inline(t *testing.T) {
+	t.Parallel()
 
 	c := key{ref: true, refStr: "#/red/robin/yummmmm", Name: "milky"}
 	ty := []*key{&c}
@@ -693,6 +713,7 @@ func (t testRenderRawNode) MarshalYAML() (interface{}, error) {
 }
 
 func TestNewNodeBuilder_SliceRef_Inline_NotCompatible(t *testing.T) {
+	t.Parallel()
 
 	ty := []interface{}{testRender{}}
 	t1 := test1{
@@ -712,6 +733,7 @@ func TestNewNodeBuilder_SliceRef_Inline_NotCompatible(t *testing.T) {
 }
 
 func TestNewNodeBuilder_SliceRef_Inline_NotCompatible_NotPointer(t *testing.T) {
+	t.Parallel()
 
 	ty := []interface{}{testRenderRawNode{}}
 	t1 := test1{
@@ -731,6 +753,7 @@ func TestNewNodeBuilder_SliceRef_Inline_NotCompatible_NotPointer(t *testing.T) {
 }
 
 func TestNewNodeBuilder_PointerRef_Inline_NotCompatible_RawNode(t *testing.T) {
+	t.Parallel()
 
 	ty := testRenderRawNode{}
 	t1 := test1{
@@ -749,6 +772,7 @@ func TestNewNodeBuilder_PointerRef_Inline_NotCompatible_RawNode(t *testing.T) {
 }
 
 func TestNewNodeBuilder_PointerRef_Inline_NotCompatible(t *testing.T) {
+	t.Parallel()
 
 	ty := key{}
 	t1 := test1{
@@ -767,6 +791,7 @@ func TestNewNodeBuilder_PointerRef_Inline_NotCompatible(t *testing.T) {
 }
 
 func TestNewNodeBuilder_SliceNoRef(t *testing.T) {
+	t.Parallel()
 
 	c := key{ref: false, Name: "milky"}
 	ty := []*key{&c}
@@ -786,6 +811,7 @@ func TestNewNodeBuilder_SliceNoRef(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestStructAny(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thurm: low.ValueReference[any]{
@@ -803,6 +829,7 @@ func TestNewNodeBuilder_TestStructAny(t *testing.T) {
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 func TestNewNodeBuilder_TestStructString(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thurm: low.ValueReference[string]{
@@ -821,6 +848,7 @@ func TestNewNodeBuilder_TestStructString(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestStructPointer(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thrim: &key{
@@ -842,6 +870,7 @@ func TestNewNodeBuilder_TestStructPointer(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestStructRef(t *testing.T) {
+	t.Parallel()
 
 	fkn := utils.CreateStringNode("pizzaBurgers")
 	fkn.Line = 22
@@ -866,6 +895,7 @@ func TestNewNodeBuilder_TestStructRef(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestStructDefaultEncode(t *testing.T) {
+	t.Parallel()
 
 	f := 1
 	t1 := test1{
@@ -883,6 +913,7 @@ func TestNewNodeBuilder_TestStructDefaultEncode(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestSliceMapSliceStruct(t *testing.T) {
+	t.Parallel()
 
 	a := []map[string][]string{
 		{"pizza": {"beer", "wine"}},
@@ -906,6 +937,7 @@ func TestNewNodeBuilder_TestSliceMapSliceStruct(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestRenderZero(t *testing.T) {
+	t.Parallel()
 
 	f := false
 	t1 := test1{
@@ -923,6 +955,7 @@ func TestNewNodeBuilder_TestRenderZero(t *testing.T) {
 }
 
 func TestNewNodeBuilder_TestRenderServerVariableSimulation(t *testing.T) {
+	t.Parallel()
 
 	t1 := test1{
 		Thrig: map[string]*plug{
@@ -945,6 +978,7 @@ func TestNewNodeBuilder_TestRenderServerVariableSimulation(t *testing.T) {
 }
 
 func TestNewNodeBuilder_ShouldHaveNotDoneTestsLikeThisOhWell(t *testing.T) {
+	t.Parallel()
 
 	m := make(map[low.KeyReference[string]]low.ValueReference[*key])
 

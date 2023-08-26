@@ -4,12 +4,14 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestServer_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	server := &Server{
 		URL:         "https://pb33f.io",

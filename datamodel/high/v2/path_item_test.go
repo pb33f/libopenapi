@@ -4,16 +4,17 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPathItem_GetOperations(t *testing.T) {
-
+	t.Parallel()
 	yml := `get:
   description: get
 put:

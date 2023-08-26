@@ -4,11 +4,12 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 var testComponentsYaml = `
@@ -64,7 +65,7 @@ var testComponentsYaml = `
           description: eighteen of many`
 
 func TestComponents_Build_Success(t *testing.T) {
-
+	t.Parallel()
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(testComponentsYaml), &idxNode)
 	assert.NoError(t, mErr)
@@ -104,7 +105,7 @@ func TestComponents_Build_Success(t *testing.T) {
 }
 
 func TestComponents_Build_Success_Skip(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -122,7 +123,7 @@ func TestComponents_Build_Success_Skip(t *testing.T) {
 }
 
 func TestComponents_Build_Fail(t *testing.T) {
-
+	t.Parallel()
 	yml := `
   parameters: 
     schema:
@@ -143,7 +144,7 @@ func TestComponents_Build_Fail(t *testing.T) {
 }
 
 func TestComponents_Build_ParameterFail(t *testing.T) {
-
+	t.Parallel()
 	yml := `
   parameters:
     pizza:
@@ -165,7 +166,7 @@ func TestComponents_Build_ParameterFail(t *testing.T) {
 }
 
 func TestComponents_Build_Fail_TypeFail(t *testing.T) {
-
+	t.Parallel()
 	yml := `
   parameters: 
     - schema:
@@ -185,7 +186,7 @@ func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 }
 
 func TestComponents_Build_ExtensionTest(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-curry: seagull
 headers:
   x-curry-gull: vinadloo`

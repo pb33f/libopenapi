@@ -4,58 +4,67 @@
 package base
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestDynamicValue_Render_A(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, int]{N: 0, A: "hello"}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "hello", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_B(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, int]{N: 1, B: 12345}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "12345", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_Bool(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, bool]{N: 1, B: true}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "true", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_Int64(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, int64]{N: 1, B: 12345567810}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "12345567810", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_Int32(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, int32]{N: 1, B: 1234567891}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "1234567891", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_Float32(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, float32]{N: 1, B: 23456.123}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "23456.123", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_Float64(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[string, float64]{N: 1, B: 23456.1233456778}
 	dvb, _ := dv.Render()
 	assert.Equal(t, "23456.1233456778", strings.TrimSpace(string(dvb)))
 }
 
 func TestDynamicValue_Render_Ptr(t *testing.T) {
+	t.Parallel()
 
 	type cake struct {
 		Cake string
@@ -67,7 +76,7 @@ func TestDynamicValue_Render_Ptr(t *testing.T) {
 }
 
 func TestDynamicValue_Render_PtrRenderable(t *testing.T) {
-
+	t.Parallel()
 	tag := &Tag{
 		Name: "cake",
 	}
@@ -78,7 +87,7 @@ func TestDynamicValue_Render_PtrRenderable(t *testing.T) {
 }
 
 func TestDynamicValue_RenderInline(t *testing.T) {
-
+	t.Parallel()
 	tag := &Tag{
 		Name: "cake",
 	}
@@ -89,7 +98,7 @@ func TestDynamicValue_RenderInline(t *testing.T) {
 }
 
 func TestDynamicValue_MarshalYAMLInline(t *testing.T) {
-
+	t.Parallel()
 	const ymlComponents = `components:
     schemas:
      rice:
@@ -133,7 +142,7 @@ func TestDynamicValue_MarshalYAMLInline(t *testing.T) {
 }
 
 func TestDynamicValue_MarshalYAMLInline_Error(t *testing.T) {
-
+	t.Parallel()
 	const ymlComponents = `components:
     schemas:
      rice:

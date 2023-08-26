@@ -382,6 +382,7 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 }
 
 func TestStripeAsDoc(t *testing.T) {
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -392,6 +393,7 @@ func TestStripeAsDoc(t *testing.T) {
 }
 
 func TestK8sAsDoc(t *testing.T) {
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -402,6 +404,7 @@ func TestK8sAsDoc(t *testing.T) {
 }
 
 func TestAsanaAsDoc(t *testing.T) {
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/asana.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -415,6 +418,7 @@ func TestAsanaAsDoc(t *testing.T) {
 }
 
 func TestDigitalOceanAsDocFromSHA(t *testing.T) {
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -435,6 +439,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 }
 
 func TestPetstoreAsDoc(t *testing.T) {
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -448,6 +453,7 @@ func TestPetstoreAsDoc(t *testing.T) {
 }
 
 func TestCircularReferencesDoc(t *testing.T) {
+	t.Parallel()
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
@@ -477,6 +483,7 @@ func TestDocument_MarshalYAML(t *testing.T) {
 }
 
 func TestDocument_MarshalIndention(t *testing.T) {
+	t.Parallel()
 
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
@@ -495,6 +502,7 @@ func TestDocument_MarshalIndention(t *testing.T) {
 }
 
 func TestDocument_MarshalIndention_Error(t *testing.T) {
+	t.Parallel()
 
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
@@ -513,6 +521,7 @@ func TestDocument_MarshalIndention_Error(t *testing.T) {
 }
 
 func TestDocument_MarshalJSON(t *testing.T) {
+	t.Parallel()
 
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
@@ -551,6 +560,7 @@ func TestDocument_MarshalYAMLInline(t *testing.T) {
 }
 
 func TestDocument_MarshalYAML_TestRefs(t *testing.T) {
+	t.Parallel()
 
 	// create a new document
 	yml := `openapi: 3.1.0
@@ -629,6 +639,7 @@ components:
 }
 
 func TestDocument_MarshalYAML_TestParamRefs(t *testing.T) {
+	t.Parallel()
 
 	// create a new document
 	yml := `openapi: 3.1.0
@@ -682,6 +693,7 @@ components:
 }
 
 func TestDocument_MarshalYAML_TestModifySchemas(t *testing.T) {
+	t.Parallel()
 
 	// create a new document
 	yml := `openapi: 3.1.0

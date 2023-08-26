@@ -14,7 +14,7 @@ import (
 )
 
 func TestPaths_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `"/some/path":
   get:
     description: get method
@@ -67,7 +67,7 @@ x-milk: cold`
 }
 
 func TestPaths_Build_Fail(t *testing.T) {
-
+	t.Parallel()
 	yml := `"/some/path":
   $ref: $bork`
 
@@ -85,7 +85,7 @@ func TestPaths_Build_Fail(t *testing.T) {
 }
 
 func TestPaths_Build_FailRef(t *testing.T) {
-
+	t.Parallel()
 	// this is kinda nuts, and, it's completely illegal, but you never know!
 	yml := `"/some/path":
  description: this is some path
@@ -120,7 +120,7 @@ func TestPaths_Build_FailRef(t *testing.T) {
 }
 
 func TestPaths_Build_FailRefDeadEnd(t *testing.T) {
-
+	t.Parallel()
 	// this is nuts.
 	yml := `"/no/path":
   get:
@@ -144,7 +144,7 @@ func TestPaths_Build_FailRefDeadEnd(t *testing.T) {
 }
 
 func TestPaths_Build_SuccessRef(t *testing.T) {
-
+	t.Parallel()
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -181,7 +181,7 @@ func TestPaths_Build_SuccessRef(t *testing.T) {
 }
 
 func TestPaths_Build_BadParams(t *testing.T) {
-
+	t.Parallel()
 	yml := `"/some/path":
   parameters:
     this: shouldFail`
@@ -199,7 +199,7 @@ func TestPaths_Build_BadParams(t *testing.T) {
 }
 
 func TestPaths_Build_BadRef(t *testing.T) {
-
+	t.Parallel()
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -225,7 +225,7 @@ func TestPaths_Build_BadRef(t *testing.T) {
 }
 
 func TestPathItem_Build_GoodRef(t *testing.T) {
-
+	t.Parallel()
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -255,7 +255,7 @@ func TestPathItem_Build_GoodRef(t *testing.T) {
 }
 
 func TestPathItem_Build_BadRef(t *testing.T) {
-
+	t.Parallel()
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -285,7 +285,7 @@ func TestPathItem_Build_BadRef(t *testing.T) {
 }
 
 func TestPathNoOps(t *testing.T) {
-
+	t.Parallel()
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
 "/cakes":`
@@ -303,7 +303,7 @@ func TestPathNoOps(t *testing.T) {
 }
 
 func TestPathItem_Build_Using_Ref(t *testing.T) {
-
+	t.Parallel()
 	// first we need an index.
 	yml := `paths:
  '/something/here':
@@ -341,7 +341,7 @@ func TestPathItem_Build_Using_Ref(t *testing.T) {
 }
 
 func TestPath_Build_Using_CircularRef(t *testing.T) {
-
+	t.Parallel()
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -377,7 +377,7 @@ func TestPath_Build_Using_CircularRef(t *testing.T) {
 }
 
 func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
-
+	t.Parallel()
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -414,7 +414,7 @@ func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
 }
 
 func TestPaths_Build_BrokenOp(t *testing.T) {
-
+	t.Parallel()
 	yml := `"/some/path":
   post:
     externalDocs:
@@ -433,7 +433,7 @@ func TestPaths_Build_BrokenOp(t *testing.T) {
 }
 
 func TestPaths_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `/french/toast:
   description: toast
 /french/hen:

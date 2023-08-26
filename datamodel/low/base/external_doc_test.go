@@ -4,15 +4,16 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestExternalDoc_FindExtension(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-fish: cake`
 
 	var idxNode yaml.Node
@@ -30,7 +31,7 @@ func TestExternalDoc_FindExtension(t *testing.T) {
 }
 
 func TestExternalDoc_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `url: https://pb33f.io
 description: the ranch
 x-b33f: princess`
@@ -55,7 +56,7 @@ x-b33f: princess`
 }
 
 func TestExternalDoc_Hash(t *testing.T) {
-
+	t.Parallel()
 	left := `url: https://pb33f.io
 description: the ranch
 x-b33f: princess`

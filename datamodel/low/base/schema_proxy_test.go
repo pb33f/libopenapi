@@ -4,14 +4,15 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSchemaProxy_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `x-windows: washed
 description: something`
 
@@ -44,7 +45,7 @@ description: something`
 }
 
 func TestSchemaProxy_Build_CheckRef(t *testing.T) {
-
+	t.Parallel()
 	yml := `$ref: wat`
 
 	var sch SchemaProxy
@@ -60,7 +61,7 @@ func TestSchemaProxy_Build_CheckRef(t *testing.T) {
 }
 
 func TestSchemaProxy_Build_HashInline(t *testing.T) {
-
+	t.Parallel()
 	yml := `type: int`
 
 	var sch SchemaProxy
@@ -76,7 +77,7 @@ func TestSchemaProxy_Build_HashInline(t *testing.T) {
 }
 
 func TestSchemaProxy_Build_UsingMergeNodes(t *testing.T) {
-
+	t.Parallel()
 	yml := `
 x-common-definitions:
   life_cycle_types: &life_cycle_types_def

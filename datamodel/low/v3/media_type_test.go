@@ -4,14 +4,16 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestMediaType_Build(t *testing.T) {
+	t.Parallel()
 	yml := `schema:
   type: string
 example: hello
@@ -45,6 +47,7 @@ x-rock: and roll`
 }
 
 func TestMediaType_Build_Fail_Schema(t *testing.T) {
+	t.Parallel()
 	yml := `schema:
   $ref: #bork`
 
@@ -61,6 +64,7 @@ func TestMediaType_Build_Fail_Schema(t *testing.T) {
 }
 
 func TestMediaType_Build_Fail_Examples(t *testing.T) {
+	t.Parallel()
 	yml := `examples:
   waff:
     $ref: #bork`
@@ -79,6 +83,7 @@ func TestMediaType_Build_Fail_Examples(t *testing.T) {
 }
 
 func TestMediaType_Build_Fail_Encoding(t *testing.T) {
+	t.Parallel()
 	yml := `encoding:
   wiff:
     $ref: #bork`
@@ -96,6 +101,7 @@ func TestMediaType_Build_Fail_Encoding(t *testing.T) {
 }
 
 func TestMediaType_Hash(t *testing.T) {
+	t.Parallel()
 
 	yml := `schema:
   type: string

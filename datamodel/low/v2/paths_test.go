@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPaths_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `"/fresh/code":
   $ref: break`
 
@@ -31,7 +32,7 @@ func TestPaths_Build(t *testing.T) {
 }
 
 func TestPaths_FindPathAndKey(t *testing.T) {
-
+	t.Parallel()
 	yml := `/no/sleep:
   get: 
     description: til brooklyn
@@ -54,7 +55,7 @@ func TestPaths_FindPathAndKey(t *testing.T) {
 }
 
 func TestPaths_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `/data/dog:
   get:
     description: does data kinda, ish. 

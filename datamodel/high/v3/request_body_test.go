@@ -11,7 +11,7 @@ import (
 )
 
 func TestRequestBody_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	rb := true
 	req := &RequestBody{
 		Description: "beer",
@@ -30,7 +30,7 @@ x-high-gravity: why not?`
 }
 
 func TestRequestBody_MarshalYAMLInline(t *testing.T) {
-
+	t.Parallel()
 	rb := true
 	req := &RequestBody{
 		Description: "beer",
@@ -49,6 +49,7 @@ x-high-gravity: why not?`
 }
 
 func TestRequestBody_MarshalNoRequired(t *testing.T) {
+	t.Parallel()
 	rb := false
 	req := &RequestBody{
 		Description: "beer",
@@ -67,6 +68,7 @@ x-high-gravity: why not?`
 }
 
 func TestRequestBody_MarshalRequiredNil(t *testing.T) {
+	t.Parallel()
 
 	req := &RequestBody{
 		Description: "beer",

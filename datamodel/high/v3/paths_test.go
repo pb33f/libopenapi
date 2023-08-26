@@ -15,6 +15,7 @@ import (
 )
 
 func TestPaths_MarshalYAML(t *testing.T) {
+	t.Parallel()
 
 	yml := `/foo/bar/bizzle:
     get:
@@ -67,6 +68,7 @@ func TestPaths_MarshalYAML(t *testing.T) {
 }
 
 func TestPaths_MarshalYAMLInline(t *testing.T) {
+	t.Parallel()
 
 	yml := `/foo/bar/bizzle:
     get:

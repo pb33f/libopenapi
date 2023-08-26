@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSecurityScheme_Build_Borked(t *testing.T) {
-
+	t.Parallel()
 	yml := `scopes:
   $ref: break`
 
@@ -31,7 +32,7 @@ func TestSecurityScheme_Build_Borked(t *testing.T) {
 }
 
 func TestSecurityScheme_Build_Scopes(t *testing.T) {
-
+	t.Parallel()
 	yml := `scopes:
   some:thing: here
   something: there`
@@ -52,7 +53,7 @@ func TestSecurityScheme_Build_Scopes(t *testing.T) {
 }
 
 func TestSecurityScheme_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `type: secure
 description: a very secure thing
 name: securityPerson

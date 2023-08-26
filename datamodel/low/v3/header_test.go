@@ -4,15 +4,17 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestHeader_Build(t *testing.T) {
+	t.Parallel()
 	yml := `description: michelle, meddy and maddy
 required: true
 deprecated: false
@@ -86,6 +88,7 @@ content:
 }
 
 func TestHeader_Build_Success_Examples(t *testing.T) {
+	t.Parallel()
 	yml := `examples:
   family:
     value:
@@ -117,6 +120,7 @@ func TestHeader_Build_Success_Examples(t *testing.T) {
 }
 
 func TestHeader_Build_Fail_Examples(t *testing.T) {
+	t.Parallel()
 	yml := `examples:
   family:
     $ref: I AM BORKED`
@@ -134,6 +138,7 @@ func TestHeader_Build_Fail_Examples(t *testing.T) {
 }
 
 func TestHeader_Build_Fail_Schema(t *testing.T) {
+	t.Parallel()
 	yml := `schema:
   $ref: I will fail.`
 
@@ -150,6 +155,7 @@ func TestHeader_Build_Fail_Schema(t *testing.T) {
 }
 
 func TestHeader_Build_Fail_Content(t *testing.T) {
+	t.Parallel()
 	yml := `content:
   ohMyStars:
     $ref: fail!`
@@ -167,7 +173,7 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 }
 
 func TestEncoding_Hash_n_Grab(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: heady
 required: true
 deprecated: true

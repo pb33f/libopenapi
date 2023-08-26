@@ -4,15 +4,16 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestLink_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `operationRef: '#/someref'
 operationId: someId
 parameters:
@@ -56,7 +57,7 @@ x-linky: slinky
 }
 
 func TestLink_Build_Fail(t *testing.T) {
-
+	t.Parallel()
 	yml := `operationRef: '#/someref'
 operationId: someId
 parameters:
@@ -81,7 +82,7 @@ server:
 }
 
 func TestLink_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `operationRef: something
 operationId: someWhere
 parameters:

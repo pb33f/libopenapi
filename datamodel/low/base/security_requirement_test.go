@@ -4,13 +4,14 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSecurityRequirement_Build(t *testing.T) {
-
+	t.Parallel()
 	yml := `one:
   - two
   - three

@@ -4,13 +4,15 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestOAuthFlow_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	oflow := &OAuthFlow{
 		AuthorizationUrl: "https://pb33f.io",
 		TokenUrl:         "https://pb33f.io/token",
@@ -18,7 +20,9 @@ func TestOAuthFlow_MarshalYAML(t *testing.T) {
 		Scopes:           map[string]string{"chicken": "nuggets", "beefy": "soup"},
 	}
 
-	rend, _ := oflow.Render()
+	rend, err := oflow.Render()
+	require.NoError(t, err)
+	assert.NotEmpty(t, rend)
 
 	desired := `authorizationUrl: https://pb33f.io
 tokenUrl: https://pb33f.io/token
@@ -39,7 +43,8 @@ tokenUrl: https://pb33f.io/token
 refreshUrl: https://pb33f.io/refresh
 x-burgers: why not?`
 
-	rend, _ = oflow.Render()
+	rend, err = oflow.Render()
+	require.NoError(t, err)
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
 }

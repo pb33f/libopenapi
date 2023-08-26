@@ -156,6 +156,7 @@ $anchor: anchor`
 }
 
 func Test_Schema(t *testing.T) {
+	t.Parallel()
 	testSpec := test_get_schema_blob()
 
 	var rootNode yaml.Node
@@ -314,6 +315,7 @@ func Test_Schema(t *testing.T) {
 }
 
 func TestSchemaAllOfSequenceOrder(t *testing.T) {
+	t.Parallel()
 	testSpec := test_get_allOf_schema_blob()
 
 	var rootNode yaml.Node
@@ -356,6 +358,7 @@ func TestSchemaAllOfSequenceOrder(t *testing.T) {
 }
 
 func TestSchema_Hash(t *testing.T) {
+	t.Parallel()
 	// create two versions
 	testSpec := test_get_schema_blob()
 	var sc1n yaml.Node
@@ -394,6 +397,7 @@ func BenchmarkSchema_Hash(b *testing.B) {
 }
 
 func Test_Schema_31(t *testing.T) {
+	t.Parallel()
 	testSpec := `$schema: https://something
 type:
   - object
@@ -435,6 +439,7 @@ examples:
 }
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -461,6 +466,7 @@ properties:
 }
 
 func TestSchema_Build_PropsLookup_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -486,6 +492,7 @@ properties:
 }
 
 func TestSchema_Build_DependentSchemas_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -511,6 +518,7 @@ dependentSchemas:
 }
 
 func TestSchema_Build_PatternProperties_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -536,6 +544,7 @@ patternProperties:
 }
 
 func Test_Schema_Polymorphism_Array_Ref(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -583,6 +592,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_Array_Ref_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -623,6 +633,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -670,6 +681,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_Map_Ref_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -710,6 +722,7 @@ items:
 }
 
 func Test_Schema_Polymorphism_BorkParent(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -736,6 +749,7 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_BorkChild(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -762,6 +776,7 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_BorkChild_Array(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -792,6 +807,7 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadness(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -823,6 +839,7 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadnessBork(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -851,8 +868,8 @@ allOf:
 }
 
 func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
+	t.Parallel()
 	// this does not work, but it won't error out.
-
 	yml := `components:
   schemas:
     Something:
@@ -879,8 +896,8 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
 }
 
 func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
+	t.Parallel()
 	// this does not work, but it won't error out.
-
 	yml := `components:
   schemas:
     Something:
@@ -911,8 +928,8 @@ func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
 }
 
 func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
+	t.Parallel()
 	// this does not work, but it won't error out.
-
 	yml := `components:
   schemas:
     Something:
@@ -943,6 +960,7 @@ func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
 }
 
 func TestExtractSchema(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -971,6 +989,7 @@ func TestExtractSchema(t *testing.T) {
 }
 
 func TestExtractSchema_DefaultPrimitive(t *testing.T) {
+	t.Parallel()
 	yml := `
 schema: 
   type: object
@@ -987,6 +1006,7 @@ schema:
 }
 
 func TestExtractSchema_Ref(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1011,6 +1031,7 @@ func TestExtractSchema_Ref(t *testing.T) {
 }
 
 func TestExtractSchema_Ref_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1033,6 +1054,7 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1072,6 +1094,7 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1095,6 +1118,7 @@ func TestExtractSchema_RefRoot(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1116,6 +1140,7 @@ func TestExtractSchema_RefRoot_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1136,6 +1161,7 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 }
 
 func TestExtractSchema_AdditionalPropertiesAsSchema(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1160,6 +1186,7 @@ func TestExtractSchema_AdditionalPropertiesAsSchema(t *testing.T) {
 }
 
 func TestExtractSchema_AdditionalPropertiesAsSchemaSlice(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1184,6 +1211,7 @@ func TestExtractSchema_AdditionalPropertiesAsSchemaSlice(t *testing.T) {
 }
 
 func TestExtractSchema_DoNothing(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1205,6 +1233,7 @@ func TestExtractSchema_DoNothing(t *testing.T) {
 }
 
 func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Nothing:
@@ -1233,6 +1262,7 @@ func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
 }
 
 func TestExtractSchema_OneOfRef(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Error:
@@ -1348,6 +1378,7 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 }
 
 func TestSchema_Hash_Equal(t *testing.T) {
+	t.Parallel()
 	left := `schema:
   $schema: https://athing.com
   multipleOf: 1
@@ -1447,6 +1478,7 @@ func TestSchema_Hash_Equal(t *testing.T) {
 }
 
 func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
+	t.Parallel()
 	left := `schema:
   additionalProperties:
     - type: string`
@@ -1472,6 +1504,7 @@ func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
 }
 
 func TestSchema_Hash_AdditionalPropsSliceNoMap(t *testing.T) {
+	t.Parallel()
 	left := `schema:
   additionalProperties:
     - hello`
@@ -1497,6 +1530,7 @@ func TestSchema_Hash_AdditionalPropsSliceNoMap(t *testing.T) {
 }
 
 func TestSchema_Hash_NotEqual(t *testing.T) {
+	t.Parallel()
 	left := `schema:
   title: an OK message - but different
   items: true
@@ -1528,6 +1562,7 @@ func TestSchema_Hash_NotEqual(t *testing.T) {
 }
 
 func TestSchema_Hash_EqualJumbled(t *testing.T) {
+	t.Parallel()
 	left := `schema:
   title: an OK message
   description: a nice thing.
@@ -1577,6 +1612,7 @@ allOf:
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1603,6 +1639,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:
@@ -1626,6 +1663,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_Undefined(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     Something:

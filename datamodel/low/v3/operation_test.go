@@ -4,15 +4,17 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestOperation_Build(t *testing.T) {
+	t.Parallel()
 
 	yml := `tags:
  - meddy
@@ -75,6 +77,7 @@ servers:
 }
 
 func TestOperation_Build_FailDocs(t *testing.T) {
+	t.Parallel()
 
 	yml := `externalDocs:
   $ref: #borked`
@@ -92,6 +95,7 @@ func TestOperation_Build_FailDocs(t *testing.T) {
 }
 
 func TestOperation_Build_FailParams(t *testing.T) {
+	t.Parallel()
 
 	yml := `parameters:
   $ref: #borked`
@@ -109,6 +113,7 @@ func TestOperation_Build_FailParams(t *testing.T) {
 }
 
 func TestOperation_Build_FailRequestBody(t *testing.T) {
+	t.Parallel()
 
 	yml := `requestBody:
   $ref: #borked`
@@ -126,6 +131,7 @@ func TestOperation_Build_FailRequestBody(t *testing.T) {
 }
 
 func TestOperation_Build_FailResponses(t *testing.T) {
+	t.Parallel()
 
 	yml := `responses:
   $ref: #borked`
@@ -143,6 +149,7 @@ func TestOperation_Build_FailResponses(t *testing.T) {
 }
 
 func TestOperation_Build_FailCallbacks(t *testing.T) {
+	t.Parallel()
 
 	yml := `callbacks:
   $ref: #borked`
@@ -160,6 +167,7 @@ func TestOperation_Build_FailCallbacks(t *testing.T) {
 }
 
 func TestOperation_Build_FailSecurity(t *testing.T) {
+	t.Parallel()
 
 	yml := `security:
   $ref: #borked`
@@ -177,6 +185,7 @@ func TestOperation_Build_FailSecurity(t *testing.T) {
 }
 
 func TestOperation_Build_FailServers(t *testing.T) {
+	t.Parallel()
 
 	yml := `servers:
   $ref: #borked`
@@ -194,6 +203,7 @@ func TestOperation_Build_FailServers(t *testing.T) {
 }
 
 func TestOperation_Hash_n_Grab(t *testing.T) {
+	t.Parallel()
 
 	yml := `tags:
   - nice
@@ -288,6 +298,7 @@ x-mint: sweet`
 }
 
 func TestOperation_EmptySecurity(t *testing.T) {
+	t.Parallel()
 
 	yml := `
 security: []`

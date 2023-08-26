@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestDefinitions_Schemas_Build_Error(t *testing.T) {
-
+	t.Parallel()
 	yml := `gonna:
   $ref: break`
 
@@ -31,7 +32,7 @@ func TestDefinitions_Schemas_Build_Error(t *testing.T) {
 }
 
 func TestDefinitions_Parameters_Build_Error(t *testing.T) {
-
+	t.Parallel()
 	yml := `gonna:
   $ref: break`
 
@@ -50,7 +51,7 @@ func TestDefinitions_Parameters_Build_Error(t *testing.T) {
 }
 
 func TestDefinitions_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `nice:
   description: rice`
 
@@ -70,7 +71,7 @@ func TestDefinitions_Hash(t *testing.T) {
 }
 
 func TestDefinitions_Responses_Build_Error(t *testing.T) {
-
+	t.Parallel()
 	yml := `gonna:
   $ref: break`
 
@@ -89,7 +90,7 @@ func TestDefinitions_Responses_Build_Error(t *testing.T) {
 }
 
 func TestDefinitions_Security_Build_Error(t *testing.T) {
-
+	t.Parallel()
 	yml := `gonna:
   $ref: break`
 

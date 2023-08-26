@@ -4,15 +4,17 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSecurityRequirement_Build(t *testing.T) {
+	t.Parallel()
 	yml := `something:
   - read:me
   - write:me`
@@ -35,6 +37,7 @@ func TestSecurityRequirement_Build(t *testing.T) {
 }
 
 func TestSecurityScheme_Build(t *testing.T) {
+	t.Parallel()
 	yml := `type: tea
 description: cake
 name: biscuit
@@ -75,6 +78,7 @@ x-milk: please`
 }
 
 func TestSecurityScheme_Build_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `flows:
   $ref: #bork`
 

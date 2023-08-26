@@ -22,6 +22,7 @@ import (
 // create pointless test changes. So here is a standalone test. you know... for science.
 
 func TestOperation(t *testing.T) {
+	t.Parallel()
 	yml := `externalDocs:
   url: https://pb33f.io
 callbacks:
@@ -55,7 +56,7 @@ callbacks:
 }
 
 func TestOperation_MarshalYAML(t *testing.T) {
-
+	t.Parallel()
 	op := &Operation{
 		Tags:        []string{"test"},
 		Summary:     "nice",
@@ -93,7 +94,7 @@ requestBody:
 }
 
 func TestOperation_MarshalYAMLInline(t *testing.T) {
-
+	t.Parallel()
 	op := &Operation{
 		Tags:        []string{"test"},
 		Summary:     "nice",
@@ -131,6 +132,7 @@ requestBody:
 }
 
 func TestOperation_EmptySecurity(t *testing.T) {
+	t.Parallel()
 	yml := `
 security: []`
 
@@ -150,6 +152,7 @@ security: []`
 }
 
 func TestOperation_NoSecurity(t *testing.T) {
+	t.Parallel()
 	yml := `operationId: test`
 
 	var idxNode yaml.Node

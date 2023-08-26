@@ -4,13 +4,15 @@
 package high
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestExtractExtensions(t *testing.T) {
+	t.Parallel()
 	n := make(map[low.KeyReference[string]]low.ValueReference[any])
 	n[low.KeyReference[string]{
 		Value: "pb33f",
@@ -43,6 +45,7 @@ func (c *child) GetExtensions() map[low.KeyReference[string]]low.ValueReference[
 }
 
 func TestUnpackExtensions(t *testing.T) {
+	t.Parallel()
 
 	var resultA, resultB yaml.Node
 
@@ -88,6 +91,7 @@ power: 2`
 }
 
 func TestUnpackExtensions_Fail(t *testing.T) {
+	t.Parallel()
 
 	var resultA, resultB yaml.Node
 

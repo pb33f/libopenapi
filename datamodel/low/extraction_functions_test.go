@@ -17,6 +17,7 @@ import (
 )
 
 func TestFindItemInMap(t *testing.T) {
+	t.Parallel()
 	v := make(map[KeyReference[string]]ValueReference[string])
 	v[KeyReference[string]{
 		Value: "pizza",
@@ -27,6 +28,7 @@ func TestFindItemInMap(t *testing.T) {
 }
 
 func TestFindItemInMap_WrongCase(t *testing.T) {
+	t.Parallel()
 	v := make(map[KeyReference[string]]ValueReference[string])
 	v[KeyReference[string]{
 		Value: "pizza",
@@ -37,6 +39,7 @@ func TestFindItemInMap_WrongCase(t *testing.T) {
 }
 
 func TestFindItemInMap_Error(t *testing.T) {
+	t.Parallel()
 	v := make(map[KeyReference[string]]ValueReference[string])
 	v[KeyReference[string]{
 		Value: "pizza",
@@ -47,7 +50,7 @@ func TestFindItemInMap_Error(t *testing.T) {
 }
 
 func TestLocateRefNode(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     cake:
@@ -69,7 +72,7 @@ func TestLocateRefNode(t *testing.T) {
 }
 
 func TestLocateRefNode_BadNode(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     cake:
@@ -94,7 +97,7 @@ func TestLocateRefNode_BadNode(t *testing.T) {
 }
 
 func TestLocateRefNode_Path(t *testing.T) {
-
+	t.Parallel()
 	yml := `paths:
   /burger/time:
     description: hello`
@@ -115,7 +118,7 @@ func TestLocateRefNode_Path(t *testing.T) {
 }
 
 func TestLocateRefNode_Path_NotFound(t *testing.T) {
-
+	t.Parallel()
 	yml := `paths:
   /burger/time:
     description: hello`
@@ -145,7 +148,7 @@ func (p *pizza) Build(_, _ *yaml.Node, _ *index.SpecIndex) error {
 }
 
 func TestExtractObject(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -169,7 +172,7 @@ func TestExtractObject(t *testing.T) {
 }
 
 func TestExtractObject_Ref(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -193,7 +196,7 @@ func TestExtractObject_Ref(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     cake:
@@ -219,6 +222,7 @@ func TestExtractObject_DoubleRef(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     loopy:
@@ -249,6 +253,7 @@ func TestExtractObject_DoubleRef_Circular(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular_Fail(t *testing.T) {
+	t.Parallel()
 	yml := `components:
   schemas:
     loopy:
@@ -278,7 +283,7 @@ func TestExtractObject_DoubleRef_Circular_Fail(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     loopy:
@@ -308,7 +313,7 @@ func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     loopy:
@@ -337,6 +342,7 @@ func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
 
 }
 
+// TODO: why is this type unused?
 type test_borked struct {
 	DontWork int
 }
@@ -370,7 +376,7 @@ func (t *test_Good) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 }
 
 func TestExtractObject_BadLowLevelModel(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
    hey:`
@@ -391,7 +397,7 @@ func TestExtractObject_BadLowLevelModel(t *testing.T) {
 }
 
 func TestExtractObject_BadBuild(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
    hey:`
@@ -412,7 +418,7 @@ func TestExtractObject_BadBuild(t *testing.T) {
 }
 
 func TestExtractObject_BadLabel(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
    hey:`
@@ -434,7 +440,7 @@ func TestExtractObject_BadLabel(t *testing.T) {
 }
 
 func TestExtractObject_PathIsCircular(t *testing.T) {
-
+	t.Parallel()
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -467,7 +473,7 @@ func TestExtractObject_PathIsCircular(t *testing.T) {
 }
 
 func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
-
+	t.Parallel()
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -503,7 +509,7 @@ func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
 }
 
 func TestExtractObjectRaw(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -526,7 +532,7 @@ func TestExtractObjectRaw(t *testing.T) {
 }
 
 func TestExtractObjectRaw_With_Ref(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -551,7 +557,7 @@ func TestExtractObjectRaw_With_Ref(t *testing.T) {
 }
 
 func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -579,7 +585,7 @@ func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
 }
 
 func TestExtractObjectRaw_RefBroken(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -601,7 +607,7 @@ func TestExtractObjectRaw_RefBroken(t *testing.T) {
 }
 
 func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -622,7 +628,7 @@ func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
 }
 
 func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -643,7 +649,7 @@ func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
 }
 
 func TestExtractArray(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     pizza:
@@ -671,7 +677,7 @@ func TestExtractArray(t *testing.T) {
 }
 
 func TestExtractArray_Ref(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     things:
@@ -698,7 +704,7 @@ func TestExtractArray_Ref(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Unbuildable(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     things:
@@ -722,7 +728,7 @@ func TestExtractArray_Ref_Unbuildable(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Circular(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:
@@ -750,7 +756,7 @@ func TestExtractArray_Ref_Circular(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Bad(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:
@@ -778,7 +784,7 @@ func TestExtractArray_Ref_Bad(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:
@@ -807,7 +813,7 @@ func TestExtractArray_Ref_Nested(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:
@@ -836,7 +842,7 @@ func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:
@@ -863,7 +869,7 @@ func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:
@@ -892,7 +898,7 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 }
 
 func TestExtractArray_BadBuild(t *testing.T) {
-
+	t.Parallel()
 	yml := `components:
   schemas:
     thongs:`
@@ -914,6 +920,7 @@ func TestExtractArray_BadBuild(t *testing.T) {
 }
 
 func TestExtractExample_String(t *testing.T) {
+	t.Parallel()
 	yml := `hi`
 	var e yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &e)
@@ -923,6 +930,7 @@ func TestExtractExample_String(t *testing.T) {
 	assert.Equal(t, "hi", exp.Value)
 }
 func TestExtractExample_Map(t *testing.T) {
+	t.Parallel()
 	yml := `one: two`
 	var e yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &e)
@@ -937,6 +945,7 @@ func TestExtractExample_Map(t *testing.T) {
 }
 
 func TestExtractExample_Array(t *testing.T) {
+	t.Parallel()
 	yml := `- hello`
 	var e yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &e)
@@ -951,6 +960,7 @@ func TestExtractExample_Array(t *testing.T) {
 }
 
 func TestExtractMapFlatNoLookup(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -974,6 +984,7 @@ one:
 }
 
 func TestExtractMap_NoLookupWithExtensions(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -1004,6 +1015,7 @@ one:
 }
 
 func TestExtractMap_NoLookupWithExtensions_UsingMerge(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -1030,6 +1042,7 @@ one:
 }
 
 func TestExtractMap_NoLookupWithoutExtensions(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -1056,6 +1069,7 @@ one:
 }
 
 func TestExtractMap_WithExtensions(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -1078,6 +1092,7 @@ one:
 }
 
 func TestExtractMap_WithoutExtensions(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -1100,6 +1115,7 @@ one:
 }
 
 func TestExtractMapFlatNoLookup_Ref(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1126,6 +1142,7 @@ one:
 }
 
 func TestExtractMapFlatNoLookup_Ref_Bad(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1152,6 +1169,7 @@ one:
 }
 
 func TestExtractMapFlatNoLookup_Ref_Circular(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1184,6 +1202,7 @@ one:
 }
 
 func TestExtractMapFlatNoLookup_Ref_BadBuild(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1210,6 +1229,7 @@ hello:
 }
 
 func TestExtractMapFlatNoLookup_Ref_AlmostBuild(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1236,6 +1256,7 @@ one:
 }
 
 func TestExtractMapFlat(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:`
 
@@ -1259,6 +1280,7 @@ one:
 }
 
 func TestExtractMapFlat_Ref(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1290,6 +1312,7 @@ one:
 }
 
 func TestExtractMapFlat_DoubleRef(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1319,6 +1342,7 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 }
 
 func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1346,6 +1370,7 @@ func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
 }
 
 func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1373,6 +1398,7 @@ func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
 }
 
 func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1405,6 +1431,7 @@ func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
 }
 
 func TestExtractMapFlat_Ref_Error(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1432,6 +1459,7 @@ func TestExtractMapFlat_Ref_Error(t *testing.T) {
 }
 
 func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1461,6 +1489,7 @@ func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
 }
 
 func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1491,6 +1520,7 @@ func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
 }
 
 func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1517,6 +1547,7 @@ func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
 }
 
 func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1543,6 +1574,7 @@ func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
 }
 
 func TestExtractMapFlat_Ref_Bad(t *testing.T) {
+	t.Parallel()
 
 	yml := `components:
   schemas:
@@ -1572,6 +1604,7 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 }
 
 func TestLocateRefNode_RemoteFile(t *testing.T) {
+	t.Parallel()
 
 	ymlFile := fmt.Sprintf(`components:
   schemas:
@@ -1604,6 +1637,7 @@ func TestLocateRefNode_RemoteFile(t *testing.T) {
 }
 
 func TestExtractExtensions(t *testing.T) {
+	t.Parallel()
 
 	yml := `x-bing: ding
 x-bong: 1
@@ -1662,6 +1696,7 @@ func TestAreEqual(t *testing.T) {
 }
 
 func TestGenerateHashString(t *testing.T) {
+	t.Parallel()
 
 	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
 		GenerateHashString(test_fresh{val: "hello"}))
@@ -1678,6 +1713,7 @@ func TestGenerateHashString(t *testing.T) {
 }
 
 func TestGenerateHashString_Pointer(t *testing.T) {
+	t.Parallel()
 
 	val := true
 	assert.Equal(t, "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
@@ -1689,6 +1725,7 @@ func TestGenerateHashString_Pointer(t *testing.T) {
 }
 
 func TestSetReference(t *testing.T) {
+	t.Parallel()
 
 	type testObj struct {
 		*Reference
@@ -1702,6 +1739,7 @@ func TestSetReference(t *testing.T) {
 }
 
 func TestSetReference_nil(t *testing.T) {
+	t.Parallel()
 
 	type testObj struct {
 		*Reference

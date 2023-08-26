@@ -4,15 +4,16 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestResponse_Build_Schema(t *testing.T) {
-
+	t.Parallel()
 	yml := `schema:
   $ref: break`
 
@@ -31,7 +32,7 @@ func TestResponse_Build_Schema(t *testing.T) {
 }
 
 func TestResponse_Build_Examples(t *testing.T) {
-
+	t.Parallel()
 	yml := `examples:
   $ref: break`
 
@@ -50,7 +51,7 @@ func TestResponse_Build_Examples(t *testing.T) {
 }
 
 func TestResponse_Build_Headers(t *testing.T) {
-
+	t.Parallel()
 	yml := `headers:
   $ref: break`
 
@@ -69,7 +70,7 @@ func TestResponse_Build_Headers(t *testing.T) {
 }
 
 func TestResponse_Hash(t *testing.T) {
-
+	t.Parallel()
 	yml := `description: your thing, sir.
 schema:
   type: string

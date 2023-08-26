@@ -17,12 +17,14 @@ import (
 )
 
 func TestDynamicValue_IsA(t *testing.T) {
+	t.Parallel()
 	dv := &DynamicValue[int, bool]{N: 0, A: 23}
 	assert.True(t, dv.IsA())
 	assert.False(t, dv.IsB())
 }
 
 func TestNewSchemaProxy(t *testing.T) {
+	t.Parallel()
 	// check proxy
 	yml := `components:
     schemas:
@@ -71,6 +73,7 @@ func TestNewSchemaProxy(t *testing.T) {
 }
 
 func TestNewSchemaProxyRender(t *testing.T) {
+	t.Parallel()
 	// check proxy
 	yml := `components:
     schemas:
@@ -115,6 +118,7 @@ func TestNewSchemaProxyRender(t *testing.T) {
 }
 
 func TestNewSchemaProxy_WithObject(t *testing.T) {
+	t.Parallel()
 	testSpec := `type: object
 description: something object
 if:
@@ -324,6 +328,7 @@ $anchor: anchor`
 }
 
 func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
+	t.Parallel()
 	testSpec := test_get_allOf_schema_blob()
 
 	var compNode yaml.Node
@@ -374,6 +379,7 @@ func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
 }
 
 func TestNewSchemaProxy_WithObject_FinishPoly(t *testing.T) {
+	t.Parallel()
 	testSpec := `type: object
 description: something object
 discriminator:
@@ -515,6 +521,7 @@ required: [cake, fish]`
 }
 
 func TestSchemaProxy_GoLow(t *testing.T) {
+	t.Parallel()
 	const ymlComponents = `components:
     schemas:
      rice:
@@ -574,6 +581,7 @@ func getHighSchema(t *testing.T, yml string) *Schema {
 }
 
 func TestSchemaNumberNoValidation(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 `
@@ -587,6 +595,7 @@ type: number
 }
 
 func TestSchemaNumberMultipleOfInt(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 multipleOf: 5
@@ -598,6 +607,7 @@ multipleOf: 5
 }
 
 func TestSchemaNumberMultipleOfFloat(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 multipleOf: 0.5
@@ -609,6 +619,7 @@ multipleOf: 0.5
 }
 
 func TestSchemaNumberMinimumInt(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 minimum: 5
@@ -620,6 +631,7 @@ minimum: 5
 }
 
 func TestSchemaNumberMinimumFloat(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 minimum: 0.5
@@ -631,6 +643,7 @@ minimum: 0.5
 }
 
 func TestSchemaNumberMinimumZero(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 minimum: 0
@@ -642,6 +655,7 @@ minimum: 0
 }
 
 func TestSchemaNumberExclusiveMinimum(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 exclusiveMinimum: 5
@@ -654,6 +668,7 @@ exclusiveMinimum: 5
 }
 
 func TestSchemaNumberMaximum(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 maximum: 5
@@ -665,6 +680,7 @@ maximum: 5
 }
 
 func TestSchemaNumberMaximumZero(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 maximum: 0
@@ -676,6 +692,7 @@ maximum: 0
 }
 
 func TestSchemaNumberExclusiveMaximum(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 exclusiveMaximum: 5
@@ -688,6 +705,7 @@ exclusiveMaximum: 5
 }
 
 func TestSchema_Items_Boolean(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 items: true
@@ -698,6 +716,7 @@ items: true
 }
 
 func TestSchemaExamples(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 examples:
@@ -792,6 +811,7 @@ properties:
 }
 
 func TestNewSchemaProxy_RenderSchema(t *testing.T) {
+	t.Parallel()
 	testSpec := `type: object
 description: something object
 discriminator:
@@ -840,6 +860,7 @@ allOf:
 }
 
 func TestNewSchemaProxy_RenderSchemaWithMultipleObjectTypes(t *testing.T) {
+	t.Parallel()
 	testSpec := `type: object
 description: something object
 oneOf:
@@ -903,6 +924,7 @@ items:
 }
 
 func TestNewSchemaProxy_RenderSchemaEnsurePropertyOrdering(t *testing.T) {
+	t.Parallel()
 	testSpec := `properties:
     somethingBee:
         type: number
@@ -961,6 +983,7 @@ xml:
 }
 
 func TestNewSchemaProxy_RenderSchemaCheckDiscriminatorMappingOrder(t *testing.T) {
+	t.Parallel()
 	testSpec := `discriminator:
     mapping:
         log: cat
@@ -990,6 +1013,7 @@ func TestNewSchemaProxy_RenderSchemaCheckDiscriminatorMappingOrder(t *testing.T)
 }
 
 func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSlice(t *testing.T) {
+	t.Parallel()
 	testSpec := `additionalProperties:
     - one
     - two
@@ -1018,6 +1042,7 @@ func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSlice(t *testing.T)
 }
 
 func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSliceMap(t *testing.T) {
+	t.Parallel()
 	testSpec := `additionalProperties:
     - nice: cake
     - yummy: beer
@@ -1044,6 +1069,7 @@ func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSliceMap(t *testing
 }
 
 func TestNewSchemaProxy_CheckDefaultBooleanFalse(t *testing.T) {
+	t.Parallel()
 	testSpec := `default: false`
 
 	var compNode yaml.Node
@@ -1067,6 +1093,7 @@ func TestNewSchemaProxy_CheckDefaultBooleanFalse(t *testing.T) {
 }
 
 func TestNewSchemaProxy_RenderAdditionalPropertiesFalse(t *testing.T) {
+	t.Parallel()
 	testSpec := `additionalProperties: false`
 
 	var compNode yaml.Node
@@ -1090,6 +1117,7 @@ func TestNewSchemaProxy_RenderAdditionalPropertiesFalse(t *testing.T) {
 }
 
 func TestNewSchemaProxy_RenderMultiplePoly(t *testing.T) {
+	t.Parallel()
 	idxYaml := `openapi: 3.1.0
 components:
     schemas:
@@ -1134,6 +1162,7 @@ components:
 }
 
 func TestNewSchemaProxy_RenderInline(t *testing.T) {
+	t.Parallel()
 	idxYaml := `openapi: 3.1.0
 components:
     schemas:
@@ -1186,6 +1215,7 @@ components:
 }
 
 func TestUnevaluatedPropertiesBoolean_True(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 unevaluatedProperties: true
@@ -1197,6 +1227,7 @@ unevaluatedProperties: true
 }
 
 func TestUnevaluatedPropertiesBoolean_False(t *testing.T) {
+	t.Parallel()
 	yml := `
 type: number
 unevaluatedProperties: false
