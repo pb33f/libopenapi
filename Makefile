@@ -1,0 +1,9 @@
+
+build:
+	go build ./...
+
+test:
+	go test -v -timeout 30m -count=1 -race ./...
+
+coverage:
+	go test -v -timeout 30m -count=1 covermode=atomic -coverprofile=coverage.out ./...
