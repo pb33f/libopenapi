@@ -1019,7 +1019,12 @@ func TestReadDictionary_BadReader(t *testing.T) {
 func TestWordRenderer_RandomWord_TooBig(t *testing.T) {
 	wr := CreateRendererUsingDefaultDictionary()
 	word := wr.RandomWord(int64(1000), int64(1001), 0)
-	assert.Equal(t, "no-word-found-1000-1001", word)
+	if _, err := os.Stat("/usr/share/dict/words"); !os.IsNotExist(err) {
+		assert.Equal(t, "no-word-found-1000-1001", word)
+	} else {
+		word = wr.RandomWord(int64(1000), int64(1001), 101)
+		assert.Equal(t, "no-word-found-1000-1001", word)
+	}
 }
 
 func TestWordRenderer_RandomFloat64(t *testing.T) {
