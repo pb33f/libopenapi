@@ -563,8 +563,7 @@ items:
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
-	assert.Len(t, journeyMap["pb33f"], 1)
-	assert.Len(t, len(journeyMap["pb33f"].([]interface{})[0].(string)), 3)
+	assert.Len(t, journeyMap["pb33f"], 3)
 }
 
 // TODO: object array!
@@ -995,8 +994,10 @@ func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 }
 
 func TestReadDictionary(t *testing.T) {
-	words := ReadDictionary("/usr/share/dict/words")
-	assert.Greater(t, len(words), 500)
+	if _, err := os.Stat("/usr/share/dict/words"); !os.IsNotExist(err) {
+		words := ReadDictionary("/usr/share/dict/words")
+		assert.Greater(t, len(words), 500)
+	}
 }
 
 func TestReadDictionary_BadReadFile(t *testing.T) {
