@@ -19,6 +19,8 @@ const (
 	EMPTY_STR = ""
 )
 
+var changeMutex sync.Mutex
+
 // CreateChange is a generic function that will create a Change of type T, populate all properties if set, and then
 // add a pointer to Change[T] in the slice of Change pointers provided
 func CreateChange(changes *[]*Change, changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
@@ -45,7 +47,9 @@ func CreateChange(changes *[]*Change, changeType int, property string, leftValue
 	c.NewObject = newObject
 
 	// add the change to supplied changes slice
+	changeMutex.Lock()
 	*changes = append(*changes, c)
+	changeMutex.Unlock()
 	return changes
 }
 
