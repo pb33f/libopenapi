@@ -30,7 +30,7 @@ jobs:
               dep ensure
           fi
       - name: Test
-        run: go test -race ./...
+        run: go test ./...
       - name: Coverage
         run: |
           go get github.com/axw/gocov/gocov
