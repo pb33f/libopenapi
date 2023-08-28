@@ -25,12 +25,6 @@ func init() {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
-func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
-	// try and read in the dictionary file
-	words := ReadDictionary(dictionaryLocation)
-	return &SchemaRenderer{words: words}
-}
-
 // RenderSchema takes a schema and renders it into a map[string]any, ready to be converted to JSON or YAML.
 func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) map[string]any {
 	// dive into the schema and render it
@@ -63,7 +57,6 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		} else {
 
 			// generate a random value based on the schema format, pattern and length values.
-
 			var minLength int64 = 3
 			var maxLength int64 = 10
 
@@ -299,6 +292,12 @@ func ReadDictionary(dictionaryLocation string) []string {
 // SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
 type SchemaRenderer struct {
 	words []string
+}
+
+func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
+	// try and read in the dictionary file
+	words := ReadDictionary(dictionaryLocation)
+	return &SchemaRenderer{words: words}
 }
 
 // CreateRendererUsingDefaultDictionary will create a new SchemaRenderer using the default dictionary file.

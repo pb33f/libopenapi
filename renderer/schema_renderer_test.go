@@ -994,10 +994,22 @@ func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 }
 
 func TestReadDictionary(t *testing.T) {
-	if _, err := os.Stat("/usr/share/dict/words"); !os.IsNotExist(err) {
+	if _, err := os.Stat("/usr/share/dict/wddords"); !os.IsNotExist(err) {
 		words := ReadDictionary("/usr/share/dict/words")
 		assert.Greater(t, len(words), 500)
 	}
+}
+
+func TestCreateFakeDictionary(t *testing.T) {
+	// create a temp file and create a simple temp dictionary
+	tmpFile, _ := os.CreateTemp("", "pb33f")
+	tmpFile.Write([]byte("one\nfive\nthree"))
+	words := ReadDictionary(tmpFile.Name())
+	renderer := CreateRendererUsingDictionary(tmpFile.Name())
+	assert.Len(t, words, 3)
+	assert.Equal(t, "five", renderer.RandomWord(4, 4, 0))
+	assert.Equal(t, "one", renderer.RandomWord(2, 3, 0))
+	assert.Equal(t, "three", renderer.RandomWord(5, 5, 0))
 }
 
 func TestReadDictionary_BadReadFile(t *testing.T) {
