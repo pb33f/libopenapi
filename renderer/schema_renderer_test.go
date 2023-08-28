@@ -1010,6 +1010,7 @@ func TestCreateFakeDictionary(t *testing.T) {
 	assert.Equal(t, "five", renderer.RandomWord(4, 4, 0))
 	assert.Equal(t, "one", renderer.RandomWord(2, 3, 0))
 	assert.Equal(t, "three", renderer.RandomWord(5, 5, 0))
+	assert.NotEmpty(t, "three", renderer.RandomWord(0, 0, 0))
 }
 
 func TestReadDictionary_BadReadFile(t *testing.T) {
