@@ -25,12 +25,31 @@ func init() {
 	rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
-// RenderSchema takes a schema and renders it into a map[string]any, ready to be converted to JSON or YAML.
-func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) map[string]any {
+// SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
+// The dictionary is just a slice of strings that is used to generate random words.
+type SchemaRenderer struct {
+	words []string
+}
+
+func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
+	// try and read in the dictionary file
+	words := ReadDictionary(dictionaryLocation)
+	return &SchemaRenderer{words: words}
+}
+
+// CreateRendererUsingDefaultDictionary will create a new SchemaRenderer using the default dictionary file.
+func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
+	wr := new(SchemaRenderer)
+	wr.words = ReadDictionary("/usr/share/dict/words")
+	return wr
+}
+
+// RenderSchema takes a schema and renders it into an interface, ready to be converted to JSON or YAML.
+func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 	// dive into the schema and render it
 	structure := make(map[string]any)
 	wr.DiveIntoSchema(schema, "root", structure, 0)
-	return structure["root"].(map[string]any)
+	return structure["root"].(any)
 }
 
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
@@ -287,24 +306,6 @@ func ReadDictionary(dictionaryLocation string) []string {
 		return []string{}
 	}
 	return readFile(file)
-}
-
-// SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
-type SchemaRenderer struct {
-	words []string
-}
-
-func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
-	// try and read in the dictionary file
-	words := ReadDictionary(dictionaryLocation)
-	return &SchemaRenderer{words: words}
-}
-
-// CreateRendererUsingDefaultDictionary will create a new SchemaRenderer using the default dictionary file.
-func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
-	wr := new(SchemaRenderer)
-	wr.words = ReadDictionary("/usr/share/dict/words")
-	return wr
 }
 
 // RandomWord will return a random word from the dictionary file between the min and max values. The depth is used
