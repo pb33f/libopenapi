@@ -122,7 +122,7 @@ func TestMockGenerator_GenerateJSONMock_MultiExamples_NoName_JSON(t *testing.T) 
 	mg := NewMockGenerator(MockJSON)
 	mock, err := mg.GenerateMock(fake, "JimmyJammyJimJams") // does not exist
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"rice-and-peas\":\"brown-or-white-rice\"}", string(mock))
+	assert.Equal(t, "{\"fish-and-chips\":\"cod-and-chips-twice\"}", string(mock))
 }
 
 func TestMockGenerator_GenerateJSONMock_MultiExamples_JSON(t *testing.T) {
