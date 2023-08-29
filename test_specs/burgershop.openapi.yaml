@@ -503,10 +503,10 @@ components:
         ice:
           type: boolean
         drinkType:
+          type: string
           description: select from coke or sprite
           enum:
             - coke
-            - sprite
         size:
           type: string
           description: what size man? S/M/L
@@ -517,7 +517,7 @@ components:
         mapping:
           drink: some value
     SomePayload:
-      type: string
+      type: object
       description: some kind of payload for something.
       xml:
         name: is html programming? yes.

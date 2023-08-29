@@ -216,7 +216,7 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 
 	f := h.Components.Schemas["Fries"]
 	assert.Equal(t, "salt", f.Schema().Properties["seasoning"].Schema().Items.A.Schema().Example)
-	assert.Len(t, f.Schema().Properties["favoriteDrink"].Schema().Properties["drinkType"].Schema().Enum, 2)
+	assert.Len(t, f.Schema().Properties["favoriteDrink"].Schema().Properties["drinkType"].Schema().Enum, 1)
 
 	d := h.Components.Schemas["Drink"]
 	assert.Len(t, d.Schema().Required, 2)

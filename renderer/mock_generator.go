@@ -44,8 +44,6 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	for i := 0; i < num; i++ {
 		fieldName := v.Type().Field(i).Name
 		switch fieldName {
-		case Schema:
-			fieldCount++
 		case Example:
 			fieldCount++
 		case Examples:
@@ -54,12 +52,12 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	}
 	mockReady := false
 	// check if all fields are present, if so, we can generate a mock
-	if fieldCount == 3 {
+	if fieldCount == 2 {
 		mockReady = true
 	}
 	if !mockReady {
 		return nil, fmt.Errorf("mockable struct only contains %d of the required "+
-			"fields (%s, %s, %s)", fieldCount, Schema, Example, Examples)
+			"fields (%s, %s)", fieldCount, Example, Examples)
 	}
 
 	// if the value has an example, try and render it out as is.
@@ -70,29 +68,49 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	}
 
 	// if there is no example, but there are multi-examples.
-	examplesValue := v.FieldByName(Examples).Interface()
-	if examplesValue != nil {
+	examples := v.FieldByName(Examples)
+	examplesValue := examples.Interface()
+	if examplesValue != nil && !examples.IsNil() {
 
 		// cast examples to map[string]interface{}
-		examples := examplesValue.(map[string]*highbase.Example)
+		examplesMap := examplesValue.(map[string]*highbase.Example)
 
 		// if the name is not empty, try and find the example by name
-		for k, exp := range examples {
+		for k, exp := range examplesMap {
 			if k == name {
 				return mg.renderMock(exp.Value), nil
 			}
 		}
 
 		// if the name is empty, just return the first example
-		for _, exp := range examples {
+		for _, exp := range examplesMap {
 			return mg.renderMock(exp.Value), nil
 		}
 	}
 
 	// no examples? no problem, we can try and generate a mock from the schema.
-	schemaValue := v.FieldByName(Schema).Interface().(*highbase.SchemaProxy)
+	// check if this is a SchemaProxy, if not, then see if it has a Schema, if not, then we can't generate a mock.
+	var schemaValue *highbase.Schema
+	switch reflect.TypeOf(mock) {
+	case reflect.TypeOf(&highbase.SchemaProxy{}):
+		schemaValue = mock.(*highbase.SchemaProxy).Schema()
+	case reflect.TypeOf(&highbase.Schema{}):
+		schemaValue = mock.(*highbase.Schema)
+	default:
+		if sv, ok := v.FieldByName(Schema).Interface().(*highbase.Schema); ok {
+			if sv != nil {
+				schemaValue = sv
+			}
+		}
+		if sv, ok := v.FieldByName(Schema).Interface().(*highbase.SchemaProxy); ok {
+			if sv != nil {
+				schemaValue = sv.Schema()
+			}
+		}
+	}
+
 	if schemaValue != nil {
-		renderMap := mg.renderer.RenderSchema(schemaValue.Schema())
+		renderMap := mg.renderer.RenderSchema(schemaValue)
 		if renderMap != nil {
 			return mg.renderMock(renderMap), nil
 		}
