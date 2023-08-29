@@ -33,6 +33,6 @@ func TestCreateSummary_OverallReport(t *testing.T) {
 	assert.Equal(t, 2, report.ChangeReport[v3.ServersLabel].Total)
 	assert.Equal(t, 1, report.ChangeReport[v3.ServersLabel].Breaking)
 	assert.Equal(t, 1, report.ChangeReport[v3.SecurityLabel].Total)
-	assert.Equal(t, 17, report.ChangeReport[v3.ComponentsLabel].Total)
-	assert.Equal(t, 6, report.ChangeReport[v3.ComponentsLabel].Breaking)
+	assert.Equal(t, 20, report.ChangeReport[v3.ComponentsLabel].Total)
+	assert.Equal(t, 8, report.ChangeReport[v3.ComponentsLabel].Breaking)
 }
