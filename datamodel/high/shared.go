@@ -26,11 +26,11 @@ type GoesLow[T any] interface {
 	GoLow() T
 }
 
-// GoesLowUnTyped is used to represent any high-level model. All high level models meet this interface and can be used to
+// GoesLowUntyped is used to represent any high-level model. All high level models meet this interface and can be used to
 // extract low-level models from any high-level model.
 type GoesLowUntyped interface {
 
-	// GoLow returns the low-level object that was used to create the high-level object. This allows consumers
+	// GoLowUntyped returns the low-level object that was used to create the high-level object. This allows consumers
 	// to dive-down into the plumbing API at any point in the model.
 	GoLowUntyped() any
 }
@@ -59,7 +59,7 @@ func ExtractExtensions(extensions map[low.KeyReference[string]]low.ValueReferenc
 //
 // to use:
 //
-//	schema := schemaProxy.Schema() // any high-level object that has extensions
+//	schema := schemaProxy.Schema() // any high-level object that has
 //	extensions, err := UnpackExtensions[MyComplexType, low.Schema](schema)
 func UnpackExtensions[T any, R low.HasExtensions[T]](low GoesLow[R]) (map[string]*T, error) {
 	m := make(map[string]*T)
