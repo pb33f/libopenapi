@@ -20,6 +20,12 @@ type fakeMockable struct {
 	Examples map[string]*highbase.Example
 }
 
+type fakeMockableButWithASchemaNotAProxy struct {
+	Schema   *highbase.Schema
+	Example  any
+	Examples map[string]*highbase.Example
+}
+
 var simpleFakeMockSchema = `type: string
 enum: [magic-herbs]`
 
@@ -51,6 +57,29 @@ func createFakeMock(mock string, values map[string]any, example any) *fakeMockab
 	}
 	return &fakeMockable{
 		Schema:   highSchema,
+		Example:  example,
+		Examples: examples,
+	}
+}
+
+func createFakeMockWithoutProxy(mock string, values map[string]any, example any) *fakeMockableButWithASchemaNotAProxy {
+	var root yaml.Node
+	_ = yaml.Unmarshal([]byte(mock), &root)
+	var lowProxy lowbase.SchemaProxy
+	_ = lowProxy.Build(&root, root.Content[0], nil)
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: &lowProxy,
+	}
+	highSchema := highbase.NewSchemaProxy(&lowRef)
+	examples := make(map[string]*highbase.Example)
+
+	for k, v := range values {
+		examples[k] = &highbase.Example{
+			Value: v,
+		}
+	}
+	return &fakeMockableButWithASchemaNotAProxy{
+		Schema:   highSchema.Schema(),
 		Example:  example,
 		Examples: examples,
 	}
@@ -196,6 +225,26 @@ func TestMockGenerator_GenerateJSONMock_Object_NoExamples_JSON(t *testing.T) {
 func TestMockGenerator_GenerateJSONMock_Object_NoExamples_YAML(t *testing.T) {
 
 	fake := createFakeMock(objectFakeMockSchema, nil, nil)
+	mg := NewMockGenerator(MockYAML)
+	mock, err := mg.GenerateMock(fake, "")
+	assert.NoError(t, err)
+
+	// re-serialize back into a map and check the values
+	var m map[string]any
+	err = yaml.Unmarshal(mock, &m)
+	assert.NoError(t, err)
+
+	assert.Len(t, m, 2)
+	assert.GreaterOrEqual(t, len(m["coffee"].(string)), 6)
+	assert.GreaterOrEqual(t, m["herbs"].(int), 350)
+	assert.LessOrEqual(t, m["herbs"].(int), 400)
+}
+
+// should result in the exact same output as the above test
+func TestMockGenerator_GenerateJSONMock_Object_RawSchema(t *testing.T) {
+
+	fake := createFakeMockWithoutProxy(objectFakeMockSchema, nil, nil)
+
 	mg := NewMockGenerator(MockYAML)
 	mock, err := mg.GenerateMock(fake, "")
 	assert.NoError(t, err)

@@ -92,8 +92,6 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	// check if this is a SchemaProxy, if not, then see if it has a Schema, if not, then we can't generate a mock.
 	var schemaValue *highbase.Schema
 	switch reflect.TypeOf(mock) {
-	case reflect.TypeOf(&highbase.SchemaProxy{}):
-		schemaValue = mock.(*highbase.SchemaProxy).Schema()
 	case reflect.TypeOf(&highbase.Schema{}):
 		schemaValue = mock.(*highbase.Schema)
 	default:
