@@ -18,8 +18,8 @@ const Schema = "Schema"
 type MockType int
 
 const (
-	MockJSON MockType = iota
-	MockYAML
+	JSON MockType = iota
+	YAML
 )
 
 // MockGenerator is used to generate mocks for high-level mockable structs or *base.Schema pointers.
@@ -144,7 +144,7 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 
 func (mg *MockGenerator) renderMock(v any) []byte {
 	switch {
-	case mg.mockType == MockYAML:
+	case mg.mockType == YAML:
 		return mg.renderMockYAML(v)
 	default:
 		return mg.renderMockJSON(v)
