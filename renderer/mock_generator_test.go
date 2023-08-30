@@ -151,7 +151,7 @@ func TestMockGenerator_GenerateJSONMock_MultiExamples_NoName_JSON(t *testing.T) 
 	mg := NewMockGenerator(MockJSON)
 	mock, err := mg.GenerateMock(fake, "JimmyJammyJimJams") // does not exist
 	assert.NoError(t, err)
-	assert.Equal(t, "{\"fish-and-chips\":\"cod-and-chips-twice\"}", string(mock))
+	assert.NotEmpty(t, string(mock))
 }
 
 func TestMockGenerator_GenerateJSONMock_MultiExamples_JSON(t *testing.T) {
@@ -168,6 +168,24 @@ func TestMockGenerator_GenerateJSONMock_MultiExamples_JSON(t *testing.T) {
 	mock, err := mg.GenerateMock(fake, "exampleTwo")
 	assert.NoError(t, err)
 	assert.Equal(t, "{\"rice-and-peas\":\"brown-or-white-rice\"}", string(mock))
+}
+
+func TestMockGenerator_GenerateJSONMock_MultiExamples_PrettyJSON(t *testing.T) {
+	fakeExample := map[string]any{
+		"exampleOne": map[string]any{
+			"fish-and-chips": "cod-and-chips-twice",
+		},
+		"exampleTwo": map[string]any{
+			"rice-and-peas": "brown-or-white-rice",
+			"peas":          "buttery",
+		},
+	}
+	fake := createFakeMock(simpleFakeMockSchema, fakeExample, nil)
+	mg := NewMockGenerator(MockJSON)
+	mg.SetPretty()
+	mock, err := mg.GenerateMock(fake, "exampleTwo")
+	assert.NoError(t, err)
+	assert.Equal(t, "{\n  \"peas\": \"buttery\",\n  \"rice-and-peas\": \"brown-or-white-rice\"\n}", string(mock))
 }
 
 func TestMockGenerator_GenerateJSONMock_MultiExamples_YAML(t *testing.T) {

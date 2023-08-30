@@ -989,6 +989,36 @@ properties:
 	assert.Equal(t, `{"name":"pb33f"}`, string(rendered))
 }
 
+func TestRenderSchema_WithEnum_Float(t *testing.T) {
+	testObject := `type: [object]
+properties:
+  count:
+    type: number
+    enum: [9934.223]`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"count":9934.223}`, string(rendered))
+}
+
+func TestRenderSchema_WithEnum_Integer(t *testing.T) {
+	testObject := `type: [object]
+properties:
+  count:
+    type: number
+    enum: [9934]`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"count":9934}`, string(rendered))
+}
+
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
 }

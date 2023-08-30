@@ -17,6 +17,34 @@ import (
 	"time"
 )
 
+const rootType = "rootType"
+const stringType = "string"
+const numberType = "number"
+const integerType = "integer"
+const booleanType = "boolean"
+const objectType = "object"
+const arrayType = "array"
+const int32Type = "int32"
+const floatType = "float"
+const doubleType = "double"
+const byteType = "byte"
+const binaryType = "binary"
+const passwordType = "password"
+const dateType = "date"
+const dateTimeType = "date-time"
+const timeType = "time"
+const emailType = "email"
+const hostnameType = "hostname"
+const ipv4Type = "ipv4"
+const ipv6Type = "ipv6"
+const uriType = "uri"
+const uriReferenceType = "uri-reference"
+const uuidType = "uuid"
+const allOfType = "allOf"
+const anyOfType = "anyOf"
+const oneOfType = "oneOf"
+const itemsType = "items"
+
 // used to generate random words if there is no dictionary applied.
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -31,6 +59,8 @@ type SchemaRenderer struct {
 	words []string
 }
 
+// CreateRendererUsingDictionary will create a new SchemaRenderer using a custom dictionary file.
+// The location of a text file with one word per line is expected.
 func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
 	// try and read in the dictionary file
 	words := ReadDictionary(dictionaryLocation)
@@ -38,6 +68,8 @@ func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
 }
 
 // CreateRendererUsingDefaultDictionary will create a new SchemaRenderer using the default dictionary file.
+// The default dictionary is located at /usr/share/dict/words on most systems.
+// Windows users will need to use CreateRendererUsingDictionary to specify a custom dictionary.
 func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
 	wr := new(SchemaRenderer)
 	wr.words = ReadDictionary("/usr/share/dict/words")
@@ -48,8 +80,8 @@ func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
 func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 	// dive into the schema and render it
 	structure := make(map[string]any)
-	wr.DiveIntoSchema(schema, "root", structure, 0)
-	return structure["root"].(any)
+	wr.DiveIntoSchema(schema, rootType, structure, 0)
+	return structure[rootType].(any)
 }
 
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
@@ -69,7 +101,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	}
 
 	// render out a string.
-	if slices.Contains(schema.Type, "string") {
+	if slices.Contains(schema.Type, stringType) {
 		// check for an enum, if there is one, then pick a random value from it.
 		if schema.Enum != nil && len(schema.Enum) > 0 {
 			structure[key] = schema.Enum[rand.Int()%len(schema.Enum)]
@@ -87,43 +119,43 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			}
 
 			switch schema.Format {
-			case "date-time":
+			case dateTimeType:
 				structure[key] = time.Now().Format(time.RFC3339)
-			case "date":
+			case dateType:
 				structure[key] = time.Now().Format("2006-01-02")
-			case "time":
+			case timeType:
 				structure[key] = time.Now().Format("15:04:05")
-			case "email":
+			case emailType:
 				structure[key] = fmt.Sprintf("%s@%s.com",
 					wr.RandomWord(minLength, maxLength, 0),
 					wr.RandomWord(minLength, maxLength, 0))
-			case "hostname":
+			case hostnameType:
 				structure[key] = fmt.Sprintf("%s.com", wr.RandomWord(minLength, maxLength, 0))
-			case "ipv4":
+			case ipv4Type:
 				structure[key] = fmt.Sprintf("%d.%d.%d.%d",
 					rand.Int()%255, rand.Int()%255, rand.Int()%255, rand.Int()%255)
-			case "ipv6":
+			case ipv6Type:
 				structure[key] = fmt.Sprintf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
 					rand.Intn(65535), rand.Intn(65535), rand.Intn(65535), rand.Intn(65535),
 					rand.Intn(65535), rand.Intn(65535), rand.Intn(65535), rand.Intn(65535),
 				)
-			case "uri":
+			case uriType:
 				structure[key] = fmt.Sprintf("https://%s-%s-%s.com/%s",
 					wr.RandomWord(minLength, maxLength, 0),
 					wr.RandomWord(minLength, maxLength, 0),
 					wr.RandomWord(minLength, maxLength, 0),
 					wr.RandomWord(minLength, maxLength, 0))
-			case "uri-reference":
+			case uriReferenceType:
 				structure[key] = fmt.Sprintf("/%s/%s",
 					wr.RandomWord(minLength, maxLength, 0),
 					wr.RandomWord(minLength, maxLength, 0))
-			case "uuid":
+			case uuidType:
 				structure[key] = wr.PseudoUUID()
-			case "byte":
+			case byteType:
 				structure[key] = fmt.Sprintf("%x", wr.RandomWord(minLength, maxLength, 0))
-			case "password":
+			case passwordType:
 				structure[key] = fmt.Sprintf("%s", wr.RandomWord(minLength, maxLength, 0))
-			case "binary":
+			case binaryType:
 				structure[key] = fmt.Sprintf("%s",
 					base64.StdEncoding.EncodeToString([]byte(wr.RandomWord(minLength, maxLength, 0))))
 			default:
@@ -142,7 +174,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	}
 
 	// handle numbers
-	if slices.Contains(schema.Type, "number") || slices.Contains(schema.Type, "integer") {
+	if slices.Contains(schema.Type, numberType) || slices.Contains(schema.Type, integerType) {
 
 		if schema.Enum != nil && len(schema.Enum) > 0 {
 			structure[key] = schema.Enum[rand.Int()%len(schema.Enum)]
@@ -159,11 +191,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			}
 
 			switch schema.Format {
-			case "float":
+			case floatType:
 				structure[key] = rand.Float32()
-			case "double":
+			case doubleType:
 				structure[key] = rand.Float64()
-			case "int32":
+			case int32Type:
 				structure[key] = int(wr.RandomInt(minimum, maximum))
 			default:
 				structure[key] = wr.RandomInt(minimum, maximum)
@@ -173,12 +205,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	}
 
 	// handle booleans
-	if slices.Contains(schema.Type, "boolean") {
+	if slices.Contains(schema.Type, booleanType) {
 		structure[key] = true
 	}
 
 	// handle objects
-	if slices.Contains(schema.Type, "object") {
+	if slices.Contains(schema.Type, objectType) {
 		properties := schema.Properties
 		propertyMap := make(map[string]any)
 
@@ -206,8 +238,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			allOfMap := make(map[string]any)
 			for _, allOfSchema := range allOf {
 				allOfCompiled := allOfSchema.Schema()
-				wr.DiveIntoSchema(allOfCompiled, "allOf", allOfMap, depth+1)
-				for k, v := range allOfMap["allOf"].(map[string]any) {
+				wr.DiveIntoSchema(allOfCompiled, allOfType, allOfMap, depth+1)
+				for k, v := range allOfMap[allOfType].(map[string]any) {
 					propertyMap[k] = v
 				}
 			}
@@ -235,8 +267,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			oneOfMap := make(map[string]any)
 			for _, oneOfSchema := range oneOf {
 				oneOfCompiled := oneOfSchema.Schema()
-				wr.DiveIntoSchema(oneOfCompiled, "oneOf", oneOfMap, depth+1)
-				for k, v := range oneOfMap["oneOf"].(map[string]any) {
+				wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
+				for k, v := range oneOfMap[oneOfType].(map[string]any) {
 					propertyMap[k] = v
 				}
 				break // one run once for the first result.
@@ -249,8 +281,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			anyOfMap := make(map[string]any)
 			for _, anyOfSchema := range anyOf {
 				anyOfCompiled := anyOfSchema.Schema()
-				wr.DiveIntoSchema(anyOfCompiled, "anyOf", anyOfMap, depth+1)
-				for k, v := range anyOfMap["anyOf"].(map[string]any) {
+				wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
+				for k, v := range anyOfMap[anyOfType].(map[string]any) {
 					propertyMap[k] = v
 				}
 				break // one run once for the first result only, same as oneOf
@@ -260,7 +292,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		return
 	}
 
-	if slices.Contains(schema.Type, "array") {
+	if slices.Contains(schema.Type, arrayType) {
 
 		// an array needs an items schema
 		itemsSchema := schema.Items
@@ -280,8 +312,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				for i := int64(0); i < minItems; i++ {
 					itemMap := make(map[string]any)
 					itemsSchemaCompiled := itemsSchema.A.Schema()
-					wr.DiveIntoSchema(itemsSchemaCompiled, "items", itemMap, depth+1)
-					renderedItems = append(renderedItems, itemMap["items"])
+					wr.DiveIntoSchema(itemsSchemaCompiled, itemsType, itemMap, depth+1)
+					renderedItems = append(renderedItems, itemMap[itemsType])
 				}
 				structure[key] = renderedItems
 				return
