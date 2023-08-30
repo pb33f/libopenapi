@@ -67,10 +67,7 @@ jobs:
           sarif_file: results.sarif
     
 
-      - name: Test
-        run: go test -v -race ./...
-
-      - name: Code Coverage
+      - name: Test & Code Coverage
         run: go test -v covermode=atomic -coverprofile=coverage.out ./...
 
       - name: Upload coverage to Codecov
