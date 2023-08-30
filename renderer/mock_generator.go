@@ -22,21 +22,47 @@ const (
 	MockYAML
 )
 
+// MockGenerator is used to generate mocks for high-level mockable structs or *base.Schema pointers.
+// The mock generator will attempt to generate a mock from a struct using the following fields:
+//   - Example: any type, this is the default example to use if no examples are present.
+//   - Examples: map[string]*base.Example, this is a map of examples keyed by name.
+//   - Schema: *base.SchemaProxy, this is the schema to use if no examples are present.
+//
+// The mock generator will attempt to generate a mock from a *base.Schema pointer.
+// Use NewMockGenerator or NewMockGeneratorWithDictionary to create a new mock generator.
 type MockGenerator struct {
 	renderer *SchemaRenderer
 	mockType MockType
+	pretty   bool
 }
 
+// NewMockGeneratorWithDictionary creates a new mock generator using a custom dictionary. This is useful if you want to
+// use a custom dictionary to generate mocks. The location of a text file with one word per line is expected.
 func NewMockGeneratorWithDictionary(dictionaryLocation string, mockType MockType) *MockGenerator {
 	renderer := CreateRendererUsingDictionary(dictionaryLocation)
 	return &MockGenerator{renderer: renderer, mockType: mockType}
 }
 
+// NewMockGenerator creates a new mock generator using the default dictionary. The default is located at /usr/share/dict/words
+// on most systems. Windows users will need to use NewMockGeneratorWithDictionary to specify a custom dictionary.
 func NewMockGenerator(mockType MockType) *MockGenerator {
 	renderer := CreateRendererUsingDefaultDictionary()
 	return &MockGenerator{renderer: renderer, mockType: mockType}
 }
 
+// SetPretty sets the pretty flag on the mock generator. If true, the mock will be rendered with indentation and newlines.
+// If false, the mock will be rendered as a single line which is good for API responses. False is the default.
+// This option only effects JSON mocks, there is no concept of pretty printing YAML.
+func (mg *MockGenerator) SetPretty() {
+	mg.pretty = true
+}
+
+// GenerateMock generates a mock for a given high-level mockable struct. The mockable struct must contain the following fields:
+// Example: any type, this is the default example to use if no examples are present.
+// Examples: map[string]*base.Example, this is a map of examples keyed by name.
+// Schema: *base.SchemaProxy, this is the schema to use if no examples are present.
+// The name parameter is optional, if provided, the mock generator will attempt to find an example with the given name.
+// If no name is provided, the first example will be used.
 func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	v := reflect.ValueOf(mock).Elem()
 	num := v.NumField()
@@ -130,7 +156,11 @@ func (mg *MockGenerator) renderMockJSON(v any) []byte {
 	// determine the type, render properly.
 	switch reflect.ValueOf(v).Kind() {
 	case reflect.Map, reflect.Slice, reflect.Array, reflect.Struct, reflect.Ptr:
-		data, _ = json.Marshal(v)
+		if mg.pretty {
+			data, _ = json.MarshalIndent(v, "", "  ")
+		} else {
+			data, _ = json.Marshal(v)
+		}
 	default:
 		data = []byte(fmt.Sprint(v))
 	}
