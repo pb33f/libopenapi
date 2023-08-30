@@ -6,12 +6,14 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // SecurityRequirement is a low-level representation of a Swagger / OpenAPI 3 SecurityRequirement object.
@@ -23,7 +25,7 @@ import (
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 //   - https://swagger.io/specification/#security-requirement-object
 type SecurityRequirement struct {
-	Requirements low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]
+	Requirements low.ValueReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
 	*low.Reference
 }
 
@@ -33,7 +35,7 @@ func (s *SecurityRequirement) Build(_, root *yaml.Node, _ *index.SpecIndex) erro
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	var labelNode *yaml.Node
-	valueMap := make(map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]])
+	valueMap := orderedmap.New[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]()
 	var arr []low.ValueReference[string]
 	for i := range root.Content {
 		if i%2 == 0 {
@@ -47,15 +49,18 @@ func (s *SecurityRequirement) Build(_, root *yaml.Node, _ *index.SpecIndex) erro
 				ValueNode: root.Content[i].Content[j],
 			})
 		}
-		valueMap[low.KeyReference[string]{
-			Value:   labelNode.Value,
-			KeyNode: labelNode,
-		}] = low.ValueReference[[]low.ValueReference[string]]{
-			Value:     arr,
-			ValueNode: root.Content[i],
-		}
+		valueMap.Set(
+			low.KeyReference[string]{
+				Value:   labelNode.Value,
+				KeyNode: labelNode,
+			},
+			low.ValueReference[[]low.ValueReference[string]]{
+				Value:     arr,
+				ValueNode: root.Content[i],
+			},
+		)
 	}
-	s.Requirements = low.ValueReference[map[low.KeyReference[string]]low.ValueReference[[]low.ValueReference[string]]]{
+	s.Requirements = low.ValueReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]{
 		Value:     valueMap,
 		ValueNode: root,
 	}
@@ -64,9 +69,9 @@ func (s *SecurityRequirement) Build(_, root *yaml.Node, _ *index.SpecIndex) erro
 
 // FindRequirement will attempt to locate a security requirement string from a supplied name.
 func (s *SecurityRequirement) FindRequirement(name string) []low.ValueReference[string] {
-	for k := range s.Requirements.Value {
-		if k.Value == name {
-			return s.Requirements.Value[k].Value
+	for pair := orderedmap.First(s.Requirements.Value); pair != nil; pair = pair.Next() {
+		if pair.Key().Value == name {
+			return pair.Value().Value
 		}
 	}
 	return nil
@@ -74,10 +79,10 @@ func (s *SecurityRequirement) FindRequirement(name string) []low.ValueReference[
 
 // GetKeys returns a string slice of all the keys used in the requirement.
 func (s *SecurityRequirement) GetKeys() []string {
-	keys := make([]string, len(s.Requirements.Value))
+	keys := make([]string, orderedmap.Len(s.Requirements.Value))
 	z := 0
-	for k := range s.Requirements.Value {
-		keys[z] = k.Value
+	for pair := orderedmap.First(s.Requirements.Value); pair != nil; pair = pair.Next() {
+		keys[z] = pair.Key().Value
 	}
 	return keys
 }
@@ -85,18 +90,17 @@ func (s *SecurityRequirement) GetKeys() []string {
 // Hash will return a consistent SHA256 Hash of the SecurityRequirement object
 func (s *SecurityRequirement) Hash() [32]byte {
 	var f []string
-	values := make(map[string][]string, len(s.Requirements.Value))
+	values := make(map[string][]string, orderedmap.Len(s.Requirements.Value))
 	var valKeys []string
-	for k := range s.Requirements.Value {
+	for pair := orderedmap.First(s.Requirements.Value); pair != nil; pair = pair.Next() {
 		var vals []string
-		for y := range s.Requirements.Value[k].Value {
-			vals = append(vals, s.Requirements.Value[k].Value[y].Value)
-			// lol, I know. -------^^^^^ <- this is the actual value.
+		for y := range pair.Value().Value {
+			vals = append(vals, pair.Value().Value[y].Value)
 		}
 		sort.Strings(vals)
-		valKeys = append(valKeys, k.Value)
+		valKeys = append(valKeys, pair.Key().Value)
 		if len(vals) > 0 {
-			values[k.Value] = vals
+			values[pair.Key().Value] = vals
 		}
 	}
 	sort.Strings(valKeys)

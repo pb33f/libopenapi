@@ -5,12 +5,14 @@ package base
 
 import (
 	"fmt"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
+
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewExample(t *testing.T) {
@@ -61,14 +63,13 @@ func TestExtractExamples(t *testing.T) {
 
 	_ = lowExample.Build(nil, cNode.Content[0], nil)
 
-	examplesMap := make(map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*lowbase.Example])
-	examplesMap[lowmodel.KeyReference[string]{
-		Value: "green",
-	}] = lowmodel.ValueReference[*lowbase.Example]{
-		Value: &lowExample,
-	}
+	examplesMap := orderedmap.New[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowbase.Example]]()
+	examplesMap.Set(
+		lowmodel.KeyReference[string]{Value: "green"},
+		lowmodel.ValueReference[*lowbase.Example]{Value: &lowExample},
+	)
 
-	assert.Equal(t, "herbs", ExtractExamples(examplesMap)["green"].Summary)
+	assert.Equal(t, "herbs", ExtractExamples(examplesMap).GetOrZero("green").Summary)
 
 }
 

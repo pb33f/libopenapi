@@ -173,9 +173,3 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 func (s *Swagger) GoLow() *low.Swagger {
 	return s.low
 }
-
-// everything is build async, this little gem holds the results.
-type asyncResult[T any] struct {
-	key    string
-	result T
-}

@@ -5,10 +5,12 @@ package model
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"gopkg.in/yaml.v3"
@@ -235,12 +237,12 @@ func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Chan
 
 // CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to
 // values. The compareFunc argument should reference the correct comparison function for the generic type.
-func CheckMapForChanges[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+func CheckMapForChanges[T any, R any](expLeft, expRight orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R) map[string]R {
 	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, compareFunc, true)
 }
 
-func CheckMapForAdditionRemoval[T any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+func CheckMapForAdditionRemoval[T any](expLeft, expRight orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string) any {
 	// do nothing
 	doNothing := func(l, r T) any {
@@ -263,7 +265,7 @@ func CheckMapForAdditionRemoval[T any](expLeft, expRight map[low.KeyReference[st
 // CheckMapForChangesWithComp checks a left and right low level map for any additions, subtractions or modifications to
 // values. The compareFunc argument should reference the correct comparison function for the generic type. The compare
 // bit determines if the comparison should be run or not.
-func CheckMapForChangesWithComp[T any, R any](expLeft, expRight map[low.KeyReference[string]]low.ValueReference[T],
+func CheckMapForChangesWithComp[T any, R any](expLeft, expRight orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R, compare bool) map[string]R {
 
 	// stop concurrent threads screwing up changes.
@@ -274,14 +276,16 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight map[low.KeyRefer
 	lValues := make(map[string]low.ValueReference[T])
 	rValues := make(map[string]low.ValueReference[T])
 
-	for k := range expLeft {
-		lHashes[k.Value] = low.GenerateHashString(expLeft[k].Value)
-		lValues[k.Value] = expLeft[k]
+	for pair := orderedmap.First(expLeft); pair != nil; pair = pair.Next() {
+		k := pair.Key()
+		lHashes[k.Value] = low.GenerateHashString(pair.Value().Value)
+		lValues[k.Value] = pair.Value()
 	}
 
-	for k := range expRight {
-		rHashes[k.Value] = low.GenerateHashString(expRight[k].Value)
-		rValues[k.Value] = expRight[k]
+	for pair := orderedmap.First(expRight); pair != nil; pair = pair.Next() {
+		k := pair.Key()
+		rHashes[k.Value] = low.GenerateHashString(pair.Value().Value)
+		rValues[k.Value] = pair.Value()
 	}
 
 	expChanges := make(map[string]R)

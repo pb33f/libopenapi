@@ -10,11 +10,6 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/what-changed/model"
-	"github.com/stretchr/testify/assert"
-
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/what-changed/model"
@@ -254,17 +249,18 @@ func TestDocument_RenderAndReload(t *testing.T) {
 	// mutate the model
 	h := m.Model
 	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId = "findACakeInABakery"
-	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes["400"].Description = "a nice bucket of mice"
+	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes.GetOrZero("400").Description = "a nice bucket of mice"
 	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags =
 		append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
 
 	h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security = append(h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security,
-		&base.SecurityRequirement{Requirements: map[string][]string{
+		&base.SecurityRequirement{Requirements: orderedmap.ToOrderedMap(map[string][]string{
 			"pizza-and-cake": {"read:abook", "write:asong"},
-		}})
+		})},
+	)
 
-	h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example = "I am a teapot, filled with love."
-	h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
+	h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example = "I am a teapot, filled with love."
+	h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
 
 	bytes, _, newDocModel, e := doc.RenderAndReload()
 	assert.Nil(t, e)
@@ -273,17 +269,17 @@ func TestDocument_RenderAndReload(t *testing.T) {
 	h = newDocModel.Model
 	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId)
 	assert.Equal(t, "a nice bucket of mice",
-		h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes["400"].Description)
+		h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes.GetOrZero("400").Description)
 	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
 
 	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
 	yu := h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security
-	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements["pizza-and-cake"][0])
+	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements.GetOrZero("pizza-and-cake")[0])
 	assert.Equal(t, "I am a teapot, filled with love.",
-		h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example)
+		h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example)
 
 	assert.Equal(t, "https://pb33f.io",
-		h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl)
+		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
 }
 
 func TestDocument_Render(t *testing.T) {
@@ -304,18 +300,20 @@ func TestDocument_Render(t *testing.T) {
 
 	// mutate the model
 	h := m.Model
-	h.Paths.PathItems["/pet/findByStatus"].Get.OperationId = "findACakeInABakery"
-	h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description = "a nice bucket of mice"
-	h.Paths.PathItems["/pet/findByTags"].Get.Tags =
-		append(h.Paths.PathItems["/pet/findByTags"].Get.Tags, "gurgle", "giggle")
+	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId = "findACakeInABakery"
+	h.Paths.PathItems.GetOrZero("/pet/findByStatus").
+		Get.Responses.Codes.GetOrZero("400").Description = "a nice bucket of mice"
+	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags =
+		append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
 
-	h.Paths.PathItems["/pet/{petId}"].Delete.Security = append(h.Paths.PathItems["/pet/{petId}"].Delete.Security,
-		&base.SecurityRequirement{Requirements: map[string][]string{
+	h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security = append(h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security,
+		&base.SecurityRequirement{Requirements: orderedmap.ToOrderedMap(map[string][]string{
 			"pizza-and-cake": {"read:abook", "write:asong"},
-		}})
+		})},
+	)
 
-	h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example = "I am a teapot, filled with love."
-	h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
+	h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example = "I am a teapot, filled with love."
+	h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
 
 	bytes, e := doc.Render()
 	assert.NoError(t, e)
@@ -329,19 +327,19 @@ func TestDocument_Render(t *testing.T) {
 	assert.Len(t, docErrs, 0)
 
 	h = newDocModel.Model
-	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems["/pet/findByStatus"].Get.OperationId)
+	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId)
 	assert.Equal(t, "a nice bucket of mice",
-		h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description)
-	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
+		h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes.GetOrZero("400").Description)
+	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
 
-	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
-	yu := h.Paths.PathItems["/pet/{petId}"].Delete.Security
-	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements["pizza-and-cake"][0])
+	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
+	yu := h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security
+	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements.GetOrZero("pizza-and-cake")[0])
 	assert.Equal(t, "I am a teapot, filled with love.",
-		h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example)
+		h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example)
 
 	assert.Equal(t, "https://pb33f.io",
-		h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl)
+		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
 }
 
 func TestDocument_RenderWithLargeIndention(t *testing.T) {
@@ -354,7 +352,6 @@ func TestDocument_RenderWithLargeIndention(t *testing.T) {
 	doc.BuildV3Model()
 	bytes, _ := doc.Render()
 	assert.Equal(t, json, string(bytes))
-
 }
 
 func TestDocument_Render_ChangeCheck_Burgershop(t *testing.T) {
@@ -566,16 +563,16 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 
 	// get a count of the number of paths and schemas.
 	schemas := v3Model.Model.Components.Schemas
-	assert.Equal(t, 4, len(schemas))
+	assert.Equal(t, 4, orderedmap.Len(schemas))
 
-	fp := schemas["FP"]
-	fbsref := schemas["FBSRef"]
+	fp := schemas.GetOrZero("FP")
+	fbsref := schemas.GetOrZero("FBSRef")
 
 	assert.Equal(t, fp.Schema().Pattern, fbsref.Schema().Pattern)
 	assert.Equal(t, fp.Schema().Example, fbsref.Schema().Example)
 
-	byte := schemas["Byte"]
-	uint64 := schemas["UInt64"]
+	byte := schemas.GetOrZero("Byte")
+	uint64 := schemas.GetOrZero("UInt64")
 
 	assert.Equal(t, uint64.Schema().Format, byte.Schema().Format)
 	assert.Equal(t, uint64.Schema().Type, byte.Schema().Type)
@@ -674,7 +671,8 @@ components:
                         example:
                             "4578152156": Not Started
                             "5678904321": On Hold
-                        type: object`
+                        type: object
+`
 
 	doc, err := NewDocument([]byte(d))
 	if err != nil {
@@ -689,7 +687,7 @@ components:
 	// render the document.
 	rend, _ := result.Model.Render()
 
-	assert.Len(t, rend, 644)
+	assert.Equal(t, d, string(rend))
 }
 
 func TestDocument_OperationsAsRefs(t *testing.T) {
@@ -897,12 +895,11 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 			require.Equal(t, pathCount, orderedmap.Len(pathItems))
 
 			var i int
-			_ = orderedmap.For(model.Model.Paths.PathItems, func(pair orderedmap.Pair[string, *v3high.PathItem]) error {
+			for pair := orderedmap.First(model.Model.Paths.PathItems); pair != nil; pair = pair.Next() {
 				pathName := fmt.Sprintf("/foobar/%d", i)
 				assert.Equal(t, pathName, pair.Key())
 				i++
-				return nil
-			})
+			}
 			assert.Equal(t, pathCount, i)
 		}
 

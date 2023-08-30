@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"sort"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
 )
 
 // Callback represents a high-level Callback object for OpenAPI 3+.
@@ -19,8 +21,8 @@ import (
 // that identifies a URL to use for the callback operation.
 //   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
-	Expression map[string]*PathItem `json:"-" yaml:"-"`
-	Extensions map[string]any       `json:"-" yaml:"-"`
+	Expression orderedmap.Map[string, *PathItem] `json:"-" yaml:"-"`
+	Extensions map[string]any                    `json:"-" yaml:"-"`
 	low        *low.Callback
 }
 
@@ -28,9 +30,9 @@ type Callback struct {
 func NewCallback(lowCallback *low.Callback) *Callback {
 	n := new(Callback)
 	n.low = lowCallback
-	n.Expression = make(map[string]*PathItem)
-	for i := range lowCallback.Expression.Value {
-		n.Expression[i.Value] = NewPathItem(lowCallback.Expression.Value[i].Value)
+	n.Expression = orderedmap.New[string, *PathItem]()
+	for pair := orderedmap.First(lowCallback.Expression.Value); pair != nil; pair = pair.Next() {
+		n.Expression.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
 	}
 	n.Extensions = make(map[string]any)
 	for k, v := range lowCallback.Extensions {
@@ -66,16 +68,16 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*cbItem
 
-	for k, ex := range c.Expression {
+	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
 		ln := 999 // default to a high value to weight new content to the bottom.
 		if c.low != nil {
-			for lKey := range c.low.Expression.Value {
-				if lKey.Value == k {
-					ln = lKey.KeyNode.Line
+			for lPair := orderedmap.First(c.low.Expression.Value); lPair != nil; lPair = lPair.Next() {
+				if lPair.Key().Value == pair.Key() {
+					ln = lPair.Key().KeyNode.Line
 				}
 			}
 		}
-		mapped = append(mapped, &cbItem{ex, k, ln, nil})
+		mapped = append(mapped, &cbItem{pair.Value(), pair.Key(), ln, nil})
 	}
 
 	// extract extensions

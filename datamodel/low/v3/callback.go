@@ -6,9 +6,11 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -23,7 +25,7 @@ import (
 // that identifies a URL to use for the callback operation.
 //   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
-	Expression low.ValueReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]
+	Expression low.ValueReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
 }
@@ -35,7 +37,7 @@ func (cb *Callback) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // FindExpression will locate a string expression and return a ValueReference containing the located PathItem
 func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
-	return low.FindItemInMap[*PathItem](exp, cb.Expression.Value)
+	return low.FindItemInOrderedMap[*PathItem](exp, cb.Expression.Value)
 }
 
 // Build will extract extensions, expressions and PathItem objects for Callback
@@ -47,7 +49,7 @@ func (cb *Callback) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 	// handle callback
 	var currentCB *yaml.Node
-	callbacks := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
+	callbacks := orderedmap.New[low.KeyReference[string], low.ValueReference[*PathItem]]()
 
 	for i, callbackNode := range root.Content {
 		if i%2 == 0 {
@@ -61,17 +63,20 @@ func (cb *Callback) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		if eErr != nil {
 			return eErr
 		}
-		callbacks[low.KeyReference[string]{
-			Value:   currentCB.Value,
-			KeyNode: currentCB,
-		}] = low.ValueReference[*PathItem]{
-			Value:     callback,
-			ValueNode: callbackNode,
-			Reference: rv,
-		}
+		callbacks.Set(
+			low.KeyReference[string]{
+				Value:   currentCB.Value,
+				KeyNode: currentCB,
+			},
+			low.ValueReference[*PathItem]{
+				Value:     callback,
+				ValueNode: callbackNode,
+				Reference: rv,
+			},
+		)
 	}
-	if len(callbacks) > 0 {
-		cb.Expression = low.ValueReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]{
+	if orderedmap.Len(callbacks) > 0 {
+		cb.Expression = low.ValueReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]{
 			Value:     callbacks,
 			ValueNode: root,
 		}
@@ -83,10 +88,10 @@ func (cb *Callback) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 func (cb *Callback) Hash() [32]byte {
 	var f []string
 	var keys []string
-	keys = make([]string, len(cb.Expression.Value))
+	keys = make([]string, orderedmap.Len(cb.Expression.Value))
 	z := 0
-	for k := range cb.Expression.Value {
-		keys[z] = low.GenerateHashString(cb.Expression.Value[k].Value)
+	for pair := orderedmap.First(cb.Expression.Value); pair != nil; pair = pair.Next() {
+		keys[z] = low.GenerateHashString(pair.Value().Value)
 		z++
 	}
 	sort.Strings(keys)

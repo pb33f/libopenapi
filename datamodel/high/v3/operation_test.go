@@ -50,7 +50,7 @@ callbacks:
 	assert.Equal(t, "https://pb33f.io", r.ExternalDocs.URL)
 	assert.Equal(t, 1, r.GoLow().ExternalDocs.KeyNode.Line)
 	assert.Contains(t, r.Callbacks, "testCallback")
-	assert.Contains(t, r.Callbacks["testCallback"].Expression, "{$request.body#/callbackUrl}")
+	assert.Contains(t, r.Callbacks.GetOrZero("testCallback").Expression, "{$request.body#/callbackUrl}")
 	assert.Equal(t, 3, r.GoLow().Callbacks.KeyNode.Line)
 }
 

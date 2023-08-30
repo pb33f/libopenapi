@@ -77,16 +77,12 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v2.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v2.PathItem])
-		laction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v2.PathItem]]) error {
+		for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
 			lKeys[pair.Key().Value] = pair.Value()
-			return nil
 		}
-		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v2.PathItem]](lPath.PathItems, laction)
-		raction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v2.PathItem]]) error {
+		for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
 			rKeys[pair.Key().Value] = pair.Value()
-			return nil
 		}
-		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v2.PathItem]](rPath.PathItems, raction)
 
 		// run every comparison in a thread.
 		var mLock sync.Mutex
@@ -152,16 +148,12 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v3.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v3.PathItem])
-		laction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v3.PathItem]]) error {
+		for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
 			lKeys[pair.Key().Value] = pair.Value()
-			return nil
 		}
-		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v3.PathItem]](lPath.PathItems, laction)
-		raction := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*v3.PathItem]]) error {
+		for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
 			rKeys[pair.Key().Value] = pair.Value()
-			return nil
 		}
-		_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*v3.PathItem]](rPath.PathItems, raction)
 
 		// run every comparison in a thread.
 		var mLock sync.Mutex

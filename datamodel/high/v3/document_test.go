@@ -57,7 +57,7 @@ func TestNewDocument_Security(t *testing.T) {
 	h := NewDocument(lowDoc)
 	assert.Len(t, h.Security, 1)
 	assert.Len(t, h.Security[0].Requirements, 1)
-	assert.Len(t, h.Security[0].Requirements["OAuthScheme"], 2)
+	assert.Len(t, h.Security[0].Requirements.GetOrZero("OAuthScheme"), 2)
 }
 
 func TestNewDocument_Info(t *testing.T) {
@@ -98,14 +98,14 @@ func TestNewDocument_Servers(t *testing.T) {
 	assert.Equal(t, "{scheme}://api.pb33f.io", h.Servers[0].URL)
 	assert.Equal(t, "this is our main API server, for all fun API things.", h.Servers[0].Description)
 	assert.Len(t, h.Servers[0].Variables, 1)
-	assert.Equal(t, "https", h.Servers[0].Variables["scheme"].Default)
-	assert.Len(t, h.Servers[0].Variables["scheme"].Enum, 2)
+	assert.Equal(t, "https", h.Servers[0].Variables.GetOrZero("scheme").Default)
+	assert.Len(t, h.Servers[0].Variables.GetOrZero("scheme").Enum, 2)
 
 	assert.Equal(t, "https://{domain}.{host}.com", h.Servers[1].URL)
 	assert.Equal(t, "this is our second API server, for all fun API things.", h.Servers[1].Description)
 	assert.Len(t, h.Servers[1].Variables, 2)
-	assert.Equal(t, "api", h.Servers[1].Variables["domain"].Default)
-	assert.Equal(t, "pb33f.io", h.Servers[1].Variables["host"].Default)
+	assert.Equal(t, "api", h.Servers[1].Variables.GetOrZero("domain").Default)
+	assert.Equal(t, "pb33f.io", h.Servers[1].Variables.GetOrZero("host").Default)
 
 	wentLow := h.GoLow()
 	assert.Equal(t, 45, wentLow.Servers.Value[0].Value.Description.KeyNode.Line)
@@ -117,7 +117,7 @@ func TestNewDocument_Servers(t *testing.T) {
 	assert.Equal(t, 45, wentLower.Description.ValueNode.Line)
 	assert.Equal(t, 18, wentLower.Description.ValueNode.Column)
 
-	wentLowest := h.Servers[0].Variables["scheme"].GoLow()
+	wentLowest := h.Servers[0].Variables.GetOrZero("scheme").GoLow()
 	assert.Equal(t, 50, wentLowest.Description.ValueNode.Line)
 	assert.Equal(t, 22, wentLowest.Description.ValueNode.Column)
 }
@@ -147,18 +147,18 @@ func TestNewDocument_Tags(t *testing.T) {
 func TestNewDocument_Webhooks(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Webhooks, 1)
-	assert.Equal(t, "Information about a new burger", h.Webhooks["someHook"].Post.RequestBody.Description)
+	assert.Equal(t, 1, orderedmap.Len(h.Webhooks))
+	assert.Equal(t, "Information about a new burger", h.Webhooks.GetOrZero("someHook").Post.RequestBody.Description)
 }
 
 func TestNewDocument_Components_Links(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Links, 2)
-	assert.Equal(t, "locateBurger", h.Components.Links["LocateBurger"].OperationId)
-	assert.Equal(t, "$response.body#/id", h.Components.Links["LocateBurger"].Parameters["burgerId"])
+	assert.Equal(t, 2, orderedmap.Len(h.Components.Links))
+	assert.Equal(t, "locateBurger", h.Components.Links.GetOrZero("LocateBurger").OperationId)
+	assert.Equal(t, "$response.body#/id", h.Components.Links.GetOrZero("LocateBurger").Parameters.GetOrZero("burgerId"))
 
-	wentLow := h.Components.Links["LocateBurger"].GoLow()
+	wentLow := h.Components.Links.GetOrZero("LocateBurger").GoLow()
 	assert.Equal(t, 310, wentLow.OperationId.ValueNode.Line)
 	assert.Equal(t, 20, wentLow.OperationId.ValueNode.Column)
 }
@@ -166,29 +166,29 @@ func TestNewDocument_Components_Links(t *testing.T) {
 func TestNewDocument_Components_Callbacks(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Callbacks, 1)
+	assert.Equal(t, 1, orderedmap.Len(h.Components.Callbacks))
 	assert.Equal(
 		t,
 		"Callback payload",
-		h.Components.Callbacks["BurgerCallback"].Expression["{$request.query.queryUrl}"].Post.RequestBody.Description,
+		h.Components.Callbacks.GetOrZero("BurgerCallback").Expression.GetOrZero("{$request.query.queryUrl}").Post.RequestBody.Description,
 	)
 	assert.Equal(
 		t,
 		298,
-		h.Components.Callbacks["BurgerCallback"].GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Line,
+		h.Components.Callbacks.GetOrZero("BurgerCallback").GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Line,
 	)
 	assert.Equal(
 		t,
 		9,
-		h.Components.Callbacks["BurgerCallback"].GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Column,
+		h.Components.Callbacks.GetOrZero("BurgerCallback").GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Column,
 	)
 
-	assert.Equal(t, "please", h.Components.Callbacks["BurgerCallback"].Extensions["x-break-everything"])
+	assert.Equal(t, "please", h.Components.Callbacks.GetOrZero("BurgerCallback").Extensions["x-break-everything"])
 
-	for k := range h.Components.GoLow().Callbacks.Value {
-		if k.Value == "BurgerCallback" {
-			assert.Equal(t, 295, k.KeyNode.Line)
-			assert.Equal(t, 5, k.KeyNode.Column)
+	for pair := orderedmap.First(h.Components.GoLow().Callbacks.Value); pair != nil; pair = pair.Next() {
+		if pair.Key().Value == "BurgerCallback" {
+			assert.Equal(t, 295, pair.Key().KeyNode.Line)
+			assert.Equal(t, 5, pair.Key().KeyNode.Column)
 		}
 	}
 }
@@ -196,30 +196,30 @@ func TestNewDocument_Components_Callbacks(t *testing.T) {
 func TestNewDocument_Components_Schemas(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Schemas, 6)
+	assert.Equal(t, 6, orderedmap.Len(h.Components.Schemas))
 
 	goLow := h.Components.GoLow()
 
-	a := h.Components.Schemas["Error"]
-	abcd := a.Schema().Properties["message"].Schema().Example
+	a := h.Components.Schemas.GetOrZero("Error")
+	abcd := a.Schema().Properties.GetOrZero("message").Schema().Example
 	assert.Equal(t, "No such burger as 'Big-Whopper'", abcd)
 	assert.Equal(t, 433, goLow.Schemas.KeyNode.Line)
 	assert.Equal(t, 3, goLow.Schemas.KeyNode.Column)
 	assert.Equal(t, 436, a.Schema().GoLow().Description.KeyNode.Line)
 
-	b := h.Components.Schemas["Burger"]
+	b := h.Components.Schemas.GetOrZero("Burger")
 	assert.Len(t, b.Schema().Required, 2)
-	assert.Equal(t, "golden slices of happy fun joy", b.Schema().Properties["fries"].Schema().Description)
-	assert.Equal(t, int64(2), b.Schema().Properties["numPatties"].Schema().Example)
+	assert.Equal(t, "golden slices of happy fun joy", b.Schema().Properties.GetOrZero("fries").Schema().Description)
+	assert.Equal(t, int64(2), b.Schema().Properties.GetOrZero("numPatties").Schema().Example)
 	assert.Equal(t, 448, goLow.FindSchema("Burger").Value.Schema().Properties.KeyNode.Line)
 	assert.Equal(t, 7, goLow.FindSchema("Burger").Value.Schema().Properties.KeyNode.Column)
 	assert.Equal(t, 450, b.Schema().GoLow().FindProperty("name").ValueNode.Line)
 
-	f := h.Components.Schemas["Fries"]
-	assert.Equal(t, "salt", f.Schema().Properties["seasoning"].Schema().Items.A.Schema().Example)
-	assert.Len(t, f.Schema().Properties["favoriteDrink"].Schema().Properties["drinkType"].Schema().Enum, 1)
+	f := h.Components.Schemas.GetOrZero("Fries")
+	assert.Equal(t, "salt", f.Schema().Properties.GetOrZero("seasoning").Schema().Items.A.Schema().Example)
+	assert.Len(t, f.Schema().Properties.GetOrZero("favoriteDrink").Schema().Properties.GetOrZero("drinkType").Schema().Enum, 1)
 
-	d := h.Components.Schemas["Drink"]
+	d := h.Components.Schemas.GetOrZero("Drink")
 	assert.Len(t, d.Schema().Required, 2)
 	assert.True(t, d.Schema().AdditionalProperties.(bool))
 	assert.Equal(t, "drinkType", d.Schema().Discriminator.PropertyName)
@@ -227,7 +227,7 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	assert.Equal(t, 516, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Line)
 	assert.Equal(t, 23, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Column)
 
-	pl := h.Components.Schemas["SomePayload"]
+	pl := h.Components.Schemas.GetOrZero("SomePayload")
 	assert.Equal(t, "is html programming? yes.", pl.Schema().XML.Name)
 	assert.Equal(t, 523, pl.Schema().XML.GoLow().Name.ValueNode.Line)
 
@@ -238,62 +238,62 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 func TestNewDocument_Components_Headers(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Headers, 1)
-	assert.Equal(t, "this is a header example for UseOil", h.Components.Headers["UseOil"].Description)
-	assert.Equal(t, 323, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Line)
-	assert.Equal(t, 20, h.Components.Headers["UseOil"].GoLow().Description.ValueNode.Column)
+	assert.Equal(t, 1, orderedmap.Len(h.Components.Headers))
+	assert.Equal(t, "this is a header example for UseOil", h.Components.Headers.GetOrZero("UseOil").Description)
+	assert.Equal(t, 323, h.Components.Headers.GetOrZero("UseOil").GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, h.Components.Headers.GetOrZero("UseOil").GoLow().Description.ValueNode.Column)
 }
 
 func TestNewDocument_Components_RequestBodies(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.RequestBodies, 1)
-	assert.Equal(t, "Give us the new burger!", h.Components.RequestBodies["BurgerRequest"].Description)
-	assert.Equal(t, 328, h.Components.RequestBodies["BurgerRequest"].GoLow().Description.ValueNode.Line)
-	assert.Equal(t, 20, h.Components.RequestBodies["BurgerRequest"].GoLow().Description.ValueNode.Column)
-	assert.Len(t, h.Components.RequestBodies["BurgerRequest"].Content["application/json"].Examples, 2)
+	assert.Equal(t, 1, orderedmap.Len(h.Components.RequestBodies))
+	assert.Equal(t, "Give us the new burger!", h.Components.RequestBodies.GetOrZero("BurgerRequest").Description)
+	assert.Equal(t, 328, h.Components.RequestBodies.GetOrZero("BurgerRequest").GoLow().Description.ValueNode.Line)
+	assert.Equal(t, 20, h.Components.RequestBodies.GetOrZero("BurgerRequest").GoLow().Description.ValueNode.Column)
+	assert.Equal(t, 2, orderedmap.Len(h.Components.RequestBodies.GetOrZero("BurgerRequest").Content.GetOrZero("application/json").Examples))
 }
 
 func TestNewDocument_Components_Examples(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Examples, 1)
-	assert.Equal(t, "A juicy two hander sammich", h.Components.Examples["QuarterPounder"].Summary)
-	assert.Equal(t, 346, h.Components.Examples["QuarterPounder"].GoLow().Summary.ValueNode.Line)
-	assert.Equal(t, 16, h.Components.Examples["QuarterPounder"].GoLow().Summary.ValueNode.Column)
+	assert.Equal(t, 1, orderedmap.Len(h.Components.Examples))
+	assert.Equal(t, "A juicy two hander sammich", h.Components.Examples.GetOrZero("QuarterPounder").Summary)
+	assert.Equal(t, 346, h.Components.Examples.GetOrZero("QuarterPounder").GoLow().Summary.ValueNode.Line)
+	assert.Equal(t, 16, h.Components.Examples.GetOrZero("QuarterPounder").GoLow().Summary.ValueNode.Column)
 }
 
 func TestNewDocument_Components_Responses(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Responses, 1)
-	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses["DressingResponse"].Description)
-	assert.Equal(t, "array", h.Components.Responses["DressingResponse"].Content["application/json"].Schema.Schema().Type[0])
-	assert.Equal(t, 352, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Line)
-	assert.Equal(t, 7, h.Components.Responses["DressingResponse"].GoLow().Description.KeyNode.Column)
+	assert.Equal(t, 1, orderedmap.Len(h.Components.Responses))
+	assert.Equal(t, "all the dressings for a burger.", h.Components.Responses.GetOrZero("DressingResponse").Description)
+	assert.Equal(t, "array", h.Components.Responses.GetOrZero("DressingResponse").Content.GetOrZero("application/json").Schema.Schema().Type[0])
+	assert.Equal(t, 352, h.Components.Responses.GetOrZero("DressingResponse").GoLow().Description.KeyNode.Line)
+	assert.Equal(t, 7, h.Components.Responses.GetOrZero("DressingResponse").GoLow().Description.KeyNode.Column)
 }
 
 func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.SecuritySchemes, 3)
+	assert.Equal(t, 3, orderedmap.Len(h.Components.SecuritySchemes))
 
-	api := h.Components.SecuritySchemes["APIKeyScheme"]
+	api := h.Components.SecuritySchemes.GetOrZero("APIKeyScheme")
 	assert.Equal(t, "an apiKey security scheme", api.Description)
 	assert.Equal(t, 364, api.GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, api.GoLow().Description.ValueNode.Column)
 
-	jwt := h.Components.SecuritySchemes["JWTScheme"]
+	jwt := h.Components.SecuritySchemes.GetOrZero("JWTScheme")
 	assert.Equal(t, "an JWT security scheme", jwt.Description)
 	assert.Equal(t, 369, jwt.GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, jwt.GoLow().Description.ValueNode.Column)
 
-	oAuth := h.Components.SecuritySchemes["OAuthScheme"]
+	oAuth := h.Components.SecuritySchemes.GetOrZero("OAuthScheme")
 	assert.Equal(t, "an oAuth security scheme", oAuth.Description)
 	assert.Equal(t, 375, oAuth.GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, oAuth.GoLow().Description.ValueNode.Column)
-	assert.Len(t, oAuth.Flows.Implicit.Scopes, 2)
-	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes["read:burgers"])
+	assert.Equal(t, 2, orderedmap.Len(oAuth.Flows.Implicit.Scopes))
+	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes.GetOrZero("read:burgers"))
 	assert.Equal(t, "https://pb33f.io/oauth", oAuth.Flows.AuthorizationCode.AuthorizationUrl)
 
 	// check the lowness is low.
@@ -306,26 +306,26 @@ func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 func TestNewDocument_Components_Parameters(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.Parameters, 2)
-	bh := h.Components.Parameters["BurgerHeader"]
+	assert.Equal(t, 2, orderedmap.Len(h.Components.Parameters))
+	bh := h.Components.Parameters.GetOrZero("BurgerHeader")
 	assert.Equal(t, "burgerHeader", bh.Name)
 	assert.Equal(t, 392, bh.GoLow().Name.KeyNode.Line)
-	assert.Len(t, bh.Schema.Schema().Properties, 2)
+	assert.Equal(t, 2, orderedmap.Len(bh.Schema.Schema().Properties))
 	assert.Equal(t, "big-mac", bh.Example)
 	assert.True(t, bh.Required)
 	assert.Equal(
 		t,
 		"this is a header",
-		bh.Content["application/json"].Encoding["burgerTheme"].Headers["someHeader"].Description,
+		bh.Content.GetOrZero("application/json").Encoding.GetOrZero("burgerTheme").Headers.GetOrZero("someHeader").Description,
 	)
-	assert.Len(t, bh.Content["application/json"].Schema.Schema().Properties, 2)
-	assert.Equal(t, 409, bh.Content["application/json"].Encoding["burgerTheme"].GoLow().ContentType.ValueNode.Line)
+	assert.Equal(t, 2, orderedmap.Len(bh.Content.GetOrZero("application/json").Schema.Schema().Properties))
+	assert.Equal(t, 409, bh.Content.GetOrZero("application/json").Encoding.GetOrZero("burgerTheme").GoLow().ContentType.ValueNode.Line)
 }
 
 func TestNewDocument_Paths(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Paths.PathItems, 5)
+	assert.Equal(t, 5, orderedmap.Len(h.Paths.PathItems))
 
 	testBurgerShop(t, h, true)
 }
@@ -346,36 +346,36 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 	assert.Len(t, burgersOp.Post.Tags, 1)
 	assert.Equal(t, "A new burger for our menu, yummy yum yum.", burgersOp.Post.Description)
 	assert.Equal(t, "Give us the new burger!", burgersOp.Post.RequestBody.Description)
-	assert.Len(t, burgersOp.Post.Responses.Codes, 3)
+	assert.Equal(t, 3, orderedmap.Len(burgersOp.Post.Responses.Codes))
 	if checkLines {
 		assert.Equal(t, 64, burgersOp.GoLow().Post.KeyNode.Line)
 		assert.Equal(t, 63, h.Paths.GoLow().FindPath("/burgers").ValueNode.Line)
 	}
 
 	okResp := burgersOp.Post.Responses.FindResponseByCode(200)
-	assert.Len(t, okResp.Headers, 1)
+	assert.Equal(t, 1, orderedmap.Len(okResp.Headers))
 	assert.Equal(t, "A tasty burger for you to eat.", okResp.Description)
-	assert.Len(t, okResp.Content["application/json"].Examples, 2)
+	assert.Equal(t, 2, orderedmap.Len(okResp.Content.GetOrZero("application/json").Examples))
 	assert.Equal(
 		t,
 		"a cripsy fish sammich filled with ocean goodness.",
-		okResp.Content["application/json"].Examples["filetOFish"].Summary,
+		okResp.Content.GetOrZero("application/json").Examples.GetOrZero("filetOFish").Summary,
 	)
-	assert.Len(t, okResp.Links, 2)
-	assert.Equal(t, "locateBurger", okResp.Links["LocateBurger"].OperationId)
+	assert.Equal(t, 2, orderedmap.Len(okResp.Links))
+	assert.Equal(t, "locateBurger", okResp.Links.GetOrZero("LocateBurger").OperationId)
 	assert.Len(t, burgersOp.Post.Security[0].Requirements, 1)
-	assert.Len(t, burgersOp.Post.Security[0].Requirements["OAuthScheme"], 2)
-	assert.Equal(t, "read:burgers", burgersOp.Post.Security[0].Requirements["OAuthScheme"][0])
+	assert.Len(t, burgersOp.Post.Security[0].Requirements.GetOrZero("OAuthScheme"), 2)
+	assert.Equal(t, "read:burgers", burgersOp.Post.Security[0].Requirements.GetOrZero("OAuthScheme")[0])
 	assert.Len(t, burgersOp.Post.Servers, 1)
 	assert.Equal(t, "https://pb33f.io", burgersOp.Post.Servers[0].URL)
 
 	if checkLines {
 		assert.Equal(t, 69, burgersOp.Post.GoLow().Description.ValueNode.Line)
 		assert.Equal(t, 74, burgersOp.Post.Responses.GoLow().FindResponseByCode("200").ValueNode.Line)
-		assert.Equal(t, 80, okResp.Content["application/json"].GoLow().Schema.KeyNode.Line)
-		assert.Equal(t, 15, okResp.Content["application/json"].GoLow().Schema.KeyNode.Column)
+		assert.Equal(t, 80, okResp.Content.GetOrZero("application/json").GoLow().Schema.KeyNode.Line)
+		assert.Equal(t, 15, okResp.Content.GetOrZero("application/json").GoLow().Schema.KeyNode.Column)
 		assert.Equal(t, 77, okResp.GoLow().Description.KeyNode.Line)
-		assert.Equal(t, 310, okResp.Links["LocateBurger"].GoLow().OperationId.ValueNode.Line)
+		assert.Equal(t, 310, okResp.Links.GetOrZero("LocateBurger").GoLow().OperationId.ValueNode.Line)
 		assert.Equal(t, 118, burgersOp.Post.Security[0].GoLow().Requirements.ValueNode.Line)
 	}
 
@@ -534,7 +534,7 @@ func TestDocument_MarshalJSON(t *testing.T) {
 	newDoc := NewDocument(lowDoc)
 
 	assert.Equal(t, orderedmap.Len(newDoc.Paths.PathItems), orderedmap.Len(highDoc.Paths.PathItems))
-	assert.Equal(t, len(newDoc.Components.Schemas), len(highDoc.Components.Schemas))
+	assert.Equal(t, orderedmap.Len(newDoc.Components.Schemas), orderedmap.Len(highDoc.Components.Schemas))
 }
 
 func TestDocument_MarshalYAMLInline(t *testing.T) {
@@ -711,8 +711,8 @@ components:
 	h := NewDocument(lowDoc)
 
 	// mutate the schema
-	g := h.Components.Schemas["BurgerHeader"].Schema()
-	ds := g.Properties["burgerTheme"].Schema()
+	g := h.Components.Schemas.GetOrZero("BurgerHeader").Schema()
+	ds := g.Properties.GetOrZero("burgerTheme").Schema()
 	ds.Description = "changed"
 
 	// render the document to YAML and it should be identical.

@@ -6,13 +6,15 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Operation is a low-level representation of an OpenAPI 3+ Operation object.
@@ -29,7 +31,7 @@ type Operation struct {
 	Parameters   low.NodeReference[[]low.ValueReference[*Parameter]]
 	RequestBody  low.NodeReference[*RequestBody]
 	Responses    low.NodeReference[*Responses]
-	Callbacks    low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]]
+	Callbacks    low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
 	Deprecated   low.NodeReference[bool]
 	Security     low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
@@ -39,15 +41,16 @@ type Operation struct {
 
 // FindCallback will attempt to locate a Callback instance by the supplied name.
 func (o *Operation) FindCallback(callback string) *low.ValueReference[*Callback] {
-	return low.FindItemInMap[*Callback](callback, o.Callbacks.Value)
+	return low.FindItemInOrderedMap[*Callback](callback, o.Callbacks.Value)
 }
 
 // FindSecurityRequirement will attempt to locate a security requirement string from a supplied name.
 func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[string] {
 	for k := range o.Security.Value {
-		for i := range o.Security.Value[k].Value.Requirements.Value {
-			if i.Value == name {
-				return o.Security.Value[k].Value.Requirements.Value[i].Value
+		requirements := o.Security.Value[k].Value.Requirements
+		for pair := orderedmap.First(requirements.Value); pair != nil; pair = pair.Next() {
+			if pair.Key().Value == name {
+				return pair.Value().Value
 			}
 		}
 	}
@@ -101,7 +104,7 @@ func (o *Operation) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		return cbErr
 	}
 	if callbacks != nil {
-		o.Callbacks = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]]{
+		o.Callbacks = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]{
 			Value:     callbacks,
 			KeyNode:   cbL,
 			ValueNode: cbN,
@@ -202,10 +205,10 @@ func (o *Operation) Hash() [32]byte {
 	sort.Strings(keys)
 	f = append(f, keys...)
 
-	keys = make([]string, len(o.Callbacks.Value))
+	keys = make([]string, orderedmap.Len(o.Callbacks.Value))
 	z := 0
-	for k := range o.Callbacks.Value {
-		keys[z] = low.GenerateHashString(o.Callbacks.Value[k].Value)
+	for pair := orderedmap.First(o.Callbacks.Value); pair != nil; pair = pair.Next() {
+		keys[z] = low.GenerateHashString(pair.Value().Value)
 		z++
 	}
 	sort.Strings(keys)
@@ -278,6 +281,6 @@ func (o *Operation) GetServers() low.NodeReference[any] {
 		Value:     o.Servers.Value,
 	}
 }
-func (o *Operation) GetCallbacks() low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*Callback]] {
+func (o *Operation) GetCallbacks() low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]] {
 	return o.Callbacks
 }

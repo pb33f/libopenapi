@@ -50,7 +50,7 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 
 	// get a count of the number of paths and schemas.
 	paths := orderedmap.Len(v3Model.Model.Paths.PathItems)
-	schemas := len(v3Model.Model.Components.Schemas)
+	schemas := orderedmap.Len(v3Model.Model.Components.Schemas)
 
 	// print the number of paths and schemas in the document
 	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
@@ -156,7 +156,7 @@ func ExampleNewDocument_fromSwaggerDocument() {
 
 	// get a count of the number of paths and schemas.
 	paths := orderedmap.Len(v2Model.Model.Paths.PathItems)
-	schemas := len(v2Model.Model.Definitions.Definitions)
+	schemas := orderedmap.Len(v2Model.Model.Definitions.Definitions)
 
 	// print the number of paths and schemas in the document
 	fmt.Printf("There are %d paths and %d schemas in the document", paths, schemas)
@@ -187,7 +187,7 @@ func ExampleNewDocument_fromUnknownVersion() {
 		}
 		if len(errors) <= 0 {
 			paths = orderedmap.Len(v3Model.Model.Paths.PathItems)
-			schemas = len(v3Model.Model.Components.Schemas)
+			schemas = orderedmap.Len(v3Model.Model.Components.Schemas)
 		}
 	}
 	if document.GetSpecInfo().SpecType == utils.OpenApi2 {
@@ -197,7 +197,7 @@ func ExampleNewDocument_fromUnknownVersion() {
 		}
 		if len(errors) <= 0 {
 			paths = orderedmap.Len(v2Model.Model.Paths.PathItems)
-			schemas = len(v2Model.Model.Definitions.Definitions)
+			schemas = orderedmap.Len(v2Model.Model.Definitions.Definitions)
 		}
 	}
 
@@ -562,8 +562,8 @@ components:
 	}
 
 	// get a reference to SchemaOne and ParameterOne
-	schemaOne := docModel.Model.Components.Schemas["SchemaOne"].Schema()
-	parameterOne := docModel.Model.Components.Parameters["ParameterOne"]
+	schemaOne := docModel.Model.Components.Schemas.GetOrZero("SchemaOne").Schema()
+	parameterOne := docModel.Model.Components.Parameters.GetOrZero("ParameterOne")
 
 	// unpack schemaOne extensions into complex `cakes` type
 	schemaOneExtensions, schemaUnpackErrors := high.UnpackExtensions[cakes, *low.Schema](schemaOne)

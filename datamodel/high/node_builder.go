@@ -5,14 +5,15 @@ package high
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // NodeEntry represents a single node used by NodeBuilder.
@@ -659,12 +660,12 @@ func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, 
 	return found, orderedCollection
 }
 
-// Renderable is an interface that can be implemented by types that provide a custom MarshaYAML method.
+// Renderable is an interface that can be implemented by types that provide a custom MarshalYAML method.
 type Renderable interface {
 	MarshalYAML() (interface{}, error)
 }
 
-// RenderableInline is an interface that can be implemented by types that provide a custom MarshaYAML method.
+// RenderableInline is an interface that can be implemented by types that provide a custom MarshalYAML method.
 type RenderableInline interface {
 	MarshalYAMLInline() (interface{}, error)
 }

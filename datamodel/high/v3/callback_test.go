@@ -4,19 +4,21 @@
 package v3
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestCallback_MarshalYAML(t *testing.T) {
 
 	cb := &Callback{
-		Expression: map[string]*PathItem{
+		Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
 			"https://pb33f.io": {
 				Get: &Operation{
 					OperationId: "oneTwoThree",
@@ -27,7 +29,7 @@ func TestCallback_MarshalYAML(t *testing.T) {
 					OperationId: "openaypeeeye",
 				},
 			},
-		},
+		}),
 		Extensions: map[string]any{
 			"x-burgers": "why not?",
 		},
@@ -39,7 +41,7 @@ func TestCallback_MarshalYAML(t *testing.T) {
 	assert.Len(t, rend, 152)
 
 	// mutate
-	cb.Expression["https://pb33f.io"].Get.OperationId = "blim-blam"
+	cb.Expression.GetOrZero("https://pb33f.io").Get.OperationId = "blim-blam"
 	cb.Extensions = map[string]interface{}{"x-burgers": "yes please!"}
 
 	rend, _ = cb.Render()

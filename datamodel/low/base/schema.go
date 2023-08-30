@@ -10,6 +10,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -96,8 +97,8 @@ type Schema struct {
 	If                    low.NodeReference[*SchemaProxy]
 	Else                  low.NodeReference[*SchemaProxy]
 	Then                  low.NodeReference[*SchemaProxy]
-	DependentSchemas      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
-	PatternProperties     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
+	DependentSchemas      low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
+	PatternProperties     low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
 	PropertyNames         low.NodeReference[*SchemaProxy]
 	UnevaluatedItems      low.NodeReference[*SchemaProxy]
 	UnevaluatedProperties low.NodeReference[*SchemaDynamicValue[*SchemaProxy, *bool]]
@@ -120,7 +121,7 @@ type Schema struct {
 	Required             low.NodeReference[[]low.ValueReference[string]]
 	Enum                 low.NodeReference[[]low.ValueReference[any]]
 	Not                  low.NodeReference[*SchemaProxy]
-	Properties           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]
+	Properties           low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
 	AdditionalProperties low.NodeReference[any]
 	Description          low.NodeReference[string]
 	ContentEncoding      low.NodeReference[string]
@@ -305,10 +306,10 @@ func (s *Schema) Hash() [32]byte {
 	for i := range s.Enum.Value {
 		d = append(d, fmt.Sprint(s.Enum.Value[i].Value))
 	}
-	propKeys := make([]string, len(s.Properties.Value))
+	propKeys := make([]string, orderedmap.Len(s.Properties.Value))
 	z := 0
-	for i := range s.Properties.Value {
-		propKeys[z] = i.Value
+	for pair := orderedmap.First(s.Properties.Value); pair != nil; pair = pair.Next() {
+		propKeys[z] = pair.Key().Value
 		z++
 	}
 	sort.Strings(propKeys)
@@ -414,10 +415,10 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, fmt.Sprint(s.Anchor.Value))
 	}
 
-	depSchemasKeys := make([]string, len(s.DependentSchemas.Value))
+	depSchemasKeys := make([]string, orderedmap.Len(s.DependentSchemas.Value))
 	z = 0
-	for i := range s.DependentSchemas.Value {
-		depSchemasKeys[z] = i.Value
+	for pair := orderedmap.First(s.DependentSchemas.Value); pair != nil; pair = pair.Next() {
+		depSchemasKeys[z] = pair.Key().Value
 		z++
 	}
 	sort.Strings(depSchemasKeys)
@@ -425,10 +426,10 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, low.GenerateHashString(s.FindDependentSchema(depSchemasKeys[k]).Value))
 	}
 
-	patternPropsKeys := make([]string, len(s.PatternProperties.Value))
+	patternPropsKeys := make([]string, orderedmap.Len(s.PatternProperties.Value))
 	z = 0
-	for i := range s.PatternProperties.Value {
-		patternPropsKeys[z] = i.Value
+	for pair := orderedmap.First(s.PatternProperties.Value); pair != nil; pair = pair.Next() {
+		patternPropsKeys[z] = pair.Key().Value
 		z++
 	}
 	sort.Strings(patternPropsKeys)
@@ -490,19 +491,19 @@ func (s *Schema) Hash() [32]byte {
 // FindProperty will return a ValueReference pointer containing a SchemaProxy pointer
 // from a property key name. if found
 func (s *Schema) FindProperty(name string) *low.ValueReference[*SchemaProxy] {
-	return low.FindItemInMap[*SchemaProxy](name, s.Properties.Value)
+	return low.FindItemInOrderedMap[*SchemaProxy](name, s.Properties.Value)
 }
 
 // FindDependentSchema will return a ValueReference pointer containing a SchemaProxy pointer
 // from a dependent schema key name. if found (3.1+ only)
 func (s *Schema) FindDependentSchema(name string) *low.ValueReference[*SchemaProxy] {
-	return low.FindItemInMap[*SchemaProxy](name, s.DependentSchemas.Value)
+	return low.FindItemInOrderedMap[*SchemaProxy](name, s.DependentSchemas.Value)
 }
 
 // FindPatternProperty will return a ValueReference pointer containing a SchemaProxy pointer
 // from a pattern property key name. if found (3.1+ only)
 func (s *Schema) FindPatternProperty(name string) *low.ValueReference[*SchemaProxy] {
-	return low.FindItemInMap[*SchemaProxy](name, s.PatternProperties.Value)
+	return low.FindItemInOrderedMap[*SchemaProxy](name, s.PatternProperties.Value)
 }
 
 // GetExtensions returns all extensions for Schema
@@ -1067,7 +1068,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
-func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
+func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]], error) {
 	// for property, build in a new thread!
 	bChan := make(chan schemaProxyBuildResult)
 
@@ -1088,7 +1089,7 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 
 	_, propLabel, propsNode := utils.FindKeyNodeFullTop(label, root.Content)
 	if propsNode != nil {
-		propertyMap := make(map[low.KeyReference[string]]low.ValueReference[*SchemaProxy])
+		propertyMap := orderedmap.New[low.KeyReference[string], low.ValueReference[*SchemaProxy]]()
 		var currentProp *yaml.Node
 		totalProps := 0
 		for i, prop := range propsNode.Content {
@@ -1119,10 +1120,10 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 			select {
 			case res := <-bChan:
 				completedProps++
-				propertyMap[res.k] = res.v
+				propertyMap.Set(res.k, res.v)
 			}
 		}
-		return &low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]]{
+		return &low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]{
 			Value:     propertyMap,
 			KeyNode:   propLabel,
 			ValueNode: propsNode,

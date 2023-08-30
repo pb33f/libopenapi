@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -57,10 +58,10 @@ func (e *Example) MarshalYAML() (interface{}, error) {
 
 // ExtractExamples will convert a low-level example map, into a high level one that is simple to navigate.
 // no fidelity is lost, everything is still available via GoLow()
-func ExtractExamples(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Example]) map[string]*Example {
-	extracted := make(map[string]*Example)
-	for k, v := range elements {
-		extracted[k.Value] = NewExample(v.Value)
+func ExtractExamples(elements orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Example]]) orderedmap.Map[string, *Example] {
+	extracted := orderedmap.New[string, *Example]()
+	for pair := orderedmap.First(elements); pair != nil; pair = pair.Next() {
+		extracted.Set(pair.Key().Value, NewExample(pair.Value().Value))
 	}
 	return extracted
 }

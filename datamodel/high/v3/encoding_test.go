@@ -4,9 +4,11 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestEncoding_MarshalYAML(t *testing.T) {
@@ -14,9 +16,11 @@ func TestEncoding_MarshalYAML(t *testing.T) {
 	explode := true
 	encoding := &Encoding{
 		ContentType: "application/json",
-		Headers:     map[string]*Header{"x-pizza-time": {Description: "oh yes please"}},
-		Style:       "simple",
-		Explode:     &explode,
+		Headers: orderedmap.ToOrderedMap(map[string]*Header{
+			"x-pizza-time": {Description: "oh yes please"},
+		}),
+		Style:   "simple",
+		Explode: &explode,
 	}
 
 	rend, _ := encoding.Render()

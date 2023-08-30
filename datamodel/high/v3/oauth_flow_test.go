@@ -4,9 +4,11 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestOAuthFlow_MarshalYAML(t *testing.T) {
@@ -15,7 +17,10 @@ func TestOAuthFlow_MarshalYAML(t *testing.T) {
 		AuthorizationUrl: "https://pb33f.io",
 		TokenUrl:         "https://pb33f.io/token",
 		RefreshUrl:       "https://pb33f.io/refresh",
-		Scopes:           map[string]string{"chicken": "nuggets", "beefy": "soup"},
+		Scopes:           orderedmap.ToOrderedMap(map[string]string{
+			"chicken": "nuggets",
+			"beefy": "soup",
+		}),
 	}
 
 	rend, _ := oflow.Render()

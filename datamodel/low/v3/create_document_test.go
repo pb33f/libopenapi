@@ -7,6 +7,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -225,10 +226,10 @@ func TestCreateDocument_Info(t *testing.T) {
 func TestCreateDocument_WebHooks(t *testing.T) {
 	initTest()
 	assert.Len(t, doc.Webhooks.Value, 1)
-	for i := range doc.Webhooks.Value {
+	for pair := orderedmap.First(doc.Webhooks.Value); pair != nil; pair = pair.Next() {
 		// a nice deep model should be available for us.
 		assert.Equal(t, "Information about a new burger",
-			doc.Webhooks.Value[i].Value.Post.Value.RequestBody.Value.Description.Value)
+			pair.Value().Value.Post.Value.RequestBody.Value.Description.Value)
 	}
 }
 

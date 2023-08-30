@@ -4,18 +4,20 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestLink_MarshalYAML(t *testing.T) {
 	link := Link{
 		OperationRef: "somewhere",
 		OperationId:  "somewhereOutThere",
-		Parameters: map[string]string{
+		Parameters: orderedmap.ToOrderedMap(map[string]string{
 			"over": "theRainbow",
-		},
+		}),
 		RequestBody: "hello?",
 		Description: "are you there?",
 		Server: &Server{

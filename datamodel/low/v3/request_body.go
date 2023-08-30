@@ -6,19 +6,21 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // RequestBody represents a low-level OpenAPI 3+ RequestBody object.
 //   - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
 	Description low.NodeReference[string]
-	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
+	Content     low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Required    low.NodeReference[bool]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
@@ -36,7 +38,7 @@ func (rb *RequestBody) GetExtensions() map[low.KeyReference[string]]low.ValueRef
 
 // FindContent attempts to find content/MediaType defined using a specified name.
 func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType] {
-	return low.FindItemInMap[*MediaType](cType, rb.Content.Value)
+	return low.FindItemInOrderedMap[*MediaType](cType, rb.Content.Value)
 }
 
 // Build will extract extensions and MediaType objects from the node.
@@ -52,7 +54,7 @@ func (rb *RequestBody) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		return cErr
 	}
 	if con != nil {
-		rb.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+		rb.Content = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
 			Value:     con,
 			KeyNode:   cL,
 			ValueNode: cN,
@@ -70,8 +72,8 @@ func (rb *RequestBody) Hash() [32]byte {
 	if !rb.Required.IsEmpty() {
 		f = append(f, fmt.Sprint(rb.Required.Value))
 	}
-	for k := range rb.Content.Value {
-		f = append(f, low.GenerateHashString(rb.Content.Value[k].Value))
+	for pair := orderedmap.First(rb.Content.Value); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
 
 	keys := make([]string, len(rb.Extensions))

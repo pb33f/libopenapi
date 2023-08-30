@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 )
@@ -247,7 +248,7 @@ func extractWebhooks(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInd
 		return eErr
 	}
 	if hooks != nil {
-		doc.Webhooks = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]{
+		doc.Webhooks = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]{
 			Value:     hooks,
 			KeyNode:   hooksL,
 			ValueNode: hooksN,

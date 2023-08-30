@@ -5,14 +5,15 @@ package model
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
 	"sort"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -424,7 +425,7 @@ func checkSchemaXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chan
 
 func checkMappedSchemaOfASchema(
 	lSchema,
-	rSchema map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy],
+	rSchema orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]],
 	changes *[]*Change,
 	doneChan chan bool,
 ) (map[string]*SchemaChanges, int) {
@@ -437,15 +438,15 @@ func checkMappedSchemaOfASchema(
 	rEntities := make(map[string]*base.SchemaProxy)
 	rKeyNodes := make(map[string]*yaml.Node)
 
-	for w := range lSchema {
-		lProps = append(lProps, w.Value)
-		lEntities[w.Value] = lSchema[w].Value
-		lKeyNodes[w.Value] = w.KeyNode
+	for pair := orderedmap.First(lSchema); pair != nil; pair = pair.Next() {
+		lProps = append(lProps, pair.Key().Value)
+		lEntities[pair.Key().Value] = pair.Value().Value
+		lKeyNodes[pair.Key().Value] = pair.Key().KeyNode
 	}
-	for w := range rSchema {
-		rProps = append(rProps, w.Value)
-		rEntities[w.Value] = rSchema[w].Value
-		rKeyNodes[w.Value] = w.KeyNode
+	for pair := orderedmap.First(rSchema); pair != nil; pair = pair.Next() {
+		rProps = append(rProps, pair.Key().Value)
+		rEntities[pair.Key().Value] = pair.Value().Value
+		rKeyNodes[pair.Key().Value] = pair.Key().KeyNode
 	}
 	sort.Strings(lProps)
 	sort.Strings(rProps)

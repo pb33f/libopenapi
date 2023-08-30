@@ -6,13 +6,15 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Header represents a low-level OpenAPI 3+ Header object.
@@ -27,8 +29,8 @@ type Header struct {
 	AllowReserved   low.NodeReference[bool]
 	Schema          low.NodeReference[*base.SchemaProxy]
 	Example         low.NodeReference[any]
-	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
-	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
+	Examples        low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
+	Content         low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
 }
@@ -40,12 +42,12 @@ func (h *Header) FindExtension(ext string) *low.ValueReference[any] {
 
 // FindExample will attempt to locate an Example with a specified name
 func (h *Header) FindExample(eType string) *low.ValueReference[*base.Example] {
-	return low.FindItemInMap[*base.Example](eType, h.Examples.Value)
+	return low.FindItemInOrderedMap[*base.Example](eType, h.Examples.Value)
 }
 
 // FindContent will attempt to locate a MediaType definition, with a specified name
 func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
-	return low.FindItemInMap[*MediaType](ext, h.Content.Value)
+	return low.FindItemInOrderedMap[*MediaType](ext, h.Content.Value)
 }
 
 // GetExtensions returns all Header extensions and satisfies the low.HasExtensions interface.
@@ -73,14 +75,14 @@ func (h *Header) Hash() [32]byte {
 	if h.Example.Value != nil {
 		f = append(f, fmt.Sprint(h.Example.Value))
 	}
-	if len(h.Examples.Value) > 0 {
-		for k := range h.Examples.Value {
-			f = append(f, fmt.Sprintf("%s-%x", k.Value, h.Examples.Value[k].Value.Hash()))
+	if orderedmap.Len(h.Examples.Value) > 0 {
+		for pair := orderedmap.First(h.Examples.Value); pair != nil; pair = pair.Next() {
+			f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, pair.Value().Value.Hash()))
 		}
 	}
-	if len(h.Content.Value) > 0 {
-		for k := range h.Content.Value {
-			f = append(f, fmt.Sprintf("%s-%x", k.Value, h.Content.Value[k].Value.Hash()))
+	if orderedmap.Len(h.Content.Value) > 0 {
+		for pair := orderedmap.First(h.Content.Value); pair != nil; pair = pair.Next() {
+			f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, pair.Value().Value.Hash()))
 		}
 	}
 	keys := make([]string, len(h.Extensions))
@@ -113,7 +115,7 @@ func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		return eErr
 	}
 	if exps != nil {
-		h.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]{
+		h.Examples = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
 			KeyNode:   expsL,
 			ValueNode: expsN,
@@ -134,7 +136,7 @@ func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	if cErr != nil {
 		return cErr
 	}
-	h.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+	h.Content = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
 		Value:     con,
 		KeyNode:   cL,
 		ValueNode: cN,

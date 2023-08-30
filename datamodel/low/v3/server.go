@@ -5,12 +5,14 @@ package v3
 
 import (
 	"crypto/sha256"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // Server represents a low-level OpenAPI 3+ Server object.
@@ -18,7 +20,7 @@ import (
 type Server struct {
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]
-	Variables   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]
+	Variables   low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]
 	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
 }
@@ -30,7 +32,7 @@ func (s *Server) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 
 // FindVariable attempts to locate a ServerVariable instance using the supplied key.
 func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVariable] {
-	return low.FindItemInMap[*ServerVariable](serverVar, s.Variables.Value)
+	return low.FindItemInOrderedMap[*ServerVariable](serverVar, s.Variables.Value)
 }
 
 // Build will extract server variables from the supplied node.
@@ -43,7 +45,7 @@ func (s *Server) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	if vars == nil {
 		return nil
 	}
-	variablesMap := make(map[low.KeyReference[string]]low.ValueReference[*ServerVariable])
+	variablesMap := orderedmap.New[low.KeyReference[string], low.ValueReference[*ServerVariable]]()
 	if utils.IsNodeMap(vars) {
 		var currentNode string
 		var keyNode *yaml.Node
@@ -56,15 +58,18 @@ func (s *Server) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			variable := ServerVariable{}
 			variable.Reference = new(low.Reference)
 			_ = low.BuildModel(varNode, &variable)
-			variablesMap[low.KeyReference[string]{
-				Value:   currentNode,
-				KeyNode: keyNode,
-			}] = low.ValueReference[*ServerVariable]{
-				ValueNode: varNode,
-				Value:     &variable,
-			}
+			variablesMap.Set(
+				low.KeyReference[string]{
+					Value:   currentNode,
+					KeyNode: keyNode,
+				},
+				low.ValueReference[*ServerVariable]{
+					ValueNode: varNode,
+					Value:     &variable,
+				},
+			)
 		}
-		s.Variables = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*ServerVariable]]{
+		s.Variables = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]{
 			KeyNode:   kn,
 			ValueNode: vars,
 			Value:     variablesMap,
@@ -76,10 +81,10 @@ func (s *Server) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the Server object
 func (s *Server) Hash() [32]byte {
 	var f []string
-	keys := make([]string, len(s.Variables.Value))
+	keys := make([]string, orderedmap.Len(s.Variables.Value))
 	z := 0
-	for k := range s.Variables.Value {
-		keys[z] = low.GenerateHashString(s.Variables.Value[k].Value)
+	for pair := orderedmap.First(s.Variables.Value); pair != nil; pair = pair.Next() {
+		keys[z] = low.GenerateHashString(pair.Value().Value)
 		z++
 	}
 	sort.Strings(keys)

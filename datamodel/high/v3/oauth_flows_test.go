@@ -4,13 +4,14 @@
 package v3
 
 import (
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestNewOAuthFlows(t *testing.T) {
@@ -81,7 +82,7 @@ clientCredentials:
         CHIP:CHOP: microwave a sock`
 
 	// now modify it and render it back out, and it should be identical!
-	r.ClientCredentials.Scopes["CHIP:CHOP"] = "microwave a sock"
+	r.ClientCredentials.Scopes.Set("CHIP:CHOP", "microwave a sock")
 	rBytes, _ = r.Render()
 	assert.Equal(t, modified, strings.TrimSpace(string(rBytes)))
 

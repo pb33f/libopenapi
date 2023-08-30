@@ -4,11 +4,13 @@
 package base
 
 import (
+	"sort"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
 )
 
 // SecurityRequirement is a high-level representation of a Swagger / OpenAPI 3 SecurityRequirement object.
@@ -19,7 +21,7 @@ import (
 // The name used for each property MUST correspond to a security scheme declared in the Security Definitions
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
-	Requirements map[string][]string `json:"-" yaml:"-"`
+	Requirements orderedmap.Map[string, []string] `json:"-" yaml:"-"`
 	low          *base.SecurityRequirement
 }
 
@@ -27,14 +29,14 @@ type SecurityRequirement struct {
 func NewSecurityRequirement(req *base.SecurityRequirement) *SecurityRequirement {
 	r := new(SecurityRequirement)
 	r.low = req
-	values := make(map[string][]string)
+	values := orderedmap.New[string, []string]()
 	// to keep things fast, avoiding copying anything - makes it a little hard to read.
-	for reqK := range req.Requirements.Value {
+	for pair := orderedmap.First(req.Requirements.Value); pair != nil; pair = pair.Next() {
 		var vals []string
-		for valK := range req.Requirements.Value[reqK].Value {
-			vals = append(vals, req.Requirements.Value[reqK].Value[valK].Value)
+		for valK := range pair.Value().Value {
+			vals = append(vals, pair.Value().Value[valK].Value)
 		}
-		values[reqK.Value] = vals
+		values.Set(pair.Key().Value, vals)
 	}
 	r.Requirements = values
 	return r
@@ -67,24 +69,23 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 	}
 
 	m := utils.CreateEmptyMapNode()
-	keys := make([]*req, len(s.Requirements))
+	keys := make([]*req, orderedmap.Len(s.Requirements))
 
 	i := 0
 
-	for k := range s.Requirements {
-		keys[i] = &req{key: k, val: s.Requirements[k]}
+	for pair := orderedmap.First(s.Requirements); pair != nil; pair = pair.Next() {
+		keys[i] = &req{key: pair.Key(), val: pair.Value()}
 		i++
 	}
 	i = 0
 	if s.low != nil {
 		for o := range keys {
 			kv := keys[o].key
-			for k := range s.low.Requirements.Value {
-				if k.Value == kv {
-					gh := s.low.Requirements.Value[k]
-					keys[o].line = k.KeyNode.Line
-					keys[o].lowKey = &k
-					keys[o].lowVal = &gh
+			for pair := orderedmap.First(s.low.Requirements.Value); pair != nil; pair = pair.Next() {
+				if pair.Key().Value == kv {
+					keys[o].line = pair.Key().KeyNode.Line
+					keys[o].lowKey = pair.KeyPtr()
+					keys[o].lowVal = pair.ValuePtr()
 				}
 				i++
 			}

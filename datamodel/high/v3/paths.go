@@ -84,7 +84,7 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	action := func(pair orderedmap.Pair[string, *PathItem]) error {
+	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
 		k := pair.Key()
 		pi := pair.Value()
 		ln := 9999 // default to a high value to weight new content to the bottom.
@@ -95,9 +95,7 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 			}
 		}
 		mapped = append(mapped, &pathItem{pi, k, ln, nil})
-		return nil
 	}
-	_ = orderedmap.For[string, *PathItem](p.PathItems, action)
 
 	nb := high.NewNodeBuilder(p, p.low)
 	extNode := nb.Render()
@@ -142,7 +140,7 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	action := func(pair orderedmap.Pair[string, *PathItem]) error {
+	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
 		k := pair.Key()
 		pi := pair.Value()
 		ln := 9999 // default to a high value to weight new content to the bottom.
@@ -153,9 +151,7 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 			}
 		}
 		mapped = append(mapped, &pathItem{pi, k, ln, nil})
-		return nil
 	}
-	_ = orderedmap.For[string, *PathItem](p.PathItems, action)
 
 	nb := high.NewNodeBuilder(p, p.low)
 	nb.Resolve = true

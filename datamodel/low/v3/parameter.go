@@ -6,13 +6,15 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
@@ -31,20 +33,20 @@ type Parameter struct {
 	AllowReserved   low.NodeReference[bool]
 	Schema          low.NodeReference[*base.SchemaProxy]
 	Example         low.NodeReference[any]
-	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
-	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
+	Examples        low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
+	Content         low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
 }
 
 // FindContent will attempt to locate a MediaType instance using the specified name.
 func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
-	return low.FindItemInMap[*MediaType](cType, p.Content.Value)
+	return low.FindItemInOrderedMap[*MediaType](cType, p.Content.Value)
 }
 
 // FindExample will attempt to locate a base.Example instance using the specified name.
 func (p *Parameter) FindExample(eType string) *low.ValueReference[*base.Example] {
-	return low.FindItemInMap[*base.Example](eType, p.Examples.Value)
+	return low.FindItemInOrderedMap[*base.Example](eType, p.Examples.Value)
 }
 
 // FindExtension attempts to locate an extension using the specified name.
@@ -85,7 +87,7 @@ func (p *Parameter) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		return eErr
 	}
 	if exps != nil {
-		p.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]{
+		p.Examples = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
 			KeyNode:   expsL,
 			ValueNode: expsN,
@@ -97,7 +99,7 @@ func (p *Parameter) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	if cErr != nil {
 		return cErr
 	}
-	p.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+	p.Content = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
 		Value:     con,
 		KeyNode:   cL,
 		ValueNode: cN,
@@ -133,18 +135,18 @@ func (p *Parameter) Hash() [32]byte {
 	}
 
 	var keys []string
-	keys = make([]string, len(p.Examples.Value))
+	keys = make([]string, orderedmap.Len(p.Examples.Value))
 	z := 0
-	for k := range p.Examples.Value {
-		keys[z] = low.GenerateHashString(p.Examples.Value[k].Value)
+	for pair := orderedmap.First(p.Examples.Value); pair != nil; pair = pair.Next() {
+		keys[z] = low.GenerateHashString(pair.Value().Value)
 		z++
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
-	keys = make([]string, len(p.Content.Value))
+	keys = make([]string, orderedmap.Len(p.Content.Value))
 	z = 0
-	for k := range p.Content.Value {
-		keys[z] = low.GenerateHashString(p.Content.Value[k].Value)
+	for pair := orderedmap.First(p.Content.Value); pair != nil; pair = pair.Next() {
+		keys[z] = low.GenerateHashString(pair.Value().Value)
 		z++
 	}
 	sort.Strings(keys)
