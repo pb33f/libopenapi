@@ -4,9 +4,11 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestServer_MarshalYAML(t *testing.T) {
@@ -23,11 +25,11 @@ description: the b33f`
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 
 	// mutate
-	server.Variables = map[string]*ServerVariable{
+	server.Variables = orderedmap.ToOrderedMap(map[string]*ServerVariable{
 		"rainbow": {
 			Enum: []string{"one", "two", "three"},
 		},
-	}
+	})
 
 	desired = `url: https://pb33f.io
 description: the b33f

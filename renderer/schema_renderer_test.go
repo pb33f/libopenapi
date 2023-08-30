@@ -8,17 +8,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRenderSchema(t *testing.T) {
@@ -1144,7 +1145,7 @@ properties:
 	loopMe = func(parent *highbase.SchemaProxy, level int) {
 		schemaProxy := buildSchema()
 		if parent != nil {
-			parent.Schema().Properties["child"] = schemaProxy
+			parent.Schema().Properties.Set("child", schemaProxy)
 		}
 		if level < 110 {
 			loopMe(schemaProxy, level+1)

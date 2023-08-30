@@ -303,8 +303,8 @@ $anchor: anchor`
 	assert.Equal(t, "string", compiled.If.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.Else.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.Then.Schema().Type[0])
-	assert.Equal(t, "string", compiled.PatternProperties["patternOne"].Schema().Type[0])
-	assert.Equal(t, "string", compiled.DependentSchemas["schemaOne"].Schema().Type[0])
+	assert.Equal(t, "string", compiled.PatternProperties.GetOrZero("patternOne").Schema().Type[0])
+	assert.Equal(t, "string", compiled.DependentSchemas.GetOrZero("schemaOne").Schema().Type[0])
 	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.UnevaluatedProperties.A.Schema().Type[0])
@@ -416,7 +416,7 @@ anyOf:
     anyOfB:
       type: string
       description: anyOfB description
-      example: 'anyOfBExp'    
+      example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
@@ -428,7 +428,7 @@ not:
     notB:
       type: string
       description: notB description
-      example: 'notBExp'      
+      example: 'notBExp'
 items:
   type: object
   description: an items thing
@@ -454,7 +454,7 @@ properties:
       somethingBProp:
         exclusiveMinimum: 3
         exclusiveMaximum: 120
-        type: 
+        type:
          - string
          - null
         description: something b subprop
@@ -466,9 +466,9 @@ properties:
           attribute: true
           wrapped: false
           x-pizza: love
-    additionalProperties: 
+    additionalProperties:
         why: yes
-        thatIs: true    
+        thatIs: true
 additionalProperties:
   type: string
   description: nice
@@ -500,9 +500,9 @@ required: [cake, fish]`
 	assert.Nil(t, schemaProxy.GetBuildError())
 
 	assert.True(t, compiled.ExclusiveMaximum.A)
-	assert.Equal(t, float64(123), compiled.Properties["somethingB"].Schema().ExclusiveMinimum.B)
-	assert.Equal(t, float64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
-	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
+	assert.Equal(t, float64(123), compiled.Properties.GetOrZero("somethingB").Schema().ExclusiveMinimum.B)
+	assert.Equal(t, float64(334), compiled.Properties.GetOrZero("somethingB").Schema().ExclusiveMaximum.B)
+	assert.Len(t, compiled.Properties.GetOrZero("somethingB").Schema().Properties.GetOrZero("somethingBProp").Schema().Type, 2)
 
 	assert.Equal(t, "nice", compiled.AdditionalProperties.(*SchemaProxy).Schema().Description)
 
@@ -734,7 +734,7 @@ properties:
 	highSchema := NewSchema(&lowSchema)
 
 	// print out the description of 'aProperty'
-	fmt.Print(highSchema.Properties["aProperty"].Schema().Description)
+	fmt.Print(highSchema.Properties.GetOrZero("aProperty").Schema().Description)
 	// Output: this is an integer property
 }
 
@@ -765,7 +765,7 @@ properties:
 	})
 
 	// print out the description of 'aProperty'
-	fmt.Print(highSchema.Schema().Properties["aProperty"].Schema().Description)
+	fmt.Print(highSchema.Schema().Properties.GetOrZero("aProperty").Schema().Description)
 	// Output: this is an integer property
 }
 

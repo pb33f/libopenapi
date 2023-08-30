@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -30,9 +30,9 @@ import (
 // be the response for a successful operation call.
 //   - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
-	Codes      map[string]*Response `json:"-" yaml:"-"`
-	Default    *Response            `json:"default,omitempty" yaml:"default,omitempty"`
-	Extensions map[string]any       `json:"-" yaml:"-"`
+	Codes      orderedmap.Map[string, *Response] `json:"-" yaml:"-"`
+	Default    *Response                         `json:"default,omitempty" yaml:"default,omitempty"`
+	Extensions map[string]any                    `json:"-" yaml:"-"`
 	low        *low.Responses
 }
 
@@ -45,28 +45,31 @@ func NewResponses(responses *low.Responses) *Responses {
 	if !responses.Default.IsEmpty() {
 		r.Default = NewResponse(responses.Default.Value)
 	}
-	codes := make(map[string]*Response)
+	codes := orderedmap.New[string, *Response]()
 
 	type respRes struct {
 		code string
 		resp *Response
 	}
 
-	translateFunc := func(key lowbase.KeyReference[string], value lowbase.ValueReference[*low.Response]) (respRes, error) {
-		return respRes{code: key.Value, resp: NewResponse(value.Value)}, nil
+	translateFunc := func(pair orderedmap.Pair[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response]]) (asyncResult[*Response], error) {
+		return asyncResult[*Response]{
+			key: pair.Key().Value,
+			result: NewResponse(pair.Value().Value),
+		}, nil
 	}
-	resultFunc := func(value respRes) error {
-		codes[value.code] = value.resp
+	resultFunc := func(value asyncResult[*Response]) error {
+		codes.Set(value.key, value.result)
 		return nil
 	}
-	_ = datamodel.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response], respRes](responses.Codes, translateFunc, resultFunc)
+	_ = orderedmap.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response], asyncResult[*Response]](responses.Codes, translateFunc, resultFunc)
 	r.Codes = codes
 	return r
 }
 
 // FindResponseByCode is a shortcut for looking up code by an integer vs. a string
 func (r *Responses) FindResponseByCode(code int) *Response {
-	return r.Codes[fmt.Sprintf("%d", code)]
+	return r.Codes.GetOrZero(fmt.Sprintf("%d", code))
 }
 
 // GoLow returns the low-level Response object used to create the high-level one.
@@ -101,16 +104,16 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*responseItem
 
-	for k, re := range r.Codes {
+	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		if r.low != nil {
-			for lKey := range r.low.Codes {
-				if lKey.Value == k {
-					ln = lKey.KeyNode.Line
+			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
+				if lPair.Key().Value == pair.Key() {
+					ln = lPair.Key().KeyNode.Line
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{re, k, ln, nil})
+		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil})
 	}
 
 	// extract extensions
@@ -157,16 +160,16 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 	}
 	var mapped []*responseItem
 
-	for k, re := range r.Codes {
+	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		if r.low != nil {
-			for lKey := range r.low.Codes {
-				if lKey.Value == k {
-					ln = lKey.KeyNode.Line
+			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
+				if lPair.Key().Value == pair.Key() {
+					ln = lPair.Key().KeyNode.Line
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{re, k, ln, nil})
+		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil})
 	}
 
 	// extract extensions

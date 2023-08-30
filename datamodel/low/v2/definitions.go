@@ -5,13 +5,15 @@ package v2
 
 import (
 	"crypto/sha256"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // ParameterDefinitions is a low-level representation of a Swagger / OpenAPI 2 Parameters Definitions object.
@@ -20,7 +22,7 @@ import (
 // referenced to the ones defined here. It does not define global operation parameters
 //   - https://swagger.io/specification/v2/#parametersDefinitionsObject
 type ParameterDefinitions struct {
-	Definitions map[low.KeyReference[string]]low.ValueReference[*Parameter]
+	Definitions orderedmap.Map[low.KeyReference[string], low.ValueReference[*Parameter]]
 }
 
 // ResponsesDefinitions is a low-level representation of a Swagger / OpenAPI 2 Responses Definitions object.
@@ -29,7 +31,7 @@ type ParameterDefinitions struct {
 // referenced to the ones defined here. It does not define global operation responses
 //   - https://swagger.io/specification/v2/#responsesDefinitionsObject
 type ResponsesDefinitions struct {
-	Definitions map[low.KeyReference[string]]low.ValueReference[*Response]
+	Definitions orderedmap.Map[low.KeyReference[string], low.ValueReference[*Response]]
 }
 
 // SecurityDefinitions is a low-level representation of a Swagger / OpenAPI 2 Security Definitions object.
@@ -38,7 +40,7 @@ type ResponsesDefinitions struct {
 // schemes on the operations and only serves to provide the relevant details for each scheme
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityDefinitions struct {
-	Definitions map[low.KeyReference[string]]low.ValueReference[*SecurityScheme]
+	Definitions orderedmap.Map[low.KeyReference[string], low.ValueReference[*SecurityScheme]]
 }
 
 // Definitions is a low-level representation of a Swagger / OpenAPI 2 Definitions object
@@ -47,33 +49,34 @@ type SecurityDefinitions struct {
 // arrays or models.
 //   - https://swagger.io/specification/v2/#definitionsObject
 type Definitions struct {
-	Schemas map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]
+	Schemas orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]
 }
 
 // FindSchema will attempt to locate a base.SchemaProxy instance using a name.
 func (d *Definitions) FindSchema(schema string) *low.ValueReference[*base.SchemaProxy] {
-	return low.FindItemInMap[*base.SchemaProxy](schema, d.Schemas)
+	return low.FindItemInOrderedMap[*base.SchemaProxy](schema, d.Schemas)
 }
 
 // FindParameter will attempt to locate a Parameter instance using a name.
 func (pd *ParameterDefinitions) FindParameter(parameter string) *low.ValueReference[*Parameter] {
-	return low.FindItemInMap[*Parameter](parameter, pd.Definitions)
+	return low.FindItemInOrderedMap[*Parameter](parameter, pd.Definitions)
 }
 
 // FindResponse will attempt to locate a Response instance using a name.
 func (r *ResponsesDefinitions) FindResponse(response string) *low.ValueReference[*Response] {
-	return low.FindItemInMap[*Response](response, r.Definitions)
+	return low.FindItemInOrderedMap[*Response](response, r.Definitions)
 }
 
 // FindSecurityDefinition will attempt to locate a SecurityScheme using a name.
 func (s *SecurityDefinitions) FindSecurityDefinition(securityDef string) *low.ValueReference[*SecurityScheme] {
-	return low.FindItemInMap[*SecurityScheme](securityDef, s.Definitions)
+	return low.FindItemInOrderedMap[*SecurityScheme](securityDef, s.Definitions)
 }
 
 // Build will extract all definitions into SchemaProxy instances.
 func (d *Definitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
+	// TODO: Refactor with orderedmap.TranslatePipeline.
 	errorChan := make(chan error)
 	resultChan := make(chan definitionResult[*base.SchemaProxy])
 	var defLabel *yaml.Node
@@ -99,17 +102,18 @@ func (d *Definitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	completedDefs := 0
-	results := make(map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy])
+	results := orderedmap.New[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]()
 	for completedDefs < totalDefinitions {
 		select {
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
 			completedDefs++
-			results[low.KeyReference[string]{
+			key := low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v
+			}
+			results.Set(key, sch.v)
 		}
 	}
 	d.Schemas = results
@@ -119,10 +123,10 @@ func (d *Definitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the Definitions object
 func (d *Definitions) Hash() [32]byte {
 	var f []string
-	keys := make([]string, len(d.Schemas))
+	keys := make([]string, orderedmap.Len(d.Schemas))
 	z := 0
-	for k := range d.Schemas {
-		keys[z] = k.Value
+	for pair := orderedmap.First(d.Schemas); pair != nil; pair = pair.Next() {
+		keys[z] = pair.Key().Value
 		z++
 	}
 	sort.Strings(keys)
@@ -158,17 +162,18 @@ func (pd *ParameterDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) 
 	}
 
 	completedDefs := 0
-	results := make(map[low.KeyReference[string]]low.ValueReference[*Parameter])
+	results := orderedmap.New[low.KeyReference[string], low.ValueReference[*Parameter]]()
 	for completedDefs < totalDefinitions {
 		select {
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
 			completedDefs++
-			results[low.KeyReference[string]{
+			key := low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v
+			}
+			results.Set(key, sch.v)
 		}
 	}
 	pd.Definitions = results
@@ -207,17 +212,18 @@ func (r *ResponsesDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) e
 	}
 
 	completedDefs := 0
-	results := make(map[low.KeyReference[string]]low.ValueReference[*Response])
+	results := orderedmap.New[low.KeyReference[string], low.ValueReference[*Response]]()
 	for completedDefs < totalDefinitions {
 		select {
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
 			completedDefs++
-			results[low.KeyReference[string]{
+			key := low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v
+			}
+			results.Set(key, sch.v)
 		}
 	}
 	r.Definitions = results
@@ -253,17 +259,18 @@ func (s *SecurityDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) er
 	}
 
 	completedDefs := 0
-	results := make(map[low.KeyReference[string]]low.ValueReference[*SecurityScheme])
+	results := orderedmap.New[low.KeyReference[string], low.ValueReference[*SecurityScheme]]()
 	for completedDefs < totalDefinitions {
 		select {
 		case err := <-errorChan:
 			return err
 		case sch := <-resultChan:
 			completedDefs++
-			results[low.KeyReference[string]{
+			key := low.KeyReference[string]{
 				Value:   sch.k.Value,
 				KeyNode: sch.k,
-			}] = sch.v
+			}
+			results.Set(key, sch.v)
 		}
 	}
 	s.Definitions = results

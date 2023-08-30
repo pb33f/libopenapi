@@ -6,12 +6,14 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // Link represents a low-level OpenAPI 3+ Link object.
@@ -29,7 +31,7 @@ import (
 type Link struct {
 	OperationRef low.NodeReference[string]
 	OperationId  low.NodeReference[string]
-	Parameters   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
+	Parameters   low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
 	RequestBody  low.NodeReference[string]
 	Description  low.NodeReference[string]
 	Server       low.NodeReference[*Server]
@@ -44,7 +46,7 @@ func (l *Link) GetExtensions() map[low.KeyReference[string]]low.ValueReference[a
 
 // FindParameter will attempt to locate a parameter string value, using a parameter name input.
 func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
-	return low.FindItemInMap[string](pName, l.Parameters.Value)
+	return low.FindItemInOrderedMap[string](pName, l.Parameters.Value)
 }
 
 // FindExtension will attempt to locate an extension with a specific key
@@ -87,10 +89,10 @@ func (l *Link) Hash() [32]byte {
 	}
 	// todo: needs ordering.
 
-	keys := make([]string, len(l.Parameters.Value))
+	keys := make([]string, orderedmap.Len(l.Parameters.Value))
 	z := 0
-	for k := range l.Parameters.Value {
-		keys[z] = l.Parameters.Value[k].Value
+	for pair := orderedmap.First(l.Parameters.Value); pair != nil; pair = pair.Next() {
+		keys[z] = pair.Value().Value
 		z++
 	}
 	sort.Strings(keys)

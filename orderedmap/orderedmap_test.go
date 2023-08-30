@@ -159,68 +159,6 @@ func TestMap(t *testing.T) {
 		})
 	})
 
-	t.Run("For()", func(t *testing.T) {
-		const mapSize = 10
-
-		t.Run("Nil pointer", func(t *testing.T) {
-			var m orderedmap.Map[string, int]
-			err := orderedmap.For(m, func(_ orderedmap.Pair[string, int]) error {
-				return errors.New("Expected no data")
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Empty", func(t *testing.T) {
-			m := orderedmap.New[string, int]()
-			err := orderedmap.For(m, func(_ orderedmap.Pair[string, int]) error {
-				return errors.New("Expected no data")
-			})
-			require.NoError(t, err)
-		})
-
-		t.Run("Full iteration", func(t *testing.T) {
-			m := orderedmap.New[string, int]()
-			for i := 0; i < mapSize; i++ {
-				m.Set(fmt.Sprintf("key%d", i), i+1000)
-			}
-
-			var i int
-			err := orderedmap.For(m, func(pair orderedmap.Pair[string, int]) error {
-				assert.Equal(t, fmt.Sprintf("key%d", i), pair.Key())
-				assert.Equal(t, fmt.Sprintf("key%d", i), *pair.KeyPtr())
-				assert.Equal(t, i+1000, pair.Value())
-				assert.Equal(t, i+1000, *pair.ValuePtr())
-				i++
-				require.LessOrEqual(t, i, mapSize)
-				return nil
-			})
-			require.NoError(t, err)
-			assert.Equal(t, mapSize, i)
-		})
-
-		t.Run("Partial iteration", func(t *testing.T) {
-			m := orderedmap.New[string, int]()
-			for i := 0; i < mapSize; i++ {
-				m.Set(fmt.Sprintf("key%d", i), i+1000)
-			}
-
-			var i int
-			err := orderedmap.For(m, func(pair orderedmap.Pair[string, int]) error {
-				assert.Equal(t, fmt.Sprintf("key%d", i), pair.Key())
-				assert.Equal(t, fmt.Sprintf("key%d", i), *pair.KeyPtr())
-				assert.Equal(t, i+1000, pair.Value())
-				assert.Equal(t, i+1000, *pair.ValuePtr())
-				i++
-				if i >= mapSize/2 {
-					return io.EOF
-				}
-				return nil
-			})
-			require.NoError(t, err)
-			assert.Equal(t, mapSize/2, i)
-		})
-	})
-
 	t.Run("TranslateMapParallel()", func(t *testing.T) {
 		const mapSize = 1000
 

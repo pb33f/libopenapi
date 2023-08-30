@@ -11,10 +11,12 @@ package v3
 
 import (
 	"bytes"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -81,7 +83,7 @@ type Document struct {
 	// for example by an out-of-band registration. The key name is a unique string to refer to each webhook,
 	// while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider
 	// and the expected responses. An example is available.
-	Webhooks map[string]*PathItem `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
+	Webhooks orderedmap.Map[string, *PathItem] `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
 
 	// Index is a reference to the *index.SpecIndex that was created for the document and used
 	// as a guide when building out the Document. Ideal if further processing is required on the model and
@@ -129,9 +131,9 @@ func NewDocument(document *low.Document) *Document {
 		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
 	}
 	if !document.Webhooks.IsEmpty() {
-		hooks := make(map[string]*PathItem)
-		for h := range document.Webhooks.Value {
-			hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
+		hooks := orderedmap.New[string, *PathItem]()
+		for pair := orderedmap.First(document.Webhooks.Value); pair != nil; pair = pair.Next() {
+			hooks.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
 		}
 		d.Webhooks = hooks
 	}

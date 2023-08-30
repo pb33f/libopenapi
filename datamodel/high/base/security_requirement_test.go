@@ -4,12 +4,14 @@
 package base
 
 import (
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
+
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewSecurityRequirement(t *testing.T) {
@@ -32,11 +34,11 @@ cake:
 
 	highExt := NewSecurityRequirement(&lowExt)
 
-	assert.Len(t, highExt.Requirements["pizza"], 2)
-	assert.Len(t, highExt.Requirements["cake"], 2)
+	assert.Len(t, highExt.Requirements.GetOrZero("pizza"), 2)
+	assert.Len(t, highExt.Requirements.GetOrZero("cake"), 2)
 
 	wentLow := highExt.GoLow()
-	assert.Len(t, wentLow.Requirements.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(wentLow.Requirements.Value))
 	assert.NotNil(t, highExt.GoLowUntyped())
 
 	// render the high-level object as YAML

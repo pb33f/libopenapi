@@ -6,7 +6,6 @@ package v2
 import (
 	"crypto/sha256"
 	"fmt"
-	"io"
 	"sort"
 	"strings"
 	"sync"
@@ -32,28 +31,24 @@ func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[
 
 // FindPath attempts to locate a PathItem instance, given a path key.
 func (p *Paths) FindPath(path string) (result *low.ValueReference[*PathItem]) {
-	action := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*PathItem]]) error {
+	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
 		if pair.Key().Value == path {
 			result = pair.ValuePtr()
-			return io.EOF
+			break
 		}
-		return nil
 	}
-	_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*PathItem]](p.PathItems, action)
 	return result
 }
 
 // FindPathAndKey attempts to locate a PathItem instance, given a path key.
 func (p *Paths) FindPathAndKey(path string) (key *low.KeyReference[string], value *low.ValueReference[*PathItem]) {
-	action := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*PathItem]]) error {
+	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
 		if pair.Key().Value == path {
 			key = pair.KeyPtr()
 			value = pair.ValuePtr()
-			return io.EOF
+			break
 		}
-		return nil
 	}
-	_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*PathItem]](p.PathItems, action)
 	return key, value
 }
 
@@ -167,14 +162,12 @@ func (p *Paths) Hash() [32]byte {
 	keys := make(map[string]low.ValueReference[*PathItem])
 	z := 0
 
-	action := func(pair orderedmap.Pair[low.KeyReference[string], low.ValueReference[*PathItem]]) error {
+	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
 		k := pair.Key().Value
 		keys[k] = pair.Value()
 		l[z] = k
 		z++
-		return nil
 	}
-	_ = orderedmap.For[low.KeyReference[string], low.ValueReference[*PathItem]](p.PathItems, action)
 
 	sort.Strings(l)
 	for k := range l {

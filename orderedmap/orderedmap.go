@@ -72,6 +72,11 @@ func (o *wrapOrderedMap[K, V]) First() Pair[K, V] {
 	}
 }
 
+// IsZero is required to support `omitempty` tag for YAML/JSON marshaling.
+func (o *wrapOrderedMap[K, V]) IsZero() bool {
+	return o.Len() == 0
+}
+
 func (p *wrapPair[K, V]) Next() Pair[K, V] {
 	next := p.Pair.Next()
 	if next == nil {
@@ -140,23 +145,13 @@ func ToOrderedMap[K comparable, V any](m map[K]V) Map[K, V] {
 	return om
 }
 
-// For iterates a `Map` and calls action() on each map pair.
-// action() may return `io.EOF` to break iteration.
+// First returns map's first pair for iteration.
 // Safely handles nil pointer.
-func For[K comparable, V any](m Map[K, V], action ActionFunc[K, V]) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	c := Iterate(ctx, m)
-	for pair := range c {
-		err := action(pair)
-		if err == io.EOF {
-			return nil
-		}
-		if err != nil {
-			return err
-		}
+func First[K comparable, V any](m Map[K, V]) Pair[K, V] {
+	if m == nil {
+		return nil
 	}
-	return nil
+	return m.First()
 }
 
 // TranslateMapParallel iterates a `Map` in parallel and calls translate()

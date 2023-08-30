@@ -5,8 +5,9 @@ package renderer
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi"
 	"os"
+
+	"github.com/pb33f/libopenapi"
 )
 
 func ExampleMockGenerator_generateBurgerMock_yaml() {
@@ -21,7 +22,7 @@ func ExampleMockGenerator_generateBurgerMock_yaml() {
 	v3Model, _ := document.BuildV3Model()
 
 	// create a mock of the Burger model
-	burgerModel := v3Model.Model.Components.Schemas["Burger"]
+	burgerModel := v3Model.Model.Components.Schemas.GetOrZero("Burger")
 	burger := burgerModel.Schema()
 	mock, err := mg.GenerateMock(burger, "")
 
@@ -45,7 +46,7 @@ func ExampleMockGenerator_generateFriesMock_json() {
 	v3Model, _ := document.BuildV3Model()
 
 	// create a mock of the Fries model
-	friesModel := v3Model.Model.Components.Schemas["Fries"]
+	friesModel := v3Model.Model.Components.Schemas.GetOrZero("Fries")
 	fries := friesModel.Schema()
 	mock, err := mg.GenerateMock(fries, "")
 
@@ -68,7 +69,8 @@ func ExampleMockGenerator_generateRequestMock_json() {
 	v3Model, _ := document.BuildV3Model()
 
 	// create a mock of the burger request model, extracted from the operation directly.
-	burgerRequestModel := v3Model.Model.Paths.PathItems["/burgers"].Post.RequestBody.Content["application/json"]
+	burgerRequestModel := v3Model.Model.Paths.PathItems.GetOrZero("/burgers").
+		Post.RequestBody.Content.GetOrZero("application/json")
 
 	// use the 'cakeBurger' example to generate a mock
 	mock, err := mg.GenerateMock(burgerRequestModel, "cakeBurger")
@@ -92,7 +94,8 @@ func ExampleMockGenerator_generateResponseMock_json() {
 	v3Model, _ := document.BuildV3Model()
 
 	// create a mock of the burger response model, extracted from the operation directly.
-	burgerResponseModel := v3Model.Model.Paths.PathItems["/burgers"].Post.Responses.Codes["200"].Content["application/json"]
+	burgerResponseModel := v3Model.Model.Paths.PathItems.GetOrZero("/burgers").
+		Post.Responses.Codes.GetOrZero("200").Content.GetOrZero("application/json")
 
 	// use the 'filetOFish' example to generate a mock
 	mock, err := mg.GenerateMock(burgerResponseModel, "filetOFish")
@@ -116,7 +119,7 @@ func ExampleMockGenerator_generatePolymorphicMock_json() {
 	v3Model, _ := document.BuildV3Model()
 
 	// create a mock of the SomePayload component, which uses polymorphism (incorrectly)
-	payloadModel := v3Model.Model.Components.Schemas["SomePayload"]
+	payloadModel := v3Model.Model.Components.Schemas.GetOrZero("SomePayload")
 	payload := payloadModel.Schema()
 	mock, err := mg.GenerateMock(payload, "")
 

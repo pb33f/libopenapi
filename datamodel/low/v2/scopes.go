@@ -6,12 +6,14 @@ package v2
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // Scopes is a low-level representation of a Swagger / OpenAPI 2 OAuth2 Scopes object.
@@ -19,7 +21,7 @@ import (
 // Scopes lists the available scopes for an OAuth2 security scheme.
 //   - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
-	Values     map[low.KeyReference[string]]low.ValueReference[string]
+	Values     orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]
 	Extensions map[low.KeyReference[string]]low.ValueReference[any]
 }
 
@@ -30,7 +32,7 @@ func (s *Scopes) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 
 // FindScope will attempt to locate a scope string using a key.
 func (s *Scopes) FindScope(scope string) *low.ValueReference[string] {
-	return low.FindItemInMap[string](scope, s.Values)
+	return low.FindItemInOrderedMap[string](scope, s.Values)
 }
 
 // Build will extract scope values and extensions from node.
@@ -38,20 +40,23 @@ func (s *Scopes) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Extensions = low.ExtractExtensions(root)
-	valueMap := make(map[low.KeyReference[string]]low.ValueReference[string])
+	valueMap := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
 	if utils.IsNodeMap(root) {
 		for k := range root.Content {
 			if k%2 == 0 {
 				if strings.Contains(root.Content[k].Value, "x-") {
 					continue
 				}
-				valueMap[low.KeyReference[string]{
-					Value:   root.Content[k].Value,
-					KeyNode: root.Content[k],
-				}] = low.ValueReference[string]{
-					Value:     root.Content[k+1].Value,
-					ValueNode: root.Content[k+1],
-				}
+				valueMap.Set(
+					low.KeyReference[string]{
+						Value:   root.Content[k].Value,
+						KeyNode: root.Content[k],
+					},
+					low.ValueReference[string]{
+						Value:     root.Content[k+1].Value,
+						ValueNode: root.Content[k+1],
+					},
+				)
 			}
 		}
 		s.Values = valueMap
@@ -62,12 +67,12 @@ func (s *Scopes) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 // Hash will return a consistent SHA256 Hash of the Scopes object
 func (s *Scopes) Hash() [32]byte {
 	var f []string
-	vals := make(map[string]low.ValueReference[string], len(s.Values))
-	keys := make([]string, len(s.Values))
+	vals := make(map[string]low.ValueReference[string], orderedmap.Len(s.Values))
+	keys := make([]string, orderedmap.Len(s.Values))
 	z := 0
-	for k := range s.Values {
-		keys[z] = k.Value
-		vals[k.Value] = s.Values[k]
+	for pair := orderedmap.First(s.Values); pair != nil; pair = pair.Next() {
+		keys[z] = pair.Key().Value
+		vals[pair.Key().Value] = pair.Value()
 		z++
 	}
 	sort.Strings(keys)

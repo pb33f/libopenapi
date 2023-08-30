@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -795,7 +796,7 @@ func TestExtractArray_Ref_Nested(t *testing.T) {
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
-	yml = `limes: 
+	yml = `limes:
   $ref: '#/components/schemas/let-us-eat-cake'`
 
 	var cNode yaml.Node
@@ -824,7 +825,7 @@ func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
-	yml = `limes: 
+	yml = `limes:
   - $ref: '#/components/schemas/things'`
 
 	var cNode yaml.Node
@@ -851,7 +852,7 @@ func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes: 
+	yml = `limes:
   - $ref: '#/components/schemas/thangs'`
 
 	var cNode yaml.Node
@@ -880,7 +881,7 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
-	yml = `limes: 
+	yml = `limes:
   $ref: '#/components/schemas/things'`
 
 	var cNode yaml.Node
@@ -902,7 +903,7 @@ func TestExtractArray_BadBuild(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes: 
+	yml = `limes:
   - dontWork: 1`
 
 	var cNode yaml.Node
@@ -994,12 +995,12 @@ one:
 	assert.NoError(t, err)
 	assert.Len(t, things, 2)
 
-	for k, v := range things {
-		if k.Value == "x-hey" {
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		if pair.Key().Value == "x-hey" {
 			continue
 		}
-		assert.Equal(t, "one", k.Value)
-		assert.Len(t, v.ValueNode.Content, 2)
+		assert.Equal(t, "one", pair.Key().Value)
+		assert.Len(t, pair.Value().ValueNode.Content, 2)
 	}
 }
 
@@ -1050,8 +1051,8 @@ one:
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
-	for k := range things {
-		assert.Equal(t, "one", k.Value)
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		assert.Equal(t, "one", pair.Key().Value)
 	}
 }
 
@@ -1283,8 +1284,8 @@ one:
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
-	for k := range things {
-		assert.Equal(t, 99, things[k].Value.AlmostWork.Value)
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
 	}
 
 }
@@ -1313,8 +1314,8 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, things, 1)
 
-	for k := range things {
-		assert.Equal(t, 99, things[k].Value.AlmostWork.Value)
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
 	}
 }
 

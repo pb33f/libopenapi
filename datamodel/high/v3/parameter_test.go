@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -23,8 +24,10 @@ func TestParameter_MarshalYAML(t *testing.T) {
 		Explode:       &explode,
 		AllowReserved: true,
 		Example:       "example",
-		Examples:      map[string]*base.Example{"example": {Value: "example"}},
-		Extensions:    map[string]interface{}{"x-burgers": "why not?"},
+		Examples: orderedmap.ToOrderedMap(map[string]*base.Example{
+			"example": {Value: "example"},
+		}),
+		Extensions: map[string]interface{}{"x-burgers": "why not?"},
 	}
 
 	rend, _ := param.Render()
@@ -57,8 +60,10 @@ func TestParameter_MarshalYAMLInline(t *testing.T) {
 		Explode:       &explode,
 		AllowReserved: true,
 		Example:       "example",
-		Examples:      map[string]*base.Example{"example": {Value: "example"}},
-		Extensions:    map[string]interface{}{"x-burgers": "why not?"},
+		Examples: orderedmap.ToOrderedMap(map[string]*base.Example{
+			"example": {Value: "example"},
+		}),
+		Extensions: map[string]interface{}{"x-burgers": "why not?"},
 	}
 
 	rend, _ := param.RenderInline()

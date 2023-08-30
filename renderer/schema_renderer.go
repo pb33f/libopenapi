@@ -7,14 +7,16 @@ import (
 	cryptoRand "crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/lucasjones/reggen"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"golang.org/x/exp/slices"
 	"io"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/lucasjones/reggen"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"golang.org/x/exp/slices"
 )
 
 const rootType = "rootType"
@@ -217,16 +219,17 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		if properties != nil {
 			// check if this schema has required properties, if so, then only render required props, if not
 			// render everything in the schema.
-			checkProps := make(map[string]*base.SchemaProxy)
+			checkProps := orderedmap.New[string, *base.SchemaProxy]()
 			if len(schema.Required) > 0 {
 				for _, requiredProp := range schema.Required {
-					checkProps[requiredProp] = properties[requiredProp]
+					checkProps.Set(requiredProp, properties.GetOrZero(requiredProp))
 				}
 			} else {
 				checkProps = properties
 			}
-			for propName, propValue := range checkProps {
+			for pair := orderedmap.First(checkProps); pair != nil; pair = pair.Next() {
 				// render property
+				propName, propValue := pair.Key(), pair.Value()
 				propertySchema := propValue.Schema()
 				wr.DiveIntoSchema(propertySchema, propName, propertyMap, depth+1)
 			}
@@ -249,8 +252,9 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		dependentSchemas := schema.DependentSchemas
 		if dependentSchemas != nil {
 			dependentSchemasMap := make(map[string]any)
-			for k, dependentSchema := range dependentSchemas {
+			for pair := orderedmap.First(dependentSchemas); pair != nil; pair = pair.Next() {
 				// only map if the property exists
+				k, dependentSchema := pair.Key(), pair.Value()
 				if propertyMap[k] != nil {
 					dependentSchemaCompiled := dependentSchema.Schema()
 					wr.DiveIntoSchema(dependentSchemaCompiled, k, dependentSchemasMap, depth+1)
