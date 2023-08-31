@@ -116,22 +116,37 @@ func (n *NodeBuilder) add(key string, i int) {
 		return
 	}
 
-	renderZeroVal := strings.Split(tag, ",")[1]
+	var renderZeroFlag, omitemptyFlag bool
+	tagParts := strings.Split(tag, ",")
+	for i = 1; i < len(tagParts); i++ {
+		if tagParts[i] == renderZero {
+			renderZeroFlag = true
+		}
+		if tagParts[i] == "omitempty" {
+			omitemptyFlag = true
+		}
+	}
 
 	// extract the value of the field
 	fieldValue := reflect.ValueOf(n.High).Elem().FieldByName(key)
 	f := fieldValue.Interface()
 	value := reflect.ValueOf(f)
-
-	if renderZeroVal != renderZero && (f == nil || value.IsZero()) {
+	var isZero bool
+	if zeroer, ok := f.(yaml.IsZeroer); ok && zeroer.IsZero() {
+		isZero = true
+	} else if f == nil || value.IsZero() {
+		isZero = true
+	}
+	if !renderZeroFlag && isZero {
+		return
+	}
+	if omitemptyFlag && isZero && !renderZeroFlag {
 		return
 	}
 
 	// create a new node entry
 	nodeEntry := &NodeEntry{Tag: tagName, Key: key}
-	if renderZeroVal == renderZero {
-		nodeEntry.RenderZero = true
-	}
+	nodeEntry.RenderZero = renderZeroFlag
 
 	switch value.Kind() {
 	case reflect.Float64, reflect.Float32:
@@ -153,7 +168,7 @@ func (n *NodeBuilder) add(key string, i int) {
 				nodeEntry.Value = f
 			}
 		} else {
-			if (renderZeroVal == renderZero) || (!value.IsNil() && !value.IsZero()) {
+			if renderZeroFlag || (!value.IsNil() && !isZero) {
 				nodeEntry.Value = f
 			}
 		}
