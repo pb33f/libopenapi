@@ -147,7 +147,6 @@ func (n *NodeBuilder) add(key string, i int) {
 	// create a new node entry
 	nodeEntry := &NodeEntry{Tag: tagName, Key: key}
 	nodeEntry.RenderZero = renderZeroFlag
-
 	switch value.Kind() {
 	case reflect.Float64, reflect.Float32:
 		nodeEntry.Value = value.Float()

@@ -11,7 +11,6 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -97,7 +96,7 @@ type OAuthFlow struct {
 	AuthorizationUrl low.NodeReference[string]
 	TokenUrl         low.NodeReference[string]
 	RefreshUrl       low.NodeReference[string]
-	Scopes           low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
+	Scopes           low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
 	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
 	*low.Reference
 }
@@ -109,7 +108,7 @@ func (o *OAuthFlow) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 
 // FindScope attempts to locate a scope using a specified name.
 func (o *OAuthFlow) FindScope(scope string) *low.ValueReference[string] {
-	return low.FindItemInOrderedMap[string](scope, o.Scopes.Value)
+	return low.FindItemInMap[string](scope, o.Scopes.Value)
 }
 
 // FindExtension attempts to locate an extension with a specified key
@@ -136,10 +135,10 @@ func (o *OAuthFlow) Hash() [32]byte {
 	if !o.RefreshUrl.IsEmpty() {
 		f = append(f, o.RefreshUrl.Value)
 	}
-	keys := make([]string, orderedmap.Len(o.Scopes.Value))
+	keys := make([]string, len(o.Scopes.Value))
 	z := 0
-	for pair := orderedmap.First(o.Scopes.Value); pair != nil; pair = pair.Next() {
-		keys[z] = fmt.Sprintf("%s-%s", pair.Key().Value, sha256.Sum256([]byte(fmt.Sprint(pair.Value().Value))))
+	for k, v := range o.Scopes.Value {
+		keys[z] = fmt.Sprintf("%s-%s", k.Value, sha256.Sum256([]byte(fmt.Sprint(v.Value))))
 		z++
 	}
 	sort.Strings(keys)

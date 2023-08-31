@@ -82,7 +82,7 @@ clientCredentials:
         CHIP:CHOP: microwave a sock`
 
 	// now modify it and render it back out, and it should be identical!
-	r.ClientCredentials.Scopes.Set("CHIP:CHOP", "microwave a sock")
+	r.ClientCredentials.Scopes["CHIP:CHOP"] = "microwave a sock"
 	rBytes, _ = r.Render()
 	assert.Equal(t, modified, strings.TrimSpace(string(rBytes)))
 
