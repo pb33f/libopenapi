@@ -6,7 +6,6 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,7 +15,8 @@ type OAuthFlow struct {
 	AuthorizationUrl string                         `json:"authorizationUrl,omitempty" yaml:"authorizationUrl,omitempty"`
 	TokenUrl         string                         `json:"tokenUrl,omitempty" yaml:"tokenUrl,omitempty"`
 	RefreshUrl       string                         `json:"refreshUrl,omitempty" yaml:"refreshUrl,omitempty"`
-	Scopes           orderedmap.Map[string, string] `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	// FIXME: Scopes must be converted to orderedmap.Map.  Fix unmarshaling issue causing omitted `scopes` stanza on parsing.
+	Scopes           map[string]string `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 	Extensions       map[string]any                 `json:"-" yaml:"-"`
 	low              *low.OAuthFlow
 }
@@ -28,9 +28,9 @@ func NewOAuthFlow(flow *low.OAuthFlow) *OAuthFlow {
 	o.TokenUrl = flow.TokenUrl.Value
 	o.AuthorizationUrl = flow.AuthorizationUrl.Value
 	o.RefreshUrl = flow.RefreshUrl.Value
-	scopes := orderedmap.New[string, string]()
-	for pair := orderedmap.First(flow.Scopes.Value); pair != nil; pair = pair.Next() {
-		scopes.Set(pair.Key().Value, pair.Value().Value)
+	scopes := map[string]string{}
+	for k, v := range flow.Scopes.Value {
+		scopes[k.Value] = v.Value
 	}
 	o.Scopes = scopes
 	o.Extensions = high.ExtractExtensions(flow.Extensions)

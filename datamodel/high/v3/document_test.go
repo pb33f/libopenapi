@@ -292,8 +292,8 @@ func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 	assert.Equal(t, "an oAuth security scheme", oAuth.Description)
 	assert.Equal(t, 375, oAuth.GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, oAuth.GoLow().Description.ValueNode.Column)
-	assert.Equal(t, 2, orderedmap.Len(oAuth.Flows.Implicit.Scopes))
-	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes.GetOrZero("read:burgers"))
+	assert.Equal(t, 2, len(oAuth.Flows.Implicit.Scopes))
+	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes["read:burgers"])
 	assert.Equal(t, "https://pb33f.io/oauth", oAuth.Flows.AuthorizationCode.AuthorizationUrl)
 
 	// check the lowness is low.

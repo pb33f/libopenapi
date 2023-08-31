@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // OAuthFlowsChanges represents changes found between two OpenAPI OAuthFlows objects.
@@ -229,26 +228,26 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 
 	CheckProperties(props)
 
-	for pair := orderedmap.First(l.Scopes.Value); pair != nil; pair = pair.Next() {
-		if r != nil && r.FindScope(pair.Key().Value) == nil {
+	for k, v := range l.Scopes.Value {
+		if r != nil && r.FindScope(k.Value) == nil {
 			CreateChange(&changes, ObjectRemoved, v3.Scopes,
-				pair.Value().ValueNode, nil, true,
-				pair.Key().Value, nil)
+				v.ValueNode, nil, true,
+				k.Value, nil)
 			continue
 		}
-		if r != nil && r.FindScope(pair.Key().Value) != nil {
-			if pair.Value().Value != r.FindScope(pair.Key().Value).Value {
+		if r != nil && r.FindScope(k.Value) != nil {
+			if v.Value != r.FindScope(k.Value).Value {
 				CreateChange(&changes, Modified, v3.Scopes,
-					pair.Value().ValueNode, r.FindScope(pair.Key().Value).ValueNode, true,
-					pair.Value().Value, r.FindScope(pair.Key().Value).Value)
+					v.ValueNode, r.FindScope(k.Value).ValueNode, true,
+					v.Value, r.FindScope(k.Value).Value)
 			}
 		}
 	}
-	for pair := orderedmap.First(r.Scopes.Value); pair != nil; pair = pair.Next() {
-		if l != nil && l.FindScope(pair.Key().Value) == nil {
+	for k, v := range r.Scopes.Value {
+		if l != nil && l.FindScope(k.Value) == nil {
 			CreateChange(&changes, ObjectAdded, v3.Scopes,
-				nil, pair.Value().ValueNode, false,
-				nil, pair.Key().Value)
+				nil, v.ValueNode, false,
+				nil, k.Value)
 		}
 	}
 	oa := new(OAuthFlowChanges)
