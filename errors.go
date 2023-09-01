@@ -12,15 +12,7 @@ var (
 	ErrOpenAPI3Operation = errors.New("this operation is only supported for OpenAPI 3 documents")
 )
 
-func defaultErrorFilter(err error) bool {
-	return true
-}
-
 func isCircularErr(err error) bool {
-	if err == nil {
-		return false
-	}
-
 	var resolvErr *resolver.ResolvingError
 	if errors.As(err, &resolvErr) {
 		return resolvErr.CircularReference != nil
@@ -34,9 +26,7 @@ func isCircularErr(err error) bool {
 // in order to skip the error or true in order to keep the error in the wrapped error list.
 func circularReferenceErrorFilter(forbidden bool) func(error) (keep bool) {
 	return func(err error) bool {
-		if err == nil {
-			return false
-		}
+		// no nil check needed, as errorutils.Filter already removes nil errors
 
 		if isCircularErr(err) {
 			// if forbidded -> keep the error and pass it to the user

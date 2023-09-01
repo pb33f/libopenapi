@@ -24,19 +24,24 @@ func (e *customErr) Error() string {
 	return e.FieldValue
 }
 
-func shallowFilter(err error) bool {
-	_, ok := err.(*customErr)
-	return ok
+func custom1Filter(err error) (keep bool) {
+	if _, ok := err.(*customErr); ok {
+		return false
+	}
+	// do not touch unknown errors
+	return true
 }
 
 func custom2Filter(err error) bool {
-	_, ok := err.(*customErr2)
-	return ok
+	if _, ok := err.(*customErr2); ok {
+		return false
+	}
+	return true
 }
 
-func deepFilter(err error) bool {
+func deepCustom1Filter(err error) bool {
 	var cerr *customErr
-	return errors.As(err, &cerr)
+	return !errors.As(err, &cerr)
 }
 
 func removeAllFilter(err error) bool {
@@ -52,21 +57,19 @@ func TestFilter(t *testing.T) {
 		nil,
 	}
 
-	filtered := Filter(errs, shallowFilter)
-
-	require.Len(t, filtered, 1)
+	filtered := Filter(errs, custom1Filter)
+	require.Len(t, filtered, 2)
 
 	for _, err := range filtered {
 		require.NotNil(t, err)
-		cerr, ok := err.(*customErr)
-		require.True(t, ok, "cannot type assert to customErr")
-
-		require.NotEmpty(t, cerr.FieldValue)
+		_, ok := err.(*customErr)
+		require.False(t, ok, "cannot type assert to customErr")
 	}
 
-	filtered = Filter(errs, deepFilter)
+	// additional filter that removes errors
+	filtered = Filter(errs, deepCustom1Filter)
 
-	require.Len(t, filtered, 2)
+	require.Len(t, filtered, 1)
 }
 
 func TestFilteredNormal(t *testing.T) {
@@ -79,23 +82,20 @@ func TestFilteredNormal(t *testing.T) {
 	}
 	err := Join(errs...)
 
-	filtered := Filtered(err, shallowFilter)
+	filtered := Filtered(err, custom1Filter)
 
-	require.Len(t, ShallowUnwrap(filtered), 1)
+	require.Len(t, ShallowUnwrap(filtered), 3)
 
-	filtered = Filtered(err, deepFilter)
+	filtered = Filtered(err, deepCustom1Filter)
 	require.Len(t, ShallowUnwrap(filtered), 2)
 
-	// we define multiple filters that specialize on their own type of error
-	// to is one of those filters deems the error as one that we want to keep,
-	// the error is then kept in the resulting multi error list.
-	filtered = Filtered(err, deepFilter, custom2Filter)
-	require.Len(t, ShallowUnwrap(filtered), 3)
+	filtered = Filtered(err, deepCustom1Filter, custom2Filter)
+	require.Len(t, ShallowUnwrap(filtered), 1)
 }
 
 func TestFilteredNil(t *testing.T) {
 
-	filtered := Filtered(nil, shallowFilter)
+	filtered := Filtered(nil, custom1Filter)
 	require.Nil(t, filtered)
 }
 

@@ -156,7 +156,7 @@ func NewDocumentWithConfiguration(specByteArray []byte, config *Configuration) (
 		info:              info,
 		highOpenAPI3Model: nil,
 		highSwaggerModel:  nil,
-		errorFilter:       []func(error) bool{defaultErrorFilter}, // set in SetConfiguration
+		errorFilter:       nil, // set in SetConfiguration
 	}
 
 	d.SetConfiguration(config)
