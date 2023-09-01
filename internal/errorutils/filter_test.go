@@ -8,6 +8,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type customErr2 struct {
+	FieldValue string
+}
+
+func (e *customErr2) Error() string {
+	return e.FieldValue
+}
+
 type customErr struct {
 	FieldValue string
 }
@@ -18,6 +26,11 @@ func (e *customErr) Error() string {
 
 func shallowFilter(err error) bool {
 	_, ok := err.(*customErr)
+	return ok
+}
+
+func custom2Filter(err error) bool {
+	_, ok := err.(*customErr2)
 	return ok
 }
 
@@ -61,6 +74,7 @@ func TestFilteredNormal(t *testing.T) {
 		&customErr{FieldValue: "foo"},
 		fmt.Errorf("foo: %w", &customErr{FieldValue: "foo"}),
 		errors.New("bar"),
+		&customErr2{"custom2 error"},
 		nil,
 	}
 	err := Join(errs...)
@@ -71,6 +85,12 @@ func TestFilteredNormal(t *testing.T) {
 
 	filtered = Filtered(err, deepFilter)
 	require.Len(t, ShallowUnwrap(filtered), 2)
+
+	// we define multiple filters that specialize on their own type of error
+	// to is one of those filters deems the error as one that we want to keep,
+	// the error is then kept in the resulting multi error list.
+	filtered = Filtered(err, deepFilter, custom2Filter)
+	require.Len(t, ShallowUnwrap(filtered), 3)
 }
 
 func TestFilteredNil(t *testing.T) {
