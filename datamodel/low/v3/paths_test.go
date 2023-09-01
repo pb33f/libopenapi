@@ -98,6 +98,7 @@ func TestPaths_Build_FailRef(t *testing.T) {
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
 	idx := index.NewSpecIndex(&idxNode)
 
 	var n Paths
@@ -127,7 +128,7 @@ func TestPaths_Build_FailRefDeadEnd(t *testing.T) {
     $ref: '#/nowhere'
 "/some/path":
   get:
-    $ref: '#/~1some~1path/get'    
+    $ref: '#/no/path'    
 "/another/path":
   $ref: '#/~1some~1path'`
 

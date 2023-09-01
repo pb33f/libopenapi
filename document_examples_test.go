@@ -305,7 +305,7 @@ func ExampleCompareDocuments_openAPI() {
 	// Print out some interesting stats about the OpenAPI document changes.
 	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges))
-	//Output: There are 72 changes, of which 17 are breaking. 5 schemas have changes.
+	//Output: There are 75 changes, of which 19 are breaking. 6 schemas have changes.
 
 }
 
