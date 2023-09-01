@@ -154,6 +154,11 @@ func First[K comparable, V any](m Map[K, V]) Pair[K, V] {
 	return m.First()
 }
 
+type jobStatus[T any] struct {
+	done   chan struct{}
+	result T
+}
+
 // TranslateMapParallel iterates a `Map` in parallel and calls translate()
 // asynchronously.
 // translate() or result() may return `io.EOF` to break iteration.
@@ -164,16 +169,11 @@ func TranslateMapParallel[K comparable, V any, RV any](m Map[K, V], translate Tr
 		return nil
 	}
 
-	type jobStatus struct {
-		done   chan struct{}
-		result RV
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	concurrency := runtime.NumCPU()
 	c := Iterate(ctx, m)
-	jobChan := make(chan *jobStatus, concurrency)
+	jobChan := make(chan *jobStatus[RV], concurrency)
 	var reterr error
 	var wg sync.WaitGroup
 	var mu sync.Mutex
@@ -186,7 +186,7 @@ func TranslateMapParallel[K comparable, V any, RV any](m Map[K, V], translate Tr
 			wg.Done()
 		}()
 		for pair := range c {
-			j := &jobStatus{
+			j := &jobStatus[RV]{
 				done: make(chan struct{}),
 			}
 			select {
