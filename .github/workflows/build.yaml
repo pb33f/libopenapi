@@ -68,7 +68,11 @@ jobs:
     
 
       - name: Test & Code Coverage
-        run: go test -v covermode=atomic -coverprofile=coverage.out ./...
+        # https://go.dev/blog/cover
+        # -covermode=set (if a statement was run = default)
+        # -covermode=count (how many times a statement was run)
+        # -covermode=atomic (how many times a statement was run, even in parallel)
+        run: go test -v -coverprofile=coverage.out ./...
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
