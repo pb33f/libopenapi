@@ -140,6 +140,12 @@ func NewDocument(specByteArray []byte, options ...ConfigurationOption) (Document
 // NewDocumentWithConfiguration is the same as NewDocument, except it's a convenience function that calls NewDocument
 // under the hood and then calls SetConfiguration() on the returned Document.
 func NewDocumentWithConfiguration(specByteArray []byte, config *Configuration) (Document, error) {
+
+	if config == nil {
+		// use default config provided by our central constructor function
+		return NewDocument(specByteArray)
+	}
+
 	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(specByteArray, config.BypassDocumentCheck)
 	if err != nil {
 		return nil, err
@@ -150,7 +156,7 @@ func NewDocumentWithConfiguration(specByteArray []byte, config *Configuration) (
 		info:              info,
 		highOpenAPI3Model: nil,
 		highSwaggerModel:  nil,
-		errorFilter:       []func(error) bool{defaultErrorFilter},
+		errorFilter:       []func(error) bool{defaultErrorFilter}, // set in SetConfiguration
 	}
 
 	d.SetConfiguration(config)
@@ -159,17 +165,17 @@ func NewDocumentWithConfiguration(specByteArray []byte, config *Configuration) (
 }
 
 func (d *document) SetConfiguration(config *Configuration) {
-	d.config = config
-
 	if config == nil {
-		d.errorFilter = []func(error) bool{defaultErrorFilter}
-		return
+		// programming error, should panic
+		panic("configuration cannot be nil")
 	}
 
 	if config.RemoteURLHandler == nil {
 		// set default handler if
 		config.RemoteURLHandler = http.Get
 	}
+
+	d.config = config
 
 	d.errorFilter = []func(error) bool{
 		// more filters can be added here if needed
@@ -250,10 +256,6 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
 	}
 
 	var lowDoc *v2low.Swagger
-	if d.config == nil {
-		return nil, ErrNoConfiguration
-	}
-
 	lowDoc, err := v2low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
 	err = errorutils.Filtered(err, d.errorFilter...)
 	if err != nil {
@@ -282,10 +284,6 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 	}
 
 	var lowDoc *v3low.Document
-	if d.config == nil {
-		return nil, ErrNoConfiguration
-	}
-
 	lowDoc, err = v3low.CreateDocumentFromConfig(d.info, d.config.toModelConfig())
 	err = errorutils.Filtered(err, d.errorFilter...)
 	if err != nil {

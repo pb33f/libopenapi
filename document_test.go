@@ -3,6 +3,7 @@
 package libopenapi
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -38,6 +39,12 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 	v2Doc, docErr := doc.BuildV3Model()
 	assert.Len(t, errorutils.ShallowUnwrap(docErr), 1)
 	assert.Nil(t, v2Doc)
+}
+
+func TestLoadDocument_Simple_WithErrorOption_V2(t *testing.T) {
+	yml := `swagger: 2.0.1`
+	_, err := NewDocument([]byte(yml), func(c *Configuration) error { return errors.New("test error") })
+	require.Error(t, err)
 }
 
 func TestLoadDocument_Simple_V2_Error_BadSpec(t *testing.T) {
@@ -317,6 +324,42 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 		BypassDocumentCheck: true,
 	})
 	assert.NoError(t, e)
+}
+
+func TestDocument_DocWithoutConfig_V3(t *testing.T) {
+
+	var d = `openapi: "3.1"`
+
+	doc, e := NewDocumentWithConfiguration([]byte(d), nil)
+	require.NoError(t, e)
+
+	_, e = doc.BuildV3Model()
+	require.NoError(t, e)
+
+}
+
+func TestDocument_DocWithoutConfig_V2(t *testing.T) {
+	yml := `swagger: 2.0.1`
+
+	doc, e := NewDocumentWithConfiguration([]byte(yml), nil)
+	require.NoError(t, e)
+
+	_, e = doc.BuildV2Model()
+	require.NoError(t, e)
+}
+
+func TestSetNilConfig(t *testing.T) {
+	defer func() {
+		i := recover()
+		require.NotNil(t, i)
+	}()
+
+	var d = `openapi: "3.1"`
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), nil)
+	require.NoError(t, err)
+	// panics
+	doc.SetConfiguration(nil)
 }
 
 func TestDocument_BuildModelCircular(t *testing.T) {
