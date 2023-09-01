@@ -5,6 +5,7 @@ package libopenapi
 import (
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -43,7 +44,17 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 
 func TestLoadDocument_Simple_WithErrorOption_V2(t *testing.T) {
 	yml := `swagger: 2.0.1`
-	_, err := NewDocument([]byte(yml), func(c *Configuration) error { return errors.New("test error") })
+	_, err := NewDocument([]byte(yml),
+		WithBaseURL(nil),
+		WithBasePath(""),
+		WithRemoteURLHandler(http.Get),
+		WithAllowFileReferences(true),
+		WithAllowRemoteReferences(true),
+		WithAvoidIndexBuild(false),
+		WithBypassDocumentCheck(false),
+		WithForbidCircularReferenceResolving(false),
+		func(c *Configuration) error { return errors.New("test error") },
+	)
 	require.Error(t, err)
 }
 
