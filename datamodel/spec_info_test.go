@@ -143,7 +143,6 @@ func TestExtractSpecInfo_ValidYAML(t *testing.T) {
 
 func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
 	t.Parallel()
-	t.Parallel()
 	_, e := ExtractSpecInfo([]byte(badYAML))
 	assert.Error(t, e)
 }
