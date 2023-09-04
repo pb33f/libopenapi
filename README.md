@@ -39,7 +39,7 @@ like our _very kind_ sponsors:
 - [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
 - [github.com/speakeasy-api/speakeasy](https://github.com/speakeasy-api/speakeasy) - "Speakeasy CLI makes validating OpenAPI docs and generating idiomatic SDKs easy!"
 - [github.com/apicat/apicat](https://github.com/apicat/apicat) - "AI-powered API development tool"
-- 
+- Your project here?
 ---
 
 ## Come chat with us
@@ -62,6 +62,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [The Data Model](https://pb33f.io/libopenapi/model/)
 - [Validation](https://pb33f.io/libopenapi/validation/)
 - [Modifying / Mutating the OpenAPI Model](https://pb33f.io/libopenapi/modifying/)
+- [Mocking / Creating Examples](https://pb33f.io/libopenapi/mocks/)
 - [Using Vendor Extensions](https://pb33f.io/libopenapi/extensions/)
 - [The Index](https://pb33f.io/libopenapi/index/)
 - [The Resolver](https://pb33f.io/libopenapi/resolver/)
