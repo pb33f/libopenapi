@@ -126,6 +126,7 @@ type Schema struct {
 	ContentEncoding      low.NodeReference[string]
 	ContentMediaType     low.NodeReference[string]
 	Default              low.NodeReference[any]
+	Const                low.NodeReference[any]
 	Nullable             low.NodeReference[bool]
 	ReadOnly             low.NodeReference[bool]
 	WriteOnly            low.NodeReference[bool]
@@ -247,6 +248,9 @@ func (s *Schema) Hash() [32]byte {
 	}
 	if !s.Default.IsEmpty() {
 		d = append(d, low.GenerateHashString(s.Default.Value))
+	}
+	if !s.Const.IsEmpty() {
+		d = append(d, low.GenerateHashString(s.Const.Value))
 	}
 	if !s.Nullable.IsEmpty() {
 		d = append(d, fmt.Sprint(s.Nullable.Value))
@@ -704,8 +708,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 							label = addPNode.Content[g].Value
 							continue
 						} else {
-							addProps[low.KeyReference[string]{Value: label, KeyNode: addPNode.Content[g-1]}] =
-								low.ValueReference[any]{Value: addPNode.Content[g].Value, ValueNode: addPNode.Content[g]}
+							addProps[low.KeyReference[string]{Value: label, KeyNode: addPNode.Content[g-1]}] = low.ValueReference[any]{Value: addPNode.Content[g].Value, ValueNode: addPNode.Content[g]}
 						}
 					}
 					s.AdditionalProperties = low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
@@ -728,8 +731,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 						}
 					}
 
-					s.AdditionalProperties =
-						low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
+					s.AdditionalProperties = low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
 				}
 			}
 		}
@@ -1303,8 +1305,10 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 	if schNode != nil {
 		// check if schema has already been built.
 		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, isReference: isRef, referenceLookup: refLocation}
-		return &low.NodeReference[*SchemaProxy]{Value: schema, KeyNode: schLabel, ValueNode: schNode, ReferenceNode: isRef,
-			Reference: refLocation}, nil
+		return &low.NodeReference[*SchemaProxy]{
+			Value: schema, KeyNode: schLabel, ValueNode: schNode, ReferenceNode: isRef,
+			Reference: refLocation,
+		}, nil
 	}
 	return nil, nil
 }

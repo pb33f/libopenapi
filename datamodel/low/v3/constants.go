@@ -33,6 +33,7 @@ const (
 	TraceLabel                 = "trace"
 	LinksLabel                 = "links"
 	DefaultLabel               = "default"
+	ConstLabel                 = "const"
 	SecurityLabel              = "security"
 	SecuritySchemesLabel       = "securitySchemes"
 	OAuthFlowsLabel            = "flows"
