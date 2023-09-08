@@ -92,6 +92,7 @@ type Schema struct {
 	AdditionalProperties any                     `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
 	Description          string                  `json:"description,omitempty" yaml:"description,omitempty"`
 	Default              any                     `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
+	Const                any                     `json:"const,omitempty" yaml:"const,renderZero,omitempty"`
 	Nullable             *bool                   `json:"nullable,omitempty" yaml:"nullable,omitempty"`
 	ReadOnly             bool                    `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
 	WriteOnly            bool                    `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
@@ -232,7 +233,6 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	if !schema.UnevaluatedProperties.IsEmpty() {
-
 	}
 
 	s.Pattern = schema.Pattern.Value
@@ -263,6 +263,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 	s.Description = schema.Description.Value
 	s.Default = schema.Default.Value
+	s.Const = schema.Const.Value
 	if !schema.Nullable.IsEmpty() {
 		s.Nullable = &schema.Nullable.Value
 	}
