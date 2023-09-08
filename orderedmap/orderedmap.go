@@ -72,6 +72,26 @@ func (o *wrapOrderedMap[K, V]) First() Pair[K, V] {
 	}
 }
 
+// NewPair instantiates a `Pair` object for use with `FromPairs()`.
+func NewPair[K comparable, V any](key K, value V) Pair[K, V] {
+	return &wrapPair[K, V]{
+		Pair: &wk8orderedmap.Pair[K, V]{
+			Key: key,
+			Value: value,
+		},
+	}
+}
+
+// FromPairs creates an `OrderedMap` from an array of pairs.
+// Use `NewPair()` to generate input parameters.
+func FromPairs[K comparable, V any](pairs ...Pair[K, V]) Map[K, V] {
+	om := New[K, V]()
+	for _, pair := range pairs {
+		om.Set(pair.Key(), pair.Value())
+	}
+	return om
+}
+
 // IsZero is required to support `omitempty` tag for YAML/JSON marshaling.
 func (o *wrapOrderedMap[K, V]) IsZero() bool {
 	return o.Len() == 0

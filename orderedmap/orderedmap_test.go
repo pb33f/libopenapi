@@ -264,6 +264,104 @@ func TestMap(t *testing.T) {
 	})
 }
 
+func TestFirst(t *testing.T) {
+	t.Run("Nil", func(t *testing.T) {
+		pair := orderedmap.First[string, int](nil)
+		require.Nil(t, pair)
+	})
+
+	t.Run("Single item", func(t *testing.T) {
+		m := orderedmap.New[string, int]()
+		m.Set("key", 1)
+
+		var count int
+		for pair := orderedmap.First(m); pair != nil; pair = pair.Next() {
+			count++
+		}
+		assert.Equal(t, 1, count)
+	})
+
+	t.Run("Many items", func(t *testing.T) {
+		const mapSize = 100
+		m := orderedmap.New[string, int]()
+		for i := 0; i < mapSize; i++ {
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
+		}
+
+		var count int
+		for pair := orderedmap.First(m); pair != nil; pair = pair.Next() {
+			count++
+		}
+		assert.Equal(t, mapSize, count)
+	})
+}
+
+func TestLen(t *testing.T) {
+	t.Run("Nil", func(t *testing.T) {
+		require.Zero(t, orderedmap.Len(nil))
+	})
+
+	t.Run("Single item", func(t *testing.T) {
+		m := orderedmap.New[string, int]()
+		m.Set("key", 1)
+
+		assert.Equal(t, 1, orderedmap.Len(m))
+	})
+
+	t.Run("Many items", func(t *testing.T) {
+		const mapSize = 100
+		m := orderedmap.New[string, int]()
+		for i := 0; i < mapSize; i++ {
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
+		}
+
+		assert.Equal(t, mapSize, orderedmap.Len(m))
+	})
+}
+
+func TestFromPairs(t *testing.T) {
+	t.Run("Empty", func(t *testing.T) {
+		m := orderedmap.FromPairs[string, int]()
+		require.NotNil(t, m)
+		assert.Zero(t, m.Len())
+	})
+
+	t.Run("Single item", func(t *testing.T) {
+		m := orderedmap.FromPairs(
+			orderedmap.NewPair[string, int]("key", 1),
+		)
+		require.NotNil(t, m)
+		assert.Equal(t, 1, m.Len())
+		pair := m.First()
+		assert.Equal(t, "key", pair.Key())
+		assert.Equal(t, 1, pair.Value())
+		assert.Nil(t, pair.Next())
+	})
+
+	t.Run("Many items", func(t *testing.T) {
+		const mapSize = 100
+		var pairs []orderedmap.Pair[string, int]
+		for i := 0; i < mapSize; i++ {
+			key := fmt.Sprintf("key%d", i)
+			pairs = append(pairs, orderedmap.NewPair[string, int](key, i+1000))
+		}
+
+		m := orderedmap.FromPairs(pairs...)
+		require.NotNil(t, m)
+		assert.Equal(t, mapSize, m.Len())
+
+		var count int
+		for pair := m.First(); pair != nil; pair = pair.Next() {
+			expectedKey := fmt.Sprintf("key%d", count)
+			assert.Equal(t, expectedKey, pair.Key())
+			assert.Equal(t, count+1000, pair.Value())
+			count++
+			require.LessOrEqual(t, count, mapSize)
+		}
+		assert.Equal(t, mapSize, count)
+	})
+}
+
 func requireClosed[K comparable, V any](t *testing.T, c <-chan orderedmap.Pair[K, V]) {
 	select {
 	case pair := <-c:
