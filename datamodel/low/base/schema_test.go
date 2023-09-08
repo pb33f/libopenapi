@@ -415,23 +415,23 @@ examples:
 	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
 
-    schErr := sch.Build(rootNode.Content[0], nil)
-    assert.NoError(t, schErr)
-    assert.Equal(t, "something object", sch.Description.Value)
-    assert.Len(t, sch.Type.Value.B, 2)
-    assert.True(t, sch.Type.Value.IsB())
-    assert.Equal(t, "object", sch.Type.Value.B[0].Value)
-    assert.True(t, sch.ExclusiveMinimum.Value.IsB())
-    assert.False(t, sch.ExclusiveMinimum.Value.IsA())
-    assert.True(t, sch.ExclusiveMaximum.Value.IsB())
-    assert.Equal(t, float64(12), sch.ExclusiveMinimum.Value.B)
-    assert.Equal(t, float64(13), sch.ExclusiveMaximum.Value.B)
-    assert.Len(t, sch.Examples.Value, 1)
-    assert.Equal(t, "testing", sch.Examples.Value[0].Value)
-    assert.Equal(t, "fish64", sch.ContentEncoding.Value)
-    assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
-    assert.True(t, sch.Items.Value.IsB())
-    assert.True(t, sch.Items.Value.B)
+	schErr := sch.Build(rootNode.Content[0], nil)
+	assert.NoError(t, schErr)
+	assert.Equal(t, "something object", sch.Description.Value)
+	assert.Len(t, sch.Type.Value.B, 2)
+	assert.True(t, sch.Type.Value.IsB())
+	assert.Equal(t, "object", sch.Type.Value.B[0].Value)
+	assert.True(t, sch.ExclusiveMinimum.Value.IsB())
+	assert.False(t, sch.ExclusiveMinimum.Value.IsA())
+	assert.True(t, sch.ExclusiveMaximum.Value.IsB())
+	assert.Equal(t, float64(12), sch.ExclusiveMinimum.Value.B)
+	assert.Equal(t, float64(13), sch.ExclusiveMaximum.Value.B)
+	assert.Len(t, sch.Examples.Value, 1)
+	assert.Equal(t, "testing", sch.Examples.Value[0].Value)
+	assert.Equal(t, "fish64", sch.ContentEncoding.Value)
+	assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
+	assert.True(t, sch.Items.Value.IsB())
+	assert.True(t, sch.Items.Value.B)
 }
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
@@ -986,6 +986,22 @@ schema:
 	assert.Equal(t, 5, sch.Default.Value)
 }
 
+func TestExtractSchema_ConstPrimitive(t *testing.T) {
+	yml := `
+schema: 
+  type: object
+  const: 5`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, err := ExtractSchema(idxNode.Content[0], nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, res.Value)
+	sch := res.Value.Schema()
+	assert.Equal(t, 5, sch.Const.Value)
+}
+
 func TestExtractSchema_Ref(t *testing.T) {
 	yml := `components:
   schemas:
@@ -1156,7 +1172,6 @@ func TestExtractSchema_AdditionalPropertiesAsSchema(t *testing.T) {
 
 	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.(*SchemaProxy).Schema())
 	assert.Nil(t, err)
-
 }
 
 func TestExtractSchema_AdditionalPropertiesAsSchemaSlice(t *testing.T) {
@@ -1180,7 +1195,6 @@ func TestExtractSchema_AdditionalPropertiesAsSchemaSlice(t *testing.T) {
 
 	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.([]low.ValueReference[interface{}]))
 	assert.Nil(t, err)
-
 }
 
 func TestExtractSchema_DoNothing(t *testing.T) {
@@ -1599,7 +1613,6 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
 
 	assert.Equal(t, "571bd1853c22393131e2dcadce86894da714ec14968895c8b7ed18154b2be8cd",
 		low.GenerateHashString(res.Value.Schema().UnevaluatedProperties.Value))
-
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
@@ -1622,7 +1635,6 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
 
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
 	assert.False(t, *res.Value.Schema().UnevaluatedProperties.Value.B)
-
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_Undefined(t *testing.T) {
@@ -1644,5 +1656,4 @@ func TestSchema_UnevaluatedPropertiesAsBool_Undefined(t *testing.T) {
 	res, _ := ExtractSchema(idxNode.Content[0], idx)
 
 	assert.Nil(t, res.Value.Schema().UnevaluatedProperties.Value)
-
 }

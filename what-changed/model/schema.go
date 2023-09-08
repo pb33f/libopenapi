@@ -5,13 +5,14 @@ package model
 
 import (
 	"fmt"
+	"sort"
+	"sync"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"sync"
 )
 
 // SchemaChanges represent all changes to a base.Schema OpenAPI object. These changes are represented
@@ -424,8 +425,8 @@ func checkMappedSchemaOfASchema(
 	lSchema,
 	rSchema map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy],
 	changes *[]*Change,
-	doneChan chan bool) (map[string]*SchemaChanges, int) {
-
+	doneChan chan bool,
+) (map[string]*SchemaChanges, int) {
 	propChanges := make(map[string]*SchemaChanges)
 
 	var lProps []string
@@ -452,7 +453,8 @@ func checkMappedSchemaOfASchema(
 }
 
 func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*base.SchemaProxy,
-	propChanges map[string]*SchemaChanges, doneChan chan bool, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node) int {
+	propChanges map[string]*SchemaChanges, doneChan chan bool, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node,
+) int {
 	var propLock sync.Mutex
 	checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
 		if lp != nil && rp != nil {
@@ -495,7 +497,6 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 	// something removed
 	if len(lProps) > len(rProps) {
 		for w := range lProps {
-
 			if rEntities[lProps[w]] != nil {
 				totalProperties++
 				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[lProps[w]], propChanges, doneChan)
@@ -527,8 +528,8 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 func checkSchemaPropertyChanges(
 	lSchema *base.Schema,
 	rSchema *base.Schema,
-	changes *[]*Change, sc *SchemaChanges) {
-
+	changes *[]*Change, sc *SchemaChanges,
+) {
 	var props []*PropertyCheck
 
 	// $schema (breaking change)
@@ -732,7 +733,7 @@ func checkSchemaPropertyChanges(
 		})
 	}
 
-	//Description
+	// Description
 	props = append(props, &PropertyCheck{
 		LeftNode:  lSchema.Description.ValueNode,
 		RightNode: rSchema.Description.ValueNode,
@@ -770,6 +771,17 @@ func checkSchemaPropertyChanges(
 		LeftNode:  lSchema.Default.ValueNode,
 		RightNode: rSchema.Default.ValueNode,
 		Label:     v3.DefaultLabel,
+		Changes:   changes,
+		Breaking:  true,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+
+	// Const
+	props = append(props, &PropertyCheck{
+		LeftNode:  lSchema.Const.ValueNode,
+		RightNode: rSchema.Const.ValueNode,
+		Label:     v3.ConstLabel,
 		Changes:   changes,
 		Breaking:  true,
 		Original:  lSchema,
@@ -1181,8 +1193,8 @@ func extractSchemaChanges(
 	label string,
 	sc *[]*SchemaChanges,
 	changes *[]*Change,
-	done chan bool) {
-
+	done chan bool,
+) {
 	// if there is nothing here, there is nothing to do.
 	if lSchema == nil && rSchema == nil {
 		done <- true
