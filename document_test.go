@@ -5,6 +5,7 @@ package libopenapi
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -866,10 +867,10 @@ components:
 
 }
 
-// Ensure document ordering is preserved after building and loading.
+// Ensure document ordering is preserved after building, rendering, and reloading.
 func TestDocument_Render_PreserveOrder(t *testing.T) {
 	t.Run("Paths", func(t *testing.T) {
-		const pathCount = 100
+		const itemCount = 100
 		doc, err := NewDocument([]byte(`openapi: 3.1.0`))
 		require.NoError(t, err)
 		model, errs := doc.BuildV3Model()
@@ -878,7 +879,7 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 		model.Model.Paths = &v3high.Paths{
 			PathItems: pathItems,
 		}
-		for i := 0; i < pathCount; i++ {
+		for i := 0; i < itemCount; i++ {
 			pathItem := &v3high.PathItem{
 				Get: &v3high.Operation{
 					Parameters: make([]*v3high.Parameter, 0),
@@ -892,7 +893,7 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 			model, errs := doc.BuildV3Model()
 			require.Empty(t, errs)
 			pathItems := model.Model.Paths.PathItems
-			require.Equal(t, pathCount, orderedmap.Len(pathItems))
+			require.Equal(t, itemCount, orderedmap.Len(pathItems))
 
 			var i int
 			for pair := orderedmap.First(model.Model.Paths.PathItems); pair != nil; pair = pair.Next() {
@@ -900,23 +901,180 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 				assert.Equal(t, pathName, pair.Key())
 				i++
 			}
-			assert.Equal(t, pathCount, i)
+			assert.Equal(t, itemCount, i)
 		}
 
-		checkOrder(t, doc)
+		t.Run("Check order before rendering", func(t *testing.T) {
+			checkOrder(t, doc)
+		})
+
 		yamlBytes, doc, _, errs := doc.RenderAndReload()
 		require.Empty(t, errs)
 
+		// Reload YAML into new Document, verify ordering.
 		t.Run("Unmarshalled YAML ordering", func(t *testing.T) {
-			// Reload YAML into new Document, verify ordering.
 			doc2, err := NewDocument(yamlBytes)
 			require.NoError(t, err)
 			checkOrder(t, doc2)
 		})
 
+		// Verify ordering of reloaded document after call to RenderAndReload().
 		t.Run("Reloaded document ordering", func(t *testing.T) {
-			// Verify ordering of reloaded document after call to RenderAndReload().
 			checkOrder(t, doc)
+		})
+	})
+
+	t.Run("Responses", func(t *testing.T) {
+		t.Run("Codes", func(t *testing.T) {
+			const itemCount = 100
+			doc, err := NewDocument([]byte(`openapi: 3.1.0`))
+			require.NoError(t, err)
+			model, errs := doc.BuildV3Model()
+			require.Empty(t, errs)
+			pathItems := orderedmap.New[string, *v3high.PathItem]()
+			model.Model.Paths = &v3high.Paths{
+				PathItems: pathItems,
+			}
+			pathItem := &v3high.PathItem{
+				Get: &v3high.Operation{
+					Parameters: make([]*v3high.Parameter, 0),
+				},
+			}
+			pathName := "/foobar"
+			pathItems.Set(pathName, pathItem)
+			responses := &v3high.Responses{
+				Codes: orderedmap.New[string, *v3high.Response](),
+			}
+			pathItem.Get.Responses = responses
+
+			for i := 0; i < itemCount; i++ {
+				code := strconv.Itoa(200 + i)
+				resp := &v3high.Response{}
+				responses.Codes.Set(code, resp)
+			}
+
+			checkOrder := func(t *testing.T, doc Document) {
+				model, errs := doc.BuildV3Model()
+				require.Empty(t, errs)
+				pathItem := model.Model.Paths.PathItems.GetOrZero(pathName)
+				responses := pathItem.Get.Responses
+
+				var i int
+				for pair := orderedmap.First(responses.Codes); pair != nil; pair = pair.Next() {
+					expectedCode := strconv.Itoa(200 + i)
+					assert.Equal(t, expectedCode, pair.Key())
+					i++
+				}
+				assert.Equal(t, itemCount, i)
+			}
+
+			t.Run("Check order before rendering", func(t *testing.T) {
+				checkOrder(t, doc)
+			})
+
+			yamlBytes, doc, _, errs := doc.RenderAndReload()
+			require.Empty(t, errs)
+
+			// Reload YAML into new Document, verify ordering.
+			t.Run("Unmarshalled YAML ordering", func(t *testing.T) {
+				doc2, err := NewDocument(yamlBytes)
+				require.NoError(t, err)
+				checkOrder(t, doc2)
+			})
+
+			// Verify ordering of reloaded document after call to RenderAndReload().
+			t.Run("Reloaded document ordering", func(t *testing.T) {
+				checkOrder(t, doc)
+			})
+		})
+
+		t.Run("Examples", func(t *testing.T) {
+			const itemCount = 3
+			doc, err := NewDocument([]byte(`openapi: 3.1.0`))
+			require.NoError(t, err)
+			model, errs := doc.BuildV3Model()
+			require.Empty(t, errs)
+			pathItems := orderedmap.New[string, *v3high.PathItem]()
+			model.Model.Paths = &v3high.Paths{
+				PathItems: pathItems,
+			}
+			pathItem := &v3high.PathItem{
+				Get: &v3high.Operation{
+					Parameters: make([]*v3high.Parameter, 0),
+				},
+			}
+			const pathName = "/foobar"
+			pathItems.Set(pathName, pathItem)
+			responses := &v3high.Responses{
+				Codes: orderedmap.New[string, *v3high.Response](),
+			}
+			pathItem.Get.Responses = responses
+			response := &v3high.Response{
+				Content: orderedmap.New[string, *v3high.MediaType](),
+			}
+			const respCode = "200"
+			responses.Codes.Set(respCode, response)
+			const mediaType = "application/json"
+			mediaTypeResp := &v3high.MediaType{
+				Examples: orderedmap.New[string, *base.Example](),
+			}
+			response.Content.Set(mediaType, mediaTypeResp)
+			type testExampleDomain struct {
+				ID   string `json:"id"`
+				Name string `json:"name"`
+				Type string `json:"type"`
+			}
+			type testExampleDetails struct {
+				Message string            `json:"message"`
+				Domain  testExampleDomain `json:"domain"`
+			}
+
+			for i := 0; i < itemCount; i++ {
+				example := &base.Example{
+					Summary:     fmt.Sprintf("Summary example %d", i),
+					Description: "Description example",
+					Value: testExampleDetails{
+						Message: "Foobar message",
+						Domain: testExampleDomain{
+							ID:   "12345",
+							Name: "example.com",
+							Type: "Foobar type",
+						},
+					},
+				}
+				exampleName := fmt.Sprintf("FoobarExample%d", i)
+				mediaTypeResp.Examples.Set(exampleName, example)
+			}
+
+			checkOrder := func(t *testing.T, doc Document) {
+				model, errs := doc.BuildV3Model()
+				require.Empty(t, errs)
+				pathItem := model.Model.Paths.PathItems.GetOrZero(pathName)
+				responses := pathItem.Get.Responses
+				respCode := responses.Codes.GetOrZero(respCode)
+				mediaTypeResp := respCode.Content.GetOrZero(mediaType)
+
+				var i int
+				for pair := orderedmap.First(mediaTypeResp.Examples); pair != nil; pair = pair.Next() {
+					assert.Equal(t, fmt.Sprintf("FoobarExample%d", i), pair.Key())
+					example := pair.Value()
+					assert.Equal(t, fmt.Sprintf("Summary example %d", i), example.Summary)
+					i++
+				}
+				assert.Equal(t, itemCount, i)
+			}
+
+			t.Run("Check order before rendering", func(t *testing.T) {
+				checkOrder(t, doc)
+			})
+
+			_, _, _, errs = doc.RenderAndReload()
+			require.Empty(t, errs)
+
+			// Cannot test order of reloaded or unmarshalled examples.
+			// The data type of `Example.Value` is `any`, and `yaml` package
+			// will unmarshall associative array data to `map` objects, which
+			// will lose consistent order.
 		})
 	})
 }
