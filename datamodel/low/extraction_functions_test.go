@@ -970,7 +970,7 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 }
 
@@ -993,7 +993,7 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 2)
+	assert.Equal(t, 2, orderedmap.Len(things))
 
 	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
 		if pair.Key().Value == "x-hey" {
@@ -1026,7 +1026,7 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 4)
+	assert.Equal(t, 4, orderedmap.Len(things))
 
 }
 
@@ -1049,7 +1049,7 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](cNode.Content[0], idx, false)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
 		assert.Equal(t, "one", pair.Key().Value)
@@ -1075,7 +1075,7 @@ one:
 
 	things, _, _, err := ExtractMapExtensions[*test_Good]("one", cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMap_WithoutExtensions(t *testing.T) {
@@ -1097,7 +1097,7 @@ one:
 
 	things, _, _, err := ExtractMapExtensions[*test_Good]("one", cNode.Content[0], idx, false)
 	assert.NoError(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlatNoLookup_Ref(t *testing.T) {
@@ -1122,7 +1122,7 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 }
 
@@ -1148,7 +1148,7 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 
 }
 
@@ -1180,7 +1180,7 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 }
 
@@ -1206,7 +1206,7 @@ hello:
 
 	things, err := ExtractMapNoLookup[*test_noGood](cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 
 }
 
@@ -1232,7 +1232,7 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_almostGood](cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 
 }
 
@@ -1255,7 +1255,7 @@ one:
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 }
 
@@ -1282,7 +1282,7 @@ one:
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
 		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
@@ -1312,7 +1312,7 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
 		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
@@ -1342,7 +1342,7 @@ func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_almostGood]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 
 }
 
@@ -1369,7 +1369,7 @@ func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_almostGood]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 
 }
 
@@ -1401,7 +1401,7 @@ func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 }
 
@@ -1428,7 +1428,7 @@ func TestExtractMapFlat_Ref_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_almostGood]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 
 }
 
@@ -1458,7 +1458,7 @@ func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
@@ -1488,7 +1488,7 @@ func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
@@ -1514,7 +1514,7 @@ func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
@@ -1540,7 +1540,7 @@ func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("not-even-there", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Bad(t *testing.T) {
@@ -1569,7 +1569,7 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestLocateRefNode_RemoteFile(t *testing.T) {
@@ -1600,7 +1600,7 @@ func TestLocateRefNode_RemoteFile(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
 }
 

@@ -6,13 +6,14 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strconv"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strconv"
-	"strings"
 )
 
 // Example represents a low-level Example object as defined by OpenAPI 3+

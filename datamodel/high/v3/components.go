@@ -110,7 +110,6 @@ func NewComponents(comp *low.Components) *Components {
 type componentResult[T any] struct {
 	res  T
 	key  string
-	comp int
 }
 
 // buildComponent builds component structs from low level structs.
