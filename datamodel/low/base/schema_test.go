@@ -405,7 +405,8 @@ contentEncoding: fish64
 contentMediaType: fish/paste
 items: true
 examples:
-  - testing`
+  - testing
+const: tasty`
 
 	var rootNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(testSpec), &rootNode)
@@ -432,6 +433,7 @@ examples:
 	assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
 	assert.True(t, sch.Items.Value.IsB())
 	assert.True(t, sch.Items.Value.B)
+	assert.Equal(t, "tasty", sch.Const.Value)
 }
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
