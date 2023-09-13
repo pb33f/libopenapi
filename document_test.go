@@ -8,7 +8,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -230,7 +229,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 func TestDocument_RenderAndReload(t *testing.T) {
 
 	// load an OpenAPI 3 specification from bytes
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
 	// create a new document from specification bytes
 	doc, err := NewDocument(petstore)
@@ -276,10 +275,101 @@ func TestDocument_RenderAndReload(t *testing.T) {
 
 	assert.Equal(t, "https://pb33f.io",
 		h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl)
+}
+
+func TestDocument_Render(t *testing.T) {
+
+	// load an OpenAPI 3 specification from bytes
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
+
+	// create a new document from specification bytes
+	doc, err := NewDocument(petstore)
+
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	m, _ := doc.BuildV3Model()
+
+	// mutate the model
+	h := m.Model
+	h.Paths.PathItems["/pet/findByStatus"].Get.OperationId = "findACakeInABakery"
+	h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description = "a nice bucket of mice"
+	h.Paths.PathItems["/pet/findByTags"].Get.Tags =
+		append(h.Paths.PathItems["/pet/findByTags"].Get.Tags, "gurgle", "giggle")
+
+	h.Paths.PathItems["/pet/{petId}"].Delete.Security = append(h.Paths.PathItems["/pet/{petId}"].Delete.Security,
+		&base.SecurityRequirement{Requirements: map[string][]string{
+			"pizza-and-cake": {"read:abook", "write:asong"},
+		}})
+
+	h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example = "I am a teapot, filled with love."
+	h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
+
+	bytes, e := doc.Render()
+	assert.NoError(t, e)
+	assert.NotNil(t, bytes)
+
+	newDoc, docErr := NewDocument(bytes)
+
+	assert.NoError(t, docErr)
+
+	newDocModel, docErrs := newDoc.BuildV3Model()
+	assert.Len(t, docErrs, 0)
+
+	h = newDocModel.Model
+	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems["/pet/findByStatus"].Get.OperationId)
+	assert.Equal(t, "a nice bucket of mice",
+		h.Paths.PathItems["/pet/findByStatus"].Get.Responses.Codes["400"].Description)
+	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
+
+	assert.Len(t, h.Paths.PathItems["/pet/findByTags"].Get.Tags, 3)
+	yu := h.Paths.PathItems["/pet/{petId}"].Delete.Security
+	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements["pizza-and-cake"][0])
+	assert.Equal(t, "I am a teapot, filled with love.",
+		h.Components.Schemas["Order"].Schema().Properties["status"].Schema().Example)
+
+	assert.Equal(t, "https://pb33f.io",
+		h.Components.SecuritySchemes["petstore_auth"].Flows.Implicit.AuthorizationUrl)
+}
+
+func TestDocument_RenderWithLargeIndention(t *testing.T) {
+
+	json := `{
+      "openapi": "3.0"
+}`
+	doc, _ := NewDocument([]byte(json))
+
+	doc.BuildV3Model()
+	bytes, _ := doc.Render()
+	assert.Equal(t, json, string(bytes))
 
 }
+
+func TestDocument_Render_ChangeCheck_Burgershop(t *testing.T) {
+
+	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
+	doc, _ := NewDocument(bs)
+	doc.BuildV3Model()
+
+	rend, _ := doc.Render()
+
+	newDoc, _ := NewDocument(rend)
+
+	// compare documents
+	compReport, errs := CompareDocuments(doc, newDoc)
+
+	// should noth be nil.
+	assert.Nil(t, errs)
+	assert.NotNil(t, rend)
+	assert.Nil(t, compReport)
+
+}
+
 func TestDocument_RenderAndReload_Swagger(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev2.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev2.json")
 	doc, _ := NewDocument(petstore)
 	doc.BuildV2Model()
 	doc.BuildV2Model()
@@ -289,8 +379,19 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 
 }
 
+func TestDocument_Render_Swagger(t *testing.T) {
+	petstore, _ := os.ReadFile("test_specs/petstorev2.json")
+	doc, _ := NewDocument(petstore)
+	doc.BuildV2Model()
+	doc.BuildV2Model()
+	_, e := doc.Render()
+	assert.Error(t, e)
+	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e.Error())
+
+}
+
 func TestDocument_BuildModelPreBuild(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 	doc, e := NewDocument(petstore)
 	assert.NoError(t, e)
 	doc.BuildV3Model()
@@ -314,7 +415,7 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 }
 
 func TestDocument_BuildModelCircular(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/circular-tests.yaml")
+	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
 	doc, _ := NewDocument(petstore)
 	m, e := doc.BuildV3Model()
 	assert.NotNil(t, m)
@@ -322,7 +423,7 @@ func TestDocument_BuildModelCircular(t *testing.T) {
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
+	petstore, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	doc, _ := NewDocument(petstore)
 	m, e := doc.BuildV3Model()
 	assert.Nil(t, m)
@@ -387,8 +488,8 @@ paths:
 }
 
 func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(originalDoc, updatedDoc)
@@ -398,8 +499,8 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 
 func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/badref-burgershop.openapi.yaml")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/burgershop.openapi-modified.yaml")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
@@ -410,8 +511,8 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 
 func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/petstorev2-badref.json")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/petstorev2-badref.json")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/petstorev2-badref.json")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/petstorev2-badref.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
@@ -422,8 +523,8 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 
 func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 
-	burgerShopOriginal, _ := ioutil.ReadFile("test_specs/petstorev2.json")
-	burgerShopUpdated, _ := ioutil.ReadFile("test_specs/petstorev3.json")
+	burgerShopOriginal, _ := os.ReadFile("test_specs/petstorev2.json")
+	burgerShopUpdated, _ := os.ReadFile("test_specs/petstorev3.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
@@ -433,7 +534,7 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 }
 
 func TestSchemaRefIsFollowed(t *testing.T) {
-	petstore, _ := ioutil.ReadFile("test_specs/ref-followed.yaml")
+	petstore, _ := os.ReadFile("test_specs/ref-followed.yaml")
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)

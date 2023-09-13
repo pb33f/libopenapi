@@ -34,7 +34,7 @@ x-cli-name: pizza cli`
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil,idxNode.Content[0], idx)
+	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "pizza", n.Title.Value)
