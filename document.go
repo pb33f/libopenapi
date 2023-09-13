@@ -72,6 +72,21 @@ type Document interface {
 	// it's too old, so it should be motivation to upgrade to OpenAPI 3.
 	RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error)
 
+	// Render will render the high level model as it currently exists (including any mutations, additions
+	// and removals to and from any object in the tree). Unlike RenderAndReload, Render will simply print the state
+	// of the model as it currently exists, and will not re-load the model into memory. It means that the low-level and
+	// the high-level models will be out of sync, and the index will only be useful for the original document.
+	//
+	// Why use this instead of RenderAndReload?
+	//
+	// The simple answer is that RenderAndReload is a destructive operation, and will re-build the entire model from
+	// scratch using the new bytes, which is desirable if you want to make changes to the high level model and then
+	// 'reload' the model into memory, so that line numbers and column numbers are correct and the index is accurate.
+	// However, if you don't care about the low-level model, and you're not using the index, and you just want to
+	// print the state of the model as it currently exists, then Render() is the method to use.
+	// **IMPORTANT** This method only supports OpenAPI Documents.
+	Render() ([]byte, error)
+
 	// Serialize will re-render a Document back into a []byte slice. If any modifications have been made to the
 	// underlying data model using low level APIs, then those changes will be reflected in the serialized output.
 	//
@@ -168,14 +183,32 @@ func (d *document) Serialize() ([]byte, error) {
 }
 
 func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error) {
+
+	newBytes, rerr := d.Render()
+	if rerr != nil {
+		return nil, nil, nil, []error{rerr}
+	}
+
+	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
+	if err != nil {
+		return newBytes, newDoc, nil, []error{err}
+	}
+	// build the model.
+	model, errs := newDoc.BuildV3Model()
+	if errs != nil {
+		return newBytes, newDoc, model, errs
+	}
+	// this document is now dead, long live the new document!
+	return newBytes, newDoc, model, nil
+}
+
+func (d *document) Render() ([]byte, error) {
 	if d.highSwaggerModel != nil && d.highOpenAPI3Model == nil {
-		return nil, nil, nil, []error{errors.New("this method only supports OpenAPI 3 documents, not Swagger")}
+		return nil, errors.New("this method only supports OpenAPI 3 documents, not Swagger")
 	}
 
 	var newBytes []byte
 
-	// render the model as the correct type based on the source.
-	// https://github.com/pb33f/libopenapi/issues/105
 	if d.info.SpecFileType == datamodel.JSONFileType {
 		jsonIndent := "  "
 		i := d.info.OriginalIndentation
@@ -190,17 +223,7 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 		newBytes = d.highOpenAPI3Model.Model.RenderWithIndention(d.info.OriginalIndentation)
 	}
 
-	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
-	if err != nil {
-		return newBytes, newDoc, nil, []error{err}
-	}
-	// build the model.
-	model, errs := newDoc.BuildV3Model()
-	if errs != nil {
-		return newBytes, newDoc, model, errs
-	}
-	// this document is now dead, long live the new document!
-	return newBytes, newDoc, model, nil
+	return newBytes, nil
 }
 
 func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {

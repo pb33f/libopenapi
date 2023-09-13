@@ -4,125 +4,125 @@
 package renderer
 
 import (
-    "fmt"
-    "github.com/pb33f/libopenapi"
-    "os"
+	"fmt"
+	"github.com/pb33f/libopenapi"
+	"os"
 )
 
 func ExampleMockGenerator_generateBurgerMock_yaml() {
 
-    // create a new YAML mock generator
-    mg := NewMockGenerator(YAML)
+	// create a new YAML mock generator
+	mg := NewMockGenerator(YAML)
 
-    burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
-    // create a new document from specification and build a v3 model.
-    document, _ := libopenapi.NewDocument(burgerShop)
-    v3Model, _ := document.BuildV3Model()
+	// create a new document from specification and build a v3 model.
+	document, _ := libopenapi.NewDocument(burgerShop)
+	v3Model, _ := document.BuildV3Model()
 
-    // create a mock of the Burger model
-    burgerModel := v3Model.Model.Components.Schemas["Burger"]
-    burger := burgerModel.Schema()
-    mock, err := mg.GenerateMock(burger, "")
+	// create a mock of the Burger model
+	burgerModel := v3Model.Model.Components.Schemas["Burger"]
+	burger := burgerModel.Schema()
+	mock, err := mg.GenerateMock(burger, "")
 
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(string(mock))
-    // Output: name: Big Mac
-    //numPatties: 2
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(mock))
+	// Output: name: Big Mac
+	//numPatties: 2
 }
 
 func ExampleMockGenerator_generateFriesMock_json() {
 
-    // create a new YAML mock generator
-    mg := NewMockGenerator(JSON)
+	// create a new YAML mock generator
+	mg := NewMockGenerator(JSON)
 
-    burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
-    // create a new document from specification and build a v3 model.
-    document, _ := libopenapi.NewDocument(burgerShop)
-    v3Model, _ := document.BuildV3Model()
+	// create a new document from specification and build a v3 model.
+	document, _ := libopenapi.NewDocument(burgerShop)
+	v3Model, _ := document.BuildV3Model()
 
-    // create a mock of the Fries model
-    friesModel := v3Model.Model.Components.Schemas["Fries"]
-    fries := friesModel.Schema()
-    mock, err := mg.GenerateMock(fries, "")
+	// create a mock of the Fries model
+	friesModel := v3Model.Model.Components.Schemas["Fries"]
+	fries := friesModel.Schema()
+	mock, err := mg.GenerateMock(fries, "")
 
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(string(mock))
-    // Output: {"favoriteDrink":{"drinkType":"coke","size":"M"},"potatoShape":"Crispy Shoestring"}
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(mock))
+	// Output: {"favoriteDrink":{"drinkType":"coke","size":"M"},"potatoShape":"Crispy Shoestring"}
 }
 
 func ExampleMockGenerator_generateRequestMock_json() {
 
-    // create a new YAML mock generator
-    mg := NewMockGenerator(JSON)
+	// create a new YAML mock generator
+	mg := NewMockGenerator(JSON)
 
-    burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
-    // create a new document from specification and build a v3 model.
-    document, _ := libopenapi.NewDocument(burgerShop)
-    v3Model, _ := document.BuildV3Model()
+	// create a new document from specification and build a v3 model.
+	document, _ := libopenapi.NewDocument(burgerShop)
+	v3Model, _ := document.BuildV3Model()
 
-    // create a mock of the burger request model, extracted from the operation directly.
-    burgerRequestModel := v3Model.Model.Paths.PathItems["/burgers"].Post.RequestBody.Content["application/json"]
+	// create a mock of the burger request model, extracted from the operation directly.
+	burgerRequestModel := v3Model.Model.Paths.PathItems["/burgers"].Post.RequestBody.Content["application/json"]
 
-    // use the 'cakeBurger' example to generate a mock
-    mock, err := mg.GenerateMock(burgerRequestModel, "cakeBurger")
+	// use the 'cakeBurger' example to generate a mock
+	mock, err := mg.GenerateMock(burgerRequestModel, "cakeBurger")
 
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(string(mock))
-    // Output: {"name":"Chocolate Cake Burger","numPatties":5}
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(mock))
+	// Output: {"name":"Chocolate Cake Burger","numPatties":5}
 }
 
 func ExampleMockGenerator_generateResponseMock_json() {
 
-    mg := NewMockGenerator(JSON)
-    // create a new YAML mock generator
+	mg := NewMockGenerator(JSON)
+	// create a new YAML mock generator
 
-    burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
-    // create a new document from specification and build a v3 model.
-    document, _ := libopenapi.NewDocument(burgerShop)
-    v3Model, _ := document.BuildV3Model()
+	// create a new document from specification and build a v3 model.
+	document, _ := libopenapi.NewDocument(burgerShop)
+	v3Model, _ := document.BuildV3Model()
 
-    // create a mock of the burger response model, extracted from the operation directly.
-    burgerResponseModel := v3Model.Model.Paths.PathItems["/burgers"].Post.Responses.Codes["200"].Content["application/json"]
+	// create a mock of the burger response model, extracted from the operation directly.
+	burgerResponseModel := v3Model.Model.Paths.PathItems["/burgers"].Post.Responses.Codes["200"].Content["application/json"]
 
-    // use the 'filetOFish' example to generate a mock
-    mock, err := mg.GenerateMock(burgerResponseModel, "filetOFish")
+	// use the 'filetOFish' example to generate a mock
+	mock, err := mg.GenerateMock(burgerResponseModel, "filetOFish")
 
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(string(mock))
-    // Output: {"name":"Filet-O-Fish","numPatties":1}
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(mock))
+	// Output: {"name":"Filet-O-Fish","numPatties":1}
 }
 
 func ExampleMockGenerator_generatePolymorphicMock_json() {
 
-    mg := NewMockGenerator(JSON)
-    // create a new YAML mock generator
+	mg := NewMockGenerator(JSON)
+	// create a new YAML mock generator
 
-    burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	burgerShop, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
-    // create a new document from specification and build a v3 model.
-    document, _ := libopenapi.NewDocument(burgerShop)
-    v3Model, _ := document.BuildV3Model()
+	// create a new document from specification and build a v3 model.
+	document, _ := libopenapi.NewDocument(burgerShop)
+	v3Model, _ := document.BuildV3Model()
 
-    // create a mock of the SomePayload component, which uses polymorphism (incorrectly)
-    payloadModel := v3Model.Model.Components.Schemas["SomePayload"]
-    payload := payloadModel.Schema()
-    mock, err := mg.GenerateMock(payload, "")
+	// create a mock of the SomePayload component, which uses polymorphism (incorrectly)
+	payloadModel := v3Model.Model.Components.Schemas["SomePayload"]
+	payload := payloadModel.Schema()
+	mock, err := mg.GenerateMock(payload, "")
 
-    if err != nil {
-        panic(err)
-    }
-    fmt.Println(string(mock))
-    // Output: {"drinkType":"coke","size":"M"}
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(mock))
+	// Output: {"drinkType":"coke","size":"M"}
 }
