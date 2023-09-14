@@ -189,13 +189,15 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 		return nil, nil, nil, []error{rerr}
 	}
 
+	var errs []error
+
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
 	if err != nil {
-		return newBytes, newDoc, nil, []error{err}
+		errs = append(errs, err)
 	}
 	// build the model.
-	model, errs := newDoc.BuildV3Model()
-	if errs != nil {
+	model, buildErrs := newDoc.BuildV3Model()
+	if buildErrs != nil {
 		return newBytes, newDoc, model, errs
 	}
 	// this document is now dead, long live the new document!
