@@ -39,6 +39,7 @@ like our _very kind_ sponsors:
 - [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
 - [github.com/speakeasy-api/speakeasy](https://github.com/speakeasy-api/speakeasy) - "Speakeasy CLI makes validating OpenAPI docs and generating idiomatic SDKs easy!"
 - [github.com/apicat/apicat](https://github.com/apicat/apicat) - "AI-powered API development tool"
+- [github.com/mattermost/mattermost](https://github.com/mattermost/mattermost) = "Software development lifecycle platform"
 - Your project here?
 ---
 
