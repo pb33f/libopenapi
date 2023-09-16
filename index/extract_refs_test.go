@@ -134,3 +134,41 @@ components:
 	assert.Len(t, idx.allMappedRefs, 1)
 	assert.Equal(t, "Cake[Burger]", idx.allMappedRefs["#/components/schemas/Cake[Burger]"].Name)
 }
+
+// https://github.com/daveshanley/vacuum/issues/339
+func TestSpecIndex_ExtractRefs_CheckEnumNotPropertyCalledEnum(t *testing.T) {
+
+	yml := `openapi: 3.0.0
+components:
+  schemas:
+    SimpleFieldSchema:
+      description: Schema of a field as described in  JSON Schema draft 2019-09
+      type: object
+      required:
+        - type
+        - description
+      properties:
+        type:
+          type: string
+          enum:
+            - string
+            - number
+        description:
+          type: string
+          description: A description of the property
+        enum:
+          type: array
+          description: A array of describing the possible values
+          items:
+            type: string
+          example:
+            - yo
+            - hello
+   `
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Len(t, idx.allEnums, 1)
+
+}
