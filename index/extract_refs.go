@@ -329,6 +329,11 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				// capture enums
 				if n.Value == "enum" {
 
+					lastItem := seenPath[len(seenPath)-1]
+					if lastItem == "properties" {
+						continue
+					}
+
 					// all enums need to have a type, extract the type from the node where the enum was found.
 					_, enumKeyValueNode := utils.FindKeyNodeTop("type", node.Content)
 
