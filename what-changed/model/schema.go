@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"golang.org/x/exp/slices"
 	"sort"
 	"sync"
 
@@ -480,17 +481,25 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				go checkProperty(lProps[w], lp, rp, propChanges, doneChan)
 			}
 
-			// keys do not match, even after sorting, means a like for like replacement.
+			// keys do not match, even after sorting, check which one was added and which one was removed.
 			if lProps[w] != rProps[w] {
-
-				// old removed, new added.
-				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
-					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
-
-				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
-					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+				if !slices.Contains(lProps, rProps[w]) {
+					// new added.
+					CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
+						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+				}
+				if !slices.Contains(rProps, lProps[w]) {
+					CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
+						lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+				}
+				if slices.Contains(lProps, rProps[w]) {
+					h := slices.Index(lProps, rProps[w])
+					totalProperties++
+					lp = lEntities[lProps[h]]
+					rp = rEntities[rProps[w]]
+					go checkProperty(lProps[h], lp, rp, propChanges, doneChan)
+				}
 			}
-
 		}
 	}
 

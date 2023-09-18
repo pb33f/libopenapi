@@ -2663,3 +2663,48 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 
 }
+
+func TestCompareSchemas_CheckIssue_170(t *testing.T) {
+	left := `openapi: 3.0
+components:
+ schemas:
+   OK:
+     type: object
+     properties:
+       id:
+         type: integer
+         format: int64
+       name:
+         type: string
+       tag:
+         type: string`
+
+	right := `openapi: 3.0
+components:
+ schemas:
+   OK:
+     type: object
+     properties:
+       id:
+         type: integer
+         format: int64
+       name:
+         type: integer
+         format: int64
+       foo:
+         type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 4, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 4)
+	assert.Equal(t, 3, changes.TotalBreakingChanges())
+	assert.Len(t, changes.SchemaPropertyChanges["name"].PropertyChanges.Changes, 2)
+	assert.Len(t, changes.PropertyChanges.Changes, 2)
+}
