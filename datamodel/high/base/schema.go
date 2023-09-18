@@ -176,50 +176,50 @@ func NewSchema(schema *base.Schema) *Schema {
 		s.UniqueItems = &schema.UniqueItems.Value
 	}
 	if !schema.Contains.IsEmpty() {
-		s.Contains = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		s.Contains = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: schema.Contains.ValueNode,
 			Value:     schema.Contains.Value,
-		}}
+		})
 	}
 	if !schema.If.IsEmpty() {
-		s.If = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		s.If = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: schema.If.ValueNode,
 			Value:     schema.If.Value,
-		}}
+		})
 	}
 	if !schema.Else.IsEmpty() {
-		s.Else = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		s.Else = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: schema.Else.ValueNode,
 			Value:     schema.Else.Value,
-		}}
+		})
 	}
 	if !schema.Then.IsEmpty() {
-		s.Then = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		s.Then = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: schema.Then.ValueNode,
 			Value:     schema.Then.Value,
-		}}
+		})
 	}
 	if !schema.PropertyNames.IsEmpty() {
-		s.PropertyNames = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		s.PropertyNames = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: schema.PropertyNames.ValueNode,
 			Value:     schema.PropertyNames.Value,
-		}}
+		})
 	}
 	if !schema.UnevaluatedItems.IsEmpty() {
-		s.UnevaluatedItems = &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		s.UnevaluatedItems = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: schema.UnevaluatedItems.ValueNode,
 			Value:     schema.UnevaluatedItems.Value,
-		}}
+		})
 	}
 	// check if unevaluated properties is a schema
 	if !schema.UnevaluatedProperties.IsEmpty() && schema.UnevaluatedProperties.Value.IsA() {
 		s.UnevaluatedProperties = &DynamicValue[*SchemaProxy, *bool]{
-			A: &SchemaProxy{
-				schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+			A: NewSchemaProxy(
+				&lowmodel.NodeReference[*base.SchemaProxy]{
 					ValueNode: schema.UnevaluatedProperties.ValueNode,
 					Value:     schema.UnevaluatedProperties.Value.A,
 				},
-			},
+			),
 			N: 0,
 		}
 	}
@@ -325,11 +325,11 @@ func NewSchema(schema *base.Schema) *Schema {
 
 	// for every item, build schema async
 	buildSchema := func(sch lowmodel.ValueReference[*base.SchemaProxy], idx int, bChan chan buildResult) {
-		p := &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
+		p := NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			ValueNode: sch.ValueNode,
 			Value:     sch.Value,
 			Reference: sch.GetReference(),
-		}}
+		})
 
 		bChan <- buildResult{idx: idx, s: p}
 	}
@@ -358,13 +358,12 @@ func NewSchema(schema *base.Schema) *Schema {
 	buildProps := func(k lowmodel.KeyReference[string], v lowmodel.ValueReference[*base.SchemaProxy],
 		props map[string]*SchemaProxy, sw int,
 	) {
-		props[k.Value] = &SchemaProxy{
-			schema: &lowmodel.NodeReference[*base.SchemaProxy]{
-				Value:     v.Value,
-				KeyNode:   k.KeyNode,
-				ValueNode: v.ValueNode,
-			},
-		}
+		props[k.Value] = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+			Value:     v.Value,
+			KeyNode:   k.KeyNode,
+			ValueNode: v.ValueNode,
+		},
+		)
 
 		switch sw {
 		case 0:
@@ -418,11 +417,13 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 	if !schema.Items.IsEmpty() {
 		if schema.Items.Value.IsA() {
-			items = &DynamicValue[*SchemaProxy, bool]{A: &SchemaProxy{schema: &lowmodel.NodeReference[*base.SchemaProxy]{
-				ValueNode: schema.Items.ValueNode,
-				Value:     schema.Items.Value.A,
-				KeyNode:   schema.Items.KeyNode,
-			}}}
+			items = &DynamicValue[*SchemaProxy, bool]{
+				A: NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+					ValueNode: schema.Items.ValueNode,
+					Value:     schema.Items.Value.A,
+					KeyNode:   schema.Items.KeyNode,
+				},
+				)}
 		} else {
 			items = &DynamicValue[*SchemaProxy, bool]{N: 1, B: schema.Items.Value.B}
 		}
