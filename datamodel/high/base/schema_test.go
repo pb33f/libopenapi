@@ -57,7 +57,7 @@ func TestNewSchemaProxy(t *testing.T) {
 		ValueNode: idxNode.Content[0],
 	}
 
-	sch1 := SchemaProxy{schema: &lowproxy}
+	sch1 := NewSchemaProxy(&lowproxy)
 	assert.Nil(t, sch1.Schema())
 	assert.Error(t, sch1.GetBuildError())
 
@@ -98,7 +98,7 @@ func TestNewSchemaProxyRender(t *testing.T) {
 		ValueNode: idxNode.Content[0],
 	}
 
-	sch1 := SchemaProxy{schema: &lowproxy}
+	sch1 := NewSchemaProxy(&lowproxy)
 	assert.NotNil(t, sch1.Schema())
 	assert.NoError(t, sch1.GetBuildError())
 
@@ -1125,7 +1125,7 @@ components:
 		ValueNode: idxNode.Content[0],
 	}
 
-	sch1 := SchemaProxy{schema: &lowproxy}
+	sch1 := NewSchemaProxy(&lowproxy)
 	compiled := sch1.Schema()
 
 	// now render it out, it should be identical.
@@ -1177,7 +1177,7 @@ components:
 		ValueNode: idxNode.Content[0],
 	}
 
-	sch1 := SchemaProxy{schema: &lowproxy}
+	sch1 := NewSchemaProxy(&lowproxy)
 	compiled := sch1.Schema()
 
 	// now render it out, it should be identical.
