@@ -9,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"sync"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -49,40 +50,47 @@ type SchemaProxy struct {
 	buildError error
 	rendered   *Schema
 	refStr     string
+	lock       *sync.Mutex
 }
 
 // NewSchemaProxy creates a new high-level SchemaProxy from a low-level one.
 func NewSchemaProxy(schema *low.NodeReference[*base.SchemaProxy]) *SchemaProxy {
-	return &SchemaProxy{schema: schema}
+	return &SchemaProxy{schema: schema, lock: &sync.Mutex{}}
 }
 
 // CreateSchemaProxy will create a new high-level SchemaProxy from a high-level Schema, this acts the same
 // as if the SchemaProxy is pre-rendered.
 func CreateSchemaProxy(schema *Schema) *SchemaProxy {
-	return &SchemaProxy{rendered: schema}
+	return &SchemaProxy{rendered: schema, lock: &sync.Mutex{}}
 }
 
 // CreateSchemaProxyRef will create a new high-level SchemaProxy from a reference string, this is used only when
 // building out new models from scratch that require a reference rather than a schema implementation.
 func CreateSchemaProxyRef(ref string) *SchemaProxy {
-	return &SchemaProxy{refStr: ref}
+	return &SchemaProxy{refStr: ref, lock: &sync.Mutex{}}
 }
 
 // Schema will create a new Schema instance using NewSchema from the low-level SchemaProxy backing this high-level one.
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
 func (sp *SchemaProxy) Schema() *Schema {
+	sp.lock.Lock()
 	if sp.rendered == nil {
+
 		s := sp.schema.Value.Schema()
 		if s == nil {
 			sp.buildError = sp.schema.Value.GetBuildError()
+			sp.lock.Unlock()
 			return nil
 		}
 		sch := NewSchema(s)
 		sch.ParentProxy = sp
+
 		sp.rendered = sch
+		sp.lock.Unlock()
 		return sch
 	} else {
+		sp.lock.Unlock()
 		return sp.rendered
 	}
 }
