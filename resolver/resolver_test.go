@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"net/url"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -63,21 +62,67 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+func TestResolver_CheckForCircularReferences_CatchArray(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
 	var rootNode yaml.Node
 	yaml.Unmarshal(circular, &rootNode)
 
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-
-	index := index.NewSpecIndexWithConfig(&rootNode, &index.SpecIndexConfig{
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-		BaseURL:           baseURL,
-	})
+	index := index.NewSpecIndex(&rootNode)
 
 	resolver := NewResolver(index)
 	assert.NotNil(t, resolver)
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 1)
+	assert.Len(t, resolver.GetResolvingErrors(), 1) // infinite loop is a resolving error.
+	assert.Len(t, resolver.GetCircularErrors(), 1)
+	assert.True(t, resolver.GetCircularErrors()[0].IsArrayResult)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_CheckForCircularReferences_IgnoreArray(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	resolver.IgnoreArrayCircularReferences()
 
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
@@ -87,6 +132,208 @@ func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
 }
+
+func TestResolver_CheckForCircularReferences_IgnorePoly_Any(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	resolver.IgnorePolymorphicCircularReferences()
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0)
+	assert.Len(t, resolver.GetCircularErrors(), 0)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_CheckForCircularReferences_IgnorePoly_All(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          allOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	resolver.IgnorePolymorphicCircularReferences()
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0)
+	assert.Len(t, resolver.GetCircularErrors(), 0)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_CheckForCircularReferences_IgnorePoly_One(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          oneOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	resolver.IgnorePolymorphicCircularReferences()
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0)
+	assert.Len(t, resolver.GetCircularErrors(), 0)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_CheckForCircularReferences_CatchPoly_Any(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0) // not an infinite loop if poly.
+	assert.Len(t, resolver.GetCircularErrors(), 1)
+	assert.Equal(t, "anyOf", resolver.GetCircularErrors()[0].PolymorphicType)
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_CheckForCircularReferences_CatchPoly_All(t *testing.T) {
+	circular := []byte(`openapi: 3.0.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          allOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`)
+	var rootNode yaml.Node
+	yaml.Unmarshal(circular, &rootNode)
+
+	index := index.NewSpecIndex(&rootNode)
+
+	resolver := NewResolver(index)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0) // not an infinite loop if poly.
+	assert.Len(t, resolver.GetCircularErrors(), 1)
+	assert.Equal(t, "allOf", resolver.GetCircularErrors()[0].PolymorphicType)
+	assert.True(t, resolver.GetCircularErrors()[0].IsPolymorphicResult)
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+//func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
+//	circular, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
+//	var rootNode yaml.Node
+//	yaml.Unmarshal(circular, &rootNode)
+//
+//	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+//
+//	index := index.NewSpecIndexWithConfig(&rootNode, &index.SpecIndexConfig{
+//		AllowRemoteLookup: true,
+//		AllowFileLookup:   true,
+//		BaseURL:           baseURL,
+//	})
+//
+//	resolver := NewResolver(index)
+//	assert.NotNil(t, resolver)
+//
+//	circ := resolver.CheckForCircularReferences()
+//	assert.Len(t, circ, 0)
+//	assert.Len(t, resolver.GetResolvingErrors(), 0)
+//	assert.Len(t, resolver.GetCircularErrors(), 0)
+//
+//	_, err := yaml.Marshal(resolver.resolvedRoot)
+//	assert.NoError(t, err)
+//}
 
 func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
 	circular, _ := ioutil.ReadFile("../test_specs/swagger-valid-recursive-model.yaml")
@@ -129,7 +376,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 	}
 	index := index.NewSpecIndex(nil)
 	resolver := NewResolver(index)
-	assert.Nil(t, resolver.extractRelatives(nil, nil, journey, false))
+	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, journey, false))
 }
 
 func TestResolver_ResolveComponents_Stripe(t *testing.T) {

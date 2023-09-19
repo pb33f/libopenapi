@@ -42,6 +42,8 @@ type Resolver struct {
 	indexesVisited     int
 	journeysTaken      int
 	relativesSeen      int
+	ignorePoly         bool
+	ignoreArray        bool
 }
 
 // NewResolver will create a new resolver from a *index.SpecIndex
@@ -92,8 +94,19 @@ func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*index.CircularRef
 			res = append(res, resolver.circularReferences[i])
 		}
 	}
-
 	return res
+}
+
+// IgnorePolymorphicCircularReferences will ignore any circular references that are polymorphic (oneOf, anyOf, allOf)
+// This must be set before any resolving is done.
+func (resolver *Resolver) IgnorePolymorphicCircularReferences() {
+	resolver.ignorePoly = true
+}
+
+// IgnoreArrayCircularReferences will ignore any circular references that stem from arrays. This must be set before
+// any resolving is done.
+func (resolver *Resolver) IgnoreArrayCircularReferences() {
+	resolver.ignoreArray = true
 }
 
 // GetJourneysTaken returns the number of journeys taken by the resolver
@@ -231,7 +244,7 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 	}
 
 	journey = append(journey, ref)
-	relatives := resolver.extractRelatives(ref.Node, seen, journey, resolve)
+	relatives := resolver.extractRelatives(ref.Node, nil, seen, journey, resolve)
 
 	seen = make(map[string]bool)
 
@@ -254,11 +267,17 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 
 					visitedDefinitions := map[string]bool{}
 					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup, visitedDefinitions, nil)
+
+					isArray := false
+					if r.ParentNodeSchemaType == "array" {
+						isArray = true
+					}
 					circRef = &index.CircularReferenceResult{
 						Journey:        loop,
 						Start:          foundDup,
 						LoopIndex:      i,
 						LoopPoint:      foundDup,
+						IsArrayResult:  isArray,
 						IsInfiniteLoop: isInfiniteLoop,
 					}
 					resolver.circularReferences = append(resolver.circularReferences, circRef)
@@ -321,7 +340,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *index.Reference, vis
 	return false, visitedDefinitions
 }
 
-func (resolver *Resolver) extractRelatives(node *yaml.Node,
+func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 	foundRelatives map[string]bool,
 	journey []*index.Reference, resolve bool) []*index.Reference {
 
@@ -333,7 +352,30 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
-				found = append(found, resolver.extractRelatives(n, foundRelatives, journey, resolve)...)
+
+				var anyvn, allvn, onevn, arrayTypevn *yaml.Node
+
+				// extract polymorphic references
+				if len(n.Content) > 1 {
+					_, anyvn = utils.FindKeyNodeTop("anyOf", n.Content)
+					_, allvn = utils.FindKeyNodeTop("allOf", n.Content)
+					_, onevn = utils.FindKeyNodeTop("oneOf", n.Content)
+					_, arrayTypevn = utils.FindKeyNodeTop("type", n.Content)
+				}
+				if anyvn != nil || allvn != nil || onevn != nil {
+					if resolver.ignorePoly {
+						continue
+					}
+				}
+				if arrayTypevn != nil {
+					if arrayTypevn.Value == "array" {
+						if resolver.ignoreArray {
+							continue
+						}
+					}
+				}
+
+				found = append(found, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
 			}
 
 			if i%2 == 0 && n.Value == "$ref" {
@@ -357,10 +399,22 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 					continue
 				}
 
+				schemaType := ""
+				if parent != nil {
+					_, arrayTypevn := utils.FindKeyNodeTop("type", parent.Content)
+					if arrayTypevn != nil {
+						if arrayTypevn.Value == "array" {
+							schemaType = "array"
+						}
+					}
+				}
+
 				r := &index.Reference{
-					Definition: value,
-					Name:       value,
-					Node:       node,
+					Definition:           value,
+					Name:                 value,
+					Node:                 node,
+					ParentNode:           parent,
+					ParentNodeSchemaType: schemaType,
 				}
 
 				found = append(found, r)
@@ -398,6 +452,7 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 												Start:               ref,
 												LoopIndex:           i,
 												LoopPoint:           ref,
+												PolymorphicType:     n.Value,
 												IsPolymorphicResult: true,
 											}
 
@@ -435,6 +490,7 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 												Start:               ref,
 												LoopIndex:           i,
 												LoopPoint:           ref,
+												PolymorphicType:     n.Value,
 												IsPolymorphicResult: true,
 											}
 
@@ -449,6 +505,7 @@ func (resolver *Resolver) extractRelatives(node *yaml.Node,
 					}
 					break
 				}
+
 			}
 		}
 	}
