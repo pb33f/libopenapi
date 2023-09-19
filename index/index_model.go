@@ -28,6 +28,7 @@ type Reference struct {
 	Name                  string
 	Node                  *yaml.Node
 	ParentNode            *yaml.Node
+	ParentNodeSchemaType  string // used to determine if the parent node is an array or not.
 	Resolved              bool
 	Circular              bool
 	Seen                  bool
