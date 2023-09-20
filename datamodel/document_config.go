@@ -40,6 +40,18 @@ type DocumentConfiguration struct {
 	// BypassDocumentCheck will bypass the document check. This is disabled by default. This will allow any document to
 	// passed in and used. Only enable this when parsing non openapi documents.
 	BypassDocumentCheck bool
+
+	// IgnorePolymorphicCircularReferences will skip over checking for circular references in polymorphic schemas.
+	// A polymorphic schema is any schema that is composed other schemas using references via `oneOf`, `anyOf` of `allOf`.
+	// This is disabled by default, which means polymorphic circular references will be checked.
+	IgnorePolymorphicCircularReferences bool
+
+	// IgnoreArrayCircularReferences will skip over checking for circular references in arrays. Sometimes a circular
+	// reference is required to describe a data-shape correctly. Often those shapes are valid circles if the
+	// type of the schema implementing the loop is an array. An empty array would technically break the loop.
+	// So if libopenapi is returning circular references for this use case, then this option should be enabled.
+	// this is disabled by default, which means array circular references will be checked.
+	IgnoreArrayCircularReferences bool
 }
 
 func NewOpenDocumentConfiguration() *DocumentConfiguration {

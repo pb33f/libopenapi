@@ -105,12 +105,6 @@ type SpecIndexConfig struct {
 	// Use the `BuildIndex()` method on the index to build it out once resolved/ready.
 	AvoidBuildIndex bool
 
-	// If set to true, the index will ignore circular references in polymorphic schemas.
-	IgnorePolymorphicCircularReferences bool // ignore circular references in polymorphic schemas.
-
-	// If set to true, the index will ignore circular references in arrays.
-	IgnoreArrayCircularReferences bool // ignore circular references in arrays.
-
 	// private fields
 	seenRemoteSources *syncmap.Map
 	remoteLock        *sync.Mutex
