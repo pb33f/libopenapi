@@ -80,6 +80,64 @@ func TestCircularReferenceError(t *testing.T) {
 	assert.Len(t, err, 3)
 }
 
+func TestCircularReference_IgnoreArray(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(spec))
+	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:           false,
+		AllowRemoteReferences:         false,
+		IgnoreArrayCircularReferences: true,
+	})
+	assert.NotNil(t, circDoc)
+	assert.Len(t, err, 0)
+}
+
+func TestCircularReference_IgnorePoly(t *testing.T) {
+
+	spec := `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(spec))
+	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:                 false,
+		AllowRemoteReferences:               false,
+		IgnorePolymorphicCircularReferences: true,
+	})
+	assert.NotNil(t, circDoc)
+	assert.Len(t, err, 0)
+}
+
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
