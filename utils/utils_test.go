@@ -293,6 +293,17 @@ func TestFindKeyNodeTop(t *testing.T) {
 	assert.Equal(t, 3, k.Line)
 }
 
+func TestFindKeyNodeTopSingleNode(t *testing.T) {
+	a := &yaml.Node{
+		Value: "chicken",
+	}
+
+	c, k := FindKeyNodeTop("chicken", []*yaml.Node{a})
+	assert.Equal(t, "chicken", c.Value)
+	assert.Equal(t, "chicken", k.Value)
+
+}
+
 func TestFindKeyNodeTop_NotFound(t *testing.T) {
 	nodes, _ := FindNodes(getPetstore(), "$")
 	k, v := FindKeyNodeTop("i am a giant potato", nodes[0].Content)
