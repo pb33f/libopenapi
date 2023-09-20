@@ -375,7 +375,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 	for f := 0; f < 200; f++ {
 		journey = append(journey, nil)
 	}
-	idx := index.NewSpecIndexWithConfig(nil, nil)
+	idx := index.NewSpecIndexWithConfig(nil, index.CreateClosedAPIIndexConfig())
 	resolver := NewResolver(idx)
 	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, journey, false))
 }
