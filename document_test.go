@@ -790,3 +790,71 @@ paths:
 
 	assert.Equal(t, spec, strings.TrimSpace(string(rend)))
 }
+
+func TestDocument_IgnorePolymorphicCircularReferences(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	config := datamodel.NewClosedDocumentConfiguration()
+	config.IgnorePolymorphicCircularReferences = true
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), config)
+	if err != nil {
+		panic(err)
+	}
+
+	m, errs := doc.BuildV3Model()
+
+	assert.Len(t, errs, 0)
+	assert.Len(t, m.Index.GetCircularReferences(), 0)
+
+}
+
+func TestDocument_IgnoreArrayCircularReferences(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	config := datamodel.NewClosedDocumentConfiguration()
+	config.IgnoreArrayCircularReferences = true
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), config)
+	if err != nil {
+		panic(err)
+	}
+
+	m, errs := doc.BuildV3Model()
+
+	assert.Len(t, errs, 0)
+	assert.Len(t, m.Index.GetCircularReferences(), 0)
+
+}

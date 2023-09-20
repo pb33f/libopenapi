@@ -63,6 +63,16 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	// create resolver and check for circular references.
 	resolve := resolver.NewResolver(idx)
+
+	// if configured, ignore circular references in arrays and polymorphic schemas
+	if config.IgnoreArrayCircularReferences {
+		resolve.IgnoreArrayCircularReferences()
+	}
+	if config.IgnorePolymorphicCircularReferences {
+		resolve.IgnorePolymorphicCircularReferences()
+	}
+
+	// check for circular references.
 	resolvingErrors := resolve.CheckForCircularReferences()
 
 	if len(resolvingErrors) > 0 {
