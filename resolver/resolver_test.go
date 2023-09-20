@@ -3,7 +3,8 @@ package resolver
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"net/url"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -16,24 +17,24 @@ func TestNewResolver(t *testing.T) {
 }
 
 func Benchmark_ResolveDocumentStripe(b *testing.B) {
-	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
 	for n := 0; n < b.N; n++ {
 		var rootNode yaml.Node
-		yaml.Unmarshal(stripe, &rootNode)
-		index := index.NewSpecIndex(&rootNode)
-		resolver := NewResolver(index)
+		_ = yaml.Unmarshal(stripe, &rootNode)
+		idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+		resolver := NewResolver(idx)
 		resolver.Resolve()
 	}
 }
 
 func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/circular-tests.yaml")
+	circular, _ := os.ReadFile("../test_specs/circular-tests.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
@@ -44,13 +45,13 @@ func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
 }
 
 func TestResolver_CheckForCircularReferences(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/circular-tests.yaml")
+	circular, _ := os.ReadFile("../test_specs/circular-tests.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -80,11 +81,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -115,11 +116,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	resolver.IgnoreArrayCircularReferences()
@@ -151,11 +152,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	resolver.IgnorePolymorphicCircularReferences()
@@ -187,11 +188,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	resolver.IgnorePolymorphicCircularReferences()
@@ -223,11 +224,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	resolver.IgnorePolymorphicCircularReferences()
@@ -259,11 +260,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -293,11 +294,11 @@ components:
         - "name"
         - "children"`)
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -310,39 +311,39 @@ components:
 	assert.NoError(t, err)
 }
 
-//func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
-//	circular, _ := ioutil.ReadFile("../test_specs/digitalocean.yaml")
-//	var rootNode yaml.Node
-//	yaml.Unmarshal(circular, &rootNode)
-//
-//	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-//
-//	index := index.NewSpecIndexWithConfig(&rootNode, &index.SpecIndexConfig{
-//		AllowRemoteLookup: true,
-//		AllowFileLookup:   true,
-//		BaseURL:           baseURL,
-//	})
-//
-//	resolver := NewResolver(index)
-//	assert.NotNil(t, resolver)
-//
-//	circ := resolver.CheckForCircularReferences()
-//	assert.Len(t, circ, 0)
-//	assert.Len(t, resolver.GetResolvingErrors(), 0)
-//	assert.Len(t, resolver.GetCircularErrors(), 0)
-//
-//	_, err := yaml.Marshal(resolver.resolvedRoot)
-//	assert.NoError(t, err)
-//}
+func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
+	circular, _ := os.ReadFile("../test_specs/digitalocean.yaml")
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(circular, &rootNode)
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+
+	idx := index.NewSpecIndexWithConfig(&rootNode, &index.SpecIndexConfig{
+		AllowRemoteLookup: true,
+		AllowFileLookup:   true,
+		BaseURL:           baseURL,
+	})
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetResolvingErrors(), 0)
+	assert.Len(t, resolver.GetCircularErrors(), 0)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
 
 func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/swagger-valid-recursive-model.yaml")
+	circular, _ := os.ReadFile("../test_specs/swagger-valid-recursive-model.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -353,13 +354,13 @@ func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
 }
 
 func TestResolver_CircularReferencesRequiredInvalid(t *testing.T) {
-	circular, _ := ioutil.ReadFile("../test_specs/swagger-invalid-recursive-model.yaml")
+	circular, _ := os.ReadFile("../test_specs/swagger-invalid-recursive-model.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(circular, &rootNode)
+	_ = yaml.Unmarshal(circular, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -374,19 +375,19 @@ func TestResolver_DeepJourney(t *testing.T) {
 	for f := 0; f < 200; f++ {
 		journey = append(journey, nil)
 	}
-	index := index.NewSpecIndex(nil)
-	resolver := NewResolver(index)
+	idx := index.NewSpecIndexWithConfig(nil, nil)
+	resolver := NewResolver(idx)
 	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, journey, false))
 }
 
 func TestResolver_ResolveComponents_Stripe(t *testing.T) {
-	stripe, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(stripe, &rootNode)
+	_ = yaml.Unmarshal(stripe, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
@@ -397,13 +398,13 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 }
 
 func TestResolver_ResolveComponents_BurgerShop(t *testing.T) {
-	mixedref, _ := ioutil.ReadFile("../test_specs/burgershop.openapi.yaml")
+	mixedref, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(mixedref, &rootNode)
+	_ = yaml.Unmarshal(mixedref, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
@@ -432,11 +433,11 @@ components:
       description: tea`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
@@ -459,18 +460,18 @@ components:
       description: tea`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	_ = resolver.CheckForCircularReferences()
 	resolver.circularReferences[0].IsInfiniteLoop = true // override
-	assert.Len(t, index.GetCircularReferences(), 1)
+	assert.Len(t, idx.GetCircularReferences(), 1)
 	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 1)
-	assert.Equal(t, 2, index.GetCircularReferences()[0].LoopIndex)
+	assert.Equal(t, 2, idx.GetCircularReferences()[0].LoopIndex)
 
 }
 
@@ -495,11 +496,11 @@ components:
           $ref: 'go home, I am drunk'`
 
 	var rootNode yaml.Node
-	yaml.Unmarshal([]byte(yml), &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	err := resolver.Resolve()
@@ -508,9 +509,9 @@ components:
 }
 
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
-	mixedref, _ := ioutil.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+	mixedref, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
-	yaml.Unmarshal(mixedref, &rootNode)
+	_ = yaml.Unmarshal(mixedref, &rootNode)
 
 	b := index.CreateOpenAPIIndexConfig()
 	idx := index.NewSpecIndexWithConfig(&rootNode, b)
@@ -529,13 +530,13 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 }
 
 func TestResolver_ResolveComponents_k8s(t *testing.T) {
-	k8s, _ := ioutil.ReadFile("../test_specs/k8s.json")
+	k8s, _ := os.ReadFile("../test_specs/k8s.json")
 	var rootNode yaml.Node
 	yaml.Unmarshal(k8s, &rootNode)
 
-	index := index.NewSpecIndex(&rootNode)
+	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
 
 	circ := resolver.Resolve()
@@ -548,17 +549,17 @@ func ExampleNewResolver() {
 	var rootNode yaml.Node
 
 	//  load in the Stripe OpenAPI spec (lots of polymorphic complexity in here)
-	stripeBytes, _ := ioutil.ReadFile("../test_specs/stripe.yaml")
+	stripeBytes, _ := os.ReadFile("../test_specs/stripe.yaml")
 
 	// unmarshal bytes into our rootNode.
 	_ = yaml.Unmarshal(stripeBytes, &rootNode)
 
 	// create a new spec index (resolver depends on it)
 	indexConfig := index.CreateClosedAPIIndexConfig()
-	index := index.NewSpecIndexWithConfig(&rootNode, indexConfig)
+	idx := index.NewSpecIndexWithConfig(&rootNode, indexConfig)
 
 	// create a new resolver using the index.
-	resolver := NewResolver(index)
+	resolver := NewResolver(idx)
 
 	// resolve the document, if there are circular reference errors, they are returned/
 	// WARNING: this is a destructive action and the rootNode will be PERMANENTLY altered and cannot be unresolved
@@ -574,7 +575,7 @@ func ExampleNewResolver() {
 
 func ExampleResolvingError() {
 	re := ResolvingError{
-		ErrorRef: errors.New("Je suis une erreur"),
+		ErrorRef: errors.New("je suis une erreur"),
 		Node: &yaml.Node{
 			Line:   5,
 			Column: 21,
