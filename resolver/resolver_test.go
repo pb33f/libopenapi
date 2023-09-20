@@ -532,7 +532,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 func TestResolver_ResolveComponents_k8s(t *testing.T) {
 	k8s, _ := os.ReadFile("../test_specs/k8s.json")
 	var rootNode yaml.Node
-	yaml.Unmarshal(k8s, &rootNode)
+	_ = yaml.Unmarshal(k8s, &rootNode)
 
 	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
 
