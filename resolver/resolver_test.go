@@ -585,5 +585,5 @@ func ExampleResolvingError() {
 	}
 
 	fmt.Printf("%s", re.Error())
-	// Output: Je suis une erreur: #/definitions/JeSuisUneErreur [5:21]
+	// Output: je suis une erreur: #/definitions/JeSuisUneErreur [5:21]
 }
