@@ -5,7 +5,7 @@ package datamodel
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/utils"
@@ -290,7 +290,7 @@ func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
 func ExampleExtractSpecInfo() {
 
 	// load bytes from openapi spec file.
-	bytes, _ := ioutil.ReadFile("../test_specs/petstorev3.json")
+	bytes, _ := os.ReadFile("../test_specs/petstorev3.json")
 
 	// create a new *SpecInfo instance from loaded bytes
 	specInfo, err := ExtractSpecInfo(bytes)
