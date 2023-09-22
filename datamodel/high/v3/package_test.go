@@ -5,15 +5,16 @@ package v3
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"io/ioutil"
 )
 
 // An example of how to create a new high-level OpenAPI 3+ document from an OpenAPI specification.
 func Example_createHighLevelOpenAPIDocument() {
 	// Load in an OpenAPI 3+ specification as a byte slice.
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 
 	// Create a new *datamodel.SpecInfo from bytes.
 	info, _ := datamodel.ExtractSpecInfo(data)

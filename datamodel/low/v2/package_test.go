@@ -5,8 +5,9 @@ package v2
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/pb33f/libopenapi/datamodel"
-	"io/ioutil"
 )
 
 // How to create a low-level Swagger / OpenAPI 2 Document from a specification
@@ -15,7 +16,7 @@ func Example_createLowLevelSwaggerDocument() {
 	// How to create a low-level OpenAPI 2 Document
 
 	// load petstore into bytes
-	petstoreBytes, _ := ioutil.ReadFile("../../../test_specs/petstorev2.json")
+	petstoreBytes, _ := os.ReadFile("../../../test_specs/petstorev2.json")
 
 	// read in specification
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
@@ -43,7 +44,7 @@ func ExampleCreateDocument() {
 	// How to create a low-level OpenAPI 2 Document
 
 	// load petstore into bytes
-	petstoreBytes, _ := ioutil.ReadFile("../../../test_specs/petstorev2.json")
+	petstoreBytes, _ := os.ReadFile("../../../test_specs/petstorev2.json")
 
 	// read in specification
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
