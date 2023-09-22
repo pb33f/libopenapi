@@ -5,10 +5,11 @@ package v2
 
 import (
 	"fmt"
+	"os"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"testing"
 )
 
 var doc *Swagger
@@ -17,7 +18,7 @@ func initTest() {
 	if doc != nil {
 		return
 	}
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev2-complete.yaml")
+	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
 	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -38,7 +39,7 @@ func initTest() {
 }
 
 func BenchmarkCreateDocument(b *testing.B) {
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev2-complete.yaml")
+	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
 		doc, _ = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -344,7 +345,7 @@ func TestCreateDocument_InfoBad(t *testing.T) {
 
 func TestCircularReferenceError(t *testing.T) {
 
-	data, _ := ioutil.ReadFile("../../../test_specs/swagger-circular-tests.yaml")
+	data, _ := os.ReadFile("../../../test_specs/swagger-circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	circDoc, err := CreateDocument(info)
 	assert.NotNil(t, circDoc)
