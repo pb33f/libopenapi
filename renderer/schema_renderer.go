@@ -7,14 +7,15 @@ import (
 	cryptoRand "crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"github.com/lucasjones/reggen"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"golang.org/x/exp/slices"
 	"io"
 	"math/rand"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/lucasjones/reggen"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"golang.org/x/exp/slices"
 )
 
 const rootType = "rootType"
@@ -263,29 +264,23 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		// handle oneOf
 		oneOf := schema.OneOf
-		if oneOf != nil {
+		if len(oneOf) > 0 {
 			oneOfMap := make(map[string]any)
-			for _, oneOfSchema := range oneOf {
-				oneOfCompiled := oneOfSchema.Schema()
-				wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
-				for k, v := range oneOfMap[oneOfType].(map[string]any) {
-					propertyMap[k] = v
-				}
-				break // one run once for the first result.
+			oneOfCompiled := oneOf[0].Schema()
+			wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
+			for k, v := range oneOfMap[oneOfType].(map[string]any) {
+				propertyMap[k] = v
 			}
 		}
 
 		// handle anyOf
 		anyOf := schema.AnyOf
-		if anyOf != nil {
+		if len(anyOf) > 0 {
 			anyOfMap := make(map[string]any)
-			for _, anyOfSchema := range anyOf {
-				anyOfCompiled := anyOfSchema.Schema()
-				wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
-				for k, v := range anyOfMap[anyOfType].(map[string]any) {
-					propertyMap[k] = v
-				}
-				break // one run once for the first result only, same as oneOf
+			anyOfCompiled := anyOf[0].Schema()
+			wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
+			for k, v := range anyOfMap[anyOfType].(map[string]any) {
+				propertyMap[k] = v
 			}
 		}
 		structure[key] = propertyMap
