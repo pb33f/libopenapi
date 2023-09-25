@@ -56,7 +56,7 @@ func TestNewDocument_Security(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
 	assert.Len(t, h.Security, 1)
-	assert.Len(t, h.Security[0].Requirements, 1)
+	assert.Equal(t, 1, orderedmap.Len(h.Security[0].Requirements))
 	assert.Len(t, h.Security[0].Requirements.GetOrZero("OAuthScheme"), 2)
 }
 
@@ -97,13 +97,13 @@ func TestNewDocument_Servers(t *testing.T) {
 	assert.Len(t, h.Servers, 2)
 	assert.Equal(t, "{scheme}://api.pb33f.io", h.Servers[0].URL)
 	assert.Equal(t, "this is our main API server, for all fun API things.", h.Servers[0].Description)
-	assert.Len(t, h.Servers[0].Variables, 1)
+	assert.Equal(t, 1, orderedmap.Len(h.Servers[0].Variables))
 	assert.Equal(t, "https", h.Servers[0].Variables.GetOrZero("scheme").Default)
 	assert.Len(t, h.Servers[0].Variables.GetOrZero("scheme").Enum, 2)
 
 	assert.Equal(t, "https://{domain}.{host}.com", h.Servers[1].URL)
 	assert.Equal(t, "this is our second API server, for all fun API things.", h.Servers[1].Description)
-	assert.Len(t, h.Servers[1].Variables, 2)
+	assert.Equal(t, 2, orderedmap.Len(h.Servers[1].Variables))
 	assert.Equal(t, "api", h.Servers[1].Variables.GetOrZero("domain").Default)
 	assert.Equal(t, "pb33f.io", h.Servers[1].Variables.GetOrZero("host").Default)
 
@@ -363,7 +363,7 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 	)
 	assert.Equal(t, 2, orderedmap.Len(okResp.Links))
 	assert.Equal(t, "locateBurger", okResp.Links.GetOrZero("LocateBurger").OperationId)
-	assert.Len(t, burgersOp.Post.Security[0].Requirements, 1)
+	assert.Equal(t, 1, orderedmap.Len(burgersOp.Post.Security[0].Requirements))
 	assert.Len(t, burgersOp.Post.Security[0].Requirements.GetOrZero("OAuthScheme"), 2)
 	assert.Equal(t, "read:burgers", burgersOp.Post.Security[0].Requirements.GetOrZero("OAuthScheme")[0])
 	assert.Len(t, burgersOp.Post.Servers, 1)

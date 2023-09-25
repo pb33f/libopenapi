@@ -5,6 +5,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -72,7 +73,7 @@ anyOf:
     anyOfB:
       type: string
       description: anyOfB description
-      example: 'anyOfBExp'    
+      example: 'anyOfBExp'
 not:
   type: object
   description: a not thing
@@ -84,7 +85,7 @@ not:
     notB:
       type: string
       description: notB description
-      example: 'notBExp'      
+      example: 'notBExp'
 items:
   type: object
   description: an items thing
@@ -134,11 +135,11 @@ properties:
           attribute: true
           wrapped: false
           x-pizza: love
-    additionalProperties: 
+    additionalProperties:
         why: yes
-        thatIs: true    
+        thatIs: true
 additionalProperties: true
-required: 
+required:
   - them
 enum:
   - one
@@ -171,7 +172,7 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.True(t, sch.AdditionalProperties.Value.(bool))
 
-	assert.Len(t, sch.Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sch.Properties.Value))
 	v := sch.FindProperty("somethingB")
 
 	assert.Equal(t, "https://pb33f.io", v.Value.Schema().ExternalDocs.Value.URL.Value)
@@ -204,7 +205,7 @@ func Test_Schema(t *testing.T) {
 	// check polymorphic values allOf
 	f := sch.AllOf.Value[0].Value.Schema()
 	assert.Equal(t, "an allof thing", f.Description.Value)
-	assert.Len(t, f.Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(f.Properties.Value))
 
 	v = f.FindProperty("allOfA")
 	assert.NotNil(t, v)
@@ -221,7 +222,7 @@ func Test_Schema(t *testing.T) {
 
 	// check polymorphic values anyOf
 	assert.Equal(t, "an anyOf thing", sch.AnyOf.Value[0].Value.Schema().Description.Value)
-	assert.Len(t, sch.AnyOf.Value[0].Value.Schema().Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sch.AnyOf.Value[0].Value.Schema().Properties.Value))
 
 	v = sch.AnyOf.Value[0].Value.Schema().FindProperty("anyOfA")
 	assert.NotNil(t, v)
@@ -235,7 +236,7 @@ func Test_Schema(t *testing.T) {
 
 	// check polymorphic values oneOf
 	assert.Equal(t, "a oneof thing", sch.OneOf.Value[0].Value.Schema().Description.Value)
-	assert.Len(t, sch.OneOf.Value[0].Value.Schema().Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sch.OneOf.Value[0].Value.Schema().Properties.Value))
 
 	v = sch.OneOf.Value[0].Value.Schema().FindProperty("oneOfA")
 	assert.NotNil(t, v)
@@ -249,7 +250,7 @@ func Test_Schema(t *testing.T) {
 
 	// check values NOT
 	assert.Equal(t, "a not thing", sch.Not.Value.Schema().Description.Value)
-	assert.Len(t, sch.Not.Value.Schema().Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sch.Not.Value.Schema().Properties.Value))
 
 	v = sch.Not.Value.Schema().FindProperty("notA")
 	assert.NotNil(t, v)
@@ -263,7 +264,7 @@ func Test_Schema(t *testing.T) {
 
 	// check values Items
 	assert.Equal(t, "an items thing", sch.Items.Value.A.Schema().Description.Value)
-	assert.Len(t, sch.Items.Value.A.Schema().Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sch.Items.Value.A.Schema().Properties.Value))
 
 	v = sch.Items.Value.A.Schema().FindProperty("itemsA")
 	assert.NotNil(t, v)
@@ -277,7 +278,7 @@ func Test_Schema(t *testing.T) {
 
 	// check values PrefixItems
 	assert.Equal(t, "an items thing", sch.PrefixItems.Value[0].Value.Schema().Description.Value)
-	assert.Len(t, sch.PrefixItems.Value[0].Value.Schema().Properties.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sch.PrefixItems.Value[0].Value.Schema().Properties.Value))
 
 	v = sch.PrefixItems.Value[0].Value.Schema().FindProperty("itemsA")
 	assert.NotNil(t, v)
@@ -956,7 +957,7 @@ func TestExtractSchema(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml = `schema: 
+	yml = `schema:
   type: object
   properties:
     aValue:
@@ -974,7 +975,7 @@ func TestExtractSchema(t *testing.T) {
 
 func TestExtractSchema_DefaultPrimitive(t *testing.T) {
 	yml := `
-schema: 
+schema:
   type: object
   default: 5`
 
@@ -990,7 +991,7 @@ schema:
 
 func TestExtractSchema_ConstPrimitive(t *testing.T) {
 	yml := `
-schema: 
+schema:
   type: object
   const: 5`
 
@@ -1016,7 +1017,7 @@ func TestExtractSchema_Ref(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml = `schema: 
+	yml = `schema:
   $ref: '#/components/schemas/Something'`
 
 	var idxNode yaml.Node
@@ -1040,7 +1041,7 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	yml = `schema: 
+	yml = `schema:
   $ref: '#/components/schemas/Missing'`
 
 	var idxNode yaml.Node
@@ -1061,7 +1062,7 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
         - nothing
     Nothing:
       properties:
-        something: 
+        something:
           $ref: '#/components/schemas/Something'
       required:
         - something

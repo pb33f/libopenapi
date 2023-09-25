@@ -5,10 +5,12 @@ package v2
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
 )
 
 var doc *Swagger
@@ -55,13 +57,13 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, "1.0.6", doc.Info.Value.Version.Value)
 	assert.Equal(t, "petstore.swagger.io", doc.Host.Value)
 	assert.Equal(t, "/v2", doc.BasePath.Value)
-	assert.Len(t, doc.Parameters.Value.Definitions, 1)
+	assert.Equal(t, 1, orderedmap.Len(doc.Parameters.Value.Definitions))
 	assert.Len(t, doc.Tags.Value, 3)
 	assert.Len(t, doc.Schemes.Value, 2)
-	assert.Len(t, doc.Definitions.Value.Schemas, 6)
-	assert.Len(t, doc.SecurityDefinitions.Value.Definitions, 3)
-	assert.Len(t, doc.Paths.Value.PathItems, 15)
-	assert.Len(t, doc.Responses.Value.Definitions, 2)
+	assert.Equal(t, 6, orderedmap.Len(doc.Definitions.Value.Schemas))
+	assert.Equal(t, 3, orderedmap.Len(doc.SecurityDefinitions.Value.Definitions))
+	assert.Equal(t, 15, orderedmap.Len(doc.Paths.Value.PathItems))
+	assert.Equal(t, 2, orderedmap.Len(doc.Responses.Value.Definitions))
 	assert.Equal(t, "http://swagger.io", doc.ExternalDocs.Value.URL.Value)
 	assert.Equal(t, true, doc.FindExtension("x-pet").Value)
 	assert.Equal(t, true, doc.FindExtension("X-Pet").Value)
@@ -101,7 +103,7 @@ func TestCreateDocument_SecurityDefinitions(t *testing.T) {
 	petStoreAuth := doc.SecurityDefinitions.Value.FindSecurityDefinition("petstore_auth")
 	assert.Equal(t, "oauth2", petStoreAuth.Value.Type.Value)
 	assert.Equal(t, "implicit", petStoreAuth.Value.Flow.Value)
-	assert.Len(t, petStoreAuth.Value.Scopes.Value.Values, 2)
+	assert.Equal(t, 2, orderedmap.Len(petStoreAuth.Value.Scopes.Value.Values))
 	assert.Equal(t, "read your pets", petStoreAuth.Value.Scopes.Value.FindScope("read:pets").Value)
 }
 
@@ -109,7 +111,7 @@ func TestCreateDocument_Definitions(t *testing.T) {
 	initTest()
 	apiResp := doc.Definitions.Value.FindSchema("ApiResponse").Value.Schema()
 	assert.NotNil(t, apiResp)
-	assert.Len(t, apiResp.Properties.Value, 3)
+	assert.Equal(t, 3, orderedmap.Len(apiResp.Properties.Value))
 	assert.Equal(t, "integer", apiResp.FindProperty("code").Value.Schema().Type.Value.A)
 
 	pet := doc.Definitions.Value.FindSchema("Pet").Value.Schema()

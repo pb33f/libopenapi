@@ -6,9 +6,11 @@ package renderer
 import (
 	"encoding/json"
 	"fmt"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"gopkg.in/yaml.v3"
 	"reflect"
+
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 const Example = "Example"
@@ -25,7 +27,7 @@ const (
 // MockGenerator is used to generate mocks for high-level mockable structs or *base.Schema pointers.
 // The mock generator will attempt to generate a mock from a struct using the following fields:
 //   - Example: any type, this is the default example to use if no examples are present.
-//   - Examples: map[string]*base.Example, this is a map of examples keyed by name.
+//   - Examples: orderedmap.Map[string, *base.Example], this is a map of examples keyed by name.
 //   - Schema: *base.SchemaProxy, this is the schema to use if no examples are present.
 //
 // The mock generator will attempt to generate a mock from a *base.Schema pointer.
@@ -59,7 +61,7 @@ func (mg *MockGenerator) SetPretty() {
 
 // GenerateMock generates a mock for a given high-level mockable struct. The mockable struct must contain the following fields:
 // Example: any type, this is the default example to use if no examples are present.
-// Examples: map[string]*base.Example, this is a map of examples keyed by name.
+// Examples: orderedmap.Map[string, *base.Example], this is a map of examples keyed by name.
 // Schema: *base.SchemaProxy, this is the schema to use if no examples are present.
 // The name parameter is optional, if provided, the mock generator will attempt to find an example with the given name.
 // If no name is provided, the first example will be used.
@@ -98,18 +100,20 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	examplesValue := examples.Interface()
 	if examplesValue != nil && !examples.IsNil() {
 
-		// cast examples to map[string]interface{}
-		examplesMap := examplesValue.(map[string]*highbase.Example)
+		// cast examples to orderedmap.Map[string, any]
+		examplesMap := examplesValue.(orderedmap.Map[string, *highbase.Example])
 
 		// if the name is not empty, try and find the example by name
-		for k, exp := range examplesMap {
+		for pair := orderedmap.First(examplesMap); pair != nil; pair = pair.Next() {
+			k, exp := pair.Key(), pair.Value()
 			if k == name {
 				return mg.renderMock(exp.Value), nil
 			}
 		}
 
 		// if the name is empty, just return the first example
-		for _, exp := range examplesMap {
+		for pair := orderedmap.First(examplesMap); pair != nil; pair = pair.Next() {
+			exp := pair.Value()
 			return mg.renderMock(exp.Value), nil
 		}
 	}

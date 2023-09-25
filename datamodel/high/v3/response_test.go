@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -42,10 +43,10 @@ links:
 
 	r := NewResponse(&n)
 
-	assert.Len(t, r.Headers, 1)
-	assert.Len(t, r.Content, 1)
+	assert.Equal(t, 1, orderedmap.Len(r.Headers))
+	assert.Equal(t, 1, orderedmap.Len(r.Content))
 	assert.Equal(t, "pizza!", r.Extensions["x-pizza-man"])
-	assert.Len(t, r.Links, 1)
+	assert.Equal(t, 1, orderedmap.Len(r.Links))
 	assert.Equal(t, 1, r.GoLow().Description.KeyNode.Line)
 
 }
