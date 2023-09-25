@@ -5,25 +5,27 @@ package renderer
 
 import (
 	"encoding/json"
+	"strings"
+	"testing"
+
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 type fakeMockable struct {
 	Schema   *highbase.SchemaProxy
 	Example  any
-	Examples map[string]*highbase.Example
+	Examples orderedmap.Map[string, *highbase.Example]
 }
 
 type fakeMockableButWithASchemaNotAProxy struct {
 	Schema   *highbase.Schema
 	Example  any
-	Examples map[string]*highbase.Example
+	Examples orderedmap.Map[string, *highbase.Example]
 }
 
 var simpleFakeMockSchema = `type: string
@@ -48,12 +50,12 @@ func createFakeMock(mock string, values map[string]any, example any) *fakeMockab
 		Value: &lowProxy,
 	}
 	highSchema := highbase.NewSchemaProxy(&lowRef)
-	examples := make(map[string]*highbase.Example)
+	examples := orderedmap.New[string, *highbase.Example]()
 
 	for k, v := range values {
-		examples[k] = &highbase.Example{
+		examples.Set(k, &highbase.Example{
 			Value: v,
-		}
+		})
 	}
 	return &fakeMockable{
 		Schema:   highSchema,
@@ -71,12 +73,12 @@ func createFakeMockWithoutProxy(mock string, values map[string]any, example any)
 		Value: &lowProxy,
 	}
 	highSchema := highbase.NewSchemaProxy(&lowRef)
-	examples := make(map[string]*highbase.Example)
+	examples := orderedmap.New[string, *highbase.Example]()
 
 	for k, v := range values {
-		examples[k] = &highbase.Example{
+		examples.Set(k, &highbase.Example{
 			Value: v,
-		}
+		})
 	}
 	return &fakeMockableButWithASchemaNotAProxy{
 		Schema:   highSchema.Schema(),
