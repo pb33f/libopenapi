@@ -4,11 +4,13 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSecurityScheme_Build_Borked(t *testing.T) {
@@ -47,7 +49,7 @@ func TestSecurityScheme_Build_Scopes(t *testing.T) {
 
 	err = n.Build(nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, n.Scopes.Value.Values, 2)
+	assert.Equal(t, 2, orderedmap.Len(n.Scopes.Value.Values))
 
 }
 

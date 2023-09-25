@@ -4,12 +4,14 @@
 package v2
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestOperation_Build_ExternalDocs(t *testing.T) {
@@ -180,7 +182,7 @@ security:
 	assert.Equal(t, "theMagicCastle", n.GetOperationId().Value)
 	assert.Len(t, n.GetParameters().Value, 1)
 	assert.True(t, n.GetDeprecated().Value)
-	assert.Len(t, n.GetResponses().Value.(*Responses).Codes, 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetResponses().Value.(*Responses).Codes))
 	assert.Len(t, n.GetSecurity().Value, 1)
 	assert.Len(t, n.GetExtensions(), 1)
 }

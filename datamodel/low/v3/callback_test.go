@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCallback_Build_Success(t *testing.T) {
@@ -17,7 +19,7 @@ func TestCallback_Build_Success(t *testing.T) {
     post:
       requestBody:
         description: Callback payload
-        content: 
+        content:
           'application/json':
             schema:
               type: string
@@ -36,7 +38,7 @@ func TestCallback_Build_Success(t *testing.T) {
 	err = n.Build(nil, rootNode.Content[0], nil)
 	assert.NoError(t, err)
 
-	assert.Len(t, n.Expression.Value, 1)
+	assert.Equal(t, 1, orderedmap.Len(n.Expression.Value))
 
 }
 
@@ -102,7 +104,7 @@ func TestCallback_Build_Using_InlineRef(t *testing.T) {
 
 	err = n.Build(nil, rootNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, n.Expression.Value, 1)
+	assert.Equal(t, 1, orderedmap.Len(n.Expression.Value))
 
 	exp := n.FindExpression("{$request.query.queryUrl}")
 	assert.NotNil(t, exp.Value)

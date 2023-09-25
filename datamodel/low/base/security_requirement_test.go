@@ -4,9 +4,11 @@
 package base
 
 import (
+	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSecurityRequirement_Build(t *testing.T) {
@@ -14,7 +16,7 @@ func TestSecurityRequirement_Build(t *testing.T) {
 	yml := `one:
   - two
   - three
-four: 
+four:
   - five
   - six`
 
@@ -22,7 +24,7 @@ four:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	yml2 := `four: 
+	yml2 := `four:
   - six
   - five
 one:
@@ -36,7 +38,7 @@ one:
 	_ = sr.Build(nil, idxNode.Content[0], nil)
 	_ = sr2.Build(nil, idxNode2.Content[0], nil)
 
-	assert.Len(t, sr.Requirements.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(sr.Requirements.Value))
 	assert.Len(t, sr.GetKeys(), 2)
 	assert.Len(t, sr.FindRequirement("one"), 2)
 	assert.Equal(t, sr.Hash(), sr2.Hash())

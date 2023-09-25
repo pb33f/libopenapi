@@ -225,7 +225,7 @@ func TestCreateDocument_Info(t *testing.T) {
 
 func TestCreateDocument_WebHooks(t *testing.T) {
 	initTest()
-	assert.Len(t, doc.Webhooks.Value, 1)
+	assert.Equal(t, 1, orderedmap.Len(doc.Webhooks.Value))
 	for pair := orderedmap.First(doc.Webhooks.Value); pair != nil; pair = pair.Next() {
 		// a nice deep model should be available for us.
 		assert.Equal(t, "Information about a new burger",
@@ -255,7 +255,7 @@ func TestCreateDocument_Servers(t *testing.T) {
 	// server 1
 	assert.Equal(t, "{scheme}://api.pb33f.io", server1.URL.Value)
 	assert.NotEmpty(t, server1.Description.Value)
-	assert.Len(t, server1.Variables.Value, 1)
+	assert.Equal(t, 1, orderedmap.Len(server1.Variables.Value))
 	assert.Len(t, server1.FindVariable("scheme").Value.Enum, 2)
 	assert.Equal(t, server1.FindVariable("scheme").Value.Default.Value, "https")
 	assert.NotEmpty(t, server1.FindVariable("scheme").Value.Description.Value)
@@ -263,7 +263,7 @@ func TestCreateDocument_Servers(t *testing.T) {
 	// server 2
 	assert.Equal(t, "https://{domain}.{host}.com", server2.URL.Value)
 	assert.NotEmpty(t, server2.Description.Value)
-	assert.Len(t, server2.Variables.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(server2.Variables.Value))
 	assert.Equal(t, "api", server2.FindVariable("domain").Value.Default.Value)
 	assert.NotEmpty(t, server2.FindVariable("domain").Value.Description.Value)
 	assert.NotEmpty(t, server2.FindVariable("host").Value.Description.Value)
@@ -319,7 +319,7 @@ func TestCreateDocument_Tags(t *testing.T) {
 
 func TestCreateDocument_Paths(t *testing.T) {
 	initTest()
-	assert.Len(t, doc.Paths.Value.PathItems, 5)
+	assert.Equal(t, 5, orderedmap.Len(doc.Paths.Value.PathItems))
 	burgerId := doc.Paths.Value.FindPath("/burgers/{burgerId}")
 	assert.NotNil(t, burgerId)
 	assert.Len(t, burgerId.Value.Get.Value.Parameters.Value, 2)
@@ -335,7 +335,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 
 	encoding := pContent.Value.FindPropertyEncoding("burgerTheme")
 	assert.NotNil(t, encoding.Value)
-	assert.Len(t, encoding.Value.Headers.Value, 1)
+	assert.Equal(t, 1, orderedmap.Len(encoding.Value.Headers.Value))
 
 	header := encoding.Value.FindHeader("someHeader")
 	assert.NotNil(t, header.Value)
@@ -357,8 +357,8 @@ func TestCreateDocument_Paths(t *testing.T) {
 	content := requestBody.FindContent("application/json").Value
 
 	assert.NotNil(t, content)
-	assert.Len(t, content.Schema.Value.Schema().Properties.Value, 4)
-	assert.Len(t, content.GetAllExamples(), 2)
+	assert.Equal(t, 4, orderedmap.Len(content.Schema.Value.Schema().Properties.Value))
+	assert.Equal(t, 2, orderedmap.Len(content.GetAllExamples()))
 
 	ex := content.FindExample("pbjBurger")
 	assert.NotNil(t, ex.Value)
@@ -388,14 +388,14 @@ func TestCreateDocument_Paths(t *testing.T) {
 	// check responses
 	responses := burgersPost.Responses.Value
 	assert.NotNil(t, responses)
-	assert.Len(t, responses.Codes, 3)
+	assert.Equal(t, 3, orderedmap.Len(responses.Codes))
 
 	okCode := responses.FindResponseByCode("200")
 	assert.NotNil(t, okCode.Value)
 	assert.Equal(t, "A tasty burger for you to eat.", okCode.Value.Description.Value)
 
 	// check headers are populated
-	assert.Len(t, okCode.Value.Headers.Value, 1)
+	assert.Equal(t, 1, orderedmap.Len(okCode.Value.Headers.Value))
 	okheader := okCode.Value.FindHeader("UseOil")
 	assert.NotNil(t, okheader.Value)
 	assert.Equal(t, "this is a header example for UseOil", okheader.Value.Description.Value)
@@ -421,7 +421,7 @@ func TestCreateDocument_Paths(t *testing.T) {
 	// check links
 	links := okCode.Value.Links
 	assert.NotNil(t, links.Value)
-	assert.Len(t, links.Value, 2)
+	assert.Equal(t, 2, orderedmap.Len(links.Value))
 	assert.Equal(t, "locateBurger", okCode.Value.FindLink("LocateBurger").Value.OperationId.Value)
 
 	locateBurger := okCode.Value.FindLink("LocateBurger").Value
