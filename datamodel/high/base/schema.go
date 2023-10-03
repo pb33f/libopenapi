@@ -63,7 +63,7 @@ type Schema struct {
 
 	// in 3.1 UnevaluatedProperties can be a Schema or a boolean
 	// https://github.com/pb33f/libopenapi/issues/118
-	UnevaluatedProperties *DynamicValue[*SchemaProxy, *bool] `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
+	UnevaluatedProperties *DynamicValue[*SchemaProxy, bool] `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
 
 	// in 3.1 Items can be a Schema or a boolean
 	Items *DynamicValue[*SchemaProxy, bool] `json:"items,omitempty" yaml:"items,omitempty"`
@@ -72,35 +72,35 @@ type Schema struct {
 	Anchor string `json:"$anchor,omitempty" yaml:"$anchor,omitempty"`
 
 	// Compatible with all versions
-	Not                  *SchemaProxy            `json:"not,omitempty" yaml:"not,omitempty"`
-	Properties           map[string]*SchemaProxy `json:"properties,omitempty" yaml:"properties,omitempty"`
-	Title                string                  `json:"title,omitempty" yaml:"title,omitempty"`
-	MultipleOf           *float64                `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
-	Maximum              *float64                `json:"maximum,omitempty" yaml:"maximum,omitempty"`
-	Minimum              *float64                `json:"minimum,omitempty" yaml:"minimum,omitempty"`
-	MaxLength            *int64                  `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
-	MinLength            *int64                  `json:"minLength,omitempty" yaml:"minLength,omitempty"`
-	Pattern              string                  `json:"pattern,omitempty" yaml:"pattern,omitempty"`
-	Format               string                  `json:"format,omitempty" yaml:"format,omitempty"`
-	MaxItems             *int64                  `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
-	MinItems             *int64                  `json:"minItems,omitempty" yaml:"minItems,omitempty"`
-	UniqueItems          *bool                   `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
-	MaxProperties        *int64                  `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
-	MinProperties        *int64                  `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
-	Required             []string                `json:"required,omitempty" yaml:"required,omitempty"`
-	Enum                 []any                   `json:"enum,omitempty" yaml:"enum,omitempty"`
-	AdditionalProperties any                     `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
-	Description          string                  `json:"description,omitempty" yaml:"description,omitempty"`
-	Default              any                     `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
-	Const                any                     `json:"const,omitempty" yaml:"const,renderZero,omitempty"`
-	Nullable             *bool                   `json:"nullable,omitempty" yaml:"nullable,omitempty"`
-	ReadOnly             bool                    `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
-	WriteOnly            bool                    `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
-	XML                  *XML                    `json:"xml,omitempty" yaml:"xml,omitempty"`
-	ExternalDocs         *ExternalDoc            `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
-	Example              any                     `json:"example,omitempty" yaml:"example,omitempty"`
-	Deprecated           *bool                   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	Extensions           map[string]any          `json:"-" yaml:"-"`
+	Not                  *SchemaProxy                      `json:"not,omitempty" yaml:"not,omitempty"`
+	Properties           map[string]*SchemaProxy           `json:"properties,omitempty" yaml:"properties,omitempty"`
+	Title                string                            `json:"title,omitempty" yaml:"title,omitempty"`
+	MultipleOf           *float64                          `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
+	Maximum              *float64                          `json:"maximum,omitempty" yaml:"maximum,omitempty"`
+	Minimum              *float64                          `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	MaxLength            *int64                            `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
+	MinLength            *int64                            `json:"minLength,omitempty" yaml:"minLength,omitempty"`
+	Pattern              string                            `json:"pattern,omitempty" yaml:"pattern,omitempty"`
+	Format               string                            `json:"format,omitempty" yaml:"format,omitempty"`
+	MaxItems             *int64                            `json:"maxItems,omitempty" yaml:"maxItems,omitempty"`
+	MinItems             *int64                            `json:"minItems,omitempty" yaml:"minItems,omitempty"`
+	UniqueItems          *bool                             `json:"uniqueItems,omitempty" yaml:"uniqueItems,omitempty"`
+	MaxProperties        *int64                            `json:"maxProperties,omitempty" yaml:"maxProperties,omitempty"`
+	MinProperties        *int64                            `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
+	Required             []string                          `json:"required,omitempty" yaml:"required,omitempty"`
+	Enum                 []any                             `json:"enum,omitempty" yaml:"enum,omitempty"`
+	AdditionalProperties *DynamicValue[*SchemaProxy, bool] `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
+	Description          string                            `json:"description,omitempty" yaml:"description,omitempty"`
+	Default              any                               `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
+	Const                any                               `json:"const,omitempty" yaml:"const,renderZero,omitempty"`
+	Nullable             *bool                             `json:"nullable,omitempty" yaml:"nullable,omitempty"`
+	ReadOnly             bool                              `json:"readOnly,omitempty" yaml:"readOnly,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
+	WriteOnly            bool                              `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
+	XML                  *XML                              `json:"xml,omitempty" yaml:"xml,omitempty"`
+	ExternalDocs         *ExternalDoc                      `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	Example              any                               `json:"example,omitempty" yaml:"example,omitempty"`
+	Deprecated           *bool                             `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Extensions           map[string]any                    `json:"-" yaml:"-"`
 	low                  *base.Schema
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
@@ -211,29 +211,22 @@ func NewSchema(schema *base.Schema) *Schema {
 			Value:     schema.UnevaluatedItems.Value,
 		})
 	}
-	// check if unevaluated properties is a schema
-	if !schema.UnevaluatedProperties.IsEmpty() && schema.UnevaluatedProperties.Value.IsA() {
-		s.UnevaluatedProperties = &DynamicValue[*SchemaProxy, *bool]{
-			A: NewSchemaProxy(
-				&lowmodel.NodeReference[*base.SchemaProxy]{
+
+	var unevaluatedProperties *DynamicValue[*SchemaProxy, bool]
+	if !schema.UnevaluatedProperties.IsEmpty() {
+		if schema.UnevaluatedProperties.Value.IsA() {
+			unevaluatedProperties = &DynamicValue[*SchemaProxy, bool]{
+				A: NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 					ValueNode: schema.UnevaluatedProperties.ValueNode,
 					Value:     schema.UnevaluatedProperties.Value.A,
-				},
-			),
-			N: 0,
+					KeyNode:   schema.UnevaluatedProperties.KeyNode,
+				}),
+			}
+		} else {
+			unevaluatedProperties = &DynamicValue[*SchemaProxy, bool]{N: 1, B: schema.UnevaluatedProperties.Value.B}
 		}
 	}
-
-	// check if unevaluated properties is a bool
-	if !schema.UnevaluatedProperties.IsEmpty() && schema.UnevaluatedProperties.Value.IsB() {
-		s.UnevaluatedProperties = &DynamicValue[*SchemaProxy, *bool]{
-			B: schema.UnevaluatedProperties.Value.B,
-			N: 1,
-		}
-	}
-
-	if !schema.UnevaluatedProperties.IsEmpty() {
-	}
+	s.UnevaluatedProperties = unevaluatedProperties
 
 	s.Pattern = schema.Pattern.Value
 	s.Format = schema.Format.Value
@@ -248,19 +241,23 @@ func NewSchema(schema *base.Schema) *Schema {
 			s.Type = append(s.Type, schema.Type.Value.B[i].Value)
 		}
 	}
-	if schema.AdditionalProperties.Value != nil {
-		if addPropSchema, ok := schema.AdditionalProperties.Value.(*base.SchemaProxy); ok {
-			s.AdditionalProperties = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
-				KeyNode:   schema.AdditionalProperties.KeyNode,
-				ValueNode: schema.AdditionalProperties.ValueNode,
-				Value:     addPropSchema,
-			})
-		} else {
-			// TODO: check for slice and map types and unpack correctly.
 
-			s.AdditionalProperties = schema.AdditionalProperties.Value
+	var additionalProperties *DynamicValue[*SchemaProxy, bool]
+	if !schema.AdditionalProperties.IsEmpty() {
+		if schema.AdditionalProperties.Value.IsA() {
+			additionalProperties = &DynamicValue[*SchemaProxy, bool]{
+				A: NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+					ValueNode: schema.AdditionalProperties.ValueNode,
+					Value:     schema.AdditionalProperties.Value.A,
+					KeyNode:   schema.AdditionalProperties.KeyNode,
+				}),
+			}
+		} else {
+			additionalProperties = &DynamicValue[*SchemaProxy, bool]{N: 1, B: schema.AdditionalProperties.Value.B}
 		}
 	}
+	s.AdditionalProperties = additionalProperties
+
 	s.Description = schema.Description.Value
 	s.Default = schema.Default.Value
 	s.Const = schema.Const.Value
@@ -423,7 +420,8 @@ func NewSchema(schema *base.Schema) *Schema {
 					Value:     schema.Items.Value.A,
 					KeyNode:   schema.Items.KeyNode,
 				},
-				)}
+				),
+			}
 		} else {
 			items = &DynamicValue[*SchemaProxy, bool]{N: 1, B: schema.Items.Value.B}
 		}

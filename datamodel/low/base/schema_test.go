@@ -169,7 +169,7 @@ func Test_Schema(t *testing.T) {
 	schErr := sch.Build(rootNode.Content[0], nil)
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
-	assert.True(t, sch.AdditionalProperties.Value.(bool))
+	assert.True(t, sch.AdditionalProperties.Value.B)
 
 	assert.Len(t, sch.Properties.Value, 2)
 	v := sch.FindProperty("somethingB")
@@ -1172,30 +1172,7 @@ func TestExtractSchema_AdditionalPropertiesAsSchema(t *testing.T) {
 
 	res, err := ExtractSchema(idxNode.Content[0], idx)
 
-	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.(*SchemaProxy).Schema())
-	assert.Nil(t, err)
-}
-
-func TestExtractSchema_AdditionalPropertiesAsSchemaSlice(t *testing.T) {
-	yml := `components:
-  schemas:
-    Something:
-      additionalProperties:
-        - nice: rice`
-
-	var iNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(yml), &iNode)
-	assert.NoError(t, mErr)
-	idx := index.NewSpecIndex(&iNode)
-
-	yml = `$ref: '#/components/schemas/Something'`
-
-	var idxNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &idxNode)
-
-	res, err := ExtractSchema(idxNode.Content[0], idx)
-
-	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.([]low.ValueReference[interface{}]))
+	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.A.Schema())
 	assert.Nil(t, err)
 }
 
@@ -1244,7 +1221,7 @@ func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	res, err := ExtractSchema(idxNode.Content[0], idx)
-	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.(*SchemaProxy).Schema())
+	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.A.Schema())
 	assert.Nil(t, err)
 }
 
@@ -1378,7 +1355,7 @@ func TestSchema_Hash_Equal(t *testing.T) {
   uniqueItems: 1
   maxProperties: 10
   minProperties: 1
-  additionalProperties: anything
+  additionalProperties: true
   description: milky
   contentEncoding: rubber shoes
   contentMediaType: paper tiger
@@ -1420,7 +1397,7 @@ func TestSchema_Hash_Equal(t *testing.T) {
   uniqueItems: 1
   maxProperties: 10
   minProperties: 1
-  additionalProperties: anything
+  additionalProperties: true
   description: milky
   contentEncoding: rubber shoes
   contentMediaType: paper tiger
@@ -1611,7 +1588,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
 	res, _ := ExtractSchema(idxNode.Content[0], idx)
 
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
-	assert.True(t, *res.Value.Schema().UnevaluatedProperties.Value.B)
+	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.B)
 
 	assert.Equal(t, "571bd1853c22393131e2dcadce86894da714ec14968895c8b7ed18154b2be8cd",
 		low.GenerateHashString(res.Value.Schema().UnevaluatedProperties.Value))
@@ -1636,7 +1613,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
 	res, _ := ExtractSchema(idxNode.Content[0], idx)
 
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
-	assert.False(t, *res.Value.Schema().UnevaluatedProperties.Value.B)
+	assert.False(t, res.Value.Schema().UnevaluatedProperties.Value.B)
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_Undefined(t *testing.T) {
