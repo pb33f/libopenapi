@@ -121,8 +121,8 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	index := NewSpecIndexWithConfig(&rootNode, config)
 
-	assert.Len(t, index.GetAllExternalIndexes(), 291)
 	assert.NotNil(t, index)
+	assert.Len(t, index.GetAllExternalIndexes(), 296)
 
 	ref := index.SearchIndexForReference("resources/apps/apps_list_instanceSizes.yml")
 	assert.NotNil(t, ref)
