@@ -111,7 +111,6 @@ func TestNewSchemaProxyRender(t *testing.T) {
     rice:
         $ref: '#/components/schemas/rice'`
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }
 
 func TestNewSchemaProxy_WithObject(t *testing.T) {
@@ -217,10 +216,7 @@ properties:
         type: number
         description: a number
         example: "2"
-        additionalProperties:
-            - chicken
-            - nugget
-            - soup
+        additionalProperties: false
     somethingB:
         type: object
         exclusiveMinimum: true
@@ -241,8 +237,7 @@ properties:
                     attribute: true
                     x-pizza: love
         additionalProperties:
-            why: yes
-            thatIs: true
+            type: string
 additionalProperties: true
 required:
     - them
@@ -315,12 +310,12 @@ $anchor: anchor`
 	assert.Equal(t, "anchor", compiled.Anchor)
 
 	wentLow := compiled.GoLow()
-	assert.Equal(t, 129, wentLow.AdditionalProperties.ValueNode.Line)
+	assert.Equal(t, 125, wentLow.AdditionalProperties.ValueNode.Line)
 	assert.NotNil(t, compiled.GoLowUntyped())
 
 	// now render it out!
 	schemaBytes, _ := compiled.Render()
-	assert.Len(t, schemaBytes, 3494)
+	assert.Len(t, schemaBytes, 3417)
 }
 
 func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
@@ -504,7 +499,7 @@ required: [cake, fish]`
 	assert.Equal(t, float64(334), compiled.Properties["somethingB"].Schema().ExclusiveMaximum.B)
 	assert.Len(t, compiled.Properties["somethingB"].Schema().Properties["somethingBProp"].Schema().Type, 2)
 
-	assert.Equal(t, "nice", compiled.AdditionalProperties.(*SchemaProxy).Schema().Description)
+	assert.Equal(t, "nice", compiled.AdditionalProperties.A.Schema().Description)
 
 	wentLow := compiled.GoLow()
 	assert.Equal(t, 97, wentLow.AdditionalProperties.ValueNode.Line)
@@ -556,7 +551,6 @@ func TestSchemaProxy_GoLow(t *testing.T) {
 	spNil := NewSchemaProxy(nil)
 	assert.Nil(t, spNil.GoLow())
 	assert.Nil(t, spNil.GoLowUntyped())
-
 }
 
 func getHighSchema(t *testing.T, yml string) *Schema {
@@ -836,7 +830,6 @@ allOf:
 	// now render it out, it should be identical.
 	schemaBytes, _ := compiled.Render()
 	assert.Equal(t, testSpec, string(schemaBytes))
-
 }
 
 func TestNewSchemaProxy_RenderSchemaWithMultipleObjectTypes(t *testing.T) {
@@ -934,8 +927,7 @@ func TestNewSchemaProxy_RenderSchemaEnsurePropertyOrdering(t *testing.T) {
                     attribute: true
                     x-pizza: love
         additionalProperties:
-            why: yes
-            thatIs: true
+            type: string
 additionalProperties: true
 xml:
     name: XML Thing`
@@ -987,60 +979,6 @@ func TestNewSchemaProxy_RenderSchemaCheckDiscriminatorMappingOrder(t *testing.T)
 	// now render it out, it should be identical.
 	schemaBytes, _ := compiled.Render()
 	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
-}
-
-func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSlice(t *testing.T) {
-	testSpec := `additionalProperties:
-    - one
-    - two
-    - miss a few
-    - ninety nine
-    - hundred`
-
-	var compNode yaml.Node
-	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
-
-	sp := new(lowbase.SchemaProxy)
-	err := sp.Build(nil, compNode.Content[0], nil)
-	assert.NoError(t, err)
-
-	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
-		Value:     sp,
-		ValueNode: compNode.Content[0],
-	}
-
-	schemaProxy := NewSchemaProxy(&lowproxy)
-	compiled := schemaProxy.Schema()
-
-	// now render it out, it should be identical.
-	schemaBytes, _ := compiled.Render()
-	assert.Len(t, schemaBytes, 91)
-}
-
-func TestNewSchemaProxy_RenderSchemaCheckAdditionalPropertiesSliceMap(t *testing.T) {
-	testSpec := `additionalProperties:
-    - nice: cake
-    - yummy: beer
-    - hot: coffee`
-
-	var compNode yaml.Node
-	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
-
-	sp := new(lowbase.SchemaProxy)
-	err := sp.Build(nil, compNode.Content[0], nil)
-	assert.NoError(t, err)
-
-	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
-		Value:     sp,
-		ValueNode: compNode.Content[0],
-	}
-
-	schemaProxy := NewSchemaProxy(&lowproxy)
-	compiled := schemaProxy.Schema()
-
-	// now render it out, it should be identical.
-	schemaBytes, _ := compiled.Render()
-	assert.Len(t, schemaBytes, 75)
 }
 
 func TestNewSchemaProxy_CheckDefaultBooleanFalse(t *testing.T) {
@@ -1192,8 +1130,7 @@ unevaluatedProperties: true
 `
 	highSchema := getHighSchema(t, yml)
 
-	value := true
-	assert.EqualValues(t, &value, highSchema.UnevaluatedProperties.B)
+	assert.True(t, highSchema.UnevaluatedProperties.B)
 }
 
 func TestUnevaluatedPropertiesBoolean_False(t *testing.T) {
@@ -1203,6 +1140,54 @@ unevaluatedProperties: false
 `
 	highSchema := getHighSchema(t, yml)
 
-	value := false
-	assert.EqualValues(t, &value, highSchema.UnevaluatedProperties.B)
+	assert.False(t, highSchema.UnevaluatedProperties.B)
+}
+
+func TestUnevaluatedPropertiesBoolean_Unset(t *testing.T) {
+	yml := `
+type: number
+`
+	highSchema := getHighSchema(t, yml)
+
+	assert.Nil(t, highSchema.UnevaluatedProperties)
+}
+
+func TestAdditionalProperties(t *testing.T) {
+	testSpec := `type: object
+properties:
+  additionalPropertiesSimpleSchema:
+    type: object
+    additionalProperties:
+      type: string
+  additionalPropertiesBool:
+    type: object
+    additionalProperties: true
+  additionalPropertiesAnyOf:
+    type: object
+    additionalProperties:
+      anyOf:
+        - type: string
+        - type: array
+          items:
+            type: string
+`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(nil, compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, []string{"string"}, compiled.Properties["additionalPropertiesSimpleSchema"].Schema().AdditionalProperties.A.Schema().Type)
+	assert.Equal(t, true, compiled.Properties["additionalPropertiesBool"].Schema().AdditionalProperties.B)
+	assert.Equal(t, []string{"string"}, compiled.Properties["additionalPropertiesAnyOf"].Schema().AdditionalProperties.A.Schema().AnyOf[0].Schema().Type)
 }
