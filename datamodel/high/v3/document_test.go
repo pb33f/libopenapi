@@ -220,7 +220,7 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 
 	d := h.Components.Schemas["Drink"]
 	assert.Len(t, d.Schema().Required, 2)
-	assert.True(t, d.Schema().AdditionalProperties.(bool))
+	assert.True(t, d.Schema().AdditionalProperties.B)
 	assert.Equal(t, "drinkType", d.Schema().Discriminator.PropertyName)
 	assert.Equal(t, "some value", d.Schema().Discriminator.Mapping["drink"])
 	assert.Equal(t, 516, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Line)
@@ -377,7 +377,6 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 		assert.Equal(t, 310, okResp.Links["LocateBurger"].GoLow().OperationId.ValueNode.Line)
 		assert.Equal(t, 118, burgersOp.Post.Security[0].GoLow().Requirements.ValueNode.Line)
 	}
-
 }
 
 func TestStripeAsDoc(t *testing.T) {
@@ -435,7 +434,6 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 	assert.Equal(t, 183, len(d.Paths.PathItems))
-
 }
 
 func TestPetstoreAsDoc(t *testing.T) {
@@ -463,7 +461,6 @@ func TestCircularReferencesDoc(t *testing.T) {
 }
 
 func TestDocument_MarshalYAML(t *testing.T) {
-
 	// create a new document
 	initTest()
 	h := NewDocument(lowDoc)
@@ -477,11 +474,9 @@ func TestDocument_MarshalYAML(t *testing.T) {
 
 	highDoc := NewDocument(lDoc)
 	testBurgerShop(t, highDoc, false)
-
 }
 
 func TestDocument_MarshalIndention(t *testing.T) {
-
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
@@ -495,11 +490,9 @@ func TestDocument_MarshalIndention(t *testing.T) {
 	rendered = highDoc.RenderWithIndention(4)
 
 	assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
-
 }
 
 func TestDocument_MarshalIndention_Error(t *testing.T) {
-
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
@@ -513,11 +506,9 @@ func TestDocument_MarshalIndention_Error(t *testing.T) {
 	rendered = highDoc.RenderWithIndention(4)
 
 	assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
-
 }
 
 func TestDocument_MarshalJSON(t *testing.T) {
-
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
@@ -537,7 +528,6 @@ func TestDocument_MarshalJSON(t *testing.T) {
 }
 
 func TestDocument_MarshalYAMLInline(t *testing.T) {
-
 	// create a new document
 	initTest()
 	h := NewDocument(lowDoc)
@@ -551,11 +541,9 @@ func TestDocument_MarshalYAMLInline(t *testing.T) {
 
 	highDoc := NewDocument(lDoc)
 	testBurgerShop(t, highDoc, false)
-
 }
 
 func TestDocument_MarshalYAML_TestRefs(t *testing.T) {
-
 	// create a new document
 	yml := `openapi: 3.1.0
 paths:
@@ -633,7 +621,6 @@ components:
 }
 
 func TestDocument_MarshalYAML_TestParamRefs(t *testing.T) {
-
 	// create a new document
 	yml := `openapi: 3.1.0
 paths:
@@ -686,7 +673,6 @@ components:
 }
 
 func TestDocument_MarshalYAML_TestModifySchemas(t *testing.T) {
-
 	// create a new document
 	yml := `openapi: 3.1.0
 components:

@@ -5,13 +5,14 @@ package model
 
 import (
 	"fmt"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 // These tests require full documents to be tested properly. schemas are perhaps the most complex
@@ -158,7 +159,6 @@ components:
 }
 
 func test_BuildDoc(l, r string) (*v3.Document, *v3.Document) {
-
 	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
 	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
 
@@ -168,7 +168,6 @@ func test_BuildDoc(l, r string) (*v3.Document, *v3.Document) {
 }
 
 func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
-
 	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
 	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
 
@@ -278,7 +277,6 @@ components:
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].Original)
-
 }
 
 func TestCompareSchemas_InlineToRef(t *testing.T) {
@@ -311,7 +309,6 @@ components:
 	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
 	assert.Equal(t, v3.RefLabel, changes.Changes[0].Property)
 	assert.Equal(t, "#/components/schemas/Yo", changes.Changes[0].New)
-
 }
 
 func TestCompareSchemas_Identical(t *testing.T) {
@@ -1222,6 +1219,93 @@ components:
 	assert.Equal(t, v3.UnevaluatedPropertiesLabel, changes.Changes[0].Property)
 }
 
+func TestCompareSchemas_AdditionalProperties(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      additionalProperties:
+        type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      additionalProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.AdditionalPropertiesChanges.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_AdditionalProperties_Added(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      additionalProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.AdditionalPropertiesLabel, changes.Changes[0].Property)
+}
+
+func TestCompareSchemas_AdditionalProperties_Removed(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      type: string
+      additionalProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, v3.AdditionalPropertiesLabel, changes.Changes[0].Property)
+}
+
 func TestCompareSchemas_UnevaluatedItems(t *testing.T) {
 	left := `openapi: 3.1
 components:
@@ -1611,7 +1695,6 @@ components:
 	assert.Equal(t, Modified, changes.AnyOfChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "string", changes.AnyOfChanges[0].Changes[0].New)
 	assert.Equal(t, "bool", changes.AnyOfChanges[0].Changes[0].Original)
-
 }
 
 func TestCompareSchemas_OneOfModifyAndAddItem(t *testing.T) {
@@ -1848,7 +1931,6 @@ components:
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "0e563831440581c713657dd857a0ec3af1bd7308a43bd3cae9184f61d61b288f",
 		low.HashToString(changes.Changes[0].NewObject.(*base.Discriminator).Hash()))
-
 }
 
 func TestCompareSchemas_DiscriminatorRemove(t *testing.T) {
@@ -1881,7 +1963,6 @@ components:
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "0e563831440581c713657dd857a0ec3af1bd7308a43bd3cae9184f61d61b288f",
 		low.HashToString(changes.Changes[0].OriginalObject.(*base.Discriminator).Hash()))
-
 }
 
 func TestCompareSchemas_ExternalDocsChange(t *testing.T) {
@@ -1948,7 +2029,6 @@ components:
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "2b7adf30f2ea3a7617ccf429a099617a9c03e8b5f3a23a89dba4b90f760010d7",
 		low.HashToString(changes.Changes[0].NewObject.(*base.ExternalDoc).Hash()))
-
 }
 
 func TestCompareSchemas_ExternalDocsRemove(t *testing.T) {
@@ -1981,7 +2061,6 @@ components:
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "2b7adf30f2ea3a7617ccf429a099617a9c03e8b5f3a23a89dba4b90f760010d7",
 		low.HashToString(changes.Changes[0].OriginalObject.(*base.ExternalDoc).Hash()))
-
 }
 
 func TestCompareSchemas_AddExtension(t *testing.T) {
@@ -2402,7 +2481,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_SchemaAdditionalPropertiesCheck(t *testing.T) {
@@ -2432,7 +2510,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_Schema_DeletePoly(t *testing.T) {
@@ -2466,7 +2543,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_Schema_AddExamplesArray_AllOf(t *testing.T) {
@@ -2499,7 +2575,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_Schema_AddExampleMap_AllOf(t *testing.T) {
@@ -2566,7 +2641,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_Schema_AddExamplesMap(t *testing.T) {
@@ -2601,7 +2675,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_Schema_AddExamples(t *testing.T) {
@@ -2661,7 +2734,6 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSchemas_CheckIssue_170(t *testing.T) {

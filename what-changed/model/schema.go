@@ -5,14 +5,14 @@ package model
 
 import (
 	"fmt"
-	"golang.org/x/exp/slices"
 	"sort"
 	"sync"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,16 +24,17 @@ import (
 // PropertyChanges.Changes, and not in the AnyOfChanges property.
 type SchemaChanges struct {
 	*PropertyChanges
-	DiscriminatorChanges  *DiscriminatorChanges     `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
-	AllOfChanges          []*SchemaChanges          `json:"allOf,omitempty" yaml:"allOf,omitempty"`
-	AnyOfChanges          []*SchemaChanges          `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
-	OneOfChanges          []*SchemaChanges          `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
-	NotChanges            *SchemaChanges            `json:"not,omitempty" yaml:"not,omitempty"`
-	ItemsChanges          *SchemaChanges            `json:"items,omitempty" yaml:"items,omitempty"`
-	SchemaPropertyChanges map[string]*SchemaChanges `json:"properties,omitempty" yaml:"properties,omitempty"`
-	ExternalDocChanges    *ExternalDocChanges       `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
-	XMLChanges            *XMLChanges               `json:"xml,omitempty" yaml:"xml,omitempty"`
-	ExtensionChanges      *ExtensionChanges         `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	DiscriminatorChanges        *DiscriminatorChanges     `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
+	AllOfChanges                []*SchemaChanges          `json:"allOf,omitempty" yaml:"allOf,omitempty"`
+	AnyOfChanges                []*SchemaChanges          `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
+	OneOfChanges                []*SchemaChanges          `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	NotChanges                  *SchemaChanges            `json:"not,omitempty" yaml:"not,omitempty"`
+	ItemsChanges                *SchemaChanges            `json:"items,omitempty" yaml:"items,omitempty"`
+	SchemaPropertyChanges       map[string]*SchemaChanges `json:"properties,omitempty" yaml:"properties,omitempty"`
+	ExternalDocChanges          *ExternalDocChanges       `json:"externalDoc,omitempty" yaml:"externalDoc,omitempty"`
+	XMLChanges                  *XMLChanges               `json:"xml,omitempty" yaml:"xml,omitempty"`
+	ExtensionChanges            *ExtensionChanges         `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	AdditionalPropertiesChanges *SchemaChanges            `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
 
 	// 3.1 specifics
 	IfChanges                    *SchemaChanges            `json:"if,omitempty" yaml:"if,omitempty"`
@@ -101,6 +102,9 @@ func (s *SchemaChanges) GetAllChanges() []*Change {
 	}
 	if s.UnevaluatedPropertiesChanges != nil {
 		changes = append(changes, s.UnevaluatedPropertiesChanges.GetAllChanges()...)
+	}
+	if s.AdditionalPropertiesChanges != nil {
+		changes = append(changes, s.AdditionalPropertiesChanges.GetAllChanges()...)
 	}
 	if s.SchemaPropertyChanges != nil {
 		for n := range s.SchemaPropertyChanges {
@@ -185,6 +189,9 @@ func (s *SchemaChanges) TotalChanges() int {
 	if s.UnevaluatedPropertiesChanges != nil {
 		t += s.UnevaluatedPropertiesChanges.TotalChanges()
 	}
+	if s.AdditionalPropertiesChanges != nil {
+		t += s.AdditionalPropertiesChanges.TotalChanges()
+	}
 	if s.SchemaPropertyChanges != nil {
 		for n := range s.SchemaPropertyChanges {
 			if s.SchemaPropertyChanges[n] != nil {
@@ -266,6 +273,9 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	}
 	if s.UnevaluatedPropertiesChanges != nil {
 		t += s.UnevaluatedPropertiesChanges.TotalBreakingChanges()
+	}
+	if s.AdditionalPropertiesChanges != nil {
+		t += s.AdditionalPropertiesChanges.TotalBreakingChanges()
 	}
 	if s.DependentSchemasChanges != nil {
 		for n := range s.DependentSchemasChanges {
@@ -728,18 +738,36 @@ func checkSchemaPropertyChanges(
 		New:       rSchema,
 	})
 
-	// AdditionalProperties (only if not an object)
-	if !utils.IsNodeMap(lSchema.AdditionalProperties.ValueNode) &&
-		!utils.IsNodeMap(rSchema.AdditionalProperties.ValueNode) {
-		props = append(props, &PropertyCheck{
-			LeftNode:  lSchema.AdditionalProperties.ValueNode,
-			RightNode: rSchema.AdditionalProperties.ValueNode,
-			Label:     v3.AdditionalPropertiesLabel,
-			Changes:   changes,
-			Breaking:  false,
-			Original:  lSchema,
-			New:       rSchema,
-		})
+	// AdditionalProperties
+	if lSchema.AdditionalProperties.Value != nil && rSchema.AdditionalProperties.Value != nil {
+		if lSchema.AdditionalProperties.Value.IsA() && rSchema.AdditionalProperties.Value.IsA() {
+			if !low.AreEqual(lSchema.AdditionalProperties.Value.A, rSchema.AdditionalProperties.Value.A) {
+				sc.AdditionalPropertiesChanges = CompareSchemas(lSchema.AdditionalProperties.Value.A, rSchema.AdditionalProperties.Value.A)
+			}
+		} else {
+			if lSchema.AdditionalProperties.Value.IsB() && rSchema.AdditionalProperties.Value.IsB() {
+				if lSchema.AdditionalProperties.Value.B != rSchema.AdditionalProperties.Value.B {
+					CreateChange(changes, Modified, v3.AdditionalPropertiesLabel,
+						lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, true,
+						lSchema.AdditionalProperties.Value.B, rSchema.AdditionalProperties.Value.B)
+				}
+			} else {
+				CreateChange(changes, Modified, v3.AdditionalPropertiesLabel,
+					lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, true,
+					lSchema.AdditionalProperties.Value.B, rSchema.AdditionalProperties.Value.B)
+			}
+		}
+	}
+
+	// added AdditionalProperties
+	if lSchema.AdditionalProperties.Value == nil && rSchema.AdditionalProperties.Value != nil {
+		CreateChange(changes, ObjectAdded, v3.AdditionalPropertiesLabel,
+			nil, rSchema.AdditionalProperties.ValueNode, true, nil, rSchema.AdditionalProperties.Value)
+	}
+	// removed AdditionalProperties
+	if lSchema.AdditionalProperties.Value != nil && rSchema.AdditionalProperties.Value == nil {
+		CreateChange(changes, ObjectRemoved, v3.AdditionalPropertiesLabel,
+			lSchema.AdditionalProperties.ValueNode, nil, true, lSchema.AdditionalProperties.Value, nil)
 	}
 
 	// Description
@@ -1107,20 +1135,6 @@ func checkSchemaPropertyChanges(
 
 	// check extensions
 	sc.ExtensionChanges = CompareExtensions(lSchema.Extensions, rSchema.Extensions)
-
-	// if additional properties is an object, then hash it
-	// AdditionalProperties (only if not an object)
-	if utils.IsNodeMap(lSchema.AdditionalProperties.ValueNode) ||
-		utils.IsNodeMap(rSchema.AdditionalProperties.ValueNode) {
-
-		lHash := low.GenerateHashString(lSchema.AdditionalProperties.ValueNode)
-		rHash := low.GenerateHashString(rSchema.AdditionalProperties.ValueNode)
-		if lHash != rHash {
-			CreateChange(changes, Modified, v3.AdditionalPropertiesLabel,
-				lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, false,
-				lSchema.AdditionalProperties.Value, rSchema.AdditionalProperties.Value)
-		}
-	}
 
 	// check core properties
 	CheckProperties(props)

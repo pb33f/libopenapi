@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -52,7 +51,6 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 }
 
 func BenchmarkCreateDocument_k8s(b *testing.B) {
-
 	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
@@ -69,7 +67,6 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 }
 
 func TestCircularReferenceError(t *testing.T) {
-
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -81,7 +78,6 @@ func TestCircularReferenceError(t *testing.T) {
 }
 
 func TestCircularReference_IgnoreArray(t *testing.T) {
-
 	spec := `openapi: 3.1.0
 components:
   schemas:
@@ -110,7 +106,6 @@ components:
 }
 
 func TestCircularReference_IgnorePoly(t *testing.T) {
-
 	spec := `openapi: 3.1.0
 components:
   schemas:
@@ -168,7 +163,6 @@ func BenchmarkCreateDocument_Petstore(b *testing.B) {
 }
 
 func TestCreateDocumentStripe(t *testing.T) {
-
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
@@ -303,7 +297,6 @@ func TestCreateDocument_Tags(t *testing.T) {
 			// this is why we will need a higher level API to this model, this looks cool and all, but dude.
 			assert.Equal(t, "now?", extension.Value.(map[string]interface{})["ok"].([]interface{})[0].(map[string]interface{})["what"])
 		}
-
 	}
 
 	/// tag2
@@ -313,7 +306,6 @@ func TestCreateDocument_Tags(t *testing.T) {
 	assert.Equal(t, "https://pb33f.io", doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
 	assert.NotEmpty(t, doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
 	assert.Len(t, doc.Tags.Value[1].Value.Extensions, 0)
-
 }
 
 func TestCreateDocument_Paths(t *testing.T) {
@@ -438,7 +430,6 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.NotNil(t, servers)
 	assert.Len(t, servers, 1)
 	assert.Equal(t, "https://pb33f.io", servers[0].Value.URL.Value)
-
 }
 
 func TestCreateDocument_Components_Schemas(t *testing.T) {
@@ -464,7 +455,6 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	p := fries.Value.Schema().FindProperty("favoriteDrink")
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
 		p.Value.Schema().Description.Value)
-
 }
 
 func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
@@ -493,7 +483,6 @@ func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
 	readScope = oAuth.Flows.Value.AuthorizationCode.Value.FindScope("write:burgers")
 	assert.NotNil(t, readScope)
 	assert.Equal(t, "modify burgers and stuff", readScope.Value)
-
 }
 
 func TestCreateDocument_Components_Responses(t *testing.T) {
@@ -506,7 +495,6 @@ func TestCreateDocument_Components_Responses(t *testing.T) {
 	assert.NotNil(t, dressingResponse.Value)
 	assert.Equal(t, "all the dressings for a burger.", dressingResponse.Value.Description.Value)
 	assert.Len(t, dressingResponse.Value.Content.Value, 1)
-
 }
 
 func TestCreateDocument_Components_Examples(t *testing.T) {
@@ -593,7 +581,6 @@ func TestCreateDocument_Component_Discriminator(t *testing.T) {
 	assert.Nil(t, dsc.FindMappingValue("don't exist"))
 	assert.NotNil(t, doc.GetExternalDocs())
 	assert.Nil(t, doc.FindSecurityRequirement("scooby doo"))
-
 }
 
 func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
@@ -601,11 +588,8 @@ func TestCreateDocument_CheckAdditionalProperties_Schema(t *testing.T) {
 	components := doc.Components.Value
 	d := components.FindSchema("Dressing")
 	assert.NotNil(t, d.Value.Schema().AdditionalProperties.Value)
-	if n, ok := d.Value.Schema().AdditionalProperties.Value.(*base.SchemaProxy); ok {
-		assert.Equal(t, "something in here.", n.Schema().Description.Value)
-	} else {
-		assert.Fail(t, "should be a schema")
-	}
+
+	assert.True(t, d.Value.Schema().AdditionalProperties.Value.IsA(), "should be a schema")
 }
 
 func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
@@ -613,7 +597,7 @@ func TestCreateDocument_CheckAdditionalProperties_Bool(t *testing.T) {
 	components := doc.Components.Value
 	d := components.FindSchema("Drink")
 	assert.NotNil(t, d.Value.Schema().AdditionalProperties.Value)
-	assert.True(t, d.Value.Schema().AdditionalProperties.Value.(bool))
+	assert.True(t, d.Value.Schema().AdditionalProperties.Value.B)
 }
 
 func TestCreateDocument_Components_Error(t *testing.T) {
@@ -667,7 +651,6 @@ components:
 		AllowRemoteReferences: false,
 	})
 	assert.Len(t, err, 1)
-
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {
@@ -776,8 +759,8 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 	assert.NotNil(t, jsonGet)
 
 	// Should this work? It doesn't
-	//postJsonType := examplePath.GetValue().Post.GetValue().RequestBody.GetValue().FindContent("application/json")
-	//assert.NotNil(t, postJsonType)
+	// postJsonType := examplePath.GetValue().Post.GetValue().RequestBody.GetValue().FindContent("application/json")
+	// assert.NotNil(t, postJsonType)
 }
 
 func ExampleCreateDocument() {
