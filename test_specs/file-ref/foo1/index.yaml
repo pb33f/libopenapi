@@ -1,0 +1,6 @@
+type: object
+title: One
+additionalProperties: false
+properties:
+  name:
+    $ref: './name.yaml'

@@ -1,0 +1,20 @@
+openapi: 3.0.3
+paths:
+  /:
+    post:
+      summary: Create something new.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                one:
+                  $ref: './foo1/index.yaml'
+                two:
+                  $ref: './foo2/index.yaml'
+                three:
+                  $ref: './foo3/index.yaml'
+      responses:
+        201:
+          description: Something created.
