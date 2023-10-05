@@ -23,7 +23,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 	if len(node.Content) > 0 {
 		var prev, polyName string
 		for i, n := range node.Content {
-
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				level++
 				// check if we're using  polymorphic values. These tend to create rabbit warrens of circular
@@ -332,9 +331,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if len(seenPath) > 0 {
 						lastItem := seenPath[len(seenPath)-1]
 						if lastItem == "properties" {
+							seenPath = append(seenPath, n.Value)
+							prev = n.Value
 							continue
 						}
 					}
+
 					// all enums need to have a type, extract the type from the node where the enum was found.
 					_, enumKeyValueNode := utils.FindKeyNodeTop("type", node.Content)
 
