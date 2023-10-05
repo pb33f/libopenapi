@@ -114,7 +114,6 @@ components:
 
 // https://github.com/pb33f/libopenapi/issues/112
 func TestSpecIndex_ExtractRefs_CheckReferencesWithBracketsInName(t *testing.T) {
-
 	yml := `openapi: 3.0.0
 components:
   schemas:
@@ -137,7 +136,6 @@ components:
 
 // https://github.com/daveshanley/vacuum/issues/339
 func TestSpecIndex_ExtractRefs_CheckEnumNotPropertyCalledEnum(t *testing.T) {
-
 	yml := `openapi: 3.0.0
 components:
   schemas:
@@ -164,11 +162,22 @@ components:
           example:
             - yo
             - hello
+    Schema2:
+      type: object
+      properties:
+        enumRef:
+          $ref: '#/components/schemas/enum'
+        enum:
+          type: string
+          enum: [big, small]
+          nullable: true
+    enum:
+      type: [string, null]
+      enum: [big, small]
    `
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	c := CreateOpenAPIIndexConfig()
 	idx := NewSpecIndexWithConfig(&rootNode, c)
-	assert.Len(t, idx.allEnums, 1)
-
+	assert.Len(t, idx.allEnums, 3)
 }
