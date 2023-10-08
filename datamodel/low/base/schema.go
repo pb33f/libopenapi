@@ -137,6 +137,9 @@ type Schema struct {
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
 	ParentProxy *SchemaProxy
+
+	// Index is a reference to the SpecIndex that was used to build this schema.
+	Index *index.SpecIndex
 	*low.Reference
 }
 
@@ -491,6 +494,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
+	s.Index = idx
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, err := low.LocateRefNode(root, idx)
 		if ref != nil {
@@ -543,20 +547,43 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// determine exclusive minimum type, bool (3.0) or int (3.1)
 	_, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
 	if exMinValue != nil {
-		if utils.IsNodeBoolValue(exMinValue) {
-			val, _ := strconv.ParseBool(exMinValue.Value)
-			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMinLabel,
-				ValueNode: exMinValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+
+		// if there is an index, determine if this a 3.0 or 3.1 schema
+		if idx != nil {
+			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
+				val, _ := strconv.ParseFloat(exMinValue.Value, 64)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
-		}
-		if utils.IsNodeIntValue(exMinValue) {
-			val, _ := strconv.ParseFloat(exMinValue.Value, 64)
-			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMinLabel,
-				ValueNode: exMinValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+			if idx.GetConfig().SpecInfo.VersionNumeric <= 3.0 {
+				val, _ := strconv.ParseBool(exMinValue.Value)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+		} else {
+
+			// there is no index, so we have to determine the type based on the value
+			if utils.IsNodeBoolValue(exMinValue) {
+				val, _ := strconv.ParseBool(exMinValue.Value)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+			if utils.IsNodeIntValue(exMinValue) {
+				val, _ := strconv.ParseFloat(exMinValue.Value, 64)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
 		}
 	}
@@ -564,20 +591,43 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// determine exclusive maximum type, bool (3.0) or int (3.1)
 	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
 	if exMaxValue != nil {
-		if utils.IsNodeBoolValue(exMaxValue) {
-			val, _ := strconv.ParseBool(exMaxValue.Value)
-			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMaxLabel,
-				ValueNode: exMaxValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+
+		// if there is an index, determine if this a 3.0 or 3.1 schema
+		if idx != nil {
+			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
+				val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
-		}
-		if utils.IsNodeIntValue(exMaxValue) {
-			val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
-			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMaxLabel,
-				ValueNode: exMaxValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+			if idx.GetConfig().SpecInfo.VersionNumeric <= 3.0 {
+				val, _ := strconv.ParseBool(exMaxValue.Value)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+		} else {
+
+			// there is no index, so we have to determine the type based on the value
+			if utils.IsNodeBoolValue(exMaxValue) {
+				val, _ := strconv.ParseBool(exMaxValue.Value)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+			if utils.IsNodeIntValue(exMaxValue) {
+				val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
 		}
 	}
