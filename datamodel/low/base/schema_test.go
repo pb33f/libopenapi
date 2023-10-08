@@ -1,14 +1,14 @@
 package base
 
 import (
-	"testing"
-
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"testing"
 )
 
 func test_get_schema_blob() string {
@@ -1635,4 +1635,124 @@ func TestSchema_UnevaluatedPropertiesAsBool_Undefined(t *testing.T) {
 	res, _ := ExtractSchema(idxNode.Content[0], idx)
 
 	assert.Nil(t, res.Value.Schema().UnevaluatedProperties.Value)
+}
+
+func TestSchema_ExclusiveMinimum_3_with_Config(t *testing.T) {
+	yml := `openapi: 3.0.3
+components:
+  schemas:
+    Something:
+      type: integer
+      minimum: 3
+      exclusiveMinimum: true`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, _ := ExtractSchema(idxNode.Content[0], idx)
+
+	assert.True(t, res.Value.Schema().ExclusiveMinimum.Value.A)
+}
+
+func TestSchema_ExclusiveMinimum_31_with_Config(t *testing.T) {
+	yml := `openapi: 3.1
+components:
+  schemas:
+    Something:
+      type: integer
+      minimum: 3
+      exclusiveMinimum: 3`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.1,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, _ := ExtractSchema(idxNode.Content[0], idx)
+
+	assert.Equal(t, 3.0, res.Value.Schema().ExclusiveMinimum.Value.B)
+}
+
+func TestSchema_ExclusiveMaximum_3_with_Config(t *testing.T) {
+	yml := `openapi: 3.0.3
+components:
+  schemas:
+    Something:
+      type: integer
+      maximum: 3
+      exclusiveMaximum: true`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, _ := ExtractSchema(idxNode.Content[0], idx)
+
+	assert.True(t, res.Value.Schema().ExclusiveMaximum.Value.A)
+}
+
+func TestSchema_ExclusiveMaximum_31_with_Config(t *testing.T) {
+	yml := `openapi: 3.1
+components:
+  schemas:
+    Something:
+      type: integer
+      maximum: 3
+      exclusiveMaximum: 3`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.1,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `$ref: '#/components/schemas/Something'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, _ := ExtractSchema(idxNode.Content[0], idx)
+
+	assert.Equal(t, 3.0, res.Value.Schema().ExclusiveMaximum.Value.B)
 }
