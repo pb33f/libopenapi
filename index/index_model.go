@@ -4,6 +4,7 @@
 package index
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	"io/fs"
 	"net/http"
 	"net/url"
@@ -104,6 +105,10 @@ type SpecIndexConfig struct {
 	//
 	// Use the `BuildIndex()` method on the index to build it out once resolved/ready.
 	AvoidBuildIndex bool
+
+	// SpecInfo is a pointer to the SpecInfo struct that contains the root node and the spec version. It's the
+	// struct that was used to create this index.
+	SpecInfo *datamodel.SpecInfo
 
 	// private fields
 	seenRemoteSources *syncmap.Map
@@ -251,6 +256,12 @@ type SpecIndex struct {
 	children    []*SpecIndex
 }
 
+// GetConfig returns the SpecIndexConfig for this index.
+func (index *SpecIndex) GetConfig() *SpecIndexConfig {
+	return index.config
+}
+
+// AddChild adds a child index to this index, a child index is an index created from a remote or file reference.
 func (index *SpecIndex) AddChild(child *SpecIndex) {
 	index.children = append(index.children, child)
 }

@@ -24,6 +24,7 @@ const (
 type SpecInfo struct {
 	SpecType            string                  `json:"type"`
 	Version             string                  `json:"version"`
+	VersionNumeric      float32                 `json:"versionNumeric"`
 	SpecFormat          string                  `json:"format"`
 	SpecFileType        string                  `json:"fileType"`
 	SpecBytes           *[]byte                 `json:"bytes"` // the original byte array
@@ -88,12 +89,15 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		if spec.SpecType == utils.OpenApi3 {
 			switch spec.Version {
 			case "3.1.0", "3.1":
+				spec.VersionNumeric = 3.1
 				spec.APISchema = OpenAPI31SchemaData
 			default:
+				spec.VersionNumeric = 3.0
 				spec.APISchema = OpenAPI3SchemaData
 			}
 		}
 		if spec.SpecType == utils.OpenApi2 {
+			spec.VersionNumeric = 2.0
 			spec.APISchema = OpenAPI2SchemaData
 		}
 
