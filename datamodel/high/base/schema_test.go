@@ -5,6 +5,7 @@ package base
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
 	"strings"
 	"testing"
 
@@ -1190,4 +1191,98 @@ properties:
 	assert.Equal(t, []string{"string"}, compiled.Properties["additionalPropertiesSimpleSchema"].Schema().AdditionalProperties.A.Schema().Type)
 	assert.Equal(t, true, compiled.Properties["additionalPropertiesBool"].Schema().AdditionalProperties.B)
 	assert.Equal(t, []string{"string"}, compiled.Properties["additionalPropertiesAnyOf"].Schema().AdditionalProperties.A.Schema().AnyOf[0].Schema().Type)
+}
+
+func TestSchema_RenderProxyWithConfig_3(t *testing.T) {
+	testSpec := `exclusiveMinimum: true`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(nil, compNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpec, strings.TrimSpace(string(schemaBytes)))
+}
+
+func TestSchema_RenderProxyWithConfig_Corrected_31(t *testing.T) {
+	testSpec := `exclusiveMinimum: true`
+	testSpecCorrect := `exclusiveMinimum: 0`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.1,
+	}
+	idx := index.NewSpecIndexWithConfig(compNode.Content[0], config)
+
+	err := sp.Build(nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpecCorrect, strings.TrimSpace(string(schemaBytes)))
+
+	schemaBytes, _ = compiled.RenderInline()
+	assert.Equal(t, testSpecCorrect, strings.TrimSpace(string(schemaBytes)))
+
+}
+
+func TestSchema_RenderProxyWithConfig_Corrected_3(t *testing.T) {
+	testSpec := `exclusiveMinimum: 0`
+	testSpecCorrect := `exclusiveMinimum: false`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+	idx := index.NewSpecIndexWithConfig(compNode.Content[0], config)
+
+	err := sp.Build(nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// now render it out, it should be identical.
+	schemaBytes, _ := compiled.Render()
+	assert.Equal(t, testSpecCorrect, strings.TrimSpace(string(schemaBytes)))
+
+	schemaBytes, _ = compiled.RenderInline()
+	assert.Equal(t, testSpecCorrect, strings.TrimSpace(string(schemaBytes)))
 }
