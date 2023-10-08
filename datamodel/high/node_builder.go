@@ -29,6 +29,7 @@ type NodeEntry struct {
 // NodeBuilder is a structure used by libopenapi high-level objects, to render themselves back to YAML.
 // this allows high-level objects to be 'mutable' because all changes will be rendered out.
 type NodeBuilder struct {
+	Version float32
 	Nodes   []*NodeEntry
 	High    any
 	Low     any
@@ -572,8 +573,12 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 			}
 			if b, bok := value.(*float64); bok {
 				encodeSkip = true
-				if *b > 0 {
-					valueNode = utils.CreateFloatNode(strconv.FormatFloat(*b, 'f', -1, 64))
+				if *b > 0 || (entry.RenderZero && entry.Line > 0) {
+					if *b > 0 {
+						valueNode = utils.CreateFloatNode(strconv.FormatFloat(*b, 'f', -1, 64))
+					} else {
+						valueNode = utils.CreateIntNode(strconv.FormatFloat(*b, 'f', -1, 64))
+					}
 					valueNode.Line = line
 				}
 			}

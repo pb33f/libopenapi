@@ -68,7 +68,7 @@ type Schema struct {
 	// in 3.1 Items can be a Schema or a boolean
 	Items *DynamicValue[*SchemaProxy, bool] `json:"items,omitempty" yaml:"items,omitempty"`
 
-	// 3.1 only, part of the JSON Schema spec provides a way to identify a subschema
+	// 3.1 only, part of the JSON Schema spec provides a way to identify a sub-schema
 	Anchor string `json:"$anchor,omitempty" yaml:"$anchor,omitempty"`
 
 	// Compatible with all versions
@@ -76,8 +76,8 @@ type Schema struct {
 	Properties           map[string]*SchemaProxy           `json:"properties,omitempty" yaml:"properties,omitempty"`
 	Title                string                            `json:"title,omitempty" yaml:"title,omitempty"`
 	MultipleOf           *float64                          `json:"multipleOf,omitempty" yaml:"multipleOf,omitempty"`
-	Maximum              *float64                          `json:"maximum,omitempty" yaml:"maximum,omitempty"`
-	Minimum              *float64                          `json:"minimum,omitempty" yaml:"minimum,omitempty"`
+	Maximum              *float64                          `json:"maximum,renderZero,omitempty" yaml:"maximum,renderZero,omitempty"`
+	Minimum              *float64                          `json:"minimum,renderZero,omitempty," yaml:"minimum,renderZero,omitempty"`
 	MaxLength            *int64                            `json:"maxLength,omitempty" yaml:"maxLength,omitempty"`
 	MinLength            *int64                            `json:"minLength,omitempty" yaml:"minLength,omitempty"`
 	Pattern              string                            `json:"pattern,omitempty" yaml:"pattern,omitempty"`
@@ -89,7 +89,7 @@ type Schema struct {
 	MinProperties        *int64                            `json:"minProperties,omitempty" yaml:"minProperties,omitempty"`
 	Required             []string                          `json:"required,omitempty" yaml:"required,omitempty"`
 	Enum                 []any                             `json:"enum,omitempty" yaml:"enum,omitempty"`
-	AdditionalProperties *DynamicValue[*SchemaProxy, bool] `json:"additionalProperties,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
+	AdditionalProperties *DynamicValue[*SchemaProxy, bool] `json:"additionalProperties,renderZero,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
 	Description          string                            `json:"description,omitempty" yaml:"description,omitempty"`
 	Default              any                               `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
 	Const                any                               `json:"const,omitempty" yaml:"const,renderZero,omitempty"`
@@ -435,7 +435,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	completeChildren := 0
 	if children > 0 {
 	allDone:
-		for true {
+		for {
 			select {
 			case <-polyCompletedChan:
 				completeChildren++
@@ -469,8 +469,8 @@ func (s *Schema) Render() ([]byte, error) {
 	return yaml.Marshal(s)
 }
 
-// RenderInline will return a YAML representation of the Schema object as a byte slice. All of the
-// $ref values will be inlined, as in resolved in place.
+// RenderInline will return a YAML representation of the Schema object as a byte slice.
+// All the $ref values will be inlined, as in resolved in place.
 //
 // Make sure you don't have any circular references!
 func (s *Schema) RenderInline() ([]byte, error) {
@@ -481,11 +481,26 @@ func (s *Schema) RenderInline() ([]byte, error) {
 // MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
 func (s *Schema) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(s, s.low)
+
+	// determine index version
+	idx := s.GoLow().Index
+	if idx != nil {
+		if idx.GetConfig().SpecInfo != nil {
+			nb.Version = idx.GetConfig().SpecInfo.VersionNumeric
+		}
+	}
 	return nb.Render(), nil
 }
 
 func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 	nb := high.NewNodeBuilder(s, s.low)
 	nb.Resolve = true
+	// determine index version
+	idx := s.GoLow().Index
+	if idx != nil {
+		if idx.GetConfig().SpecInfo != nil {
+			nb.Version = idx.GetConfig().SpecInfo.VersionNumeric
+		}
+	}
 	return nb.Render(), nil
 }
