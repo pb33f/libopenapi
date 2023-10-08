@@ -22,9 +22,6 @@ func (c *CircularReferenceResult) GenerateJourneyPath() string {
 		}
 
 		buf.WriteString(ref.Name)
-		// buf.WriteString(" (")
-		// buf.WriteString(ref.Definition)
-		// buf.WriteString(")")
 	}
 
 	return buf.String()
