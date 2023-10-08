@@ -162,8 +162,8 @@ func test_BuildDoc(l, r string) (*v3.Document, *v3.Document) {
 	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
 	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
 
-	leftDoc, _ := v3.CreateDocument(leftInfo)
-	rightDoc, _ := v3.CreateDocument(rightInfo)
+	leftDoc, _ := v3.CreateDocumentFromConfig(leftInfo, datamodel.NewOpenDocumentConfiguration())
+	rightDoc, _ := v3.CreateDocumentFromConfig(rightInfo, datamodel.NewOpenDocumentConfiguration())
 	return leftDoc, rightDoc
 }
 
@@ -173,8 +173,8 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 
 	var err []error
 	var leftDoc, rightDoc *v2.Swagger
-	leftDoc, err = v2.CreateDocument(leftInfo)
-	rightDoc, err = v2.CreateDocument(rightInfo)
+	leftDoc, err = v2.CreateDocumentFromConfig(leftInfo, datamodel.NewOpenDocumentConfiguration())
+	rightDoc, err = v2.CreateDocumentFromConfig(rightInfo, datamodel.NewOpenDocumentConfiguration())
 
 	if len(err) > 0 {
 		for i := range err {
