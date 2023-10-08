@@ -422,8 +422,9 @@ func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
 	}
 
 	type test1low struct {
-		Thrug key   `yaml:"thrug"`
-		Thugg *bool `yaml:"thugg"`
+		Thrug key      `yaml:"thrug"`
+		Thugg *bool    `yaml:"thugg"`
+		Throo *float32 `yaml:"throo"`
 	}
 
 	t2 := test1low{
@@ -455,8 +456,9 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
 	}
 
 	type test1low struct {
-		Thomp key   `yaml:"thomp"`
-		Thugg *bool `yaml:"thugg"`
+		Thomp key      `yaml:"thomp"`
+		Thugg *bool    `yaml:"thugg"`
+		Throo *float32 `yaml:"throo"`
 	}
 
 	t2 := test1low{
@@ -496,6 +498,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
 	type test1low struct {
 		Thomp low.NodeReference[map[key]string] `yaml:"thomp"`
 		Thugg *bool                             `yaml:"thugg"`
+		Throo *float32                          `yaml:"throo"`
 	}
 
 	g := low.NodeReference[map[key]string]{
@@ -530,6 +533,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatchKeyNode(t *testing.T) {
 	type test1low struct {
 		Thomp low.NodeReference[map[key]string] `yaml:"thomp"`
 		Thugg *bool                             `yaml:"thugg"`
+		Throo *float32                          `yaml:"throo"`
 	}
 
 	g := low.NodeReference[map[key]string]{
@@ -564,6 +568,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch_NoWrap(t *testing.T) {
 	type test1low struct {
 		Thomp map[key]string `yaml:"thomp"`
 		Thugg *bool          `yaml:"thugg"`
+		Throo *float32       `yaml:"throo"`
 	}
 
 	t2 := test1low{
@@ -996,7 +1001,8 @@ func TestNewNodeBuilder_ShouldHaveNotDoneTestsLikeThisOhWell(t *testing.T) {
 
 	type t1low struct {
 		Thril low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*key]]
-		Thugg *bool `yaml:"thugg"`
+		Thugg *bool    `yaml:"thugg"`
+		Throo *float32 `yaml:"throo"`
 	}
 
 	t1 := test1{
