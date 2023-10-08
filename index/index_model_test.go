@@ -23,3 +23,10 @@ func TestSpecIndex_Children(t *testing.T) {
 	assert.Equal(t, 1, len(idx4.GetChildren()))
 	assert.Equal(t, 0, len(idx5.GetChildren()))
 }
+
+func TestSpecIndex_GetConfig(t *testing.T) {
+	idx1 := new(SpecIndex)
+	c := SpecIndexConfig{}
+	idx1.config = &c
+	assert.Equal(t, &c, idx1.GetConfig())
+}
