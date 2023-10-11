@@ -44,6 +44,15 @@ func (r *ExtractedRef) GetReference() string {
 	}
 }
 
+func ExtractFileType(ref string) FileExtension {
+	if strings.HasSuffix(ref, ".yaml") {
+		return YAML
+	}
+	if strings.HasSuffix(ref, ".json") {
+		return JSON
+	}
+	return UNSUPPORTED
+}
 func ExtractRefValues(ref string) (location, id string) {
 	split := strings.Split(ref, "#/")
 	if len(split) > 1 && split[0] != "" {

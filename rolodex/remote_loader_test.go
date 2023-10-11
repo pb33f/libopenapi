@@ -4,7 +4,6 @@
 package rolodex
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -170,7 +169,7 @@ func TestNewRemoteFS_BasicCheck_SeekRelatives(t *testing.T) {
 
 	file, err := remoteFS.Open("/bag/list.yaml")
 
-	assert.NoError(t, err)
+	assert.Error(t, err)
 
 	bytes, rErr := io.ReadAll(file)
 	assert.NoError(t, rErr)
@@ -185,5 +184,12 @@ func TestNewRemoteFS_BasicCheck_SeekRelatives(t *testing.T) {
 	lastMod := stat.ModTime()
 	assert.Equal(t, "2015-10-21 12:28:00 +0000 GMT", lastMod.String())
 
-	fmt.Print("nice rice.")
+	files := remoteFS.GetFiles()
+	assert.Len(t, remoteFS.remoteErrors, 1)
+	assert.Len(t, files, 10)
+
+	// check correct files are in the cache
+	assert.Equal(t, "/bag/list.yaml", files["/bag/list.yaml"].FullPath())
+	assert.Equal(t, "list.yaml", files["/bag/list.yaml"].filename)
+
 }

@@ -39,6 +39,7 @@ type FileExtension int
 const (
 	YAML FileExtension = iota
 	JSON
+	UNSUPPORTED
 )
 
 func NewRemoteFS(rootURL string) (*RemoteFS, error) {
@@ -54,6 +55,15 @@ func NewRemoteFS(rootURL string) (*RemoteFS, error) {
 		rootURLParsed: remoteRootURL,
 		FetchChannel:  make(chan *RemoteFile),
 	}, nil
+}
+
+func (i *RemoteFS) GetFiles() map[string]*RemoteFile {
+	files := make(map[string]*RemoteFile)
+	i.Files.Range(func(key, value interface{}) bool {
+		files[key.(string)] = value.(*RemoteFile)
+		return true
+	})
+	return files
 }
 
 func (i *RemoteFS) seekRelatives(file *RemoteFile) {
@@ -103,7 +113,6 @@ func (i *RemoteFS) seekRelatives(file *RemoteFile) {
 		i.remoteRunning = true
 		i.remoteWg.Wait()
 		i.remoteRunning = false
-
 	}
 
 }
@@ -115,13 +124,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, err
 	}
 
-	var fileExt FileExtension
-	switch filepath.Ext(remoteParsedURL.Path) {
-	case ".yaml":
-		fileExt = YAML
-	case ".json":
-		fileExt = JSON
-	default:
+	fileExt := ExtractFileType(remoteParsedURL.Path)
+
+	if fileExt == UNSUPPORTED {
 		return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 	}
 
@@ -160,7 +165,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, parseErr
 	}
 
+	filename := filepath.Base(remoteParsedURL.Path)
 	remoteFile := &RemoteFile{
+		filename:     filename,
 		name:         remoteParsedURL.Path,
 		extension:    fileExt,
 		data:         string(responseBytes),
@@ -181,6 +188,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 }
 
 type RemoteFile struct {
+	filename      string
 	name          string
 	extension     FileExtension
 	data          string
