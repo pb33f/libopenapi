@@ -1,7 +1,7 @@
 // Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package rolodex
+package index
 
 import (
 	"errors"
@@ -10,15 +10,12 @@ import (
 	"golang.org/x/sync/syncmap"
 	"io"
 	"io/fs"
-	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
 )
-
-type RemoteURLHandler = func(url string) (*http.Response, error)
 
 type RemoteFS struct {
 	rootURL           string
@@ -32,6 +29,95 @@ type RemoteFS struct {
 	remoteErrorLock   sync.Mutex
 	remoteErrors      []error
 	logger            *slog.Logger
+}
+
+type RemoteFile struct {
+	filename      string
+	name          string
+	extension     FileExtension
+	data          []byte
+	fullPath      string
+	URL           *url.URL
+	lastModified  time.Time
+	seekingErrors []error
+}
+
+func (f *RemoteFile) GetFileName() string {
+	return f.filename
+}
+
+func (f *RemoteFile) GetContent() string {
+	return string(f.data)
+}
+
+func (f *RemoteFile) GetFileExtension() FileExtension {
+	return f.extension
+}
+
+func (f *RemoteFile) GetLastModified() time.Time {
+	return f.lastModified
+}
+
+func (f *RemoteFile) GetErrors() []error {
+	return f.seekingErrors
+}
+
+func (f *RemoteFile) GetFullPath() string {
+	return f.fullPath
+}
+
+func (f *RemoteFile) Name() string {
+	return f.name
+}
+
+func (f *RemoteFile) Size() int64 {
+	return int64(len(f.data))
+}
+
+func (f *RemoteFile) Mode() fs.FileMode {
+	return fs.FileMode(0)
+}
+
+func (f *RemoteFile) ModTime() time.Time {
+	return f.lastModified
+}
+
+func (f *RemoteFile) IsDir() bool {
+	return false
+}
+
+func (f *RemoteFile) Sys() interface{} {
+	return nil
+}
+
+func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
+
+	// TODO
+	return nil, nil
+}
+func (f *RemoteFile) GetIndex() *SpecIndex {
+
+	// TODO
+	return nil
+}
+
+type remoteRolodexFile struct {
+	f      *RemoteFile
+	offset int64
+}
+
+func (f *remoteRolodexFile) Close() error               { return nil }
+func (f *remoteRolodexFile) Stat() (fs.FileInfo, error) { return f.f, nil }
+func (f *remoteRolodexFile) Read(b []byte) (int, error) {
+	if f.offset >= int64(len(f.f.data)) {
+		return 0, io.EOF
+	}
+	if f.offset < 0 {
+		return 0, &fs.PathError{Op: "read", Path: f.f.name, Err: fs.ErrInvalid}
+	}
+	n := copy(b, f.f.data[f.offset:])
+	f.offset += int64(n)
+	return n, nil
 }
 
 type FileExtension int
@@ -57,8 +143,8 @@ func NewRemoteFS(rootURL string) (*RemoteFS, error) {
 	}, nil
 }
 
-func (i *RemoteFS) GetFiles() map[string]*RemoteFile {
-	files := make(map[string]*RemoteFile)
+func (i *RemoteFS) GetFiles() map[string]RolodexFile {
+	files := make(map[string]RolodexFile)
 	i.Files.Range(func(key, value interface{}) bool {
 		files[key.(string)] = value.(*RemoteFile)
 		return true
@@ -68,7 +154,7 @@ func (i *RemoteFS) GetFiles() map[string]*RemoteFile {
 
 func (i *RemoteFS) seekRelatives(file *RemoteFile) {
 
-	extractedRefs := ExtractRefs(file.data)
+	extractedRefs := ExtractRefs(string(file.data))
 	if len(extractedRefs) == 0 {
 		return
 	}
@@ -170,7 +256,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		filename:     filename,
 		name:         remoteParsedURL.Path,
 		extension:    fileExt,
-		data:         string(responseBytes),
+		data:         responseBytes,
 		fullPath:     absolutePath,
 		URL:          remoteParsedURL,
 		lastModified: lastModifiedTime,
@@ -185,62 +271,4 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	} else {
 		return &remoteRolodexFile{remoteFile, 0}, nil
 	}
-}
-
-type RemoteFile struct {
-	filename      string
-	name          string
-	extension     FileExtension
-	data          string
-	fullPath      string
-	URL           *url.URL
-	lastModified  time.Time
-	seekingErrors []error
-}
-
-func (f *RemoteFile) FullPath() string {
-	return f.fullPath
-}
-
-func (f *RemoteFile) Name() string {
-	return f.name
-}
-
-func (f *RemoteFile) Size() int64 {
-	return int64(len(f.data))
-}
-
-func (f *RemoteFile) Mode() fs.FileMode {
-	return fs.FileMode(0)
-}
-
-func (f *RemoteFile) ModTime() time.Time {
-	return f.lastModified
-}
-
-func (f *RemoteFile) IsDir() bool {
-	return false
-}
-
-func (f *RemoteFile) Sys() interface{} {
-	return nil
-}
-
-type remoteRolodexFile struct {
-	f      *RemoteFile
-	offset int64
-}
-
-func (f *remoteRolodexFile) Close() error               { return nil }
-func (f *remoteRolodexFile) Stat() (fs.FileInfo, error) { return f.f, nil }
-func (f *remoteRolodexFile) Read(b []byte) (int, error) {
-	if f.offset >= int64(len(f.f.data)) {
-		return 0, io.EOF
-	}
-	if f.offset < 0 {
-		return 0, &fs.PathError{Op: "read", Path: f.f.name, Err: fs.ErrInvalid}
-	}
-	n := copy(b, f.f.data[f.offset:])
-	f.offset += int64(n)
-	return n, nil
 }

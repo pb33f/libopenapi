@@ -1,7 +1,7 @@
 // Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package rolodex
+package index
 
 import (
 	"github.com/stretchr/testify/assert"
@@ -189,7 +189,7 @@ func TestNewRemoteFS_BasicCheck_SeekRelatives(t *testing.T) {
 	assert.Len(t, files, 10)
 
 	// check correct files are in the cache
-	assert.Equal(t, "/bag/list.yaml", files["/bag/list.yaml"].FullPath())
-	assert.Equal(t, "list.yaml", files["/bag/list.yaml"].filename)
+	assert.Equal(t, "/bag/list.yaml", files["/bag/list.yaml"].GetFullPath())
+	assert.Equal(t, "list.yaml", files["/bag/list.yaml"].Name())
 
 }
