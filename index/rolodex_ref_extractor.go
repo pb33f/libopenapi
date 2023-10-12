@@ -1,7 +1,7 @@
 // Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package rolodex
+package index
 
 import (
 	"fmt"
@@ -9,7 +9,19 @@ import (
 	"strings"
 )
 
-var refRegex = regexp.MustCompile(`['"]?\$ref['"]?\s*:\s*['"]?([^'"]*?)['"]`)
+// var refRegex = regexp.MustCompile(`['"]?\$ref['"]?\s*:\s*['"]?([^'"]*?)['"]`)
+var refRegex = regexp.MustCompile(`('\$ref'|"\$ref"|\$ref)\s*:\s*('[^']*'|"[^"]*"|\S*)`)
+
+/*
+r := regexp.MustCompile(`('\$ref'|"\$ref"|\$ref)\s*:\s*('[^']*'|"[^"]*"|\S*)`)
+	matches := r.FindAllStringSubmatch(text, -1)
+	for _, submatches := range matches {
+		if len(submatches) > 2 {
+			fmt.Println("Full match:", submatches[0])
+			fmt.Println("JSON Schema reference: ", submatches[2])
+		}
+	}
+*/
 
 type RefType int
 

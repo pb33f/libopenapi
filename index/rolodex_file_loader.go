@@ -1,9 +1,11 @@
 // Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package rolodex
+package index
 
 import (
+	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -13,11 +15,16 @@ import (
 )
 
 type LocalFS struct {
-	baseDirectory string
-	Files         map[string]*LocalFile
-	parseTime     int64
-	logger        *slog.Logger
-	readingErrors []error
+	entryPointDirectory string
+	baseDirectory       string
+	Files               map[string]RolodexFile
+	parseTime           int64
+	logger              *slog.Logger
+	readingErrors       []error
+}
+
+func (l *LocalFS) GetFiles() map[string]RolodexFile {
+	return l.Files
 }
 
 func (l *LocalFS) Open(name string) (fs.File, error) {
@@ -40,19 +47,63 @@ type LocalFile struct {
 	filename      string
 	name          string
 	extension     FileExtension
-	data          string
+	data          []byte
 	fullPath      string
 	lastModified  time.Time
 	readingErrors []error
+	index         *SpecIndex
+}
+
+func (l *LocalFile) GetIndex() *SpecIndex {
+	return l.index
+}
+
+func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
+	if l.index != nil {
+		return l.index, nil
+	}
+	content := l.data
+
+	// first, we must parse the content of the file
+	info, err := datamodel.ExtractSpecInfo(content)
+	if err != nil {
+		return nil, err
+	}
+
+	index := NewSpecIndexWithConfig(info.RootNode, config)
+	index.specAbsolutePath = l.fullPath
+	return index, nil
+
+}
+
+func (l *LocalFile) GetContent() string {
+	return string(l.data)
+}
+
+func (l *LocalFile) GetFileExtension() FileExtension {
+	return l.extension
+}
+
+func (l *LocalFile) GetFullPath() string {
+	return l.fullPath
+}
+
+func (l *LocalFile) GetErrors() []error {
+	return l.readingErrors
 }
 
 func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
-	localFiles := make(map[string]*LocalFile)
+	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
-	walkErr := fs.WalkDir(dirFS, ".", func(p string, d fs.DirEntry, err error) error {
+	absBaseDir, absErr := filepath.Abs(baseDir)
+	fmt.Sprintf(absBaseDir)
+	if absErr != nil {
+		return nil, absErr
+	}
+	walkErr := fs.WalkDir(dirFS, baseDir, func(p string, d fs.DirEntry, err error) error {
 
 		// we don't care about directories.
 		if d.IsDir() {
@@ -77,14 +128,14 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 			if readErr != nil {
 				readingErrors = append(readingErrors, readErr)
 				allErrors = append(allErrors, readErr)
-				logger.Error("cannot open file: ", "file", abs, "error", readErr.Error())
+				logger.Error("[rolodex] cannot open file: ", "file", abs, "error", readErr.Error())
 				return nil
 			}
 			stat, statErr := file.Stat()
 			if statErr != nil {
 				readingErrors = append(readingErrors, statErr)
 				allErrors = append(allErrors, statErr)
-				logger.Error("cannot stat file: ", "file", abs, "error", statErr.Error())
+				logger.Error("[rolodex] cannot stat file: ", "file", abs, "error", statErr.Error())
 			}
 			if stat != nil {
 				modTime = stat.ModTime()
@@ -102,7 +153,7 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 				filename:      p,
 				name:          filepath.Base(p),
 				extension:     ExtractFileType(p),
-				data:          string(fileData),
+				data:          fileData,
 				fullPath:      abs,
 				lastModified:  modTime,
 				readingErrors: readingErrors,
@@ -118,10 +169,11 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 	}
 
 	return &LocalFS{
-		Files:         localFiles,
-		logger:        logger,
-		baseDirectory: baseDir,
-		readingErrors: allErrors,
+		Files:               localFiles,
+		logger:              logger,
+		baseDirectory:       absBaseDir,
+		entryPointDirectory: baseDir,
+		readingErrors:       allErrors,
 	}, nil
 }
 
@@ -154,20 +206,20 @@ func (l *LocalFile) Sys() interface{} {
 }
 
 type localRolodexFile struct {
-	f      *LocalFile
+	f      RolodexFile
 	offset int64
 }
 
 func (r *localRolodexFile) Close() error               { return nil }
 func (r *localRolodexFile) Stat() (fs.FileInfo, error) { return r.f, nil }
 func (r *localRolodexFile) Read(b []byte) (int, error) {
-	if r.offset >= int64(len(r.f.data)) {
+	if r.offset >= int64(len(r.f.GetContent())) {
 		return 0, io.EOF
 	}
 	if r.offset < 0 {
-		return 0, &fs.PathError{Op: "read", Path: r.f.name, Err: fs.ErrInvalid}
+		return 0, &fs.PathError{Op: "read", Path: r.f.GetFullPath(), Err: fs.ErrInvalid}
 	}
-	n := copy(b, r.f.data[r.offset:])
+	n := copy(b, r.f.GetContent()[r.offset:])
 	r.offset += int64(n)
 	return n, nil
 }

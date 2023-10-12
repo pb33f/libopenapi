@@ -1,0 +1,32 @@
+openapi: 3.1.0
+info:
+  title: Rolodex Test Data
+  version: 1.0.0
+paths:
+  /one/local:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thing'
+  /one/file:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'components.yaml#/components/schemas/Ding'
+components:
+  schemas:
+    Thing:
+      type: object
+      description: A thing that does nothing.
+      properties:
+        message:
+          type: string
+          description: I am pointless.

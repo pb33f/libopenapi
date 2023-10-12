@@ -1,7 +1,7 @@
 // Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package rolodex
+package index
 
 import (
 	"github.com/stretchr/testify/assert"
