@@ -6,10 +6,10 @@ package index
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
-	"os"
 	"path/filepath"
 	"time"
 )
@@ -52,6 +52,7 @@ type LocalFile struct {
 	lastModified  time.Time
 	readingErrors []error
 	index         *SpecIndex
+	parsed        *yaml.Node
 }
 
 func (l *LocalFile) GetIndex() *SpecIndex {
@@ -65,19 +66,42 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	content := l.data
 
 	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfo(content)
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
 	if err != nil {
 		return nil, err
 	}
 
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	index.specAbsolutePath = l.fullPath
+	l.index = index
 	return index, nil
 
 }
 
 func (l *LocalFile) GetContent() string {
 	return string(l.data)
+}
+
+func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
+	if l.parsed != nil {
+		return l.parsed, nil
+	}
+	if l.index != nil && l.index.root != nil {
+		return l.index.root, nil
+	}
+	if l.data == nil {
+		return nil, fmt.Errorf("no data to parse for file: %s", l.fullPath)
+	}
+	var root yaml.Node
+	err := yaml.Unmarshal(l.data, &root)
+	if err != nil {
+		return nil, err
+	}
+	if l.index != nil && l.index.root == nil {
+		l.index.root = &root
+	}
+	l.parsed = &root
+	return &root, nil
 }
 
 func (l *LocalFile) GetFileExtension() FileExtension {
@@ -93,15 +117,12 @@ func (l *LocalFile) GetErrors() []error {
 }
 
 func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
-	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
 	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
-	absBaseDir, absErr := filepath.Abs(baseDir)
-	fmt.Sprintf(absBaseDir)
-	if absErr != nil {
-		return nil, absErr
+	absBaseDir, absBaseErr := filepath.Abs(baseDir)
+
+	if absBaseErr != nil {
+		return nil, absBaseErr
 	}
 	walkErr := fs.WalkDir(dirFS, baseDir, func(p string, d fs.DirEntry, err error) error {
 
@@ -210,8 +231,14 @@ type localRolodexFile struct {
 	offset int64
 }
 
-func (r *localRolodexFile) Close() error               { return nil }
-func (r *localRolodexFile) Stat() (fs.FileInfo, error) { return r.f, nil }
+func (r *localRolodexFile) Close() error {
+	return nil
+}
+
+func (r *localRolodexFile) Stat() (fs.FileInfo, error) {
+	return r.f, nil
+}
+
 func (r *localRolodexFile) Read(b []byte) (int, error) {
 	if r.offset >= int64(len(r.f.GetContent())) {
 		return 0, io.EOF

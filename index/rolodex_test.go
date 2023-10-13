@@ -73,5 +73,6 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	err = rolo.IndexTheRolodex()
 
 	assert.NoError(t, err)
+	assert.Len(t, rolo.indexes, 9)
 
 }
