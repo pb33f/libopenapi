@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"golang.org/x/exp/slog"
 	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"net/url"
@@ -48,6 +49,10 @@ func (f *RemoteFile) GetFileName() string {
 
 func (f *RemoteFile) GetContent() string {
 	return string(f.data)
+}
+
+func (f *RemoteFile) GetContentAsYAMLNode() (*yaml.Node, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (f *RemoteFile) GetFileExtension() FileExtension {

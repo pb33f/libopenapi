@@ -1,0 +1,13 @@
+openapi: 3.1.0
+info:
+  title: Rolodex Test Data
+  version: 1.0.0
+components:
+  schemas:
+    Ding:
+      type: object
+      description: A thing that does nothing. Ding a ling!
+      properties:
+        message:
+          type: string
+          description: I am pointless. Ding Ding!
