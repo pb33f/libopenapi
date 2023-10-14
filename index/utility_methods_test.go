@@ -49,7 +49,5 @@ func TestGenerateCleanSpecConfigBaseURL_HttpStrip(t *testing.T) {
 }
 
 func TestSpecIndex_extractDefinitionRequiredRefProperties(t *testing.T) {
-	c := CreateOpenAPIIndexConfig()
-	idx := NewSpecIndexWithConfig(nil, c)
-	assert.Nil(t, idx.extractDefinitionRequiredRefProperties(nil, nil))
+	assert.Nil(t, extractDefinitionRequiredRefProperties(nil, nil))
 }

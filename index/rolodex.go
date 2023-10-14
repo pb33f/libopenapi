@@ -57,6 +57,8 @@ type Rolodex struct {
 	indexConfig      *SpecIndexConfig
 	indexingDuration time.Duration
 	indexes          []*SpecIndex
+	rootIndex        *SpecIndex
+	caughtErrors     []error
 }
 
 type rolodexFile struct {
@@ -204,8 +206,20 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 	return r
 }
 
+func (r *Rolodex) GetIndexingDuration() time.Duration {
+	return r.indexingDuration
+}
+
+func (r *Rolodex) GetRootIndex() *SpecIndex {
+	return r.rootIndex
+}
+
 func (r *Rolodex) GetIndexes() []*SpecIndex {
 	return r.indexes
+}
+
+func (r *Rolodex) GetCaughtErrors() []error {
+	return r.caughtErrors
 }
 
 func (r *Rolodex) AddLocalFS(baseDir string, fileSystem fs.FS) {
@@ -246,6 +260,23 @@ func (r *Rolodex) IndexTheRolodex() error {
 			copiedConfig.SpecAbsolutePath = fullPath
 			copiedConfig.AvoidBuildIndex = true // we will build out everything in two steps.
 			idx, err := idxFile.Index(&copiedConfig)
+
+			// for each index, we need a resolver
+			resolver := NewResolver(idx)
+			idx.resolver = resolver
+
+			// check if the config has been set to ignore circular references in arrays and polymorphic schemas
+			if copiedConfig.IgnoreArrayCircularReferences {
+				resolver.IgnoreArrayCircularReferences()
+			}
+			if copiedConfig.IgnorePolymorphicCircularReferences {
+				resolver.IgnorePolymorphicCircularReferences()
+			}
+			resolvingErrors := resolver.CheckForCircularReferences()
+			for e := range resolvingErrors {
+				caughtErrors = append(caughtErrors, resolvingErrors[e])
+			}
+
 			if err != nil {
 				errChan <- err
 			}
@@ -295,10 +326,29 @@ func (r *Rolodex) IndexTheRolodex() error {
 	// now that we have indexed all the files, we can build the index.
 	for _, idx := range indexBuildQueue {
 		idx.BuildIndex()
+
 	}
 	r.indexes = indexBuildQueue
+
+	// indexed and built every supporting file, we can build the root index (our entry point)
+	index := NewSpecIndexWithConfig(r.indexConfig.SpecInfo.RootNode, r.indexConfig)
+	resolver := NewResolver(index)
+	if r.indexConfig.IgnoreArrayCircularReferences {
+		resolver.IgnoreArrayCircularReferences()
+	}
+	if r.indexConfig.IgnorePolymorphicCircularReferences {
+		resolver.IgnorePolymorphicCircularReferences()
+	}
+	index.resolver = resolver
+	resolvingErrors := resolver.CheckForCircularReferences()
+	for e := range resolvingErrors {
+		caughtErrors = append(caughtErrors, resolvingErrors[e])
+	}
+
+	r.rootIndex = index
 	r.indexingDuration = time.Now().Sub(started)
 	r.indexed = true
+	r.caughtErrors = caughtErrors
 	return errors.Join(caughtErrors...)
 
 }
@@ -363,6 +413,7 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 						data:         bytes,
 						fullPath:     fileLookup,
 						lastModified: s.ModTime(),
+						index:        r.rootIndex,
 					}
 					break
 				}

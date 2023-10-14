@@ -2,6 +2,7 @@ package v3
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"os"
 	"testing"
 
@@ -17,7 +18,7 @@ func initTest() {
 	}
 	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	// deprecated function test.
 	doc, err = CreateDocument(info)
 	if err != nil {
@@ -29,10 +30,7 @@ func BenchmarkCreateDocument(b *testing.B) {
 	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		doc, _ = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-			AllowFileReferences:   false,
-			AllowRemoteReferences: false,
-		})
+		doc, _ = CreateDocumentFromConfig(info, datamodel.NewClosedDocumentConfiguration())
 	}
 }
 
@@ -40,28 +38,9 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-			AllowFileReferences:   false,
-			AllowRemoteReferences: false,
-		})
-		if err != nil {
-			panic("this should not error")
-		}
-	}
-}
-
-func BenchmarkCreateDocument_k8s(b *testing.B) {
-	data, _ := os.ReadFile("../../../test_specs/k8s.json")
-	info, _ := datamodel.ExtractSpecInfo(data)
-
-	for i := 0; i < b.N; i++ {
-
-		_, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-			AllowFileReferences:   false,
-			AllowRemoteReferences: false,
-		})
-		if err != nil {
-			panic("this should not error")
+		_, err := CreateDocumentFromConfig(info, datamodel.NewClosedDocumentConfiguration())
+		if err == nil {
+			panic("this should error, it has circular references")
 		}
 	}
 }
@@ -69,12 +48,12 @@ func BenchmarkCreateDocument_k8s(b *testing.B) {
 func TestCircularReferenceError(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	circDoc, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-		AllowFileReferences:   false,
-		AllowRemoteReferences: false,
-	})
+	circDoc, err := CreateDocumentFromConfig(info, datamodel.NewClosedDocumentConfiguration())
+
 	assert.NotNil(t, circDoc)
-	assert.Len(t, err, 3)
+	assert.Error(t, err)
+
+	assert.Len(t, utils.UnwrapErrors(err), 3)
 }
 
 func TestCircularReference_IgnoreArray(t *testing.T) {
@@ -102,7 +81,7 @@ components:
 		IgnoreArrayCircularReferences: true,
 	})
 	assert.NotNil(t, circDoc)
-	assert.Len(t, err, 0)
+	assert.Len(t, utils.UnwrapErrors(err), 0)
 }
 
 func TestCircularReference_IgnorePoly(t *testing.T) {
@@ -130,7 +109,7 @@ components:
 		IgnorePolymorphicCircularReferences: true,
 	})
 	assert.NotNil(t, circDoc)
-	assert.Len(t, err, 0)
+	assert.Len(t, utils.UnwrapErrors(err), 0)
 }
 
 func BenchmarkCreateDocument_Stripe(b *testing.B) {
@@ -231,7 +210,7 @@ func TestCreateDocument_WebHooks_Error(t *testing.T) {
       $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
@@ -610,12 +589,12 @@ components:
           $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 0)
+	assert.NoError(t, err)
 
 	ob := doc.Components.Value.FindSchema("bork").Value
 	ob.Schema()
@@ -629,12 +608,13 @@ webhooks:
     $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Equal(t, "flat map build failed: reference cannot be found: reference '' at line 4, column 5 was not found",
+		err.Error())
 }
 
 func TestCreateDocument_Components_Error_Extract(t *testing.T) {
@@ -645,12 +625,12 @@ components:
       $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Equal(t, "reference '' at line 5, column 7 was not found", err.Error())
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {
@@ -660,12 +640,13 @@ paths:
     $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Equal(t,
+		"path item build failed: cannot find reference:  at line 4, col 10", err.Error())
 }
 
 func TestCreateDocument_Tags_Errors(t *testing.T) {
@@ -674,12 +655,13 @@ tags:
   - $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Equal(t,
+		"object extraction failed: reference '' at line 3, column 5 was not found", err.Error())
 }
 
 func TestCreateDocument_Security_Error(t *testing.T) {
@@ -688,12 +670,14 @@ security:
   $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Equal(t,
+		"array build failed: reference cannot be found: reference '' at line 3, column 3 was not found",
+		err.Error())
 }
 
 func TestCreateDocument_ExternalDoc_Error(t *testing.T) {
@@ -702,12 +686,12 @@ externalDocs:
   $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Equal(t, "object extraction failed: reference '' at line 3, column 3 was not found", err.Error())
 }
 
 func TestCreateDocument_YamlAnchor(t *testing.T) {
@@ -718,16 +702,13 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(anchorDocument)
 
 	// build low-level document model
-	document, errors := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
 
-	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
-		}
+	if err != nil {
+		fmt.Printf("error: %s\n", err.Error())
 		panic("cannot build document")
 	}
 
@@ -759,8 +740,9 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 	assert.NotNil(t, jsonGet)
 
 	// Should this work? It doesn't
-	// postJsonType := examplePath.GetValue().Post.GetValue().RequestBody.GetValue().FindContent("application/json")
-	// assert.NotNil(t, postJsonType)
+	// update from quobix 10/14/2023: It does now!
+	postJsonType := examplePath.GetValue().Post.GetValue().RequestBody.GetValue().FindContent("application/json")
+	assert.NotNil(t, postJsonType)
 }
 
 func ExampleCreateDocument() {
@@ -773,16 +755,13 @@ func ExampleCreateDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
 
-	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
-		}
+	if err != nil {
+		fmt.Printf("error: %s\n", err.Error())
 		panic("cannot build document")
 	}
 

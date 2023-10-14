@@ -1,13 +1,15 @@
 openapi: 3.1.0
 info:
-  title: Rolodex Test Data
+  title: Dir1 Test Components
   version: 1.0.0
 components:
   schemas:
-    Ding:
+    GlobalComponent:
       type: object
-      description: A thing that does nothing. Ding a ling!
+      description: Dir1 Global Component
       properties:
         message:
           type: string
-          description: I am pointless. Ding Ding!
+          description: I am pointless, but I am global dir1.
+    SomeUtil:
+      $ref: "utils/utils.yaml"

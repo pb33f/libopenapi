@@ -4,16 +4,15 @@
 package low
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"strings"
-	"testing"
+    "crypto/sha256"
+    "fmt"
+    "github.com/pb33f/libopenapi/utils"
+    "strings"
+    "testing"
 
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+    "github.com/pb33f/libopenapi/index"
+    "github.com/stretchr/testify/assert"
+    "gopkg.in/yaml.v3"
 )
 
 func TestNodeReference_IsEmpty(t *testing.T) {
@@ -124,7 +123,7 @@ func TestIsCircular_LookupFromJourney(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Something'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -157,7 +156,7 @@ func TestIsCircular_LookupFromJourney_Optional(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Something'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 
@@ -193,7 +192,7 @@ func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Nothing'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -225,7 +224,7 @@ func TestIsCircular_LookupFromLoopPoint_Optional(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Nothing'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 
@@ -262,7 +261,7 @@ func TestIsCircular_FromRefLookup(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -298,7 +297,7 @@ func TestIsCircular_FromRefLookup_Optional(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 
@@ -346,7 +345,7 @@ func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Something'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -380,7 +379,7 @@ func TestGetCircularReferenceResult_FromJourney_Optional(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Something'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 
@@ -418,7 +417,7 @@ func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Nothing'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -452,7 +451,7 @@ func TestGetCircularReferenceResult_FromLoopPoint_Optional(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Nothing'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 
@@ -490,7 +489,7 @@ func TestGetCircularReferenceResult_FromMappedRef(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Nothing'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -522,7 +521,7 @@ func TestGetCircularReferenceResult_FromMappedRef_Optional(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Nothing'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 
@@ -545,7 +544,7 @@ func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&iNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 0)
 

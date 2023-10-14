@@ -4,14 +4,13 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
-	"testing"
+    "github.com/pb33f/libopenapi/datamodel/low"
+    v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+    "github.com/pb33f/libopenapi/datamodel/low/v3"
+    "github.com/pb33f/libopenapi/index"
+    "github.com/stretchr/testify/assert"
+    "gopkg.in/yaml.v3"
+    "testing"
 )
 
 func TestCompareComponents_Swagger_Definitions_Equal(t *testing.T) {
@@ -677,8 +676,8 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T)
 	idx2 := index.NewSpecIndex(&rNode)
 
 	// resolver required to check circular refs.
-	re1 := resolver.NewResolver(idx)
-	re2 := resolver.NewResolver(idx2)
+	re1 := index.NewResolver(idx)
+	re2 := index.NewResolver(idx2)
 
 	re1.CheckForCircularReferences()
 	re2.CheckForCircularReferences()

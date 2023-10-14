@@ -9,7 +9,6 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -358,7 +357,7 @@ func TestPath_Build_Using_CircularRef(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&idxNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -394,7 +393,7 @@ func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndex(&idxNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 

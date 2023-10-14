@@ -28,14 +28,14 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			Node:                  schema,
 			Path:                  fmt.Sprintf("$.components.schemas.%s", name),
 			ParentNode:            schemasNode,
-			RequiredRefProperties: index.extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}),
+			RequiredRefProperties: extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}),
 		}
 		index.allComponentSchemaDefinitions[def] = ref
 	}
 }
 
 // extractDefinitionRequiredRefProperties goes through the direct properties of a schema and extracts the map of required definitions from within it
-func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string) map[string][]string {
+func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string) map[string][]string {
 	if schemaNode == nil {
 		return reqRefProps
 	}
@@ -70,7 +70,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 		// Check to see if the current property is directly embedded within the current schema, and handle its properties if so
 		_, paramPropertiesMapNode := utils.FindKeyNodeTop("properties", param.Content)
 		if paramPropertiesMapNode != nil {
-			reqRefProps = index.extractDefinitionRequiredRefProperties(param, reqRefProps)
+			reqRefProps = extractDefinitionRequiredRefProperties(param, reqRefProps)
 		}
 
 		// Check to see if the current property is polymorphic, and dive into that model if so
@@ -78,7 +78,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 			_, ofNode := utils.FindKeyNodeTop(key, param.Content)
 			if ofNode != nil {
 				for _, ofNodeItem := range ofNode.Content {
-					reqRefProps = index.extractRequiredReferenceProperties(ofNodeItem, name, reqRefProps)
+					reqRefProps = extractRequiredReferenceProperties(ofNodeItem, name, reqRefProps)
 				}
 			}
 		}
@@ -91,14 +91,14 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 			continue
 		}
 
-		reqRefProps = index.extractRequiredReferenceProperties(requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
+		reqRefProps = extractRequiredReferenceProperties(requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
 	}
 
 	return reqRefProps
 }
 
 // extractRequiredReferenceProperties returns a map of definition names to the property or properties which reference it within a node
-func (index *SpecIndex) extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
+func extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
 	isRef, _, defPath := utils.IsNodeRefValue(requiredPropDefNode)
 	if !isRef {
 		_, defItems := utils.FindKeyNodeTop("items", requiredPropDefNode.Content)

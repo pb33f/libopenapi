@@ -16,7 +16,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
 	"gopkg.in/yaml.v3"
 )
 
@@ -165,7 +164,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	doc.ExternalDocs = extDocs
 
 	// create resolver and check for circular references.
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	resolvingErrors := resolve.CheckForCircularReferences()
 
 	if len(resolvingErrors) > 0 {

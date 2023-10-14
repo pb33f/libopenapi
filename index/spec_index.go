@@ -13,14 +13,15 @@
 package index
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,13 +30,15 @@ import (
 // how the index is set up.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
-	if config != nil && config.seenRemoteSources == nil {
-		config.seenRemoteSources = &syncmap.Map{}
-	}
-	config.remoteLock = &sync.Mutex{}
+	//if config != nil && config.seenRemoteSources == nil {
+	//	config.seenRemoteSources = &syncmap.Map{}
+	//}
+	//config.remoteLock = &sync.Mutex{}
 	index.config = config
-	index.parentIndex = config.ParentIndex
+	index.rolodex = config.Rolodex
+	//index.parentIndex = config.ParentIndex
 	index.uri = config.uri
+	index.specAbsolutePath = config.SpecAbsolutePath
 	if rootNode == nil || len(rootNode.Content) <= 0 {
 		return index
 	}
@@ -89,10 +92,10 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	}
 
 	// do a copy!
-	index.config.seenRemoteSources.Range(func(k, v any) bool {
-		index.seenRemoteSources[k.(string)] = v.(*yaml.Node)
-		return true
-	})
+	//index.config.seenRemoteSources.Range(func(k, v any) bool {
+	//	index.seenRemoteSources[k.(string)] = v.(*yaml.Node)
+	//	return true
+	//})
 	return index
 }
 
@@ -618,13 +621,34 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 		return index.globalCallbacksCount
 	}
 
-	// index.pathRefsLock.Lock()
+	index.pathRefsLock.RLock()
 	for path, p := range index.pathRefs {
 		for _, m := range p {
 
 			// look through method for callbacks
 			callbacks, _ := yamlpath.NewPath("$..callbacks")
-			res, _ := callbacks.Find(m.Node)
+			// Channel used to receive the result from doSomething function
+			ch := make(chan string, 1)
+
+			// Create a context with a timeout of 5 seconds
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+			defer cancel()
+
+			var res []*yaml.Node
+
+			doSomething := func(ctx context.Context, ch chan<- string) {
+				res, _ = callbacks.Find(m.Node)
+				ch <- m.Definition
+			}
+
+			// Start the doSomething function
+			go doSomething(ctxTimeout, ch)
+
+			select {
+			case <-ctxTimeout.Done():
+				fmt.Printf("Callback %d: Context cancelled: %v\n", m.Node.Line, ctxTimeout.Err())
+			case <-ch:
+			}
 
 			if len(res) > 0 {
 				for _, callback := range res[0].Content {
@@ -650,7 +674,7 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 			}
 		}
 	}
-	// index.pathRefsLock.Unlock()
+	index.pathRefsLock.RUnlock()
 	return index.globalCallbacksCount
 }
 
@@ -670,7 +694,29 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 
 			// look through method for links
 			links, _ := yamlpath.NewPath("$..links")
-			res, _ := links.Find(m.Node)
+
+			// Channel used to receive the result from doSomething function
+			ch := make(chan string, 1)
+
+			// Create a context with a timeout of 5 seconds
+			ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
+			defer cancel()
+
+			var res []*yaml.Node
+
+			doSomething := func(ctx context.Context, ch chan<- string) {
+				res, _ = links.Find(m.Node)
+				ch <- m.Definition
+			}
+
+			// Start the doSomething function
+			go doSomething(ctxTimeout, ch)
+
+			select {
+			case <-ctxTimeout.Done():
+				fmt.Printf("Global links %d ref: Context cancelled: %v\n", m.Node.Line, ctxTimeout.Err())
+			case <-ch:
+			}
 
 			if len(res) > 0 {
 				for _, link := range res[0].Content {
@@ -928,6 +974,8 @@ func (index *SpecIndex) GetOperationCount() int {
 
 	opCount := 0
 
+	locatedPathRefs := make(map[string]map[string]*Reference)
+
 	for x, p := range index.pathsNode.Content {
 		if x%2 == 0 {
 
@@ -950,6 +998,7 @@ func (index *SpecIndex) GetOperationCount() int {
 						}
 					}
 					if valid {
+						fmt.Sprint(p)
 						ref := &Reference{
 							Definition: m.Value,
 							Name:       m.Value,
@@ -957,12 +1006,12 @@ func (index *SpecIndex) GetOperationCount() int {
 							Path:       fmt.Sprintf("$.paths.%s.%s", p.Value, m.Value),
 							ParentNode: m,
 						}
-						index.pathRefsLock.Lock()
-						if index.pathRefs[p.Value] == nil {
-							index.pathRefs[p.Value] = make(map[string]*Reference)
+						//index.pathRefsLock.Lock()
+						if locatedPathRefs[p.Value] == nil {
+							locatedPathRefs[p.Value] = make(map[string]*Reference)
 						}
-						index.pathRefs[p.Value][ref.Name] = ref
-						index.pathRefsLock.Unlock()
+						locatedPathRefs[p.Value][ref.Name] = ref
+						//index.pathRefsLock.Unlock()
 						// update
 						opCount++
 					}
@@ -970,7 +1019,11 @@ func (index *SpecIndex) GetOperationCount() int {
 			}
 		}
 	}
-
+	index.pathRefsLock.Lock()
+	for k, v := range locatedPathRefs {
+		index.pathRefs[k] = v
+	}
+	index.pathRefsLock.Unlock()
 	index.operationCount = opCount
 	return opCount
 }
@@ -1188,13 +1241,13 @@ func (index *SpecIndex) GetAllSummariesCount() int {
 
 // CheckForSeenRemoteSource will check to see if we have already seen this remote source and return it,
 // to avoid making duplicate remote calls for document data.
-func (index *SpecIndex) CheckForSeenRemoteSource(url string) (bool, *yaml.Node) {
-	if index.config == nil || index.config.seenRemoteSources == nil {
-		return false, nil
-	}
-	j, _ := index.config.seenRemoteSources.Load(url)
-	if j != nil {
-		return true, j.(*yaml.Node)
-	}
-	return false, nil
-}
+//func (index *SpecIndex) CheckForSeenRemoteSource(url string) (bool, *yaml.Node) {
+//	if index.config == nil || index.config.seenRemoteSources == nil {
+//		return false, nil
+//	}
+//	j, _ := index.config.seenRemoteSources.Load(url)
+//	if j != nil {
+//		return true, j.(*yaml.Node)
+//	}
+//	return false, nil
+//}

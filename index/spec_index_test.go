@@ -92,9 +92,9 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		BaseURL:           baseURL,
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
+		BaseURL: baseURL,
+		//AllowRemoteLookup: true,
+		//AllowFileLookup:   true,
 	})
 
 	assert.Len(t, index.GetAllExternalIndexes(), 291)
@@ -163,9 +163,9 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 	// anything.
 	baseURL, _ := url.Parse("https://githerbs.com/fresh/herbs/for/you")
 	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		BaseURL:           baseURL,
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
+		BaseURL: baseURL,
+		//AllowRemoteLookup: true,
+		//AllowFileLookup:   true,
 	})
 
 	assert.Len(t, index.GetAllExternalIndexes(), 0)
@@ -441,9 +441,9 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	cwd, _ := os.Getwd()
 
 	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-		BasePath:          cwd,
+		//AllowRemoteLookup: true,
+		//	AllowFileLookup:   true,
+		BasePath: cwd,
 	})
 
 	assert.Len(t, index.allRefs, 5)
@@ -630,7 +630,7 @@ func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Nil(t, index.performExternalLookup(nil, "unknown", nil, nil))
+	assert.Nil(t, index.performExternalLookup(nil))
 }
 
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_Error(t *testing.T) {
@@ -734,7 +734,7 @@ paths:
 
 func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
 	index := NewSpecIndexWithConfig(nil, &SpecIndexConfig{
-		AllowRemoteLookup: true,
+		//AllowRemoteLookup: true,
 	})
 	index.seenRemoteSources = make(map[string]*yaml.Node)
 	a, b, err := index.lookupRemoteReference("https://google.com//logos/doodles/2022/labor-day-2022-6753651837109490.3-l.png#/hey")

@@ -1,4 +1,4 @@
-package resolver
+package index
 
 import (
 	"errors"
@@ -7,8 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pb33f/libopenapi/index"
-	"github.com/stretchr/testify/assert"
+    "github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,7 +20,7 @@ func Benchmark_ResolveDocumentStripe(b *testing.B) {
 	for n := 0; n < b.N; n++ {
 		var rootNode yaml.Node
 		_ = yaml.Unmarshal(stripe, &rootNode)
-		idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+		idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 		resolver := NewResolver(idx)
 		resolver.Resolve()
 	}
@@ -32,7 +31,7 @@ func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -49,7 +48,7 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -83,7 +82,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -118,7 +117,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -154,7 +153,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -190,7 +189,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -226,7 +225,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -262,7 +261,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -296,7 +295,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -318,7 +317,7 @@ func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
 
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, &index.SpecIndexConfig{
+	idx := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
 		AllowRemoteLookup: true,
 		AllowFileLookup:   true,
 		BaseURL:           baseURL,
@@ -341,7 +340,7 @@ func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -358,7 +357,7 @@ func TestResolver_CircularReferencesRequiredInvalid(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -371,11 +370,11 @@ func TestResolver_CircularReferencesRequiredInvalid(t *testing.T) {
 }
 
 func TestResolver_DeepJourney(t *testing.T) {
-	var journey []*index.Reference
+	var journey []*Reference
 	for f := 0; f < 200; f++ {
 		journey = append(journey, nil)
 	}
-	idx := index.NewSpecIndexWithConfig(nil, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(nil, CreateClosedAPIIndexConfig())
 	resolver := NewResolver(idx)
 	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, journey, false))
 }
@@ -385,7 +384,7 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(stripe, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -402,7 +401,7 @@ func TestResolver_ResolveComponents_BurgerShop(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(mixedref, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -435,7 +434,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -462,7 +461,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -498,7 +497,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -513,8 +512,8 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(mixedref, &rootNode)
 
-	b := index.CreateOpenAPIIndexConfig()
-	idx := index.NewSpecIndexWithConfig(&rootNode, b)
+	b := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, b)
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -534,7 +533,7 @@ func TestResolver_ResolveComponents_k8s(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(k8s, &rootNode)
 
-	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateClosedAPIIndexConfig())
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
 
 	resolver := NewResolver(idx)
 	assert.NotNil(t, resolver)
@@ -555,8 +554,8 @@ func ExampleNewResolver() {
 	_ = yaml.Unmarshal(stripeBytes, &rootNode)
 
 	// create a new spec index (resolver depends on it)
-	indexConfig := index.CreateClosedAPIIndexConfig()
-	idx := index.NewSpecIndexWithConfig(&rootNode, indexConfig)
+	indexConfig := CreateClosedAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, indexConfig)
 
 	// create a new resolver using the index.
 	resolver := NewResolver(idx)
@@ -581,7 +580,7 @@ func ExampleResolvingError() {
 			Column: 21,
 		},
 		Path:              "#/definitions/JeSuisUneErreur",
-		CircularReference: &index.CircularReferenceResult{},
+		CircularReference: &CircularReferenceResult{},
 	}
 
 	fmt.Printf("%s", re.Error())
