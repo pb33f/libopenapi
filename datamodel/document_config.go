@@ -52,6 +52,11 @@ type DocumentConfiguration struct {
 	// So if libopenapi is returning circular references for this use case, then this option should be enabled.
 	// this is disabled by default, which means array circular references will be checked.
 	IgnoreArrayCircularReferences bool
+
+	// SkipCircularReferenceCheck will skip over checking for circular references. This is disabled by default, which
+	// means circular references will be checked. This is useful for developers building out models that should be
+	// indexed later on.
+	SkipCircularReferenceCheck bool
 }
 
 func NewOpenDocumentConfiguration() *DocumentConfiguration {

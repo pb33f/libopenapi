@@ -6,6 +6,7 @@ package libopenapi
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/index"
 	"net/url"
 	"os"
 	"strings"
@@ -15,7 +16,6 @@ import (
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -433,7 +433,7 @@ components:
 
 	// resolving error is a pointer to *resolver.ResolvingError
 	// which provides access to rich details about the error.
-	circularReference := resolvingError.(*resolver.ResolvingError).CircularReference
+	circularReference := resolvingError.(*index.ResolvingError).CircularReference
 
 	// capture the journey with all details
 	var buf strings.Builder

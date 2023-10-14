@@ -1,12 +1,12 @@
 // Copyright 2022 Dave Shanley / Quobix
 // SPDX-License-Identifier: MIT
 
-package resolver
+package index
 
 import (
 	"fmt"
+	"strings"
 
-	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -23,7 +23,7 @@ type ResolvingError struct {
 	Path string
 
 	// CircularReference is set if the error is a reference to the circular reference.
-	CircularReference *index.CircularReferenceResult
+	CircularReference *CircularReferenceResult
 }
 
 func (r *ResolvingError) Error() string {
@@ -34,20 +34,22 @@ func (r *ResolvingError) Error() string {
 // Resolver will use a *index.SpecIndex to stitch together a resolved root tree using all the discovered
 // references in the doc.
 type Resolver struct {
-	specIndex          *index.SpecIndex
-	resolvedRoot       *yaml.Node
-	resolvingErrors    []*ResolvingError
-	circularReferences []*index.CircularReferenceResult
-	referencesVisited  int
-	indexesVisited     int
-	journeysTaken      int
-	relativesSeen      int
-	ignorePoly         bool
-	ignoreArray        bool
+	specIndex              *SpecIndex
+	resolvedRoot           *yaml.Node
+	resolvingErrors        []*ResolvingError
+	circularReferences     []*CircularReferenceResult
+	ignoredPolyReferences  []*CircularReferenceResult
+	ignoredArrayReferences []*CircularReferenceResult
+	referencesVisited      int
+	indexesVisited         int
+	journeysTaken          int
+	relativesSeen          int
+	IgnorePoly             bool
+	IgnoreArray            bool
 }
 
 // NewResolver will create a new resolver from a *index.SpecIndex
-func NewResolver(index *index.SpecIndex) *Resolver {
+func NewResolver(index *SpecIndex) *Resolver {
 	if index == nil {
 		return nil
 	}
@@ -63,13 +65,13 @@ func (resolver *Resolver) GetResolvingErrors() []*ResolvingError {
 }
 
 // GetCircularErrors returns all circular reference errors found.
-func (resolver *Resolver) GetCircularErrors() []*index.CircularReferenceResult {
+func (resolver *Resolver) GetCircularErrors() []*CircularReferenceResult {
 	return resolver.circularReferences
 }
 
 // GetPolymorphicCircularErrors returns all circular errors that stem from polymorphism
-func (resolver *Resolver) GetPolymorphicCircularErrors() []*index.CircularReferenceResult {
-	var res []*index.CircularReferenceResult
+func (resolver *Resolver) GetPolymorphicCircularErrors() []*CircularReferenceResult {
+	var res []*CircularReferenceResult
 	for i := range resolver.circularReferences {
 		if !resolver.circularReferences[i].IsInfiniteLoop {
 			continue
@@ -83,8 +85,8 @@ func (resolver *Resolver) GetPolymorphicCircularErrors() []*index.CircularRefere
 }
 
 // GetNonPolymorphicCircularErrors returns all circular errors that DO NOT stem from polymorphism
-func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*index.CircularReferenceResult {
-	var res []*index.CircularReferenceResult
+func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*CircularReferenceResult {
+	var res []*CircularReferenceResult
 	for i := range resolver.circularReferences {
 		if !resolver.circularReferences[i].IsInfiniteLoop {
 			continue
@@ -100,13 +102,13 @@ func (resolver *Resolver) GetNonPolymorphicCircularErrors() []*index.CircularRef
 // IgnorePolymorphicCircularReferences will ignore any circular references that are polymorphic (oneOf, anyOf, allOf)
 // This must be set before any resolving is done.
 func (resolver *Resolver) IgnorePolymorphicCircularReferences() {
-	resolver.ignorePoly = true
+	resolver.IgnorePoly = true
 }
 
 // IgnoreArrayCircularReferences will ignore any circular references that stem from arrays. This must be set before
 // any resolving is done.
 func (resolver *Resolver) IgnoreArrayCircularReferences() {
-	resolver.ignoreArray = true
+	resolver.IgnoreArray = true
 }
 
 // GetJourneysTaken returns the number of journeys taken by the resolver
@@ -174,13 +176,13 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 	return resolver.resolvingErrors
 }
 
-func visitIndexWithoutDamagingIt(res *Resolver, idx *index.SpecIndex) {
+func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 	mapped := idx.GetMappedReferencesSequenced()
 	mappedIndex := idx.GetMappedReferences()
 	res.indexesVisited++
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
-		var journey []*index.Reference
+		var journey []*Reference
 		res.journeysTaken++
 		res.VisitReference(ref.Reference, seenReferences, journey, false)
 	}
@@ -188,24 +190,24 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *index.SpecIndex) {
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
-			var journey []*index.Reference
+			var journey []*Reference
 			res.journeysTaken++
 			res.VisitReference(schemaRef, seenReferences, journey, false)
 		}
 	}
-	for _, c := range idx.GetChildren() {
-		visitIndexWithoutDamagingIt(res, c)
-	}
+	//for _, c := range idx.GetChildren() {
+	//	visitIndexWithoutDamagingIt(res, c)
+	//}
 }
 
-func visitIndex(res *Resolver, idx *index.SpecIndex) {
+func visitIndex(res *Resolver, idx *SpecIndex) {
 	mapped := idx.GetMappedReferencesSequenced()
 	mappedIndex := idx.GetMappedReferences()
 	res.indexesVisited++
 
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
-		var journey []*index.Reference
+		var journey []*Reference
 		res.journeysTaken++
 		if ref != nil && ref.Reference != nil {
 			ref.Reference.Node.Content = res.VisitReference(ref.Reference, seenReferences, journey, true)
@@ -216,7 +218,7 @@ func visitIndex(res *Resolver, idx *index.SpecIndex) {
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
-			var journey []*index.Reference
+			var journey []*Reference
 			res.journeysTaken++
 			schemaRef.Node.Content = res.VisitReference(schemaRef, seenReferences, journey, true)
 		}
@@ -231,13 +233,13 @@ func visitIndex(res *Resolver, idx *index.SpecIndex) {
 			}
 		}
 	}
-	for _, c := range idx.GetChildren() {
-		visitIndex(res, c)
-	}
+	//for _, c := range idx.GetChildren() {
+	//	visitIndex(res, c)
+	//}
 }
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
-func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]bool, journey []*index.Reference, resolve bool) []*yaml.Node {
+func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
 	resolver.referencesVisited++
 	if ref.Resolved || ref.Seen {
 		return ref.Node.Content
@@ -255,13 +257,13 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 		for i, j := range journey {
 			if j.Definition == r.Definition {
 
-				var foundDup *index.Reference
+				var foundDup *Reference
 				foundRefs := resolver.specIndex.SearchIndexForReference(r.Definition)
 				if len(foundRefs) > 0 {
 					foundDup = foundRefs[0]
 				}
 
-				var circRef *index.CircularReferenceResult
+				var circRef *CircularReferenceResult
 				if !foundDup.Circular {
 					loop := append(journey, foundDup)
 
@@ -272,7 +274,7 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 					if r.ParentNodeSchemaType == "array" {
 						isArray = true
 					}
-					circRef = &index.CircularReferenceResult{
+					circRef = &CircularReferenceResult{
 						Journey:        loop,
 						Start:          foundDup,
 						LoopIndex:      i,
@@ -280,7 +282,14 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 						IsArrayResult:  isArray,
 						IsInfiniteLoop: isInfiniteLoop,
 					}
-					resolver.circularReferences = append(resolver.circularReferences, circRef)
+
+					if resolver.IgnoreArray && isArray {
+						fmt.Printf("Ignored: %s\n", circRef.GenerateJourneyPath())
+						resolver.ignoredArrayReferences = append(resolver.ignoredArrayReferences, circRef)
+					} else {
+						fmt.Printf("Not Ignored: %s\n", circRef.GenerateJourneyPath())
+						resolver.circularReferences = append(resolver.circularReferences, circRef)
+					}
 
 					foundDup.Seen = true
 					foundDup.Circular = true
@@ -290,13 +299,13 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 		}
 
 		if !skip {
-			var original *index.Reference
+			var original *Reference
 			foundRefs := resolver.specIndex.SearchIndexForReference(r.Definition)
 			if len(foundRefs) > 0 {
 				original = foundRefs[0]
 			}
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
-			if resolve {
+			if resolve && !original.Circular {
 				r.Node.Content = resolved // this is where we perform the actual resolving.
 			}
 			r.Seen = true
@@ -309,7 +318,7 @@ func (resolver *Resolver) VisitReference(ref *index.Reference, seen map[string]b
 	return ref.Node.Content
 }
 
-func (resolver *Resolver) isInfiniteCircularDependency(ref *index.Reference, visitedDefinitions map[string]bool, initialRef *index.Reference) (bool, map[string]bool) {
+func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDefinitions map[string]bool, initialRef *Reference) (bool, map[string]bool) {
 	if ref == nil {
 		return false, visitedDefinitions
 	}
@@ -342,38 +351,41 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *index.Reference, vis
 
 func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*index.Reference, resolve bool) []*index.Reference {
+	journey []*Reference, resolve bool) []*Reference {
 
 	if len(journey) > 100 {
 		return nil
 	}
 
-	var found []*index.Reference
+	var found []*Reference
+	//var ignoredPoly []*index.Reference
+	//var ignoredArray []*index.Reference
+
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 
-				var anyvn, allvn, onevn, arrayTypevn *yaml.Node
+				//var anyvn, allvn, onevn, arrayTypevn *yaml.Node
 
 				// extract polymorphic references
 				if len(n.Content) > 1 {
-					_, anyvn = utils.FindKeyNodeTop("anyOf", n.Content)
-					_, allvn = utils.FindKeyNodeTop("allOf", n.Content)
-					_, onevn = utils.FindKeyNodeTop("oneOf", n.Content)
-					_, arrayTypevn = utils.FindKeyNodeTop("type", n.Content)
+					//_, anyvn = utils.FindKeyNodeTop("anyOf", n.Content)
+					//_, allvn = utils.FindKeyNodeTop("allOf", n.Content)
+					//_, onevn = utils.FindKeyNodeTop("oneOf", n.Content)
+					//_, arrayTypevn = utils.FindKeyNodeTop("type", n.Content)
 				}
-				if anyvn != nil || allvn != nil || onevn != nil {
-					if resolver.ignorePoly {
-						continue
-					}
-				}
-				if arrayTypevn != nil {
-					if arrayTypevn.Value == "array" {
-						if resolver.ignoreArray {
-							continue
-						}
-					}
-				}
+				//if anyvn != nil || allvn != nil || onevn != nil {
+				//	if resolver.IgnorePoly {
+				//		ignoredPoly = append(ignoredPoly, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
+				//	}
+				//}
+				//if arrayTypevn != nil {
+				//	if arrayTypevn.Value == "array" {
+				//		if resolver.IgnoreArray {
+				//			ignoredArray = append(ignoredArray, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
+				//		}
+				//	}
+				//}
 
 				found = append(found, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
 			}
@@ -409,7 +421,7 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 					}
 				}
 
-				r := &index.Reference{
+				r := &Reference{
 					Definition:           value,
 					Name:                 value,
 					Node:                 node,
@@ -447,7 +459,7 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 											resolver.VisitReference(ref, foundRelatives, journey, resolve)
 										} else {
 											loop := append(journey, ref)
-											circRef := &index.CircularReferenceResult{
+											circRef := &CircularReferenceResult{
 												Journey:             loop,
 												Start:               ref,
 												LoopIndex:           i,
@@ -458,7 +470,11 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 
 											ref.Seen = true
 											ref.Circular = true
-											resolver.circularReferences = append(resolver.circularReferences, circRef)
+											if resolver.IgnorePoly {
+												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
+											} else {
+												resolver.circularReferences = append(resolver.circularReferences, circRef)
+											}
 										}
 									}
 								}
@@ -472,6 +488,11 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
+									strangs := strings.Split(l, "/#")
+									if len(strangs) == 2 {
+										fmt.Println("wank")
+									}
+
 									ref := resolver.specIndex.GetMappedReferences()[l]
 									if ref != nil && !ref.Circular {
 										circ := false
@@ -485,7 +506,8 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 											resolver.VisitReference(ref, foundRelatives, journey, resolve)
 										} else {
 											loop := append(journey, ref)
-											circRef := &index.CircularReferenceResult{
+
+											circRef := &CircularReferenceResult{
 												Journey:             loop,
 												Start:               ref,
 												LoopIndex:           i,
@@ -496,7 +518,11 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 
 											ref.Seen = true
 											ref.Circular = true
-											resolver.circularReferences = append(resolver.circularReferences, circRef)
+											if resolver.IgnorePoly {
+												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
+											} else {
+												resolver.circularReferences = append(resolver.circularReferences, circRef)
+											}
 										}
 									}
 								}
@@ -509,6 +535,8 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 			}
 		}
 	}
+	//resolver.ignoredPolyReferences = ignoredPoly
+
 	resolver.relativesSeen += len(found)
 	return found
 }

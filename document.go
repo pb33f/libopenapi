@@ -24,7 +24,6 @@ import (
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	what_changed "github.com/pb33f/libopenapi/what-changed"
 	"github.com/pb33f/libopenapi/what-changed/model"
@@ -43,6 +42,10 @@ type Document interface {
 	// SetConfiguration will set the configuration for the document. This allows for finer grained control over
 	// allowing remote or local references, as well as a BaseURL to allow for relative file references.
 	SetConfiguration(configuration *datamodel.DocumentConfiguration)
+
+	// GetConfiguration will return the configuration for the document. This allows for finer grained control over
+	// allowing remote or local references, as well as a BaseURL to allow for relative file references.
+	GetConfiguration() *datamodel.DocumentConfiguration
 
 	// BuildV2Model will build out a Swagger (version 2) model from the specification used to create the document
 	// If there are any issues, then no model will be returned, instead a slice of errors will explain all the
@@ -166,6 +169,10 @@ func (d *document) GetSpecInfo() *datamodel.SpecInfo {
 	return d.info
 }
 
+func (d *document) GetConfiguration() *datamodel.DocumentConfiguration {
+	return d.config
+}
+
 func (d *document) SetConfiguration(configuration *datamodel.DocumentConfiguration) {
 	d.config = configuration
 }
@@ -254,7 +261,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 	// Do not short-circuit on circular reference errors, so the client
 	// has the option of ignoring them.
 	for _, err := range errors {
-		if refErr, ok := err.(*resolver.ResolvingError); ok {
+		if refErr, ok := err.(*index.ResolvingError); ok {
 			if refErr.CircularReference == nil {
 				return nil, errors
 			}
@@ -297,7 +304,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	// Do not short-circuit on circular reference errors, so the client
 	// has the option of ignoring them.
 	for _, err := range errors {
-		if refErr, ok := err.(*resolver.ResolvingError); ok {
+		if refErr, ok := err.(*index.ResolvingError); ok {
 			if refErr.CircularReference == nil {
 				return nil, errors
 			}

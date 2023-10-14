@@ -1,0 +1,11 @@
+type: object
+description: I am a utility for dir1
+properties:
+  message:
+    type: string
+    description: I am pointless dir1.
+    properties:
+      link:
+        $ref: "../components.yaml#/components/schemas/GlobalComponent"
+      shared:
+        $ref: '../shared/shared.yaml#/components/schemas/SharedComponent'

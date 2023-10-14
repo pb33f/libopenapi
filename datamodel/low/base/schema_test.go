@@ -1,14 +1,13 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
-	"testing"
+    "github.com/pb33f/libopenapi/datamodel"
+    "github.com/pb33f/libopenapi/datamodel/low"
+    "github.com/pb33f/libopenapi/index"
+    "github.com/pb33f/libopenapi/utils"
+    "github.com/stretchr/testify/assert"
+    "gopkg.in/yaml.v3"
+    "testing"
 )
 
 func test_get_schema_blob() string {
@@ -901,7 +900,7 @@ func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -933,7 +932,7 @@ func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -1074,7 +1073,7 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Something'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 

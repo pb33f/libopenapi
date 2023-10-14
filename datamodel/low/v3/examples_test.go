@@ -21,13 +21,11 @@ func Example_createLowLevelOpenAPIDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, errs := CreateDocument(info)
 
 	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
-		}
+	if errs != nil {
+		fmt.Printf("error: %s\n", errs.Error())
 		panic("cannot build document")
 	}
 

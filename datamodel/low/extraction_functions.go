@@ -57,14 +57,14 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 
 		// if there are any external indexes being used by remote
 		// documents, then we need to search through them also.
-		externalIndexes := idx.GetAllExternalIndexes()
-		if len(externalIndexes) > 0 {
-			var extCollection []func() map[string]*index.Reference
-			for _, extIndex := range externalIndexes {
-				extCollection = generateIndexCollection(extIndex)
-				collections = append(collections, extCollection...)
-			}
-		}
+		//externalIndexes := idx.GetAllExternalIndexes()
+		//if len(externalIndexes) > 0 {
+		//	var extCollection []func() map[string]*index.Reference
+		//	for _, extIndex := range externalIndexes {
+		//		extCollection = generateIndexCollection(extIndex)
+		//		collections = append(collections, extCollection...)
+		//	}
+		//}
 
 		var found map[string]*index.Reference
 		for _, collection := range collections {
@@ -501,6 +501,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 		}
 	} else {
 		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
+		valueNode = utils.NodeAlias(valueNode)
 		if valueNode != nil {
 			if h, _, rvt := utils.IsNodeRefValue(valueNode); h {
 				ref, err := LocateRefNode(valueNode, idx)

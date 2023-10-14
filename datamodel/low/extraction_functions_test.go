@@ -4,16 +4,15 @@
 package low
 
 import (
-	"crypto/sha256"
-	"fmt"
-	"os"
-	"strings"
-	"testing"
+    "crypto/sha256"
+    "fmt"
+    "os"
+    "strings"
+    "testing"
 
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+    "github.com/pb33f/libopenapi/index"
+    "github.com/stretchr/testify/assert"
+    "gopkg.in/yaml.v3"
 )
 
 func TestFindItemInMap(t *testing.T) {
@@ -234,7 +233,7 @@ func TestExtractObject_DoubleRef_Circular(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
-	resolv := resolver.NewResolver(idx)
+	resolv := index.NewResolver(idx)
 	assert.Len(t, resolv.CheckForCircularReferences(), 1)
 
 	yml = `tags:
@@ -264,7 +263,7 @@ func TestExtractObject_DoubleRef_Circular_Fail(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
-	resolv := resolver.NewResolver(idx)
+	resolv := index.NewResolver(idx)
 	assert.Len(t, resolv.CheckForCircularReferences(), 1)
 
 	yml = `tags:
@@ -294,7 +293,7 @@ func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
-	resolv := resolver.NewResolver(idx)
+	resolv := index.NewResolver(idx)
 	assert.Len(t, resolv.CheckForCircularReferences(), 1)
 
 	yml = `$ref: '#/components/schemas/pizza'`
@@ -324,7 +323,7 @@ func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
 	// circular references are detected by the resolver, so lets run it!
-	resolv := resolver.NewResolver(idx)
+	resolv := index.NewResolver(idx)
 	assert.Len(t, resolv.CheckForCircularReferences(), 1)
 
 	yml = `$ref: '#/components/schemas/why-did-westworld-have-to-end-so-poorly-ffs'`
@@ -449,7 +448,7 @@ func TestExtractObject_PathIsCircular(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -485,7 +484,7 @@ func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
 	// disable circular ref checking.
 	idx.SetAllowCircularReferenceResolving(true)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -563,7 +562,7 @@ func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -735,7 +734,7 @@ func TestExtractArray_Ref_Circular(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -763,7 +762,7 @@ func TestExtractArray_Ref_Bad(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -791,7 +790,7 @@ func TestExtractArray_Ref_Nested(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -820,7 +819,7 @@ func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -876,7 +875,7 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -1165,7 +1164,7 @@ func TestExtractMapFlatNoLookup_Ref_Circular(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -1386,7 +1385,7 @@ func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -1445,7 +1444,7 @@ func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -1474,7 +1473,7 @@ func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
@@ -1556,7 +1555,7 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
