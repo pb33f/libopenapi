@@ -53,10 +53,23 @@ func NewResolver(index *SpecIndex) *Resolver {
 	if index == nil {
 		return nil
 	}
-	return &Resolver{
+	r := &Resolver{
+
 		specIndex:    index,
 		resolvedRoot: index.GetRootNode(),
 	}
+	index.resolver = r
+	return r
+}
+
+// GetIgnoredCircularPolyReferences returns all ignored circular references that are polymorphic
+func (resolver *Resolver) GetIgnoredCircularPolyReferences() []*CircularReferenceResult {
+	return resolver.ignoredPolyReferences
+}
+
+// GetIgnoredCircularArrayReferences returns all ignored circular references that are arrays
+func (resolver *Resolver) GetIgnoredCircularArrayReferences() []*CircularReferenceResult {
+	return resolver.ignoredArrayReferences
 }
 
 // GetResolvingErrors returns all errors found during resolving

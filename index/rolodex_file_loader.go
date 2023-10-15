@@ -124,10 +124,13 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 	if absBaseErr != nil {
 		return nil, absBaseErr
 	}
-	walkErr := fs.WalkDir(dirFS, baseDir, func(p string, d fs.DirEntry, err error) error {
+	walkErr := fs.WalkDir(dirFS, ".", func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 
-		// we don't care about directories.
-		if d.IsDir() {
+		// we don't care about directories, or errors, just read everything we can.
+		if d == nil || d.IsDir() {
 			return nil
 		}
 

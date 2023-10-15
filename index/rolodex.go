@@ -54,6 +54,9 @@ type Rolodex struct {
 	localFS          map[string]fs.FS
 	remoteFS         map[string]fs.FS
 	indexed          bool
+	built            bool
+	resolved         bool
+	circChecked      bool
 	indexConfig      *SpecIndexConfig
 	indexingDuration time.Duration
 	indexes          []*SpecIndex
@@ -324,11 +327,12 @@ func (r *Rolodex) IndexTheRolodex() error {
 	}
 
 	// now that we have indexed all the files, we can build the index.
-	for _, idx := range indexBuildQueue {
-		idx.BuildIndex()
-
-	}
 	r.indexes = indexBuildQueue
+	if !r.indexConfig.AvoidBuildIndex {
+		for _, idx := range indexBuildQueue {
+			idx.BuildIndex()
+		}
+	}
 
 	// indexed and built every supporting file, we can build the root index (our entry point)
 	index := NewSpecIndexWithConfig(r.indexConfig.SpecInfo.RootNode, r.indexConfig)
@@ -339,10 +343,16 @@ func (r *Rolodex) IndexTheRolodex() error {
 	if r.indexConfig.IgnorePolymorphicCircularReferences {
 		resolver.IgnorePolymorphicCircularReferences()
 	}
-	index.resolver = resolver
-	resolvingErrors := resolver.CheckForCircularReferences()
-	for e := range resolvingErrors {
-		caughtErrors = append(caughtErrors, resolvingErrors[e])
+
+	if !r.indexConfig.AvoidBuildIndex {
+		index.BuildIndex()
+	}
+
+	if !r.indexConfig.AvoidCircularReferenceCheck {
+		resolvingErrors := resolver.CheckForCircularReferences()
+		for e := range resolvingErrors {
+			caughtErrors = append(caughtErrors, resolvingErrors[e])
+		}
 	}
 
 	r.rootIndex = index
@@ -353,12 +363,39 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 }
 
+func (r *Rolodex) CheckForCircularReferences() {
+	if r.rootIndex != nil && r.rootIndex.resolver != nil {
+		resolvingErrors := r.rootIndex.resolver.CheckForCircularReferences()
+		for e := range resolvingErrors {
+			r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
+		}
+	}
+}
+
+func (r *Rolodex) BuildIndexes() {
+	if r.built {
+		return
+	}
+	for _, idx := range r.indexes {
+		idx.BuildIndex()
+	}
+	if r.rootIndex != nil {
+		r.rootIndex.BuildIndex()
+	}
+	r.built = true
+	return
+}
+
 func (r *Rolodex) Open(location string) (RolodexFile, error) {
 
 	var errorStack []error
 
 	var localFile *LocalFile
 	//var remoteFile *RemoteFile
+
+	if r == nil || r.localFS == nil && r.remoteFS == nil {
+		panic("WHAT NO....")
+	}
 
 	for k, v := range r.localFS {
 
