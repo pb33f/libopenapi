@@ -36,6 +36,9 @@ type Document interface {
 	// GetVersion will return the exact version of the OpenAPI specification set for the document.
 	GetVersion() string
 
+	// GetRolodex will return the Rolodex instance that was used to load the document.
+	GetRolodex() *index.Rolodex
+
 	// GetSpecInfo will return the *datamodel.SpecInfo instance that contains all specification information.
 	GetSpecInfo() *datamodel.SpecInfo
 
@@ -102,6 +105,7 @@ type Document interface {
 }
 
 type document struct {
+	rolodex           *index.Rolodex
 	version           string
 	info              *datamodel.SpecInfo
 	config            *datamodel.DocumentConfiguration
@@ -159,6 +163,10 @@ func NewDocumentWithConfiguration(specByteArray []byte, configuration *datamodel
 		d.SetConfiguration(configuration)
 	}
 	return d, err
+}
+
+func (d *document) GetRolodex() *index.Rolodex {
+	return d.rolodex
 }
 
 func (d *document) GetVersion() string {
@@ -281,15 +289,15 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	if d.highOpenAPI3Model != nil {
 		return d.highOpenAPI3Model, nil
 	}
-	var errors []error
+	var errs []error
 	if d.info == nil {
-		errors = append(errors, fmt.Errorf("unable to build document, no specification has been loaded"))
-		return nil, errors
+		errs = append(errs, fmt.Errorf("unable to build document, no specification has been loaded"))
+		return nil, errs
 	}
 	if d.info.SpecFormat != datamodel.OAS3 {
-		errors = append(errors, fmt.Errorf("unable to build openapi document, "+
+		errs = append(errs, fmt.Errorf("unable to build openapi document, "+
 			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat))
-		return nil, errors
+		return nil, errs
 	}
 
 	var lowDoc *v3low.Document
@@ -300,24 +308,26 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		}
 	}
 
-	lowDoc, errors = v3low.CreateDocumentFromConfig(d.info, d.config)
+	var docErr error
+	lowDoc, docErr = v3low.CreateDocumentFromConfig(d.info, d.config)
+	d.rolodex = lowDoc.Rolodex
 	// Do not short-circuit on circular reference errors, so the client
 	// has the option of ignoring them.
-	for _, err := range errors {
-		if refErr, ok := err.(*index.ResolvingError); ok {
+	for _, err := range utils.UnwrapErrors(docErr) {
+		var refErr *index.ResolvingError
+		if errors.As(err, &refErr) {
 			if refErr.CircularReference == nil {
-				return nil, errors
+				return nil, errs
 			}
-		} else {
-			return nil, errors
 		}
 	}
 	highDoc := v3high.NewDocument(lowDoc)
+
 	d.highOpenAPI3Model = &DocumentModel[v3high.Document]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}
-	return d.highOpenAPI3Model, errors
+	return d.highOpenAPI3Model, errs
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct

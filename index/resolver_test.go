@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-    "github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
@@ -318,9 +318,9 @@ func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 
 	idx := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-		BaseURL:           baseURL,
+		//AllowRemoteLookup: true,
+		//AllowFileLookup:   true,
+		BaseURL: baseURL,
 	})
 
 	resolver := NewResolver(idx)

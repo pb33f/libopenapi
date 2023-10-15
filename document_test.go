@@ -822,6 +822,7 @@ components:
 
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
+	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularPolyReferences(), 1)
 
 }
 
@@ -856,5 +857,6 @@ components:
 
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
+	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularArrayReferences(), 1)
 
 }
