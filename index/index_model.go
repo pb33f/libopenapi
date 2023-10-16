@@ -216,7 +216,6 @@ type SpecIndex struct {
 	rootSecurityNode                    *yaml.Node                                    // root security node.
 	refsWithSiblings                    map[string]Reference                          // references with sibling elements next to them
 	pathRefsLock                        sync.RWMutex                                  // create lock for all refs maps, we want to build data as fast as we can
-	operationLock                       sync.Mutex                                    // create lock for operations
 	externalDocumentsCount              int                                           // number of externalDocument nodes found
 	operationTagsCount                  int                                           // number of unique tags in operations
 	globalTagsCount                     int                                           // number of global tags defined
@@ -269,13 +268,10 @@ type SpecIndex struct {
 	seenRemoteSources                   map[string]*yaml.Node
 	seenLocalSources                    map[string]*yaml.Node
 	refLock                             sync.Mutex
-	sourceLock                          sync.Mutex
 	componentLock                       sync.RWMutex
-	externalLock                        sync.RWMutex
 	errorLock                           sync.RWMutex
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
 	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
-	relativePath                        string                     // relative path of the spec file.
 	config                              *SpecIndexConfig           // configuration for the index
 	httpClient                          *http.Client
 	componentIndexChan                  chan bool

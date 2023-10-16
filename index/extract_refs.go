@@ -149,9 +149,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				index.linesWithRefs[n.Line] = true
 
 				fp := make([]string, len(seenPath))
-				for x, foundPathNode := range seenPath {
-					fp[x] = foundPathNode
-				}
+				copy(fp, seenPath)
 
 				value := node.Content[i+1].Value
 

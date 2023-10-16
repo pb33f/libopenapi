@@ -119,11 +119,17 @@ func (l *LocalFile) GetErrors() []error {
 func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
-	absBaseDir, absBaseErr := filepath.Abs(baseDir)
+
+	absBaseDir, absBaseErr := filepath.Abs(filepath.Dir(baseDir))
 
 	if absBaseErr != nil {
 		return nil, absBaseErr
 	}
+
+	// if the basedir is an absolute file, we're just going to index that file.
+	ext := filepath.Ext(baseDir)
+	file := filepath.Base(baseDir)
+
 	walkErr := fs.WalkDir(dirFS, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -131,6 +137,10 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 
 		// we don't care about directories, or errors, just read everything we can.
 		if d == nil || d.IsDir() {
+			return nil
+		}
+
+		if len(ext) > 2 && p != file {
 			return nil
 		}
 

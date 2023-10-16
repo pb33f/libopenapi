@@ -3,8 +3,11 @@ package index
 import (
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
 	"net/url"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,13 +19,33 @@ func TestNewResolver(t *testing.T) {
 }
 
 func Benchmark_ResolveDocumentStripe(b *testing.B) {
-	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
+	baseDir := "../test_specs/stripe.yaml"
+	resolveFile, _ := os.ReadFile(baseDir)
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(resolveFile, &rootNode)
+
+	fileFS, err := NewLocalFS(baseDir, os.DirFS(filepath.Dir(baseDir)))
+
 	for n := 0; n < b.N; n++ {
-		var rootNode yaml.Node
-		_ = yaml.Unmarshal(stripe, &rootNode)
-		idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
-		resolver := NewResolver(idx)
-		resolver.Resolve()
+
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		cf := CreateOpenAPIIndexConfig()
+		cf.AvoidBuildIndex = true
+
+		rolo := NewRolodex(cf)
+		rolo.SetRootNode(&rootNode)
+		cf.Rolodex = rolo
+
+		// TODO: pick up here.
+
+		rolo.AddLocalFS(baseDir, fileFS)
+
+		indexedErr := rolo.IndexTheRolodex()
+		assert.Error(b, indexedErr)
+
 	}
 }
 
@@ -376,24 +399,34 @@ func TestResolver_DeepJourney(t *testing.T) {
 	}
 	idx := NewSpecIndexWithConfig(nil, CreateClosedAPIIndexConfig())
 	resolver := NewResolver(idx)
-	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, journey, false))
+	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, false))
 }
 
 func TestResolver_ResolveComponents_Stripe(t *testing.T) {
-	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal(stripe, &rootNode)
+	baseDir := "../test_specs/stripe.yaml"
 
-	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	resolveFile, _ := os.ReadFile(baseDir)
 
-	resolver := NewResolver(idx)
-	assert.NotNil(t, resolver)
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(resolveFile, true)
 
-	circ := resolver.Resolve()
-	assert.Len(t, circ, 3)
+	fileFS, err := NewLocalFS(baseDir, os.DirFS(filepath.Dir(baseDir)))
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	assert.Len(t, resolver.GetNonPolymorphicCircularErrors(), 3)
-	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 0)
+	cf := CreateOpenAPIIndexConfig()
+	//cf.AvoidBuildIndex = true
+	cf.SpecInfo = info
+	rolo := NewRolodex(cf)
+	cf.Rolodex = rolo
+
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	indexedErr := rolo.IndexTheRolodex()
+
+	assert.Len(t, utils.UnwrapErrors(indexedErr), 3)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 3)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetPolymorphicCircularErrors(), 0)
 }
 
 func TestResolver_ResolveComponents_BurgerShop(t *testing.T) {

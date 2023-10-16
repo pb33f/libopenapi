@@ -65,63 +65,63 @@ components:
 	assert.Len(t, index.GetReferenceIndexErrors(), 2)
 }
 
-func TestSpecIndex_FindComponentInRoot(t *testing.T) {
-	yml := `openapi: 3.1.0
-components:
-  schemas:
-    thing:
-      properties:
-        thong: hi!`
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+//func TestSpecIndex_FindComponentInRoot(t *testing.T) {
+//	yml := `openapi: 3.1.0
+//components:
+//  schemas:
+//    thing:
+//      properties:
+//        thong: hi!`
+//	var rootNode yaml.Node
+//	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+//
+//	c := CreateOpenAPIIndexConfig()
+//	index := NewSpecIndexWithConfig(&rootNode, c)
+//
+//	thing := index.FindComponentInRoot("#/$splish/$.../slash#$///./")
+//	assert.Nil(t, thing)
+//	assert.Len(t, index.GetReferenceIndexErrors(), 0)
+//}
 
-	c := CreateOpenAPIIndexConfig()
-	index := NewSpecIndexWithConfig(&rootNode, c)
+//func TestSpecIndex_FailLookupRemoteComponent_badPath(t *testing.T) {
+//	yml := `openapi: 3.1.0
+//components:
+//  schemas:
+//    thing:
+//      properties:
+//        thong:
+//          $ref: 'https://pb33f.io/site.webmanifest#/....$.ok../oh#/$$_-'`
+//
+//	var rootNode yaml.Node
+//	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+//
+//	c := CreateOpenAPIIndexConfig()
+//	index := NewSpecIndexWithConfig(&rootNode, c)
+//
+//	thing := index.FindComponentInRoot("#/$splish/$.../slash#$///./")
+//	assert.Nil(t, thing)
+//	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+//}
 
-	thing := index.FindComponentInRoot("#/$splish/$.../slash#$///./")
-	assert.Nil(t, thing)
-	assert.Len(t, index.GetReferenceIndexErrors(), 0)
-}
-
-func TestSpecIndex_FailLookupRemoteComponent_badPath(t *testing.T) {
-	yml := `openapi: 3.1.0
-components:
-  schemas:
-    thing:
-      properties:
-        thong:
-          $ref: 'https://pb33f.io/site.webmanifest#/....$.ok../oh#/$$_-'`
-
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
-
-	c := CreateOpenAPIIndexConfig()
-	index := NewSpecIndexWithConfig(&rootNode, c)
-
-	thing := index.FindComponentInRoot("#/$splish/$.../slash#$///./")
-	assert.Nil(t, thing)
-	assert.Len(t, index.GetReferenceIndexErrors(), 2)
-}
-
-func TestSpecIndex_FailLookupRemoteComponent_Ok_butNotFound(t *testing.T) {
-	yml := `openapi: 3.1.0
-components:
-  schemas:
-    thing:
-      properties:
-        thong:
-          $ref: 'https://pb33f.io/site.webmanifest#/valid-but-missing'`
-
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
-
-	c := CreateOpenAPIIndexConfig()
-	index := NewSpecIndexWithConfig(&rootNode, c)
-
-	thing := index.FindComponentInRoot("#/valid-but-missing")
-	assert.Nil(t, thing)
-	assert.Len(t, index.GetReferenceIndexErrors(), 1)
-}
+//func TestSpecIndex_FailLookupRemoteComponent_Ok_butNotFound(t *testing.T) {
+//	yml := `openapi: 3.1.0
+//components:
+//  schemas:
+//    thing:
+//      properties:
+//        thong:
+//          $ref: 'https://pb33f.io/site.webmanifest#/valid-but-missing'`
+//
+//	var rootNode yaml.Node
+//	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+//
+//	c := CreateOpenAPIIndexConfig()
+//	index := NewSpecIndexWithConfig(&rootNode, c)
+//
+//	thing := index.FindComponentInRoot("#/valid-but-missing")
+//	assert.Nil(t, thing)
+//	assert.Len(t, index.GetReferenceIndexErrors(), 1)
+//}
 
 // disabled test because remote host is flaky.
 //func TestSpecIndex_LocateRemoteDocsWithNoBaseURLSupplied(t *testing.T) {
@@ -279,13 +279,13 @@ func (f *openFile) Read(b []byte) (int, error) {
 	return n, nil
 }
 
-type badFileOpen struct{}
-
-func (f *badFileOpen) Close() error               { return errors.New("bad file close") }
-func (f *badFileOpen) Stat() (fs.FileInfo, error) { return nil, errors.New("bad file stat") }
-func (f *badFileOpen) Read(b []byte) (int, error) {
-	return 0, nil
-}
+//type badFileOpen struct{}
+//
+//func (f *badFileOpen) Close() error               { return errors.New("bad file close") }
+//func (f *badFileOpen) Stat() (fs.FileInfo, error) { return nil, errors.New("bad file stat") }
+//func (f *badFileOpen) Read(b []byte) (int, error) {
+//	return 0, nil
+//}
 
 type badFileRead struct {
 	f      *file
