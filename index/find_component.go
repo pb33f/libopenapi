@@ -348,17 +348,28 @@ func (index *SpecIndex) performExternalLookup(uri []string) *Reference {
 			absoluteFileLocation, _ = filepath.Abs(filepath.Join(filepath.Dir(index.specAbsolutePath), file))
 		}
 
-		// extract the document from the rolodex.
-		rFile, rError := index.rolodex.Open(absoluteFileLocation)
-		if rError != nil {
-			logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
-			return nil
-		}
+		// if the absolute file location has no file ext, then get the rolodex root.
+		ext := filepath.Ext(absoluteFileLocation)
 
-		parsedDocument, err := rFile.GetContentAsYAMLNode()
-		if err != nil {
-			logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
-			return nil
+		var parsedDocument *yaml.Node
+		var err error
+		if ext != "" {
+
+			// extract the document from the rolodex.
+			rFile, rError := index.rolodex.Open(absoluteFileLocation)
+
+			if rError != nil {
+				logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
+				return nil
+			}
+
+			parsedDocument, err = rFile.GetContentAsYAMLNode()
+			if err != nil {
+				logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
+				return nil
+			}
+		} else {
+			parsedDocument = index.root
 		}
 
 		//fmt.Printf("parsedDocument: %v\n", parsedDocument)

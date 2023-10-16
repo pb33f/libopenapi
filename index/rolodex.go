@@ -56,11 +56,11 @@ type Rolodex struct {
 	indexed                   bool
 	built                     bool
 	resolved                  bool
-	circChecked               bool
 	indexConfig               *SpecIndexConfig
 	indexingDuration          time.Duration
 	indexes                   []*SpecIndex
 	rootIndex                 *SpecIndex
+	rootNode                  *yaml.Node
 	caughtErrors              []error
 	ignoredCircularReferences []*CircularReferenceResult
 }
@@ -235,6 +235,10 @@ func (r *Rolodex) AddLocalFS(baseDir string, fileSystem fs.FS) {
 	r.localFS[absBaseDir] = fileSystem
 }
 
+func (r *Rolodex) SetRootNode(node *yaml.Node) {
+	r.rootNode = node
+}
+
 func (r *Rolodex) AddRemoteFS(baseURL string, fileSystem fs.FS) {
 	r.remoteFS[baseURL] = fileSystem
 }
@@ -349,28 +353,31 @@ func (r *Rolodex) IndexTheRolodex() error {
 	}
 
 	// indexed and built every supporting file, we can build the root index (our entry point)
-	index := NewSpecIndexWithConfig(r.indexConfig.SpecInfo.RootNode, r.indexConfig)
-	resolver := NewResolver(index)
-	if r.indexConfig.IgnoreArrayCircularReferences {
-		resolver.IgnoreArrayCircularReferences()
-	}
-	if r.indexConfig.IgnorePolymorphicCircularReferences {
-		resolver.IgnorePolymorphicCircularReferences()
-	}
 
-	if !r.indexConfig.AvoidBuildIndex {
-		index.BuildIndex()
-	}
+	if r.rootNode != nil {
 
-	if !r.indexConfig.AvoidCircularReferenceCheck {
-		resolvingErrors := resolver.CheckForCircularReferences()
-		for e := range resolvingErrors {
-			caughtErrors = append(caughtErrors, resolvingErrors[e])
+		index := NewSpecIndexWithConfig(r.rootNode, r.indexConfig)
+		resolver := NewResolver(index)
+		if r.indexConfig.IgnoreArrayCircularReferences {
+			resolver.IgnoreArrayCircularReferences()
 		}
-	}
+		if r.indexConfig.IgnorePolymorphicCircularReferences {
+			resolver.IgnorePolymorphicCircularReferences()
+		}
 
-	r.rootIndex = index
-	r.indexingDuration = time.Now().Sub(started)
+		if !r.indexConfig.AvoidBuildIndex {
+			index.BuildIndex()
+		}
+
+		if !r.indexConfig.AvoidCircularReferenceCheck {
+			resolvingErrors := resolver.CheckForCircularReferences()
+			for e := range resolvingErrors {
+				caughtErrors = append(caughtErrors, resolvingErrors[e])
+			}
+		}
+		r.rootIndex = index
+	}
+	r.indexingDuration = time.Since(started)
 	r.indexed = true
 	r.caughtErrors = caughtErrors
 	return errors.Join(caughtErrors...)
@@ -405,6 +412,7 @@ func (r *Rolodex) Resolve() {
 			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
 		}
 	}
+	r.resolved = true
 }
 
 func (r *Rolodex) BuildIndexes() {
@@ -418,7 +426,6 @@ func (r *Rolodex) BuildIndexes() {
 		r.rootIndex.BuildIndex()
 	}
 	r.built = true
-	return
 }
 
 func (r *Rolodex) Open(location string) (RolodexFile, error) {

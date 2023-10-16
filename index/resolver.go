@@ -4,9 +4,9 @@
 package index
 
 import (
-    "fmt"
-    "github.com/pb33f/libopenapi/utils"
-    "gopkg.in/yaml.v3"
+	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -157,7 +157,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 		}
 
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef: fmt.Errorf("Infinite circular reference detected: %s", circRef.Start.Name),
+			ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Name),
 			Node:     circRef.LoopPoint.Node,
 			Path:     circRef.GenerateJourneyPath(),
 		})
@@ -176,7 +176,7 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 		}
 
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef:          fmt.Errorf("Infinite circular reference detected: %s", circRef.Start.Name),
+			ErrorRef:          fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Name),
 			Node:              circRef.LoopPoint.Node,
 			Path:              circRef.GenerateJourneyPath(),
 			CircularReference: circRef,
@@ -379,12 +379,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				//var anyvn, allvn, onevn, arrayTypevn *yaml.Node
 
 				// extract polymorphic references
-				if len(n.Content) > 1 {
-					//_, anyvn = utils.FindKeyNodeTop("anyOf", n.Content)
-					//_, allvn = utils.FindKeyNodeTop("allOf", n.Content)
-					//_, onevn = utils.FindKeyNodeTop("oneOf", n.Content)
-					//_, arrayTypevn = utils.FindKeyNodeTop("type", n.Content)
-				}
+				//if len(n.Content) > 1 {
+				//_, anyvn = utils.FindKeyNodeTop("anyOf", n.Content)
+				//_, allvn = utils.FindKeyNodeTop("allOf", n.Content)
+				//_, onevn = utils.FindKeyNodeTop("oneOf", n.Content)
+				//_, arrayTypevn = utils.FindKeyNodeTop("type", n.Content)
+				//}
 				//if anyvn != nil || allvn != nil || onevn != nil {
 				//	if resolver.IgnorePoly {
 				//		ignoredPoly = append(ignoredPoly, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
