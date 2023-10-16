@@ -51,17 +51,18 @@ type RolodexFS interface {
 }
 
 type Rolodex struct {
-	localFS          map[string]fs.FS
-	remoteFS         map[string]fs.FS
-	indexed          bool
-	built            bool
-	resolved         bool
-	circChecked      bool
-	indexConfig      *SpecIndexConfig
-	indexingDuration time.Duration
-	indexes          []*SpecIndex
-	rootIndex        *SpecIndex
-	caughtErrors     []error
+	localFS                   map[string]fs.FS
+	remoteFS                  map[string]fs.FS
+	indexed                   bool
+	built                     bool
+	resolved                  bool
+	circChecked               bool
+	indexConfig               *SpecIndexConfig
+	indexingDuration          time.Duration
+	indexes                   []*SpecIndex
+	rootIndex                 *SpecIndex
+	caughtErrors              []error
+	ignoredCircularReferences []*CircularReferenceResult
 }
 
 type rolodexFile struct {
@@ -209,6 +210,10 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 	return r
 }
 
+func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
+	return r.ignoredCircularReferences
+}
+
 func (r *Rolodex) GetIndexingDuration() time.Duration {
 	return r.indexingDuration
 }
@@ -275,10 +280,12 @@ func (r *Rolodex) IndexTheRolodex() error {
 			if copiedConfig.IgnorePolymorphicCircularReferences {
 				resolver.IgnorePolymorphicCircularReferences()
 			}
-			resolvingErrors := resolver.CheckForCircularReferences()
-			for e := range resolvingErrors {
-				caughtErrors = append(caughtErrors, resolvingErrors[e])
-			}
+			//if !copiedConfig.AvoidCircularReferenceCheck {
+			//	resolvingErrors := resolver.CheckForCircularReferences()
+			//	for e := range resolvingErrors {
+			//		caughtErrors = append(caughtErrors, resolvingErrors[e])
+			//	}
+			//}
 
 			if err != nil {
 				errChan <- err
@@ -331,6 +338,13 @@ func (r *Rolodex) IndexTheRolodex() error {
 	if !r.indexConfig.AvoidBuildIndex {
 		for _, idx := range indexBuildQueue {
 			idx.BuildIndex()
+			if r.indexConfig.AvoidCircularReferenceCheck {
+				continue
+			}
+			errs := idx.resolver.CheckForCircularReferences()
+			for e := range errs {
+				caughtErrors = append(caughtErrors, errs[e])
+			}
 		}
 	}
 
@@ -368,6 +382,27 @@ func (r *Rolodex) CheckForCircularReferences() {
 		resolvingErrors := r.rootIndex.resolver.CheckForCircularReferences()
 		for e := range resolvingErrors {
 			r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
+		}
+		if len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredPolyReferences...)
+		}
+		if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
+		}
+	}
+}
+
+func (r *Rolodex) Resolve() {
+	if r.rootIndex != nil && r.rootIndex.resolver != nil {
+		resolvingErrors := r.rootIndex.resolver.Resolve()
+		for e := range resolvingErrors {
+			r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
+		}
+		if len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredPolyReferences...)
+		}
+		if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
 		}
 	}
 }

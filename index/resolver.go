@@ -4,11 +4,9 @@
 package index
 
 import (
-	"fmt"
-	"strings"
-
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+    "fmt"
+    "github.com/pb33f/libopenapi/utils"
+    "gopkg.in/yaml.v3"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -259,7 +257,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	}
 
 	journey = append(journey, ref)
-	relatives := resolver.extractRelatives(ref.Node, nil, seen, journey, resolve)
+	relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, resolve)
 
 	seen = make(map[string]bool)
 
@@ -362,7 +360,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 	return false, visitedDefinitions
 }
 
-func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
+func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.Node,
 	foundRelatives map[string]bool,
 	journey []*Reference, resolve bool) []*Reference {
 
@@ -400,7 +398,7 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 				//	}
 				//}
 
-				found = append(found, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
+				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, resolve)...)
 			}
 
 			if i%2 == 0 && n.Value == "$ref" {
@@ -411,9 +409,9 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 
 				value := node.Content[i+1].Value
 
-				ref := resolver.specIndex.SearchIndexForReference(value)
+				locatedRef := resolver.specIndex.SearchIndexForReference(value)
 
-				if ref == nil {
+				if locatedRef == nil {
 					_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(value)
 					err := &ResolvingError{
 						ErrorRef: fmt.Errorf("cannot resolve reference `%s`, it's missing", value),
@@ -434,15 +432,9 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 					}
 				}
 
-				r := &Reference{
-					Definition:           value,
-					Name:                 value,
-					Node:                 node,
-					ParentNode:           parent,
-					ParentNodeSchemaType: schemaType,
-				}
+				locatedRef[0].ParentNodeSchemaType = schemaType
 
-				found = append(found, r)
+				found = append(found, locatedRef[0])
 
 				foundRelatives[value] = true
 			}
@@ -459,30 +451,30 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 						if _, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-									ref := resolver.specIndex.GetMappedReferences()[l]
-									if ref != nil && !ref.Circular {
+									mappedRefs := resolver.specIndex.GetMappedReferences()[l]
+									if mappedRefs != nil && !mappedRefs.Circular {
 										circ := false
 										for f := range journey {
-											if journey[f].Definition == ref.Definition {
+											if journey[f].Definition == mappedRefs.Definition {
 												circ = true
 												break
 											}
 										}
 										if !circ {
-											resolver.VisitReference(ref, foundRelatives, journey, resolve)
+											resolver.VisitReference(mappedRefs, foundRelatives, journey, resolve)
 										} else {
-											loop := append(journey, ref)
+											loop := append(journey, mappedRefs)
 											circRef := &CircularReferenceResult{
 												Journey:             loop,
-												Start:               ref,
+												Start:               mappedRefs,
 												LoopIndex:           i,
-												LoopPoint:           ref,
+												LoopPoint:           mappedRefs,
 												PolymorphicType:     n.Value,
 												IsPolymorphicResult: true,
 											}
 
-											ref.Seen = true
-											ref.Circular = true
+											mappedRefs.Seen = true
+											mappedRefs.Circular = true
 											if resolver.IgnorePoly {
 												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
 											} else {
@@ -501,36 +493,31 @@ func (resolver *Resolver) extractRelatives(node, parent *yaml.Node,
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-									strangs := strings.Split(l, "/#")
-									if len(strangs) == 2 {
-										fmt.Println("wank")
-									}
-
-									ref := resolver.specIndex.GetMappedReferences()[l]
-									if ref != nil && !ref.Circular {
+									mappedRefs := resolver.specIndex.GetMappedReferences()[l]
+									if mappedRefs != nil && !mappedRefs.Circular {
 										circ := false
 										for f := range journey {
-											if journey[f].Definition == ref.Definition {
+											if journey[f].Definition == mappedRefs.Definition {
 												circ = true
 												break
 											}
 										}
 										if !circ {
-											resolver.VisitReference(ref, foundRelatives, journey, resolve)
+											resolver.VisitReference(mappedRefs, foundRelatives, journey, resolve)
 										} else {
-											loop := append(journey, ref)
+											loop := append(journey, mappedRefs)
 
 											circRef := &CircularReferenceResult{
 												Journey:             loop,
-												Start:               ref,
+												Start:               mappedRefs,
 												LoopIndex:           i,
-												LoopPoint:           ref,
+												LoopPoint:           mappedRefs,
 												PolymorphicType:     n.Value,
 												IsPolymorphicResult: true,
 											}
 
-											ref.Seen = true
-											ref.Circular = true
+											mappedRefs.Seen = true
+											mappedRefs.Circular = true
 											if resolver.IgnorePoly {
 												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
 											} else {
