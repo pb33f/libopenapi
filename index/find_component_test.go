@@ -44,8 +44,6 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	c.BasePath = "../test_specs"
 	index := NewSpecIndexWithConfig(&rootNode, c)
 	assert.Nil(t, index.uri)
-	assert.NotNil(t, index.children[0].uri)
-	assert.NotNil(t, index.children[0].children[0].uri)
 	assert.NotNil(t, index.SearchIndexForReference("second.yaml#/properties/property2"))
 	assert.NotNil(t, index.SearchIndexForReference("second.yaml"))
 	assert.Nil(t, index.SearchIndexForReference("fourth.yaml"))
@@ -498,6 +496,73 @@ paths:
 	c.FSHandler = FS{}
 	c.RemoteURLHandler = httpClient.Get
 
+	index := NewSpecIndexWithConfig(&rootNode, c)
+
+	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Equal(t, `invalid URL escape "%$p"`, index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component 'exisiting.yaml#/paths/~1pet~1%$petId%7D/get/parameters' does not exist in the specification", index.GetReferenceIndexErrors()[1].Error())
+}
+
+func TestSpecIndex_Complex_Local_File_Design(t *testing.T) {
+
+	main := `openapi: 3.1.0
+paths:
+  /anything/circularReference:
+    get:
+      operationId: circularReferenceGet
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "components.yaml#/components/schemas/validCircularReferenceObject"
+  /anything/oneOfCircularReference:
+    get:
+      operationId: oneOfCircularReferenceGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "components.yaml#/components/schemas/oneOfCircularReferenceObject"`
+
+	components := `components:
+  schemas:
+    validCircularReferenceObject:
+      type: object
+      properties:
+        circular:
+          type: array
+          items:
+            $ref: "#/components/schemas/validCircularReferenceObject"
+    oneOfCircularReferenceObject:
+      type: object
+      properties:
+        child:
+          oneOf:
+            - $ref: "#/components/schemas/oneOfCircularReferenceObject"
+            - $ref: "#/components/schemas/simpleObject"
+      required:
+        - child
+    simpleObject:
+      description: "simple"
+      type: object
+      properties:
+        str:
+          type: string
+          description: "A string property."
+          example: "example" `
+
+	_ = os.WriteFile("components.yaml", []byte(components), 0644)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(main), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
 	index := NewSpecIndexWithConfig(&rootNode, c)
 
 	assert.Len(t, index.GetReferenceIndexErrors(), 2)

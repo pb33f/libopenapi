@@ -11,7 +11,6 @@ import (
 	"os"
 	"sync"
 
-	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,15 +24,17 @@ const (
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing
 // algorithms on data models. the *yaml.Node def is just a bit too low level for tracking state.
 type Reference struct {
-	Definition            string
-	Name                  string
-	Node                  *yaml.Node
-	ParentNode            *yaml.Node
-	ParentNodeSchemaType  string // used to determine if the parent node is an array or not.
-	Resolved              bool
-	Circular              bool
-	Seen                  bool
-	IsRemote              bool
+	FullDefinition       string
+	Definition           string
+	Name                 string
+	Node                 *yaml.Node
+	ParentNode           *yaml.Node
+	ParentNodeSchemaType string // used to determine if the parent node is an array or not.
+	Resolved             bool
+	Circular             bool
+	Seen                 bool
+	IsRemote             bool
+	//FileLocation          string
 	RemoteLocation        string
 	Path                  string              // this won't always be available.
 	RequiredRefProperties map[string][]string // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition
@@ -41,8 +42,9 @@ type Reference struct {
 
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
 type ReferenceMapped struct {
-	Reference  *Reference
-	Definition string
+	Reference      *Reference
+	Definition     string
+	FullDefinition string
 }
 
 // SpecIndexConfig is a configuration struct for the SpecIndex introduced in 0.6.0 that provides an expandable
@@ -67,6 +69,7 @@ type SpecIndexConfig struct {
 	// If resolving remotely, the RemoteURLHandler will be used to fetch the remote document.
 	// If not set, the default http client will be used.
 	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
+	// deprecated: Use the Rolodex instead
 	RemoteURLHandler func(url string) (*http.Response, error)
 
 	// FSHandler is an entity that implements the `fs.FS` interface that will be used to fetch local or remote documents.
@@ -81,6 +84,7 @@ type SpecIndexConfig struct {
 	// it also overrides the RemoteURLHandler if set.
 	//
 	// Resolves[#85] https://github.com/pb33f/libopenapi/issues/85
+	// deprecated: Use the Rolodex instead
 	FSHandler fs.FS
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
@@ -92,12 +96,13 @@ type SpecIndexConfig struct {
 	// exploits, but it's better to be safe than sorry.
 	//
 	// To read more about this, you can find a discussion here: https://github.com/pb33f/libopenapi/pull/64
-	AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
-	AllowFileLookup   bool // Allow file lookups for references. Defaults to false
+	//AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
+	//AllowFileLookup   bool // Allow file lookups for references. Defaults to false
 
 	// ParentIndex allows the index to be created with knowledge of a parent, before being parsed. This allows
-	// a breakglass to be used to prevent loops, checking the tree before recursing down.
-	ParentIndex *SpecIndex
+	// a breakglass to be used to prevent loops, checking the tree before cursing down.
+	// deprecated: Use the Rolodex instead, this is no longer needed, indexes are finite and do not have children.
+	//ParentIndex *SpecIndex
 
 	// If set to true, the index will not be built out, which means only the foundational elements will be
 	// parsed and added to the index. This is useful to avoid building out an index if the specification is
@@ -106,14 +111,40 @@ type SpecIndexConfig struct {
 	// Use the `BuildIndex()` method on the index to build it out once resolved/ready.
 	AvoidBuildIndex bool
 
+	AvoidCircularReferenceCheck bool
+
 	// SpecInfo is a pointer to the SpecInfo struct that contains the root node and the spec version. It's the
 	// struct that was used to create this index.
 	SpecInfo *datamodel.SpecInfo
 
+	// Rolodex is what provides all file and remote based lookups. Without the rolodex, no remote or file lookups
+	// can be used. Normally you won't need to worry about setting this as each root document gets a rolodex
+	// of its own automatically.
+	Rolodex *Rolodex
+
+	SpecAbsolutePath string
+
+	// IgnorePolymorphicCircularReferences will skip over checking for circular references in polymorphic schemas.
+	// A polymorphic schema is any schema that is composed other schemas using references via `oneOf`, `anyOf` of `allOf`.
+	// This is disabled by default, which means polymorphic circular references will be checked.
+	IgnorePolymorphicCircularReferences bool
+
+	// IgnoreArrayCircularReferences will skip over checking for circular references in arrays. Sometimes a circular
+	// reference is required to describe a data-shape correctly. Often those shapes are valid circles if the
+	// type of the schema implementing the loop is an array. An empty array would technically break the loop.
+	// So if libopenapi is returning circular references for this use case, then this option should be enabled.
+	// this is disabled by default, which means array circular references will be checked.
+	IgnoreArrayCircularReferences bool
+
+	// SkipCircularReferenceCheck will skip over checking for circular references. This is disabled by default, which
+	// means circular references will be checked. This is useful for developers building out models that should be
+	// indexed later on.
+	//SkipCircularReferenceCheck bool
+
 	// private fields
-	seenRemoteSources *syncmap.Map
-	remoteLock        *sync.Mutex
-	uri               []string
+	//seenRemoteSources *syncmap.Map
+	//remoteLock        *sync.Mutex
+	uri []string
 }
 
 // CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
@@ -123,10 +154,10 @@ type SpecIndexConfig struct {
 func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 	cw, _ := os.Getwd()
 	return &SpecIndexConfig{
-		BasePath:          cw,
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-		seenRemoteSources: &syncmap.Map{},
+		BasePath: cw,
+		//AllowRemoteLookup: true,
+		//AllowFileLookup:   true,
+		//seenRemoteSources: &syncmap.Map{},
 	}
 }
 
@@ -137,10 +168,10 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 func CreateClosedAPIIndexConfig() *SpecIndexConfig {
 	cw, _ := os.Getwd()
 	return &SpecIndexConfig{
-		BasePath:          cw,
-		AllowRemoteLookup: false,
-		AllowFileLookup:   false,
-		seenRemoteSources: &syncmap.Map{},
+		BasePath: cw,
+		//AllowRemoteLookup: false,
+		//AllowFileLookup:   false,
+		//seenRemoteSources: &syncmap.Map{},
 	}
 }
 
@@ -148,6 +179,7 @@ func CreateClosedAPIIndexConfig() *SpecIndexConfig {
 // quick direct access to paths, operations, tags are all available. No need to walk the entire node tree in rules,
 // everything is pre-walked if you need it.
 type SpecIndex struct {
+	rolodex                             *Rolodex                                      // the rolodex is used to fetch remote and file based documents.
 	allRefs                             map[string]*Reference                         // all (deduplicated) refs
 	rawSequencedRefs                    []*Reference                                  // all raw references in sequence as they are scanned, not deduped.
 	linesWithRefs                       map[int]bool                                  // lines that link to references.
@@ -183,7 +215,8 @@ type SpecIndex struct {
 	rootSecurity                        []*Reference                                  // root security definitions.
 	rootSecurityNode                    *yaml.Node                                    // root security node.
 	refsWithSiblings                    map[string]Reference                          // references with sibling elements next to them
-	pathRefsLock                        sync.Mutex                                    // create lock for all refs maps, we want to build data as fast as we can
+	pathRefsLock                        sync.RWMutex                                  // create lock for all refs maps, we want to build data as fast as we can
+	operationLock                       sync.Mutex                                    // create lock for operations
 	externalDocumentsCount              int                                           // number of externalDocument nodes found
 	operationTagsCount                  int                                           // number of unique tags in operations
 	globalTagsCount                     int                                           // number of global tags defined
@@ -248,12 +281,17 @@ type SpecIndex struct {
 	componentIndexChan                  chan bool
 	polyComponentIndexChan              chan bool
 
-	// when things get complex (looking at you digital ocean) then we need to know
-	// what we have seen across indexes, so we need to be able to travel back up to the root
-	// cto avoid re-downloading sources.
-	parentIndex *SpecIndex
-	uri         []string
-	children    []*SpecIndex
+	specAbsolutePath string
+	resolver         *Resolver
+
+	//parentIndex *SpecIndex
+	uri []string
+	//children    []*SpecIndex
+}
+
+// GetResolver returns the resolver for this index.
+func (index *SpecIndex) GetResolver() *Resolver {
+	return index.resolver
 }
 
 // GetConfig returns the SpecIndexConfig for this index.
@@ -261,15 +299,15 @@ func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 	return index.config
 }
 
-// AddChild adds a child index to this index, a child index is an index created from a remote or file reference.
-func (index *SpecIndex) AddChild(child *SpecIndex) {
-	index.children = append(index.children, child)
-}
-
-// GetChildren returns the children of this index.
-func (index *SpecIndex) GetChildren() []*SpecIndex {
-	return index.children
-}
+//// AddChild adds a child index to this index, a child index is an index created from a remote or file reference.
+//func (index *SpecIndex) AddChild(child *SpecIndex) {
+//    index.children = append(index.children, child)
+//}
+//
+//// GetChildren returns the children of this index.
+//func (index *SpecIndex) GetChildren() []*SpecIndex {
+//    return index.children
+//}
 
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the
 // URI based document. Decides if the reference is local, remote or in a file.

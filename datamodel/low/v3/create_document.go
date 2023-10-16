@@ -3,13 +3,13 @@ package v3
 import (
 	"errors"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -17,7 +17,7 @@ import (
 //
 // Deprecated: Use CreateDocumentFromConfig instead. This function will be removed in a later version, it
 // defaults to allowing file and remote references, and does not support relative file references.
-func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
+func CreateDocument(info *datamodel.SpecInfo) (*Document, error) {
 	config := datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -26,61 +26,92 @@ func CreateDocument(info *datamodel.SpecInfo) (*Document, []error) {
 }
 
 // CreateDocumentFromConfig Create a new document from the provided SpecInfo and DocumentConfiguration pointer.
-func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, []error) {
+func CreateDocumentFromConfig(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, error) {
 	return createDocument(info, config)
 }
 
-func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, []error) {
+func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfiguration) (*Document, error) {
 	_, labelNode, versionNode := utils.FindKeyNodeFull(OpenAPILabel, info.RootNode.Content)
 	var version low.NodeReference[string]
 	if versionNode == nil {
-		return nil, []error{errors.New("no openapi version/tag found, cannot create document")}
+		return nil, errors.New("no openapi version/tag found, cannot create document")
 	}
 	version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
 	doc := Document{Version: version}
 
 	// get current working directory as a basePath
 	cwd, _ := os.Getwd()
-
-	// If basePath is provided override it
 	if config.BasePath != "" {
 		cwd = config.BasePath
 	}
-	// build an index
-	idx := index.NewSpecIndexWithConfig(info.RootNode, &index.SpecIndexConfig{
-		BaseURL:           config.BaseURL,
-		RemoteURLHandler:  config.RemoteURLHandler,
-		BasePath:          cwd,
-		AllowFileLookup:   config.AllowFileReferences,
-		AllowRemoteLookup: config.AllowRemoteReferences,
-		AvoidBuildIndex:   config.AvoidIndexBuild,
-		SpecInfo:          info,
-	})
-	doc.Index = idx
 
+	// TODO: configure allowFileReferences and allowRemoteReferences stuff
+
+	// create an index config and shadow the document configuration.
+	idxConfig := index.CreateOpenAPIIndexConfig()
+	idxConfig.SpecInfo = info
+	idxConfig.BasePath = cwd
+	idxConfig.IgnoreArrayCircularReferences = config.IgnoreArrayCircularReferences
+	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
+	idxConfig.AvoidCircularReferenceCheck = config.SkipCircularReferenceCheck
+
+	rolodex := index.NewRolodex(idxConfig)
+	doc.Rolodex = rolodex
+
+	// If basePath is provided override it
+	if config.BasePath != "" {
+		var absError error
+		cwd, absError = filepath.Abs(config.BasePath)
+		if absError != nil {
+			return nil, absError
+		}
+
+		// create a local filesystem
+		fileFS, err := index.NewLocalFS(cwd, os.DirFS(cwd))
+		if err != nil {
+			return nil, err
+		}
+
+		// add the filesystem to the rolodex
+		rolodex.AddLocalFS(cwd, fileFS)
+
+	}
+
+	// TODO: Remote filesystem
+
+	// index the rolodex
+	err := rolodex.IndexTheRolodex()
 	var errs []error
+	if err != nil {
+		errs = append(errs, rolodex.GetCaughtErrors()...)
+	}
 
-	errs = idx.GetReferenceIndexErrors()
+	doc.Index = rolodex.GetRootIndex()
+
+	//errs = idx.GetReferenceIndexErrors()
 
 	// create resolver and check for circular references.
-	resolve := resolver.NewResolver(idx)
 
-	// if configured, ignore circular references in arrays and polymorphic schemas
-	if config.IgnoreArrayCircularReferences {
-		resolve.IgnoreArrayCircularReferences()
-	}
-	if config.IgnorePolymorphicCircularReferences {
-		resolve.IgnorePolymorphicCircularReferences()
-	}
-
-	// check for circular references.
-	resolvingErrors := resolve.CheckForCircularReferences()
-
-	if len(resolvingErrors) > 0 {
-		for r := range resolvingErrors {
-			errs = append(errs, resolvingErrors[r])
-		}
-	}
+	//resolve := resolver.NewResolver(idx)
+	//
+	//// if configured, ignore circular references in arrays and polymorphic schemas
+	//if config.IgnoreArrayCircularReferences {
+	//	resolve.IgnoreArrayCircularReferences()
+	//}
+	//if config.IgnorePolymorphicCircularReferences {
+	//	resolve.IgnorePolymorphicCircularReferences()
+	//}
+	//
+	//if !config.AvoidIndexBuild {
+	//	// check for circular references.
+	//	resolvingErrors := resolve.CheckForCircularReferences()
+	//
+	//	if len(resolvingErrors) > 0 {
+	//		for r := range resolvingErrors {
+	//			errs = append(errs, resolvingErrors[r])
+	//		}
+	//	}
+	//}
 
 	var wg sync.WaitGroup
 
@@ -117,10 +148,10 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
-		go runExtraction(info, &doc, idx, f, &errs, &wg)
+		go runExtraction(info, &doc, rolodex.GetRootIndex(), f, &errs, &wg)
 	}
 	wg.Wait()
-	return &doc, errs
+	return &doc, errors.Join(errs...)
 }
 
 func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {

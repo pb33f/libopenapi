@@ -6,6 +6,7 @@ package index
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
@@ -157,11 +158,31 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				segs := strings.Split(value, "/")
 				name := segs[len(segs)-1]
 				_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(value)
+
+				// determine absolute path to this definition
+				iroot := filepath.Dir(index.specAbsolutePath)
+				uri := strings.Split(value, "#/")
+				var componentName string
+				var fullDefinitionPath string
+				if len(uri) == 2 {
+					if uri[0] == "" {
+						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
+					} else {
+						abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
+						fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+					}
+					componentName = fmt.Sprintf("#/%s", uri[1])
+				} else {
+					fullDefinitionPath = fmt.Sprintf("%s#/%s", iroot, uri[0])
+					componentName = fmt.Sprintf("#/%s", uri[0])
+				}
+
 				ref := &Reference{
-					Definition: value,
-					Name:       name,
-					Node:       node,
-					Path:       p,
+					FullDefinition: fullDefinitionPath,
+					Definition:     componentName,
+					Name:           name,
+					Node:           node,
+					Path:           p,
 				}
 
 				// add to raw sequenced refs
@@ -183,10 +204,11 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				if len(node.Content) > 2 {
 					copiedNode := *node
 					copied := Reference{
-						Definition: ref.Definition,
-						Name:       ref.Name,
-						Node:       &copiedNode,
-						Path:       p,
+						FullDefinition: fullDefinitionPath,
+						Definition:     ref.Definition,
+						Name:           ref.Name,
+						Node:           &copiedNode,
+						Path:           p,
 					}
 					// protect this data using a copy, prevent the resolver from destroying things.
 					index.refsWithSiblings[value] = copied
@@ -413,19 +435,22 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	var found []*Reference
 
 	// run this async because when things get recursive, it can take a while
-	c := make(chan bool)
+	//c := make(chan bool)
 
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
-		located := index.FindComponent(ref.Definition, ref.Node)
+		located := index.FindComponent(ref.FullDefinition, ref.Node)
 		if located != nil {
 			index.refLock.Lock()
 			if index.allMappedRefs[ref.Definition] == nil {
 				found = append(found, located)
 				index.allMappedRefs[ref.Definition] = located
-				sequence[refIndex] = &ReferenceMapped{
-					Reference:  located,
-					Definition: ref.Definition,
+				rm := &ReferenceMapped{
+					Reference:      located,
+					Definition:     ref.Definition,
+					FullDefinition: ref.FullDefinition,
 				}
+
+				sequence[refIndex] = rm
 			}
 			index.refLock.Unlock()
 		} else {
@@ -440,7 +465,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			index.refErrors = append(index.refErrors, indexError)
 			index.errorLock.Unlock()
 		}
-		c <- true
+		//c <- true
 	}
 
 	var refsToCheck []*Reference
@@ -464,17 +489,17 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 	for r := range refsToCheck {
 		// expand our index of all mapped refs
-		go locate(refsToCheck[r], r, mappedRefsInSequence)
-		// locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
+		//go  locate(refsToCheck[r], r, mappedRefsInSequence)
+		locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
 	}
 
-	completedRefs := 0
-	for completedRefs < len(refsToCheck) {
-		select {
-		case <-c:
-			completedRefs++
-		}
-	}
+	//completedRefs := 0
+	//for completedRefs < len(refsToCheck) {
+	//	select {
+	//	case <-c:
+	//		completedRefs++
+	//	}
+	//}
 	for m := range mappedRefsInSequence {
 		if mappedRefsInSequence[m] != nil {
 			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, mappedRefsInSequence[m])
