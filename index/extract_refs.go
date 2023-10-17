@@ -44,9 +44,21 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			// https://github.com/pb33f/libopenapi/issues/76
 			schemaContainingNodes := []string{"schema", "items", "additionalProperties", "contains", "not", "unevaluatedItems", "unevaluatedProperties"}
 			if i%2 == 0 && slices.Contains(schemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+
+				var jsonPath, definitionPath, fullDefinitionPath string
+
+				if len(seenPath) > 0 || n.Value != "" {
+					loc := append(seenPath, n.Value)
+					// create definition and full definition paths
+					definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
+					fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
+					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
+				}
 				ref := &Reference{
-					Node: node.Content[i+1],
-					Path: fmt.Sprintf("$.%s.%s", strings.Join(seenPath, "."), n.Value),
+					FullDefinition: fullDefinitionPath,
+					Definition:     definitionPath,
+					Node:           node.Content[i+1],
+					Path:           jsonPath,
 				}
 
 				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
@@ -86,9 +98,18 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						label = prop.Value
 						continue
 					}
+					var jsonPath, definitionPath, fullDefinitionPath string
+					if len(seenPath) > 0 || n.Value != "" && label != "" {
+						loc := append(seenPath, n.Value, label)
+						definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
+						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
+						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
+					}
 					ref := &Reference{
-						Node: prop,
-						Path: fmt.Sprintf("$.%s.%s.%s", strings.Join(seenPath, "."), n.Value, label),
+						FullDefinition: fullDefinitionPath,
+						Definition:     definitionPath,
+						Node:           prop,
+						Path:           jsonPath,
 					}
 
 					isRef, _, _ := utils.IsNodeRefValue(prop)
@@ -116,9 +137,19 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			if i%2 == 0 && slices.Contains(arrayOfSchemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 				// for each element in the array, add it to our schema definitions
 				for h, element := range node.Content[i+1].Content {
+
+					var jsonPath, definitionPath, fullDefinitionPath string
+					if len(seenPath) > 0 {
+						loc := append(seenPath, n.Value, fmt.Sprintf("%d", h))
+						definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
+						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
+						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
+					}
 					ref := &Reference{
-						Node: element,
-						Path: fmt.Sprintf("$.%s.%s[%d]", strings.Join(seenPath, "."), n.Value, h),
+						FullDefinition: fullDefinitionPath,
+						Definition:     definitionPath,
+						Node:           element,
+						Path:           jsonPath,
 					}
 
 					isRef, _, _ := utils.IsNodeRefValue(element)
@@ -351,7 +382,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if len(seenPath) > 0 {
 						lastItem := seenPath[len(seenPath)-1]
 						if lastItem == "properties" {
-							seenPath = append(seenPath, n.Value)
+							seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
 							prev = n.Value
 							continue
 						}
@@ -400,7 +431,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 				}
 
-				seenPath = append(seenPath, n.Value)
+				seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
 				prev = n.Value
 			}
 
