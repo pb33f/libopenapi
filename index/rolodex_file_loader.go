@@ -6,11 +6,13 @@ package index
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -21,6 +23,7 @@ type LocalFS struct {
 	parseTime           int64
 	logger              *slog.Logger
 	readingErrors       []error
+	filters             []string
 }
 
 func (l *LocalFS) GetFiles() map[string]RolodexFile {
@@ -116,21 +119,31 @@ func (l *LocalFile) GetErrors() []error {
 	return l.readingErrors
 }
 
-func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
+type LocalFSConfig struct {
+	// the base directory to index
+	BaseDirectory string
+	FileFilters   []string
+	DirFS         fs.FS
+}
+
+func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
 
-	absBaseDir, absBaseErr := filepath.Abs(filepath.Dir(baseDir))
+	// if the basedir is an absolute file, we're just going to index that file.
+	ext := filepath.Ext(config.BaseDirectory)
+	file := filepath.Base(config.BaseDirectory)
+
+	var absBaseDir string
+	var absBaseErr error
+
+	absBaseDir, absBaseErr = filepath.Abs(config.BaseDirectory)
 
 	if absBaseErr != nil {
 		return nil, absBaseErr
 	}
 
-	// if the basedir is an absolute file, we're just going to index that file.
-	ext := filepath.Ext(baseDir)
-	file := filepath.Base(baseDir)
-
-	walkErr := fs.WalkDir(dirFS, ".", func(p string, d fs.DirEntry, err error) error {
+	walkErr := fs.WalkDir(config.DirFS, ".", func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -144,9 +157,19 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 			return nil
 		}
 
+		if strings.HasPrefix(p, ".") {
+			return nil
+		}
+
+		if len(config.FileFilters) > 0 {
+			if !slices.Contains(config.FileFilters, p) {
+				return nil
+			}
+		}
+
 		extension := ExtractFileType(p)
 		var readingErrors []error
-		abs, absErr := filepath.Abs(filepath.Join(baseDir, p))
+		abs, absErr := filepath.Abs(filepath.Join(config.BaseDirectory, p))
 		if absErr != nil {
 			readingErrors = append(readingErrors, absErr)
 			logger.Error("cannot create absolute path for file: ", "file", p, "error", absErr.Error())
@@ -157,7 +180,7 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 		switch extension {
 		case YAML, JSON:
 
-			file, readErr := dirFS.Open(p)
+			file, readErr := config.DirFS.Open(p)
 			modTime := time.Now()
 			if readErr != nil {
 				readingErrors = append(readingErrors, readErr)
@@ -206,9 +229,17 @@ func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 		Files:               localFiles,
 		logger:              logger,
 		baseDirectory:       absBaseDir,
-		entryPointDirectory: baseDir,
+		entryPointDirectory: config.BaseDirectory,
 		readingErrors:       allErrors,
 	}, nil
+}
+
+func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
+	config := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         dirFS,
+	}
+	return NewLocalFSWithConfig(config)
 }
 
 func (l *LocalFile) FullPath() string {

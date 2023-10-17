@@ -36,13 +36,40 @@ func TestSpecIndex_performExternalLookup(t *testing.T) {
 }
 
 func TestSpecIndex_CheckCircularIndex(t *testing.T) {
-	yml, _ := os.ReadFile("../test_specs/first.yaml")
+
+	cFile := "../test_specs/first.yaml"
+	yml, _ := os.ReadFile(cFile)
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	c := CreateOpenAPIIndexConfig()
-	c.BasePath = "../test_specs"
-	index := NewSpecIndexWithConfig(&rootNode, c)
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+	cf.BasePath = "../test_specs"
+
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&rootNode)
+	cf.Rolodex = rolo
+
+	// TODO: pick up here.
+
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"first.yaml", "second.yaml", "third.yaml", "fourth.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+
+	assert.NoError(t, err)
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+
+	indexedErr := rolo.IndexTheRolodex()
+	rolo.BuildIndexes()
+
+	assert.NoError(t, indexedErr)
+
+	index := rolo.GetRootIndex()
+
 	assert.Nil(t, index.uri)
 	assert.NotNil(t, index.SearchIndexForReference("second.yaml#/properties/property2"))
 	assert.NotNil(t, index.SearchIndexForReference("second.yaml"))
@@ -62,7 +89,7 @@ components:
 
 	c := CreateOpenAPIIndexConfig()
 	index := NewSpecIndexWithConfig(&rootNode, c)
-	assert.Len(t, index.GetReferenceIndexErrors(), 2)
+	assert.Len(t, index.GetReferenceIndexErrors(), 1)
 }
 
 //func TestSpecIndex_FindComponentInRoot(t *testing.T) {

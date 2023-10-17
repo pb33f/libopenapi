@@ -28,6 +28,7 @@ type RolodexFile interface {
 	GetFullPath() string
 	GetErrors() []error
 	GetContentAsYAMLNode() (*yaml.Node, error)
+	GetIndex() *SpecIndex
 	Name() string
 	ModTime() time.Time
 	IsDir() bool
@@ -84,7 +85,13 @@ func (rf *rolodexFile) Name() string {
 }
 
 func (rf *rolodexFile) GetIndex() *SpecIndex {
-	return rf.index
+	if rf.localFile != nil {
+		return rf.localFile.index
+	}
+	if rf.remoteFile != nil {
+		// TODO: remote file index
+	}
+	return nil
 }
 
 func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {

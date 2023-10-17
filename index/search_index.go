@@ -15,6 +15,9 @@ import (
 func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
 
 	absPath := index.specAbsolutePath
+	if absPath == "" {
+		absPath = index.config.BasePath
+	}
 	var roloLookup string
 	uri := strings.Split(ref, "#/")
 	if len(uri) == 2 {
@@ -22,13 +25,50 @@ func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
 			roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
 		}
 		ref = fmt.Sprintf("#/%s", uri[1])
+	} else {
+		roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+		ref = uri[0]
 	}
 
 	if r, ok := index.allMappedRefs[ref]; ok {
 		return []*Reference{r}
 	}
 
+	if r, ok := index.allRefs[ref]; ok {
+		return []*Reference{r}
+	}
+
 	// TODO: look in the rolodex.
+	if roloLookup != "" {
+		rFile, err := index.rolodex.Open(roloLookup)
+		if err != nil {
+			return nil
+		}
+		idx := rFile.GetIndex()
+		if idx != nil {
+
+			// check mapped refs.
+			if r, ok := idx.allMappedRefs[ref]; ok {
+				return []*Reference{r}
+			}
+
+			if r, ok := index.allRefs[ref]; ok {
+				return []*Reference{r}
+			}
+
+			// build a collection of all the inline schemas and search them
+			// for the reference.
+			var d []*Reference
+			d = append(d, idx.allInlineSchemaDefinitions...)
+			d = append(d, idx.allRefSchemaDefinitions...)
+			d = append(d, idx.allInlineSchemaObjectDefinitions...)
+			for _, s := range d {
+				if s.Definition == ref {
+					return []*Reference{s}
+				}
+			}
+		}
+	}
 
 	panic("should not be here")
 	fmt.Println(roloLookup)
