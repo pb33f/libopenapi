@@ -5,6 +5,7 @@ package index
 
 import (
 	"errors"
+	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -17,9 +18,12 @@ import (
 	"time"
 )
 
+type HasIndex interface {
+	GetIndex() *SpecIndex
+}
+
 type CanBeIndexed interface {
 	Index(config *SpecIndexConfig) (*SpecIndex, error)
-	GetIndex() *SpecIndex
 }
 
 type RolodexFile interface {
@@ -86,10 +90,10 @@ func (rf *rolodexFile) Name() string {
 
 func (rf *rolodexFile) GetIndex() *SpecIndex {
 	if rf.localFile != nil {
-		return rf.localFile.index
+		return rf.localFile.GetIndex()
 	}
 	if rf.remoteFile != nil {
-		// TODO: remote file index
+		return rf.remoteFile.GetIndex()
 	}
 	return nil
 }
@@ -207,7 +211,6 @@ func (rf *rolodexFile) GetErrors() []error {
 }
 
 func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
-
 	r := &Rolodex{
 		indexConfig: indexConfig,
 		localFS:     make(map[string]fs.FS),
@@ -304,16 +307,23 @@ func (r *Rolodex) IndexTheRolodex() error {
 			indexChan <- idx
 		}
 
-		if lfs, ok := fs.(*LocalFS); ok {
-			for _, f := range lfs.Files {
+		if lfs, ok := fs.(RolodexFS); ok {
+			wait := false
+			for _, f := range lfs.GetFiles() {
 				if idxFile, ko := f.(CanBeIndexed); ko {
 					wg.Add(1)
+					wait = true
 					go indexFileFunc(idxFile, f.GetFullPath())
 				}
 			}
-			wg.Wait()
+			if wait {
+				wg.Wait()
+			}
 			doneChan <- true
 			return
+		} else {
+			errChan <- errors.New("rolodex file system is not a RolodexFS")
+			doneChan <- true
 		}
 	}
 
@@ -440,24 +450,25 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	var errorStack []error
 
 	var localFile *LocalFile
-	//var remoteFile *RemoteFile
+	var remoteFile *RemoteFile
 
 	if r == nil || r.localFS == nil && r.remoteFS == nil {
 		panic("WHAT NO....")
 	}
 
-	for k, v := range r.localFS {
+	fileLookup := location
+	isUrl := false
+	u, _ := url.Parse(location)
+	if u != nil && u.Scheme != "" {
+		isUrl = true
+	}
 
-		// check if this is a URL or an abs/rel reference.
-		fileLookup := location
-		isUrl := false
-		u, _ := url.Parse(location)
-		if u != nil && u.Scheme != "" {
-			isUrl = true
-		}
+	if !isUrl {
 
-		// TODO handle URLs.
-		if !isUrl {
+		for k, v := range r.localFS {
+
+			// check if this is a URL or an abs/rel reference.
+
 			if !filepath.IsAbs(location) {
 				fileLookup, _ = filepath.Abs(filepath.Join(k, location))
 			}
@@ -504,13 +515,65 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 					break
 				}
 			}
+
+		}
+	} else {
+
+		if !r.indexConfig.AllowRemoteLookup {
+			return nil, fmt.Errorf("remote lookup for '%s' not allowed, please set the index configuration to "+
+				"AllowRemoteLookup to true", fileLookup)
+		}
+
+		for _, v := range r.remoteFS {
+			f, err := v.Open(fileLookup)
+			if err == nil {
+
+				if rf, ok := interface{}(f).(*RemoteFile); ok {
+					remoteFile = rf
+					break
+				} else {
+
+					bytes, rErr := io.ReadAll(f)
+					if rErr != nil {
+						errorStack = append(errorStack, rErr)
+						continue
+					}
+					s, sErr := f.Stat()
+					if sErr != nil {
+						errorStack = append(errorStack, sErr)
+						continue
+					}
+					if len(bytes) > 0 {
+						remoteFile = &RemoteFile{
+							filename:     filepath.Base(fileLookup),
+							name:         filepath.Base(fileLookup),
+							extension:    ExtractFileType(fileLookup),
+							data:         bytes,
+							fullPath:     fileLookup,
+							lastModified: s.ModTime(),
+							index:        r.rootIndex,
+						}
+						break
+					}
+				}
+			}
+
 		}
 	}
+
 	if localFile != nil {
 		return &rolodexFile{
 			rolodex:   r,
 			location:  localFile.fullPath,
 			localFile: localFile,
+		}, errors.Join(errorStack...)
+	}
+
+	if remoteFile != nil {
+		return &rolodexFile{
+			rolodex:    r,
+			location:   remoteFile.fullPath,
+			remoteFile: remoteFile,
 		}, errors.Join(errorStack...)
 	}
 

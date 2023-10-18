@@ -12,17 +12,6 @@ import (
 // var refRegex = regexp.MustCompile(`['"]?\$ref['"]?\s*:\s*['"]?([^'"]*?)['"]`)
 var refRegex = regexp.MustCompile(`('\$ref'|"\$ref"|\$ref)\s*:\s*('[^']*'|"[^"]*"|\S*)`)
 
-/*
-r := regexp.MustCompile(`('\$ref'|"\$ref"|\$ref)\s*:\s*('[^']*'|"[^"]*"|\S*)`)
-	matches := r.FindAllStringSubmatch(text, -1)
-	for _, submatches := range matches {
-		if len(submatches) > 2 {
-			fmt.Println("Full match:", submatches[0])
-			fmt.Println("JSON Schema reference: ", submatches[2])
-		}
-	}
-*/
-
 type RefType int
 
 const (
@@ -108,12 +97,12 @@ func ExtractRefType(ref string) RefType {
 
 func ExtractRefs(content string) [][]string {
 
-	res := refRegex.FindAllStringSubmatch(content, -1)
+	return refRegex.FindAllStringSubmatch(content, -1)
 
-	var results []*ExtractedRef
-	for _, r := range res {
-		results = append(results, &ExtractedRef{Location: r[1], Type: ExtractRefType(r[1])})
-	}
+	//var results []*ExtractedRef
+	//for _, r := range res {
+	//	results = append(results, &ExtractedRef{Location: r[1], Type: ExtractRefType(r[1])})
+	//}
 
-	return res
+
 }

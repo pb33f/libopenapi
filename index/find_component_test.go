@@ -50,8 +50,6 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	rolo.SetRootNode(&rootNode)
 	cf.Rolodex = rolo
 
-	// TODO: pick up here.
-
 	fsCfg := LocalFSConfig{
 		BaseDirectory: cf.BasePath,
 		FileFilters:   []string{"first.yaml", "second.yaml", "third.yaml", "fourth.yaml"},

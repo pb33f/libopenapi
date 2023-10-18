@@ -6,6 +6,7 @@ package index
 import (
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
 	"golang.org/x/exp/slog"
 	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
@@ -19,6 +20,7 @@ import (
 )
 
 type RemoteFS struct {
+	indexConfig       *SpecIndexConfig
 	rootURL           string
 	rootURLParsed     *url.URL
 	RemoteHandlerFunc RemoteURLHandler
@@ -41,6 +43,9 @@ type RemoteFile struct {
 	URL           *url.URL
 	lastModified  time.Time
 	seekingErrors []error
+	index         *SpecIndex
+	parsed        *yaml.Node
+	offset        int64
 }
 
 func (f *RemoteFile) GetFileName() string {
@@ -52,7 +57,25 @@ func (f *RemoteFile) GetContent() string {
 }
 
 func (f *RemoteFile) GetContentAsYAMLNode() (*yaml.Node, error) {
-	return nil, errors.New("not implemented")
+	if f.parsed != nil {
+		return f.parsed, nil
+	}
+	if f.index != nil && f.index.root != nil {
+		return f.index.root, nil
+	}
+	if f.data == nil {
+		return nil, fmt.Errorf("no data to parse for file: %s", f.fullPath)
+	}
+	var root yaml.Node
+	err := yaml.Unmarshal(f.data, &root)
+	if err != nil {
+		return nil, err
+	}
+	if f.index != nil && f.index.root == nil {
+		f.index.root = &root
+	}
+	f.parsed = &root
+	return &root, nil
 }
 
 func (f *RemoteFile) GetFileExtension() FileExtension {
@@ -70,6 +93,8 @@ func (f *RemoteFile) GetErrors() []error {
 func (f *RemoteFile) GetFullPath() string {
 	return f.fullPath
 }
+
+// fs.FileInfo interfaces
 
 func (f *RemoteFile) Name() string {
 	return f.name
@@ -91,38 +116,50 @@ func (f *RemoteFile) IsDir() bool {
 	return false
 }
 
+// fs.File interfaces
+
 func (f *RemoteFile) Sys() interface{} {
 	return nil
 }
 
-func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
-
-	// TODO
-	return nil, nil
-}
-func (f *RemoteFile) GetIndex() *SpecIndex {
-
-	// TODO
+func (f *RemoteFile) Close() error {
 	return nil
 }
-
-type remoteRolodexFile struct {
-	f      *RemoteFile
-	offset int64
+func (f *RemoteFile) Stat() (fs.FileInfo, error) {
+	return f, nil
 }
-
-func (f *remoteRolodexFile) Close() error               { return nil }
-func (f *remoteRolodexFile) Stat() (fs.FileInfo, error) { return f.f, nil }
-func (f *remoteRolodexFile) Read(b []byte) (int, error) {
-	if f.offset >= int64(len(f.f.data)) {
+func (f *RemoteFile) Read(b []byte) (int, error) {
+	if f.offset >= int64(len(f.data)) {
 		return 0, io.EOF
 	}
 	if f.offset < 0 {
-		return 0, &fs.PathError{Op: "read", Path: f.f.name, Err: fs.ErrInvalid}
+		return 0, &fs.PathError{Op: "read", Path: f.name, Err: fs.ErrInvalid}
 	}
-	n := copy(b, f.f.data[f.offset:])
+	n := copy(b, f.data[f.offset:])
 	f.offset += int64(n)
 	return n, nil
+}
+
+func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
+
+	if f.index != nil {
+		return f.index, nil
+	}
+	content := f.data
+
+	// first, we must parse the content of the file
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
+	if err != nil {
+		return nil, err
+	}
+
+	index := NewSpecIndexWithConfig(info.RootNode, config)
+	index.specAbsolutePath = f.fullPath
+	f.index = index
+	return index, nil
+}
+func (f *RemoteFile) GetIndex() *SpecIndex {
+	return f.index
 }
 
 type FileExtension int
@@ -133,19 +170,39 @@ const (
 	UNSUPPORTED
 )
 
-func NewRemoteFS(rootURL string) (*RemoteFS, error) {
+func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) {
+	remoteRootURL := specIndexConfig.BaseURL
+	rfs :=  &RemoteFS{
+		logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+
+		rootURLParsed: remoteRootURL,
+		FetchChannel:  make(chan *RemoteFile),
+	}
+	if remoteRootURL != nil {
+	  rfs.rootURL = remoteRootURL.String()
+	}
+	return rfs, nil
+}
+
+func NewRemoteFS() (*RemoteFS, error) {
+	config := CreateOpenAPIIndexConfig()
+	return NewRemoteFSWithConfig(config)
+}
+
+func NewRemoteFSWithRootURL(rootURL string) (*RemoteFS, error) {
 	remoteRootURL, err := url.Parse(rootURL)
 	if err != nil {
 		return nil, err
 	}
-	return &RemoteFS{
-		logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		})),
-		rootURL:       rootURL,
-		rootURLParsed: remoteRootURL,
-		FetchChannel:  make(chan *RemoteFile),
-	}, nil
+	config := CreateOpenAPIIndexConfig()
+	config.BaseURL = remoteRootURL
+	return NewRemoteFSWithConfig(config)
+}
+
+func (i *RemoteFS) SetIndexConfig(config *SpecIndexConfig) {
+	i.indexConfig = config
 }
 
 func (i *RemoteFS) GetFiles() map[string]RolodexFile {
@@ -200,7 +257,7 @@ func (i *RemoteFS) seekRelatives(file *RemoteFile) {
 			fmt.Printf("Found relative HTTP reference: %s\n", ref[1])
 		}
 	}
-	if i.remoteRunning == false {
+	if !i.remoteRunning {
 		i.remoteRunning = true
 		i.remoteWg.Wait()
 		i.remoteRunning = false
@@ -215,15 +272,29 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, err
 	}
 
+	remoteParsedOrig, _ := url.Parse(remoteURL)
+
+	// try path first
+	if r, ok := i.Files.Load(remoteParsedURL.Path); ok {
+		return r.(*RemoteFile), nil
+	}
+
 	fileExt := ExtractFileType(remoteParsedURL.Path)
 
 	if fileExt == UNSUPPORTED {
 		return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 	}
 
-	i.logger.Debug("Loading remote file", "file", remoteParsedURL.Path)
+	// if the remote URL is absolute (http:// or https://), and we have a rootURL defined, we need to override
+	// the host being defined by this URL, and use the rootURL instead, but keep the path.
+	if i.rootURLParsed != nil && remoteParsedURL.Host != "" {
+		remoteParsedURL.Host = i.rootURLParsed.Host
+		remoteParsedURL.Scheme = i.rootURLParsed.Scheme
+	}
 
-	response, clientErr := i.RemoteHandlerFunc(i.rootURL + remoteURL)
+	i.logger.Debug("Loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+
+	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
 		i.logger.Error("client error", "error", response.StatusCode)
 
@@ -238,7 +309,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if response.StatusCode >= 400 {
 		i.logger.Error("Unable to fetch remote document %s",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
-		return nil, errors.New(fmt.Sprintf("Unable to fetch remote document: %s", string(responseBytes)))
+		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
 	}
 
 	absolutePath, pathErr := filepath.Abs(remoteParsedURL.Path)
@@ -253,10 +324,12 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	lastModifiedTime, parseErr := time.Parse(time.RFC1123, lastModified)
 
 	if parseErr != nil {
-		return nil, parseErr
+		// can't extract last modified, so use now
+		lastModifiedTime = time.Now()
 	}
 
 	filename := filepath.Base(remoteParsedURL.Path)
+
 	remoteFile := &RemoteFile{
 		filename:     filename,
 		name:         remoteParsedURL.Path,
@@ -266,14 +339,31 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		URL:          remoteParsedURL,
 		lastModified: lastModifiedTime,
 	}
+
+	copiedCfg := *i.indexConfig
+
+	newBase := fmt.Sprintf("%s://%s%s", remoteParsedOrig.Scheme, remoteParsedOrig.Host,
+		filepath.Dir(remoteParsedOrig.Path))
+	newBaseURL, _ := url.Parse(newBase)
+
+	copiedCfg.BaseURL = newBaseURL
+	copiedCfg.SpecAbsolutePath = remoteURL
+	idx, _ := remoteFile.Index(&copiedCfg)
+
+	// for each index, we need a resolver
+	resolver := NewResolver(idx)
+	idx.resolver = resolver
+
 	i.Files.Store(absolutePath, remoteFile)
 
 	i.logger.Debug("successfully loaded file", "file", absolutePath)
 	i.seekRelatives(remoteFile)
 
-	if i.remoteRunning == false {
-		return &remoteRolodexFile{remoteFile, 0}, errors.Join(i.remoteErrors...)
+	idx.BuildIndex()
+
+	if !i.remoteRunning {
+		return remoteFile, errors.Join(i.remoteErrors...)
 	} else {
-		return &remoteRolodexFile{remoteFile, 0}, nil
+		return remoteFile, nil
 	}
 }

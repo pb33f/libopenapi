@@ -45,10 +45,24 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 
 	//witch DetermineReferenceResolveType(componentId) {
 	//case LocalResolve: // ideally, every single ref in every single spec is local. however, this is not the case.
-	//	return index.FindComponentInRoot(componentId)
+	//return index.FindComponentInRoot(componentId)
 
 	//case HttpResolve, FileResolve:
-	return index.performExternalLookup(strings.Split(componentId, "#/"))
+
+	uri := strings.Split(componentId, "#/")
+	if len(uri) == 2 {
+		if uri[0] != "" {
+			if index.specAbsolutePath == uri[0] {
+				return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+			} else {
+				return index.lookupRolodex(uri)
+			}
+		} else {
+			return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+		}
+	} else {
+		return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[0]))
+	}
 
 	//}
 	//return nil
@@ -326,23 +340,26 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Refer
 	return nil
 }
 
-//func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
-//	if index.root != nil {
-//		return FindComponent(index.root, componentId, )
-//	}
-//	return nil
-//}
+func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
+	if index.root != nil {
+		return FindComponent(index.root, componentId, index.specAbsolutePath)
+	}
+	return nil
+}
 
-func (index *SpecIndex) performExternalLookup(uri []string) *Reference {
+func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 
 	if len(uri) > 0 {
 
 		// split string to remove file reference
 		file := strings.ReplaceAll(uri[0], "file:", "")
-		fileName := filepath.Base(file)
 
-		var absoluteFileLocation string
-		if filepath.IsAbs(file) {
+		var absoluteFileLocation, fileName string
+
+		// is this a local or a remote file?
+
+		fileName = filepath.Base(file)
+		if filepath.IsAbs(file) || strings.HasPrefix(file, "http") {
 			absoluteFileLocation = file
 		} else {
 			absoluteFileLocation, _ = filepath.Abs(filepath.Join(filepath.Dir(index.specAbsolutePath), file))
@@ -363,6 +380,9 @@ func (index *SpecIndex) performExternalLookup(uri []string) *Reference {
 				return nil
 			}
 
+			if rFile == nil {
+				panic("FUCK")
+			}
 			parsedDocument, err = rFile.GetContentAsYAMLNode()
 			if err != nil {
 				logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
