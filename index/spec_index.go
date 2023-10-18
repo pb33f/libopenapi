@@ -103,6 +103,9 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 // useful for looking up things, the count operations are all run in parallel and then the final calculations are run
 // the index is ready.
 func (index *SpecIndex) BuildIndex() {
+	if index.built {
+		return
+	}
 	countFuncs := []func() int{
 		index.GetOperationCount,
 		index.GetComponentSchemaCount,
@@ -132,6 +135,7 @@ func (index *SpecIndex) BuildIndex() {
 	index.GetInlineDuplicateParamCount()
 	index.GetAllDescriptionsCount()
 	index.GetTotalTagsCount()
+	index.built = true
 }
 
 // GetRootNode returns document root node.
@@ -998,7 +1002,6 @@ func (index *SpecIndex) GetOperationCount() int {
 						}
 					}
 					if valid {
-						fmt.Sprint(p)
 						ref := &Reference{
 							Definition: m.Value,
 							Name:       m.Value,

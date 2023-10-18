@@ -96,8 +96,8 @@ type SpecIndexConfig struct {
 	// exploits, but it's better to be safe than sorry.
 	//
 	// To read more about this, you can find a discussion here: https://github.com/pb33f/libopenapi/pull/64
-	//AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
-	//AllowFileLookup   bool // Allow file lookups for references. Defaults to false
+	AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
+	AllowFileLookup   bool // Allow file lookups for references. Defaults to false
 
 	// ParentIndex allows the index to be created with knowledge of a parent, before being parsed. This allows
 	// a breakglass to be used to prevent loops, checking the tree before cursing down.
@@ -279,6 +279,8 @@ type SpecIndex struct {
 
 	specAbsolutePath string
 	resolver         *Resolver
+
+	built bool
 
 	//parentIndex *SpecIndex
 	uri []string

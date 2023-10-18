@@ -20,10 +20,8 @@ type LocalFS struct {
 	entryPointDirectory string
 	baseDirectory       string
 	Files               map[string]RolodexFile
-	parseTime           int64
 	logger              *slog.Logger
 	readingErrors       []error
-	filters             []string
 }
 
 func (l *LocalFS) GetFiles() map[string]RolodexFile {
@@ -180,26 +178,23 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 		switch extension {
 		case YAML, JSON:
 
-			file, readErr := config.DirFS.Open(p)
+			dirFile, readErr := config.DirFS.Open(p)
 			modTime := time.Now()
 			if readErr != nil {
-				readingErrors = append(readingErrors, readErr)
 				allErrors = append(allErrors, readErr)
 				logger.Error("[rolodex] cannot open file: ", "file", abs, "error", readErr.Error())
 				return nil
 			}
-			stat, statErr := file.Stat()
+			stat, statErr := dirFile.Stat()
 			if statErr != nil {
-				readingErrors = append(readingErrors, statErr)
 				allErrors = append(allErrors, statErr)
 				logger.Error("[rolodex] cannot stat file: ", "file", abs, "error", statErr.Error())
 			}
 			if stat != nil {
 				modTime = stat.ModTime()
 			}
-			fileData, readErr = io.ReadAll(file)
+			fileData, readErr = io.ReadAll(dirFile)
 			if readErr != nil {
-				readingErrors = append(readingErrors, readErr)
 				allErrors = append(allErrors, readErr)
 				logger.Error("cannot read file data: ", "file", abs, "error", readErr.Error())
 				return nil

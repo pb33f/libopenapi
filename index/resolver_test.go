@@ -407,7 +407,7 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 
 	resolveFile, _ := os.ReadFile(baseDir)
 
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(resolveFile, true)
+	info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(resolveFile, true)
 
 	fileFS, err := NewLocalFS(baseDir, os.DirFS(filepath.Dir(baseDir)))
 	if err != nil {

@@ -269,7 +269,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if j.Definition == r.Definition {
 
 				var foundDup *Reference
-				foundRefs := resolver.specIndex.SearchIndexForReference(r.Definition)
+				foundRefs := resolver.specIndex.SearchIndexForReferenceByReference(r)
 				if len(foundRefs) > 0 {
 					foundDup = foundRefs[0]
 				}
@@ -311,7 +311,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 
 		if !skip {
 			var original *Reference
-			foundRefs := resolver.specIndex.SearchIndexForReference(r.Definition)
+			foundRefs := resolver.specIndex.SearchIndexForReferenceByReference(r)
 			if len(foundRefs) > 0 {
 				original = foundRefs[0]
 			}
@@ -408,8 +408,27 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				}
 
 				value := node.Content[i+1].Value
+				var locatedRef []*Reference
+				searchRef := &Reference{
+					Definition:     value,
+					FullDefinition: ref.FullDefinition,
+					RemoteLocation: ref.RemoteLocation,
+					IsRemote:       true,
+				}
 
-				locatedRef := resolver.specIndex.SearchIndexForReference(value)
+				// we're searching a remote document, we need to build a full path to the reference
+				if ref.IsRemote {
+					if ref.RemoteLocation != "" {
+						searchRef = &Reference{
+							Definition:     value,
+							FullDefinition: fmt.Sprintf("%s%s", ref.RemoteLocation, value),
+							RemoteLocation: ref.RemoteLocation,
+							IsRemote:       true,
+						}
+					}
+				}
+
+				locatedRef = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
 
 				if locatedRef == nil {
 					_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(value)

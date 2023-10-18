@@ -9,10 +9,9 @@ import (
 	"strings"
 )
 
-// SearchIndexForReference searches the index for a reference, first looking through the mapped references
-// and then externalSpecIndex for a match. If no match is found, it will recursively search the child indexes
-// extracted when parsing the OpenAPI Spec.
-func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
+func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) []*Reference {
+
+	ref := fullRef.FullDefinition
 
 	absPath := index.specAbsolutePath
 	if absPath == "" {
@@ -22,7 +21,11 @@ func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
 	uri := strings.Split(ref, "#/")
 	if len(uri) == 2 {
 		if uri[0] != "" {
-			roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+			if strings.HasPrefix(uri[0], "http") {
+				roloLookup = fullRef.FullDefinition
+			} else {
+				roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+			}
 		}
 		ref = fmt.Sprintf("#/%s", uri[1])
 	} else {
@@ -38,7 +41,6 @@ func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
 		return []*Reference{r}
 	}
 
-	// TODO: look in the rolodex.
 	if roloLookup != "" {
 		rFile, err := index.rolodex.Open(roloLookup)
 		if err != nil {
@@ -70,33 +72,17 @@ func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
 		}
 	}
 
-	panic("should not be here")
-	fmt.Println(roloLookup)
-	return nil
-
-	//if r, ok := index.allMappedRefs[ref]; ok {
-	//	return []*Reference{r}jh
-	//}
-	//for c := range index.children {
-	//	found := goFindMeSomething(index.children[c], ref)
-	//	if found != nil {
-	//		return found
-	//	}
-	//}
-	//return nil
-}
-
-func (index *SpecIndex) SearchAncestryForSeenURI(uri string) *SpecIndex {
-	//if index.parentIndex == nil {
-	//	return nil
-	//}
-	//if index.uri[0] != uri {
-	//	return index.parentIndex.SearchAncestryForSeenURI(uri)
-	//}
-	//return index
+	fmt.Printf("unable to locate reference: %s, within index: %s\n", ref, index.specAbsolutePath)
 	return nil
 }
 
-func goFindMeSomething(i *SpecIndex, ref string) []*Reference {
-	return i.SearchIndexForReference(ref)
+// SearchIndexForReference searches the index for a reference, first looking through the mapped references
+// and then externalSpecIndex for a match. If no match is found, it will recursively search the child indexes
+// extracted when parsing the OpenAPI Spec.
+func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
+	return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
+}
+
+func (index *SpecIndex) SearchIndexForReferenceWithParent(ref string, reference *Reference) []*Reference {
+	return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
 }
