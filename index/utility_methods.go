@@ -22,7 +22,10 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 		}
 
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
+		fullDef := fmt.Sprintf("%s%s", index.specAbsolutePath, def)
+
 		ref := &Reference{
+			FullDefinition:        fullDef,
 			Definition:            def,
 			Name:                  name,
 			Node:                  schema,
@@ -278,6 +281,13 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 
 			paramRefName := param.Content[1].Value
 			paramRef := index.allMappedRefs[paramRefName]
+			if paramRef == nil {
+				// could be in the rolodex
+				ref := index.SearchIndexForReference(paramRefName)
+				if ref != nil {
+					paramRef = ref
+				}
+			}
 
 			if index.paramOpRefs[pathItemNode.Value] == nil {
 				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)

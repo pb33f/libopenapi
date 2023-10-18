@@ -356,18 +356,18 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 	// now that we have indexed all the files, we can build the index.
 	r.indexes = indexBuildQueue
-	if !r.indexConfig.AvoidBuildIndex {
-		for _, idx := range indexBuildQueue {
-			idx.BuildIndex()
-			if r.indexConfig.AvoidCircularReferenceCheck {
-				continue
-			}
-			errs := idx.resolver.CheckForCircularReferences()
-			for e := range errs {
-				caughtErrors = append(caughtErrors, errs[e])
-			}
+	//if !r.indexConfig.AvoidBuildIndex {
+	for _, idx := range indexBuildQueue {
+		idx.BuildIndex()
+		if r.indexConfig.AvoidCircularReferenceCheck {
+			continue
+		}
+		errs := idx.resolver.CheckForCircularReferences()
+		for e := range errs {
+			caughtErrors = append(caughtErrors, errs[e])
 		}
 	}
+	//}
 
 	// indexed and built every supporting file, we can build the root index (our entry point)
 
@@ -453,7 +453,7 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	var remoteFile *RemoteFile
 
 	if r == nil || r.localFS == nil && r.remoteFS == nil {
-		panic("WHAT NO....")
+		return nil, fmt.Errorf("rolodex has no file systems configured, cannot open '%s'", location)
 	}
 
 	fileLookup := location

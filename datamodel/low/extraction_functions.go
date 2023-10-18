@@ -90,9 +90,9 @@ func LocateRefNode(root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, error) {
 		}
 
 		// perform a search for the reference in the index
-		foundRefs := idx.SearchIndexForReference(rv)
-		if len(foundRefs) > 0 {
-			return utils.NodeAlias(foundRefs[0].Node), nil
+		foundRef := idx.SearchIndexForReference(rv)
+		if foundRef != nil {
+			return utils.NodeAlias(foundRef.Node), nil
 		}
 
 		// let's try something else to find our references.
