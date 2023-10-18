@@ -526,8 +526,9 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 				errorStack = append(errorStack, err)
 				continue
 			}
-			fmt.Printf("found remote file: %s\n", fileLookup)
-			fmt.Print(f)
+			//fmt.Printf("found remote file: %s\n", fileLookup)
+			//fmt.Print(f)
+			return f.(*RemoteFile), nil
 
 		}
 

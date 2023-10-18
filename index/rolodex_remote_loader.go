@@ -7,7 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
-	"golang.org/x/exp/slog"
+	"log/slog"
+
 	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 	"io"
@@ -177,10 +178,16 @@ func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) 
 
 	// TODO: handle logging
 
-	rfs := &RemoteFS{
-		logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	log := specIndexConfig.Logger
+	if log == nil {
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
-		})),
+		}))
+	}
+
+	rfs := &RemoteFS{
+		indexConfig:   specIndexConfig,
+		logger:        log,
 		rootURLParsed: remoteRootURL,
 		FetchChannel:  make(chan *RemoteFile),
 	}
@@ -361,6 +368,14 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		fullPath:     absolutePath,
 		URL:          remoteParsedURL,
 		lastModified: lastModifiedTime,
+	}
+
+	if i == nil {
+		panic("we fucked")
+	}
+
+	if i.indexConfig == nil {
+		panic("we fucked bro")
 	}
 
 	copiedCfg := *i.indexConfig
