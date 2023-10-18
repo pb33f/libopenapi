@@ -467,14 +467,14 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 			}
 		}
-		if len(seenPath) > 0 {
-			seenPath = seenPath[:len(seenPath)-1]
-		}
+		//if len(seenPath) > 0 {
+		//	seenPath = seenPath[:len(seenPath)-1]
+		//}
 
 	}
-	if len(seenPath) > 0 {
-		seenPath = seenPath[:len(seenPath)-1]
-	}
+	//if len(seenPath) > 0 {
+	//	seenPath = seenPath[:len(seenPath)-1]
+	//}
 
 	index.refCount = len(index.allRefs)
 
@@ -487,7 +487,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	var found []*Reference
 
 	// run this async because when things get recursive, it can take a while
-	//c := make(chan bool)
+	c := make(chan bool)
 
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
 		located := index.FindComponent(ref.FullDefinition, ref.Node)
@@ -532,7 +532,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			index.refErrors = append(index.refErrors, indexError)
 			index.errorLock.Unlock()
 		}
-		//c <- true
+		c <- true
 	}
 
 	var refsToCheck []*Reference
@@ -556,17 +556,17 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 	for r := range refsToCheck {
 		// expand our index of all mapped refs
-		//go  locate(refsToCheck[r], r, mappedRefsInSequence)
-		locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
+		go locate(refsToCheck[r], r, mappedRefsInSequence)
+		//locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
 	}
 
-	//completedRefs := 0
-	//for completedRefs < len(refsToCheck) {
-	//	select {
-	//	case <-c:
-	//		completedRefs++
-	//	}
-	//}
+	completedRefs := 0
+	for completedRefs < len(refsToCheck) {
+		select {
+		case <-c:
+			completedRefs++
+		}
+	}
 	for m := range mappedRefsInSequence {
 		if mappedRefsInSequence[m] != nil {
 			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, mappedRefsInSequence[m])

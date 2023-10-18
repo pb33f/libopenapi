@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"strings"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -215,7 +216,6 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	mapped := idx.GetMappedReferencesSequenced()
 	mappedIndex := idx.GetMappedReferences()
 	res.indexesVisited++
-
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
 		var journey []*Reference
@@ -244,9 +244,6 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 			}
 		}
 	}
-	//for _, c := range idx.GetChildren() {
-	//	visitIndex(res, c)
-	//}
 }
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
@@ -269,9 +266,9 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if j.Definition == r.Definition {
 
 				var foundDup *Reference
-				foundRefs := resolver.specIndex.SearchIndexForReferenceByReference(r)
-				if len(foundRefs) > 0 {
-					foundDup = foundRefs[0]
+				foundRef := resolver.specIndex.SearchIndexForReferenceByReference(r)
+				if foundRef != nil {
+					foundDup = foundRef
 				}
 
 				var circRef *CircularReferenceResult
@@ -295,10 +292,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 					}
 
 					if resolver.IgnoreArray && isArray {
-						fmt.Printf("Ignored: %s\n", circRef.GenerateJourneyPath())
 						resolver.ignoredArrayReferences = append(resolver.ignoredArrayReferences, circRef)
 					} else {
-						fmt.Printf("Not Ignored: %s\n", circRef.GenerateJourneyPath())
 						resolver.circularReferences = append(resolver.circularReferences, circRef)
 					}
 
@@ -311,9 +306,9 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 
 		if !skip {
 			var original *Reference
-			foundRefs := resolver.specIndex.SearchIndexForReferenceByReference(r)
-			if len(foundRefs) > 0 {
-				original = foundRefs[0]
+			foundRef := resolver.specIndex.SearchIndexForReferenceByReference(r)
+			if foundRef != nil {
+				original = foundRef
 			}
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve && !original.Circular {
@@ -408,10 +403,23 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				}
 
 				value := node.Content[i+1].Value
-				var locatedRef []*Reference
+				var locatedRef *Reference
+
+				var fullDef string
+				exp := strings.Split(ref.FullDefinition, "#/")
+				if len(exp) == 2 {
+					if exp[0] != "" {
+						fullDef = fmt.Sprintf("%s%s", exp[0], value)
+					} else {
+						fullDef = value
+					}
+				} else {
+					fullDef = value
+				}
+
 				searchRef := &Reference{
 					Definition:     value,
-					FullDefinition: ref.FullDefinition,
+					FullDefinition: fullDef,
 					RemoteLocation: ref.RemoteLocation,
 					IsRemote:       true,
 				}
@@ -451,10 +459,8 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					}
 				}
 
-				locatedRef[0].ParentNodeSchemaType = schemaType
-
-				found = append(found, locatedRef[0])
-
+				locatedRef.ParentNodeSchemaType = schemaType
+				found = append(found, locatedRef)
 				foundRelatives[value] = true
 			}
 

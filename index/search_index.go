@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) []*Reference {
+func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *Reference {
 
 	ref := fullRef.FullDefinition
 
@@ -34,28 +34,24 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) [
 	}
 
 	if r, ok := index.allMappedRefs[ref]; ok {
-		return []*Reference{r}
+		return r
 	}
 
-	if r, ok := index.allRefs[ref]; ok {
-		return []*Reference{r}
-	}
-
+	// check the rolodex for the reference.
 	if roloLookup != "" {
 		rFile, err := index.rolodex.Open(roloLookup)
 		if err != nil {
 			return nil
 		}
+
+		// extract the index from the rolodex file.
 		idx := rFile.GetIndex()
+		index.resolver.indexesVisited++
 		if idx != nil {
 
 			// check mapped refs.
 			if r, ok := idx.allMappedRefs[ref]; ok {
-				return []*Reference{r}
-			}
-
-			if r, ok := index.allRefs[ref]; ok {
-				return []*Reference{r}
+				return r
 			}
 
 			// build a collection of all the inline schemas and search them
@@ -66,7 +62,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) [
 			d = append(d, idx.allInlineSchemaObjectDefinitions...)
 			for _, s := range d {
 				if s.Definition == ref {
-					return []*Reference{s}
+					return s
 				}
 			}
 		}
@@ -79,10 +75,6 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) [
 // SearchIndexForReference searches the index for a reference, first looking through the mapped references
 // and then externalSpecIndex for a match. If no match is found, it will recursively search the child indexes
 // extracted when parsing the OpenAPI Spec.
-func (index *SpecIndex) SearchIndexForReference(ref string) []*Reference {
-	return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
-}
-
-func (index *SpecIndex) SearchIndexForReferenceWithParent(ref string, reference *Reference) []*Reference {
+func (index *SpecIndex) SearchIndexForReference(ref string) *Reference {
 	return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
 }

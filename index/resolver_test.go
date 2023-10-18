@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
+	"net/http"
 	"net/url"
 	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -24,27 +24,15 @@ func Benchmark_ResolveDocumentStripe(b *testing.B) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(resolveFile, &rootNode)
 
-	fileFS, err := NewLocalFS(baseDir, os.DirFS(filepath.Dir(baseDir)))
-
 	for n := 0; n < b.N; n++ {
 
-		if err != nil {
-			b.Fatal(err)
-		}
-
 		cf := CreateOpenAPIIndexConfig()
-		cf.AvoidBuildIndex = true
 
 		rolo := NewRolodex(cf)
 		rolo.SetRootNode(&rootNode)
-		cf.Rolodex = rolo
-
-		// TODO: pick up here.
-
-		rolo.AddLocalFS(baseDir, fileFS)
 
 		indexedErr := rolo.IndexTheRolodex()
-		assert.Error(b, indexedErr)
+		assert.Len(b, utils.UnwrapErrors(indexedErr), 3)
 
 	}
 }
@@ -407,20 +395,16 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 
 	resolveFile, _ := os.ReadFile(baseDir)
 
+	var stripeRoot yaml.Node
+	_ = yaml.Unmarshal(resolveFile, &stripeRoot)
+
 	info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(resolveFile, true)
 
-	fileFS, err := NewLocalFS(baseDir, os.DirFS(filepath.Dir(baseDir)))
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	cf := CreateOpenAPIIndexConfig()
-	//cf.AvoidBuildIndex = true
 	cf.SpecInfo = info
-	rolo := NewRolodex(cf)
-	cf.Rolodex = rolo
 
-	rolo.AddLocalFS(baseDir, fileFS)
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&stripeRoot)
 
 	indexedErr := rolo.IndexTheRolodex()
 
@@ -545,20 +529,67 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(mixedref, &rootNode)
 
-	b := CreateOpenAPIIndexConfig()
-	idx := NewSpecIndexWithConfig(&rootNode, b)
+	// create a test server.
+	server := test_buildMixedRefServer()
+	defer server.Close()
 
-	resolver := NewResolver(idx)
-	assert.NotNil(t, resolver)
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "../test_specs"
 
-	circ := resolver.Resolve()
-	assert.Len(t, circ, 0)
-	assert.Equal(t, 5, resolver.GetIndexesVisited())
+	// setting this baseURL will override the base
+	cf.BaseURL, _ = url.Parse(server.URL)
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
+	remoteFS.SetIndexConfig(cf)
+
+	// set our remote handler func
+
+	c := http.Client{}
+
+	remoteFS.RemoteHandlerFunc = c.Get
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"burgershop.openapi.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+
+	// add file systems to the rolodex
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rolo.AddRemoteFS(server.URL, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, indexedErr)
+
+	rolo.Resolve()
+	index := rolo.GetRootIndex
+	resolver := index().GetResolver()
+
+	assert.Len(t, resolver.GetCircularErrors(), 0)
+	assert.Equal(t, 3, resolver.GetIndexesVisited())
 
 	// in v0.8.2 a new check was added when indexing, to prevent re-indexing the same file multiple times.
-	assert.Equal(t, 191, resolver.GetRelativesSeen())
-	assert.Equal(t, 35, resolver.GetJourneysTaken())
-	assert.Equal(t, 62, resolver.GetReferenceVisited())
+	assert.Equal(t, 6, resolver.GetRelativesSeen())
+	assert.Equal(t, 5, resolver.GetJourneysTaken())
+	assert.Equal(t, 7, resolver.GetReferenceVisited())
 }
 
 func TestResolver_ResolveComponents_k8s(t *testing.T) {
