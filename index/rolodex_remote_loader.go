@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -32,6 +33,7 @@ type RemoteFS struct {
 	remoteErrorLock   sync.Mutex
 	remoteErrors      []error
 	logger            *slog.Logger
+	defaultClient     *http.Client
 }
 
 type RemoteFile struct {
@@ -172,23 +174,31 @@ const (
 
 func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) {
 	remoteRootURL := specIndexConfig.BaseURL
-	rfs :=  &RemoteFS{
+
+	// TODO: handle logging
+
+	rfs := &RemoteFS{
 		logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		})),
-
 		rootURLParsed: remoteRootURL,
 		FetchChannel:  make(chan *RemoteFile),
 	}
 	if remoteRootURL != nil {
-	  rfs.rootURL = remoteRootURL.String()
+		rfs.rootURL = remoteRootURL.String()
+	}
+	if specIndexConfig.RemoteURLHandler != nil {
+		rfs.RemoteHandlerFunc = specIndexConfig.RemoteURLHandler
+	} else {
+		// default http client
+		client := &http.Client{
+			Timeout: time.Second * 60,
+		}
+		rfs.RemoteHandlerFunc = func(url string) (*http.Response, error) {
+			return client.Get(url)
+		}
 	}
 	return rfs, nil
-}
-
-func NewRemoteFS() (*RemoteFS, error) {
-	config := CreateOpenAPIIndexConfig()
-	return NewRemoteFSWithConfig(config)
 }
 
 func NewRemoteFSWithRootURL(rootURL string) (*RemoteFS, error) {
@@ -199,6 +209,10 @@ func NewRemoteFSWithRootURL(rootURL string) (*RemoteFS, error) {
 	config := CreateOpenAPIIndexConfig()
 	config.BaseURL = remoteRootURL
 	return NewRemoteFSWithConfig(config)
+}
+
+func (i *RemoteFS) SetRemoteHandlerFunc(handlerFunc RemoteURLHandler) {
+	i.RemoteHandlerFunc = handlerFunc
 }
 
 func (i *RemoteFS) SetIndexConfig(config *SpecIndexConfig) {
@@ -272,8 +286,6 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, err
 	}
 
-	remoteParsedOrig, _ := url.Parse(remoteURL)
-
 	// try path first
 	if r, ok := i.Files.Load(remoteParsedURL.Path); ok {
 		return r.(*RemoteFile), nil
@@ -287,17 +299,28 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	// if the remote URL is absolute (http:// or https://), and we have a rootURL defined, we need to override
 	// the host being defined by this URL, and use the rootURL instead, but keep the path.
-	if i.rootURLParsed != nil && remoteParsedURL.Host != "" {
+	if i.rootURLParsed != nil {
 		remoteParsedURL.Host = i.rootURLParsed.Host
 		remoteParsedURL.Scheme = i.rootURLParsed.Scheme
+		if !filepath.IsAbs(remoteParsedURL.Path) {
+			remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
+		}
 	}
 
 	i.logger.Debug("Loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 
+	// no handler func? use the default client.
+	if i.RemoteHandlerFunc == nil {
+		i.RemoteHandlerFunc = i.defaultClient.Get
+	}
+
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
-		i.logger.Error("client error", "error", response.StatusCode)
-
+		if response != nil {
+			i.logger.Error("client error", "error", clientErr, "status", response.StatusCode)
+		} else {
+			i.logger.Error("no response for request", "error", clientErr.Error())
+		}
 		return nil, clientErr
 	}
 
@@ -307,7 +330,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	}
 
 	if response.StatusCode >= 400 {
-		i.logger.Error("Unable to fetch remote document %s",
+		i.logger.Error("Unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
 		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
 	}
@@ -342,12 +365,12 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	copiedCfg := *i.indexConfig
 
-	newBase := fmt.Sprintf("%s://%s%s", remoteParsedOrig.Scheme, remoteParsedOrig.Host,
-		filepath.Dir(remoteParsedOrig.Path))
+	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURL.Scheme, remoteParsedURL.Host,
+		filepath.Dir(remoteParsedURL.Path))
 	newBaseURL, _ := url.Parse(newBase)
 
 	copiedCfg.BaseURL = newBaseURL
-	copiedCfg.SpecAbsolutePath = remoteURL
+	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
 	idx, _ := remoteFile.Index(&copiedCfg)
 
 	// for each index, we need a resolver

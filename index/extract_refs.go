@@ -204,6 +204,9 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 
 				// determine absolute path to this definition
+
+				// TODO: come and clean this mess up.
+
 				iroot := filepath.Dir(index.specAbsolutePath)
 				var componentName string
 				var fullDefinitionPath string
@@ -215,8 +218,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						if strings.HasPrefix(uri[0], "http") {
 							fullDefinitionPath = value
 						} else {
-							abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
-							fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+							if index.config.BasePath == "" || iroot == "" {
+								fullDefinitionPath = value
+							} else {
+								abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
+								fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+							}
 						}
 					}
 					componentName = fmt.Sprintf("#/%s", uri[1])
@@ -224,8 +231,14 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if strings.HasPrefix(uri[0], "http") {
 						fullDefinitionPath = value
 					} else {
-						fullDefinitionPath = fmt.Sprintf("%s#/%s", iroot, uri[0])
-						componentName = fmt.Sprintf("#/%s", uri[0])
+						// is it a relative file include?
+						if strings.Contains(uri[0], "#") {
+							fullDefinitionPath = fmt.Sprintf("%s#/%s", iroot, uri[0])
+							componentName = fmt.Sprintf("#/%s", uri[0])
+						} else {
+							fullDefinitionPath = uri[0]
+							componentName = uri[0]
+						}
 					}
 				}
 

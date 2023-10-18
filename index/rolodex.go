@@ -515,8 +515,22 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 					break
 				}
 			}
+		}
+
+		// if there was no file found locally, then search the remote FS.
+		for _, v := range r.remoteFS {
+
+			f, err := v.Open(location)
+
+			if err != nil {
+				errorStack = append(errorStack, err)
+				continue
+			}
+			fmt.Printf("found remote file: %s\n", fileLookup)
+			fmt.Print(f)
 
 		}
+
 	} else {
 
 		if !r.indexConfig.AllowRemoteLookup {
