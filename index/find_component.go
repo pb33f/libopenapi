@@ -381,8 +381,10 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			}
 
 			if rFile == nil {
-				panic("FUCK")
+				logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
+				return nil
 			}
+
 			parsedDocument, err = rFile.GetContentAsYAMLNode()
 			if err != nil {
 				logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
