@@ -562,10 +562,8 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 	completedRefs := 0
 	for completedRefs < len(refsToCheck) {
-		select {
-		case <-c:
-			completedRefs++
-		}
+		<-c
+		completedRefs++
 	}
 	for m := range mappedRefsInSequence {
 		if mappedRefsInSequence[m] != nil {
