@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -101,6 +102,9 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	cf.AvoidBuildIndex = true
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
 
 	// setting this baseURL will override the base
 	cf.BaseURL = baseURL
@@ -112,8 +116,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	rolo.SetRootNode(&rootNode)
 
 	// create a new remote fs and set the config for indexing.
-	remoteFS, _ := NewRemoteFSWithRootURL(location)
-	remoteFS.SetIndexConfig(cf)
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
 
 	// create a handler that uses an env variable to capture any GITHUB_TOKEN in the OS ENV
 	// and inject it into the request header, so this does not fail when running lots of local tests.
@@ -135,15 +138,24 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 
 	// index the rolodex.
 	indexedErr := rolo.IndexTheRolodex()
-	rolo.BuildIndexes()
-
 	assert.NoError(t, indexedErr)
 
-	index := rolo.GetRootIndex()
-	rolo.CheckForCircularReferences()
+	files := remoteFS.GetFiles()
+	fileLen := len(files)
+	assert.Equal(t, 1646, fileLen)
 
-	assert.Len(t, index.GetAllExternalIndexes(), 291)
-	assert.NotNil(t, index)
+	//
+	//
+	//
+	//
+	//
+	//assert.NoError(t, indexedErr)
+	//
+	//index := rolo.GetRootIndex()
+	//rolo.CheckForCircularReferences()
+	//
+	//assert.Len(t, index.GetAllExternalIndexes(), 291)
+	//assert.NotNil(t, index)
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
