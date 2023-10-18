@@ -61,6 +61,9 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 			return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
 		}
 	} else {
+		if !strings.Contains(componentId, "#") {
+			return index.lookupRolodex(uri)
+		}
 		return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[0]))
 	}
 
@@ -362,7 +365,31 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		if filepath.IsAbs(file) || strings.HasPrefix(file, "http") {
 			absoluteFileLocation = file
 		} else {
-			absoluteFileLocation, _ = filepath.Abs(filepath.Join(filepath.Dir(index.specAbsolutePath), file))
+			if index.specAbsolutePath != "" {
+				if index.config.BaseURL != nil {
+
+					//if strings.Contains(file, "../../") {
+
+					// extract the base path from the specAbsolutePath for this index.
+					sap, _ := url.Parse(index.specAbsolutePath)
+					newPath, _ := filepath.Abs(filepath.Join(filepath.Dir(sap.Path), file))
+
+					sap.Path = newPath
+					f := sap.String()
+					absoluteFileLocation = f
+					//}
+
+					//loc := fmt.Sprintf("%s%s", index.config.BaseURL.Path, file)
+
+					//absoluteFileLocation = loc
+
+				} else {
+					panic("nooooooo")
+					absoluteFileLocation, _ = filepath.Abs(filepath.Join(index.config.BaseURL.Path, file))
+				}
+			} else {
+				absoluteFileLocation = file
+			}
 		}
 
 		// if the absolute file location has no file ext, then get the rolodex root.

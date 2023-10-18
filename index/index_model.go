@@ -6,6 +6,7 @@ package index
 import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -106,12 +107,14 @@ type SpecIndexConfig struct {
 
 	// If set to true, the index will not be built out, which means only the foundational elements will be
 	// parsed and added to the index. This is useful to avoid building out an index if the specification is
-	// broken up into references and you want it fully resolved.
+	// broken up into references and want it fully resolved.
 	//
 	// Use the `BuildIndex()` method on the index to build it out once resolved/ready.
 	AvoidBuildIndex bool
 
 	AvoidCircularReferenceCheck bool
+
+	Logger *slog.Logger
 
 	// SpecInfo is a pointer to the SpecInfo struct that contains the root node and the spec version. It's the
 	// struct that was used to create this index.

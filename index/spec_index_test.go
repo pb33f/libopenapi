@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -92,12 +93,54 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
 
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		BaseURL:           baseURL,
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-	})
+	location := "https://raw.githubusercontent.com/digitalocean/openapi/main/specification"
+	baseURL, _ := url.Parse(location)
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := &SpecIndexConfig{}
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+
+	// setting this baseURL will override the base
+	cf.BaseURL = baseURL
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithRootURL(location)
+	remoteFS.SetIndexConfig(cf)
+
+	// create a handler that uses an env variable to capture any GITHUB_TOKEN in the OS ENV
+	// and inject it into the request header, so this does not fail when running lots of local tests.
+	if os.Getenv("GITHUB_TOKEN") != "" {
+
+		client := &http.Client{
+			Timeout: time.Second * 60,
+		}
+		remoteFS.SetRemoteHandlerFunc(func(url string) (*http.Response, error) {
+			request, _ := http.NewRequest(http.MethodGet, url, nil)
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			return client.Do(request)
+		})
+
+	}
+
+	// add remote filesystem
+	rolo.AddRemoteFS(location, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	rolo.BuildIndexes()
+
+	assert.NoError(t, indexedErr)
+
+	index := rolo.GetRootIndex()
+	rolo.CheckForCircularReferences()
 
 	assert.Len(t, index.GetAllExternalIndexes(), 291)
 	assert.NotNil(t, index)

@@ -49,6 +49,9 @@ func ExtractFileType(ref string) FileExtension {
 	if strings.HasSuffix(ref, ".yaml") {
 		return YAML
 	}
+	if strings.HasSuffix(ref, ".yml") {
+		return YAML
+	}
 	if strings.HasSuffix(ref, ".json") {
 		return JSON
 	}
@@ -103,6 +106,5 @@ func ExtractRefs(content string) [][]string {
 	//for _, r := range res {
 	//	results = append(results, &ExtractedRef{Location: r[1], Type: ExtractRefType(r[1])})
 	//}
-
 
 }
