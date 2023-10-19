@@ -268,17 +268,17 @@ type SpecIndex struct {
 	enumCount                           int
 	descriptionCount                    int
 	summaryCount                        int
-	seenRemoteSources                   map[string]*yaml.Node
-	seenLocalSources                    map[string]*yaml.Node
-	refLock                             sync.Mutex
-	componentLock                       sync.RWMutex
-	errorLock                           sync.RWMutex
-	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
-	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
-	config                              *SpecIndexConfig           // configuration for the index
-	httpClient                          *http.Client
-	componentIndexChan                  chan bool
-	polyComponentIndexChan              chan bool
+	//seenRemoteSources                   map[string]*yaml.Node
+	//seenLocalSources                    map[string]*yaml.Node
+	refLock                 sync.Mutex
+	componentLock           sync.RWMutex
+	errorLock               sync.RWMutex
+	circularReferences      []*CircularReferenceResult // only available when the resolver has been used.
+	allowCircularReferences bool                       // decide if you want to error out, or allow circular references, default is false.
+	config                  *SpecIndexConfig           // configuration for the index
+	httpClient              *http.Client
+	componentIndexChan      chan bool
+	polyComponentIndexChan  chan bool
 
 	specAbsolutePath string
 	resolver         *Resolver

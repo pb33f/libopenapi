@@ -430,10 +430,10 @@ func (index *SpecIndex) GetAllOperationsServers() map[string]map[string][]*Refer
 	return index.opServersRefs
 }
 
-// GetAllExternalIndexes will return all indexes for external documents
-func (index *SpecIndex) GetAllExternalIndexes() map[string]*SpecIndex {
-	return index.externalSpecIndex
-}
+//// GetAllExternalIndexes will return all indexes for external documents
+//func (index *SpecIndex) GetAllExternalIndexes() map[string]*SpecIndex {
+//	return index.externalSpecIndex
+//}
 
 // SetAllowCircularReferenceResolving will flip a bit that can be used by any consumers to determine if they want
 // to allow or disallow circular references to be resolved or visited

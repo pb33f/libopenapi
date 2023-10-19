@@ -24,12 +24,27 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 			if strings.HasPrefix(uri[0], "http") {
 				roloLookup = fullRef.FullDefinition
 			} else {
-				roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+				if filepath.IsAbs(uri[0]) {
+					roloLookup = uri[0]
+				} else {
+					if filepath.Ext(absPath) != "" {
+						absPath = filepath.Dir(absPath)
+					}
+					roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+				}
 			}
 		}
 		ref = fmt.Sprintf("#/%s", uri[1])
 	} else {
-		roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+		if filepath.IsAbs(uri[0]) {
+			roloLookup = uri[0]
+		} else {
+			if filepath.Ext(absPath) != "" {
+				absPath = filepath.Dir(absPath)
+			}
+			roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+		}
+
 		ref = uri[0]
 	}
 
@@ -63,6 +78,15 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 			for _, s := range d {
 				if s.Definition == ref {
 					return s
+				}
+			}
+
+			// does component exist in the root?
+			node, _ := rFile.GetContentAsYAMLNode()
+			if node != nil {
+				found := idx.FindComponent(ref, node)
+				if found != nil {
+					return found
 				}
 			}
 		}

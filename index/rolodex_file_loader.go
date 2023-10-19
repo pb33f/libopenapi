@@ -17,6 +17,7 @@ import (
 )
 
 type LocalFS struct {
+	indexConfig         *SpecIndexConfig
 	entryPointDirectory string
 	baseDirectory       string
 	Files               map[string]RolodexFile
@@ -28,7 +29,18 @@ func (l *LocalFS) GetFiles() map[string]RolodexFile {
 	return l.Files
 }
 
+func (l *LocalFS) GetErrors() []error {
+	return l.readingErrors
+}
+
 func (l *LocalFS) Open(name string) (fs.File, error) {
+
+	if l.indexConfig != nil && !l.indexConfig.AllowFileLookup {
+		return nil, &fs.PathError{Op: "open", Path: name,
+			Err: fmt.Errorf("file lookup for '%s' not allowed, set the index configuration "+
+				"to AllowFileLookup to be true", name)}
+	}
+
 	if !filepath.IsAbs(name) {
 		var absErr error
 		name, absErr = filepath.Abs(filepath.Join(l.baseDirectory, name))
