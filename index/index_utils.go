@@ -82,8 +82,8 @@ func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
 	index.securityRequirementRefs = make(map[string]map[string][]*Reference)
 	index.polymorphicRefs = make(map[string]*Reference)
 	index.refsWithSiblings = make(map[string]Reference)
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenLocalSources = make(map[string]*yaml.Node)
+	//index.seenRemoteSources = make(map[string]*yaml.Node)
+	//index.seenLocalSources = make(map[string]*yaml.Node)
 	index.opServersRefs = make(map[string]map[string][]*Reference)
 	index.httpClient = &http.Client{Timeout: time.Duration(5) * time.Second}
 	index.componentIndexChan = make(chan bool)

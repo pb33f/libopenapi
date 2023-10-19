@@ -62,7 +62,16 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 		}
 	} else {
 		if !strings.Contains(componentId, "#") {
-			return index.lookupRolodex(uri)
+
+			// does it contain a file extension?
+			fileExt := filepath.Ext(componentId)
+			if fileExt != "" {
+				return index.lookupRolodex(uri)
+			}
+
+			// root search
+			return index.FindComponentInRoot(componentId)
+
 		}
 		return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[0]))
 	}
@@ -368,6 +377,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			if index.specAbsolutePath != "" {
 				if index.config.BaseURL != nil {
 
+					// consider the file remote.
 					//if strings.Contains(file, "../../") {
 
 					// extract the base path from the specAbsolutePath for this index.
@@ -384,8 +394,11 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 					//absoluteFileLocation = loc
 
 				} else {
-					panic("nooooooo")
-					absoluteFileLocation, _ = filepath.Abs(filepath.Join(index.config.BaseURL.Path, file))
+
+					// consider the file local
+
+					dir := filepath.Dir(index.config.SpecAbsolutePath)
+					absoluteFileLocation, _ = filepath.Abs(filepath.Join(dir, file))
 				}
 			} else {
 				absoluteFileLocation = file

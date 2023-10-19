@@ -43,7 +43,7 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	cf := CreateOpenAPIIndexConfig()
-	cf.AvoidBuildIndex = true
+	cf.AvoidCircularReferenceCheck = true
 	cf.BasePath = "../test_specs"
 
 	rolo := NewRolodex(cf)

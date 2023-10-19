@@ -189,6 +189,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 				var p string
 				uri := strings.Split(value, "#/")
+
 				if strings.HasPrefix(value, "http") || filepath.IsAbs(value) {
 					if len(uri) == 2 {
 						_, p = utils.ConvertComponentIdIntoFriendlyPathSearch(fmt.Sprintf("#/%s", uri[1]))

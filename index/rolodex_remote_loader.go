@@ -27,6 +27,7 @@ type RemoteFS struct {
 	rootURLParsed     *url.URL
 	RemoteHandlerFunc RemoteURLHandler
 	Files             syncmap.Map
+	ProcessingFiles   syncmap.Map
 	FetchTime         int64
 	FetchChannel      chan *RemoteFile
 	remoteWg          sync.WaitGroup
@@ -235,6 +236,10 @@ func (i *RemoteFS) GetFiles() map[string]RolodexFile {
 	return files
 }
 
+func (i *RemoteFS) GetErrors() []error {
+	return i.remoteErrors
+}
+
 func (i *RemoteFS) seekRelatives(file *RemoteFile) {
 
 	extractedRefs := ExtractRefs(string(file.data))
@@ -288,6 +293,11 @@ func (i *RemoteFS) seekRelatives(file *RemoteFile) {
 
 func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
+	if i.indexConfig != nil && !i.indexConfig.AllowRemoteLookup {
+		return nil, fmt.Errorf("remote lookup for '%s' is not allowed, please set "+
+			"AllowRemoteLookup to true as part of the index configuration", remoteURL)
+	}
+
 	remoteParsedURL, err := url.Parse(remoteURL)
 	if err != nil {
 		return nil, err
@@ -297,6 +307,20 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if r, ok := i.Files.Load(remoteParsedURL.Path); ok {
 		return r.(*RemoteFile), nil
 	}
+
+	// if we're processing, we need to block and wait for the file to be processed
+	// try path first
+	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
+		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+		for {
+			if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
+				return wf.(*RemoteFile), nil
+			}
+		}
+	}
+
+	// add to processing
+	i.ProcessingFiles.Store(remoteParsedURL.Path, true)
 
 	fileExt := ExtractFileType(remoteParsedURL.Path)
 
@@ -314,7 +338,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		}
 	}
 
-	i.logger.Debug("Loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+	i.logger.Debug("loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 
 	// no handler func? use the default client.
 	if i.RemoteHandlerFunc == nil {
@@ -323,20 +347,32 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
+
+		i.remoteErrors = append(i.remoteErrors, clientErr)
+		// remove from processing
+		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		if response != nil {
 			i.logger.Error("client error", "error", clientErr, "status", response.StatusCode)
 		} else {
-			i.logger.Error("no response for request", "error", clientErr.Error())
+			i.logger.Error("client error, empty body", "error", clientErr.Error())
 		}
 		return nil, clientErr
 	}
 
 	responseBytes, readError := io.ReadAll(response.Body)
 	if readError != nil {
+
+		// remove from processing
+		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+
 		return nil, readError
 	}
 
 	if response.StatusCode >= 400 {
+
+		// remove from processing
+		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+
 		i.logger.Error("Unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
 		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
@@ -344,6 +380,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	absolutePath, pathErr := filepath.Abs(remoteParsedURL.Path)
 	if pathErr != nil {
+		// remove from processing
+		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		return nil, pathErr
 	}
 
@@ -394,10 +432,15 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	i.Files.Store(absolutePath, remoteFile)
 
-	i.logger.Debug("successfully loaded file", "file", absolutePath)
+	if len(remoteFile.data) > 0 {
+		i.logger.Debug("successfully loaded file", "file", absolutePath)
+	}
 	i.seekRelatives(remoteFile)
 
 	idx.BuildIndex()
+
+	// remove from processing
+	i.ProcessingFiles.Delete(remoteParsedURL.Path)
 
 	if !i.remoteRunning {
 		return remoteFile, errors.Join(i.remoteErrors...)

@@ -258,10 +258,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 		return nil
 	}
 
-	// disable index building, it will need to be run after the rolodex indexed
-	// at a high level.
-	r.indexConfig.AvoidBuildIndex = true
-
 	var caughtErrors []error
 
 	var indexBuildQueue []*SpecIndex
@@ -373,6 +369,19 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 	if r.rootNode != nil {
 
+		// if there is a base path, then we need to set the root spec config to point to a theoretical root.yaml
+		// which does not exist, but is used to formulate the absolute path to root references correctly.
+		if r.indexConfig.BasePath != "" && r.indexConfig.BaseURL == nil {
+
+			basePath := r.indexConfig.BasePath
+			if !filepath.IsAbs(basePath) {
+				basePath, _ = filepath.Abs(basePath)
+			}
+			r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, "root.yaml")
+		}
+
+		// todo: variation with no base path, but a base URL.
+
 		index := NewSpecIndexWithConfig(r.rootNode, r.indexConfig)
 		resolver := NewResolver(index)
 		if r.indexConfig.IgnoreArrayCircularReferences {
@@ -382,9 +391,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 			resolver.IgnorePolymorphicCircularReferences()
 		}
 
-		if !r.indexConfig.AvoidBuildIndex {
-			index.BuildIndex()
-		}
+		index.BuildIndex()
 
 		if !r.indexConfig.AvoidCircularReferenceCheck {
 			resolvingErrors := resolver.CheckForCircularReferences()
@@ -393,10 +400,14 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 		}
 		r.rootIndex = index
+		if len(index.refErrors) > 0 {
+			caughtErrors = append(caughtErrors, index.refErrors...)
+		}
 	}
 	r.indexingDuration = time.Since(started)
 	r.indexed = true
 	r.caughtErrors = caughtErrors
+	r.built = true
 	return errors.Join(caughtErrors...)
 
 }
