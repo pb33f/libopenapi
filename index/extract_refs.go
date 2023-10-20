@@ -6,6 +6,7 @@ package index
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 
@@ -207,8 +208,13 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				// determine absolute path to this definition
 
 				// TODO: come and clean this mess up.
+				var iroot string
+				if strings.HasPrefix(index.specAbsolutePath, "http") {
+					iroot = index.specAbsolutePath
+				} else {
+					iroot = filepath.Dir(index.specAbsolutePath)
+				}
 
-				iroot := filepath.Dir(index.specAbsolutePath)
 				var componentName string
 				var fullDefinitionPath string
 				if len(uri) == 2 {
@@ -239,6 +245,15 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						} else {
 							fullDefinitionPath = uri[0]
 							componentName = uri[0]
+							if strings.HasPrefix(iroot, "http") {
+								if !filepath.IsAbs(uri[0]) {
+									u, _ := url.Parse(iroot)
+									pathDir := filepath.Dir(u.Path)
+									pathAbs, _ := filepath.Abs(filepath.Join(pathDir, uri[0]))
+									u.Path = pathAbs
+									fullDefinitionPath = u.String()
+								}
+							}
 						}
 					}
 				}
