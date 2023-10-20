@@ -853,20 +853,20 @@ func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 //}
 
 // Discovered in issue https://github.com/daveshanley/vacuum/issues/225
-func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
-	cwd, _ := os.Getwd()
-	index := new(SpecIndex)
-	index.config = &SpecIndexConfig{BasePath: cwd}
-
-	_ = os.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
-	defer os.Remove("coffee-time.yaml")
-
-	//index.seenRemoteSources = make(map[string]*yaml.Node)
-	a, b, err := index.lookupFileReference("coffee-time.yaml")
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	assert.NotNil(t, b)
-}
+//func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
+//	cwd, _ := os.Getwd()
+//	index := new(SpecIndex)
+//	index.config = &SpecIndexConfig{BasePath: cwd}
+//
+//	_ = os.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
+//	defer os.Remove("coffee-time.yaml")
+//
+//	//index.seenRemoteSources = make(map[string]*yaml.Node)
+//	a, b, err := index.lookupFileReference("coffee-time.yaml")
+//	assert.NoError(t, err)
+//	assert.NotNil(t, a)
+//	assert.NotNil(t, b)
+//}
 
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
 	yml := `openapi: 3.1.0
@@ -944,11 +944,11 @@ paths:
 //	assert.Nil(t, b)
 //}
 
-func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
-	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-	_, _, err := index.lookupFileReference("not-a-reference")
-	assert.Error(t, err)
-}
+//func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
+//	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
+//	_, _, err := index.lookupFileReference("not-a-reference")
+//	assert.Error(t, err)
+//}
 
 //
 //func TestSpecIndex_lookupFileReference_SeenSourceSimulation_Error(t *testing.T) {

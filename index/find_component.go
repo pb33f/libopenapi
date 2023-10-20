@@ -99,220 +99,220 @@ func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
 	close(d)
 }
 
-func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Node, error) {
-	// split string to remove file reference
-	//uri := strings.Split(ref, "#")
-	//
-	//// have we already seen this remote source?
-	//var parsedRemoteDocument *yaml.Node
-	//alreadySeen, foundDocument := index.CheckForSeenRemoteSource(uri[0])
-	//
-	//if alreadySeen {
-	//	parsedRemoteDocument = foundDocument
-	//} else {
-	//
-	//	d := make(chan bool)
-	//	var body []byte
-	//	var err error
-	//
-	//	go func(uri string) {
-	//		bc := make(chan []byte)
-	//		ec := make(chan error)
-	//		var getter = httpClient.Get
-	//		if index.config != nil && index.config.RemoteURLHandler != nil {
-	//			getter = index.config.RemoteURLHandler
-	//		}
-	//
-	//		// if we have a remote handler, use it instead of the default.
-	//		if index.config != nil && index.config.FSHandler != nil {
-	//			go func() {
-	//				remoteFS := index.config.FSHandler
-	//				remoteFile, rErr := remoteFS.Open(uri)
-	//				if rErr != nil {
-	//					e := fmt.Errorf("unable to open remote file: %s", rErr)
-	//					ec <- e
-	//					return
-	//				}
-	//				b, ioErr := io.ReadAll(remoteFile)
-	//				if ioErr != nil {
-	//					e := fmt.Errorf("unable to read remote file bytes: %s", ioErr)
-	//					ec <- e
-	//					return
-	//				}
-	//				bc <- b
-	//			}()
-	//		} else {
-	//			go getRemoteDoc(getter, uri, bc, ec)
-	//		}
-	//		select {
-	//		case v := <-bc:
-	//			body = v
-	//			break
-	//		case er := <-ec:
-	//			err = er
-	//			break
-	//		}
-	//		if len(body) > 0 {
-	//			var remoteDoc yaml.Node
-	//			er := yaml.Unmarshal(body, &remoteDoc)
-	//			if er != nil {
-	//				err = er
-	//				d <- true
-	//				return
-	//			}
-	//			parsedRemoteDocument = &remoteDoc
-	//			if index.config != nil {
-	//				index.config.seenRemoteSources.Store(uri, &remoteDoc)
-	//			}
-	//		}
-	//		d <- true
-	//	}(uri[0])
-	//
-	//	// wait for double go fun.
-	//	<-d
-	//	if err != nil {
-	//		// no bueno.
-	//		return nil, nil, err
-	//	}
-	//}
-	//
-	//// lookup item from reference by using a path query.
-	//var query string
-	//if len(uri) >= 2 {
-	//	query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
-	//} else {
-	//	query = "$"
-	//}
-	//
-	//query, err := url.PathUnescape(query)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
-	//
-	//// remove any URL encoding
-	//query = strings.Replace(query, "~1", "./", 1)
-	//query = strings.ReplaceAll(query, "~1", "/")
-	//
-	//path, err := yamlpath.NewPath(query)
-	//if err != nil {
-	//	return nil, nil, err
-	//}
-	//result, _ := path.Find(parsedRemoteDocument)
-	//if len(result) == 1 {
-	//	return result[0], parsedRemoteDocument, nil
-	//}
-	return nil, nil, nil
-}
+//func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Node, error) {
+//	// split string to remove file reference
+//	//uri := strings.Split(ref, "#")
+//	//
+//	//// have we already seen this remote source?
+//	//var parsedRemoteDocument *yaml.Node
+//	//alreadySeen, foundDocument := index.CheckForSeenRemoteSource(uri[0])
+//	//
+//	//if alreadySeen {
+//	//	parsedRemoteDocument = foundDocument
+//	//} else {
+//	//
+//	//	d := make(chan bool)
+//	//	var body []byte
+//	//	var err error
+//	//
+//	//	go func(uri string) {
+//	//		bc := make(chan []byte)
+//	//		ec := make(chan error)
+//	//		var getter = httpClient.Get
+//	//		if index.config != nil && index.config.RemoteURLHandler != nil {
+//	//			getter = index.config.RemoteURLHandler
+//	//		}
+//	//
+//	//		// if we have a remote handler, use it instead of the default.
+//	//		if index.config != nil && index.config.FSHandler != nil {
+//	//			go func() {
+//	//				remoteFS := index.config.FSHandler
+//	//				remoteFile, rErr := remoteFS.Open(uri)
+//	//				if rErr != nil {
+//	//					e := fmt.Errorf("unable to open remote file: %s", rErr)
+//	//					ec <- e
+//	//					return
+//	//				}
+//	//				b, ioErr := io.ReadAll(remoteFile)
+//	//				if ioErr != nil {
+//	//					e := fmt.Errorf("unable to read remote file bytes: %s", ioErr)
+//	//					ec <- e
+//	//					return
+//	//				}
+//	//				bc <- b
+//	//			}()
+//	//		} else {
+//	//			go getRemoteDoc(getter, uri, bc, ec)
+//	//		}
+//	//		select {
+//	//		case v := <-bc:
+//	//			body = v
+//	//			break
+//	//		case er := <-ec:
+//	//			err = er
+//	//			break
+//	//		}
+//	//		if len(body) > 0 {
+//	//			var remoteDoc yaml.Node
+//	//			er := yaml.Unmarshal(body, &remoteDoc)
+//	//			if er != nil {
+//	//				err = er
+//	//				d <- true
+//	//				return
+//	//			}
+//	//			parsedRemoteDocument = &remoteDoc
+//	//			if index.config != nil {
+//	//				index.config.seenRemoteSources.Store(uri, &remoteDoc)
+//	//			}
+//	//		}
+//	//		d <- true
+//	//	}(uri[0])
+//	//
+//	//	// wait for double go fun.
+//	//	<-d
+//	//	if err != nil {
+//	//		// no bueno.
+//	//		return nil, nil, err
+//	//	}
+//	//}
+//	//
+//	//// lookup item from reference by using a path query.
+//	//var query string
+//	//if len(uri) >= 2 {
+//	//	query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
+//	//} else {
+//	//	query = "$"
+//	//}
+//	//
+//	//query, err := url.PathUnescape(query)
+//	//if err != nil {
+//	//	return nil, nil, err
+//	//}
+//	//
+//	//// remove any URL encoding
+//	//query = strings.Replace(query, "~1", "./", 1)
+//	//query = strings.ReplaceAll(query, "~1", "/")
+//	//
+//	//path, err := yamlpath.NewPath(query)
+//	//if err != nil {
+//	//	return nil, nil, err
+//	//}
+//	//result, _ := path.Find(parsedRemoteDocument)
+//	//if len(result) == 1 {
+//	//	return result[0], parsedRemoteDocument, nil
+//	//}
+//	return nil, nil, nil
+//}
 
-func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node, error) {
-	// split string to remove file reference
-	uri := strings.Split(ref, "#")
-	file := strings.ReplaceAll(uri[0], "file:", "")
-	//filePath := filepath.Dir(file)
-	//fileName := filepath.Base(file)
-	absoluteFileLocation, _ := filepath.Abs(filepath.Join(filepath.Dir(index.specAbsolutePath), file))
-
-	// extract the document from the rolodex.
-	rFile, rError := index.rolodex.Open(absoluteFileLocation)
-	if rError != nil {
-		return nil, nil, rError
-	}
-
-	parsedDocument, err := rFile.GetContentAsYAMLNode()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	//if index.seenRemoteSources[file] != nil {
-	//	parsedDocument = index.seenRemoteSources[file]
-	//} else {
-	//
-	//	base := index.config.BasePath
-	//	fileToRead := filepath.Join(base, filePath, fileName)
-	//	var body []byte
-	//	var err error
-	//
-	//	// if we have an FS handler, use it instead of the default behavior
-	//	if index.config != nil && index.config.FSHandler != nil {
-	//		remoteFS := index.config.FSHandler
-	//		remoteFile, rErr := remoteFS.Open(fileToRead)
-	//		if rErr != nil {
-	//			e := fmt.Errorf("unable to open file: %s", rErr)
-	//			return nil, nil, e
-	//		}
-	//		body, err = io.ReadAll(remoteFile)
-	//		if err != nil {
-	//			e := fmt.Errorf("unable to read file bytes: %s", err)
-	//			return nil, nil, e
-	//		}
-	//
-	//	} else {
-	//
-	//		// try and read the file off the local file system, if it fails
-	//		// check for a baseURL and then ask our remote lookup function to go try and get it.
-	//		body, err = os.ReadFile(fileToRead)
-	//
-	//		if err != nil {
-	//
-	//			// if we have a baseURL, then we can try and get the file from there.
-	//			if index.config != nil && index.config.BaseURL != nil {
-	//
-	//				u := index.config.BaseURL
-	//				remoteRef := GenerateCleanSpecConfigBaseURL(u, ref, true)
-	//				a, b, e := index.lookupRemoteReference(remoteRef)
-	//				if e != nil {
-	//					// give up, we can't find the file, not locally, not remotely. It's toast.
-	//					return nil, nil, e
-	//				}
-	//				return a, b, nil
-	//
-	//			} else {
-	//				// no baseURL? then we can't do anything, give up.
-	//				return nil, nil, err
-	//			}
-	//		}
-	//	}
-	//	var remoteDoc yaml.Node
-	//	err = yaml.Unmarshal(body, &remoteDoc)
-	//	if err != nil {
-	//		return nil, nil, err
-	//	}
-	//	parsedDocument = &remoteDoc
-	//	if index.seenLocalSources != nil {
-	//		index.sourceLock.Lock()
-	//		index.seenLocalSources[file] = &remoteDoc
-	//		index.sourceLock.Unlock()
-	//	}
-	//}
-
-	// lookup item from reference by using a path query.
-	var query string
-	if len(uri) >= 2 {
-		query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
-	} else {
-		query = "$"
-	}
-
-	query, err = url.PathUnescape(query)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// remove any URL encoding
-	query = strings.Replace(query, "~1", "./", 1)
-	query = strings.ReplaceAll(query, "~1", "/")
-
-	path, err := yamlpath.NewPath(query)
-	if err != nil {
-		return nil, nil, err
-	}
-	result, _ := path.Find(parsedDocument)
-	if len(result) == 1 {
-		return result[0], parsedDocument, nil
-	}
-
-	return nil, parsedDocument, nil
-}
+//func (index *SpecIndex) lookupFileReference(ref string) (*yaml.Node, *yaml.Node, error) {
+//	// split string to remove file reference
+//	uri := strings.Split(ref, "#")
+//	file := strings.ReplaceAll(uri[0], "file:", "")
+//	//filePath := filepath.Dir(file)
+//	//fileName := filepath.Base(file)
+//	absoluteFileLocation, _ := filepath.Abs(filepath.Join(filepath.Dir(index.specAbsolutePath), file))
+//
+//	// extract the document from the rolodex.
+//	rFile, rError := index.rolodex.Open(absoluteFileLocation)
+//	if rError != nil {
+//		return nil, nil, rError
+//	}
+//
+//	parsedDocument, err := rFile.GetContentAsYAMLNode()
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	//if index.seenRemoteSources[file] != nil {
+//	//	parsedDocument = index.seenRemoteSources[file]
+//	//} else {
+//	//
+//	//	base := index.config.BasePath
+//	//	fileToRead := filepath.Join(base, filePath, fileName)
+//	//	var body []byte
+//	//	var err error
+//	//
+//	//	// if we have an FS handler, use it instead of the default behavior
+//	//	if index.config != nil && index.config.FSHandler != nil {
+//	//		remoteFS := index.config.FSHandler
+//	//		remoteFile, rErr := remoteFS.Open(fileToRead)
+//	//		if rErr != nil {
+//	//			e := fmt.Errorf("unable to open file: %s", rErr)
+//	//			return nil, nil, e
+//	//		}
+//	//		body, err = io.ReadAll(remoteFile)
+//	//		if err != nil {
+//	//			e := fmt.Errorf("unable to read file bytes: %s", err)
+//	//			return nil, nil, e
+//	//		}
+//	//
+//	//	} else {
+//	//
+//	//		// try and read the file off the local file system, if it fails
+//	//		// check for a baseURL and then ask our remote lookup function to go try and get it.
+//	//		body, err = os.ReadFile(fileToRead)
+//	//
+//	//		if err != nil {
+//	//
+//	//			// if we have a baseURL, then we can try and get the file from there.
+//	//			if index.config != nil && index.config.BaseURL != nil {
+//	//
+//	//				u := index.config.BaseURL
+//	//				remoteRef := GenerateCleanSpecConfigBaseURL(u, ref, true)
+//	//				a, b, e := index.lookupRemoteReference(remoteRef)
+//	//				if e != nil {
+//	//					// give up, we can't find the file, not locally, not remotely. It's toast.
+//	//					return nil, nil, e
+//	//				}
+//	//				return a, b, nil
+//	//
+//	//			} else {
+//	//				// no baseURL? then we can't do anything, give up.
+//	//				return nil, nil, err
+//	//			}
+//	//		}
+//	//	}
+//	//	var remoteDoc yaml.Node
+//	//	err = yaml.Unmarshal(body, &remoteDoc)
+//	//	if err != nil {
+//	//		return nil, nil, err
+//	//	}
+//	//	parsedDocument = &remoteDoc
+//	//	if index.seenLocalSources != nil {
+//	//		index.sourceLock.Lock()
+//	//		index.seenLocalSources[file] = &remoteDoc
+//	//		index.sourceLock.Unlock()
+//	//	}
+//	//}
+//
+//	// lookup item from reference by using a path query.
+//	var query string
+//	if len(uri) >= 2 {
+//		query = fmt.Sprintf("$%s", strings.ReplaceAll(uri[1], "/", "."))
+//	} else {
+//		query = "$"
+//	}
+//
+//	query, err = url.PathUnescape(query)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//
+//	// remove any URL encoding
+//	query = strings.Replace(query, "~1", "./", 1)
+//	query = strings.ReplaceAll(query, "~1", "/")
+//
+//	path, err := yamlpath.NewPath(query)
+//	if err != nil {
+//		return nil, nil, err
+//	}
+//	result, _ := path.Find(parsedDocument)
+//	if len(result) == 1 {
+//		return result[0], parsedDocument, nil
+//	}
+//
+//	return nil, parsedDocument, nil
+//}
 
 func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Reference {
 	// check component for url encoding.

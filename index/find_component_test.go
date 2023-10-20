@@ -6,6 +6,8 @@ package index
 import (
 	"errors"
 	"fmt"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"net/http"
@@ -13,9 +15,6 @@ import (
 	"os"
 	"reflect"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {
@@ -177,6 +176,7 @@ components:
 //}
 
 func TestSpecIndex_LocateRemoteDocsWithRemoteURLHandler(t *testing.T) {
+
 	// This test will push the index to do try and locate remote references that use relative references
 	spec := `openapi: 3.0.2
 info:
@@ -191,13 +191,38 @@ paths:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(spec), &rootNode)
 
-	c := CreateOpenAPIIndexConfig()
-	c.RemoteURLHandler = httpClient.Get
+	//location := "https://raw.githubusercontent.com/digitalocean/openapi/main/specification"
+	//baseURL, _ := url.Parse(location)
 
-	index := NewSpecIndexWithConfig(&rootNode, c)
+	// create a new config that allows remote lookups.
+	cf := &SpecIndexConfig{}
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+
+	// setting this baseURL will override the base
+	//cf.BaseURL = baseURL
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
+
+	// add remote filesystem
+	rolo.AddRemoteFS("", remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, indexedErr)
+
+	index := rolo.GetRootIndex()
 
 	// extract crs param from index
-	crsParam := index.GetMappedReferences()["https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"]
+	crsParam := index.GetMappedReferences()["#/components/parameters/crs"]
 	assert.NotNil(t, crsParam)
 	assert.True(t, crsParam.IsRemote)
 	assert.Equal(t, "crs", crsParam.Node.Content[1].Value)
