@@ -60,14 +60,17 @@ func TestRolodex_LocalNonNativeFS(t *testing.T) {
 
 func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 
-	baseDir := "."
+	baseDir := "rolodex_test_data"
 
 	fileFS, err := NewLocalFS(baseDir, os.DirFS(baseDir))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+
+	rolo := NewRolodex(cf)
 	rolo.AddLocalFS(baseDir, fileFS)
 
 	err = rolo.IndexTheRolodex()

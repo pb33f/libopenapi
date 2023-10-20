@@ -103,7 +103,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelError,
 	}))
 
 	// setting this baseURL will override the base
@@ -142,6 +142,12 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	fileLen := len(files)
 	assert.Equal(t, 1646, fileLen)
 	assert.Len(t, remoteFS.GetErrors(), 0)
+
+	// check circular references
+	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
@@ -165,10 +171,12 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	// create a new config that allows local and remote to be mixed up.
 	cf := CreateOpenAPIIndexConfig()
-	cf.AvoidBuildIndex = true
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.BasePath = basePath
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
 
 	// create a new rolodex
 	rolo := NewRolodex(cf)
@@ -189,7 +197,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1684, fileLen)
+	assert.Equal(t, 1691, fileLen)
 
 	rolo.AddLocalFS(basePath, fileFS)
 
@@ -201,8 +209,8 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	assert.NotNil(t, index)
 
-	assert.Len(t, index.GetMappedReferencesSequenced(), 296)
-	assert.Len(t, index.GetMappedReferences(), 296)
+	assert.Len(t, index.GetMappedReferencesSequenced(), 299)
+	assert.Len(t, index.GetMappedReferences(), 299)
 	assert.Len(t, fileFS.GetErrors(), 0)
 }
 
