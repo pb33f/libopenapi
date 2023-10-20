@@ -4,80 +4,80 @@
 package index
 
 import (
-	"fmt"
-	"io"
-	"net/http"
-	"net/url"
-	"path/filepath"
-	"strings"
-	"time"
+    "fmt"
+    "io"
+    "net/http"
+    "net/url"
+    "path/filepath"
+    "strings"
+    "time"
 
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
+    "github.com/pb33f/libopenapi/utils"
+    "github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+    "gopkg.in/yaml.v3"
 )
 
 // FindComponent will locate a component by its reference, returns nil if nothing is found.
 // This method will recurse through remote, local and file references. For each new external reference
 // a new index will be created. These indexes can then be traversed recursively.
 func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Reference {
-	if index.root == nil {
-		return nil
-	}
+    if index.root == nil {
+        return nil
+    }
 
-	//remoteLookup := func(id string) (*yaml.Node, *yaml.Node, error) {
-	//	if index.config.AllowRemoteLookup {
-	//		return index.lookupRemoteReference(id)
-	//	} else {
-	//		return nil, nil, fmt.Errorf("remote lookups are not permitted, " +
-	//			"please set AllowRemoteLookup to true in the configuration")
-	//	}
-	//}
-	//
-	//fileLookup := func(id string) (*yaml.Node, *yaml.Node, error) {
-	//	if index.config.AllowFileLookup {
-	//		return index.lookupFileReference(id)
-	//	} else {
-	//		return nil, nil, fmt.Errorf("local lookups are not permitted, " +
-	//			"please set AllowFileLookup to true in the configuration")
-	//	}
-	//}
+    //remoteLookup := func(id string) (*yaml.Node, *yaml.Node, error) {
+    //	if index.config.AllowRemoteLookup {
+    //		return index.lookupRemoteReference(id)
+    //	} else {
+    //		return nil, nil, fmt.Errorf("remote lookups are not permitted, " +
+    //			"please set AllowRemoteLookup to true in the configuration")
+    //	}
+    //}
+    //
+    //fileLookup := func(id string) (*yaml.Node, *yaml.Node, error) {
+    //	if index.config.AllowFileLookup {
+    //		return index.lookupFileReference(id)
+    //	} else {
+    //		return nil, nil, fmt.Errorf("local lookups are not permitted, " +
+    //			"please set AllowFileLookup to true in the configuration")
+    //	}
+    //}
 
-	//witch DetermineReferenceResolveType(componentId) {
-	//case LocalResolve: // ideally, every single ref in every single spec is local. however, this is not the case.
-	//return index.FindComponentInRoot(componentId)
+    //witch DetermineReferenceResolveType(componentId) {
+    //case LocalResolve: // ideally, every single ref in every single spec is local. however, this is not the case.
+    //return index.FindComponentInRoot(componentId)
 
-	//case HttpResolve, FileResolve:
+    //case HttpResolve, FileResolve:
 
-	uri := strings.Split(componentId, "#/")
-	if len(uri) == 2 {
-		if uri[0] != "" {
-			if index.specAbsolutePath == uri[0] {
-				return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
-			} else {
-				return index.lookupRolodex(uri)
-			}
-		} else {
-			return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
-		}
-	} else {
-		if !strings.Contains(componentId, "#") {
+    uri := strings.Split(componentId, "#/")
+    if len(uri) == 2 {
+        if uri[0] != "" {
+            if index.specAbsolutePath == uri[0] {
+                return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+            } else {
+                return index.lookupRolodex(uri)
+            }
+        } else {
+            return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+        }
+    } else {
+        if !strings.Contains(componentId, "#") {
 
-			// does it contain a file extension?
-			fileExt := filepath.Ext(componentId)
-			if fileExt != "" {
-				return index.lookupRolodex(uri)
-			}
+            // does it contain a file extension?
+            fileExt := filepath.Ext(componentId)
+            if fileExt != "" {
+                return index.lookupRolodex(uri)
+            }
 
-			// root search
-			return index.FindComponentInRoot(componentId)
+            // root search
+            return index.FindComponentInRoot(componentId)
 
-		}
-		return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[0]))
-	}
+        }
+        return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[0]))
+    }
 
-	//}
-	//return nil
+    //}
+    //return nil
 }
 
 var httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
@@ -85,18 +85,18 @@ var httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
 type RemoteURLHandler = func(url string) (*http.Response, error)
 
 func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
-	resp, err := g(u)
-	if err != nil {
-		e <- err
-		close(e)
-		close(d)
-		return
-	}
-	var body []byte
-	body, _ = io.ReadAll(resp.Body)
-	d <- body
-	close(e)
-	close(d)
+    resp, err := g(u)
+    if err != nil {
+        e <- err
+        close(e)
+        close(d)
+        return
+    }
+    var body []byte
+    body, _ = io.ReadAll(resp.Body)
+    d <- body
+    close(e)
+    close(d)
 }
 
 //func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Node, error) {
@@ -315,254 +315,255 @@ func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
 //}
 
 func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Reference {
-	// check component for url encoding.
-	if strings.Contains(componentId, "%") {
-		// decode the url.
-		componentId, _ = url.QueryUnescape(componentId)
-	}
+    // check component for url encoding.
+    if strings.Contains(componentId, "%") {
+        // decode the url.
+        componentId, _ = url.QueryUnescape(componentId)
+    }
 
-	name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
-	path, err := yamlpath.NewPath(friendlySearch)
-	if path == nil || err != nil {
-		return nil // no component found
-	}
-	res, _ := path.Find(root)
+    name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
+    path, err := yamlpath.NewPath(friendlySearch)
+    if path == nil || err != nil {
+        return nil // no component found
+    }
+    res, _ := path.Find(root)
 
-	if len(res) == 1 {
-		resNode := res[0]
-		if res[0].Kind == yaml.DocumentNode {
-			resNode = res[0].Content[0]
-		}
+    if len(res) == 1 {
+        resNode := res[0]
+        if res[0].Kind == yaml.DocumentNode {
+            resNode = res[0].Content[0]
+        }
 
-		fullDef := fmt.Sprintf("%s%s", absoluteFilePath, componentId)
+        fullDef := fmt.Sprintf("%s%s", absoluteFilePath, componentId)
 
-		// extract properties
+        // extract properties
 
-		ref := &Reference{
-			FullDefinition:        fullDef,
-			Definition:            componentId,
-			Name:                  name,
-			Node:                  resNode,
-			Path:                  friendlySearch,
-			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}),
-		}
+        ref := &Reference{
+            FullDefinition:        fullDef,
+            Definition:            componentId,
+            Name:                  name,
+            Node:                  resNode,
+            Path:                  friendlySearch,
+            RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef),
+        }
 
-		return ref
-	}
-	return nil
+        return ref
+    }
+    return nil
 }
 
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
-	if index.root != nil {
-		return FindComponent(index.root, componentId, index.specAbsolutePath)
-	}
-	return nil
+    if index.root != nil {
+        return FindComponent(index.root, componentId, index.specAbsolutePath)
+    }
+    return nil
 }
 
 func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 
-	if len(uri) > 0 {
+    if len(uri) > 0 {
 
-		// split string to remove file reference
-		file := strings.ReplaceAll(uri[0], "file:", "")
+        // split string to remove file reference
+        file := strings.ReplaceAll(uri[0], "file:", "")
 
-		var absoluteFileLocation, fileName string
+        var absoluteFileLocation, fileName string
 
-		// is this a local or a remote file?
+        // is this a local or a remote file?
 
-		fileName = filepath.Base(file)
-		if filepath.IsAbs(file) || strings.HasPrefix(file, "http") {
-			absoluteFileLocation = file
-		} else {
-			if index.specAbsolutePath != "" {
-				if index.config.BaseURL != nil {
+        fileName = filepath.Base(file)
+        if filepath.IsAbs(file) || strings.HasPrefix(file, "http") {
+            absoluteFileLocation = file
+        } else {
+            if index.specAbsolutePath != "" {
+                if index.config.BaseURL != nil {
 
-					// consider the file remote.
-					//if strings.Contains(file, "../../") {
+                    // consider the file remote.
+                    //if strings.Contains(file, "../../") {
 
-					// extract the base path from the specAbsolutePath for this index.
-					sap, _ := url.Parse(index.specAbsolutePath)
-					newPath, _ := filepath.Abs(filepath.Join(filepath.Dir(sap.Path), file))
+                    // extract the base path from the specAbsolutePath for this index.
+                    sap, _ := url.Parse(index.specAbsolutePath)
+                    newPath, _ := filepath.Abs(filepath.Join(filepath.Dir(sap.Path), file))
 
-					sap.Path = newPath
-					f := sap.String()
-					absoluteFileLocation = f
-					//}
+                    sap.Path = newPath
+                    f := sap.String()
+                    absoluteFileLocation = f
+                    //}
 
-					//loc := fmt.Sprintf("%s%s", index.config.BaseURL.Path, file)
+                    //loc := fmt.Sprintf("%s%s", index.config.BaseURL.Path, file)
 
-					//absoluteFileLocation = loc
+                    //absoluteFileLocation = loc
 
-				} else {
+                } else {
 
-					// consider the file local
+                    // consider the file local
 
-					dir := filepath.Dir(index.config.SpecAbsolutePath)
-					absoluteFileLocation, _ = filepath.Abs(filepath.Join(dir, file))
-				}
-			} else {
-				absoluteFileLocation = file
-			}
-		}
+                    dir := filepath.Dir(index.config.SpecAbsolutePath)
+                    absoluteFileLocation, _ = filepath.Abs(filepath.Join(dir, file))
+                }
+            } else {
+                absoluteFileLocation = file
+            }
+        }
 
-		// if the absolute file location has no file ext, then get the rolodex root.
-		ext := filepath.Ext(absoluteFileLocation)
+        // if the absolute file location has no file ext, then get the rolodex root.
+        ext := filepath.Ext(absoluteFileLocation)
 
-		var parsedDocument *yaml.Node
-		var err error
-		if ext != "" {
+        var parsedDocument *yaml.Node
+        var err error
+        if ext != "" {
 
-			// extract the document from the rolodex.
-			rFile, rError := index.rolodex.Open(absoluteFileLocation)
+            // extract the document from the rolodex.
+            rFile, rError := index.rolodex.Open(absoluteFileLocation)
 
-			if rError != nil {
-				logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
-				return nil
-			}
+            if rError != nil {
+                logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
+                return nil
+            }
 
-			if rFile == nil {
-				logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
-				return nil
-			}
+            if rFile == nil {
+                logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
+                return nil
+            }
 
-			parsedDocument, err = rFile.GetContentAsYAMLNode()
-			if err != nil {
-				logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
-				return nil
-			}
-		} else {
-			parsedDocument = index.root
-		}
+            parsedDocument, err = rFile.GetContentAsYAMLNode()
+            if err != nil {
+                logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
+                return nil
+            }
+        } else {
+            parsedDocument = index.root
+        }
 
-		//fmt.Printf("parsedDocument: %v\n", parsedDocument)
+        //fmt.Printf("parsedDocument: %v\n", parsedDocument)
 
-		//index.externalLock.RLock()
-		//externalSpecIndex := index.externalSpecIndex[uri[0]]
-		//index.externalLock.RUnlock()
+        //index.externalLock.RLock()
+        //externalSpecIndex := index.externalSpecIndex[uri[0]]
+        //index.externalLock.RUnlock()
 
-		//if externalSpecIndex == nil {
-		//	_, newRoot, err := lookupFunction(componentId)
-		//	if err != nil {
-		//		indexError := &IndexingError{
-		//			Err:  err,
-		//			Node: parent,
-		//			Path: componentId,
-		//		}
-		//		index.errorLock.Lock()
-		//		index.refErrors = append(index.refErrors, indexError)
-		//		index.errorLock.Unlock()
-		//		return nil
-		//	}
-		//
-		//	// cool, cool, lets index this spec also. This is a recursive action and will keep going
-		//	// until all remote references have been found.
-		//	var bp *url.URL
-		//	var bd string
-		//
-		//	if index.config.BaseURL != nil {
-		//		bp = index.config.BaseURL
-		//	}
-		//	if index.config.BasePath != "" {
-		//		bd = index.config.BasePath
-		//	}
-		//
-		//	var path, newBasePath string
-		//	var newUrl *url.URL
-		//
-		//	if bp != nil {
-		//		path = GenerateCleanSpecConfigBaseURL(bp, uri[0], false)
-		//		newUrl, _ = url.Parse(path)
-		//		newBasePath = filepath.Dir(filepath.Join(index.config.BasePath, filepath.Dir(newUrl.Path)))
-		//	}
-		//	if bd != "" {
-		//		if len(uri[0]) > 0 {
-		//			// if there is no base url defined, but we can know we have been requested remotely,
-		//			// set the base url to the remote url base path.
-		//			// first check if the first param is actually a URL
-		//			io, er := url.ParseRequestURI(uri[0])
-		//			if er != nil {
-		//				newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
-		//			} else {
-		//				if newUrl == nil || newUrl.String() != io.String() {
-		//					newUrl, _ = url.Parse(fmt.Sprintf("%s://%s%s", io.Scheme, io.Host, filepath.Dir(io.Path)))
-		//				}
-		//				newBasePath = filepath.Dir(filepath.Join(bd, uri[1]))
-		//			}
-		//		} else {
-		//			newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
-		//		}
-		//	}
-		//
-		//	if newUrl != nil || newBasePath != "" {
-		//		newConfig := &SpecIndexConfig{
-		//			BaseURL:           newUrl,
-		//			BasePath:          newBasePath,
-		//			AllowRemoteLookup: index.config.AllowRemoteLookup,
-		//			AllowFileLookup:   index.config.AllowFileLookup,
-		//			ParentIndex:       index,
-		//			seenRemoteSources: index.config.seenRemoteSources,
-		//			remoteLock:        index.config.remoteLock,
-		//			uri:               uri,
-		//			AvoidBuildIndex:   index.config.AvoidBuildIndex,
-		//		}
-		//
-		//		var newIndex *SpecIndex
-		//		seen := index.SearchAncestryForSeenURI(uri[0])
-		//		if seen == nil {
-		//
-		//			newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
-		//			index.refLock.Lock()
-		//			index.externalLock.Lock()
-		//			index.externalSpecIndex[uri[0]] = newIndex
-		//			index.externalLock.Unlock()
-		//			newIndex.relativePath = path
-		//			newIndex.parentIndex = index
-		//			index.AddChild(newIndex)
-		//			index.refLock.Unlock()
-		//			externalSpecIndex = newIndex
-		//		} else {
-		//			externalSpecIndex = seen
-		//		}
-		//	}
-		//}
+        //if externalSpecIndex == nil {
+        //	_, newRoot, err := lookupFunction(componentId)
+        //	if err != nil {
+        //		indexError := &IndexingError{
+        //			Err:  err,
+        //			Node: parent,
+        //			Path: componentId,
+        //		}
+        //		index.errorLock.Lock()
+        //		index.refErrors = append(index.refErrors, indexError)
+        //		index.errorLock.Unlock()
+        //		return nil
+        //	}
+        //
+        //	// cool, cool, lets index this spec also. This is a recursive action and will keep going
+        //	// until all remote references have been found.
+        //	var bp *url.URL
+        //	var bd string
+        //
+        //	if index.config.BaseURL != nil {
+        //		bp = index.config.BaseURL
+        //	}
+        //	if index.config.BasePath != "" {
+        //		bd = index.config.BasePath
+        //	}
+        //
+        //	var path, newBasePath string
+        //	var newUrl *url.URL
+        //
+        //	if bp != nil {
+        //		path = GenerateCleanSpecConfigBaseURL(bp, uri[0], false)
+        //		newUrl, _ = url.Parse(path)
+        //		newBasePath = filepath.Dir(filepath.Join(index.config.BasePath, filepath.Dir(newUrl.Path)))
+        //	}
+        //	if bd != "" {
+        //		if len(uri[0]) > 0 {
+        //			// if there is no base url defined, but we can know we have been requested remotely,
+        //			// set the base url to the remote url base path.
+        //			// first check if the first param is actually a URL
+        //			io, er := url.ParseRequestURI(uri[0])
+        //			if er != nil {
+        //				newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
+        //			} else {
+        //				if newUrl == nil || newUrl.String() != io.String() {
+        //					newUrl, _ = url.Parse(fmt.Sprintf("%s://%s%s", io.Scheme, io.Host, filepath.Dir(io.Path)))
+        //				}
+        //				newBasePath = filepath.Dir(filepath.Join(bd, uri[1]))
+        //			}
+        //		} else {
+        //			newBasePath = filepath.Dir(filepath.Join(bd, uri[0]))
+        //		}
+        //	}
+        //
+        //	if newUrl != nil || newBasePath != "" {
+        //		newConfig := &SpecIndexConfig{
+        //			BaseURL:           newUrl,
+        //			BasePath:          newBasePath,
+        //			AllowRemoteLookup: index.config.AllowRemoteLookup,
+        //			AllowFileLookup:   index.config.AllowFileLookup,
+        //			ParentIndex:       index,
+        //			seenRemoteSources: index.config.seenRemoteSources,
+        //			remoteLock:        index.config.remoteLock,
+        //			uri:               uri,
+        //			AvoidBuildIndex:   index.config.AvoidBuildIndex,
+        //		}
+        //
+        //		var newIndex *SpecIndex
+        //		seen := index.SearchAncestryForSeenURI(uri[0])
+        //		if seen == nil {
+        //
+        //			newIndex = NewSpecIndexWithConfig(newRoot, newConfig)
+        //			index.refLock.Lock()
+        //			index.externalLock.Lock()
+        //			index.externalSpecIndex[uri[0]] = newIndex
+        //			index.externalLock.Unlock()
+        //			newIndex.relativePath = path
+        //			newIndex.parentIndex = index
+        //			index.AddChild(newIndex)
+        //			index.refLock.Unlock()
+        //			externalSpecIndex = newIndex
+        //		} else {
+        //			externalSpecIndex = seen
+        //		}
+        //	}
+        //}
 
-		wholeFile := false
-		query := ""
-		if len(uri) < 2 {
-			wholeFile = true
-		} else {
-			query = fmt.Sprintf("#/%s", strings.Replace(uri[1], "~1", "./", 1))
-			query = strings.ReplaceAll(query, "~1", "/")
-		}
+        wholeFile := false
+        query := ""
+        if len(uri) < 2 {
+            wholeFile = true
+        } else {
+            query = fmt.Sprintf("#/%s", strings.Replace(uri[1], "~1", "./", 1))
+            query = strings.ReplaceAll(query, "~1", "/")
+        }
 
-		// check if there is a component we want to suck in, or if the
-		// entire root needs to come in.
-		var foundRef *Reference
-		if wholeFile {
-			if parsedDocument.Kind == yaml.DocumentNode {
-				parsedDocument = parsedDocument.Content[0]
-			}
+        // check if there is a component we want to suck in, or if the
+        // entire root needs to come in.
+        var foundRef *Reference
+        if wholeFile {
+            if parsedDocument.Kind == yaml.DocumentNode {
+                parsedDocument = parsedDocument.Content[0]
+            }
 
-			// TODO: remote locations
+            // TODO: remote locations
 
-			foundRef = &Reference{
-				Definition:            fileName,
-				Name:                  fileName,
-				Node:                  parsedDocument,
-				IsRemote:              true,
-				RemoteLocation:        absoluteFileLocation,
-				Path:                  "$",
-				RequiredRefProperties: extractDefinitionRequiredRefProperties(parsedDocument, map[string][]string{}),
-			}
-			return foundRef
-		} else {
-			foundRef = FindComponent(parsedDocument, query, absoluteFileLocation)
-			if foundRef != nil {
-				foundRef.IsRemote = true
-				foundRef.RemoteLocation = absoluteFileLocation
-				return foundRef
-			}
-		}
-	}
-	return nil
+            foundRef = &Reference{
+                FullDefinition:        absoluteFileLocation,
+                Definition:            fileName,
+                Name:                  fileName,
+                Node:                  parsedDocument,
+                IsRemote:              true,
+                RemoteLocation:        absoluteFileLocation,
+                Path:                  "$",
+                RequiredRefProperties: extractDefinitionRequiredRefProperties(parsedDocument, map[string][]string{}, absoluteFileLocation),
+            }
+            return foundRef
+        } else {
+            foundRef = FindComponent(parsedDocument, query, absoluteFileLocation)
+            if foundRef != nil {
+                foundRef.IsRemote = true
+                foundRef.RemoteLocation = absoluteFileLocation
+                return foundRef
+            }
+        }
+    }
+    return nil
 }

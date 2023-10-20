@@ -8,4 +8,4 @@ properties:
       link:
         $ref: "../components.yaml#/components/schemas/GlobalComponent"
       shared:
-        $ref: '../shared/shared.yaml#/components/schemas/SharedComponent'
+        $ref: '../subdir1/shared.yaml#/components/schemas/SharedComponent'

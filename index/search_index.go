@@ -39,12 +39,16 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 		if filepath.IsAbs(uri[0]) {
 			roloLookup = uri[0]
 		} else {
-			if filepath.Ext(absPath) != "" {
-				absPath = filepath.Dir(absPath)
-			}
-			roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
-		}
 
+			if strings.HasPrefix(uri[0], "http") {
+				roloLookup = ref
+			} else {
+				if filepath.Ext(absPath) != "" {
+					absPath = filepath.Dir(absPath)
+				}
+				roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+			}
+		}
 		ref = uri[0]
 	}
 

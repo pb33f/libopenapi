@@ -220,20 +220,51 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				if len(uri) == 2 {
 					if uri[0] == "" {
 						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
+						componentName = value
 					} else {
 
 						if strings.HasPrefix(uri[0], "http") {
 							fullDefinitionPath = value
+							componentName = fmt.Sprintf("#/%s", uri[1])
+
 						} else {
-							if index.config.BasePath == "" || iroot == "" {
+
+							if filepath.IsAbs(uri[0]) {
 								fullDefinitionPath = value
+								componentName = fmt.Sprintf("#/%s", uri[1])
+
 							} else {
-								abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
-								fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+
+								// if the index has a base path, use that to resolve the path
+								if index.config.BasePath != "" {
+									abs, _ := filepath.Abs(filepath.Join(index.config.BasePath, uri[0]))
+									if abs != iroot {
+										abs, _ = filepath.Abs(filepath.Join(iroot, uri[0]))
+									}
+									fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+									componentName = fmt.Sprintf("#/%s", uri[1])
+								} else {
+									// if the index has a base URL, use that to resolve the path.
+									if index.config.BaseURL != nil {
+
+										url := *index.config.BaseURL
+
+										abs, _ := filepath.Abs(filepath.Join(url.Path, uri[0]))
+										url.Path = abs
+										fullDefinitionPath = fmt.Sprintf("%s#/%s", url.String(), uri[1])
+										componentName = fmt.Sprintf("#/%s", uri[1])
+									} else {
+
+										abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
+										fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+										componentName = fmt.Sprintf("#/%s", uri[1])
+
+									}
+								}
 							}
 						}
 					}
-					componentName = fmt.Sprintf("#/%s", uri[1])
+
 				} else {
 					if strings.HasPrefix(uri[0], "http") {
 						fullDefinitionPath = value
@@ -243,8 +274,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							fullDefinitionPath = fmt.Sprintf("%s#/%s", iroot, uri[0])
 							componentName = fmt.Sprintf("#/%s", uri[0])
 						} else {
-							fullDefinitionPath = uri[0]
-							componentName = uri[0]
+
 							if strings.HasPrefix(iroot, "http") {
 								if !filepath.IsAbs(uri[0]) {
 									u, _ := url.Parse(iroot)
@@ -253,7 +283,41 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 									u.Path = pathAbs
 									fullDefinitionPath = u.String()
 								}
+							} else {
+								if filepath.IsAbs(uri[0]) {
+									fullDefinitionPath = uri[0]
+								} else {
+
+									// if the index has a base path, use that to resolve the path
+									if index.config.BasePath != "" {
+										abs, _ := filepath.Abs(filepath.Join(index.config.BasePath, uri[0]))
+										if abs != iroot {
+											abs, _ = filepath.Abs(filepath.Join(iroot, uri[0]))
+										}
+										fullDefinitionPath = abs
+										componentName = uri[0]
+									} else {
+										// if the index has a base URL, use that to resolve the path.
+										if index.config.BaseURL != nil {
+
+											url := *index.config.BaseURL
+
+											abs, _ := filepath.Abs(filepath.Join(url.Path, uri[0]))
+											url.Path = abs
+											fullDefinitionPath = url.String()
+											componentName = uri[0]
+										} else {
+
+											abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
+											fullDefinitionPath = abs
+											componentName = uri[0]
+
+										}
+									}
+
+								}
 							}
+							//componentName = filepath.Base(uri[0])
 						}
 					}
 				}
@@ -334,7 +398,16 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					continue
 				}
 
-				index.allRefs[value] = ref
+				//if len(uri) == 2 {
+				//	if uri[0] == "" {
+				//		index.allRefs[componentName] = ref
+				//	} else {
+				//		index.allRefs[value] = ref
+				//	}
+				//} else {
+				//	index.allRefs[value] = ref
+				//}
+				index.allRefs[fullDefinitionPath] = ref
 				found = append(found, ref)
 			}
 
@@ -484,6 +557,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 
 				seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
+				//seenPath = append(seenPath, n.Value)
 				prev = n.Value
 			}
 
@@ -525,6 +599,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			// have we already mapped this?
 			if index.allMappedRefs[ref.Definition] == nil {
 				found = append(found, located)
+				if located.FullDefinition != ref.FullDefinition {
+					located.FullDefinition = ref.FullDefinition
+				}
+
 				index.allMappedRefs[ref.Definition] = located
 				rm := &ReferenceMapped{
 					Reference:      located,
@@ -539,6 +617,9 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 				// if the full definition matches, we're good and can skip this.
 				if d.FullDefinition != ref.FullDefinition {
 					found = append(found, located)
+					if located.FullDefinition != ref.FullDefinition {
+						located.FullDefinition = ref.FullDefinition
+					}
 					index.allMappedRefs[ref.FullDefinition] = located
 					rm := &ReferenceMapped{
 						Reference:      located,

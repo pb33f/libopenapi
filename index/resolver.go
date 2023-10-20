@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"net/url"
+	"path/filepath"
 	"strings"
 )
 
@@ -259,7 +261,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	seen = make(map[string]bool)
 
 	seen[ref.Definition] = true
-	for _, r := range relatives {
+	for i, r := range relatives {
 		// check if we have seen this on the journey before, if so! it's circular
 		skip := false
 		for i, j := range journey {
@@ -275,7 +277,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 				if !foundDup.Circular {
 					loop := append(journey, foundDup)
 
-					visitedDefinitions := map[string]bool{}
+					visitedDefinitions := make(map[string]bool)
 					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup, visitedDefinitions, nil)
 
 					isArray := false
@@ -310,6 +312,10 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if foundRef != nil {
 				original = foundRef
 			}
+			if original == nil {
+				panic(i)
+			}
+
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve && !original.Circular {
 				r.Node.Content = resolved // this is where we perform the actual resolving.
@@ -406,35 +412,177 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				var locatedRef *Reference
 
 				var fullDef string
-				exp := strings.Split(ref.FullDefinition, "#/")
+				//exp := strings.Split(ref.FullDefinition, "#/")
+
+				var definition string
+
+				// explode value
+				exp := strings.Split(value, "#/")
 				if len(exp) == 2 {
+					definition = fmt.Sprintf("#/%s", exp[1])
 					if exp[0] != "" {
-						fullDef = fmt.Sprintf("%s%s", exp[0], value)
+
+						if strings.HasPrefix(ref.FullDefinition, "http") {
+
+							// split the http URI into parts
+							httpExp := strings.Split(ref.FullDefinition, "#/")
+
+							u, _ := url.Parse(httpExp[0])
+							abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+							u.Path = abs
+							fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+						} else {
+
+							// split the full def into parts
+							fileDef := strings.Split(ref.FullDefinition, "#/")
+
+							// extract the location of the ref and build a full def path.
+							fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
+
+						}
 					} else {
-						fullDef = value
+
+						if strings.HasPrefix(exp[0], "http") {
+							fullDef = value // remote component, full def is based on value
+
+						} else {
+
+							if filepath.IsAbs(value) {
+								fullDef = value
+							} else {
+
+								// local component, full def is based on passed in ref
+								if strings.HasPrefix(ref.FullDefinition, "http") {
+
+									// split the http URI into parts
+									httpExp := strings.Split(ref.FullDefinition, "#/")
+
+									// parse an URL from the full def
+									u, _ := url.Parse(httpExp[0])
+
+									// extract the location of the ref and build a full def path.
+									fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+								} else {
+
+									// split the full def into parts
+									fileDef := strings.Split(ref.FullDefinition, "#/")
+
+									// extract the location of the ref and build a full def path.
+									loc, _ := filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+
+									fullDef = fmt.Sprintf("%s#/%s", loc, exp[1])
+
+								}
+
+							}
+						}
 					}
 				} else {
-					fullDef = value
+
+					definition = value
+
+					// if the reference is an http link
+					if strings.HasPrefix(value, "http") {
+						fullDef = value
+					} else {
+
+						if filepath.IsAbs(value) {
+							fullDef = value
+						} else {
+
+							// split the full def into parts
+							fileDef := strings.Split(ref.FullDefinition, "#/")
+
+							// is the file def an http link?
+							if strings.HasPrefix(fileDef[0], "http") {
+
+								u, _ := url.Parse(fileDef[0])
+								path, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+								u.Path = path
+								fullDef = u.String()
+
+							} else {
+
+								// extract the location of the ref and build a full def path.
+								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+
+							}
+
+						}
+					}
 				}
+				//
+				//if len(exp) == 2 {
+				//	if exp[0] != "" {
+				//		fullDef = fmt.Sprintf("%s%s", exp[0], value)
+				//	} else {
+				//
+				//		//// check if location is relative
+				//		//if filepath.IsAbs(exp)
+				//		//
+				//		//
+				//
+				//		fullDef = value
+				//	}
+				//	definition = fmt.Sprintf("#/%s", exp[1])
+				//} else {
+				//	if filepath.IsAbs(value) {
+				//
+				//		// todo implement.
+				//
+				//	} else {
+				//		if strings.HasPrefix(value, "http") {
+				//			fullDef = value
+				//			definition = value
+				//		} else {
+				//			if ref.FullDefinition != "" {
+				//				if strings.HasPrefix(ref.FullDefinition, "http") {
+				//					u, _ := url.Parse(ref.FullDefinition)
+				//					pathDir := filepath.Dir(u.Path)
+				//					pathAbs, _ := filepath.Abs(filepath.Join(pathDir, value))
+				//					u.Path = pathAbs
+				//					fullDef = u.String()
+				//				} else {
+				//					if filepath.IsAbs(value) {
+				//						fullDef = value
+				//					} else {
+				//
+				//						// extract file from value
+				//						uri := strings.Split(value, "#/")
+				//						if len(uri) == 2 {
+				//
+				//						} else {
+				//
+				//						}
+				//
+				//						fullDef, _ = filepath.Abs(
+				//							filepath.Join(
+				//								filepath.Dir(ref.FullDefinition), value))
+				//					}
+				//				}
+				//			}
+				//		}
+				//	}
+				//}
 
 				searchRef := &Reference{
-					Definition:     value,
+					Definition:     definition,
 					FullDefinition: fullDef,
 					RemoteLocation: ref.RemoteLocation,
 					IsRemote:       true,
 				}
 
 				// we're searching a remote document, we need to build a full path to the reference
-				if ref.IsRemote {
-					if ref.RemoteLocation != "" {
-						searchRef = &Reference{
-							Definition:     value,
-							FullDefinition: fmt.Sprintf("%s%s", ref.RemoteLocation, value),
-							RemoteLocation: ref.RemoteLocation,
-							IsRemote:       true,
-						}
-					}
-				}
+				//if ref.IsRemote {
+				//	if ref.RemoteLocation != "" {
+				//		searchRef .RemoteLocation = ref.RemoteLocationFullDefinition: fmt.Sprintf("%s%s", ref.RemoteLocation, value),
+				//			RemoteLocation: ref.RemoteLocation,
+				//			IsRemote:       true,
+				//		}
+				//	}
+				//}
 
 				locatedRef = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
 
