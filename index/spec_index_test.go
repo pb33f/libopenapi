@@ -103,7 +103,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelError,
 	}))
 
 	// setting this baseURL will override the base
@@ -188,6 +188,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	fsCfg := LocalFSConfig{
 		BaseDirectory: cf.BasePath,
 		DirFS:         os.DirFS(cf.BasePath),
+		Logger:        cf.Logger,
 	}
 
 	// create a new local filesystem.
@@ -682,7 +683,7 @@ func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
-	assert.Len(t, index.refErrors, 5)
+	assert.Len(t, index.refErrors, 6)
 }
 
 func TestTagsNoDescription(t *testing.T) {

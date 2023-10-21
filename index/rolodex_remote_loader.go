@@ -241,57 +241,6 @@ func (i *RemoteFS) GetErrors() []error {
 	return i.remoteErrors
 }
 
-//func (i *RemoteFS) seekRelatives(file *RemoteFile) {
-//
-//	extractedRefs := ExtractRefs(string(file.data))
-//	if len(extractedRefs) == 0 {
-//		return
-//	}
-//
-//	fetchChild := func(url string) {
-//		_, err := i.Open(url)
-//		if err != nil {
-//			file.seekingErrors = append(file.seekingErrors, err)
-//			i.remoteErrorLock.Lock()
-//			i.remoteErrors = append(i.remoteErrors, err)
-//			i.remoteErrorLock.Unlock()
-//		}
-//		defer i.remoteWg.Done()
-//	}
-//
-//	for _, ref := range extractedRefs {
-//		refType := ExtractRefType(ref[1])
-//		switch refType {
-//		case File:
-//			fileLocation, _ := ExtractRefValues(ref[1])
-//			//parentDir, _ := filepath.Abs(filepath.Dir(file.fullPath))
-//			var fullPath string
-//			if filepath.IsAbs(fileLocation) {
-//				fullPath = fileLocation
-//			} else {
-//				fullPath, _ = filepath.Abs(filepath.Join(filepath.Dir(file.fullPath), fileLocation))
-//			}
-//
-//			if f, ok := i.Files.Load(fullPath); ok {
-//				i.logger.Debug("file already loaded, skipping", "file", f.(*RemoteFile).fullPath)
-//				continue
-//			} else {
-//				i.remoteWg.Add(1)
-//				go fetchChild(fullPath)
-//			}
-//
-//		case HTTP:
-//			fmt.Printf("Found relative HTTP reference: %s\n", ref[1])
-//		}
-//	}
-//	if !i.remoteRunning {
-//		i.remoteRunning = true
-//		i.remoteWg.Wait()
-//		i.remoteRunning = false
-//	}
-//
-//}
-
 func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	if i.indexConfig != nil && !i.indexConfig.AllowRemoteLookup {

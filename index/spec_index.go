@@ -15,6 +15,8 @@ package index
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -42,6 +44,15 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 	if rootNode == nil || len(rootNode.Content) <= 0 {
 		return index
 	}
+
+	if config.Logger != nil {
+		index.logger = config.Logger
+	} else {
+		index.logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		}))
+	}
+
 	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }
