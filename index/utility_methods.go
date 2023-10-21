@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -31,14 +32,14 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			Node:                  schema,
 			Path:                  fmt.Sprintf("$.components.schemas.%s", name),
 			ParentNode:            schemasNode,
-			RequiredRefProperties: extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}),
+			RequiredRefProperties: extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}, fullDef),
 		}
 		index.allComponentSchemaDefinitions[def] = ref
 	}
 }
 
 // extractDefinitionRequiredRefProperties goes through the direct properties of a schema and extracts the map of required definitions from within it
-func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string) map[string][]string {
+func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string, fulldef string) map[string][]string {
 	if schemaNode == nil {
 		return reqRefProps
 	}
@@ -73,7 +74,7 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 		// Check to see if the current property is directly embedded within the current schema, and handle its properties if so
 		_, paramPropertiesMapNode := utils.FindKeyNodeTop("properties", param.Content)
 		if paramPropertiesMapNode != nil {
-			reqRefProps = extractDefinitionRequiredRefProperties(param, reqRefProps)
+			reqRefProps = extractDefinitionRequiredRefProperties(param, reqRefProps, fulldef)
 		}
 
 		// Check to see if the current property is polymorphic, and dive into that model if so
@@ -81,7 +82,7 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 			_, ofNode := utils.FindKeyNodeTop(key, param.Content)
 			if ofNode != nil {
 				for _, ofNodeItem := range ofNode.Content {
-					reqRefProps = extractRequiredReferenceProperties(ofNodeItem, name, reqRefProps)
+					reqRefProps = extractRequiredReferenceProperties(fulldef, ofNodeItem, name, reqRefProps)
 				}
 			}
 		}
@@ -94,14 +95,14 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 			continue
 		}
 
-		reqRefProps = extractRequiredReferenceProperties(requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
+		reqRefProps = extractRequiredReferenceProperties(fulldef, requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
 	}
 
 	return reqRefProps
 }
 
 // extractRequiredReferenceProperties returns a map of definition names to the property or properties which reference it within a node
-func extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
+func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
 	isRef, _, defPath := utils.IsNodeRefValue(requiredPropDefNode)
 	if !isRef {
 		_, defItems := utils.FindKeyNodeTop("items", requiredPropDefNode.Content)
@@ -112,6 +113,69 @@ func extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName
 
 	if /* still */ !isRef {
 		return reqRefProps
+	}
+
+	// explode defpath
+	exp := strings.Split(defPath, "#/")
+	if len(exp) == 2 {
+		if exp[0] != "" {
+			if !strings.HasPrefix(exp[0], "http") {
+
+				if !filepath.IsAbs(exp[0]) {
+
+					if strings.HasPrefix(fulldef, "http") {
+
+						u, _ := url.Parse(fulldef)
+						p := filepath.Dir(u.Path)
+						abs, _ := filepath.Abs(filepath.Join(p, exp[0]))
+						u.Path = abs
+						defPath = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+					} else {
+
+						abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fulldef), exp[0]))
+						defPath = fmt.Sprintf("%s#/%s", abs, exp[1])
+
+					}
+				}
+
+			}
+		}
+	} else {
+
+		if strings.HasPrefix(exp[0], "http") {
+
+			defPath = exp[0]
+
+		} else {
+
+			// file shit again
+
+			if filepath.IsAbs(exp[0]) {
+
+				defPath = exp[0]
+
+			} else {
+
+				// check full def and decide what to do next.
+				if strings.HasPrefix(fulldef, "http") {
+
+					u, _ := url.Parse(fulldef)
+					p := filepath.Dir(u.Path)
+					abs, _ := filepath.Abs(filepath.Join(p, exp[0]))
+					u.Path = abs
+					defPath = u.String()
+
+				} else {
+
+					defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(fulldef), exp[0]))
+
+				}
+
+			}
+
+		}
+
 	}
 
 	if _, ok := reqRefProps[defPath]; !ok {
