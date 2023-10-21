@@ -5,12 +5,8 @@ package index
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
-
-// var refRegex = regexp.MustCompile(`['"]?\$ref['"]?\s*:\s*['"]?([^'"]*?)['"]`)
-var refRegex = regexp.MustCompile(`('\$ref'|"\$ref"|\$ref)\s*:\s*('[^']*'|"[^"]*"|\S*)`)
 
 type RefType int
 

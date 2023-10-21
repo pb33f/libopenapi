@@ -266,6 +266,7 @@ type SpecIndex struct {
 	cache                               syncmap.Map
 	built                               bool
 	uri                                 []string
+	logger                              *slog.Logger
 }
 
 // GetResolver returns the resolver for this index.

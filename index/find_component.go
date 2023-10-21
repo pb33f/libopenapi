@@ -145,18 +145,18 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			rFile, rError := index.rolodex.Open(absoluteFileLocation)
 
 			if rError != nil {
-				logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
+				index.logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
 				return nil
 			}
 
 			if rFile == nil {
-				logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
+				index.logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
 				return nil
 			}
 
 			parsedDocument, err = rFile.GetContentAsYAMLNode()
 			if err != nil {
-				logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
+				index.logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
 				return nil
 			}
 		} else {

@@ -10,7 +10,6 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
-	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -39,15 +38,6 @@ type RolodexFile interface {
 	Sys() any
 	Size() int64
 	Mode() os.FileMode
-}
-
-var logger *slog.Logger
-
-func init() {
-	logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
-
 }
 
 type RolodexFS interface {

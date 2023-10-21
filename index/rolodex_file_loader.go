@@ -11,6 +11,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -132,6 +133,7 @@ func (l *LocalFile) GetErrors() []error {
 type LocalFSConfig struct {
 	// the base directory to index
 	BaseDirectory string
+	Logger        *slog.Logger
 	FileFilters   []string
 	DirFS         fs.FS
 }
@@ -139,6 +141,13 @@ type LocalFSConfig struct {
 func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
+
+	log := config.Logger
+	if log == nil {
+		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		}))
+	}
 
 	// if the basedir is an absolute file, we're just going to index that file.
 	ext := filepath.Ext(config.BaseDirectory)
@@ -182,7 +191,7 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 		abs, absErr := filepath.Abs(filepath.Join(config.BaseDirectory, p))
 		if absErr != nil {
 			readingErrors = append(readingErrors, absErr)
-			logger.Error("cannot create absolute path for file: ", "file", p, "error", absErr.Error())
+			log.Error("cannot create absolute path for file: ", "file", p, "error", absErr.Error())
 		}
 
 		var fileData []byte
@@ -194,13 +203,13 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 			modTime := time.Now()
 			if readErr != nil {
 				allErrors = append(allErrors, readErr)
-				logger.Error("[rolodex] cannot open file: ", "file", abs, "error", readErr.Error())
+				log.Error("[rolodex] cannot open file: ", "file", abs, "error", readErr.Error())
 				return nil
 			}
 			stat, statErr := dirFile.Stat()
 			if statErr != nil {
 				allErrors = append(allErrors, statErr)
-				logger.Error("[rolodex] cannot stat file: ", "file", abs, "error", statErr.Error())
+				log.Error("[rolodex] cannot stat file: ", "file", abs, "error", statErr.Error())
 			}
 			if stat != nil {
 				modTime = stat.ModTime()
@@ -208,11 +217,11 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 			fileData, readErr = io.ReadAll(dirFile)
 			if readErr != nil {
 				allErrors = append(allErrors, readErr)
-				logger.Error("cannot read file data: ", "file", abs, "error", readErr.Error())
+				log.Error("cannot read file data: ", "file", abs, "error", readErr.Error())
 				return nil
 			}
 
-			logger.Debug("collecting JSON/YAML file", "file", abs)
+			log.Debug("collecting JSON/YAML file", "file", abs)
 			localFiles[abs] = &LocalFile{
 				filename:      p,
 				name:          filepath.Base(p),
@@ -223,7 +232,7 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 				readingErrors: readingErrors,
 			}
 		case UNSUPPORTED:
-			logger.Debug("skipping non JSON/YAML file", "file", abs)
+			log.Debug("skipping non JSON/YAML file", "file", abs)
 		}
 		return nil
 	})
@@ -234,7 +243,7 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 
 	return &LocalFS{
 		Files:               localFiles,
-		logger:              logger,
+		logger:              log,
 		baseDirectory:       absBaseDir,
 		entryPointDirectory: config.BaseDirectory,
 		readingErrors:       allErrors,
