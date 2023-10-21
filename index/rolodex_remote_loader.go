@@ -17,7 +17,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 )
 
@@ -30,9 +29,6 @@ type RemoteFS struct {
 	ProcessingFiles   syncmap.Map
 	FetchTime         int64
 	FetchChannel      chan *RemoteFile
-	remoteWg          sync.WaitGroup
-	remoteRunning     bool
-	remoteErrorLock   sync.Mutex
 	remoteErrors      []error
 	logger            *slog.Logger
 	defaultClient     *http.Client
@@ -243,56 +239,56 @@ func (i *RemoteFS) GetErrors() []error {
 	return i.remoteErrors
 }
 
-func (i *RemoteFS) seekRelatives(file *RemoteFile) {
-
-	extractedRefs := ExtractRefs(string(file.data))
-	if len(extractedRefs) == 0 {
-		return
-	}
-
-	fetchChild := func(url string) {
-		_, err := i.Open(url)
-		if err != nil {
-			file.seekingErrors = append(file.seekingErrors, err)
-			i.remoteErrorLock.Lock()
-			i.remoteErrors = append(i.remoteErrors, err)
-			i.remoteErrorLock.Unlock()
-		}
-		defer i.remoteWg.Done()
-	}
-
-	for _, ref := range extractedRefs {
-		refType := ExtractRefType(ref[1])
-		switch refType {
-		case File:
-			fileLocation, _ := ExtractRefValues(ref[1])
-			//parentDir, _ := filepath.Abs(filepath.Dir(file.fullPath))
-			var fullPath string
-			if filepath.IsAbs(fileLocation) {
-				fullPath = fileLocation
-			} else {
-				fullPath, _ = filepath.Abs(filepath.Join(filepath.Dir(file.fullPath), fileLocation))
-			}
-
-			if f, ok := i.Files.Load(fullPath); ok {
-				i.logger.Debug("file already loaded, skipping", "file", f.(*RemoteFile).fullPath)
-				continue
-			} else {
-				i.remoteWg.Add(1)
-				go fetchChild(fullPath)
-			}
-
-		case HTTP:
-			fmt.Printf("Found relative HTTP reference: %s\n", ref[1])
-		}
-	}
-	if !i.remoteRunning {
-		i.remoteRunning = true
-		i.remoteWg.Wait()
-		i.remoteRunning = false
-	}
-
-}
+//func (i *RemoteFS) seekRelatives(file *RemoteFile) {
+//
+//	extractedRefs := ExtractRefs(string(file.data))
+//	if len(extractedRefs) == 0 {
+//		return
+//	}
+//
+//	fetchChild := func(url string) {
+//		_, err := i.Open(url)
+//		if err != nil {
+//			file.seekingErrors = append(file.seekingErrors, err)
+//			i.remoteErrorLock.Lock()
+//			i.remoteErrors = append(i.remoteErrors, err)
+//			i.remoteErrorLock.Unlock()
+//		}
+//		defer i.remoteWg.Done()
+//	}
+//
+//	for _, ref := range extractedRefs {
+//		refType := ExtractRefType(ref[1])
+//		switch refType {
+//		case File:
+//			fileLocation, _ := ExtractRefValues(ref[1])
+//			//parentDir, _ := filepath.Abs(filepath.Dir(file.fullPath))
+//			var fullPath string
+//			if filepath.IsAbs(fileLocation) {
+//				fullPath = fileLocation
+//			} else {
+//				fullPath, _ = filepath.Abs(filepath.Join(filepath.Dir(file.fullPath), fileLocation))
+//			}
+//
+//			if f, ok := i.Files.Load(fullPath); ok {
+//				i.logger.Debug("file already loaded, skipping", "file", f.(*RemoteFile).fullPath)
+//				continue
+//			} else {
+//				i.remoteWg.Add(1)
+//				go fetchChild(fullPath)
+//			}
+//
+//		case HTTP:
+//			fmt.Printf("Found relative HTTP reference: %s\n", ref[1])
+//		}
+//	}
+//	if !i.remoteRunning {
+//		i.remoteRunning = true
+//		i.remoteWg.Wait()
+//		i.remoteRunning = false
+//	}
+//
+//}
 
 func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
@@ -412,14 +408,6 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		lastModified: lastModifiedTime,
 	}
 
-	if i == nil {
-		panic("we fucked")
-	}
-
-	if i.indexConfig == nil {
-		panic("we fucked bro")
-	}
-
 	copiedCfg := *i.indexConfig
 
 	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURLOriginal.Scheme, remoteParsedURLOriginal.Host,
@@ -428,27 +416,31 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	copiedCfg.BaseURL = newBaseURL
 	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
-	idx, _ := remoteFile.Index(&copiedCfg)
-
-	// for each index, we need a resolver
-	resolver := NewResolver(idx)
-	idx.resolver = resolver
+	idx, idxError := remoteFile.Index(&copiedCfg)
 
 	i.Files.Store(absolutePath, remoteFile)
 
 	if len(remoteFile.data) > 0 {
 		i.logger.Debug("successfully loaded file", "file", absolutePath)
 	}
-	i.seekRelatives(remoteFile)
+	//i.seekRelatives(remoteFile)
 
-	idx.BuildIndex()
+	if idxError != nil && idx == nil {
+		i.remoteErrors = append(i.remoteErrors, idxError)
+	} else {
+
+		// for each index, we need a resolver
+		resolver := NewResolver(idx)
+		idx.resolver = resolver
+		idx.BuildIndex()
+	}
 
 	// remove from processing
 	i.ProcessingFiles.Delete(remoteParsedURL.Path)
 
-	if !i.remoteRunning {
-		return remoteFile, errors.Join(i.remoteErrors...)
-	} else {
-		return remoteFile, nil
-	}
+	//if !i.remoteRunning {
+	return remoteFile, errors.Join(i.remoteErrors...)
+	//	} else {
+	//		return remoteFile, nil/
+	//	}
 }

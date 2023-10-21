@@ -61,6 +61,7 @@ type Rolodex struct {
 	indexed                   bool
 	built                     bool
 	resolved                  bool
+	circChecked               bool
 	indexConfig               *SpecIndexConfig
 	indexingDuration          time.Duration
 	indexes                   []*SpecIndex
@@ -377,7 +378,10 @@ func (r *Rolodex) IndexTheRolodex() error {
 			if !filepath.IsAbs(basePath) {
 				basePath, _ = filepath.Abs(basePath)
 			}
-			r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, "root.yaml")
+
+			if len(r.localFS) > 0 || len(r.remoteFS) > 0 {
+				r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, "root.yaml")
+			}
 		}
 
 		// todo: variation with no base path, but a base URL.
@@ -396,6 +400,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 		if !r.indexConfig.AvoidCircularReferenceCheck {
 			resolvingErrors := resolver.CheckForCircularReferences()
+			r.circChecked = true
 			for e := range resolvingErrors {
 				caughtErrors = append(caughtErrors, resolvingErrors[e])
 			}
@@ -414,17 +419,20 @@ func (r *Rolodex) IndexTheRolodex() error {
 }
 
 func (r *Rolodex) CheckForCircularReferences() {
-	if r.rootIndex != nil && r.rootIndex.resolver != nil {
-		resolvingErrors := r.rootIndex.resolver.CheckForCircularReferences()
-		for e := range resolvingErrors {
-			r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
+	if !r.circChecked {
+		if r.rootIndex != nil && r.rootIndex.resolver != nil {
+			resolvingErrors := r.rootIndex.resolver.CheckForCircularReferences()
+			for e := range resolvingErrors {
+				r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
+			}
+			if len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
+				r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredPolyReferences...)
+			}
+			if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
+				r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
+			}
 		}
-		if len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
-			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredPolyReferences...)
-		}
-		if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
-			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
-		}
+		r.circChecked = true
 	}
 }
 

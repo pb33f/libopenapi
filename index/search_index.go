@@ -11,8 +11,12 @@ import (
 
 func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *Reference {
 
-	ref := fullRef.FullDefinition
+	//if v, ok := index.cache.Load(fullRef); ok {
+	//	return v.(*Reference)
+	//}
 
+	ref := fullRef.FullDefinition
+	refAlt := ref
 	absPath := index.specAbsolutePath
 	if absPath == "" {
 		absPath = index.config.BasePath
@@ -42,7 +46,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 				roloLookup = ""
 			}
 
-			ref = fmt.Sprintf("%s#/%s", absPath, uri[1])
+			//ref = fmt.Sprintf("%s#/%s", absPath, uri[1]) this seems wrong
+			ref = fmt.Sprintf("#/%s", uri[1])
+			refAlt = fmt.Sprintf("%s#/%s", absPath, uri[1])
 
 		}
 
@@ -64,6 +70,12 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 	}
 
 	if r, ok := index.allMappedRefs[ref]; ok {
+		index.cache.Store(ref, r)
+		return r
+	}
+
+	if r, ok := index.allMappedRefs[refAlt]; ok {
+		index.cache.Store(refAlt, r)
 		return r
 	}
 
@@ -94,6 +106,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 			d = append(d, idx.allInlineSchemaObjectDefinitions...)
 			for _, s := range d {
 				if s.Definition == ref {
+					index.cache.Store(ref, s)
 					return s
 				}
 			}
@@ -103,6 +116,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 			if node != nil {
 				found := idx.FindComponent(ref, node)
 				if found != nil {
+					index.cache.Store(ref, found)
 					return found
 				}
 			}

@@ -264,7 +264,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 		// check if we have seen this on the journey before, if so! it's circular
 		skip := false
 		for i, j := range journey {
-			if j.Definition == r.Definition {
+			if j.FullDefinition == r.FullDefinition {
 
 				var foundDup *Reference
 				foundRef := resolver.specIndex.SearchIndexForReferenceByReference(r)
