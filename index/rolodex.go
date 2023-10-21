@@ -282,7 +282,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 			// for each index, we need a resolver
 			resolver := NewResolver(idx)
-			//			idx.resolver = resolver
 
 			// check if the config has been set to ignore circular references in arrays and polymorphic schemas
 			if copiedConfig.IgnoreArrayCircularReferences {
@@ -291,12 +290,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 			if copiedConfig.IgnorePolymorphicCircularReferences {
 				resolver.IgnorePolymorphicCircularReferences()
 			}
-			//if !copiedConfig.AvoidCircularReferenceCheck {
-			//	resolvingErrors := resolver.CheckForCircularReferences()
-			//	for e := range resolvingErrors {
-			//		caughtErrors = append(caughtErrors, resolvingErrors[e])
-			//	}
-			//}
 
 			if err != nil {
 				errChan <- err
@@ -364,10 +357,8 @@ func (r *Rolodex) IndexTheRolodex() error {
 			caughtErrors = append(caughtErrors, errs[e])
 		}
 	}
-	//}
 
 	// indexed and built every supporting file, we can build the root index (our entry point)
-
 	if r.rootNode != nil {
 
 		// if there is a base path, then we need to set the root spec config to point to a theoretical root.yaml
@@ -541,17 +532,14 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 
 			// if there was no file found locally, then search the remote FS.
 			for _, v := range r.remoteFS {
-
 				f, err := v.Open(location)
-
 				if err != nil {
 					errorStack = append(errorStack, err)
 					continue
 				}
-				//fmt.Printf("found remote file: %s\n", fileLookup)
-				//fmt.Print(f)
-				return f.(*RemoteFile), nil
-
+				if f != nil {
+					return f.(*RemoteFile), nil
+				}
 			}
 		}
 
@@ -595,7 +583,6 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 					}
 				}
 			}
-
 		}
 	}
 

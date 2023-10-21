@@ -20,6 +20,8 @@ import (
 	"time"
 )
 
+type RemoteURLHandler = func(url string) (*http.Response, error)
+
 type RemoteFS struct {
 	indexConfig       *SpecIndexConfig
 	rootURL           string
@@ -414,7 +416,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		filepath.Dir(remoteParsedURL.Path))
 	newBaseURL, _ := url.Parse(newBase)
 
-	copiedCfg.BaseURL = newBaseURL
+	if newBaseURL != nil {
+		copiedCfg.BaseURL = newBaseURL
+	}
 	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
 	idx, idxError := remoteFile.Index(&copiedCfg)
 

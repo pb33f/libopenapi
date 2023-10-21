@@ -1241,16 +1241,3 @@ func (index *SpecIndex) GetAllDescriptionsCount() int {
 func (index *SpecIndex) GetAllSummariesCount() int {
 	return len(index.allSummaries)
 }
-
-// CheckForSeenRemoteSource will check to see if we have already seen this remote source and return it,
-// to avoid making duplicate remote calls for document data.
-//func (index *SpecIndex) CheckForSeenRemoteSource(url string) (bool, *yaml.Node) {
-//	if index.config == nil || index.config.seenRemoteSources == nil {
-//		return false, nil
-//	}
-//	j, _ := index.config.seenRemoteSources.Load(url)
-//	if j != nil {
-//		return true, j.(*yaml.Node)
-//	}
-//	return false, nil
-//}

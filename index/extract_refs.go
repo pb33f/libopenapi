@@ -261,12 +261,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 									// if the index has a base URL, use that to resolve the path.
 									if index.config.BaseURL != nil {
 
-										url := *index.config.BaseURL
-
-										abs, _ := filepath.Abs(filepath.Join(url.Path, uri[0]))
-										url.Path = abs
-										fullDefinitionPath = fmt.Sprintf("%s#/%s", url.String(), uri[1])
+										u := *index.config.BaseURL
+										abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
+										u.Path = abs
+										fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
 										componentName = fmt.Sprintf("#/%s", uri[1])
+
 									} else {
 
 										abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
@@ -314,12 +314,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 										// if the index has a base URL, use that to resolve the path.
 										if index.config.BaseURL != nil {
 
-											url := *index.config.BaseURL
-
-											abs, _ := filepath.Abs(filepath.Join(url.Path, uri[0]))
-											url.Path = abs
-											fullDefinitionPath = url.String()
+											u := *index.config.BaseURL
+											abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
+											u.Path = abs
+											fullDefinitionPath = u.String()
 											componentName = uri[0]
+
 										} else {
 
 											abs, _ := filepath.Abs(filepath.Join(iroot, uri[0]))
@@ -331,7 +331,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 								}
 							}
-							//componentName = filepath.Base(uri[0])
 						}
 					}
 				}
@@ -411,16 +410,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 					continue
 				}
-
-				//if len(uri) == 2 {
-				//	if uri[0] == "" {
-				//		index.allRefs[componentName] = ref
-				//	} else {
-				//		index.allRefs[value] = ref
-				//	}
-				//} else {
-				//	index.allRefs[value] = ref
-				//}
 
 				index.allRefs[fullDefinitionPath] = ref
 				found = append(found, ref)
@@ -585,14 +574,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 			}
 		}
-		//if len(seenPath) > 0 {
-		//	seenPath = seenPath[:len(seenPath)-1]
-		//}
-
 	}
-	//if len(seenPath) > 0 {
-	//	seenPath = seenPath[:len(seenPath)-1]
-	//}
 
 	index.refCount = len(index.allRefs)
 
