@@ -5,11 +5,11 @@ package index
 
 import (
 	"github.com/pb33f/libopenapi/datamodel"
+	"golang.org/x/sync/syncmap"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
-	"os"
 	"sync"
 
 	"gopkg.in/yaml.v3"
@@ -155,11 +155,10 @@ type SpecIndexConfig struct {
 //
 // The default BasePath is the current working directory.
 func CreateOpenAPIIndexConfig() *SpecIndexConfig {
-	cw, _ := os.Getwd()
+	//cw, _ := os.Getwd()
 	return &SpecIndexConfig{
-		BasePath: cw,
-		//AllowRemoteLookup: true,
-		//AllowFileLookup:   true,
+		AllowRemoteLookup: true,
+		AllowFileLookup:   true,
 		//seenRemoteSources: &syncmap.Map{},
 	}
 }
@@ -169,9 +168,9 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 //
 // The default BasePath is the current working directory.
 func CreateClosedAPIIndexConfig() *SpecIndexConfig {
-	cw, _ := os.Getwd()
+	//cw, _ := os.Getwd()
 	return &SpecIndexConfig{
-		BasePath: cw,
+		//	BasePath: cw,
 		//AllowRemoteLookup: false,
 		//AllowFileLookup:   false,
 		//seenRemoteSources: &syncmap.Map{},
@@ -282,6 +281,7 @@ type SpecIndex struct {
 
 	specAbsolutePath string
 	resolver         *Resolver
+	cache            syncmap.Map
 
 	built bool
 

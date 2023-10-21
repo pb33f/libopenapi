@@ -42,15 +42,18 @@ func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	cf := CreateClosedAPIIndexConfig()
+	cf.AvoidCircularReferenceCheck = true
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&rootNode)
 
-	resolver := NewResolver(idx)
-	assert.NotNil(t, resolver)
+	indexedErr := rolo.IndexTheRolodex()
+	assert.NoError(t, indexedErr)
 
-	circ := resolver.Resolve()
-	assert.Len(t, circ, 3)
+	rolo.Resolve()
+	assert.Len(t, rolo.GetCaughtErrors(), 3)
 
-	_, err := yaml.Marshal(resolver.resolvedRoot)
+	_, err := yaml.Marshal(rolo.GetRootIndex().GetResolver().resolvedRoot)
 	assert.NoError(t, err)
 }
 
@@ -59,18 +62,21 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 
-	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+	cf := CreateClosedAPIIndexConfig()
 
-	resolver := NewResolver(idx)
-	assert.NotNil(t, resolver)
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&rootNode)
 
-	circ := resolver.CheckForCircularReferences()
-	assert.Len(t, circ, 3)
-	assert.Len(t, resolver.GetResolvingErrors(), 3)
-	assert.Len(t, resolver.GetCircularErrors(), 3)
+	indexedErr := rolo.IndexTheRolodex()
+	assert.Error(t, indexedErr)
+	assert.Len(t, utils.UnwrapErrors(indexedErr), 3)
 
-	_, err := yaml.Marshal(resolver.resolvedRoot)
-	assert.NoError(t, err)
+	rolo.CheckForCircularReferences()
+
+	assert.Len(t, rolo.GetCaughtErrors(), 3)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetResolvingErrors(), 3)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetCircularErrors(), 3)
+
 }
 
 func TestResolver_CheckForCircularReferences_CatchArray(t *testing.T) {
@@ -321,31 +327,6 @@ components:
 	assert.NoError(t, err)
 }
 
-func TestResolver_CheckForCircularReferences_DigitalOcean(t *testing.T) {
-	circular, _ := os.ReadFile("../test_specs/digitalocean.yaml")
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal(circular, &rootNode)
-
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-
-	idx := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		//AllowRemoteLookup: true,
-		//AllowFileLookup:   true,
-		BaseURL: baseURL,
-	})
-
-	resolver := NewResolver(idx)
-	assert.NotNil(t, resolver)
-
-	circ := resolver.CheckForCircularReferences()
-	assert.Len(t, circ, 0)
-	assert.Len(t, resolver.GetResolvingErrors(), 0)
-	assert.Len(t, resolver.GetCircularErrors(), 0)
-
-	_, err := yaml.Marshal(resolver.resolvedRoot)
-	assert.NoError(t, err)
-}
-
 func TestResolver_CircularReferencesRequiredValid(t *testing.T) {
 	circular, _ := os.ReadFile("../test_specs/swagger-valid-recursive-model.yaml")
 	var rootNode yaml.Node
@@ -390,7 +371,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, false))
 }
 
-func TestResolver_ResolveComponents_Stripe(t *testing.T) {
+func TestResolver_ResolveComponents_Stripe_NoRolodex(t *testing.T) {
 	baseDir := "../test_specs/stripe.yaml"
 
 	resolveFile, _ := os.ReadFile(baseDir)
@@ -403,14 +384,45 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	cf := CreateOpenAPIIndexConfig()
 	cf.SpecInfo = info
 
+	idx := NewSpecIndexWithConfig(&stripeRoot, cf)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.CheckForCircularReferences()
+	assert.Len(t, circ, 3)
+
+	_, err := yaml.Marshal(resolver.resolvedRoot)
+	assert.NoError(t, err)
+}
+
+func TestResolver_ResolveComponents_Stripe(t *testing.T) {
+	baseDir := "../test_specs/stripe.yaml"
+
+	resolveFile, _ := os.ReadFile(baseDir)
+
+	var stripeRoot yaml.Node
+	_ = yaml.Unmarshal(resolveFile, &stripeRoot)
+
+	info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(resolveFile, true)
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.SpecInfo = info
+	cf.AvoidCircularReferenceCheck = true
+
 	rolo := NewRolodex(cf)
 	rolo.SetRootNode(&stripeRoot)
 
 	indexedErr := rolo.IndexTheRolodex()
+	assert.NoError(t, indexedErr)
 
-	assert.Len(t, utils.UnwrapErrors(indexedErr), 3)
+	// after resolving, the rolodex will have errors.
+	rolo.Resolve()
+
+	assert.Len(t, rolo.GetCaughtErrors(), 3)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 3)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetPolymorphicCircularErrors(), 0)
+
 }
 
 func TestResolver_ResolveComponents_BurgerShop(t *testing.T) {

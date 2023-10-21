@@ -5,12 +5,10 @@ package index
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
@@ -80,24 +78,22 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 	//return nil
 }
 
-var httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
-
 type RemoteURLHandler = func(url string) (*http.Response, error)
 
-func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
-	resp, err := g(u)
-	if err != nil {
-		e <- err
-		close(e)
-		close(d)
-		return
-	}
-	var body []byte
-	body, _ = io.ReadAll(resp.Body)
-	d <- body
-	close(e)
-	close(d)
-}
+//func getRemoteDoc(g RemoteURLHandler, u string, d chan []byte, e chan error) {
+//	resp, err := g(u)
+//	if err != nil {
+//		e <- err
+//		close(e)
+//		close(d)
+//		return
+//	}
+//	var body []byte
+//	body, _ = io.ReadAll(resp.Body)
+//	d <- body
+//	close(e)
+//	close(d)
+//}
 
 //func (index *SpecIndex) lookupRemoteReference(ref string) (*yaml.Node, *yaml.Node, error) {
 //	// split string to remove file reference
