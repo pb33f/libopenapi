@@ -369,34 +369,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	}
 
 	var found []*Reference
-	//var ignoredPoly []*index.Reference
-	//var ignoredArray []*index.Reference
 
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
-
-				//var anyvn, allvn, onevn, arrayTypevn *yaml.Node
-
-				// extract polymorphic references
-				//if len(n.Content) > 1 {
-				//_, anyvn = utils.FindKeyNodeTop("anyOf", n.Content)
-				//_, allvn = utils.FindKeyNodeTop("allOf", n.Content)
-				//_, onevn = utils.FindKeyNodeTop("oneOf", n.Content)
-				//_, arrayTypevn = utils.FindKeyNodeTop("type", n.Content)
-				//}
-				//if anyvn != nil || allvn != nil || onevn != nil {
-				//	if resolver.IgnorePoly {
-				//		ignoredPoly = append(ignoredPoly, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
-				//	}
-				//}
-				//if arrayTypevn != nil {
-				//	if arrayTypevn.Value == "array" {
-				//		if resolver.IgnoreArray {
-				//			ignoredArray = append(ignoredArray, resolver.extractRelatives(n, node, foundRelatives, journey, resolve)...)
-				//		}
-				//	}
-				//}
 
 				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, resolve)...)
 			}
@@ -411,8 +387,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				var locatedRef *Reference
 
 				var fullDef string
-				//exp := strings.Split(ref.FullDefinition, "#/")
-
 				var definition string
 
 				// explode value
@@ -444,13 +418,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								// extract the location of the ref and build a full def path.
 								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
 							}
-
-							//// split the full def into parts
-							//fileDef := strings.Split(ref.FullDefinition, "#/")
-							//
-							//// extract the location of the ref and build a full def path.
-							//
-							//fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
 
 						}
 					} else {
@@ -518,65 +485,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							} else {
 
 								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
-
 							}
-
 						}
 					}
 				}
-				//
-				//if len(exp) == 2 {
-				//	if exp[0] != "" {
-				//		fullDef = fmt.Sprintf("%s%s", exp[0], value)
-				//	} else {
-				//
-				//		//// check if location is relative
-				//		//if filepath.IsAbs(exp)
-				//		//
-				//		//
-				//
-				//		fullDef = value
-				//	}
-				//	definition = fmt.Sprintf("#/%s", exp[1])
-				//} else {
-				//	if filepath.IsAbs(value) {
-				//
-				//		// todo implement.
-				//
-				//	} else {
-				//		if strings.HasPrefix(value, "http") {
-				//			fullDef = value
-				//			definition = value
-				//		} else {
-				//			if ref.FullDefinition != "" {
-				//				if strings.HasPrefix(ref.FullDefinition, "http") {
-				//					u, _ := url.Parse(ref.FullDefinition)
-				//					pathDir := filepath.Dir(u.Path)
-				//					pathAbs, _ := filepath.Abs(filepath.Join(pathDir, value))
-				//					u.Path = pathAbs
-				//					fullDef = u.String()
-				//				} else {
-				//					if filepath.IsAbs(value) {
-				//						fullDef = value
-				//					} else {
-				//
-				//						// extract file from value
-				//						uri := strings.Split(value, "#/")
-				//						if len(uri) == 2 {
-				//
-				//						} else {
-				//
-				//						}
-				//
-				//						fullDef, _ = filepath.Abs(
-				//							filepath.Join(
-				//								filepath.Dir(ref.FullDefinition), value))
-				//					}
-				//				}
-				//			}
-				//		}
-				//	}
-				//}
 
 				searchRef := &Reference{
 					Definition:     definition,
@@ -584,16 +496,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					RemoteLocation: ref.RemoteLocation,
 					IsRemote:       true,
 				}
-
-				// we're searching a remote document, we need to build a full path to the reference
-				//if ref.IsRemote {
-				//	if ref.RemoteLocation != "" {
-				//		searchRef .RemoteLocation = ref.RemoteLocationFullDefinition: fmt.Sprintf("%s%s", ref.RemoteLocation, value),
-				//			RemoteLocation: ref.RemoteLocation,
-				//			IsRemote:       true,
-				//		}
-				//	}
-				//}
 
 				locatedRef = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
 
@@ -715,12 +617,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					}
 					break
 				}
-
 			}
 		}
 	}
-	//resolver.ignoredPolyReferences = ignoredPoly
-
 	resolver.relativesSeen += len(found)
 	return found
 }

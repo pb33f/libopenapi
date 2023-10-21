@@ -4,132 +4,130 @@
 package index
 
 import (
-	"fmt"
-	"path/filepath"
-	"strings"
+    "fmt"
+    "path/filepath"
+    "strings"
 )
 
 func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *Reference {
 
-	//if v, ok := index.cache.Load(fullRef); ok {
-	//	return v.(*Reference)
-	//}
+    if v, ok := index.cache.Load(fullRef); ok {
+        return v.(*Reference)
+    }
 
-	ref := fullRef.FullDefinition
-	refAlt := ref
-	absPath := index.specAbsolutePath
-	if absPath == "" {
-		absPath = index.config.BasePath
-	}
-	var roloLookup string
-	uri := strings.Split(ref, "#/")
-	if len(uri) == 2 {
-		if uri[0] != "" {
-			if strings.HasPrefix(uri[0], "http") {
-				roloLookup = fullRef.FullDefinition
-			} else {
-				if filepath.IsAbs(uri[0]) {
-					roloLookup = uri[0]
-				} else {
-					if filepath.Ext(absPath) != "" {
-						absPath = filepath.Dir(absPath)
-					}
-					roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
-				}
-			}
-		} else {
+    ref := fullRef.FullDefinition
+    refAlt := ref
+    absPath := index.specAbsolutePath
+    if absPath == "" {
+        absPath = index.config.BasePath
+    }
+    var roloLookup string
+    uri := strings.Split(ref, "#/")
+    if len(uri) == 2 {
+        if uri[0] != "" {
+            if strings.HasPrefix(uri[0], "http") {
+                roloLookup = fullRef.FullDefinition
+            } else {
+                if filepath.IsAbs(uri[0]) {
+                    roloLookup = uri[0]
+                } else {
+                    if filepath.Ext(absPath) != "" {
+                        absPath = filepath.Dir(absPath)
+                    }
+                    roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+                }
+            }
+        } else {
 
-			//roloLookup = absPath // hang on a jiffy whiffy
-			if filepath.Ext(uri[1]) != "" {
-				roloLookup = absPath
-			} else {
-				roloLookup = ""
-			}
+            if filepath.Ext(uri[1]) != "" {
+                roloLookup = absPath
+            } else {
+                roloLookup = ""
+            }
 
-			//ref = fmt.Sprintf("%s#/%s", absPath, uri[1]) this seems wrong
-			ref = fmt.Sprintf("#/%s", uri[1])
-			refAlt = fmt.Sprintf("%s#/%s", absPath, uri[1])
+            ref = fmt.Sprintf("#/%s", uri[1])
+            refAlt = fmt.Sprintf("%s#/%s", absPath, uri[1])
 
-		}
+        }
 
-	} else {
-		if filepath.IsAbs(uri[0]) {
-			roloLookup = uri[0]
-		} else {
+    } else {
+        if filepath.IsAbs(uri[0]) {
+            roloLookup = uri[0]
+        } else {
 
-			if strings.HasPrefix(uri[0], "http") {
-				roloLookup = ref
-			} else {
-				if filepath.Ext(absPath) != "" {
-					absPath = filepath.Dir(absPath)
-				}
-				roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
-			}
-		}
-		ref = uri[0]
-	}
+            if strings.HasPrefix(uri[0], "http") {
+                roloLookup = ref
+            } else {
+                if filepath.Ext(absPath) != "" {
+                    absPath = filepath.Dir(absPath)
+                }
+                roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
+            }
+        }
+        ref = uri[0]
+    }
 
-	if r, ok := index.allMappedRefs[ref]; ok {
-		index.cache.Store(ref, r)
-		return r
-	}
+    if r, ok := index.allMappedRefs[ref]; ok {
+        index.cache.Store(ref, r)
+        return r
+    }
 
-	if r, ok := index.allMappedRefs[refAlt]; ok {
-		index.cache.Store(refAlt, r)
-		return r
-	}
+    if r, ok := index.allMappedRefs[refAlt]; ok {
+        index.cache.Store(refAlt, r)
+        return r
+    }
 
-	// check the rolodex for the reference.
-	if roloLookup != "" {
-		rFile, err := index.rolodex.Open(roloLookup)
-		if err != nil {
-			return nil
-		}
+    // check the rolodex for the reference.
+    if roloLookup != "" {
+        rFile, err := index.rolodex.Open(roloLookup)
+        if err != nil {
+            return nil
+        }
 
-		// extract the index from the rolodex file.
-		idx := rFile.GetIndex()
-		if index.resolver != nil {
-			index.resolver.indexesVisited++
-		}
-		if idx != nil {
+        // extract the index from the rolodex file.
+        idx := rFile.GetIndex()
+        if index.resolver != nil {
+            index.resolver.indexesVisited++
+        }
+        if idx != nil {
 
-			// check mapped refs.
-			if r, ok := idx.allMappedRefs[ref]; ok {
-				return r
-			}
+            // check mapped refs.
+            if r, ok := idx.allMappedRefs[ref]; ok {
+                return r
+            }
 
-			// build a collection of all the inline schemas and search them
-			// for the reference.
-			var d []*Reference
-			d = append(d, idx.allInlineSchemaDefinitions...)
-			d = append(d, idx.allRefSchemaDefinitions...)
-			d = append(d, idx.allInlineSchemaObjectDefinitions...)
-			for _, s := range d {
-				if s.Definition == ref {
-					index.cache.Store(ref, s)
-					return s
-				}
-			}
+            // build a collection of all the inline schemas and search them
+            // for the reference.
+            var d []*Reference
+            d = append(d, idx.allInlineSchemaDefinitions...)
+            d = append(d, idx.allRefSchemaDefinitions...)
+            d = append(d, idx.allInlineSchemaObjectDefinitions...)
+            for _, s := range d {
+                if s.Definition == ref {
+                    index.cache.Store(ref, s)
+                    return s
+                }
+            }
 
-			// does component exist in the root?
-			node, _ := rFile.GetContentAsYAMLNode()
-			if node != nil {
-				found := idx.FindComponent(ref, node)
-				if found != nil {
-					index.cache.Store(ref, found)
-					return found
-				}
-			}
-		}
-	}
+            // does component exist in the root?
+            node, _ := rFile.GetContentAsYAMLNode()
+            if node != nil {
+                found := idx.FindComponent(ref, node)
+                if found != nil {
+                    index.cache.Store(ref, found)
+                    return found
+                }
+            }
+        }
+    }
 
-	fmt.Printf("unable to locate reference: %s, within index: %s\n", ref, index.specAbsolutePath)
-	return nil
+    fmt.Printf("unable to locate reference: %s, within index: %s\n", ref, index.specAbsolutePath)
+    return nil
 }
 
 // SearchIndexForReference searches the index for a reference, first looking through the mapped references
 // and then externalSpecIndex for a match. If no match is found, it will recursively search the child indexes
 // extracted when parsing the OpenAPI Spec.
 func (index *SpecIndex) SearchIndexForReference(ref string) *Reference {
-	return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
+    return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
 }

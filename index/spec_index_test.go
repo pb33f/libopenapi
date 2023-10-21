@@ -837,51 +837,6 @@ func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 	assert.Nil(t, index.lookupRolodex(nil))
 }
 
-//func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_Error(t *testing.T) {
-//	index := new(SpecIndex)
-//	index.seenRemoteSources = make(map[string]*yaml.Node)
-//	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
-//	_, _, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/$.....#[;]something")
-//	assert.Error(t, err)
-//}
-
-//func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing.T) {
-//	index := new(SpecIndex)
-//	index.seenRemoteSources = make(map[string]*yaml.Node)
-//	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
-//	a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
-//	assert.Error(t, err)
-//	assert.Nil(t, a)
-//	assert.Nil(t, b)
-//}
-
-// Discovered in issue https://github.com/pb33f/libopenapi/issues/37
-//func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
-//	index := new(SpecIndex)
-//	index.seenRemoteSources = make(map[string]*yaml.Node)
-//	index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
-//	a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
-//	assert.NoError(t, err)
-//	assert.NotNil(t, a)
-//	assert.NotNil(t, b)
-//}
-
-// Discovered in issue https://github.com/daveshanley/vacuum/issues/225
-//func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
-//	cwd, _ := os.Getwd()
-//	index := new(SpecIndex)
-//	index.config = &SpecIndexConfig{BasePath: cwd}
-//
-//	_ = os.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
-//	defer os.Remove("coffee-time.yaml")
-//
-//	//index.seenRemoteSources = make(map[string]*yaml.Node)
-//	a, b, err := index.lookupFileReference("coffee-time.yaml")
-//	assert.NoError(t, err)
-//	assert.NotNil(t, a)
-//	assert.NotNil(t, b)
-//}
-
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
 	yml := `openapi: 3.1.0
 paths:
@@ -946,47 +901,6 @@ paths:
 
 	assert.NotNil(t, index.GetAllParametersFromOperations()["/cakes"]["post"]["coffee-time.yaml"][0].Node)
 }
-
-//func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
-//	index := NewSpecIndexWithConfig(nil, &SpecIndexConfig{
-//		//AllowRemoteLookup: true,
-//	})
-//	index.seenRemoteSources = make(map[string]*yaml.Node)
-//	a, b, err := index.lookupRemoteReference("https://google.com//logos/doodles/2022/labor-day-2022-6753651837109490.3-l.png#/hey")
-//	assert.Error(t, err)
-//	assert.Nil(t, a)
-//	assert.Nil(t, b)
-//}
-
-//func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
-//	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-//	_, _, err := index.lookupFileReference("not-a-reference")
-//	assert.Error(t, err)
-//}
-
-//
-//func TestSpecIndex_lookupFileReference_SeenSourceSimulation_Error(t *testing.T) {
-//	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-//	index.seenRemoteSources = make(map[string]*yaml.Node)
-//	index.seenRemoteSources["magic-money-file.json"] = &yaml.Node{}
-//	_, _, err := index.lookupFileReference("magic-money-file.json#something")
-//	assert.Error(t, err)
-//}
-//
-//func TestSpecIndex_lookupFileReference_BadFile(t *testing.T) {
-//	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-//	_, _, err := index.lookupFileReference("chickers.json#no-rice")
-//	assert.Error(t, err)
-//}
-//
-//func TestSpecIndex_lookupFileReference_BadFileDataRead(t *testing.T) {
-//	_ = os.WriteFile("chickers.yaml", []byte("broke: the: thing: [again]"), 0o664)
-//	defer os.Remove("chickers.yaml")
-//	var root yaml.Node
-//	index := NewSpecIndexWithConfig(&root, CreateOpenAPIIndexConfig())
-//	_, _, err := index.lookupFileReference("chickers.yaml#no-rice")
-//	assert.Error(t, err)
-//}
 
 func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 
