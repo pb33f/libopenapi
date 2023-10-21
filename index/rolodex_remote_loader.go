@@ -36,6 +36,7 @@ type RemoteFS struct {
 	remoteErrors      []error
 	logger            *slog.Logger
 	defaultClient     *http.Client
+	extractedFiles    map[string]RolodexFile
 }
 
 type RemoteFile struct {
@@ -158,7 +159,8 @@ func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	}
 
 	index := NewSpecIndexWithConfig(info.RootNode, config)
-	index.specAbsolutePath = f.fullPath
+
+	index.specAbsolutePath = config.SpecAbsolutePath
 	f.index = index
 	return index, nil
 }
@@ -233,6 +235,7 @@ func (i *RemoteFS) GetFiles() map[string]RolodexFile {
 		files[key.(string)] = value.(*RemoteFile)
 		return true
 	})
+	i.extractedFiles = files
 	return files
 }
 
@@ -302,6 +305,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	remoteParsedURLOriginal, _ := url.Parse(remoteURL)
 
 	// try path first
 	if r, ok := i.Files.Load(remoteParsedURL.Path); ok {
@@ -418,7 +422,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	copiedCfg := *i.indexConfig
 
-	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURL.Scheme, remoteParsedURL.Host,
+	newBase := fmt.Sprintf("%s://%s%s", remoteParsedURLOriginal.Scheme, remoteParsedURLOriginal.Host,
 		filepath.Dir(remoteParsedURL.Path))
 	newBaseURL, _ := url.Parse(newBase)
 

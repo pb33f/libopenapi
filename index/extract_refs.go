@@ -54,6 +54,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
 					fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
 					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
+				} else {
+					definitionPath = fmt.Sprintf("#/%s", n.Value)
+					fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, n.Value)
+					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 				}
 				ref := &Reference{
 					FullDefinition: fullDefinitionPath,
@@ -105,7 +109,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
 						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
+					} else {
+						definitionPath = fmt.Sprintf("#/%s", n.Value)
+						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, n.Value)
+						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
+
 					ref := &Reference{
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
@@ -145,7 +154,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
 						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
+					} else {
+						definitionPath = fmt.Sprintf("#/%s", n.Value)
+						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, n.Value)
+						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
+
 					ref := &Reference{
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
@@ -407,6 +421,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				//} else {
 				//	index.allRefs[value] = ref
 				//}
+
 				index.allRefs[fullDefinitionPath] = ref
 				found = append(found, ref)
 			}
@@ -597,13 +612,13 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		if located != nil {
 			index.refLock.Lock()
 			// have we already mapped this?
-			if index.allMappedRefs[ref.Definition] == nil {
+			if index.allMappedRefs[ref.FullDefinition] == nil {
 				found = append(found, located)
 				if located.FullDefinition != ref.FullDefinition {
 					located.FullDefinition = ref.FullDefinition
 				}
 
-				index.allMappedRefs[ref.Definition] = located
+				index.allMappedRefs[ref.FullDefinition] = located
 				rm := &ReferenceMapped{
 					Reference:      located,
 					Definition:     ref.Definition,
@@ -612,7 +627,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 				sequence[refIndex] = rm
 			} else {
 				// it exists, but is it a component with the same ID?
-				d := index.allMappedRefs[ref.Definition]
+				d := index.allMappedRefs[ref.FullDefinition]
 
 				// if the full definition matches, we're good and can skip this.
 				if d.FullDefinition != ref.FullDefinition {

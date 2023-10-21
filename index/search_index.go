@@ -33,8 +33,19 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 					roloLookup, _ = filepath.Abs(filepath.Join(absPath, uri[0]))
 				}
 			}
+		} else {
+
+			//roloLookup = absPath // hang on a jiffy whiffy
+			if filepath.Ext(uri[1]) != "" {
+				roloLookup = absPath
+			} else {
+				roloLookup = ""
+			}
+
+			ref = fmt.Sprintf("%s#/%s", absPath, uri[1])
+
 		}
-		ref = fmt.Sprintf("#/%s", uri[1])
+
 	} else {
 		if filepath.IsAbs(uri[0]) {
 			roloLookup = uri[0]
@@ -65,7 +76,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) *
 
 		// extract the index from the rolodex file.
 		idx := rFile.GetIndex()
-		index.resolver.indexesVisited++
+		if index.resolver != nil {
+			index.resolver.indexesVisited++
+		}
 		if idx != nil {
 
 			// check mapped refs.

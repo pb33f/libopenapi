@@ -49,5 +49,5 @@ func TestGenerateCleanSpecConfigBaseURL_HttpStrip(t *testing.T) {
 }
 
 func TestSpecIndex_extractDefinitionRequiredRefProperties(t *testing.T) {
-	assert.Nil(t, extractDefinitionRequiredRefProperties(nil, nil))
+	assert.Nil(t, extractDefinitionRequiredRefProperties(nil, nil, ""))
 }

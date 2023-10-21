@@ -55,7 +55,6 @@ func NewResolver(index *SpecIndex) *Resolver {
 		return nil
 	}
 	r := &Resolver{
-
 		specIndex:    index,
 		resolvedRoot: index.GetRootNode(),
 	}
@@ -336,7 +335,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 	}
 
 	for refDefinition := range ref.RequiredRefProperties {
-		r := resolver.specIndex.GetMappedReferences()[refDefinition]
+		r := resolver.specIndex.SearchIndexForReference(refDefinition)
 		if initialRef != nil && initialRef.Definition == r.Definition {
 			return true, visitedDefinitions
 		}
@@ -434,11 +433,24 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 						} else {
 
-							// split the full def into parts
-							fileDef := strings.Split(ref.FullDefinition, "#/")
+							if filepath.IsAbs(exp[0]) {
+								fullDef = value
 
-							// extract the location of the ref and build a full def path.
-							fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
+							} else {
+
+								// split the referring ref full def into parts
+								fileDef := strings.Split(ref.FullDefinition, "#/")
+
+								// extract the location of the ref and build a full def path.
+								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+							}
+
+							//// split the full def into parts
+							//fileDef := strings.Split(ref.FullDefinition, "#/")
+							//
+							//// extract the location of the ref and build a full def path.
+							//
+							//fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
 
 						}
 					} else {
@@ -470,9 +482,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 									fileDef := strings.Split(ref.FullDefinition, "#/")
 
 									// extract the location of the ref and build a full def path.
-									loc, _ := filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+									//loc, _ := filepath.Abs(fileDef[0]), exp[1]))
 
-									fullDef = fmt.Sprintf("%s#/%s", loc, exp[1])
+									fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
 
 								}
 
@@ -505,7 +517,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 							} else {
 
-								// extract the location of the ref and build a full def path.
 								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
 
 							}
