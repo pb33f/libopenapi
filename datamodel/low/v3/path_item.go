@@ -222,7 +222,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 				}
 				pathNode = r
 				foundContext = nCtx
-				foundContext = context.WithValue(foundContext, "foundIndex", newIdx)
+				foundContext = context.WithValue(foundContext, index.FoundIndexKey, newIdx)
 
 				if r.Tag == "" {
 					// If it's a node from file, tag is empty
@@ -239,7 +239,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 					pathNode.Content[1].Value, pathNode.Content[1].Line, pathNode.Content[1].Column)
 			}
 		} else {
-			foundContext = context.WithValue(foundContext, "foundIndex", idx)
+			foundContext = context.WithValue(foundContext, index.FoundIndexKey, idx)
 		}
 		wg.Add(1)
 		low.BuildModelAsync(pathNode, &op, &wg, &errors)
@@ -285,7 +285,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 			ref = op.Reference
 		}
 
-		err := op.Value.Build(op.Context, op.KeyNode, op.ValueNode, op.Context.Value("foundIndex").(*index.SpecIndex))
+		err := op.Value.Build(op.Context, op.KeyNode, op.ValueNode, op.Context.Value(index.FoundIndexKey).(*index.SpecIndex))
 		if ref != "" {
 			op.Value.Reference.Reference = ref
 		}
