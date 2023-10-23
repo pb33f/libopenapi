@@ -61,11 +61,8 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 // other than a raw index of every node for every content type in the specification. This process runs as fast as
 // possible so dependencies looking through the tree, don't need to walk the entire thing over, and over.
 //
-// Deprecated: Use NewSpecIndexWithConfig instead, this function will be removed in the future because it
-// defaults to allowing remote references and file references. This is a potential security risk and should be controlled by
-// providing a SpecIndexConfig that explicitly sets the AllowRemoteLookup and AllowFileLookup to true.
-// This function also does not support specifications with relative references that may not exist locally.
-//   - https://github.com/pb33f/libopenapi/issues/73
+// This creates a new index using a default 'open' configuration. This means if a BaseURL or BasePath are supplied
+// the rolodex will automatically read those files or open those h
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
 	index.config = CreateOpenAPIIndexConfig()

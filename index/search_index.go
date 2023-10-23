@@ -13,6 +13,7 @@ import (
 type ContextKey string
 
 const CurrentPathKey ContextKey = "currentPath"
+const FoundIndexKey ContextKey = "foundIndex"
 
 func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) (*Reference, *SpecIndex) {
 	r, idx, _ := index.SearchIndexForReferenceByReferenceWithContext(context.Background(), fullRef)
@@ -148,7 +149,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 	}
 
-	index.logger.Error("unable to locate reference anywhere in the rolodex", "reference", ref)
+	if index.logger != nil {
+		index.logger.Error("unable to locate reference anywhere in the rolodex", "reference", ref)
+	}
 	return nil, index, ctx
 
 }

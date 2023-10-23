@@ -4,15 +4,15 @@
 package low
 
 import (
-    "crypto/sha256"
-    "fmt"
-    "github.com/pb33f/libopenapi/utils"
-    "strings"
-    "testing"
+	"crypto/sha256"
+	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"strings"
+	"testing"
 
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNodeReference_IsEmpty(t *testing.T) {
@@ -130,7 +130,7 @@ func TestIsCircular_LookupFromJourney(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.True(t, IsCircular(ref, idx))
 }
@@ -163,7 +163,7 @@ func TestIsCircular_LookupFromJourney_Optional(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.True(t, IsCircular(ref, idx))
 }
@@ -199,7 +199,7 @@ func TestIsCircular_LookupFromLoopPoint(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.True(t, IsCircular(ref, idx))
 }
@@ -231,7 +231,7 @@ func TestIsCircular_LookupFromLoopPoint_Optional(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.True(t, IsCircular(ref, idx))
 }
@@ -352,7 +352,7 @@ func TestGetCircularReferenceResult_FromJourney(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	circ := GetCircularReferenceResult(ref, idx)
 	assert.NotNil(t, circ)
@@ -386,7 +386,7 @@ func TestGetCircularReferenceResult_FromJourney_Optional(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	circ := GetCircularReferenceResult(ref, idx)
 	assert.NotNil(t, circ)
@@ -424,7 +424,7 @@ func TestGetCircularReferenceResult_FromLoopPoint(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	circ := GetCircularReferenceResult(ref, idx)
 	assert.NotNil(t, circ)
@@ -458,7 +458,7 @@ func TestGetCircularReferenceResult_FromLoopPoint_Optional(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	ref, err := LocateRefNode(idxNode.Content[0], idx)
+	ref, _, err := LocateRefNode(idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	circ := GetCircularReferenceResult(ref, idx)
 	assert.NotNil(t, circ)

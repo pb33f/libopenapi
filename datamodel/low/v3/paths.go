@@ -159,10 +159,11 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 			_ = low.BuildModel(pNode, path)
 			err := path.Build(ctx, cNode, pNode, idx)
 
-			// don't fail the pipeline if there is an error, log it instead.
 			if err != nil {
+				if idx.GetLogger() != nil {
+					idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
+				}
 				//return buildResult{}, err
-				idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
 			}
 
 			return buildResult{

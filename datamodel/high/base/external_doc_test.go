@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"fmt"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -26,7 +27,7 @@ x-hack: code`
 	var lowExt lowbase.ExternalDoc
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowExt)
 
-	_ = lowExt.Build(nil, cNode.Content[0], nil)
+	_ = lowExt.Build(context.Background(), nil, cNode.Content[0], nil)
 
 	highExt := NewExternalDoc(&lowExt)
 
@@ -61,7 +62,7 @@ x-hack: code`
 	_ = lowmodel.BuildModel(node.Content[0], &lowExt)
 
 	// build out low-level properties (like extensions)
-	_ = lowExt.Build(nil, node.Content[0], nil)
+	_ = lowExt.Build(context.Background(), nil, node.Content[0], nil)
 
 	// create new high-level ExternalDoc
 	highExt := NewExternalDoc(&lowExt)

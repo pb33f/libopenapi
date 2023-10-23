@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
@@ -28,7 +29,7 @@ cake:
 	var lowExt lowbase.SecurityRequirement
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowExt)
 
-	_ = lowExt.Build(nil, cNode.Content[0], nil)
+	_ = lowExt.Build(context.Background(), nil, cNode.Content[0], nil)
 
 	highExt := NewSecurityRequirement(&lowExt)
 
