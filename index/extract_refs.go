@@ -64,6 +64,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					Definition:     definitionPath,
 					Node:           node.Content[i+1],
 					Path:           jsonPath,
+					Index:          index,
 				}
 
 				isRef, _, _ := utils.IsNodeRefValue(node.Content[i+1])
@@ -120,6 +121,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Definition:     definitionPath,
 						Node:           prop,
 						Path:           jsonPath,
+						Index:          index,
 					}
 
 					isRef, _, _ := utils.IsNodeRefValue(prop)
@@ -165,6 +167,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Definition:     definitionPath,
 						Node:           element,
 						Path:           jsonPath,
+						Index:          index,
 					}
 
 					isRef, _, _ := utils.IsNodeRefValue(element)
@@ -341,6 +344,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					Name:           name,
 					Node:           node,
 					Path:           p,
+					Index:          index,
 				}
 
 				// add to raw sequenced refs
@@ -367,6 +371,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Name:           ref.Name,
 						Node:           &copiedNode,
 						Path:           p,
+						Index:          index,
 					}
 					// protect this data using a copy, prevent the resolver from destroying things.
 					index.refsWithSiblings[value] = copied
@@ -592,6 +597,11 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
 		located := index.FindComponent(ref.FullDefinition, ref.Node)
 		if located != nil {
+
+			if located.Index == nil {
+				index.logger.Warn("located component has no index", "component", located.FullDefinition)
+			}
+
 			index.refLock.Lock()
 			// have we already mapped this?
 			if index.allMappedRefs[ref.FullDefinition] == nil {

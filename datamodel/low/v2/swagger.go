@@ -12,6 +12,7 @@
 package v2
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -20,7 +21,7 @@ import (
 )
 
 // processes a property of a Swagger document asynchronously using bool and error channels for signals.
-type documentFunction func(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error)
+type documentFunction func(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error)
 
 // Swagger represents a high-level Swagger / OpenAPI 2 document. An instance of Swagger is the root of the specification.
 type Swagger struct {
@@ -129,6 +130,9 @@ func CreateDocumentFromConfig(info *datamodel.SpecInfo,
 // CreateDocument will create a new Swagger document from the provided SpecInfo.
 //
 // Deprecated: Use CreateDocumentFromConfig instead.
+
+// TODO; DELETE ME
+
 func CreateDocument(info *datamodel.SpecInfo) (*Swagger, []error) {
 	return createDocument(info, &datamodel.DocumentConfiguration{
 		AllowRemoteReferences: true,
@@ -155,8 +159,10 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	// build out swagger scalar variables.
 	_ = low.BuildModel(info.RootNode.Content[0], &doc)
 
+	ctx := context.Background()
+
 	// extract externalDocs
-	extDocs, err := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode, idx)
+	extDocs, err := low.ExtractObject[*base.ExternalDoc](ctx, base.ExternalDocsLabel, info.RootNode, idx)
 	if err != nil {
 		errors = append(errors, err)
 	}
@@ -186,7 +192,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	doneChan := make(chan bool)
 	errChan := make(chan error)
 	for i := range extractionFuncs {
-		go extractionFuncs[i](info.RootNode.Content[0], &doc, idx, doneChan, errChan)
+		go extractionFuncs[i](ctx, info.RootNode.Content[0], &doc, idx, doneChan, errChan)
 	}
 	completedExtractions := 0
 	for completedExtractions < len(extractionFuncs) {
@@ -210,8 +216,8 @@ func (s *Swagger) GetExternalDocs() *low.NodeReference[any] {
 	}
 }
 
-func extractInfo(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	info, err := low.ExtractObject[*base.Info](base.InfoLabel, root, idx)
+func extractInfo(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	info, err := low.ExtractObject[*base.Info](ctx, base.InfoLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -220,8 +226,8 @@ func extractInfo(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- b
 	c <- true
 }
 
-func extractPaths(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	paths, err := low.ExtractObject[*Paths](PathsLabel, root, idx)
+func extractPaths(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	paths, err := low.ExtractObject[*Paths](ctx, PathsLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -229,8 +235,8 @@ func extractPaths(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- 
 	doc.Paths = paths
 	c <- true
 }
-func extractDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	def, err := low.ExtractObject[*Definitions](DefinitionsLabel, root, idx)
+func extractDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	def, err := low.ExtractObject[*Definitions](ctx, DefinitionsLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -238,8 +244,8 @@ func extractDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c c
 	doc.Definitions = def
 	c <- true
 }
-func extractParamDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	param, err := low.ExtractObject[*ParameterDefinitions](ParametersLabel, root, idx)
+func extractParamDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	param, err := low.ExtractObject[*ParameterDefinitions](ctx, ParametersLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -248,8 +254,8 @@ func extractParamDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIndex
 	c <- true
 }
 
-func extractResponsesDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	resp, err := low.ExtractObject[*ResponsesDefinitions](ResponsesLabel, root, idx)
+func extractResponsesDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	resp, err := low.ExtractObject[*ResponsesDefinitions](ctx, ResponsesLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -258,8 +264,8 @@ func extractResponsesDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecI
 	c <- true
 }
 
-func extractSecurityDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	sec, err := low.ExtractObject[*SecurityDefinitions](SecurityDefinitionsLabel, root, idx)
+func extractSecurityDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	sec, err := low.ExtractObject[*SecurityDefinitions](ctx, SecurityDefinitionsLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -268,8 +274,8 @@ func extractSecurityDefinitions(root *yaml.Node, doc *Swagger, idx *index.SpecIn
 	c <- true
 }
 
-func extractTags(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	tags, ln, vn, err := low.ExtractArray[*base.Tag](base.TagsLabel, root, idx)
+func extractTags(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	tags, ln, vn, err := low.ExtractArray[*base.Tag](ctx, base.TagsLabel, root, idx)
 	if err != nil {
 		e <- err
 		return
@@ -282,8 +288,8 @@ func extractTags(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- b
 	c <- true
 }
 
-func extractSecurity(root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
-	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, root, idx)
+func extractSecurity(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
+	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](ctx, SecurityLabel, root, idx)
 	if err != nil {
 		e <- err
 		return

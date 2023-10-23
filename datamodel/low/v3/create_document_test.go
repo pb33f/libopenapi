@@ -147,9 +147,8 @@ func TestCreateDocumentStripe(t *testing.T) {
 	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
-		BasePath:              "/here",
 	})
-	assert.Len(t, err, 3)
+	assert.Len(t, utils.UnwrapErrors(err), 3)
 
 	assert.Equal(t, "3.0.0", d.Version.Value)
 	assert.Equal(t, "Stripe API", d.Info.Value.Title.Value)
@@ -206,7 +205,8 @@ func TestCreateDocument_WebHooks(t *testing.T) {
 }
 
 func TestCreateDocument_WebHooks_Error(t *testing.T) {
-	yml := `webhooks:
+	yml := `openapi: 3.0
+webhooks:
       $ref: #bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
@@ -215,7 +215,7 @@ func TestCreateDocument_WebHooks_Error(t *testing.T) {
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCreateDocument_Servers(t *testing.T) {
@@ -613,7 +613,7 @@ webhooks:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Equal(t, "flat map build failed: reference cannot be found: reference '' at line 4, column 5 was not found",
+	assert.Equal(t, "flat map build failed: reference cannot be found: reference at line 4, column 5 is empty, it cannot be resolved",
 		err.Error())
 }
 
@@ -630,7 +630,7 @@ components:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Equal(t, "reference '' at line 5, column 7 was not found", err.Error())
+	assert.Equal(t, "reference at line 5, column 7 is empty, it cannot be resolved", err.Error())
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {
@@ -661,7 +661,7 @@ tags:
 		AllowRemoteReferences: false,
 	})
 	assert.Equal(t,
-		"object extraction failed: reference '' at line 3, column 5 was not found", err.Error())
+		"object extraction failed: reference at line 3, column 5 is empty, it cannot be resolved", err.Error())
 }
 
 func TestCreateDocument_Security_Error(t *testing.T) {
@@ -676,7 +676,7 @@ security:
 		AllowRemoteReferences: false,
 	})
 	assert.Equal(t,
-		"array build failed: reference cannot be found: reference '' at line 3, column 3 was not found",
+		"array build failed: reference cannot be found: reference at line 3, column 3 is empty, it cannot be resolved",
 		err.Error())
 }
 
@@ -691,7 +691,7 @@ externalDocs:
 		AllowFileReferences:   false,
 		AllowRemoteReferences: false,
 	})
-	assert.Equal(t, "object extraction failed: reference '' at line 3, column 3 was not found", err.Error())
+	assert.Equal(t, "object extraction failed: reference at line 3, column 3 is empty, it cannot be resolved", err.Error())
 }
 
 func TestCreateDocument_YamlAnchor(t *testing.T) {

@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -30,7 +31,7 @@ func TestNewResponses(t *testing.T) {
 
 	var n v3.Responses
 	_ = low.BuildModel(&idxNode, &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewResponses(&n)
 
@@ -60,7 +61,7 @@ func TestResponses_MarshalYAML(t *testing.T) {
 
 	var n v3.Responses
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewResponses(&n)
 
@@ -90,7 +91,7 @@ func TestResponses_MarshalYAMLInline(t *testing.T) {
 
 	var n v3.Responses
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewResponses(&n)
 

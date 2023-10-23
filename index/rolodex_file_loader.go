@@ -87,6 +87,7 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	index.specAbsolutePath = l.fullPath
+
 	l.index = index
 	return index, nil
 

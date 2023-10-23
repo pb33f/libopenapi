@@ -267,7 +267,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if j.FullDefinition == r.FullDefinition {
 
 				var foundDup *Reference
-				foundRef := resolver.specIndex.SearchIndexForReferenceByReference(r)
+				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
 				if foundRef != nil {
 					foundDup = foundRef
 				}
@@ -307,7 +307,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 
 		if !skip {
 			var original *Reference
-			foundRef := resolver.specIndex.SearchIndexForReferenceByReference(r)
+			foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
 			if foundRef != nil {
 				original = foundRef
 			}
@@ -335,7 +335,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 	}
 
 	for refDefinition := range ref.RequiredRefProperties {
-		r := resolver.specIndex.SearchIndexForReference(refDefinition)
+		r, _ := resolver.specIndex.SearchIndexForReference(refDefinition)
 		if initialRef != nil && initialRef.Definition == r.Definition {
 			return true, visitedDefinitions
 		}
@@ -497,7 +497,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					IsRemote:       true,
 				}
 
-				locatedRef = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
+				locatedRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
 
 				if locatedRef == nil {
 					_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(value)

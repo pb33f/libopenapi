@@ -18,6 +18,6 @@ func TestSpecIndex_SearchIndexForReference(t *testing.T) {
 	c := CreateOpenAPIIndexConfig()
 	idx := NewSpecIndexWithConfig(&rootNode, c)
 
-	ref := idx.SearchIndexForReference("#/components/schemas/Pet")
+	ref, _ := idx.SearchIndexForReference("#/components/schemas/Pet")
 	assert.NotNil(t, ref)
 }

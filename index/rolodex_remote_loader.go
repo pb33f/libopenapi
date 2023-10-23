@@ -176,13 +176,10 @@ const (
 
 func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) {
 	remoteRootURL := specIndexConfig.BaseURL
-
-	// TODO: handle logging
-
 	log := specIndexConfig.Logger
 	if log == nil {
 		log = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
+			Level: slog.LevelError,
 		}))
 	}
 
@@ -324,7 +321,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		// remove from processing
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 
-		i.logger.Error("Unable to fetch remote document",
+		i.logger.Error("unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
 		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
 	}
@@ -371,8 +368,6 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
 	idx, idxError := remoteFile.Index(&copiedCfg)
 
-	i.Files.Store(absolutePath, remoteFile)
-
 	if len(remoteFile.data) > 0 {
 		i.logger.Debug("successfully loaded file", "file", absolutePath)
 	}
@@ -390,6 +385,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	// remove from processing
 	i.ProcessingFiles.Delete(remoteParsedURL.Path)
+	i.Files.Store(absolutePath, remoteFile)
 
 	//if !i.remoteRunning {
 	return remoteFile, errors.Join(i.remoteErrors...)

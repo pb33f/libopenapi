@@ -949,7 +949,7 @@ func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 	index := rolo.GetRootIndex()
 	//index.seenRemoteSources = make(map[string]*yaml.Node)
 	absoluteRef, _ := filepath.Abs("embie.yaml#/naughty")
-	fRef := index.SearchIndexForReference(absoluteRef)
+	fRef, _ := index.SearchIndexForReference(absoluteRef)
 	assert.NotNil(t, fRef)
 
 }

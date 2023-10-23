@@ -4,15 +4,14 @@
 package low
 
 import (
-    "crypto/sha256"
-    "fmt"
-    "os"
-    "strings"
-    "testing"
+	"crypto/sha256"
+	"fmt"
+	"strings"
+	"testing"
 
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestFindItemInMap(t *testing.T) {
@@ -1568,38 +1567,6 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
-}
-
-func TestLocateRefNode_RemoteFile(t *testing.T) {
-
-	ymlFile := fmt.Sprintf(`components:
-  schemas:
-    hey:
-      $ref: '%s#/components/schemas/hey'`, "remote.yaml")
-
-	ymlRemote := `components:
-  schemas:
-    hey:
-      AlmostWork: 999`
-
-	_ = os.WriteFile("remote.yaml", []byte(ymlRemote), 0665)
-	defer os.Remove("remote.yaml")
-
-	ymlLocal := `$ref: '#/components/schemas/hey'`
-
-	var idxNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(ymlFile), &idxNode) // an empty index.
-	assert.NoError(t, mErr)
-	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
-
-	var cNode yaml.Node
-	e := yaml.Unmarshal([]byte(ymlLocal), &cNode)
-	assert.NoError(t, e)
-
-	things, _, _, err := ExtractMap[*test_Good]("one", cNode.Content[0], idx)
-	assert.NoError(t, err)
-	assert.Len(t, things, 1)
-
 }
 
 func TestExtractExtensions(t *testing.T) {

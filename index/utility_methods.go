@@ -347,7 +347,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 			paramRef := index.allMappedRefs[paramRefName]
 			if paramRef == nil {
 				// could be in the rolodex
-				ref := index.SearchIndexForReference(paramRefName)
+				ref, _ := index.SearchIndexForReference(paramRefName)
 				if ref != nil {
 					paramRef = ref
 				}

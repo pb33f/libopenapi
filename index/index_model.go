@@ -35,6 +35,7 @@ type Reference struct {
 	Circular              bool
 	Seen                  bool
 	IsRemote              bool
+	Index                 *SpecIndex // index that contains this reference.
 	RemoteLocation        string
 	Path                  string              // this won't always be available.
 	RequiredRefProperties map[string][]string // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition
@@ -166,6 +167,8 @@ func CreateClosedAPIIndexConfig() *SpecIndexConfig {
 // quick direct access to paths, operations, tags are all available. No need to walk the entire node tree in rules,
 // everything is pre-walked if you need it.
 type SpecIndex struct {
+	specAbsolutePath                    string
+	AbsoluteFile                        string
 	rolodex                             *Rolodex                                      // the rolodex is used to fetch remote and file based documents.
 	allRefs                             map[string]*Reference                         // all (deduplicated) refs
 	rawSequencedRefs                    []*Reference                                  // all raw references in sequence as they are scanned, not deduped.
@@ -261,7 +264,6 @@ type SpecIndex struct {
 	httpClient                          *http.Client
 	componentIndexChan                  chan bool
 	polyComponentIndexChan              chan bool
-	specAbsolutePath                    string
 	resolver                            *Resolver
 	cache                               syncmap.Map
 	built                               bool

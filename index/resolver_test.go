@@ -596,7 +596,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	resolver := index().GetResolver()
 
 	assert.Len(t, resolver.GetCircularErrors(), 0)
-	assert.Equal(t, 3, resolver.GetIndexesVisited())
+	assert.Equal(t, 2, resolver.GetIndexesVisited())
 
 	// in v0.8.2 a new check was added when indexing, to prevent re-indexing the same file multiple times.
 	assert.Equal(t, 6, resolver.GetRelativesSeen())

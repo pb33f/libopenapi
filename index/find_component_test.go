@@ -61,9 +61,14 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	index := rolo.GetRootIndex()
 
 	assert.Nil(t, index.uri)
-	assert.NotNil(t, index.SearchIndexForReference("second.yaml#/properties/property2"))
-	assert.NotNil(t, index.SearchIndexForReference("second.yaml"))
-	assert.Nil(t, index.SearchIndexForReference("fourth.yaml"))
+
+	a, _ := index.SearchIndexForReference("second.yaml#/properties/property2")
+	b, _ := index.SearchIndexForReference("second.yaml")
+	c, _ := index.SearchIndexForReference("fourth.yaml")
+
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
+	assert.Nil(t, c)
 }
 
 func TestSpecIndex_performExternalLookup_invalidURL(t *testing.T) {

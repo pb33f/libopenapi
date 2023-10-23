@@ -1,6 +1,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -490,13 +491,13 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //   - UnevaluatedItems
 //   - UnevaluatedProperties
 //   - Anchor
-func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	s.Index = idx
 	if h, _, _ := utils.IsNodeRefValue(root); h {
-		ref, err := low.LocateRefNode(root, idx)
+		ref, _, err := low.LocateRefNode(root, idx)
 		if ref != nil {
 			root = ref
 			if err != nil {
@@ -704,7 +705,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if extDocNode != nil {
 		var exDoc ExternalDoc
 		_ = low.BuildModel(extDocNode, &exDoc)
-		_ = exDoc.Build(extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
+		_ = exDoc.Build(ctx, extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
 		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
 	}
 
@@ -1069,7 +1070,7 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 			isRef := false
 			refString := ""
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _ := low.LocateRefNode(prop, idx)
+				ref, _, _ := low.LocateRefNode(prop, idx)
 				if ref != nil {
 					isRef = true
 					prop = ref
@@ -1165,7 +1166,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
 				isRef = true
-				ref, _ := low.LocateRefNode(valueNode, idx)
+				ref, _, _ := low.LocateRefNode(valueNode, idx)
 				if ref != nil {
 					valueNode = ref
 				} else {
@@ -1196,7 +1197,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				h := false
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
 					isRef = true
-					ref, _ := low.LocateRefNode(vn, idx)
+					ref, _, _ := low.LocateRefNode(vn, idx)
 					if ref != nil {
 						vn = ref
 					} else {
@@ -1237,16 +1238,17 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 // ExtractSchema will return a pointer to a NodeReference that contains a *SchemaProxy if successful. The function
 // will specifically look for a key node named 'schema' and extract the value mapped to that key. If the operation
 // fails then no NodeReference is returned and an error is returned instead.
-func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
+func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
 	var schLabel, schNode *yaml.Node
 	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
 
 	isRef := false
 	refLocation := ""
+
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		isRef = true
-		ref, _ := low.LocateRefNode(root, idx)
+		ref, _, _ := low.LocateRefNode(root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
@@ -1260,9 +1262,13 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
 				isRef = true
-				ref, _ := low.LocateRefNode(schNode, idx)
+				ref, foundIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
 				if ref != nil {
 					schNode = ref
+					if foundIdx != nil {
+						//idx = foundIdx
+					}
+					ctx = nCtx
 				} else {
 					return nil, fmt.Errorf(errStr,
 						schNode.Content[1].Value, schNode.Content[1].Line, schNode.Content[1].Column)
@@ -1273,7 +1279,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 
 	if schNode != nil {
 		// check if schema has already been built.
-		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, isReference: isRef, referenceLookup: refLocation}
+		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, ctx: ctx, isReference: isRef, referenceLookup: refLocation}
 		return &low.NodeReference[*SchemaProxy]{
 			Value: schema, KeyNode: schLabel, ValueNode: schNode, ReferenceNode: isRef,
 			Reference: refLocation,

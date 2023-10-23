@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -54,7 +55,7 @@ func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and paths from node.
-func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Extensions = low.ExtractExtensions(root)
@@ -126,7 +127,7 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		cNode := value.currentNode
 		path := new(PathItem)
 		_ = low.BuildModel(pNode, path)
-		err := path.Build(cNode, pNode, idx)
+		err := path.Build(ctx, cNode, pNode, idx)
 		if err != nil {
 			return pathBuildResult{}, err
 		}
