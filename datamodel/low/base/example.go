@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -60,7 +61,7 @@ func (ex *Example) Hash() [32]byte {
 }
 
 // Build extracts extensions and example value
-func (ex *Example) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (ex *Example) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)

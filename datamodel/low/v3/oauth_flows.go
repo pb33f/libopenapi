@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -36,31 +37,31 @@ func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and all OAuthFlow types from the supplied node.
-func (o *OAuthFlows) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (o *OAuthFlows) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 
-	v, vErr := low.ExtractObject[*OAuthFlow](ImplicitLabel, root, idx)
+	v, vErr := low.ExtractObject[*OAuthFlow](ctx, ImplicitLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.Implicit = v
 
-	v, vErr = low.ExtractObject[*OAuthFlow](PasswordLabel, root, idx)
+	v, vErr = low.ExtractObject[*OAuthFlow](ctx, PasswordLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.Password = v
 
-	v, vErr = low.ExtractObject[*OAuthFlow](ClientCredentialsLabel, root, idx)
+	v, vErr = low.ExtractObject[*OAuthFlow](ctx, ClientCredentialsLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
 	o.ClientCredentials = v
 
-	v, vErr = low.ExtractObject[*OAuthFlow](AuthorizationCodeLabel, root, idx)
+	v, vErr = low.ExtractObject[*OAuthFlow](ctx, AuthorizationCodeLabel, root, idx)
 	if vErr != nil {
 		return vErr
 	}
@@ -116,7 +117,7 @@ func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions from the node.
-func (o *OAuthFlow) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (o *OAuthFlow) Build(_ context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 	return nil

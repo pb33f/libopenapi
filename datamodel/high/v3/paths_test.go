@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestPaths_MarshalYAML(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	high := NewPaths(&n)
@@ -89,7 +90,7 @@ func TestPaths_MarshalYAMLInline(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	high := NewPaths(&n)

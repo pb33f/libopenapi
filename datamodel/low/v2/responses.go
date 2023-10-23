@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -27,13 +28,13 @@ func (r *Responses) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 }
 
 // Build will extract default value and extensions from node.
-func (r *Responses) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Responses) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	r.Extensions = low.ExtractExtensions(root)
 
 	if utils.IsNodeMap(root) {
-		codes, err := low.ExtractMapNoLookup[*Response](root, idx)
+		codes, err := low.ExtractMapNoLookup[*Response](ctx, root, idx)
 		if err != nil {
 			return err
 		}

@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -34,7 +35,7 @@ func (s *Scopes) FindScope(scope string) *low.ValueReference[string] {
 }
 
 // Build will extract scope values and extensions from node.
-func (s *Scopes) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (s *Scopes) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Extensions = low.ExtractExtensions(root)

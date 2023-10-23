@@ -50,7 +50,7 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 	}
 }
 
-func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Reference {
+func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index *SpecIndex) *Reference {
 	// check component for url encoding.
 	if strings.Contains(componentId, "%") {
 		// decode the url.
@@ -72,6 +72,12 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Refer
 
 		fullDef := fmt.Sprintf("%s%s", absoluteFilePath, componentId)
 
+		// TODO: clean this shit up
+
+		newIndexWithUpdatedPath := *index
+		newIndexWithUpdatedPath.specAbsolutePath = absoluteFilePath
+		newIndexWithUpdatedPath.AbsoluteFile = absoluteFilePath
+
 		// extract properties
 		ref := &Reference{
 			FullDefinition:        fullDef,
@@ -79,6 +85,8 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Refer
 			Name:                  name,
 			Node:                  resNode,
 			Path:                  friendlySearch,
+			RemoteLocation:        absoluteFilePath,
+			Index:                 &newIndexWithUpdatedPath,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef),
 		}
 
@@ -89,7 +97,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string) *Refer
 
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 	if index.root != nil {
-		return FindComponent(index.root, componentId, index.specAbsolutePath)
+		return FindComponent(index.root, componentId, index.specAbsolutePath, index)
 	}
 	return nil
 }
@@ -139,6 +147,9 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 
 		var parsedDocument *yaml.Node
 		var err error
+
+		idx := index
+
 		if ext != "" {
 
 			// extract the document from the rolodex.
@@ -152,6 +163,9 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			if rFile == nil {
 				index.logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
 				return nil
+			}
+			if rFile.GetIndex() != nil {
+				idx = rFile.GetIndex()
 			}
 
 			parsedDocument, err = rFile.GetContentAsYAMLNode()
@@ -184,6 +198,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 				FullDefinition:        absoluteFileLocation,
 				Definition:            fileName,
 				Name:                  fileName,
+				Index:                 idx,
 				Node:                  parsedDocument,
 				IsRemote:              true,
 				RemoteLocation:        absoluteFileLocation,
@@ -192,7 +207,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			}
 			return foundRef
 		} else {
-			foundRef = FindComponent(parsedDocument, query, absoluteFileLocation)
+			foundRef = FindComponent(parsedDocument, query, absoluteFileLocation, index)
 			if foundRef != nil {
 				foundRef.IsRemote = true
 				foundRef.RemoteLocation = absoluteFileLocation

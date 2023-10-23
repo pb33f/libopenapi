@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -39,28 +40,24 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
 	doc := Document{Version: version}
 
-	// get current working directory as a basePath
-	cwd, _ := os.Getwd()
-	if config.BasePath != "" {
-		cwd = config.BasePath
-	}
-
 	// TODO: configure allowFileReferences and allowRemoteReferences stuff
 
 	// create an index config and shadow the document configuration.
 	idxConfig := index.CreateOpenAPIIndexConfig()
 	idxConfig.SpecInfo = info
-	idxConfig.BasePath = cwd
 	idxConfig.IgnoreArrayCircularReferences = config.IgnoreArrayCircularReferences
 	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
-	idxConfig.AvoidCircularReferenceCheck = config.SkipCircularReferenceCheck
-
+	idxConfig.AvoidCircularReferenceCheck = true
+	idxConfig.BaseURL = config.BaseURL
+	idxConfig.BasePath = config.BasePath
 	rolodex := index.NewRolodex(idxConfig)
+	rolodex.SetRootNode(info.RootNode)
 	doc.Rolodex = rolodex
 
-	// If basePath is provided override it
-	if config.BasePath != "" {
+	// If basePath is provided, add a local filesystem to the rolodex.
+	if idxConfig.BasePath != "" {
 		var absError error
+		var cwd string
 		cwd, absError = filepath.Abs(config.BasePath)
 		if absError != nil {
 			return nil, absError
@@ -77,13 +74,34 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	}
 
-	// TODO: Remote filesystem
+	// if base url is provided, add a remote filesystem to the rolodex.
+	if idxConfig.BaseURL != nil {
+
+		// create a remote filesystem
+		remoteFS, fsErr := index.NewRemoteFSWithConfig(idxConfig)
+		if fsErr != nil {
+			return nil, fsErr
+		}
+		if config.RemoteURLHandler != nil {
+			remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
+		}
+		// add to the rolodex
+		rolodex.AddRemoteFS(config.BaseURL.String(), remoteFS)
+	}
 
 	// index the rolodex
-	err := rolodex.IndexTheRolodex()
 	var errs []error
-	if err != nil {
-		errs = append(errs, rolodex.GetCaughtErrors()...)
+
+	_ = rolodex.IndexTheRolodex()
+
+	if !config.SkipCircularReferenceCheck {
+		rolodex.CheckForCircularReferences()
+	}
+
+	roloErrs := rolodex.GetCaughtErrors()
+
+	if roloErrs != nil {
+		errs = append(errs, roloErrs...)
 	}
 
 	doc.Index = rolodex.GetRootIndex()
@@ -125,17 +143,17 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		}
 	}
 
-	runExtraction := func(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex,
-		runFunc func(i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error,
+	runExtraction := func(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex,
+		runFunc func(ctx context.Context, i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error,
 		ers *[]error,
 		wg *sync.WaitGroup,
 	) {
-		if er := runFunc(info, doc, idx); er != nil {
+		if er := runFunc(ctx, info, doc, idx); er != nil {
 			*ers = append(*ers, er)
 		}
 		wg.Done()
 	}
-	extractionFuncs := []func(i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error{
+	extractionFuncs := []func(ctx context.Context, i *datamodel.SpecInfo, d *Document, idx *index.SpecIndex) error{
 		extractInfo,
 		extractServers,
 		extractTags,
@@ -146,28 +164,30 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		extractWebhooks,
 	}
 
+	ctx := context.Background()
+
 	wg.Add(len(extractionFuncs))
 	for _, f := range extractionFuncs {
-		go runExtraction(info, &doc, rolodex.GetRootIndex(), f, &errs, &wg)
+		go runExtraction(ctx, info, &doc, rolodex.GetRootIndex(), f, &errs, &wg)
 	}
 	wg.Wait()
 	return &doc, errors.Join(errs...)
 }
 
-func extractInfo(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+func extractInfo(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFullTop(base.InfoLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := base.Info{}
 		_ = low.BuildModel(vn, &ir)
-		_ = ir.Build(ln, vn, idx)
+		_ = ir.Build(ctx, ln, vn, idx)
 		nr := low.NodeReference[*base.Info]{Value: &ir, ValueNode: vn, KeyNode: ln}
 		doc.Info = nr
 	}
 	return nil
 }
 
-func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, info.RootNode.Content[0], idx)
+func extractSecurity(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+	sec, ln, vn, err := low.ExtractArray[*base.SecurityRequirement](ctx, SecurityLabel, info.RootNode.Content[0], idx)
 	if err != nil {
 		return err
 	}
@@ -181,8 +201,8 @@ func extractSecurity(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInd
 	return nil
 }
 
-func extractExternalDocs(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, info.RootNode.Content[0], idx)
+func extractExternalDocs(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](ctx, base.ExternalDocsLabel, info.RootNode.Content[0], idx)
 	if dErr != nil {
 		return dErr
 	}
@@ -190,12 +210,12 @@ func extractExternalDocs(info *datamodel.SpecInfo, doc *Document, idx *index.Spe
 	return nil
 }
 
-func extractComponents(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+func extractComponents(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFullTop(ComponentsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := Components{}
 		_ = low.BuildModel(vn, &ir)
-		err := ir.Build(vn, idx)
+		err := ir.Build(ctx, vn, idx)
 		if err != nil {
 			return err
 		}
@@ -205,7 +225,7 @@ func extractComponents(info *datamodel.SpecInfo, doc *Document, idx *index.SpecI
 	return nil
 }
 
-func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+func extractServers(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(ServersLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
@@ -214,7 +234,7 @@ func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInde
 				if utils.IsNodeMap(srvN) {
 					srvr := Server{}
 					_ = low.BuildModel(srvN, &srvr)
-					_ = srvr.Build(ln, srvN, idx)
+					_ = srvr.Build(ctx, ln, srvN, idx)
 					servers = append(servers, low.ValueReference[*Server]{
 						Value:     &srvr,
 						ValueNode: srvN,
@@ -231,7 +251,7 @@ func extractServers(info *datamodel.SpecInfo, doc *Document, idx *index.SpecInde
 	return nil
 }
 
-func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+func extractTags(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(base.TagsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		if utils.IsNodeArray(vn) {
@@ -240,7 +260,7 @@ func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 				if utils.IsNodeMap(tagN) {
 					tag := base.Tag{}
 					_ = low.BuildModel(tagN, &tag)
-					if err := tag.Build(ln, tagN, idx); err != nil {
+					if err := tag.Build(ctx, ln, tagN, idx); err != nil {
 						return err
 					}
 					tags = append(tags, low.ValueReference[*base.Tag]{
@@ -259,11 +279,11 @@ func extractTags(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) 
 	return nil
 }
 
-func extractPaths(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+func extractPaths(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
 	_, ln, vn := utils.FindKeyNodeFull(PathsLabel, info.RootNode.Content[0].Content)
 	if vn != nil {
 		ir := Paths{}
-		err := ir.Build(ln, vn, idx)
+		err := ir.Build(ctx, ln, vn, idx)
 		if err != nil {
 			return err
 		}
@@ -273,8 +293,8 @@ func extractPaths(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex)
 	return nil
 }
 
-func extractWebhooks(info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
-	hooks, hooksL, hooksN, eErr := low.ExtractMap[*PathItem](WebhooksLabel, info.RootNode, idx)
+func extractWebhooks(ctx context.Context, info *datamodel.SpecInfo, doc *Document, idx *index.SpecIndex) error {
+	hooks, hooksL, hooksN, eErr := low.ExtractMap[*PathItem](ctx, WebhooksLabel, info.RootNode, idx)
 	if eErr != nil {
 		return eErr
 	}

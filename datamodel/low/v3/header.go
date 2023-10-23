@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -95,7 +96,7 @@ func (h *Header) Hash() [32]byte {
 }
 
 // Build will extract extensions, examples, schema and content/media types from node.
-func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (h *Header) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	h.Reference = new(low.Reference)
@@ -108,7 +109,7 @@ func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](base.ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](ctx, base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -121,7 +122,7 @@ func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle schema
-	sch, sErr := base.ExtractSchema(root, idx)
+	sch, sErr := base.ExtractSchema(ctx, root, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -130,7 +131,7 @@ func (h *Header) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle content, if set.
-	con, cL, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMap[*MediaType](ctx, ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -102,11 +103,11 @@ func (i *Items) Hash() [32]byte {
 }
 
 // Build will build out items and default value.
-func (i *Items) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (i *Items) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	i.Extensions = low.ExtractExtensions(root)
-	items, iErr := low.ExtractObject[*Items](ItemsLabel, root, idx)
+	items, iErr := low.ExtractObject[*Items](ctx, ItemsLabel, root, idx)
 	if iErr != nil {
 		return iErr
 	}

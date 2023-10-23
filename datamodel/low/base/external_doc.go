@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -33,7 +34,7 @@ func (ex *ExternalDoc) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions from the ExternalDoc instance.
-func (ex *ExternalDoc) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (ex *ExternalDoc) Build(_ context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)

@@ -149,6 +149,14 @@ func (index *SpecIndex) BuildIndex() {
 	index.built = true
 }
 
+func (index *SpecIndex) GetSpecAbsolutePath() string {
+	return index.specAbsolutePath
+}
+
+func (index *SpecIndex) GetLogger() *slog.Logger {
+	return index.logger
+}
+
 // GetRootNode returns document root node.
 func (index *SpecIndex) GetRootNode() *yaml.Node {
 	return index.root

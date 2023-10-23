@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -109,7 +110,7 @@ func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReferen
 
 // Build extracts extensions, parameters, servers and each http method defined.
 // everything is extracted asynchronously for speed.
-func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
@@ -123,7 +124,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	var ops []low.NodeReference[*Operation]
 
 	// extract parameters
-	params, ln, vn, pErr := low.ExtractArray[*Parameter](ParametersLabel, root, idx)
+	params, ln, vn, pErr := low.ExtractArray[*Parameter](ctx, ParametersLabel, root, idx)
 	if pErr != nil {
 		return pErr
 	}
@@ -143,7 +144,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 				if utils.IsNodeMap(srvN) {
 					srvr := new(Server)
 					_ = low.BuildModel(srvN, srvr)
-					srvr.Build(ln, srvN, idx)
+					srvr.Build(ctx, ln, srvN, idx)
 					servers = append(servers, low.ValueReference[*Server]{
 						Value:     srvr,
 						ValueNode: srvN,
@@ -198,6 +199,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			continue // ignore everything else.
 		}
 
+		foundContext := ctx
 		var op Operation
 		opIsRef := false
 		var opRefVal string
@@ -213,12 +215,15 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 			opIsRef = true
 			opRefVal = ref
-			r, err := low.LocateRefNode(pathNode, idx)
+			r, newIdx, err, nCtx := low.LocateRefNodeWithContext(ctx, pathNode, idx)
 			if r != nil {
 				if r.Kind == yaml.DocumentNode {
 					r = r.Content[0]
 				}
 				pathNode = r
+				foundContext = nCtx
+				foundContext = context.WithValue(foundContext, "foundIndex", newIdx)
+
 				if r.Tag == "" {
 					// If it's a node from file, tag is empty
 					pathNode = r.Content[0]
@@ -233,6 +238,8 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 				return fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
 					pathNode.Content[1].Value, pathNode.Content[1].Line, pathNode.Content[1].Column)
 			}
+		} else {
+			foundContext = context.WithValue(foundContext, "foundIndex", idx)
 		}
 		wg.Add(1)
 		low.BuildModelAsync(pathNode, &op, &wg, &errors)
@@ -241,6 +248,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			Value:     &op,
 			KeyNode:   currentNode,
 			ValueNode: pathNode,
+			Context:   foundContext,
 		}
 		if opIsRef {
 			opRef.Reference = opRefVal
@@ -277,7 +285,7 @@ func (p *PathItem) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			ref = op.Reference
 		}
 
-		err := op.Value.Build(op.KeyNode, op.ValueNode, idx)
+		err := op.Value.Build(op.Context, op.KeyNode, op.ValueNode, op.Context.Value("foundIndex").(*index.SpecIndex))
 		if ref != "" {
 			op.Value.Reference.Reference = ref
 		}
