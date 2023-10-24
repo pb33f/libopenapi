@@ -447,15 +447,18 @@ func (r *Rolodex) BuildIndexes() {
 }
 
 func (r *Rolodex) Open(location string) (RolodexFile, error) {
+	if r == nil {
+		return nil, fmt.Errorf("rolodex has not been initialized, cannot open file '%s'", location)
+	}
+
+	if len(r.localFS) <= 0 && len(r.remoteFS) <= 0 {
+		return nil, fmt.Errorf("rolodex has no file systems configured, cannot open '%s'. Add a BaseURL or BasePath to your configuration so the rolodex knows how to resolve references", location)
+	}
 
 	var errorStack []error
 
 	var localFile *LocalFile
 	var remoteFile *RemoteFile
-
-	if r == nil || r.localFS == nil && r.remoteFS == nil {
-		return nil, fmt.Errorf("rolodex has no file systems configured, cannot open '%s'", location)
-	}
 
 	fileLookup := location
 	isUrl := false

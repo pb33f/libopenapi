@@ -23,7 +23,7 @@ func Example_createHighLevelOpenAPIDocument() {
 	var err error
 
 	// Create a new low-level Document, capture any errors thrown during creation.
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// Get upset if any errors were thrown.
 	for i := range utils.UnwrapErrors(err) {

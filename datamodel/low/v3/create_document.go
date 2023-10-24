@@ -19,11 +19,7 @@ import (
 // Deprecated: Use CreateDocumentFromConfig instead. This function will be removed in a later version, it
 // defaults to allowing file and remote references, and does not support relative file references.
 func CreateDocument(info *datamodel.SpecInfo) (*Document, error) {
-	config := datamodel.DocumentConfiguration{
-		AllowFileReferences:   true,
-		AllowRemoteReferences: true,
-	}
-	return createDocument(info, &config)
+	return createDocument(info, datamodel.NewDocumentConfiguration())
 }
 
 // CreateDocumentFromConfig Create a new document from the provided SpecInfo and DocumentConfiguration pointer.
@@ -40,16 +36,15 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
 	doc := Document{Version: version}
 
-	// TODO: configure allowFileReferences and allowRemoteReferences stuff
-
 	// create an index config and shadow the document configuration.
-	idxConfig := index.CreateOpenAPIIndexConfig()
+	idxConfig := index.CreateClosedAPIIndexConfig()
 	idxConfig.SpecInfo = info
 	idxConfig.IgnoreArrayCircularReferences = config.IgnoreArrayCircularReferences
 	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
 	idxConfig.AvoidCircularReferenceCheck = true
 	idxConfig.BaseURL = config.BaseURL
 	idxConfig.BasePath = config.BasePath
+	idxConfig.Logger = config.Logger
 	rolodex := index.NewRolodex(idxConfig)
 	rolodex.SetRootNode(info.RootNode)
 	doc.Rolodex = rolodex
@@ -64,10 +59,18 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		}
 
 		// create a local filesystem
-		fileFS, err := index.NewLocalFS(cwd, os.DirFS(cwd))
+		localFSConf := index.LocalFSConfig{
+			BaseDirectory: cwd,
+			DirFS:         os.DirFS(cwd),
+			FileFilters:   config.FileFilter,
+		}
+		fileFS, err := index.NewLocalFSWithConfig(&localFSConf)
+
 		if err != nil {
 			return nil, err
 		}
+
+		idxConfig.AllowFileLookup = true
 
 		// add the filesystem to the rolodex
 		rolodex.AddLocalFS(cwd, fileFS)
@@ -85,6 +88,9 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		if config.RemoteURLHandler != nil {
 			remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
 		}
+
+		idxConfig.AllowRemoteLookup = true
+
 		// add to the rolodex
 		rolodex.AddRemoteFS(config.BaseURL.String(), remoteFS)
 	}

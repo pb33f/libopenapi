@@ -30,7 +30,7 @@ func BenchmarkCreateDocument(b *testing.B) {
 	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		doc, _ = CreateDocumentFromConfig(info, datamodel.NewClosedDocumentConfiguration())
+		doc, _ = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	}
 }
 
@@ -38,7 +38,7 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		_, err := CreateDocumentFromConfig(info, datamodel.NewClosedDocumentConfiguration())
+		_, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 		if err == nil {
 			panic("this should error, it has circular references")
 		}
@@ -48,7 +48,7 @@ func BenchmarkCreateDocument_Circular(b *testing.B) {
 func TestCircularReferenceError(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	circDoc, err := CreateDocumentFromConfig(info, datamodel.NewClosedDocumentConfiguration())
+	circDoc, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	assert.NotNil(t, circDoc)
 	assert.Error(t, err)
