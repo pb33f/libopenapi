@@ -5,6 +5,7 @@ package v2
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"os"
 	"testing"
 
@@ -20,11 +21,8 @@ func initTest() {
 	}
 	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	doc, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-		AllowFileReferences:   false,
-		AllowRemoteReferences: false,
-	})
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -42,10 +40,7 @@ func BenchmarkCreateDocument(b *testing.B) {
 	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	for i := 0; i < b.N; i++ {
-		doc, _ = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-			AllowFileReferences:   false,
-			AllowRemoteReferences: false,
-		})
+		doc, _ = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	}
 }
 
@@ -183,8 +178,8 @@ func TestCreateDocument_ExternalDocsBad(t *testing.T) {
   $ref: bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -192,7 +187,7 @@ func TestCreateDocument_ExternalDocsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 2)
 }
 
 func TestCreateDocument_TagsBad(t *testing.T) {
@@ -201,8 +196,8 @@ func TestCreateDocument_TagsBad(t *testing.T) {
   $ref: bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -210,7 +205,7 @@ func TestCreateDocument_TagsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 2)
 }
 
 func TestCreateDocument_PathsBad(t *testing.T) {
@@ -223,8 +218,8 @@ func TestCreateDocument_PathsBad(t *testing.T) {
           $ref: bork`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -232,7 +227,7 @@ func TestCreateDocument_PathsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 2)
 }
 
 func TestCreateDocument_SecurityBad(t *testing.T) {
@@ -241,8 +236,8 @@ func TestCreateDocument_SecurityBad(t *testing.T) {
   $ref: `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -250,7 +245,7 @@ func TestCreateDocument_SecurityBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
@@ -259,8 +254,8 @@ func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
   $ref: `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -268,7 +263,7 @@ func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCreateDocument_ResponsesBad(t *testing.T) {
@@ -277,8 +272,8 @@ func TestCreateDocument_ResponsesBad(t *testing.T) {
   $ref: `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -286,7 +281,7 @@ func TestCreateDocument_ResponsesBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCreateDocument_ParametersBad(t *testing.T) {
@@ -295,8 +290,8 @@ func TestCreateDocument_ParametersBad(t *testing.T) {
   $ref: `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -304,7 +299,7 @@ func TestCreateDocument_ParametersBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCreateDocument_DefinitionsBad(t *testing.T) {
@@ -313,8 +308,8 @@ func TestCreateDocument_DefinitionsBad(t *testing.T) {
   $ref: `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -322,7 +317,7 @@ func TestCreateDocument_DefinitionsBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCreateDocument_InfoBad(t *testing.T) {
@@ -331,8 +326,8 @@ func TestCreateDocument_InfoBad(t *testing.T) {
   $ref: `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
-	doc, err = CreateDocument(info)
+	var err error
+	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	wait := true
 	for wait {
 		select {
@@ -340,15 +335,15 @@ func TestCreateDocument_InfoBad(t *testing.T) {
 			wait = false
 		}
 	}
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestCircularReferenceError(t *testing.T) {
 
 	data, _ := os.ReadFile("../../../test_specs/swagger-circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	circDoc, err := CreateDocument(info)
+	circDoc, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.NotNil(t, circDoc)
-	assert.Len(t, err, 3)
+	assert.Len(t, utils.UnwrapErrors(err), 3)
 
 }

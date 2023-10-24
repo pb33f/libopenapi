@@ -18,8 +18,8 @@ var doc *v2.Swagger
 func initTest() {
 	data, _ := os.ReadFile("../../../test_specs/petstorev2-complete.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	doc, err = v2.CreateDocument(info)
+	var err error
+	doc, err = v2.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}

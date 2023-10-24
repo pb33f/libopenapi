@@ -5,6 +5,7 @@ package v2
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"os"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -22,12 +23,13 @@ func Example_createLowLevelSwaggerDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
+	errs := utils.UnwrapErrors(err)
+	if len(errs) > 0 {
+		for i := range errs {
+			fmt.Printf("error: %s\n", errs[i].Error())
 		}
 		panic("cannot build document")
 	}
@@ -50,12 +52,13 @@ func ExampleCreateDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
+	errs := utils.UnwrapErrors(err)
+	if len(errs) > 0 {
+		for i := range errs {
+			fmt.Printf("error: %s\n", errs[i].Error())
 		}
 		panic("cannot build document")
 	}

@@ -4,6 +4,7 @@
 package datamodel
 
 import (
+	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -29,10 +30,6 @@ type DocumentConfiguration struct {
 	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
 	RemoteURLHandler func(url string) (*http.Response, error)
 
-	// FileFilter is a list of specific files to be included by the rolodex when looking up references. If this value
-	// is set, then only these specific files will be included. If this value is not set, then all files will be included.
-	FileFilter []string
-
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from.
 	// It's usually the location of the root specification.
 	//
@@ -41,6 +38,19 @@ type DocumentConfiguration struct {
 	//
 	// To avoid sucking in all the files, set the FileFilter to a list of specific files to be included.
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
+
+	// FileFilter is a list of specific files to be included by the rolodex when looking up references. If this value
+	// is set, then only these specific files will be included. If this value is not set, then all files will be included.
+	FileFilter []string
+
+	// RemoteFS is a filesystem that will be used to retrieve remote documents. If not set, then the rolodex will
+	// use its own internal remote filesystem implementation. The RemoteURLHandler will be used to retrieve remote
+	// documents if it has been set. The default is to use the internal remote filesystem loader.
+	RemoteFS fs.FS
+
+	// LocalFS is a filesystem that will be used to retrieve local documents. If not set, then the rolodex will
+	// use its own internal local filesystem implementation. The default is to use the internal local filesystem loader.
+	LocalFS fs.FS
 
 	// AllowFileReferences will allow the index to locate relative file references. This is disabled by default.
 	//
