@@ -389,7 +389,7 @@ func TestStripeAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Len(t, utils.UnwrapErrors(err), 3)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
@@ -399,7 +399,7 @@ func TestK8sAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err []error
-	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
 	assert.Len(t, err, 0)
 	assert.NotNil(t, d)
@@ -409,7 +409,7 @@ func TestAsanaAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/asana.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}
@@ -528,7 +528,7 @@ func TestPetstoreAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}
@@ -541,7 +541,7 @@ func TestCircularReferencesDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lDoc, err := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lDoc, err := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Len(t, utils.UnwrapErrors(err), 3)
 	d := NewDocument(lDoc)
 	assert.Len(t, d.Components.Schemas, 9)
@@ -557,7 +557,7 @@ func TestDocument_MarshalYAML(t *testing.T) {
 	r, _ := h.Render()
 
 	info, _ := datamodel.ExtractSpecInfo(r)
-	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Nil(t, e)
 
 	highDoc := NewDocument(lDoc)
@@ -568,7 +568,7 @@ func TestDocument_MarshalIndention(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	highDoc := NewDocument(lowDoc)
 	rendered := highDoc.RenderWithIndention(2)
@@ -584,7 +584,7 @@ func TestDocument_MarshalIndention_Error(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	highDoc := NewDocument(lowDoc)
 	rendered := highDoc.RenderWithIndention(2)
@@ -600,7 +600,7 @@ func TestDocument_MarshalJSON(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	highDoc := NewDocument(lowDoc)
 
@@ -608,7 +608,7 @@ func TestDocument_MarshalJSON(t *testing.T) {
 
 	// now read back in the JSON
 	info, _ = datamodel.ExtractSpecInfo(rendered)
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	newDoc := NewDocument(lowDoc)
 
 	assert.Equal(t, len(newDoc.Paths.PathItems), len(highDoc.Paths.PathItems))
@@ -624,7 +624,7 @@ func TestDocument_MarshalYAMLInline(t *testing.T) {
 	r, _ := h.RenderInline()
 
 	info, _ := datamodel.ExtractSpecInfo(r)
-	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Nil(t, e)
 
 	highDoc := NewDocument(lDoc)

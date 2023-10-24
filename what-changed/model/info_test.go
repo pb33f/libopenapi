@@ -4,6 +4,7 @@
 package model
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -42,8 +43,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -83,8 +84,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -123,8 +124,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -161,8 +162,8 @@ contact:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -199,8 +200,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -239,8 +240,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -276,8 +277,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -313,8 +314,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -353,8 +354,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -394,8 +395,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)

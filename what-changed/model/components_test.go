@@ -4,13 +4,14 @@
 package model
 
 import (
-    "github.com/pb33f/libopenapi/datamodel/low"
-    v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-    "github.com/pb33f/libopenapi/datamodel/low/v3"
-    "github.com/pb33f/libopenapi/index"
-    "github.com/stretchr/testify/assert"
-    "gopkg.in/yaml.v3"
-    "testing"
+	"context"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+	"testing"
 )
 
 func TestCompareComponents_Swagger_Definitions_Equal(t *testing.T) {
@@ -38,8 +39,8 @@ thing2:
 	var rDoc v2.Definitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -68,8 +69,8 @@ thing2:
 	var rDoc v2.Definitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -107,8 +108,8 @@ thing3:
 	var rDoc v2.Definitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -147,8 +148,8 @@ thing3:
 	var rDoc v2.Definitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -186,8 +187,8 @@ param4:
 	var rDoc v2.ParameterDefinitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -225,8 +226,8 @@ param4:
 	var rDoc v2.ParameterDefinitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -260,8 +261,8 @@ resp3:
 	var rDoc v2.ResponsesDefinitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -297,8 +298,8 @@ resp3:
 	var rDoc v2.ResponsesDefinitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -330,8 +331,8 @@ scheme2:
 	var rDoc v2.SecurityDefinitions
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -366,8 +367,8 @@ schemas:
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -398,8 +399,8 @@ func TestCompareComponents_OpenAPI_Schemas_Refs_FullBuild(t *testing.T) {
 
 	idx := index.NewSpecIndex(&lNode)
 
-	_ = lDoc.Build(lNode.Content[0], idx)
-	_ = rDoc.Build(rNode.Content[0], idx)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], idx)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], idx)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -430,8 +431,8 @@ schemas:
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -467,8 +468,8 @@ schemas:
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -503,8 +504,8 @@ schemas:
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -533,8 +534,8 @@ responses:
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -563,8 +564,8 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild(t *testing.T) {
 
 	idx := index.NewSpecIndex(&lNode)
 
-	_ = lDoc.Build(lNode.Content[0], idx)
-	_ = rDoc.Build(rNode.Content[0], idx)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], idx)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], idx)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -599,8 +600,8 @@ func TestCompareComponents_OpenAPI_ResponsesAdd_FullBuild(t *testing.T) {
 
 	idx := index.NewSpecIndex(&lNode)
 
-	_ = lDoc.Build(lNode.Content[0], idx)
-	_ = rDoc.Build(rNode.Content[0], idx)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], idx)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], idx)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -638,8 +639,8 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_IdenticalRef(t *testing.T
 	idx := index.NewSpecIndex(&lNode)
 	idx2 := index.NewSpecIndex(&rNode)
 
-	_ = lDoc.Build(lNode.Content[0], idx)
-	_ = rDoc.Build(rNode.Content[0], idx2)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], idx)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], idx2)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -682,8 +683,8 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T)
 	re1.CheckForCircularReferences()
 	re2.CheckForCircularReferences()
 
-	_ = lDoc.Build(lNode.Content[0], idx)
-	_ = rDoc.Build(rNode.Content[0], idx2)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], idx)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], idx2)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -693,16 +694,16 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T)
 //func TestCompareComponents_OpenAPI_Responses_Modify(t *testing.T) {
 //
 //	left := `responses:
-//  niceResponse:
-//    description: hello
-//  badResponse:
-//    description: go away please`
+// niceResponse:
+//   description: hello
+// badResponse:
+//   description: go away please`
 //
 //	right := `responses:
-//  niceResponse:
-//    description: hello my matey
-//  badResponse:
-//    description: go away please, now!`
+// niceResponse:
+//   description: hello my matey
+// badResponse:
+//   description: go away please, now!`
 //
 //	var lNode, rNode yaml.Node
 //	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -713,8 +714,8 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T)
 //	var rDoc v3.Components
 //	_ = low.BuildModel(lNode.Content[0], &lDoc)
 //	_ = low.BuildModel(rNode.Content[0], &rDoc)
-//	_ = lDoc.Build(lNode.Content[0], nil)
-//	_ = rDoc.Build(rNode.Content[0], nil)
+//	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+//	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 //
 //	// compare.
 //	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -747,8 +748,8 @@ func TestCompareComponents_OpenAPI_Responses_Add(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -782,8 +783,8 @@ func TestCompareComponents_OpenAPI_Responses_Remove(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -811,8 +812,8 @@ func TestCompareComponents_OpenAPI_Parameters_Equal(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -844,8 +845,8 @@ func TestCompareComponents_OpenAPI_Parameters_Added(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -879,8 +880,8 @@ func TestCompareComponents_OpenAPI_Parameters_Removed(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&rDoc, &lDoc)
@@ -910,8 +911,8 @@ func TestCompareComponents_OpenAPI_RequestBodies_Modified(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -940,8 +941,8 @@ func TestCompareComponents_OpenAPI_Headers_Add(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -968,8 +969,8 @@ func TestCompareComponents_OpenAPI_SecuritySchemes_Equal(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -999,8 +1000,8 @@ func TestCompareComponents_OpenAPI_SecuritySchemes_Modified(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -1029,8 +1030,8 @@ func TestCompareComponents_OpenAPI_Links_Added(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -1065,8 +1066,8 @@ func TestCompareComponents_OpenAPI_Callbacks_Modified(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)
@@ -1089,8 +1090,8 @@ func TestCompareComponents_OpenAPI_Extensions_Modified(t *testing.T) {
 	var rDoc v3.Components
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(lNode.Content[0], nil)
-	_ = rDoc.Build(rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareComponents(&lDoc, &rDoc)

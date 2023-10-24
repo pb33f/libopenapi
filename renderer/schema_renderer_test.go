@@ -4,6 +4,7 @@
 package renderer
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -56,7 +57,7 @@ func getSchema(schema []byte) *highbase.Schema {
 		panic(e)
 	}
 	sp := new(lowbase.SchemaProxy)
-	_ = sp.Build(nil, compNode.Content[0], nil)
+	_ = sp.Build(context.Background(), nil, compNode.Content[0], nil)
 	lp := low.NodeReference[*lowbase.SchemaProxy]{
 		Value:     sp,
 		ValueNode: compNode.Content[0],
@@ -1131,7 +1132,7 @@ properties:
 
 	buildSchema := func() *highbase.SchemaProxy {
 		sp := new(lowbase.SchemaProxy)
-		_ = sp.Build(nil, compNode.Content[0], nil)
+		_ = sp.Build(context.Background(), nil, compNode.Content[0], nil)
 		lp := low.NodeReference[*lowbase.SchemaProxy]{
 			Value:     sp,
 			ValueNode: compNode.Content[0],
