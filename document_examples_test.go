@@ -101,7 +101,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	if len(errors) > 0 {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	}
-	// Output: There are 475 errors logged
+	// Output: There are 474 errors logged
 	//Error building Digital Ocean spec errors reported
 }
 

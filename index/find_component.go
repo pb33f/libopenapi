@@ -34,19 +34,16 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 			return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
 		}
 	} else {
-		if !strings.Contains(componentId, "#") {
 
-			// does it contain a file extension?
-			fileExt := filepath.Ext(componentId)
-			if fileExt != "" {
-				return index.lookupRolodex(uri)
-			}
-
-			// root search
-			return index.FindComponentInRoot(componentId)
-
+		// does it contain a file extension?
+		fileExt := filepath.Ext(componentId)
+		if fileExt != "" {
+			return index.lookupRolodex(uri)
 		}
-		return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[0]))
+
+		// root search
+		return index.FindComponentInRoot(componentId)
+
 	}
 }
 
@@ -72,12 +69,6 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 
 		fullDef := fmt.Sprintf("%s%s", absoluteFilePath, componentId)
 
-		// TODO: clean this shit up
-
-		newIndexWithUpdatedPath := *index
-		newIndexWithUpdatedPath.specAbsolutePath = absoluteFilePath
-		newIndexWithUpdatedPath.AbsoluteFile = absoluteFilePath
-
 		// extract properties
 		ref := &Reference{
 			FullDefinition:        fullDef,
@@ -86,7 +77,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 			Node:                  resNode,
 			Path:                  friendlySearch,
 			RemoteLocation:        absoluteFilePath,
-			Index:                 &newIndexWithUpdatedPath,
+			Index:                 index,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef),
 		}
 
@@ -121,24 +112,12 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			absoluteFileLocation = file
 		} else {
 			if index.specAbsolutePath != "" {
-				if index.config.BaseURL != nil {
-
-					// extract the base path from the specAbsolutePath for this index.
-					sap, _ := url.Parse(index.specAbsolutePath)
-					newPath, _ := filepath.Abs(filepath.Join(filepath.Dir(sap.Path), file))
-
-					sap.Path = newPath
-					f := sap.String()
-					absoluteFileLocation = f
-
-				} else {
+				if index.config.BaseURL == nil {
 
 					// consider the file local
 					dir := filepath.Dir(index.config.SpecAbsolutePath)
 					absoluteFileLocation, _ = filepath.Abs(filepath.Join(dir, file))
 				}
-			} else {
-				absoluteFileLocation = file
 			}
 		}
 
