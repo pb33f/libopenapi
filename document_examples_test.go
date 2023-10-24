@@ -119,9 +119,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	// create a DocumentConfiguration that allows loading file and remote references, and sets the baseURL
 	// to somewhere that can resolve the relative references.
 	config := datamodel.DocumentConfiguration{
-		AllowFileReferences:   true,
-		AllowRemoteReferences: true,
-		BaseURL:               baseURL,
+		BaseURL: baseURL,
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		})),
 	}
 
 	// create a new document from specification bytes

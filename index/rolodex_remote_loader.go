@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"log/slog"
+	"runtime"
 
 	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
@@ -259,10 +260,14 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	// if we're processing, we need to block and wait for the file to be processed
 	// try path first
 	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
-		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
-		for {
-			if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
-				return wf.(*RemoteFile), nil
+		// we can't block if we only have a single CPU, as we'll deadlock, only when we're running in parallel
+		// can we block threads.
+		if runtime.GOMAXPROCS(-1) > 1 {
+			i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+			for {
+				if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
+					return wf.(*RemoteFile), nil
+				}
 			}
 		}
 	}
@@ -288,10 +293,10 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	i.logger.Debug("loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 
-	// no handler func? use the default client.
-	if i.RemoteHandlerFunc == nil {
-		i.RemoteHandlerFunc = i.defaultClient.Get
-	}
+	//// no handler func? use the default client.
+	//if i.RemoteHandlerFunc == nil {
+	//	i.RemoteHandlerFunc = i.defaultClient.Get
+	//}
 
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
