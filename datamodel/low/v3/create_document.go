@@ -57,86 +57,74 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		if absError != nil {
 			return nil, absError
 		}
+		// if a supplied local filesystem is provided, add it to the rolodex.
+		if config.LocalFS != nil {
+			rolodex.AddLocalFS(cwd, config.LocalFS)
+		} else {
 
-		// create a local filesystem
-		localFSConf := index.LocalFSConfig{
-			BaseDirectory: cwd,
-			DirFS:         os.DirFS(cwd),
-			FileFilters:   config.FileFilter,
+			// create a local filesystem
+			localFSConf := index.LocalFSConfig{
+				BaseDirectory: cwd,
+				DirFS:         os.DirFS(cwd),
+				FileFilters:   config.FileFilter,
+			}
+			fileFS, err := index.NewLocalFSWithConfig(&localFSConf)
+			if err != nil {
+				return nil, err
+			}
+			idxConfig.AllowFileLookup = true
+
+			// add the filesystem to the rolodex
+			rolodex.AddLocalFS(cwd, fileFS)
 		}
-		fileFS, err := index.NewLocalFSWithConfig(&localFSConf)
-
-		if err != nil {
-			return nil, err
-		}
-
-		idxConfig.AllowFileLookup = true
-
-		// add the filesystem to the rolodex
-		rolodex.AddLocalFS(cwd, fileFS)
 
 	}
 
 	// if base url is provided, add a remote filesystem to the rolodex.
 	if idxConfig.BaseURL != nil {
 
-		// create a remote filesystem
-		remoteFS, fsErr := index.NewRemoteFSWithConfig(idxConfig)
-		if fsErr != nil {
-			return nil, fsErr
-		}
-		if config.RemoteURLHandler != nil {
-			remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
-		}
+		// if a supplied remote filesystem is provided, add it to the rolodex.
+		if config.RemoteFS != nil {
+			if config.BaseURL == nil {
+				return nil, errors.New("cannot use remote filesystem without a BaseURL")
+			}
+			rolodex.AddRemoteFS(config.BaseURL.String(), config.RemoteFS)
 
-		idxConfig.AllowRemoteLookup = true
+		} else {
+			// create a remote filesystem
+			remoteFS, fsErr := index.NewRemoteFSWithConfig(idxConfig)
+			if fsErr != nil {
+				return nil, fsErr
+			}
+			if config.RemoteURLHandler != nil {
+				remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
+			}
+			idxConfig.AllowRemoteLookup = true
 
-		// add to the rolodex
-		rolodex.AddRemoteFS(config.BaseURL.String(), remoteFS)
+			// add to the rolodex
+			rolodex.AddRemoteFS(config.BaseURL.String(), remoteFS)
+		}
 	}
 
 	// index the rolodex
 	var errs []error
 
+	// index all the things.
 	_ = rolodex.IndexTheRolodex()
 
+	// check for circular references
 	if !config.SkipCircularReferenceCheck {
 		rolodex.CheckForCircularReferences()
 	}
 
+	// extract errors
 	roloErrs := rolodex.GetCaughtErrors()
-
 	if roloErrs != nil {
 		errs = append(errs, roloErrs...)
 	}
 
+	// set root index.
 	doc.Index = rolodex.GetRootIndex()
-
-	//errs = idx.GetReferenceIndexErrors()
-
-	// create resolver and check for circular references.
-
-	//resolve := resolver.NewResolver(idx)
-	//
-	//// if configured, ignore circular references in arrays and polymorphic schemas
-	//if config.IgnoreArrayCircularReferences {
-	//	resolve.IgnoreArrayCircularReferences()
-	//}
-	//if config.IgnorePolymorphicCircularReferences {
-	//	resolve.IgnorePolymorphicCircularReferences()
-	//}
-	//
-	//if !config.AvoidIndexBuild {
-	//	// check for circular references.
-	//	resolvingErrors := resolve.CheckForCircularReferences()
-	//
-	//	if len(resolvingErrors) > 0 {
-	//		for r := range resolvingErrors {
-	//			errs = append(errs, resolvingErrors[r])
-	//		}
-	//	}
-	//}
-
 	var wg sync.WaitGroup
 
 	doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])

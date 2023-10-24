@@ -398,10 +398,10 @@ func TestStripeAsDoc(t *testing.T) {
 func TestK8sAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
-	assert.Len(t, err, 0)
+	assert.Len(t, utils.UnwrapErrors(err), 0)
 	assert.NotNil(t, d)
 }
 

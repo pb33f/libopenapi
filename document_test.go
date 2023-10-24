@@ -50,7 +50,7 @@ definitions:
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 2)
+	assert.Len(t, docErr, 3)
 	assert.Nil(t, v2Doc)
 }
 
@@ -515,7 +515,7 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 2)
+	assert.Len(t, errors, 14)
 	assert.Nil(t, changes)
 
 }

@@ -74,25 +74,3 @@ func (t *Tag) Hash() [32]byte {
 	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
-
-// TODO: future mutation API experiment code is here. this snippet is to re-marshal the object.
-//func (t *Tag) MarshalYAML() (interface{}, error) {
-//	m := make(map[string]interface{})
-//	for i := range t.Extensions {
-//		m[i.Value] = t.Extensions[i].Value
-//	}
-//	if t.Name.Value != "" {
-//		m[NameLabel] = t.Name.Value
-//	}
-//	if t.Description.Value != "" {
-//		m[DescriptionLabel] = t.Description.Value
-//	}
-//	if t.ExternalDocs.Value != nil {
-//		m[ExternalDocsLabel] = t.ExternalDocs.Value
-//	}
-//	return m, nil
-//}
-//
-//func NewTag() *Tag {
-//	return new(Tag)
-//}

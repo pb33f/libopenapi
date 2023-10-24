@@ -259,13 +259,15 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 
 	var lowDoc *v2low.Swagger
 	if d.config == nil {
-		d.config = &datamodel.DocumentConfiguration{
-			AllowFileReferences:   false,
-			AllowRemoteReferences: false,
-		}
+		d.config = datamodel.NewDocumentConfiguration()
 	}
 
-	lowDoc, errs = v2low.CreateDocumentFromConfig(d.info, d.config)
+	var docErr error
+	lowDoc, docErr = v2low.CreateDocumentFromConfig(d.info, d.config)
+
+	if docErr != nil {
+		errs = append(errs, utils.UnwrapErrors(docErr)...)
+	}
 
 	// Do not short-circuit on circular reference errors, so the client
 	// has the option of ignoring them.
