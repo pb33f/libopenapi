@@ -103,7 +103,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelError,
+		Level: slog.LevelDebug,
 	}))
 
 	// setting this baseURL will override the base
