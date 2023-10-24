@@ -260,9 +260,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	// if we're processing, we need to block and wait for the file to be processed
 	// try path first
 	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
-		// we can't block if we only have a single CPU, as we'll deadlock, only when we're running in parallel
+		// we can't block if we only have a couple of CPUs, as we'll deadlock / run super slow, only when we're running in parallel
 		// can we block threads.
-		if runtime.GOMAXPROCS(-1) > 1 {
+		if runtime.GOMAXPROCS(-1) > 2 {
 			i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 			for {
 				if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
