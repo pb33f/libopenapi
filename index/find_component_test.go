@@ -71,6 +71,58 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	assert.Nil(t, c)
 }
 
+func TestFindComponent_RolodexFileParseError(t *testing.T) {
+
+	badData := "I cannot be parsed: \"I am not a YAML file or a JSON file"
+	_ = os.WriteFile("bad.yaml", []byte(badData), 0644)
+	defer os.Remove("bad.yaml")
+
+	badRef := `openapi: 3.1.0
+components:
+  schemas:
+    thing:
+      type: object
+      properties:
+        thong:
+          $ref: 'bad.yaml'
+`
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(badRef), &rootNode)
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "."
+
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&rootNode)
+	cf.Rolodex = rolo
+
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"bad.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+
+	assert.NoError(t, err)
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+
+	indexedErr := rolo.IndexTheRolodex()
+	rolo.BuildIndexes()
+
+	// should error
+	assert.Error(t, indexedErr)
+
+	index := rolo.GetRootIndex()
+
+	assert.Nil(t, index.uri)
+
+	// can't be found.
+	a, _ := index.SearchIndexForReference("bad.yaml")
+	assert.Nil(t, a)
+}
+
 func TestSpecIndex_performExternalLookup_invalidURL(t *testing.T) {
 	yml := `openapi: 3.1.0
 components:
@@ -103,6 +155,13 @@ components:
 	thing := index.FindComponentInRoot("#/$splish/$.../slash#$///./")
 	assert.Nil(t, thing)
 	assert.Len(t, index.GetReferenceIndexErrors(), 0)
+}
+
+func TestSpecIndex_FailFindComponentInRoot(t *testing.T) {
+
+	index := &SpecIndex{}
+	assert.Nil(t, index.FindComponentInRoot("does it even matter? of course not. no"))
+
 }
 
 func TestSpecIndex_LocateRemoteDocsWithRemoteURLHandler(t *testing.T) {

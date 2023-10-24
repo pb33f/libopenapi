@@ -30,21 +30,6 @@ func isHttpMethod(val string) bool {
 	return false
 }
 
-func DetermineReferenceResolveType(ref string) int {
-	if ref != "" && ref[0] == '#' {
-		return LocalResolve
-	}
-	if ref != "" && len(ref) >= 5 && (ref[:5] == "https" || ref[:5] == "http:") {
-		return HttpResolve
-	}
-	if strings.Contains(ref, ".json") ||
-		strings.Contains(ref, ".yaml") ||
-		strings.Contains(ref, ".yml") {
-		return FileResolve
-	}
-	return -1
-}
-
 func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
 	index.root = rootNode
 	index.allRefs = make(map[string]*Reference)
