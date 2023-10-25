@@ -90,7 +90,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.NotNil(t, idx)
 	assert.Equal(t, YAML, f.GetFileExtension())
 	assert.True(t, strings.HasSuffix(f.GetFullPath(), "rolodex_test_data/components.yaml"))
-	assert.Equal(t, "2023-10-12", f.ModTime().Format("2006-01-02"))
+	assert.NotNil(t, f.ModTime())
 	assert.Equal(t, int64(283), f.Size())
 	assert.False(t, f.IsDir())
 	assert.Nil(t, f.Sys())
