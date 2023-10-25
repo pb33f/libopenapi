@@ -253,3 +253,87 @@ paths:
 	index := NewSpecIndexWithConfig(&rootNode, c)
 	assert.Len(t, index.GetReferenceIndexErrors(), 1)
 }
+
+func TestFindComponent_LookupRolodex_GrabRoot(t *testing.T) {
+
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    thang:
+      type: object
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	n := index.lookupRolodex([]string{"bingobango"})
+
+	// if the reference is not found, it should return the root.
+	assert.NotNil(t, n)
+
+}
+
+func TestFindComponentInRoot_GrabDocRoot(t *testing.T) {
+
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    thang:
+      type: object
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	n := index.FindComponentInRoot("#/")
+
+	// if the reference is not found, it should return the root.
+	assert.NotNil(t, n)
+
+}
+
+func TestFindComponent_LookupRolodex_NoURL(t *testing.T) {
+
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    thang:
+      type: object
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	n := index.lookupRolodex(nil)
+
+	// no url, no ref.
+	assert.Nil(t, n)
+
+}

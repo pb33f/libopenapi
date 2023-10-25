@@ -662,3 +662,112 @@ func ExampleResolvingError() {
 	fmt.Printf("%s", re.Error())
 	// Output: je suis une erreur: #/definitions/JeSuisUneErreur [5:21]
 }
+
+func TestDocument_IgnoreArrayCircularReferences(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	resolver.IgnoreArrayCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
+
+}
+
+func TestDocument_IgnorePolyCircularReferences(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	resolver.IgnorePolymorphicCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
+
+}
+
+func TestDocument_IgnorePolyCircularReferences_NoArrayForRef(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    bingo:
+       type: object
+       properties:
+         bango:
+           $ref: "#/components/schemas/ProductCategory"
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          items:
+            anyOf:
+              items:
+                $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	resolver.IgnorePolymorphicCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
+
+}

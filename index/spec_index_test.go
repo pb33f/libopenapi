@@ -563,7 +563,7 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 	docs := index.ExtractExternalDocuments(nil)
 	assert.Nil(t, docs)
 	assert.Nil(t, refs)
-	assert.Nil(t, index.FindComponent("nothing", nil))
+	assert.Nil(t, index.FindComponent("nothing"))
 	assert.Equal(t, -1, index.GetOperationCount())
 	assert.Equal(t, -1, index.GetPathCount())
 	assert.Equal(t, -1, index.GetGlobalTagsCount())
@@ -798,10 +798,10 @@ func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, "#/paths/~1crazy~1ass~1references/get/parameters/0",
-		index.FindComponent("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema", nil).Node.Content[1].Value)
+		index.FindComponent("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema").Node.Content[1].Value)
 
 	assert.Equal(t, "a param",
-		index.FindComponent("#/paths/~1crazy~1ass~1references/get/parameters/0", nil).Node.Content[1].Value)
+		index.FindComponent("#/paths/~1crazy~1ass~1references/get/parameters/0").Node.Content[1].Value)
 }
 
 func TestSpecIndex_FindComponent(t *testing.T) {
@@ -818,7 +818,7 @@ func TestSpecIndex_FindComponent(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Nil(t, index.FindComponent("I-do-not-exist", nil))
+	assert.Nil(t, index.FindComponent("I-do-not-exist"))
 }
 
 func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {

@@ -293,11 +293,6 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	i.logger.Debug("loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 
-	//// no handler func? use the default client.
-	//if i.RemoteHandlerFunc == nil {
-	//	i.RemoteHandlerFunc = i.defaultClient.Get
-	//}
-
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
 

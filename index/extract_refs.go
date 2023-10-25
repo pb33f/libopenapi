@@ -556,7 +556,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	c := make(chan bool)
 
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
-		located := index.FindComponent(ref.FullDefinition, ref.Node)
+		located := index.FindComponent(ref.FullDefinition)
 		if located != nil {
 
 			index.refLock.Lock()

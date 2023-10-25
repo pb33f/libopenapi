@@ -5,7 +5,9 @@ package index
 
 import (
 	"github.com/stretchr/testify/assert"
+	"io/fs"
 	"os"
+	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -78,4 +80,19 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, rolo.indexes, 9)
 
+	// open components.yaml
+	f, rerr := rolo.Open("components.yaml")
+	assert.NoError(t, rerr)
+	assert.Equal(t, "components.yaml", f.Name())
+
+	idx, ierr := f.(*rolodexFile).Index(cf)
+	assert.NoError(t, ierr)
+	assert.NotNil(t, idx)
+	assert.Equal(t, YAML, f.GetFileExtension())
+	assert.True(t, strings.HasSuffix(f.GetFullPath(), "rolodex_test_data/components.yaml"))
+	assert.Equal(t, "2023-10-12", f.ModTime().Format("2006-01-02"))
+	assert.Equal(t, int64(283), f.Size())
+	assert.False(t, f.IsDir())
+	assert.Nil(t, f.Sys())
+	assert.Equal(t, fs.FileMode(0), f.Mode())
 }

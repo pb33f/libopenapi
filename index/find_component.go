@@ -17,7 +17,7 @@ import (
 // FindComponent will locate a component by its reference, returns nil if nothing is found.
 // This method will recurse through remote, local and file references. For each new external reference
 // a new index will be created. These indexes can then be traversed recursively.
-func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Reference {
+func (index *SpecIndex) FindComponent(componentId string) *Reference {
 	if index.root == nil {
 		return nil
 	}
@@ -43,7 +43,6 @@ func (index *SpecIndex) FindComponent(componentId string, parent *yaml.Node) *Re
 
 		// root search
 		return index.FindComponentInRoot(componentId)
-
 	}
 }
 
@@ -55,6 +54,9 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 	}
 
 	name, friendlySearch := utils.ConvertComponentIdIntoFriendlyPathSearch(componentId)
+	if friendlySearch == "$." {
+		friendlySearch = "$"
+	}
 	path, err := yamlpath.NewPath(friendlySearch)
 	if path == nil || err != nil {
 		return nil // no component found
@@ -63,12 +65,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 
 	if len(res) == 1 {
 		resNode := res[0]
-		if res[0].Kind == yaml.DocumentNode {
-			resNode = res[0].Content[0]
-		}
-
 		fullDef := fmt.Sprintf("%s%s", absoluteFilePath, componentId)
-
 		// extract properties
 		ref := &Reference{
 			FullDefinition:        fullDef,
@@ -80,7 +77,6 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 			Index:                 index,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef),
 		}
-
 		return ref
 	}
 	return nil
