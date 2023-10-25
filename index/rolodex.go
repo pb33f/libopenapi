@@ -174,10 +174,12 @@ func (rf *rolodexFile) Size() int64 {
 }
 
 func (rf *rolodexFile) IsDir() bool {
+	// always false.
 	return false
 }
 
 func (rf *rolodexFile) Sys() interface{} {
+	// not implemented.
 	return nil
 }
 

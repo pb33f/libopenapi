@@ -260,7 +260,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	seen = make(map[string]bool)
 
 	seen[ref.Definition] = true
-	for i, r := range relatives {
+	for _, r := range relatives {
 		// check if we have seen this on the journey before, if so! it's circular
 		skip := false
 		for i, j := range journey {
@@ -311,10 +311,6 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if foundRef != nil {
 				original = foundRef
 			}
-			if original == nil {
-				panic(i)
-			}
-
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve && !original.Circular {
 				r.Node.Content = resolved // this is where we perform the actual resolving.
@@ -422,47 +418,32 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						}
 					} else {
 
-						if strings.HasPrefix(exp[0], "http") {
-							fullDef = value // remote component, full def is based on value
+						// local component, full def is based on passed in ref
+						if strings.HasPrefix(ref.FullDefinition, "http") {
+
+							// split the http URI into parts
+							httpExp := strings.Split(ref.FullDefinition, "#/")
+
+							// parse a URL from the full def
+							u, _ := url.Parse(httpExp[0])
+
+							// extract the location of the ref and build a full def path.
+							fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
 						} else {
 
-							if filepath.IsAbs(value) {
-								fullDef = value
-							} else {
+							// split the full def into parts
+							fileDef := strings.Split(ref.FullDefinition, "#/")
+							fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
 
-								// local component, full def is based on passed in ref
-								if strings.HasPrefix(ref.FullDefinition, "http") {
-
-									// split the http URI into parts
-									httpExp := strings.Split(ref.FullDefinition, "#/")
-
-									// parse an URL from the full def
-									u, _ := url.Parse(httpExp[0])
-
-									// extract the location of the ref and build a full def path.
-									fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
-
-								} else {
-
-									// split the full def into parts
-									fileDef := strings.Split(ref.FullDefinition, "#/")
-
-									// extract the location of the ref and build a full def path.
-									//loc, _ := filepath.Abs(fileDef[0]), exp[1]))
-
-									fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
-
-								}
-
-							}
 						}
+
 					}
 				} else {
 
 					definition = value
 
-					// if the reference is an http link
+					// if the reference is a http link
 					if strings.HasPrefix(value, "http") {
 						fullDef = value
 					} else {
@@ -474,7 +455,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							// split the full def into parts
 							fileDef := strings.Split(ref.FullDefinition, "#/")
 
-							// is the file def an http link?
+							// is the file def a http link?
 							if strings.HasPrefix(fileDef[0], "http") {
 
 								u, _ := url.Parse(fileDef[0])
