@@ -92,7 +92,7 @@ type Document struct {
 
 	// Rolodex is the low-level rolodex used when creating this document.
 	// This in an internal structure and not part of the OpenAPI schema.
-	Rolodex *index.Rolodex  `json:"-" yaml:"-"`
+	Rolodex *index.Rolodex `json:"-" yaml:"-"`
 	low     *low.Document
 }
 

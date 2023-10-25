@@ -348,6 +348,12 @@ func (r *Rolodex) IndexTheRolodex() error {
 		for e := range errs {
 			caughtErrors = append(caughtErrors, errs[e])
 		}
+		if len(idx.resolver.GetIgnoredCircularPolyReferences()) > 0 {
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, idx.resolver.GetIgnoredCircularPolyReferences()...)
+		}
+		if len(idx.resolver.GetIgnoredCircularArrayReferences()) > 0 {
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, idx.resolver.GetIgnoredCircularArrayReferences()...)
+		}
 	}
 
 	// indexed and built every supporting file, we can build the root index (our entry point)
@@ -386,6 +392,12 @@ func (r *Rolodex) IndexTheRolodex() error {
 			r.circChecked = true
 			for e := range resolvingErrors {
 				caughtErrors = append(caughtErrors, resolvingErrors[e])
+			}
+			if len(resolver.GetIgnoredCircularPolyReferences()) > 0 {
+				r.ignoredCircularReferences = append(r.ignoredCircularReferences, resolver.GetIgnoredCircularPolyReferences()...)
+			}
+			if len(resolver.GetIgnoredCircularArrayReferences()) > 0 {
+				r.ignoredCircularReferences = append(r.ignoredCircularReferences, resolver.GetIgnoredCircularArrayReferences()...)
 			}
 		}
 		r.rootIndex = index
