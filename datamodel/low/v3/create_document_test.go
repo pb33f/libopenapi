@@ -461,7 +461,7 @@ func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	securitySchemes := components.SecuritySchemes.Value
-	assert.Len(t, securitySchemes, 3)
+	assert.Len(t, securitySchemes, 5)
 
 	apiKey := components.FindSecurityScheme("APIKeyScheme").Value
 	assert.NotNil(t, apiKey)
@@ -472,6 +472,14 @@ func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
 	assert.Equal(t, "an oAuth security scheme", oAuth.Description.Value)
 	assert.NotNil(t, oAuth.Flows.Value.Implicit.Value)
 	assert.NotNil(t, oAuth.Flows.Value.AuthorizationCode.Value)
+
+	basic := components.FindSecurityScheme("x-basic").Value
+	assert.NotNil(t, basic)
+	assert.Equal(t, "a basic security scheme", basic.Description.Value)
+
+	bearer := components.FindSecurityScheme("X-Bearer").Value
+	assert.NotNil(t, bearer)
+	assert.Equal(t, "a bearer security scheme", bearer.Description.Value)
 
 	scopes := oAuth.Flows.Value.Implicit.Value.Scopes.Value
 	assert.NotNil(t, scopes)

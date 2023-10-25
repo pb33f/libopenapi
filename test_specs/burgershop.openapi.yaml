@@ -386,6 +386,14 @@ components:
           scopes:
             write:burgers: modify burgers and stuff
             read:burgers: read all the burgers
+    x-basic:
+      description: a basic security scheme
+      type: http
+      scheme: basic
+    X-Bearer:
+      description: a bearer security scheme
+      type: http
+      scheme: bearer
   parameters:
     BurgerHeader:
       in: header

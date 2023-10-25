@@ -275,7 +275,7 @@ func TestNewDocument_Components_Responses(t *testing.T) {
 func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Len(t, h.Components.SecuritySchemes, 3)
+	assert.Len(t, h.Components.SecuritySchemes, 5)
 
 	api := h.Components.SecuritySchemes["APIKeyScheme"]
 	assert.Equal(t, "an apiKey security scheme", api.Description)
@@ -294,6 +294,14 @@ func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 	assert.Len(t, oAuth.Flows.Implicit.Scopes, 2)
 	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes["read:burgers"])
 	assert.Equal(t, "https://pb33f.io/oauth", oAuth.Flows.AuthorizationCode.AuthorizationUrl)
+
+	basic := h.Components.SecuritySchemes["x-basic"]
+	assert.NotNil(t, basic)
+	assert.Equal(t, "a basic security scheme", basic.Description)
+
+	bearer := h.Components.SecuritySchemes["X-Bearer"]
+	assert.NotNil(t, bearer)
+	assert.Equal(t, "a bearer security scheme", bearer.Description)
 
 	// check the lowness is low.
 	assert.Equal(t, 380, oAuth.Flows.GoLow().Implicit.Value.Scopes.KeyNode.Line)
