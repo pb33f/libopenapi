@@ -160,7 +160,7 @@ func (rf *rolodexFile) ModTime() time.Time {
 	if rf.remoteFile != nil {
 		return rf.remoteFile.lastModified
 	}
-	return time.Time{}
+	return time.Now()
 }
 
 func (rf *rolodexFile) Size() int64 {

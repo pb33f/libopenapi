@@ -14,6 +14,18 @@ import (
 	"time"
 )
 
+func TestRolodex_NewRolodex(t *testing.T) {
+	c := CreateOpenAPIIndexConfig()
+	rolo := NewRolodex(c)
+	assert.NotNil(t, rolo)
+	assert.NotNil(t, rolo.indexConfig)
+	assert.Nil(t, rolo.GetIgnoredCircularReferences())
+	assert.Equal(t, rolo.GetIndexingDuration(), time.Duration(0))
+	assert.Nil(t, rolo.GetRootIndex())
+	assert.Len(t, rolo.GetIndexes(), 0)
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+}
+
 func TestRolodex_LocalNativeFS(t *testing.T) {
 
 	t.Parallel()
@@ -59,6 +71,140 @@ func TestRolodex_LocalNonNativeFS(t *testing.T) {
 	assert.NoError(t, rerr)
 
 	assert.Equal(t, "hip", f.GetContent())
+}
+
+func TestRolodex_rolodexFileTests(t *testing.T) {
+	r := &rolodexFile{}
+	assert.Equal(t, "", r.Name())
+	assert.Nil(t, r.GetIndex())
+	assert.Equal(t, "", r.GetContent())
+	assert.Equal(t, "", r.GetFullPath())
+	assert.Equal(t, time.Now().UnixMilli(), r.ModTime().UnixMilli())
+	assert.Equal(t, int64(0), r.Size())
+	assert.False(t, r.IsDir())
+	assert.Nil(t, r.Sys())
+	assert.Equal(t, r.Mode(), os.FileMode(0))
+	n, e := r.GetContentAsYAMLNode()
+	assert.Len(t, r.GetErrors(), 0)
+	assert.NoError(t, e)
+	assert.Nil(t, n)
+	assert.Equal(t, UNSUPPORTED, r.GetFileExtension())
+}
+
+func TestRolodex_NotRolodexFS(t *testing.T) {
+
+	nonRoloFS := os.DirFS(".")
+	cf := CreateOpenAPIIndexConfig()
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(".", nonRoloFS)
+
+	err := rolo.IndexTheRolodex()
+
+	assert.Error(t, err)
+	assert.Equal(t, "rolodex file system is not a RolodexFS", err.Error())
+
+}
+
+func TestRolodex_IndexCircularLookup(t *testing.T) {
+
+	offToOz := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      $ref: "../test_specs/circular-tests.yaml#/components/schemas/One"`
+
+	_ = os.WriteFile("off_to_oz.yaml", []byte(offToOz), 0644)
+	defer os.Remove("off_to_oz.yaml")
+
+	baseDir := "../"
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"off_to_oz.yaml",
+			"test_specs/circular-tests.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(baseDir, fileFS)
+	err = rolodex.IndexTheRolodex()
+	assert.Error(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 3)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 0)
+}
+
+func TestRolodex_IndexCircularLookup_ignorePoly(t *testing.T) {
+
+	spinny := `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spinny), &rootNode)
+
+	cf := CreateOpenAPIIndexConfig()
+	//cf.IgnoreArrayCircularReferences = true
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+	rolodex.SetRootNode(&rootNode)
+	err := rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+}
+
+func TestRolodex_IndexCircularLookup_ignoreArray(t *testing.T) {
+
+	spinny := `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spinny), &rootNode)
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnoreArrayCircularReferences = true
+	rolodex := NewRolodex(cf)
+	rolodex.SetRootNode(&rootNode)
+	err := rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
 }
 
 func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
@@ -110,62 +256,6 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
 }
-
-//
-//func TestRolodex_SimpleTest_OneDocWithCircles(t *testing.T) {
-//
-//	baseDir := "rolodex_test_data"
-//
-//	fileFS, err := NewLocalFS(baseDir, os.DirFS(baseDir))
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	cf := CreateOpenAPIIndexConfig()
-//	cf.BasePath = baseDir
-//	cf.IgnoreArrayCircularReferences = true
-//	cf.IgnorePolymorphicCircularReferences = true
-//
-//	rolo := NewRolodex(cf)
-//
-//	circularDoc, _ := os.ReadFile("../test_specs/circular-tests.yaml")
-//	var rootNode yaml.Node
-//	_ = yaml.Unmarshal(circularDoc, &rootNode)
-//	rolo.SetRootNode(&rootNode)
-//
-//	rolo.AddLocalFS(baseDir, fileFS)
-//
-//	err = rolo.IndexTheRolodex()
-//
-//	assert.NotZero(t, rolo.GetIndexingDuration())
-//	assert.Nil(t, rolo.GetRootIndex())
-//	assert.Len(t, rolo.GetIndexes(), 9)
-//	assert.NoError(t, err)
-//	assert.Len(t, rolo.indexes, 9)
-//
-//	// open components.yaml
-//	f, rerr := rolo.Open("components.yaml")
-//	assert.NoError(t, rerr)
-//	assert.Equal(t, "components.yaml", f.Name())
-//
-//	idx, ierr := f.(*rolodexFile).Index(cf)
-//	assert.NoError(t, ierr)
-//	assert.NotNil(t, idx)
-//	assert.Equal(t, YAML, f.GetFileExtension())
-//	assert.True(t, strings.HasSuffix(f.GetFullPath(), "rolodex_test_data/components.yaml"))
-//	assert.NotNil(t, f.ModTime())
-//	assert.Equal(t, int64(283), f.Size())
-//	assert.False(t, f.IsDir())
-//	assert.Nil(t, f.Sys())
-//	assert.Equal(t, fs.FileMode(0), f.Mode())
-//	assert.Len(t, f.GetErrors(), 0)
-//
-//	// re-run the index should be a no-op
-//	assert.NoError(t, rolo.IndexTheRolodex())
-//	rolo.CheckForCircularReferences()
-//	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
-//
-//}
 
 func TestRolodex_CircularReferencesPolyIgnored(t *testing.T) {
 
