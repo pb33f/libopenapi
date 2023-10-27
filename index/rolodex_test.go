@@ -7,6 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -140,6 +143,187 @@ components:
 	assert.Error(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 3)
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 0)
+}
+
+func TestRolodex_IndexCircularLookup_AroundWeGo(t *testing.T) {
+
+	there := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: object
+      required:
+        - where
+      properties:
+        where:
+          $ref: "back-again.yaml#/components/schemas/CircleTest/properties/muffins"`
+
+	backagain := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         $ref: "there.yaml#/components/schemas/CircleTest"`
+
+	_ = os.WriteFile("there.yaml", []byte(there), 0644)
+	_ = os.WriteFile("back-again.yaml", []byte(backagain), 0644)
+	defer os.Remove("there.yaml")
+	defer os.Remove("back-again.yaml")
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"there.yaml",
+			"back-again.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(baseDir, fileFS)
+	err = rolodex.IndexTheRolodex()
+	assert.Error(t, err)
+	assert.Equal(t, "infinite circular reference detected: CircleTest: CircleTest ->  -> CircleTest [5:7]", err.Error())
+	assert.Len(t, rolodex.GetCaughtErrors(), 1)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 0)
+}
+
+func TestRolodex_IndexCircularLookup_AroundWeGo_IgnorePoly(t *testing.T) {
+
+	fourth := `type: "object"
+properties:
+  name:
+    type: "string"
+  children:
+    type: "object"
+    anyOf:
+      - $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/first.yaml"
+required:
+  - children`
+
+	third := `type: "object"
+properties:
+  name:
+    type: "string"
+  children:
+    type: "object"
+    anyOf:
+      - $ref: "second.yaml#/components/schemas/CircleTest"
+required:
+  - children`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "third.yaml"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         $ref: "second.yaml#/components/schemas/CircleTest"`
+
+	_ = os.WriteFile("third.yaml", []byte(third), 0644)
+	_ = os.WriteFile("second.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first.yaml", []byte(first), 0644)
+	_ = os.WriteFile("fourth.yaml", []byte(fourth), 0644)
+	defer os.Remove("first.yaml")
+	defer os.Remove("second.yaml")
+	defer os.Remove("third.yaml")
+	defer os.Remove("fourth.yaml")
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			//		"first.yaml",
+			//		"second.yaml",
+			//		"third.yaml",
+			"fourth.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(baseDir, fileFS)
+
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third))
+	defer srv.Close()
+
+	u, _ := url.Parse(srv.URL)
+	cf.BaseURL = u
+	remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	assert.NoError(t, rErr)
+
+	rolodex.AddRemoteFS(srv.URL, remoteFS)
+
+	err = rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+	// there are two circles. Once when reading the journey from first.yaml, and then a second internal look in second.yaml
+	// the index won't find three, because by the time that 'three' has been read, it's already been indexed and the journey
+	// discovered.
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 2)
+}
+
+func test_rolodexDeepRefServer(a, b, c []byte) *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 12:28:00 GMT")
+		if req.URL.String() == "/first.yaml" {
+			_, _ = rw.Write(a)
+			return
+		}
+		if req.URL.String() == "/second.yaml" {
+			_, _ = rw.Write(b)
+			return
+		}
+		if req.URL.String() == "/third.yaml" {
+			_, _ = rw.Write(c)
+			return
+		}
+		rw.WriteHeader(http.StatusInternalServerError)
+		rw.Write([]byte("500 - COMPUTAR SAYS NO!"))
+	}))
 }
 
 func TestRolodex_IndexCircularLookup_ignorePoly(t *testing.T) {
