@@ -286,7 +286,7 @@ components:
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
 
-	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third))
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third), nil)
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -307,7 +307,7 @@ components:
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
 }
 
-func test_rolodexDeepRefServer(a, b, c []byte) *httptest.Server {
+func test_rolodexDeepRefServer(a, b, c, d []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 12:28:00 GMT")
 		if req.URL.String() == "/first.yaml" {
@@ -322,12 +322,42 @@ func test_rolodexDeepRefServer(a, b, c []byte) *httptest.Server {
 			_, _ = rw.Write(c)
 			return
 		}
+		if req.URL.String() == "/fourth.yaml" {
+			_, _ = rw.Write(d)
+			return
+		}
 		rw.WriteHeader(http.StatusInternalServerError)
 		rw.Write([]byte("500 - COMPUTAR SAYS NO!"))
 	}))
 }
 
-func TestRolodex_IndexCircularLookup_PolyHttpOnly(t *testing.T) {
+func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_WithFiles(t *testing.T) {
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          oneOf:
+            items:
+              $ref: "second.yaml#/components/schemas/CircleTest"
+      required:
+        - "name"
+        - "children"
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "#/components/schemas/CircleTest"`
 
 	second := `openapi: 3.1.0
 components:
@@ -339,8 +369,113 @@ components:
           type: "string"
         children:
           type: "object"
+          oneOf:
+            items:
+              $ref: "#/components/schemas/CircleTest"
+      required:
+        - "name"
+        - "children"
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "#/components/schemas/CircleTest"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	_ = os.WriteFile("second.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first.yaml", []byte(first), 0644)
+	defer os.Remove("first.yaml")
+	defer os.Remove("second.yaml")
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"first.yaml",
+			"second.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolodex.AddLocalFS(baseDir, fileFS)
+	rolodex.SetRootNode(&rootNode)
+
+	err = rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+	// multiple loops across two files
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
+}
+
+func TestRolodex_IndexCircularLookup_PolyItemsHttpOnly(t *testing.T) {
+
+	third := `type: string`
+	fourth := `components:
+  schemas:
+    Chicken:
+      type: string`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    Loopy:
+      type: "object"
+      properties:
+        cake:
+          type: "string"
           anyOf:
-            - $ref: "https://kjahsdkjahdkjashdas.com/first.yaml#/components/schemas/StartTest"
+            items:
+              $ref: "https://I-love-a-good-cake-and-pizza.com/third.yaml"
+        pizza:
+          type: "string"
+          anyOf:
+            items:
+              $ref: "third.yaml"
+        same:
+          type: "string"
+          oneOf:
+            items:
+              $ref: "https://kjahsdkjahdkjashdas.com/fourth.yaml#/components/schemas/Chicken"
+        name:
+          type: "string"
+          oneOf:
+            items:
+              $ref: "https://kjahsdkjahdkjashdas.com/third.yaml#/"
+        children:
+          type: "object"
+          allOf:
+            items:
+              $ref: "first.yaml#/components/schemas/StartTest"
+      required:
+        - "name"
+        - "children"
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          oneOf:
+            items:
+              $ref: "#/components/schemas/Loopy"
       required:
         - "name"
         - "children"`
@@ -365,7 +500,7 @@ components:
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), nil)
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third), []byte(fourth))
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -377,6 +512,102 @@ components:
 	rolodex.SetRootNode(&rootNode)
 
 	err := rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+	// should only be a single loop.
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 6)
+}
+
+func TestRolodex_IndexCircularLookup_PolyItemsFileOnly_LocalIncluded(t *testing.T) {
+
+	third := `type: string`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    LoopyMcLoopFace:
+      type: "object"
+      properties:
+        hoop:
+          type: object
+          allOf:
+            items:
+              $ref: "third.yaml"
+        boop:
+          type: object
+          allOf:
+            items:
+              $ref: "$PWD/third.yaml"
+        loop:
+          type: object
+          oneOf:
+            items:
+              $ref: "#/components/schemas/LoopyMcLoopFace"
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "#/components/schemas/LoopyMcLoopFace"
+      required:
+        - "name"
+        - "children"`
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "second.yaml#/components/schemas/CircleTest"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	cws, _ := os.Getwd()
+	_ = os.WriteFile("second.yaml", []byte(strings.ReplaceAll(second, "$PWD", cws)), 0644)
+	_ = os.WriteFile("first.yaml", []byte(first), 0644)
+	_ = os.WriteFile("third.yaml", []byte(third), 0644)
+
+	defer os.Remove("first.yaml")
+	defer os.Remove("second.yaml")
+	defer os.Remove("third.yaml")
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"first.yaml",
+			"second.yaml",
+			"third.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolodex.AddLocalFS(baseDir, fileFS)
+	rolodex.SetRootNode(&rootNode)
+
+	err = rolodex.IndexTheRolodex()
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 

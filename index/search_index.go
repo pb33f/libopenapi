@@ -101,6 +101,11 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 	// check the rolodex for the reference.
 	if roloLookup != "" {
+
+		if strings.Contains(roloLookup, "#") {
+			roloLookup = strings.Split(roloLookup, "#")[0]
+		}
+
 		rFile, err := index.rolodex.Open(roloLookup)
 		if err != nil {
 			return nil, index, ctx
