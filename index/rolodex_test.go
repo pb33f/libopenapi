@@ -327,6 +327,96 @@ func test_rolodexDeepRefServer(a, b, c []byte) *httptest.Server {
 	}))
 }
 
+func TestRolodex_IndexCircularLookup_PolyHttpOnly(t *testing.T) {
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "https://kjahsdkjahdkjashdas.com/first.yaml#/components/schemas/StartTest"
+      required:
+        - "name"
+        - "children"`
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/components/schemas/CircleTest"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), nil)
+	defer srv.Close()
+
+	u, _ := url.Parse(srv.URL)
+	cf.BaseURL = u
+	remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	assert.NoError(t, rErr)
+
+	rolodex.AddRemoteFS(srv.URL, remoteFS)
+	rolodex.SetRootNode(&rootNode)
+
+	err := rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+	// should only be a single loop.
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+}
+
+func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "https://raw.githubusercontent.com/pb33f/libopenapi/main/test_specs/circular-tests.yaml#/components/schemas/One"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+
+	remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	assert.NoError(t, rErr)
+
+	rolodex.AddRemoteFS("", remoteFS)
+	rolodex.SetRootNode(&rootNode)
+
+	err := rolodex.IndexTheRolodex()
+	assert.Error(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 1)
+}
+
 func TestRolodex_IndexCircularLookup_ignorePoly(t *testing.T) {
 
 	spinny := `openapi: 3.1.0
@@ -350,7 +440,6 @@ components:
 	_ = yaml.Unmarshal([]byte(spinny), &rootNode)
 
 	cf := CreateOpenAPIIndexConfig()
-	//cf.IgnoreArrayCircularReferences = true
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 	rolodex.SetRootNode(&rootNode)
