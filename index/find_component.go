@@ -44,6 +44,7 @@ func (index *SpecIndex) FindComponent(componentId string) *Reference {
 		// root search
 		return index.FindComponentInRoot(componentId)
 	}
+	return nil
 }
 
 func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index *SpecIndex) *Reference {

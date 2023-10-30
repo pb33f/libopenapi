@@ -264,11 +264,17 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		// can we block threads.
 		if runtime.GOMAXPROCS(-1) > 2 {
 			i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
-			for {
-				if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
-					return wf.(*RemoteFile), nil
+
+			f := make(chan *RemoteFile)
+			fwait := func(path string, c chan *RemoteFile) {
+				for {
+					if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
+						c <- wf.(*RemoteFile)
+					}
 				}
 			}
+			go fwait(remoteParsedURL.Path, f)
+			return <-f, nil
 		}
 	}
 
@@ -366,12 +372,16 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		copiedCfg.BaseURL = newBaseURL
 	}
 	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
-	idx, idxError := remoteFile.Index(&copiedCfg)
 
 	if len(remoteFile.data) > 0 {
 		i.logger.Debug("successfully loaded file", "file", absolutePath)
 	}
 	//i.seekRelatives(remoteFile)
+	// remove from processing
+	i.ProcessingFiles.Delete(remoteParsedURL.Path)
+	i.Files.Store(absolutePath, remoteFile)
+
+	idx, idxError := remoteFile.Index(&copiedCfg)
 
 	if idxError != nil && idx == nil {
 		i.remoteErrors = append(i.remoteErrors, idxError)
@@ -382,10 +392,6 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		idx.resolver = resolver
 		idx.BuildIndex()
 	}
-
-	// remove from processing
-	i.ProcessingFiles.Delete(remoteParsedURL.Path)
-	i.Files.Store(absolutePath, remoteFile)
 
 	//if !i.remoteRunning {
 	return remoteFile, errors.Join(i.remoteErrors...)

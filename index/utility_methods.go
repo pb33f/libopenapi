@@ -103,11 +103,11 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 
 // extractRequiredReferenceProperties returns a map of definition names to the property or properties which reference it within a node
 func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
-	isRef, _, defPath := utils.IsNodeRefValue(requiredPropDefNode)
+	isRef, _, _ := utils.IsNodeRefValue(requiredPropDefNode)
 	if !isRef {
 		_, defItems := utils.FindKeyNodeTop("items", requiredPropDefNode.Content)
 		if defItems != nil {
-			isRef, _, defPath = utils.IsNodeRefValue(defItems)
+			isRef, _, _ = utils.IsNodeRefValue(defItems)
 		}
 	}
 
@@ -115,8 +115,10 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 		return reqRefProps
 	}
 
+	defPath := fulldef
+
 	// explode defpath
-	exp := strings.Split(defPath, "#/")
+	exp := strings.Split(fulldef, "#/")
 	if len(exp) == 2 {
 		if exp[0] != "" {
 			if !strings.HasPrefix(exp[0], "http") {
@@ -141,6 +143,7 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 
 			}
 		}
+
 	} else {
 
 		if strings.HasPrefix(exp[0], "http") {

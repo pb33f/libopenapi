@@ -330,6 +330,8 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 		return false, visitedDefinitions
 	}
 
+	// TODO: pick up here, required ref properties are not extracted correctly.
+
 	for refDefinition := range ref.RequiredRefProperties {
 		r, _ := resolver.specIndex.SearchIndexForReference(refDefinition)
 		if initialRef != nil && initialRef.Definition == r.Definition {
@@ -399,6 +401,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							u, _ := url.Parse(httpExp[0])
 							abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
 							u.Path = abs
+							u.Fragment = ""
 							fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
 						} else {
@@ -412,7 +415,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								fileDef := strings.Split(ref.FullDefinition, "#/")
 
 								// extract the location of the ref and build a full def path.
-								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+								abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+								fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
+
 							}
 
 						}
@@ -518,11 +523,30 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						if _, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-									mappedRefs := resolver.specIndex.GetMappedReferences()[l]
+
+									// create full definition lookup based on ref.
+									def := ref.FullDefinition
+									exp := strings.Split(ref.FullDefinition, "#/")
+									if len(exp) == 2 {
+										if exp[0] != "" {
+											if !strings.HasPrefix(ref.FullDefinition, "http") {
+												if !filepath.IsAbs(exp[0]) {
+													abs, _ := filepath.Abs(fmt.Sprintf("%s#/%s", filepath.Dir(ref.FullDefinition), exp[0]))
+													def = fmt.Sprintf("%s#/%s", abs, l)
+												}
+											}
+										}
+									} else {
+										if !strings.Contains(ref.FullDefinition, "#") {
+
+										}
+									}
+
+									mappedRefs := resolver.specIndex.GetMappedReferences()[def]
 									if mappedRefs != nil && !mappedRefs.Circular {
 										circ := false
 										for f := range journey {
-											if journey[f].Definition == mappedRefs.Definition {
+											if journey[f].FullDefinition == mappedRefs.FullDefinition {
 												circ = true
 												break
 											}
@@ -560,11 +584,78 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-									mappedRefs := resolver.specIndex.GetMappedReferences()[l]
+
+									// create full definition lookup based on ref.
+									def := l
+									exp := strings.Split(l, "#/")
+									if len(exp) == 2 {
+										if exp[0] != "" {
+											if !strings.HasPrefix(exp[0], "http") {
+												if !filepath.IsAbs(exp[0]) {
+
+													if strings.HasPrefix(ref.FullDefinition, "http") {
+
+														u, _ := url.Parse(ref.FullDefinition)
+														p, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+														u.Path = p
+														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+													} else {
+														abs, _ := filepath.Abs(filepath.Join(filepath.Dir(ref.FullDefinition), exp[0]))
+														def = fmt.Sprintf("%s#/%s", abs, exp[1])
+													}
+												}
+											} else {
+												panic("mummmmma mia")
+											}
+
+										} else {
+											if strings.HasPrefix(ref.FullDefinition, "http") {
+												u, _ := url.Parse(ref.FullDefinition)
+												u.Fragment = ""
+												def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+											} else {
+												if strings.HasPrefix(ref.FullDefinition, "#/") {
+													def = fmt.Sprintf("#/%s", exp[1])
+												} else {
+													def = fmt.Sprintf("%s#/%s", ref.FullDefinition, exp[1])
+												}
+											}
+										}
+									} else {
+
+										if strings.HasPrefix(l, "http") {
+											def = l
+										} else {
+											if filepath.IsAbs(l) {
+												def = l
+											} else {
+
+												// check if were dealing with a remote file
+												if strings.HasPrefix(ref.FullDefinition, "http") {
+
+													// split the url.
+													u, _ := url.Parse(ref.FullDefinition)
+													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
+													u.Path = abs
+													u.Fragment = ""
+													def = u.String()
+												} else {
+													lookupRef := strings.Split(ref.FullDefinition, "#/")
+													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(lookupRef[0]), l))
+													def = abs
+												}
+											}
+										}
+										//panic("oh no")
+									}
+
+									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
 									if mappedRefs != nil && !mappedRefs.Circular {
 										circ := false
 										for f := range journey {
-											if journey[f].Definition == mappedRefs.Definition {
+											if journey[f].FullDefinition == mappedRefs.FullDefinition {
 												circ = true
 												break
 											}
