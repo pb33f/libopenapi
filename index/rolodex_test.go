@@ -203,21 +203,29 @@ components:
 
 func TestRolodex_IndexCircularLookup_AroundWeGo_IgnorePoly(t *testing.T) {
 
+	fifth := "type: string"
+
 	fourth := `type: "object"
 properties:
   name:
     type: "string"
   children:
-    type: "object"
-    anyOf:
-      - $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/first.yaml"
-required:
-  - children`
+    type: "object"`
 
 	third := `type: "object"
 properties:
   name:
-    type: "string"
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml"
+  tame: 
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fifth.yaml#/"
+  blame:
+    $ref: "fifth.yaml"
+
+  fame: 
+     $ref: "$PWD/fourth.yaml#/properties/name"
+  game:
+    $ref: "$PWD/fifth.yaml"
+
   children:
     type: "object"
     anyOf:
@@ -253,14 +261,18 @@ components:
         muffins:
          $ref: "second.yaml#/components/schemas/CircleTest"`
 
-	_ = os.WriteFile("third.yaml", []byte(third), 0644)
+	cwd, _ := os.Getwd()
+
+	_ = os.WriteFile("third.yaml", []byte(strings.ReplaceAll(third, "$PWD", cwd)), 0644)
 	_ = os.WriteFile("second.yaml", []byte(second), 0644)
 	_ = os.WriteFile("first.yaml", []byte(first), 0644)
 	_ = os.WriteFile("fourth.yaml", []byte(fourth), 0644)
+	_ = os.WriteFile("fifth.yaml", []byte(fifth), 0644)
 	defer os.Remove("first.yaml")
 	defer os.Remove("second.yaml")
 	defer os.Remove("third.yaml")
 	defer os.Remove("fourth.yaml")
+	defer os.Remove("fifth.yaml")
 
 	baseDir := "."
 
@@ -272,6 +284,7 @@ components:
 			"second.yaml",
 			"third.yaml",
 			"fourth.yaml",
+			"fifth.yaml",
 		},
 	}
 
@@ -286,7 +299,8 @@ components:
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
 
-	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third), nil)
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
+		[]byte(strings.ReplaceAll(third, "$PWD", cwd)), []byte(fourth), []byte(fifth))
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -300,14 +314,13 @@ components:
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
-	// there are three circles. Once when reading the journey from first.yaml, and then a second internal look in second.yaml
+	// there are two circles. Once when reading the journey from first.yaml, and then a second internal look in second.yaml
 	// the index won't find three, because by the time that 'three' has been read, it's already been indexed and the journey
-	// discovered. The third is the entirely 'new' circle that is sucked down via `fourth.yaml` from the simulated remote server, which contains
-	// all the same specs, it's just they are now being sucked in remotely.
-	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
+	// discovered.
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 2)
 }
 
-func test_rolodexDeepRefServer(a, b, c, d []byte) *httptest.Server {
+func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 12:28:00 GMT")
 		if req.URL.String() == "/first.yaml" {
@@ -324,6 +337,10 @@ func test_rolodexDeepRefServer(a, b, c, d []byte) *httptest.Server {
 		}
 		if req.URL.String() == "/fourth.yaml" {
 			_, _ = rw.Write(d)
+			return
+		}
+		if req.URL.String() == "/fifth.yaml" {
+			_, _ = rw.Write(e)
 			return
 		}
 		rw.WriteHeader(http.StatusInternalServerError)
@@ -491,7 +508,10 @@ components:
         muffins:
          type: object
          anyOf:
-           - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/components/schemas/CircleTest"`
+           - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/components/schemas/CircleTest"
+           - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/"
+           - $ref: "https://kjahsdkjahdkjashdas.com/third.yaml"
+`
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -500,7 +520,7 @@ components:
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third), []byte(fourth))
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second), []byte(third), []byte(fourth), nil)
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -516,7 +536,7 @@ components:
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
 	// should only be a single loop.
-	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
 	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 6)
 }
 
@@ -569,14 +589,15 @@ components:
         muffins:
          type: object
          anyOf:
-           - $ref: "second.yaml#/components/schemas/CircleTest"`
+           - $ref: "second.yaml#/components/schemas/CircleTest"
+           - $ref: "$PWD/third.yaml"`
 
 	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(first), &rootNode)
-
 	cws, _ := os.Getwd()
+
+	_ = yaml.Unmarshal([]byte(strings.ReplaceAll(first, "$PWD", cws)), &rootNode)
 	_ = os.WriteFile("second.yaml", []byte(strings.ReplaceAll(second, "$PWD", cws)), 0644)
-	_ = os.WriteFile("first.yaml", []byte(first), 0644)
+	_ = os.WriteFile("first.yaml", []byte(strings.ReplaceAll(first, "$PWD", cws)), 0644)
 	_ = os.WriteFile("third.yaml", []byte(third), 0644)
 
 	defer os.Remove("first.yaml")
