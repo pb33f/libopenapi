@@ -245,7 +245,7 @@ components:
 	first := `openapi: 3.1.0
 components:
   schemas:
-    CircleTest:
+    StartTest:
       type: object
       required:
         - muffins
@@ -268,9 +268,9 @@ components:
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			//		"first.yaml",
-			//		"second.yaml",
-			//		"third.yaml",
+			"first.yaml",
+			"second.yaml",
+			"third.yaml",
 			"fourth.yaml",
 		},
 	}
@@ -300,10 +300,11 @@ components:
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
-	// there are two circles. Once when reading the journey from first.yaml, and then a second internal look in second.yaml
+	// there are three circles. Once when reading the journey from first.yaml, and then a second internal look in second.yaml
 	// the index won't find three, because by the time that 'three' has been read, it's already been indexed and the journey
-	// discovered.
-	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 2)
+	// discovered. The third is the entirely 'new' circle that is sucked down via `fourth.yaml` from the simulated remote server, which contains
+	// all the same specs, it's just they are now being sucked in remotely.
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
 }
 
 func test_rolodexDeepRefServer(a, b, c []byte) *httptest.Server {

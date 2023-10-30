@@ -225,7 +225,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							} else {
 
 								// if the index has a base path, use that to resolve the path
-								if index.config.BasePath != "" {
+								if index.config.BasePath != "" && index.config.BaseURL == nil {
 									abs, _ := filepath.Abs(filepath.Join(index.config.BasePath, uri[0]))
 									if abs != defRoot {
 										abs, _ = filepath.Abs(filepath.Join(defRoot, uri[0]))
@@ -234,12 +234,18 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 									componentName = fmt.Sprintf("#/%s", uri[1])
 								} else {
 									// if the index has a base URL, use that to resolve the path.
-									if index.config.BaseURL != nil {
+									if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
 
 										u := *index.config.BaseURL
 										abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
 										u.Path = abs
 										fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
+										componentName = fmt.Sprintf("#/%s", uri[1])
+
+									} else {
+
+										abs, _ := filepath.Abs(filepath.Join(defRoot, uri[0]))
+										fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
 										componentName = fmt.Sprintf("#/%s", uri[1])
 									}
 								}

@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 )
@@ -272,21 +273,24 @@ func (r *Rolodex) IndexTheRolodex() error {
 			copiedConfig.AvoidBuildIndex = true // we will build out everything in two steps.
 			idx, err := idxFile.Index(&copiedConfig)
 
-			// for each index, we need a resolver
-			resolver := NewResolver(idx)
-
-			// check if the config has been set to ignore circular references in arrays and polymorphic schemas
-			if copiedConfig.IgnoreArrayCircularReferences {
-				resolver.IgnoreArrayCircularReferences()
-			}
-			if copiedConfig.IgnorePolymorphicCircularReferences {
-				resolver.IgnorePolymorphicCircularReferences()
-			}
-
 			if err != nil {
 				errChan <- err
 			}
-			indexChan <- idx
+
+			if err == nil {
+				// for each index, we need a resolver
+				resolver := NewResolver(idx)
+
+				// check if the config has been set to ignore circular references in arrays and polymorphic schemas
+				if copiedConfig.IgnoreArrayCircularReferences {
+					resolver.IgnoreArrayCircularReferences()
+				}
+				if copiedConfig.IgnorePolymorphicCircularReferences {
+					resolver.IgnorePolymorphicCircularReferences()
+				}
+				indexChan <- idx
+			}
+
 		}
 
 		if lfs, ok := fs.(RolodexFS); ok {
@@ -339,6 +343,11 @@ func (r *Rolodex) IndexTheRolodex() error {
 	// now that we have indexed all the files, we can build the index.
 	r.indexes = indexBuildQueue
 	//if !r.indexConfig.AvoidBuildIndex {
+
+	sort.Slice(indexBuildQueue, func(i, j int) bool {
+		return indexBuildQueue[i].specAbsolutePath < indexBuildQueue[j].specAbsolutePath
+	})
+
 	for _, idx := range indexBuildQueue {
 		idx.BuildIndex()
 		if r.indexConfig.AvoidCircularReferenceCheck {

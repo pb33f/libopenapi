@@ -138,7 +138,18 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				// does component exist in the root?
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {
-					found := idx.FindComponent(ref)
+					var found *Reference
+					exp := strings.Split(ref, "#/")
+					compId := ref
+
+					if len(exp) == 2 {
+						compId = fmt.Sprintf("#/%s", exp[1])
+						found = FindComponent(node, compId, exp[0], idx)
+					}
+					if found == nil {
+						found = idx.FindComponent(ref)
+					}
+
 					if found != nil {
 						idx.cache.Store(ref, found)
 						index.cache.Store(ref, found)
