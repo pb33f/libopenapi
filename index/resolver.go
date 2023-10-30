@@ -395,21 +395,21 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							fullDef = value
 						} else {
 
-							if strings.HasPrefix(ref.FullDefinition, "http") {
-
-								// split the http URI into parts
-								httpExp := strings.Split(ref.FullDefinition, "#/")
-
-								u, _ := url.Parse(httpExp[0])
-								abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
-								u.Path = abs
-								u.Fragment = ""
-								fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+							if filepath.IsAbs(exp[0]) {
+								fullDef = value
 
 							} else {
 
-								if filepath.IsAbs(exp[0]) {
-									fullDef = value
+								if strings.HasPrefix(ref.FullDefinition, "http") {
+
+									// split the http URI into parts
+									httpExp := strings.Split(ref.FullDefinition, "#/")
+
+									u, _ := url.Parse(httpExp[0])
+									abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+									u.Path = abs
+									u.Fragment = ""
+									fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
 								} else {
 
@@ -421,7 +421,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 									fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
 
 								}
-
 							}
 						}
 					} else {
