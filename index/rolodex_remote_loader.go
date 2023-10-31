@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
 	"log/slog"
 	"runtime"
 
@@ -21,13 +22,11 @@ import (
 	"time"
 )
 
-type RemoteURLHandler = func(url string) (*http.Response, error)
-
 type RemoteFS struct {
 	indexConfig       *SpecIndexConfig
 	rootURL           string
 	rootURLParsed     *url.URL
-	RemoteHandlerFunc RemoteURLHandler
+	RemoteHandlerFunc utils.RemoteURLHandler
 	Files             syncmap.Map
 	ProcessingFiles   syncmap.Map
 	FetchTime         int64
@@ -176,6 +175,9 @@ const (
 )
 
 func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) {
+	if specIndexConfig == nil {
+		return nil, errors.New("no spec index config provided")
+	}
 	remoteRootURL := specIndexConfig.BaseURL
 	log := specIndexConfig.Logger
 	if log == nil {
@@ -217,7 +219,7 @@ func NewRemoteFSWithRootURL(rootURL string) (*RemoteFS, error) {
 	return NewRemoteFSWithConfig(config)
 }
 
-func (i *RemoteFS) SetRemoteHandlerFunc(handlerFunc RemoteURLHandler) {
+func (i *RemoteFS) SetRemoteHandlerFunc(handlerFunc utils.RemoteURLHandler) {
 	i.RemoteHandlerFunc = handlerFunc
 }
 
