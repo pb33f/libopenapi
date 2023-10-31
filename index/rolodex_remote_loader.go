@@ -198,7 +198,7 @@ func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) 
 	} else {
 		// default http client
 		client := &http.Client{
-			Timeout: time.Second * 60,
+			Timeout: time.Second * 120,
 		}
 		rfs.RemoteHandlerFunc = func(url string) (*http.Response, error) {
 			return client.Get(url)
