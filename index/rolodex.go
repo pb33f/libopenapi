@@ -104,7 +104,7 @@ func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	}
 
 	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfo(content)
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, config.SkipDocumentCheck)
 	if err != nil {
 		return nil, err
 	}

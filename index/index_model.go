@@ -140,6 +140,11 @@ type SpecIndexConfig struct {
 	// this is disabled by default, which means array circular references will be checked.
 	IgnoreArrayCircularReferences bool
 
+	// SkipDocumentCheck will skip the document check when building the index. A document check will look for an 'openapi'
+	// or 'swagger' node in the root of the document. If it's not found, then the document is not a valid OpenAPI or
+	// the file is a JSON Schema. To allow JSON Schema files to be included set this to true.
+	SkipDocumentCheck bool
+
 	// private fields
 	uri []string
 }

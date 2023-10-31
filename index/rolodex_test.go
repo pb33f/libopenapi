@@ -89,18 +89,32 @@ func TestRolodex_LocalNonNativeFS(t *testing.T) {
 }
 
 type test_badfs struct {
-	ok     bool
-	offset int64
+	ok       bool
+	goodstat bool
+	offset   int64
 }
 
 func (t *test_badfs) Open(v string) (fs.File, error) {
 	ok := false
-	if v != "/" {
+	if v != "/" && v != "http://localhost/test.yaml" {
 		ok = true
 	}
-	return &test_badfs{ok: ok}, nil
+	if v == "http://localhost/goodstat.yaml" || v == "goodstat.yaml" {
+		ok = true
+		t.goodstat = true
+	}
+	if v == "http://localhost/badstat.yaml" || v == "badstat.yaml" {
+		ok = true
+		t.goodstat = false
+	}
+	return &test_badfs{ok: ok, goodstat: t.goodstat}, nil
 }
 func (t *test_badfs) Stat() (fs.FileInfo, error) {
+	if t.goodstat {
+		return &LocalFile{
+			lastModified: time.Now(),
+		}, nil
+	}
 	return nil, os.ErrInvalid
 }
 func (t *test_badfs) Read(b []byte) (int, error) {
@@ -148,7 +162,70 @@ func TestRolodex_LocalNonNativeFS_BadStat(t *testing.T) {
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 	rolo.AddLocalFS(baseDir, testFS)
 
-	f, rerr := rolo.Open("spec.yaml")
+	f, rerr := rolo.Open("badstat.yaml")
+	assert.Nil(t, f)
+	assert.Error(t, rerr)
+	assert.Equal(t, "invalid argument", rerr.Error())
+
+}
+
+func TestRolodex_LocalNonNativeRemoteFS_BadRead(t *testing.T) {
+
+	t.Parallel()
+	testFS := &test_badfs{}
+
+	baseDir := ""
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddRemoteFS(baseDir, testFS)
+
+	f, rerr := rolo.Open("http://localhost/test.yaml")
+	assert.Nil(t, f)
+	assert.Error(t, rerr)
+	assert.Equal(t, "file does not exist", rerr.Error())
+}
+
+func TestRolodex_LocalNonNativeRemoteFS_ReadFile(t *testing.T) {
+
+	t.Parallel()
+	testFS := &test_badfs{}
+
+	baseDir := ""
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddRemoteFS(baseDir, testFS)
+
+	r, rerr := rolo.Open("http://localhost/goodstat.yaml")
+	assert.NotNil(t, r)
+	assert.NoError(t, rerr)
+
+	assert.Equal(t, "goodstat.yaml", r.Name())
+	assert.Nil(t, r.GetIndex())
+	assert.Equal(t, "pizza", r.GetContent())
+	assert.Equal(t, "http://localhost/goodstat.yaml", r.GetFullPath())
+	assert.Equal(t, time.Now().UnixMilli(), r.ModTime().UnixMilli())
+	assert.Equal(t, int64(5), r.Size())
+	assert.False(t, r.IsDir())
+	assert.Nil(t, r.Sys())
+	assert.Equal(t, r.Mode(), os.FileMode(0))
+	n, e := r.GetContentAsYAMLNode()
+	assert.Len(t, r.GetErrors(), 0)
+	assert.NoError(t, e)
+	assert.NotNil(t, n)
+	assert.Equal(t, YAML, r.GetFileExtension())
+}
+
+func TestRolodex_LocalNonNativeRemoteFS_BadStat(t *testing.T) {
+
+	t.Parallel()
+	testFS := &test_badfs{}
+
+	baseDir := ""
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddRemoteFS(baseDir, testFS)
+
+	f, rerr := rolo.Open("http://localhost/badstat.yaml")
 	assert.Nil(t, f)
 	assert.Error(t, rerr)
 	assert.Equal(t, "invalid argument", rerr.Error())
@@ -375,6 +452,7 @@ components:
 	cf := CreateOpenAPIIndexConfig()
 	cf.BasePath = baseDir
 	cf.IgnorePolymorphicCircularReferences = true
+	cf.SkipDocumentCheck = true
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
 
@@ -397,6 +475,42 @@ components:
 	// the index won't find three, because by the time that 'three' has been read, it's already been indexed and the journey
 	// discovered.
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 2)
+
+	// extract a local file
+	f, _ := rolodex.Open("first.yaml")
+	// index
+	x, y := f.(*rolodexFile).Index(cf)
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+
+	// re-index
+	x, y = f.(*rolodexFile).Index(cf)
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+
+	// extract a remote  file
+	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml")
+
+	// index
+	x, y = f.(*rolodexFile).Index(cf)
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+
+	// re-index
+	x, y = f.(*rolodexFile).Index(cf)
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+
+	// extract another remote  file
+	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/fifth.yaml")
+
+	//change cf to perform document check (which should fail)
+	cf.SkipDocumentCheck = false
+
+	// index and fail
+	x, y = f.(*rolodexFile).Index(cf)
+	assert.Nil(t, x)
+	assert.Error(t, y)
 }
 
 func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
@@ -418,7 +532,7 @@ func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
 			_, _ = rw.Write(d)
 			return
 		}
-		if req.URL.String() == "/fifth.yaml" {
+		if strings.HasSuffix(req.URL.String(), "/fifth.yaml") {
 			_, _ = rw.Write(e)
 			return
 		}
