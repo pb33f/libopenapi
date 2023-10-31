@@ -61,18 +61,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		// run through everything and return as soon as we find a match.
 		// this operates as fast as possible as ever
 		collections := generateIndexCollection(idx)
-
-		// if there are any external indexes being used by remote
-		// documents, then we need to search through them also.
-		//externalIndexes := idx.GetAllExternalIndexes()
-		//if len(externalIndexes) > 0 {
-		//	var extCollection []func() map[string]*index.Reference
-		//	for _, extIndex := range externalIndexes {
-		//		extCollection = generateIndexCollection(extIndex)
-		//		collections = append(collections, extCollection...)
-		//	}
-		//}
-
 		var found map[string]*index.Reference
 		for _, collection := range collections {
 			found = collection()
@@ -98,7 +86,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 
 		// perform a search for the reference in the index
 		// extract the correct root
-
 		specPath := idx.GetSpecAbsolutePath()
 		if ctx.Value(index.CurrentPathKey) != nil {
 			specPath = ctx.Value(index.CurrentPathKey).(string)

@@ -314,7 +314,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		}
 		return nil, clientErr
 	}
-
+	if response == nil {
+		return nil, fmt.Errorf("empty response from remote URL: %s", remoteParsedURL.String())
+	}
 	responseBytes, readError := io.ReadAll(response.Body)
 	if readError != nil {
 
