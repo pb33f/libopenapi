@@ -522,11 +522,9 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 				}
 			}
 			// check if this is a native rolodex FS, then the work is done.
-			if lrf, ok := interface{}(f).(*localRolodexFile); ok {
-				if lf, ko := interface{}(lrf.f).(*LocalFile); ko {
-					localFile = lf
-					break
-				}
+			if lf, ko := interface{}(f).(*LocalFile); ko {
+				localFile = lf
+				break
 			} else {
 				// not a native FS, so we need to read the file and create a local file.
 				bytes, rErr := io.ReadAll(f)
