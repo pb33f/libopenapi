@@ -4,6 +4,7 @@
 package index
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
 	"log"
@@ -121,8 +122,9 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	// create a handler that uses an env variable to capture any GITHUB_TOKEN in the OS ENV
 	// and inject it into the request header, so this does not fail when running lots of local tests.
 	if os.Getenv("GITHUB_TOKEN") != "" {
+		fmt.Println("GITHUB_TOKEN found, setting remote handler func")
 		client := &http.Client{
-			Timeout: time.Second * 60,
+			Timeout: time.Second * 120,
 		}
 		remoteFS.SetRemoteHandlerFunc(func(url string) (*http.Response, error) {
 			request, _ := http.NewRequest(http.MethodGet, url, nil)
@@ -233,7 +235,9 @@ func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 	cf := &SpecIndexConfig{}
 	cf.AvoidBuildIndex = true
 	cf.AvoidCircularReferenceCheck = true
-	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	var op []byte
+	buf := bytes.NewBuffer(op)
+	cf.Logger = slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 
@@ -282,7 +286,9 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 	cf.AvoidBuildIndex = true
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
-	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+	var op []byte
+	buf := bytes.NewBuffer(op)
+	cf.Logger = slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{
 		Level: slog.LevelError,
 	}))
 

@@ -438,7 +438,7 @@ components:
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
 	// multiple loops across two files
-	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
 }
 
 func TestRolodex_IndexCircularLookup_PolyItemsHttpOnly(t *testing.T) {
@@ -505,12 +505,18 @@ components:
       required:
         - muffins
       properties:
+        chuffins:
+          type: object
+          allOf: 
+            - $ref: "https://kjahsdkjahdkjashdas.com/third.yaml"
+        buffins:
+          type: object
+          allOf: 
+            - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/"
         muffins:
          type: object
          anyOf:
            - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/components/schemas/CircleTest"
-           - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/"
-           - $ref: "https://kjahsdkjahdkjashdas.com/third.yaml"
 `
 
 	var rootNode yaml.Node
@@ -536,7 +542,7 @@ components:
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
 	// should only be a single loop.
-	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 3)
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
 	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 6)
 }
 

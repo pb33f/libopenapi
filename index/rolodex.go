@@ -215,7 +215,17 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 }
 
 func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
-	return r.ignoredCircularReferences
+	debounced := make(map[string]*CircularReferenceResult)
+	for _, c := range r.ignoredCircularReferences {
+		if _, ok := debounced[c.LoopPoint.FullDefinition]; !ok {
+			debounced[c.LoopPoint.FullDefinition] = c
+		}
+	}
+	var debouncedResults []*CircularReferenceResult
+	for _, v := range debounced {
+		debouncedResults = append(debouncedResults, v)
+	}
+	return debouncedResults
 }
 
 func (r *Rolodex) GetIndexingDuration() time.Duration {
