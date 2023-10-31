@@ -99,9 +99,12 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 
 					if strings.HasPrefix(specPath, "http") {
 						u, _ := url.Parse(specPath)
-						p := filepath.Dir(u.Path)
-						abs, _ := filepath.Abs(filepath.Join(p, explodedRefValue[0]))
-						u.Path = abs
+						p := ""
+						if u.Path != "" {
+							p = filepath.Dir(u.Path)
+						}
+						u.Path = filepath.Join(p, explodedRefValue[0])
+						u.Fragment = ""
 						rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 
 					} else {
@@ -116,9 +119,11 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							if idx.GetConfig().BaseURL != nil {
 
 								u := *idx.GetConfig().BaseURL
-
-								abs, _ := filepath.Abs(filepath.Join(u.Path, rv))
-								u.Path = abs
+								p := ""
+								if u.Path != "" {
+									p = filepath.Dir(u.Path)
+								}
+								u.Path = filepath.Join(p, explodedRefValue[0])
 								rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 							}
 

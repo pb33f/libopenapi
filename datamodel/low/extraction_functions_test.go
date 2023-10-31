@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/url"
 	"strings"
 	"testing"
 
@@ -1677,4 +1678,214 @@ func TestSetReference_nil(t *testing.T) {
 	n := testObj{Reference: &Reference{}}
 	SetReference(nil, "#/pigeon/street")
 	assert.NotEqual(t, "#/pigeon/street", n.GetReference())
+}
+
+func TestLocateRefNode_CurrentPathKey_HttpLink(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "http://cakes.com#/components/schemas/thing",
+			},
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "http://cakes.com#/components/schemas/thing")
+
+	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "#/components/schemas/thing",
+			},
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "https://cakes.com#/components/schemas/thing")
+	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx_WithPath(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "#/components/schemas/thing",
+			},
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "https://cakes.com/jazzzy/shoes#/components/schemas/thing")
+	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_CurrentPathKey_Path_Link(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "yazzy.yaml#/components/schemas/thing",
+			},
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "/jazzzy/shoes.yaml")
+	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_CurrentPathKey_Path_URL(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "yazzy.yaml#/components/schemas/thing",
+			},
+		},
+	}
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("https://herbs-and-coffee-in-the-fall.com")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	n, i, e, c := LocateRefNodeWithContext(context.Background(), &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_CurrentPathKey_DeeperPath_URL(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "slasshy/mazsshy/yazzy.yaml#/components/schemas/thing",
+			},
+		},
+	}
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("https://herbs-and-coffee-in-the-fall.com/pizza/burgers")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	n, i, e, c := LocateRefNodeWithContext(context.Background(), &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_NoExplode(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "components/schemas/thing.yaml",
+			},
+		},
+	}
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("http://smiledfdfdfdfds.com/bikes")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	n, i, e, c := LocateRefNodeWithContext(context.Background(), &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_NoExplode_HTTP(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "components/schemas/thing.yaml",
+			},
+		},
+	}
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("http://smilfghfhfhfhfhes.com/bikes")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "http://minty-fresh-shoes.com/nice/no.yaml")
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
 }
