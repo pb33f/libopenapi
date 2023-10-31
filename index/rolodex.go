@@ -51,6 +51,7 @@ type Rolodex struct {
 	remoteFS                  map[string]fs.FS
 	indexed                   bool
 	built                     bool
+	manualBuilt               bool
 	resolved                  bool
 	circChecked               bool
 	indexConfig               *SpecIndexConfig
@@ -467,7 +468,7 @@ func (r *Rolodex) Resolve() {
 }
 
 func (r *Rolodex) BuildIndexes() {
-	if r.built {
+	if r.manualBuilt {
 		return
 	}
 	for _, idx := range r.indexes {
@@ -476,7 +477,7 @@ func (r *Rolodex) BuildIndexes() {
 	if r.rootIndex != nil {
 		r.rootIndex.BuildIndex()
 	}
-	r.built = true
+	r.manualBuilt = true
 }
 
 func (r *Rolodex) Open(location string) (RolodexFile, error) {
@@ -522,7 +523,6 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 			}
 			// check if this is a native rolodex FS, then the work is done.
 			if lrf, ok := interface{}(f).(*localRolodexFile); ok {
-
 				if lf, ko := interface{}(lrf.f).(*LocalFile); ko {
 					localFile = lf
 					break

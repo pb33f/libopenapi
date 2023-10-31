@@ -6,6 +6,7 @@ package index
 import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"io"
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,17 @@ func TestRolodex_NewRolodex(t *testing.T) {
 	assert.Nil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 0)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
+}
+
+func TestRolodex_NoFS(t *testing.T) {
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rf, err := rolo.Open("spec.yaml")
+	assert.Error(t, err)
+	assert.Equal(t, "rolodex has no file systems configured, cannot open 'spec.yaml'. "+
+		"Add a BaseURL or BasePath to your configuration so the rolodex knows how to resolve references", err.Error())
+	assert.Nil(t, rf)
+
 }
 
 func TestRolodex_LocalNativeFS(t *testing.T) {
@@ -74,6 +86,73 @@ func TestRolodex_LocalNonNativeFS(t *testing.T) {
 	assert.NoError(t, rerr)
 
 	assert.Equal(t, "hip", f.GetContent())
+}
+
+type test_badfs struct {
+	ok     bool
+	offset int64
+}
+
+func (t *test_badfs) Open(v string) (fs.File, error) {
+	ok := false
+	if v != "/" {
+		ok = true
+	}
+	return &test_badfs{ok: ok}, nil
+}
+func (t *test_badfs) Stat() (fs.FileInfo, error) {
+	return nil, os.ErrInvalid
+}
+func (t *test_badfs) Read(b []byte) (int, error) {
+	if t.ok {
+		if t.offset >= int64(len("pizza")) {
+			return 0, io.EOF
+		}
+		if t.offset < 0 {
+			return 0, &fs.PathError{Op: "read", Path: "lemons", Err: fs.ErrInvalid}
+		}
+		n := copy(b, "pizza"[t.offset:])
+		t.offset += int64(n)
+		return n, nil
+	}
+	return 0, os.ErrNotExist
+}
+func (t *test_badfs) Close() error {
+	return os.ErrNotExist
+}
+
+func TestRolodex_LocalNonNativeFS_BadRead(t *testing.T) {
+
+	t.Parallel()
+	testFS := &test_badfs{}
+
+	baseDir := ""
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseDir, testFS)
+
+	f, rerr := rolo.Open("/")
+	assert.Nil(t, f)
+	assert.Error(t, rerr)
+	assert.Equal(t, "file does not exist", rerr.Error())
+
+}
+
+func TestRolodex_LocalNonNativeFS_BadStat(t *testing.T) {
+
+	t.Parallel()
+	testFS := &test_badfs{}
+
+	baseDir := ""
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseDir, testFS)
+
+	f, rerr := rolo.Open("spec.yaml")
+	assert.Nil(t, f)
+	assert.Error(t, rerr)
+	assert.Equal(t, "invalid argument", rerr.Error())
+
 }
 
 func TestRolodex_rolodexFileTests(t *testing.T) {
@@ -323,19 +402,19 @@ components:
 func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 12:28:00 GMT")
-		if req.URL.String() == "/first.yaml" {
+		if strings.HasSuffix(req.URL.String(), "/first.yaml") {
 			_, _ = rw.Write(a)
 			return
 		}
-		if req.URL.String() == "/second.yaml" {
+		if strings.HasSuffix(req.URL.String(), "/second.yaml") {
 			_, _ = rw.Write(b)
 			return
 		}
-		if req.URL.String() == "/third.yaml" {
+		if strings.HasSuffix(req.URL.String(), "/third.yaml") {
 			_, _ = rw.Write(c)
 			return
 		}
-		if req.URL.String() == "/fourth.yaml" {
+		if strings.HasSuffix(req.URL.String(), "/fourth.yaml") {
 			_, _ = rw.Write(d)
 			return
 		}
@@ -362,7 +441,7 @@ components:
           type: "object"
           oneOf:
             items:
-              $ref: "second.yaml#/components/schemas/CircleTest"
+              $ref: "second_a.yaml#/components/schemas/CircleTest"
       required:
         - "name"
         - "children"
@@ -405,10 +484,10 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
 
-	_ = os.WriteFile("second.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first.yaml", []byte(first), 0644)
-	defer os.Remove("first.yaml")
-	defer os.Remove("second.yaml")
+	_ = os.WriteFile("second_a.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first_a.yaml", []byte(first), 0644)
+	defer os.Remove("first_a.yaml")
+	defer os.Remove("second_a.yaml")
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnorePolymorphicCircularReferences = true
@@ -420,8 +499,200 @@ components:
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first.yaml",
-			"second.yaml",
+			"first_a.yaml",
+			"second_a.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolodex.AddLocalFS(baseDir, fileFS)
+	rolodex.SetRootNode(&rootNode)
+
+	err = rolodex.IndexTheRolodex()
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+	// multiple loops across two files
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+}
+
+func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_BuildIndexesPost(t *testing.T) {
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          oneOf:
+            items:
+              $ref: "second_d.yaml#/components/schemas/CircleTest"
+      required:
+        - "name"
+        - "children"
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "#/components/schemas/CircleTest"`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          oneOf:
+            items:
+              $ref: "#/components/schemas/CircleTest"
+      required:
+        - "name"
+        - "children"
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: object
+         anyOf:
+           - $ref: "#/components/schemas/CircleTest"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	_ = os.WriteFile("second_d.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first_d.yaml", []byte(first), 0644)
+	defer os.Remove("first_d.yaml")
+	defer os.Remove("second_d.yaml")
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+	cf.AvoidBuildIndex = true
+	rolodex := NewRolodex(cf)
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"first_d.yaml",
+			"second_d.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolodex.AddLocalFS(baseDir, fileFS)
+	rolodex.SetRootNode(&rootNode)
+
+	err = rolodex.IndexTheRolodex()
+	rolodex.BuildIndexes()
+
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+	// multiple loops across two files
+	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+
+	// trigger a rebuild, should do nothing.
+	rolodex.BuildIndexes()
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
+
+}
+
+func TestRolodex_IndexCircularLookup_ArrayItems_LocalLoop_WithFiles(t *testing.T) {
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "second_b.yaml#/components/schemas/CircleTest"
+      required:
+        - "name"
+        - "children"
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: array
+         items:
+           $ref: "#/components/schemas/CircleTest"`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/CircleTest"
+      required:
+        - "name"
+        - "children"
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         type: array
+         items:
+           $ref: "#/components/schemas/CircleTest"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	_ = os.WriteFile("second_b.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first_b.yaml", []byte(first), 0644)
+	defer os.Remove("first_b.yaml")
+	defer os.Remove("second_b.yaml")
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.IgnoreArrayCircularReferences = true
+	rolodex := NewRolodex(cf)
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"first_b.yaml",
+			"second_b.yaml",
 		},
 	}
 
@@ -560,12 +831,12 @@ components:
           type: object
           allOf:
             items:
-              $ref: "third.yaml"
+              $ref: "third_c.yaml"
         boop:
           type: object
           allOf:
             items:
-              $ref: "$PWD/third.yaml"
+              $ref: "$PWD/third_c.yaml"
         loop:
           type: object
           oneOf:
@@ -595,20 +866,20 @@ components:
         muffins:
          type: object
          anyOf:
-           - $ref: "second.yaml#/components/schemas/CircleTest"
-           - $ref: "$PWD/third.yaml"`
+           - $ref: "second_c.yaml#/components/schemas/CircleTest"
+           - $ref: "$PWD/third_c.yaml"`
 
 	var rootNode yaml.Node
 	cws, _ := os.Getwd()
 
 	_ = yaml.Unmarshal([]byte(strings.ReplaceAll(first, "$PWD", cws)), &rootNode)
-	_ = os.WriteFile("second.yaml", []byte(strings.ReplaceAll(second, "$PWD", cws)), 0644)
-	_ = os.WriteFile("first.yaml", []byte(strings.ReplaceAll(first, "$PWD", cws)), 0644)
-	_ = os.WriteFile("third.yaml", []byte(third), 0644)
+	_ = os.WriteFile("second_c.yaml", []byte(strings.ReplaceAll(second, "$PWD", cws)), 0644)
+	_ = os.WriteFile("first_c.yaml", []byte(strings.ReplaceAll(first, "$PWD", cws)), 0644)
+	_ = os.WriteFile("third_c.yaml", []byte(third), 0644)
 
-	defer os.Remove("first.yaml")
-	defer os.Remove("second.yaml")
-	defer os.Remove("third.yaml")
+	defer os.Remove("first_c.yaml")
+	defer os.Remove("second_c.yaml")
+	defer os.Remove("third_c.yaml")
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnorePolymorphicCircularReferences = true
@@ -620,9 +891,9 @@ components:
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first.yaml",
-			"second.yaml",
-			"third.yaml",
+			"first_c.yaml",
+			"second_c.yaml",
+			"third_c.yaml",
 		},
 	}
 
@@ -640,6 +911,100 @@ components:
 
 	// should only be a single loop.
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
+}
+
+func TestRolodex_TestDropDownToRemoteFS_CatchErrors(t *testing.T) {
+
+	fourth := `type: "object"
+properties:
+  name:
+    type: "string"
+  children:
+    type: "object"`
+
+	third := `type: "object"
+properties:
+  name:
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml"`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        bing:
+          $ref: "not_found.yaml"
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "third.yaml"
+      required:
+        - "name"
+        - "children"`
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         $ref: "second_e.yaml#/components/schemas/CircleTest"`
+
+	cwd, _ := os.Getwd()
+
+	_ = os.WriteFile("third_e.yaml", []byte(strings.ReplaceAll(third, "$PWD", cwd)), 0644)
+	_ = os.WriteFile("second_e.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first_e.yaml", []byte(first), 0644)
+	_ = os.WriteFile("fourth_e.yaml", []byte(fourth), 0644)
+	defer os.Remove("first_e.yaml")
+	defer os.Remove("second_e.yaml")
+	defer os.Remove("third_e.yaml")
+	defer os.Remove("fourth_e.yaml")
+
+	baseDir := "."
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"first_e.yaml",
+			"second_e.yaml",
+			"third_e.yaml",
+			"fourth_e.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.IgnorePolymorphicCircularReferences = true
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(baseDir, fileFS)
+
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
+		[]byte(strings.ReplaceAll(third, "$PWD", cwd)), []byte(fourth), nil)
+	defer srv.Close()
+
+	u, _ := url.Parse(srv.URL)
+	cf.BaseURL = u
+	remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	assert.NoError(t, rErr)
+
+	rolodex.AddRemoteFS(srv.URL, remoteFS)
+
+	err = rolodex.IndexTheRolodex()
+	assert.Error(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 2)
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
@@ -872,6 +1237,76 @@ components:
 
 }
 
+func TestRolodex_CircularReferencesPolyIgnored_Resolve(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    bingo:
+       type: object
+       properties:
+         bango:
+           $ref: "#/components/schemas/ProductCategory"
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          items:
+            anyOf:
+              items:
+                $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	c := CreateClosedAPIIndexConfig()
+	c.IgnorePolymorphicCircularReferences = true
+	c.AvoidCircularReferenceCheck = true
+	rolo := NewRolodex(c)
+	rolo.SetRootNode(&rootNode)
+	_ = rolo.IndexTheRolodex()
+	assert.NotNil(t, rolo.GetRootIndex())
+	rolo.Resolve()
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+
+}
+
+func TestRolodex_CircularReferencesPostCheck(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    bingo:
+       type: object
+       properties:
+         bango:
+           $ref: "#/components/schemas/bingo"
+       required:
+        - bango`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	c := CreateClosedAPIIndexConfig()
+	c.AvoidCircularReferenceCheck = true
+	rolo := NewRolodex(c)
+	rolo.SetRootNode(&rootNode)
+	_ = rolo.IndexTheRolodex()
+	assert.NotNil(t, rolo.GetRootIndex())
+	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+	assert.Len(t, rolo.GetCaughtErrors(), 1)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetCircularErrors(), 1)
+}
+
 func TestRolodex_CircularReferencesArrayIgnored(t *testing.T) {
 
 	var d = `openapi: 3.1.0
@@ -900,6 +1335,39 @@ components:
 	rolo.SetRootNode(&rootNode)
 	_ = rolo.IndexTheRolodex()
 	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+
+}
+
+func TestRolodex_CircularReferencesArrayIgnored_Resolve(t *testing.T) {
+
+	var d = `openapi: 3.1.0
+components:
+  schemas:
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "array"
+          items:
+            $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	c := CreateClosedAPIIndexConfig()
+	c.IgnoreArrayCircularReferences = true
+	rolo := NewRolodex(c)
+	rolo.SetRootNode(&rootNode)
+	_ = rolo.IndexTheRolodex()
+	rolo.Resolve()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 
