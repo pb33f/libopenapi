@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
@@ -749,3 +750,5 @@ func CheckForMergeNodes(node *yaml.Node) {
 		}
 	}
 }
+
+type RemoteURLHandler = func(url string) (*http.Response, error)

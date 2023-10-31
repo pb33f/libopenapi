@@ -283,7 +283,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 										if index.config.BaseURL != nil {
 
 											u := *index.config.BaseURL
-											abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
+											abs := filepath.Join(u.Path, uri[0])
 											u.Path = abs
 											fullDefinitionPath = u.String()
 											componentName = uri[0]

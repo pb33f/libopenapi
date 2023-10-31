@@ -4,9 +4,9 @@
 package datamodel
 
 import (
+	"github.com/pb33f/libopenapi/utils"
 	"io/fs"
 	"log/slog"
-	"net/http"
 	"net/url"
 	"os"
 )
@@ -28,7 +28,7 @@ type DocumentConfiguration struct {
 	// will not be used, as there will be nothing to use it against.
 	//
 	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
-	RemoteURLHandler func(url string) (*http.Response, error)
+	RemoteURLHandler utils.RemoteURLHandler
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from.
 	// It's usually the location of the root specification.
@@ -102,14 +102,4 @@ func NewDocumentConfiguration() *DocumentConfiguration {
 			Level: slog.LevelError,
 		})),
 	}
-}
-
-// Deprecated: use NewDocumentConfiguration instead.
-func NewOpenDocumentConfiguration() *DocumentConfiguration {
-	return NewDocumentConfiguration()
-}
-
-// Deprecated: use NewDocumentConfiguration instead.
-func NewClosedDocumentConfiguration() *DocumentConfiguration {
-	return NewDocumentConfiguration()
 }
