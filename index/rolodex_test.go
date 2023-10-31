@@ -96,10 +96,10 @@ type test_badfs struct {
 
 func (t *test_badfs) Open(v string) (fs.File, error) {
 	ok := false
-	if v != "/" && v != "http://localhost/test.yaml" {
+	if v != "/" && v != "." && v != "http://localhost/test.yaml" {
 		ok = true
 	}
-	if v == "http://localhost/goodstat.yaml" || v == "goodstat.yaml" {
+	if v == "http://localhost/goodstat.yaml" || strings.HasSuffix(v, "goodstat.yaml") {
 		ok = true
 		t.goodstat = true
 	}
