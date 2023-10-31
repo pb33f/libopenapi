@@ -771,3 +771,10 @@ components:
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
 
 }
+
+func TestResolver_isInfiniteCircularDep_NoRef(t *testing.T) {
+	resolver := NewResolver(nil)
+	a, b := resolver.isInfiniteCircularDependency(nil, nil, nil)
+	assert.False(t, a)
+	assert.Nil(t, b)
+}
