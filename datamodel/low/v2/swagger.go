@@ -153,12 +153,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	// If basePath is provided, add a local filesystem to the rolodex.
 	if idxConfig.BasePath != "" {
-		var absError error
 		var cwd string
-		cwd, absError = filepath.Abs(config.BasePath)
-		if absError != nil {
-			return nil, absError
-		}
+		cwd, _ = filepath.Abs(config.BasePath)
 		// if a supplied local filesystem is provided, add it to the rolodex.
 		if config.LocalFS != nil {
 			rolodex.AddLocalFS(cwd, config.LocalFS)
@@ -184,27 +180,19 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	// if base url is provided, add a remote filesystem to the rolodex.
 	if idxConfig.BaseURL != nil {
 
-		// if a supplied remote filesystem is provided, add it to the rolodex.
-		if config.RemoteFS != nil {
-			if config.BaseURL == nil {
-				return nil, errors.New("cannot use remote filesystem without a BaseURL")
-			}
-			rolodex.AddRemoteFS(config.BaseURL.String(), config.RemoteFS)
-
-		} else {
-			// create a remote filesystem
-			remoteFS, fsErr := index.NewRemoteFSWithConfig(idxConfig)
-			if fsErr != nil {
-				return nil, fsErr
-			}
-			if config.RemoteURLHandler != nil {
-				remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
-			}
-			idxConfig.AllowRemoteLookup = true
-
-			// add to the rolodex
-			rolodex.AddRemoteFS(config.BaseURL.String(), remoteFS)
+		// create a remote filesystem
+		remoteFS, fsErr := index.NewRemoteFSWithConfig(idxConfig)
+		if fsErr != nil {
+			return nil, fsErr
 		}
+		if config.RemoteURLHandler != nil {
+			remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
+		}
+		idxConfig.AllowRemoteLookup = true
+
+		// add to the rolodex
+		rolodex.AddRemoteFS(config.BaseURL.String(), remoteFS)
+
 	}
 
 	var errs []error

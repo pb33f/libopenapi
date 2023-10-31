@@ -5,7 +5,10 @@ package v2
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
+	"net/http"
+	"net/url"
 	"os"
 	"testing"
 
@@ -346,4 +349,121 @@ func TestCircularReferenceError(t *testing.T) {
 	assert.NotNil(t, circDoc)
 	assert.Len(t, utils.UnwrapErrors(err), 3)
 
+}
+
+func TestRolodexLocalFileSystem(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BasePath = "../../../test_specs"
+	cf.FileFilter = []string{"first.yaml", "second.yaml", "third.yaml"}
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.NoError(t, err)
+}
+
+func TestRolodexLocalFileSystem_ProvideNonRolodexFS(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	baseDir := "../../../test_specs"
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BasePath = baseDir
+	cf.FileFilter = []string{"first.yaml", "second.yaml", "third.yaml"}
+	cf.LocalFS = os.DirFS(baseDir)
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.Error(t, err)
+}
+
+func TestRolodexLocalFileSystem_ProvideRolodexFS(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	baseDir := "../../../test_specs"
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BasePath = baseDir
+	cf.FileFilter = []string{"first.yaml", "second.yaml", "third.yaml"}
+
+	localFS, lErr := index.NewLocalFSWithConfig(&index.LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters:   cf.FileFilter,
+	})
+	cf.LocalFS = localFS
+
+	assert.NoError(t, lErr)
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.NoError(t, err)
+}
+
+func TestRolodexLocalFileSystem_BadPath(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BasePath = "/NOWHERE"
+	cf.FileFilter = []string{"first.yaml", "second.yaml", "third.yaml"}
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.Nil(t, lDoc)
+	assert.Error(t, err)
+}
+
+func TestRolodexRemoteFileSystem(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+
+	baseUrl := "https://raw.githubusercontent.com/pb33f/libopenapi/main/test_specs"
+	u, _ := url.Parse(baseUrl)
+	cf.BaseURL = u
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.NoError(t, err)
+}
+
+func TestRolodexRemoteFileSystem_BadBase(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+
+	baseUrl := "https://no-no-this-will-not-work-it-just-will-not-get-the-job-done-mate.com"
+	u, _ := url.Parse(baseUrl)
+	cf.BaseURL = u
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.Error(t, err)
+}
+
+func TestRolodexRemoteFileSystem_CustomRemote_NoBaseURL(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.RemoteFS, _ = index.NewRemoteFSWithConfig(&index.SpecIndexConfig{})
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.Error(t, err)
+}
+
+func TestRolodexRemoteFileSystem_CustomHttpHandler(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.RemoteURLHandler = http.Get
+	baseUrl := "https://no-no-this-will-not-work-it-just-will-not-get-the-job-done-mate.com"
+	u, _ := url.Parse(baseUrl)
+	cf.BaseURL = u
+
+	pizza := func(url string) (resp *http.Response, err error) {
+		return nil, nil
+	}
+	cf.RemoteURLHandler = pizza
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.Error(t, err)
 }
