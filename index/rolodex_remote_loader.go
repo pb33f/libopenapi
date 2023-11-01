@@ -4,17 +4,16 @@
 package index
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
-	"log/slog"
-	"runtime"
-
 	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -261,21 +260,26 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	// if we're processing, we need to block and wait for the file to be processed
 	// try path first
 	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
-		// we can't block if we only have a couple of CPUs, as we'll deadlock / run super slow, only when we're running in parallel
-		// can we block threads.
-		if runtime.GOMAXPROCS(-1) > 2 {
-			i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 
-			f := make(chan *RemoteFile)
-			fwait := func(path string, c chan *RemoteFile) {
-				for {
-					if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
-						c <- wf.(*RemoteFile)
-					}
+		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+		// Create a context with a timeout of 50ms
+		ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
+		defer cancel()
+		f := make(chan *RemoteFile)
+		fwait := func(path string, c chan *RemoteFile) {
+			for {
+				if wf, ko := i.Files.Load(remoteParsedURL.Path); ko {
+					c <- wf.(*RemoteFile)
 				}
 			}
-			go fwait(remoteParsedURL.Path, f)
-			return <-f, nil
+		}
+		go fwait(remoteParsedURL.Path, f)
+
+		select {
+		case <-ctxTimeout.Done():
+			i.logger.Info("waiting for remote file timed out, trying again", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+		case v := <-f:
+			return v, nil
 		}
 	}
 
