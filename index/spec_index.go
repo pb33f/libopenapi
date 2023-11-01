@@ -650,29 +650,8 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 
 			// look through method for callbacks
 			callbacks, _ := yamlpath.NewPath("$..callbacks")
-			// Channel used to receive the result from doSomething function
-			ch := make(chan string, 1)
-
-			// Create a context with a timeout of 5 seconds
-			ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*500)
-			defer cancel()
-
 			var res []*yaml.Node
-
-			doSomething := func(ctx context.Context, ch chan<- string) {
-				res, _ = callbacks.Find(m.Node)
-				ch <- m.Definition
-			}
-
-			// Start the doSomething function
-			go doSomething(ctxTimeout, ch)
-
-			select {
-			case <-ctxTimeout.Done():
-				fmt.Printf("Callback %d: Context cancelled: %v\n", m.Node.Line, ctxTimeout.Err())
-			case <-ch:
-			}
-
+			res, _ = callbacks.Find(m.Node)
 			if len(res) > 0 {
 				for _, callback := range res[0].Content {
 					if utils.IsNodeMap(callback) {
