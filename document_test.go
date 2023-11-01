@@ -706,6 +706,9 @@ paths:
 		panic(err)
 	}
 
+	assert.NotNil(t, doc.GetConfiguration())
+	assert.Equal(t, doc.GetConfiguration(), cf)
+
 	result, errs := doc.BuildV3Model()
 	if len(errs) > 0 {
 		panic(errs)
