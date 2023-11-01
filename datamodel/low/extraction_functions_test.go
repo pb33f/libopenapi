@@ -7,7 +7,9 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"golang.org/x/sync/syncmap"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 
@@ -1887,5 +1889,74 @@ func TestLocateRefNode_NoExplode_HTTP(t *testing.T) {
 	assert.Nil(t, n)
 	assert.NotNil(t, i)
 	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_NoExplode_NoSpecPath(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "components/schemas/thing.yaml",
+			},
+		},
+	}
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("http://smilfghfhfhfhfhes.com/bikes")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "no.yaml")
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_DoARealLookup(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "/root.yaml#/components/schemas/Burger",
+			},
+		},
+	}
+
+	b, err := os.ReadFile("../../test_specs/burgershop.openapi.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(b, &rootNode)
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("http://smilfghfhfhfhfhes.com/bikes")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&rootNode, cf)
+
+	// fake cache to a lookup for a file that does not exist will work.
+	fakeCache := new(syncmap.Map)
+	fakeCache.Store("/root.yaml#/components/schemas/Burger", &index.Reference{Node: &no})
+	idx.SetCache(fakeCache)
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "/root.yaml#/components/schemas/Burger")
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.NotNil(t, n)
+	assert.NotNil(t, i)
+	assert.Nil(t, e)
 	assert.NotNil(t, c)
 }
