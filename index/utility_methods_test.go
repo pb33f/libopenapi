@@ -5,6 +5,7 @@ package index
 
 import (
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"net/url"
 	"testing"
 )
@@ -48,6 +49,62 @@ func TestGenerateCleanSpecConfigBaseURL_HttpStrip(t *testing.T) {
 		GenerateCleanSpecConfigBaseURL(u, "crap.yaml#thing", true))
 }
 
-func TestSpecIndex_extractDefinitionRequiredRefProperties(t *testing.T) {
+func Test_extractRequiredReferenceProperties(t *testing.T) {
+
+	d := `$ref: http://internets/shoes`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+	props := make(map[string][]string)
+
+	data := extractRequiredReferenceProperties("the-big.yaml#/cheese/thing",
+		rootNode.Content[0], "cakes", props)
+	assert.Len(t, props, 1)
+	assert.NotNil(t, data)
+}
+
+func Test_extractRequiredReferenceProperties_singleFile(t *testing.T) {
+
+	d := `$ref: http://cake.yaml/camel.yaml`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+	props := make(map[string][]string)
+
+	data := extractRequiredReferenceProperties("dingo-bingo-bango.yaml",
+		rootNode.Content[0], "cakes", props)
+	assert.Len(t, props, 1)
+	assert.NotNil(t, data)
+}
+
+func Test_extractRequiredReferenceProperties_http(t *testing.T) {
+
+	d := `$ref: http://cake.yaml/camel.yaml`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+	props := make(map[string][]string)
+
+	data := extractRequiredReferenceProperties("http://dingo-bingo-bango.yaml/camel.yaml",
+		rootNode.Content[0], "cakes", props)
+	assert.Len(t, props, 1)
+	assert.NotNil(t, data)
+}
+
+func Test_extractRequiredReferenceProperties_abs(t *testing.T) {
+
+	d := `$ref: http://cake.yaml/camel.yaml`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+	props := make(map[string][]string)
+
+	data := extractRequiredReferenceProperties("/camel.yaml",
+		rootNode.Content[0], "cakes", props)
+	assert.Len(t, props, 1)
+	assert.NotNil(t, data)
+}
+
+func Test_extractDefinitionRequiredRefProperties_nil(t *testing.T) {
 	assert.Nil(t, extractDefinitionRequiredRefProperties(nil, nil, ""))
 }
