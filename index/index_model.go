@@ -270,7 +270,7 @@ type SpecIndex struct {
 	componentIndexChan                  chan bool
 	polyComponentIndexChan              chan bool
 	resolver                            *Resolver
-	cache                               syncmap.Map
+	cache                               *syncmap.Map
 	built                               bool
 	uri                                 []string
 	logger                              *slog.Logger
@@ -284,6 +284,14 @@ func (index *SpecIndex) GetResolver() *Resolver {
 // GetConfig returns the SpecIndexConfig for this index.
 func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 	return index.config
+}
+
+func (index *SpecIndex) SetCache(sync *syncmap.Map) {
+	index.cache = sync
+}
+
+func (index *SpecIndex) GetCache() *syncmap.Map {
+	return index.cache
 }
 
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the

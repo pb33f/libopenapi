@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/sync/syncmap"
 	"log"
 	"log/slog"
 	"net/http"
@@ -21,6 +22,41 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
+
+func TestSpecIndex_GetCache(t *testing.T) {
+
+	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(petstore, &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	extCache := index.GetCache()
+	assert.NotNil(t, extCache)
+	extCache.Store("test", "test")
+	loaded, ok := extCache.Load("test")
+	assert.Equal(t, "test", loaded)
+	assert.True(t, ok)
+
+	// create a new cache
+	newCache := new(syncmap.Map)
+	index.SetCache(newCache)
+
+	// check that the cache has been set.
+	assert.Equal(t, newCache, index.GetCache())
+
+	// add an item to the new cache and check it exists
+	newCache.Store("test2", "test2")
+	loaded, ok = newCache.Load("test2")
+	assert.Equal(t, "test2", loaded)
+	assert.True(t, ok)
+
+	// now check that the new item in the new cache does not exist in the old cache.
+	loaded, ok = extCache.Load("test2")
+	assert.Nil(t, loaded)
+	assert.False(t, ok)
+
+}
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")

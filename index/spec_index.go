@@ -15,6 +15,7 @@ package index
 import (
 	"context"
 	"fmt"
+	"golang.org/x/sync/syncmap"
 	"log/slog"
 	"os"
 	"sort"
@@ -75,6 +76,8 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	if rootNode == nil {
 		return index
 	}
+
+	index.cache = new(syncmap.Map)
 
 	// boot index.
 	results := index.ExtractRefs(index.root.Content[0], index.root, []string{}, 0, false, "")
