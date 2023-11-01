@@ -4,6 +4,8 @@
 package index
 
 import (
+	"errors"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -158,7 +160,227 @@ func TestNewRemoteFS_BasicCheck_Relative_Deeper(t *testing.T) {
 
 	assert.Equal(t, "/deeper/even_deeper/file3.yaml", stat.Name())
 	assert.Equal(t, int64(47), stat.Size())
+	assert.Equal(t, "/deeper/even_deeper/file3.yaml", file.(*RemoteFile).Name())
+	assert.Equal(t, "file3.yaml", file.(*RemoteFile).GetFileName())
+	assert.Len(t, file.(*RemoteFile).GetContent(), 47)
+	assert.Equal(t, YAML, file.(*RemoteFile).GetFileExtension())
+	assert.NotNil(t, file.(*RemoteFile).GetLastModified())
+	assert.Len(t, file.(*RemoteFile).GetErrors(), 0)
+	assert.Equal(t, "/deeper/even_deeper/file3.yaml", file.(*RemoteFile).GetFullPath())
+	assert.False(t, file.(*RemoteFile).IsDir())
+	assert.Nil(t, file.(*RemoteFile).Sys())
+	assert.Nil(t, file.(*RemoteFile).Close())
 
 	lastMod := stat.ModTime()
 	assert.Equal(t, "2015-10-21 10:28:00 +0000 GMT", lastMod.String())
+}
+
+func TestRemoteFile_NoContent(t *testing.T) {
+
+	rf := &RemoteFile{}
+	x, y := rf.GetContentAsYAMLNode()
+	assert.Nil(t, x)
+	assert.Error(t, y)
+}
+
+func TestRemoteFile_BadContent(t *testing.T) {
+
+	rf := &RemoteFile{data: []byte("bad: data: on: a single: line: makes: for: unhappy: yaml"), index: &SpecIndex{}}
+	x, y := rf.GetContentAsYAMLNode()
+	assert.Nil(t, x)
+	assert.Error(t, y)
+}
+
+func TestRemoteFile_GoodContent(t *testing.T) {
+
+	rf := &RemoteFile{data: []byte("good: data"), index: &SpecIndex{}}
+	x, y := rf.GetContentAsYAMLNode()
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+	assert.NotNil(t, rf.index.root)
+
+	// bad read
+	rf.offset = -1
+	d, err := io.ReadAll(rf)
+	assert.Empty(t, d)
+	assert.Error(t, err)
+
+}
+
+func TestRemoteFile_Index_AlreadySet(t *testing.T) {
+
+	rf := &RemoteFile{data: []byte("good: data"), index: &SpecIndex{}}
+	x, y := rf.Index(&SpecIndexConfig{})
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+
+}
+
+func TestRemoteFile_Index_BadContent(t *testing.T) {
+
+	rf := &RemoteFile{data: []byte("no: sleep: until: the bugs: weep")}
+	x, y := rf.Index(&SpecIndexConfig{})
+	assert.Nil(t, x)
+	assert.Error(t, y)
+
+}
+
+func TestRemoteFS_NoConfig(t *testing.T) {
+
+	x, y := NewRemoteFSWithConfig(nil)
+	assert.Nil(t, x)
+	assert.Error(t, y)
+
+}
+
+func TestRemoteFS_SetRemoteHandler(t *testing.T) {
+
+	h := func(url string) (*http.Response, error) {
+		return nil, errors.New("nope")
+	}
+	cf := CreateClosedAPIIndexConfig()
+	cf.RemoteURLHandler = h
+
+	x, y := NewRemoteFSWithConfig(cf)
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
+	assert.NotNil(t, x.RemoteHandlerFunc)
+
+	cf = CreateClosedAPIIndexConfig()
+	assert.NotNil(t, x.RemoteHandlerFunc)
+
+	x.SetRemoteHandlerFunc(h)
+	assert.NotNil(t, x.RemoteHandlerFunc)
+
+	// run the handler
+	i, n := x.RemoteHandlerFunc("http://www.google.com")
+	assert.Nil(t, i)
+	assert.Error(t, n)
+	assert.Equal(t, "nope", n.Error())
+
+}
+
+func TestRemoteFS_NoConfigBadURL(t *testing.T) {
+	x, y := NewRemoteFSWithRootURL("I am not a URL. I am a potato.: no.... // no.")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+}
+
+func TestNewRemoteFS_Open_NoConfig(t *testing.T) {
+
+	rfs := &RemoteFS{}
+	x, y := rfs.Open("https://pb33f.io")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+
+}
+
+func TestNewRemoteFS_Open_ConfigNotAllowed(t *testing.T) {
+
+	rfs := &RemoteFS{indexConfig: CreateClosedAPIIndexConfig()}
+	x, y := rfs.Open("https://pb33f.io")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+
+}
+
+func TestNewRemoteFS_Open_BadURL(t *testing.T) {
+
+	rfs := &RemoteFS{indexConfig: CreateOpenAPIIndexConfig()}
+	x, y := rfs.Open("I am not a URL. I am a box of candy.. yum yum yum:: in my tum tum tum")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+
+}
+
+func TestNewRemoteFS_RemoteBaseURL_RelativeRequest(t *testing.T) {
+
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		return nil, fmt.Errorf("nope, not having it %s", url)
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("gib/gab/jib/jab.yaml")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "nope, not having it https://pb33f.io/the/love/machine/gib/gab/jib/jab.yaml", y.Error())
+
+}
+
+func TestNewRemoteFS_RemoteBaseURL_BadRequestButContainsBody(t *testing.T) {
+
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		return &http.Response{}, fmt.Errorf("it's bad, but who cares %s", url)
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("/woof.yaml")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "it's bad, but who cares https://pb33f.io/woof.yaml", y.Error())
+
+}
+
+func TestNewRemoteFS_RemoteBaseURL_NoErrorNoResponse(t *testing.T) {
+
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		return nil, nil // useless!
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("/woof.yaml")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "empty response from remote URL: https://pb33f.io/woof.yaml", y.Error())
+}
+
+func TestNewRemoteFS_RemoteBaseURL_ReadBodyFail(t *testing.T) {
+
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		r := &http.Response{}
+		r.Body = &LocalFile{offset: -1} // read will fail.
+		return r, nil
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("/woof.yaml")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "error reading bytes from remote file 'https://pb33f.io/woof.yaml': "+
+		"[read : invalid argument]", y.Error())
+}
+
+func TestNewRemoteFS_RemoteBaseURL_EmptySpecFailIndex(t *testing.T) {
+
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		r := &http.Response{}
+		r.Body = &LocalFile{data: []byte{}} // no bytes to read.
+		return r, nil
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("/woof.yaml")
+	assert.NotNil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "there is nothing in the spec, it's empty - so there is nothing to be done", y.Error())
 }
