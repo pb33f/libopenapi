@@ -335,10 +335,6 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 		if initialRef != nil && initialRef.Definition == r.Definition {
 			return true, visitedDefinitions
 		}
-
-		if visitedDefinitions[r.Definition] {
-			continue
-		}
 		visitedDefinitions[r.Definition] = true
 
 		ir := initialRef

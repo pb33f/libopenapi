@@ -530,10 +530,6 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 					}
 				}
 			}
-			if foundIndex == nil {
-				foundIndex = idx
-			}
-
 			var n PT = new(N)
 			err := BuildModel(node, n)
 			if err != nil {
@@ -553,7 +549,6 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 				}] = ValueReference[PT]{
 					Value:     n,
 					ValueNode: node,
-					//IsReference: isReference,
 					Reference: referenceValue,
 				}
 			}

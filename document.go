@@ -370,11 +370,7 @@ func CompareDocuments(original, updated Document) (*model.DocumentChanges, []err
 		if len(uErrs) > 0 {
 			errs = append(errs, uErrs...)
 		}
-		if v2ModelLeft != nil && v2ModelRight != nil {
-			return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), errs
-		} else {
-			return nil, errs
-		}
+		return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), errs
 	}
 	return nil, []error{fmt.Errorf("unable to compare documents, one or both documents are not of the same version")}
 }
