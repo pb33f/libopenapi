@@ -467,3 +467,22 @@ func TestRolodexRemoteFileSystem_CustomHttpHandler(t *testing.T) {
 	assert.NotNil(t, lDoc)
 	assert.Error(t, err)
 }
+
+func TestRolodexRemoteFileSystem_FailRemoteFS(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/first.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	cf := datamodel.NewDocumentConfiguration()
+	cf.RemoteURLHandler = http.Get
+	baseUrl := "https://no-no-this-will-not-work-it-just-will-not-get-the-job-done-mate.com"
+	u, _ := url.Parse(baseUrl)
+	cf.BaseURL = u
+
+	pizza := func(url string) (resp *http.Response, err error) {
+		return nil, nil
+	}
+	cf.RemoteURLHandler = pizza
+	lDoc, err := CreateDocumentFromConfig(info, cf)
+	assert.NotNil(t, lDoc)
+	assert.Error(t, err)
+}

@@ -181,10 +181,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	if idxConfig.BaseURL != nil {
 
 		// create a remote filesystem
-		remoteFS, fsErr := index.NewRemoteFSWithConfig(idxConfig)
-		if fsErr != nil {
-			return nil, fsErr
-		}
+		remoteFS, _ := index.NewRemoteFSWithConfig(idxConfig)
 		if config.RemoteURLHandler != nil {
 			remoteFS.RemoteHandlerFunc = config.RemoteURLHandler
 		}

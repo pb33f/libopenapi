@@ -825,6 +825,16 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 	assert.NotNil(t, postJsonType)
 }
 
+func TestCreateDocument_NotOpenAPI_EnforcedDocCheck(t *testing.T) {
+	yml := `notadoc: no`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err error
+	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
+	assert.Equal(t,
+		"no openapi version/tag found, cannot create document", err.Error())
+}
+
 func ExampleCreateDocument() {
 	// How to create a low-level OpenAPI 3 Document
 

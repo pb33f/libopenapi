@@ -88,6 +88,8 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.Len(t, index.GetAllReferenceSchemas(), 1972)
 	assert.NotNil(t, index.GetRootServersNode())
 	assert.Len(t, index.GetAllRootServers(), 1)
+	assert.Equal(t, "", index.GetSpecAbsolutePath())
+	assert.NotNil(t, index.GetLogger())
 
 	// not required, but flip the circular result switch on and off.
 	assert.False(t, index.AllowCircularReferenceResolving())
