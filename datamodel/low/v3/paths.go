@@ -138,12 +138,6 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 				r, _, err := low.LocateRefNode(pNode, idx)
 				if r != nil {
 					pNode = r
-					if r.Tag == "" {
-						// If it's a node from file, tag is empty
-						// If it's a reference we need to extract actual operation node
-						pNode = r.Content[0]
-					}
-
 					if err != nil {
 						if !idx.AllowCircularReferenceResolving() {
 							return buildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
