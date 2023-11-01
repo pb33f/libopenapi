@@ -6,7 +6,6 @@ package index
 import (
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
@@ -46,6 +45,9 @@ type RolodexFS interface {
 	GetFiles() map[string]RolodexFile
 }
 
+// Rolodex is a file system abstraction that allows for the indexing of multiple file systems
+// and the ability to resolve references across those file systems. It is used to hold references to external
+// files, and the indexes they hold. The rolodex is the master lookup for all references.
 type Rolodex struct {
 	localFS                   map[string]fs.FS
 	remoteFS                  map[string]fs.FS
@@ -63,148 +65,7 @@ type Rolodex struct {
 	ignoredCircularReferences []*CircularReferenceResult
 }
 
-type rolodexFile struct {
-	location   string
-	rolodex    *Rolodex
-	index      *SpecIndex
-	localFile  *LocalFile
-	remoteFile *RemoteFile
-}
-
-func (rf *rolodexFile) Name() string {
-	if rf.localFile != nil {
-		return rf.localFile.filename
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.filename
-	}
-	return ""
-}
-
-func (rf *rolodexFile) GetIndex() *SpecIndex {
-	if rf.localFile != nil {
-		return rf.localFile.GetIndex()
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.GetIndex()
-	}
-	return nil
-}
-
-func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
-	if rf.index != nil {
-		return rf.index, nil
-	}
-	var content []byte
-	if rf.localFile != nil {
-		content = rf.localFile.data
-	}
-	if rf.remoteFile != nil {
-		content = rf.remoteFile.data
-	}
-
-	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, config.SkipDocumentCheck)
-	if err != nil {
-		return nil, err
-	}
-
-	// create a new index for this file and link it to this rolodex.
-	config.Rolodex = rf.rolodex
-	index := NewSpecIndexWithConfig(info.RootNode, config)
-	rf.index = index
-	return index, nil
-
-}
-
-func (rf *rolodexFile) GetContent() string {
-	if rf.localFile != nil {
-		return string(rf.localFile.data)
-	}
-	if rf.remoteFile != nil {
-		return string(rf.remoteFile.data)
-	}
-	return ""
-}
-
-func (rf *rolodexFile) GetContentAsYAMLNode() (*yaml.Node, error) {
-	if rf.localFile != nil {
-		return rf.localFile.GetContentAsYAMLNode()
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.GetContentAsYAMLNode()
-	}
-	return nil, nil
-}
-
-func (rf *rolodexFile) GetFileExtension() FileExtension {
-	if rf.localFile != nil {
-		return rf.localFile.extension
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.extension
-	}
-	return UNSUPPORTED
-}
-func (rf *rolodexFile) GetFullPath() string {
-	if rf.localFile != nil {
-		return rf.localFile.fullPath
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.fullPath
-	}
-	return ""
-}
-func (rf *rolodexFile) ModTime() time.Time {
-	if rf.localFile != nil {
-		return rf.localFile.lastModified
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.lastModified
-	}
-	return time.Now()
-}
-
-func (rf *rolodexFile) Size() int64 {
-	if rf.localFile != nil {
-		return rf.localFile.Size()
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.Size()
-	}
-	return 0
-}
-
-func (rf *rolodexFile) IsDir() bool {
-	// always false.
-	return false
-}
-
-func (rf *rolodexFile) Sys() interface{} {
-	// not implemented.
-	return nil
-}
-
-func (rf *rolodexFile) Mode() os.FileMode {
-	if rf.localFile != nil {
-		return rf.localFile.Mode()
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.Mode()
-	}
-	return os.FileMode(0)
-}
-
-func (rf *rolodexFile) GetErrors() []error {
-	if rf.localFile != nil {
-		return rf.localFile.readingErrors
-	}
-	if rf.remoteFile != nil {
-		return rf.remoteFile.seekingErrors
-	}
-	return nil
-}
-
+// NewRolodex creates a new rolodex with the provided index configuration.
 func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 	r := &Rolodex{
 		indexConfig: indexConfig,
@@ -215,6 +76,8 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 	return r
 }
 
+// GetIgnoredCircularReferences returns a list of circular references that were ignored during the indexing process.
+// These can be array or polymorphic references.
 func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
 	debounced := make(map[string]*CircularReferenceResult)
 	for _, c := range r.ignoredCircularReferences {
@@ -229,35 +92,43 @@ func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
 	return debouncedResults
 }
 
+// GetIndexingDuration returns the duration it took to index the rolodex.
 func (r *Rolodex) GetIndexingDuration() time.Duration {
 	return r.indexingDuration
 }
 
+// GetRootIndex returns the root index of the rolodex (the entry point, the main document)
 func (r *Rolodex) GetRootIndex() *SpecIndex {
 	return r.rootIndex
 }
 
+// GetIndexes returns all the indexes in the rolodex.
 func (r *Rolodex) GetIndexes() []*SpecIndex {
 	return r.indexes
 }
 
+// GetCaughtErrors returns all the errors that were caught during the indexing process.
 func (r *Rolodex) GetCaughtErrors() []error {
 	return r.caughtErrors
 }
 
+// AddLocalFS adds a local file system to the rolodex.
 func (r *Rolodex) AddLocalFS(baseDir string, fileSystem fs.FS) {
 	absBaseDir, _ := filepath.Abs(baseDir)
 	r.localFS[absBaseDir] = fileSystem
 }
 
+// SetRootNode sets the root node of the rolodex (the entry point, the main document)
 func (r *Rolodex) SetRootNode(node *yaml.Node) {
 	r.rootNode = node
 }
 
+// AddRemoteFS adds a remote file system to the rolodex.
 func (r *Rolodex) AddRemoteFS(baseURL string, fileSystem fs.FS) {
 	r.remoteFS[baseURL] = fileSystem
 }
 
+// IndexTheRolodex indexes the rolodex, building out the indexes for each file, and then building the root index.
 func (r *Rolodex) IndexTheRolodex() error {
 	if r.indexed {
 		return nil
@@ -393,8 +264,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 		}
 
-		// todo: variation with no base path, but a base URL.
-
 		index := NewSpecIndexWithConfig(r.rootNode, r.indexConfig)
 		resolver := NewResolver(index)
 
@@ -433,6 +302,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 }
 
+// CheckForCircularReferences checks for circular references in the rolodex.
 func (r *Rolodex) CheckForCircularReferences() {
 	if !r.circChecked {
 		if r.rootIndex != nil && r.rootIndex.resolver != nil {
@@ -451,6 +321,7 @@ func (r *Rolodex) CheckForCircularReferences() {
 	}
 }
 
+// Resolve resolves references in the rolodex.
 func (r *Rolodex) Resolve() {
 	if r.rootIndex != nil && r.rootIndex.resolver != nil {
 		resolvingErrors := r.rootIndex.resolver.Resolve()
@@ -467,6 +338,7 @@ func (r *Rolodex) Resolve() {
 	r.resolved = true
 }
 
+// BuildIndexes builds the indexes in the rolodex, this is generally not required unless manually building a rolodex.
 func (r *Rolodex) BuildIndexes() {
 	if r.manualBuilt {
 		return
@@ -480,6 +352,7 @@ func (r *Rolodex) BuildIndexes() {
 	r.manualBuilt = true
 }
 
+// Open opens a file in the rolodex, and returns a RolodexFile.
 func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	if r == nil {
 		return nil, fmt.Errorf("rolodex has not been initialized, cannot open file '%s'", location)
@@ -490,10 +363,8 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	}
 
 	var errorStack []error
-
 	var localFile *LocalFile
 	var remoteFile *RemoteFile
-
 	fileLookup := location
 	isUrl := false
 	u, _ := url.Parse(location)
@@ -502,18 +373,15 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	}
 
 	if !isUrl {
-
 		for k, v := range r.localFS {
 
 			// check if this is a URL or an abs/rel reference.
-
 			if !filepath.IsAbs(location) {
 				fileLookup, _ = filepath.Abs(filepath.Join(k, location))
 			}
 
 			f, err := v.Open(fileLookup)
 			if err != nil {
-
 				// try a lookup that is not absolute, but relative
 				f, err = v.Open(location)
 				if err != nil {

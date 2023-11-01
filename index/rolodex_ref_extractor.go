@@ -8,19 +8,20 @@ import (
 	"strings"
 )
 
-type RefType int
-
 const (
 	Local RefType = iota
 	File
 	HTTP
 )
 
+type RefType int
+
 type ExtractedRef struct {
 	Location string
 	Type     RefType
 }
 
+// GetFile returns the file path of the reference.
 func (r *ExtractedRef) GetFile() string {
 	switch r.Type {
 	case File, HTTP:
@@ -31,6 +32,7 @@ func (r *ExtractedRef) GetFile() string {
 	}
 }
 
+// GetReference returns the reference path of the reference.
 func (r *ExtractedRef) GetReference() string {
 	switch r.Type {
 	case File, HTTP:
@@ -41,6 +43,7 @@ func (r *ExtractedRef) GetReference() string {
 	}
 }
 
+// ExtractFileType returns the file extension of the reference.
 func ExtractFileType(ref string) FileExtension {
 	if strings.HasSuffix(ref, ".yaml") {
 		return YAML

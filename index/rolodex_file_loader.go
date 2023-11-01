@@ -6,17 +6,18 @@ package index
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
-	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
 
+// LocalFS is a file system that indexes local files.
 type LocalFS struct {
 	indexConfig         *SpecIndexConfig
 	entryPointDirectory string
@@ -26,14 +27,17 @@ type LocalFS struct {
 	readingErrors       []error
 }
 
+// GetFiles returns the files that have been indexed. A map of RolodexFile objects keyed by the full path of the file.
 func (l *LocalFS) GetFiles() map[string]RolodexFile {
 	return l.Files
 }
 
+// GetErrors returns any errors that occurred during the indexing process.
 func (l *LocalFS) GetErrors() []error {
 	return l.readingErrors
 }
 
+// Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
 func (l *LocalFS) Open(name string) (fs.File, error) {
 
 	if l.indexConfig != nil && !l.indexConfig.AllowFileLookup {
@@ -53,6 +57,7 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 	}
 }
 
+// LocalFile is a file that has been indexed by the LocalFS. It implements the RolodexFile interface.
 type LocalFile struct {
 	filename      string
 	name          string
@@ -66,10 +71,12 @@ type LocalFile struct {
 	offset        int64
 }
 
+// GetIndex returns the *SpecIndex for the file.
 func (l *LocalFile) GetIndex() *SpecIndex {
 	return l.index
 }
 
+// Index returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed)
 func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	if l.index != nil {
 		return l.index, nil
@@ -90,10 +97,13 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 
 }
 
+// GetContent returns the content of the file as a string.
 func (l *LocalFile) GetContent() string {
 	return string(l.data)
 }
 
+// GetContentAsYAMLNode returns the content of the file as a *yaml.Node. If something went wrong
+// then an error is returned.
 func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	if l.parsed != nil {
 		return l.parsed, nil
@@ -116,26 +126,95 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	return &root, nil
 }
 
+// GetFileExtension returns the FileExtension of the file.
 func (l *LocalFile) GetFileExtension() FileExtension {
 	return l.extension
 }
 
+// GetFullPath returns the full path of the file.
 func (l *LocalFile) GetFullPath() string {
 	return l.fullPath
 }
 
+// GetErrors returns any errors that occurred during the indexing process.
 func (l *LocalFile) GetErrors() []error {
 	return l.readingErrors
 }
 
+// FullPath returns the full path of the file.
+func (l *LocalFile) FullPath() string {
+	return l.fullPath
+}
+
+// Name returns the name of the file.
+func (l *LocalFile) Name() string {
+	return l.name
+}
+
+// Size returns the size of the file.
+func (l *LocalFile) Size() int64 {
+	return int64(len(l.data))
+}
+
+// Mode returns the file mode bits for the file.
+func (l *LocalFile) Mode() fs.FileMode {
+	return fs.FileMode(0)
+}
+
+// ModTime returns the modification time of the file.
+func (l *LocalFile) ModTime() time.Time {
+	return l.lastModified
+}
+
+// IsDir returns true if the file is a directory, it always returns false
+func (l *LocalFile) IsDir() bool {
+	return false
+}
+
+// Sys returns the underlying data source (always returns nil)
+func (l *LocalFile) Sys() interface{} {
+	return nil
+}
+
+// Close closes the file (doesn't do anything, returns no error)
+func (l *LocalFile) Close() error {
+	return nil
+}
+
+// Stat returns the FileInfo for the file.
+func (l *LocalFile) Stat() (fs.FileInfo, error) {
+	return l, nil
+}
+
+// Read reads the file into a byte slice, makes it compatible with io.Reader.
+func (l *LocalFile) Read(b []byte) (int, error) {
+	if l.offset >= int64(len(l.GetContent())) {
+		return 0, io.EOF
+	}
+	if l.offset < 0 {
+		return 0, &fs.PathError{Op: "read", Path: l.GetFullPath(), Err: fs.ErrInvalid}
+	}
+	n := copy(b, l.GetContent()[l.offset:])
+	l.offset += int64(n)
+	return n, nil
+}
+
+// LocalFSConfig is the configuration for the LocalFS.
 type LocalFSConfig struct {
 	// the base directory to index
 	BaseDirectory string
-	Logger        *slog.Logger
-	FileFilters   []string
-	DirFS         fs.FS
+
+	// supply your own logger
+	Logger *slog.Logger
+
+	// supply a list of specific files to index only
+	FileFilters []string
+
+	// supply a custom fs.FS to use
+	DirFS fs.FS
 }
 
+// NewLocalFSWithConfig creates a new LocalFS with the supplied configuration.
 func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
@@ -163,15 +242,12 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 		if d.IsDir() {
 			return nil
 		}
-
 		if len(ext) > 2 && p != file {
 			return nil
 		}
-
 		if strings.HasPrefix(p, ".") {
 			return nil
 		}
-
 		if len(config.FileFilters) > 0 {
 			if !slices.Contains(config.FileFilters, p) {
 				return nil
@@ -223,58 +299,11 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 	}, nil
 }
 
+// NewLocalFS creates a new LocalFS with the supplied base directory.
 func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
 	config := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         dirFS,
 	}
 	return NewLocalFSWithConfig(config)
-}
-
-func (l *LocalFile) FullPath() string {
-	return l.fullPath
-}
-
-func (l *LocalFile) Name() string {
-	return l.name
-}
-
-func (l *LocalFile) Size() int64 {
-	return int64(len(l.data))
-}
-
-func (l *LocalFile) Mode() fs.FileMode {
-	return fs.FileMode(0)
-}
-
-func (l *LocalFile) ModTime() time.Time {
-	return l.lastModified
-}
-
-func (l *LocalFile) IsDir() bool {
-	return false
-}
-
-func (l *LocalFile) Sys() interface{} {
-	return nil
-}
-
-func (l *LocalFile) Close() error {
-	return nil
-}
-
-func (l *LocalFile) Stat() (fs.FileInfo, error) {
-	return l, nil
-}
-
-func (l *LocalFile) Read(b []byte) (int, error) {
-	if l.offset >= int64(len(l.GetContent())) {
-		return 0, io.EOF
-	}
-	if l.offset < 0 {
-		return 0, &fs.PathError{Op: "read", Path: l.GetFullPath(), Err: fs.ErrInvalid}
-	}
-	n := copy(b, l.GetContent()[l.offset:])
-	l.offset += int64(n)
-	return n, nil
 }

@@ -173,7 +173,6 @@ func CreateClosedAPIIndexConfig() *SpecIndexConfig {
 // everything is pre-walked if you need it.
 type SpecIndex struct {
 	specAbsolutePath                    string
-	AbsoluteFile                        string
 	rolodex                             *Rolodex                                      // the rolodex is used to fetch remote and file based documents.
 	allRefs                             map[string]*Reference                         // all (deduplicated) refs
 	rawSequencedRefs                    []*Reference                                  // all raw references in sequence as they are scanned, not deduped.

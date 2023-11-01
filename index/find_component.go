@@ -102,7 +102,6 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		var absoluteFileLocation, fileName string
 
 		// is this a local or a remote file?
-
 		fileName = filepath.Base(file)
 		if filepath.IsAbs(file) || strings.HasPrefix(file, "http") {
 			absoluteFileLocation = file
@@ -119,14 +118,11 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 
 		// if the absolute file location has no file ext, then get the rolodex root.
 		ext := filepath.Ext(absoluteFileLocation)
-
 		var parsedDocument *yaml.Node
 		var err error
 
 		idx := index
-
 		if ext != "" {
-
 			// extract the document from the rolodex.
 			rFile, rError := index.rolodex.Open(absoluteFileLocation)
 

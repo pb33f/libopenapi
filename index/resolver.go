@@ -208,9 +208,6 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 			res.VisitReference(schemaRef, seenReferences, journey, false)
 		}
 	}
-	//for _, c := range idx.GetChildren() {
-	//	visitIndexWithoutDamagingIt(res, c)
-	//}
 }
 
 func visitIndex(res *Resolver, idx *SpecIndex) {
@@ -377,7 +374,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 				value := node.Content[i+1].Value
 				var locatedRef *Reference
-
 				var fullDef string
 				var definition string
 
@@ -390,12 +386,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						if strings.HasPrefix(exp[0], "http") {
 							fullDef = value
 						} else {
-
 							if filepath.IsAbs(exp[0]) {
 								fullDef = value
-
 							} else {
-
 								if strings.HasPrefix(ref.FullDefinition, "http") {
 
 									// split the http URI into parts
@@ -420,7 +413,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							}
 						}
 					} else {
-
 						// local component, full def is based on passed in ref
 						if strings.HasPrefix(ref.FullDefinition, "http") {
 
@@ -434,13 +426,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
 						} else {
-
 							// split the full def into parts
 							fileDef := strings.Split(ref.FullDefinition, "#/")
 							fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
-
 						}
-
 					}
 				} else {
 
@@ -460,14 +449,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 							// is the file def a http link?
 							if strings.HasPrefix(fileDef[0], "http") {
-
 								u, _ := url.Parse(fileDef[0])
 								path, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
 								u.Path = path
 								fullDef = u.String()
 
 							} else {
-
 								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
 							}
 						}
@@ -529,17 +516,13 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 										if exp[0] != "" {
 											if !strings.HasPrefix(exp[0], "http") {
 												if !filepath.IsAbs(exp[0]) {
-
 													if strings.HasPrefix(ref.FullDefinition, "http") {
-
 														u, _ := url.Parse(ref.FullDefinition)
 														p, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
 														u.Path = p
 														u.Fragment = ""
 														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
-
 													} else {
-
 														fd := strings.Split(ref.FullDefinition, "#/")
 														abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fd[0]), exp[0]))
 														def = fmt.Sprintf("%s#/%s", abs, exp[1])
