@@ -21,6 +21,17 @@ import (
 	"time"
 )
 
+const (
+	YAML FileExtension = iota
+	JSON
+	UNSUPPORTED
+)
+
+// FileExtension is the type of file extension.
+type FileExtension int
+
+// RemoteFS is a file system that indexes remote files. It implements the fs.FS interface. Files are located remotely
+// and served via HTTP.
 type RemoteFS struct {
 	indexConfig       *SpecIndexConfig
 	rootURL           string
@@ -35,6 +46,7 @@ type RemoteFS struct {
 	extractedFiles    map[string]RolodexFile
 }
 
+// RemoteFile is a file that has been indexed by the RemoteFS. It implements the RolodexFile interface.
 type RemoteFile struct {
 	filename      string
 	name          string
@@ -49,14 +61,17 @@ type RemoteFile struct {
 	offset        int64
 }
 
+// GetFileName returns the name of the file.
 func (f *RemoteFile) GetFileName() string {
 	return f.filename
 }
 
+// GetContent returns the content of the file as a string.
 func (f *RemoteFile) GetContent() string {
 	return string(f.data)
 }
 
+// GetContentAsYAMLNode returns the content of the file as a yaml.Node.
 func (f *RemoteFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	if f.parsed != nil {
 		return f.parsed, nil
@@ -79,56 +94,71 @@ func (f *RemoteFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	return &root, nil
 }
 
+// GetFileExtension returns the file extension of the file.
 func (f *RemoteFile) GetFileExtension() FileExtension {
 	return f.extension
 }
 
+// GetLastModified returns the last modified time of the file.
 func (f *RemoteFile) GetLastModified() time.Time {
 	return f.lastModified
 }
 
+// GetErrors returns any errors that occurred while reading the file.
 func (f *RemoteFile) GetErrors() []error {
 	return f.seekingErrors
 }
 
+// GetFullPath returns the full path of the file.
 func (f *RemoteFile) GetFullPath() string {
 	return f.fullPath
 }
 
 // fs.FileInfo interfaces
 
+// Name returns the name of the file.
 func (f *RemoteFile) Name() string {
 	return f.name
 }
 
+// Size returns the size of the file.
 func (f *RemoteFile) Size() int64 {
 	return int64(len(f.data))
 }
 
+// Mode returns the file mode bits for the file.
 func (f *RemoteFile) Mode() fs.FileMode {
 	return fs.FileMode(0)
 }
 
+// ModTime returns the modification time of the file.
 func (f *RemoteFile) ModTime() time.Time {
 	return f.lastModified
 }
 
+// IsDir returns true if the file is a directory.
 func (f *RemoteFile) IsDir() bool {
 	return false
 }
 
 // fs.File interfaces
 
+// Sys returns the underlying data source (always returns nil)
 func (f *RemoteFile) Sys() interface{} {
 	return nil
 }
 
+// Close closes the file (doesn't do anything, returns no error)
 func (f *RemoteFile) Close() error {
 	return nil
 }
+
+// Stat returns the FileInfo for the file.
 func (f *RemoteFile) Stat() (fs.FileInfo, error) {
 	return f, nil
 }
+
+// Read reads the file. Makes it compatible with io.Reader.
 func (f *RemoteFile) Read(b []byte) (int, error) {
 	if f.offset >= int64(len(f.data)) {
 		return 0, io.EOF
@@ -141,8 +171,8 @@ func (f *RemoteFile) Read(b []byte) (int, error) {
 	return n, nil
 }
 
+// Index indexes the file and returns a *SpecIndex, any errors are returned as well.
 func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
-
 	if f.index != nil {
 		return f.index, nil
 	}
@@ -155,23 +185,17 @@ func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	}
 
 	index := NewSpecIndexWithConfig(info.RootNode, config)
-
 	index.specAbsolutePath = config.SpecAbsolutePath
 	f.index = index
 	return index, nil
 }
+
+// GetIndex returns the index for the file.
 func (f *RemoteFile) GetIndex() *SpecIndex {
 	return f.index
 }
 
-type FileExtension int
-
-const (
-	YAML FileExtension = iota
-	JSON
-	UNSUPPORTED
-)
-
+// NewRemoteFSWithConfig creates a new RemoteFS using the supplied SpecIndexConfig.
 func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) {
 	if specIndexConfig == nil {
 		return nil, errors.New("no spec index config provided")
@@ -207,6 +231,7 @@ func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) 
 	return rfs, nil
 }
 
+// NewRemoteFSWithRootURL creates a new RemoteFS using the supplied root URL.
 func NewRemoteFSWithRootURL(rootURL string) (*RemoteFS, error) {
 	remoteRootURL, err := url.Parse(rootURL)
 	if err != nil {
@@ -217,14 +242,17 @@ func NewRemoteFSWithRootURL(rootURL string) (*RemoteFS, error) {
 	return NewRemoteFSWithConfig(config)
 }
 
+// SetRemoteHandlerFunc sets the remote handler function.
 func (i *RemoteFS) SetRemoteHandlerFunc(handlerFunc utils.RemoteURLHandler) {
 	i.RemoteHandlerFunc = handlerFunc
 }
 
+// SetIndexConfig sets the index configuration.
 func (i *RemoteFS) SetIndexConfig(config *SpecIndexConfig) {
 	i.indexConfig = config
 }
 
+// GetFiles returns the files that have been indexed.
 func (i *RemoteFS) GetFiles() map[string]RolodexFile {
 	files := make(map[string]RolodexFile)
 	i.Files.Range(func(key, value interface{}) bool {
@@ -235,10 +263,12 @@ func (i *RemoteFS) GetFiles() map[string]RolodexFile {
 	return files
 }
 
+// GetErrors returns any errors that occurred during the indexing process.
 func (i *RemoteFS) GetErrors() []error {
 	return i.remoteErrors
 }
 
+// Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
 func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	if i.indexConfig != nil && !i.indexConfig.AllowRemoteLookup {
@@ -261,7 +291,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	// try path first
 	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
 
-		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL,
+			"remoteURL", remoteParsedURL.String())
 		// Create a context with a timeout of 50ms
 		ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
 		defer cancel()
@@ -277,7 +308,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 		select {
 		case <-ctxTimeout.Done():
-			i.logger.Info("waiting for remote file timed out, trying again", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+			i.logger.Info("waiting for remote file timed out, trying again", "file", remoteURL,
+				"remoteURL", remoteParsedURL.String())
 		case v := <-f:
 			return v, nil
 		}

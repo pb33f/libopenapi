@@ -215,13 +215,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						if strings.HasPrefix(uri[0], "http") {
 							fullDefinitionPath = value
 							componentName = fmt.Sprintf("#/%s", uri[1])
-
 						} else {
-
 							if filepath.IsAbs(uri[0]) {
 								fullDefinitionPath = value
 								componentName = fmt.Sprintf("#/%s", uri[1])
-
 							} else {
 
 								// if the index has a base path, use that to resolve the path
@@ -235,7 +232,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 								} else {
 									// if the index has a base URL, use that to resolve the path.
 									if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
-
 										u := *index.config.BaseURL
 										abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
 										u.Path = abs
@@ -287,16 +283,12 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 											u.Path = abs
 											fullDefinitionPath = u.String()
 											componentName = uri[0]
-
 										} else {
-
 											abs, _ := filepath.Abs(filepath.Join(defRoot, uri[0]))
 											fullDefinitionPath = abs
 											componentName = uri[0]
-
 										}
 									}
-
 								}
 							}
 						}
