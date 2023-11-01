@@ -310,7 +310,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		if response != nil {
 			i.logger.Error("client error", "error", clientErr, "status", response.StatusCode)
 		} else {
-			i.logger.Error("client error, empty body", "error", clientErr.Error())
+			i.logger.Error("client error", "error", clientErr.Error())
 		}
 		return nil, clientErr
 	}
@@ -323,7 +323,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		// remove from processing
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 
-		return nil, readError
+		return nil, fmt.Errorf("error reading bytes from remote file '%s': [%s]",
+			remoteParsedURL.String(), readError.Error())
 	}
 
 	if response.StatusCode >= 400 {
@@ -336,12 +337,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
 	}
 
-	absolutePath, pathErr := filepath.Abs(remoteParsedURL.Path)
-	if pathErr != nil {
-		// remove from processing
-		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-		return nil, pathErr
-	}
+	absolutePath, _ := filepath.Abs(remoteParsedURL.Path)
 
 	// extract last modified from response
 	lastModified := response.Header.Get("Last-Modified")
@@ -396,10 +392,5 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		idx.resolver = resolver
 		idx.BuildIndex()
 	}
-
-	//if !i.remoteRunning {
 	return remoteFile, errors.Join(i.remoteErrors...)
-	//	} else {
-	//		return remoteFile, nil/
-	//	}
 }
