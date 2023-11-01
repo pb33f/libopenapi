@@ -124,61 +124,23 @@ func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yam
 			if !strings.HasPrefix(exp[0], "http") {
 
 				if !filepath.IsAbs(exp[0]) {
-
-					if strings.HasPrefix(fulldef, "http") {
-
-						u, _ := url.Parse(fulldef)
-						p := filepath.Dir(u.Path)
-						abs, _ := filepath.Abs(filepath.Join(p, exp[0]))
-						u.Path = abs
-						defPath = fmt.Sprintf("%s#/%s", u.String(), exp[1])
-
-					} else {
-
-						abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fulldef), exp[0]))
-						defPath = fmt.Sprintf("%s#/%s", abs, exp[1])
-
-					}
+					abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fulldef), exp[0]))
+					defPath = fmt.Sprintf("%s#/%s", abs, exp[1])
 				}
-
 			}
 		}
 
 	} else {
-
 		if strings.HasPrefix(exp[0], "http") {
-
 			defPath = exp[0]
-
 		} else {
 
-			// file shit again
-
 			if filepath.IsAbs(exp[0]) {
-
 				defPath = exp[0]
-
 			} else {
-
-				// check full def and decide what to do next.
-				if strings.HasPrefix(fulldef, "http") {
-
-					u, _ := url.Parse(fulldef)
-					p := filepath.Dir(u.Path)
-					abs, _ := filepath.Abs(filepath.Join(p, exp[0]))
-					u.Path = abs
-					defPath = u.String()
-
-				} else {
-
-					defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(fulldef), exp[0]))
-
-				}
-
+				defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(fulldef), exp[0]))
 			}
-
 		}
-
 	}
 
 	if _, ok := reqRefProps[defPath]; !ok {
