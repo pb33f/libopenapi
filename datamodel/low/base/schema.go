@@ -827,56 +827,56 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		countSubSchemaItems(prefixItemsValue)
 
 	if allOfValue != nil {
-		go buildSchema(allOfChan, allOfLabel, allOfValue, errorChan, idx)
+		go buildSchema(ctx, allOfChan, allOfLabel, allOfValue, errorChan, idx)
 	}
 	if anyOfValue != nil {
-		go buildSchema(anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
+		go buildSchema(ctx, anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
 	}
 	if oneOfValue != nil {
-		go buildSchema(oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
+		go buildSchema(ctx, oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
 	}
 	if prefixItemsValue != nil {
-		go buildSchema(prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
+		go buildSchema(ctx, prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
 	}
 	if notValue != nil {
 		totalBuilds++
-		go buildSchema(notChan, notLabel, notValue, errorChan, idx)
+		go buildSchema(ctx, notChan, notLabel, notValue, errorChan, idx)
 	}
 	if containsValue != nil {
 		totalBuilds++
-		go buildSchema(containsChan, containsLabel, containsValue, errorChan, idx)
+		go buildSchema(ctx, containsChan, containsLabel, containsValue, errorChan, idx)
 	}
 	if !itemsIsBool && itemsValue != nil {
 		totalBuilds++
-		go buildSchema(itemsChan, itemsLabel, itemsValue, errorChan, idx)
+		go buildSchema(ctx, itemsChan, itemsLabel, itemsValue, errorChan, idx)
 	}
 	if sifValue != nil {
 		totalBuilds++
-		go buildSchema(ifChan, sifLabel, sifValue, errorChan, idx)
+		go buildSchema(ctx, ifChan, sifLabel, sifValue, errorChan, idx)
 	}
 	if selseValue != nil {
 		totalBuilds++
-		go buildSchema(elseChan, selseLabel, selseValue, errorChan, idx)
+		go buildSchema(ctx, elseChan, selseLabel, selseValue, errorChan, idx)
 	}
 	if sthenValue != nil {
 		totalBuilds++
-		go buildSchema(thenChan, sthenLabel, sthenValue, errorChan, idx)
+		go buildSchema(ctx, thenChan, sthenLabel, sthenValue, errorChan, idx)
 	}
 	if propNamesValue != nil {
 		totalBuilds++
-		go buildSchema(propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
+		go buildSchema(ctx, propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
 	}
 	if unevalItemsValue != nil {
 		totalBuilds++
-		go buildSchema(unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
+		go buildSchema(ctx, unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
 	}
 	if !unevalIsBool && unevalPropsValue != nil {
 		totalBuilds++
-		go buildSchema(unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
+		go buildSchema(ctx, unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
 	}
 	if !addPropsIsBool && addPropsValue != nil {
 		totalBuilds++
-		go buildSchema(addPropsChan, addPropsLabel, addPropsValue, errorChan, idx)
+		go buildSchema(ctx, addPropsChan, addPropsLabel, addPropsValue, errorChan, idx)
 	}
 
 	completeCount := 0
@@ -1125,7 +1125,7 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 }
 
 // build out a child schema for parent schema.
-func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
+func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
 	if valueNode != nil {
 		type buildResult struct {
 			res *low.ValueReference[*SchemaProxy]
@@ -1135,7 +1135,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 		syncChan := make(chan buildResult)
 
 		// build out a SchemaProxy for every sub-schema.
-		build := func(kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
+		build := func(pctx context.Context, kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
 			isRef bool, refLocation string,
 		) {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
@@ -1148,6 +1148,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			sp.kn = kn
 			sp.vn = vn
 			sp.idx = idx
+			sp.ctx = pctx
 			if isRef {
 				sp.referenceLookup = refLocation
 				sp.isReference = true
@@ -1164,13 +1165,15 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 		isRef := false
 		refLocation := ""
+		foundCtx := ctx
 		if utils.IsNodeMap(valueNode) {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
 				isRef = true
-				ref, _, _ := low.LocateRefNode(valueNode, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, valueNode, idx)
 				if ref != nil {
 					valueNode = ref
+					foundCtx = fctx
 				} else {
 					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
@@ -1179,7 +1182,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
-			go build(labelNode, valueNode, -1, syncChan, isRef, refLocation)
+			go build(foundCtx, labelNode, valueNode, -1, syncChan, isRef, refLocation)
 			select {
 			case r := <-syncChan:
 				schemas <- schemaProxyBuildResult{
@@ -1199,9 +1202,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				h := false
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
 					isRef = true
-					ref, _, _ := low.LocateRefNode(vn, idx)
+					ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, vn, idx)
 					if ref != nil {
 						vn = ref
+						foundCtx = fctx
 					} else {
 						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
@@ -1210,7 +1214,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					}
 				}
 				refBuilds++
-				go build(vn, vn, i, syncChan, isRef, refLocation)
+				go build(foundCtx, vn, vn, i, syncChan, isRef, refLocation)
 			}
 
 			completedBuilds := 0
