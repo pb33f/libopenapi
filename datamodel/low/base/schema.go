@@ -720,7 +720,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	}
 
 	// handle properties
-	props, err := buildPropertyMap(root, idx, PropertiesLabel)
+	props, err := buildPropertyMap(ctx, root, idx, PropertiesLabel)
 	if err != nil {
 		return err
 	}
@@ -729,7 +729,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	}
 
 	// handle dependent schemas
-	props, err = buildPropertyMap(root, idx, DependentSchemasLabel)
+	props, err = buildPropertyMap(ctx, root, idx, DependentSchemasLabel)
 	if err != nil {
 		return err
 	}
@@ -738,7 +738,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	}
 
 	// handle pattern properties
-	props, err = buildPropertyMap(root, idx, PatternPropertiesLabel)
+	props, err = buildPropertyMap(ctx, root, idx, PatternPropertiesLabel)
 	if err != nil {
 		return err
 	}
@@ -1036,11 +1036,11 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	return nil
 }
 
-func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
+func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
 	// for property, build in a new thread!
 	bChan := make(chan schemaProxyBuildResult)
 
-	buildProperty := func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
+	buildProperty := func(ctx context.Context, label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
 		refString string,
 	) {
 		c <- schemaProxyBuildResult{
@@ -1049,7 +1049,7 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 				Value:   label.Value,
 			},
 			v: low.ValueReference[*SchemaProxy]{
-				Value:     &SchemaProxy{kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
+				Value:     &SchemaProxy{ctx: ctx, kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
 				ValueNode: value,
 			},
 		}
@@ -1066,22 +1066,24 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 				continue
 			}
 
+			foundCtx := ctx
 			// check our prop isn't reference
 			isRef := false
 			refString := ""
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _, _ := low.LocateRefNode(prop, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
 				if ref != nil {
 					isRef = true
 					prop = ref
 					refString = l
+					foundCtx = fctx
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
 			totalProps++
-			go buildProperty(currentProp, prop, bChan, isRef, refString)
+			go buildProperty(foundCtx, currentProp, prop, bChan, isRef, refString)
 		}
 		completedProps := 0
 		for completedProps < totalProps {

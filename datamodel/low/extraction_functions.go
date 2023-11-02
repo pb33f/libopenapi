@@ -109,8 +109,17 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 
 					} else {
 						if specPath != "" {
-
-							abs, _ := filepath.Abs(filepath.Join(filepath.Dir(specPath), explodedRefValue[0]))
+							var abs string
+							// multi file ref, looking for the root.
+							if filepath.Base(specPath) == "root.yaml" && explodedRefValue[0] == "" {
+								abs = specPath
+							} else {
+								if explodedRefValue[0] == "" {
+									abs = specPath
+								} else {
+									abs, _ = filepath.Abs(filepath.Join(filepath.Dir(specPath), explodedRefValue[0]))
+								}
+							}
 							rv = fmt.Sprintf("%s#%s", abs, explodedRefValue[1])
 
 						} else {

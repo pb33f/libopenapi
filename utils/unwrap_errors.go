@@ -7,5 +7,9 @@ func UnwrapErrors(err error) []error {
 	if err == nil {
 		return []error{}
 	}
-	return err.(interface{ Unwrap() []error }).Unwrap()
+	if uw, ok := err.(interface{ Unwrap() []error }); ok {
+		return uw.Unwrap()
+	} else {
+		return []error{err}
+	}
 }
