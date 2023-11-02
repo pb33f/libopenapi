@@ -1,0 +1,6364 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: 0.1.0
+  summary: Test Summary
+  description: |-
+    Some test description.
+    About our test document.
+x-speakeasy-extension-rewrite:
+  x-speakeasy-ignore: x-my-ignore
+externalDocs:
+  url: https://speakeasyapi.dev/docs/home
+  description: Speakeasy Docs
+servers:
+  - url: http://localhost:35123
+    description: The default server.
+  - url: http://broken
+    description: A server url to a non-existent server.
+  - url: http://{hostname}:{port}
+    description: A server url with templated variables.
+    variables:
+      port:
+        default: "35123"
+        description: The port on which the server is running.
+      hostname:
+        default: localhost
+        description: The hostname of the server.
+  - url: http://localhost:35123/anything/{something}
+    description: A server url with templated variables.
+    variables:
+      something:
+        default: something
+        description: Something is a variable for changing the root path
+        enum:
+          - something
+          - somethingElse
+          - somethingElseAgain
+  - url: "{protocol}://{hostname}:{port}"
+    description: A server url with templated variables (including the protocol).
+    variables:
+      protocol:
+        default: http
+        description: The networking protocol to use when making requests.
+      port:
+        default: "35123"
+        description: The port on which the server is running.
+      hostname:
+        default: localhost
+        description: The hostname of the server.
+x-speakeasy-globals:
+  parameters:
+    - name: globalQueryParam
+      in: query
+      required: true
+      schema:
+        type: string
+        example: "some example global query param"
+    - name: globalPathParam
+      in: path
+      required: true
+      schema:
+        type: integer
+        example: 100
+x-speakeasy-name-override:
+  - operationId: getGlobalNameOverride
+    methodNameOverride: globalNameOverridden
+tags:
+  - name: auth
+    description: Endpoints for testing authentication.
+  - name: authNew
+    description: Endpoints for testing authentication.
+  - name: servers
+    description: Endpoints for testing servers.
+  - name: parameters
+    description: Endpoints for testing parameters.
+  - name: requestBodies
+    description: Endpoints for testing request bodies.
+  - name: responseBodies
+    description: Endpoints for testing response bodies.
+  - name: retries
+    description: Endpoints for testing retries.
+  - name: generation
+    description: Endpoints for purely testing valid generation behavior.
+  - name: flattening
+    description: Endpoints for testing flattening through request body and parameter combinations.
+  - name: globals
+    description: Endpoints for testing global parameters.
+  - name: unions
+    description: Endpoints for testing union types.
+  - name: errors
+    description: Endpoints for testing error responses.
+  - name: telemetry
+    description: Endpoints for testing telemetry.
+  - name: pagination
+    description: Endpoints for testing the pagination extension
+  - name: documentation
+    description: Testing for documentation extensions and tooling.
+    x-speakeasy-docs:
+      go:
+        description: Testing for documentation extensions in Go.
+      python:
+        description: Testing for documentation extensions in Python.
+      typescript:
+        description: Testing for documentation extensions in TypeScript.
+security:
+  - apiKeyAuth: []
+  - apiKeyAuthNew: []
+  - oauth2: []
+  - {}
+paths:
+  /anything/selectGlobalServer:
+    get:
+      operationId: selectGlobalServer
+      tags:
+        - servers
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Optional-Header:
+              schema:
+                type: string
+  /anything/selectServerWithID:
+    get:
+      operationId: selectServerWithID
+      description: Select a server by ID.
+      tags:
+        - servers
+      servers:
+        - url: http://localhost:35123
+          description: The default server.
+          x-speakeasy-server-id: valid
+        - url: http://broken
+          description: A server url to a non-existent server.
+          x-speakeasy-server-id: broken
+      responses:
+        "200":
+          description: OK
+  /anything/serverWithTemplates:
+    get:
+      operationId: serverWithTemplates
+      tags:
+        - servers
+      servers:
+        - url: http://{hostname}:{port}
+          variables:
+            port:
+              default: "35123"
+              description: The port on which the server is running.
+            hostname:
+              default: localhost
+
+              description: The hostname of the server.
+      responses:
+        "200":
+          description: OK
+  /anything/serversByIDWithTemplates:
+    get:
+      operationId: serversByIDWithTemplates
+      tags:
+        - servers
+      servers:
+        - url: http://{hostname}:{port}
+          variables:
+            port:
+              default: "35123"
+              description: The port on which the server is running.
+            hostname:
+              default: localhost
+              description: The hostname of the server.
+          x-speakeasy-server-id: main
+      responses:
+        "200":
+          description: OK
+  /anything/serverWithTemplatesGlobal:
+    get:
+      operationId: serverWithTemplatesGlobal
+      tags:
+        - servers
+      responses:
+        "200":
+          description: OK
+  /anything/serverWithProtocolTemplate:
+    get:
+      operationId: serverWithProtocolTemplate
+      tags:
+        - servers
+      servers:
+        - url: "{protocol}://{hostname}:{port}"
+          variables:
+            protocol:
+              default: http
+              description: The protocol to use when making the network request.
+            port:
+              default: "35123"
+              description: The port on which the server is running.
+            hostname:
+              default: localhost
+              description: The hostname of the server.
+          x-speakeasy-server-id: main
+      responses:
+        "200":
+          description: OK
+  /basic-auth/{user}/{passwd}:
+    get:
+      operationId: basicAuth
+      tags:
+        - auth
+      security:
+        - basicAuth: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: passwd
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successful authentication.
+          content:
+            application/json:
+              schema:
+                title: user
+                type: object
+                properties:
+                  authenticated:
+                    type: boolean
+                  user:
+                    type: string
+                required:
+                  - authenticated
+                  - user
+        "401":
+          description: Unsuccessful authentication.
+  /bearer:
+    get:
+      operationId: apiKeyAuthGlobal
+      tags:
+        - auth
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /bearer#operation:
+    get:
+      operationId: apiKeyAuth
+      tags:
+        - auth
+      security:
+        - apiKeyAuth: []
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /bearer#oauth2:
+    get:
+      operationId: oauth2Auth
+      tags:
+        - auth
+      security:
+        - oauth2: []
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /bearer#global:
+    get:
+      operationId: globalBearerAuth
+      tags:
+        - auth
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /bearer#openIdConnect:
+    get:
+      operationId: openIdConnectAuth
+      tags:
+        - auth
+      security:
+        - openIdConnect: []
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /bearer#bearer:
+    get:
+      operationId: bearerAuth
+      tags:
+        - auth
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /bearer#oauth2AuthOverride:
+    get:
+      operationId: oauth2Override
+      tags:
+        - auth
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+      security:
+        - oauth2: []
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/tokenAuthResponse"
+        "401":
+          description: Unsuccessful authentication.
+  /auth#basicAuth:
+    post:
+      operationId: basicAuthNew
+      tags:
+        - authNew
+      security:
+        - basicAuth: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#apiKeyAuthGlobal:
+    post:
+      operationId: apiKeyAuthGlobalNew
+      tags:
+        - authNew
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#oauth2Auth:
+    post:
+      operationId: oauth2AuthNew
+      tags:
+        - authNew
+      security:
+        - oauth2: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#authGlobal:
+    post:
+      operationId: authGlobal
+      tags:
+        - authNew
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#openIdConnectAuth:
+    post:
+      operationId: openIdConnectAuthNew
+      tags:
+        - authNew
+      security:
+        - openIdConnect: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#multipleSimpleSchemeAuth:
+    post:
+      operationId: multipleSimpleSchemeAuth
+      tags:
+        - authNew
+      security:
+        - apiKeyAuthNew: []
+          oauth2: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#multipleMixedSchemeAuth:
+    post:
+      operationId: multipleMixedSchemeAuth
+      tags:
+        - authNew
+      security:
+        - apiKeyAuthNew: []
+          basicAuth: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#multipleSimpleOptionsAuth:
+    post:
+      operationId: multipleSimpleOptionsAuth
+      tags:
+        - authNew
+      security:
+        - apiKeyAuthNew: []
+        - oauth2: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#multipleMixedOptionsAuth:
+    post:
+      operationId: multipleMixedOptionsAuth
+      tags:
+        - authNew
+      security:
+        - apiKeyAuthNew: []
+        - basicAuth: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#multipleOptionsWithSimpleSchemesAuth:
+    post:
+      operationId: multipleOptionsWithSimpleSchemesAuth
+      tags:
+        - authNew
+      security:
+        - apiKeyAuthNew: []
+          oauth2: []
+        - apiKeyAuthNew: []
+          openIdConnect: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /auth#multipleOptionsWithMixedSchemesAuth:
+    post:
+      operationId: multipleOptionsWithMixedSchemesAuth
+      tags:
+        - authNew
+      security:
+        - apiKeyAuthNew: []
+          oauth2: []
+        - basicAuth: []
+          apiKeyAuthNew: []
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/authServiceRequestBody"
+        required: true
+      responses:
+        "200":
+          description: OK
+        "401":
+          description: Unsuccessful authentication.
+  /anything/mixedParams/path/{pathParam}:
+    get:
+      x-speakeasy-test: true
+      operationId: mixedParametersPrimitives
+      tags:
+        - parameters
+      parameters:
+        - name: pathParam
+          in: path
+          schema:
+            type: string
+            example: pathValue
+          required: true
+        - name: queryStringParam
+          in: query
+          schema:
+            type: string
+            example: queryValue
+          required: true
+        - name: headerParam
+          in: header
+          schema:
+            type: string
+            example: headerValue
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/mixedParams/path/pathValue?queryStringParam=queryValue
+                  args:
+                    type: object
+                    properties:
+                      queryStringParam:
+                        type: string
+                        example: queryValue
+                    required:
+                      - queryStringParam
+                  headers:
+                    type: object
+                    properties:
+                      Headerparam:
+                        type: string
+                        example: headerValue
+                    required:
+                      - Headerparam
+                required:
+                  - url
+                  - args
+                  - headers
+  /anything/params/{duplicateParamRequest}:
+    get:
+      operationId: duplicateParam
+      tags:
+        - parameters
+      parameters:
+        - name: duplicateParamRequest
+          in: path
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: duplicateParamResponse
+                type: object
+                properties:
+                  url:
+                    type: string
+  /anything/mixedParams/path/{path_param}/camelcase:
+    get:
+      x-speakeasy-test: true
+      operationId: mixedParametersCamelCase
+      tags:
+        - parameters
+      parameters:
+        - name: path_param
+          in: path
+          schema:
+            type: string
+            example: pathValue
+          required: true
+        - name: query_string_param
+          in: query
+          schema:
+            type: string
+            example: queryValue
+          required: true
+        - name: header_param
+          in: header
+          schema:
+            type: string
+            example: headerValue
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/mixedParams/path/pathValue/camelcase?query_string_param=queryValue
+                  args:
+                    type: object
+                    properties:
+                      query_string_param:
+                        type: string
+                        example: queryValue
+                    required:
+                      - query_string_param
+                  headers:
+                    type: object
+                    properties:
+                      Header-Param:
+                        type: string
+                        example: headerValue
+                    required:
+                      - Header-Param
+                required:
+                  - url
+                  - args
+                  - headers
+  /anything/pathParams/str/{strParam}/bool/{boolParam}/int/{intParam}/num/{numParam}:
+    get:
+      x-speakeasy-test: true
+      operationId: simplePathParameterPrimitives
+      tags:
+        - parameters
+      parameters:
+        - $ref: "speakeasy-components.yaml#/components/parameters/strPathParam"
+        - $ref: "speakeasy-components.yaml#/components/parameters/boolPathParam"
+        - $ref: "speakeasy-components.yaml#/components/parameters/intPathParam"
+        - $ref: "speakeasy-components.yaml#/components/parameters/numPathParam"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/pathParams/str/test/bool/true/int/1/num/1.1
+                required:
+                  - url
+  /anything/pathParams/obj/{objParam}/objExploded/{objParamExploded}:
+    get:
+      x-speakeasy-test: true
+      operationId: simplePathParameterObjects
+      tags:
+        - parameters
+      parameters:
+        - name: objParam
+          in: path
+          required: true
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        - name: objParamExploded
+          in: path
+          required: true
+          explode: true
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/pathParams/obj/any,any,bigint,8821239038968084,bigintStr,9223372036854775808,bool,true,boolOpt,true,date,2020-01-01,dateTime,2020-01-01T00:00:00.000000001Z,decimal,3.141592653589793,decimalStr,3.14159265358979344719667586,enum,one,float32,1.1,int,1,int32,1,int32Enum,55,intEnum,2,num,1.1,str,test,strOpt,testOptional/objExploded/any=any,bigint=8821239038968084,bigintStr=9223372036854775808,bool=true,boolOpt=true,date=2020-01-01,dateTime=2020-01-01T00:00:00.000000001Z,decimal=3.141592653589793,decimalStr=3.14159265358979344719667586,enum=one,float32=1.1,int=1,int32=1,int32Enum=55,intEnum=2,num=1.1,str=test,strOpt=testOptional
+                required:
+                  - url
+  /anything/pathParams/arr/{arrParam}:
+    get:
+      x-speakeasy-test: true
+      operationId: simplePathParameterArrays
+      tags:
+        - parameters
+      parameters:
+        - name: arrParam
+          in: path
+          required: true
+          schema:
+            type: array
+            items:
+              type: string
+              examples:
+                - test
+                - test2
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/pathParams/arr/test,test2
+                required:
+                  - url
+  /anything/pathParams/map/{mapParam}/mapExploded/{mapParamExploded}:
+    get:
+      x-speakeasy-test: true
+      operationId: simplePathParameterMaps
+      tags:
+        - parameters
+      parameters:
+        - name: mapParam
+          in: path
+          required: true
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: { "test": "value", "test2": "value2" }
+        - name: mapParamExploded
+          in: path
+          required: true
+          explode: true
+          schema:
+            type: object
+            additionalProperties:
+              type: integer
+            example: { "test": 1, "test2": 2 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/pathParams/map/test,value,test2,value2/mapExploded/test=1,test2=2
+                    x-speakeasy-test-internal-directives:
+                      - sortSerializedMaps:
+                          {
+                            "regex": ".*?\\/map\\/(.*?)\\/mapExploded\\/(.*)",
+                            "delim": ",",
+                          }
+                required:
+                  - url
+  /anything/pathParams/json/{jsonObj}:
+    get:
+      x-speakeasy-test: true
+      operationId: pathParameterJson
+      tags:
+        - parameters
+      parameters:
+        - name: jsonObj
+          in: path
+          required: true
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: 'http://localhost:35123/anything/pathParams/json/{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"}'
+                required:
+                  - url
+          description: OK
+  /anything/queryParams/form/primitive:
+    get:
+      x-speakeasy-test: true
+      operationId: formQueryParamsPrimitive
+      tags:
+        - parameters
+      parameters:
+        - name: strParam
+          in: query
+          schema:
+            type: string
+            example: test
+          required: true
+        - name: boolParam
+          in: query
+          schema:
+            type: boolean
+            example: true
+          required: true
+        - name: intParam
+          in: query
+          schema:
+            type: integer
+            example: 1
+          required: true
+        - name: numParam
+          in: query
+          schema:
+            type: number
+            example: 1.1
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  args:
+                    type: object
+                    properties:
+                      strParam:
+                        type: string
+                        example: "test"
+                      boolParam:
+                        type: string
+                        example: "true"
+                      intParam:
+                        type: string
+                        example: "1"
+                      numParam:
+                        type: string
+                        example: "1.1"
+                    required:
+                      - strParam
+                      - boolParam
+                      - intParam
+                      - numParam
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/form/primitive?boolParam=true&intParam=1&numParam=1.1&strParam=test
+                required:
+                  - args
+                  - url
+  /anything/queryParams/form/obj:
+    get:
+      x-speakeasy-test: true
+      operationId: formQueryParamsObject
+      tags:
+        - parameters
+      parameters:
+        - name: objParamExploded
+          in: query
+          explode: true
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+        - name: objParam
+          in: query
+          explode: false
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/form/obj?any=any&bigint=8821239038968084&bigintStr=9223372036854775808&bool=true&boolOpt=true&date=2020-01-01&dateTime=2020-01-01T00%3A00%3A00.000000001Z&decimal=3.141592653589793&decimalStr=3.14159265358979344719667586&enum=one&float32=1.1&int=1&int32=1&int32Enum=55&intEnum=2&num=1.1&objParam=any%2Cany%2Cbigint%2C8821239038968084%2CbigintStr%2C9223372036854775808%2Cbool%2Ctrue%2CboolOpt%2Ctrue%2Cdate%2C2020-01-01%2CdateTime%2C2020-01-01T00%3A00%3A00.000000001Z%2Cdecimal%2C3.141592653589793%2CdecimalStr%2C3.14159265358979344719667586%2Cenum%2Cone%2Cfloat32%2C1.1%2Cint%2C1%2Cint32%2C1%2Cint32Enum%2C55%2CintEnum%2C2%2Cnum%2C1.1%2Cstr%2Ctest%2CstrOpt%2CtestOptional&str=test&strOpt=testOptional
+                  args:
+                    type: object
+                    properties:
+                      str:
+                        type: string
+                        example: "test"
+                      bool:
+                        type: string
+                        example: "true"
+                      int:
+                        type: string
+                        example: "1"
+                      int32:
+                        type: string
+                        example: "1"
+                      num:
+                        type: string
+                        example: "1.1"
+                      float32:
+                        type: string
+                        example: "1.1"
+                      enum:
+                        type: string
+                        example: "one"
+                      any:
+                        type: string
+                        example: "any"
+                      date:
+                        type: string
+                        example: "2020-01-01"
+                      dateTime:
+                        type: string
+                        example: "2020-01-01T00:00:00.000000001Z"
+                      boolOpt:
+                        type: string
+                        example: "true"
+                      strOpt:
+                        type: string
+                        example: "testOptional"
+                      intOptNull:
+                        type: string
+                      numOptNull:
+                        type: string
+                      objParam:
+                        type: string
+                        example: "any,any,bigint,8821239038968084,bigintStr,9223372036854775808,bool,true,boolOpt,true,date,2020-01-01,dateTime,2020-01-01T00:00:00.000000001Z,decimal,3.141592653589793,decimalStr,3.14159265358979344719667586,enum,one,float32,1.1,int,1,int32,1,int32Enum,55,intEnum,2,num,1.1,str,test,strOpt,testOptional"
+                      intEnum:
+                        type: string
+                        example: "2"
+                      int32Enum:
+                        type: string
+                        example: "55"
+                      bigint:
+                        type: string
+                        example: "8821239038968084"
+                      bigintStr:
+                        type: string
+                        example: "9223372036854775808"
+                      decimal:
+                        type: string
+                        example: "3.141592653589793"
+                      decimalStr:
+                        type: string
+                        example: "3.14159265358979344719667586"
+                    required:
+                      - str
+                      - bool
+                      - int
+                      - int32
+                      - num
+                      - float32
+                      - enum
+                      - any
+                      - date
+                      - dateTime
+                      - objParam
+                      - intEnum
+                      - int32Enum
+                required:
+                  - url
+                  - args
+  /anything/queryParams/form/camelObj:
+    get:
+      x-speakeasy-test: true
+      operationId: formQueryParamsCamelObject
+      tags:
+        - parameters
+      parameters:
+        - name: obj_param_exploded
+          in: query
+          explode: true
+          schema:
+            type: object
+            properties:
+              search_term:
+                type: string
+                example: foo
+              item_count:
+                type: string
+                example: "10"
+          required: true
+        - name: obj_param
+          in: query
+          explode: false
+          schema:
+            type: object
+            properties:
+              encoded_term:
+                type: string
+                example: bar
+              encoded_count:
+                type: string
+                example: "11"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/form/camelObj?item_count=10&obj_param=encoded_count%2C11%2Cencoded_term%2Cbar&search_term=foo
+                  args:
+                    type: object
+                    properties:
+                      search_term:
+                        type: string
+                        example: "foo"
+                      item_count:
+                        type: string
+                        example: "10"
+                    required:
+                      - search_term
+                      - item_count
+                required:
+                  - url
+                  - args
+  /anything/queryParams/form/refParamObject:
+    get:
+      x-speakeasy-test: true
+      operationId: formQueryParamsRefParamObject
+      tags:
+        - parameters
+      parameters:
+        - $ref: "speakeasy-components.yaml#/components/parameters/refQueryParamObjExploded"
+        - $ref: "speakeasy-components.yaml#/components/parameters/refQueryParamObj"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/form/refParamObject?bool=true&int=1&num=1.1&refObjParam=bool%2Ctrue%2Cint%2C1%2Cnum%2C1.1%2Cstr%2Ctest&str=test
+                  args:
+                    type: object
+                    properties:
+                      str:
+                        type: string
+                        example: "test"
+                      bool:
+                        type: string
+                        example: "true"
+                      int:
+                        type: string
+                        example: "1"
+                      num:
+                        type: string
+                        example: "1.1"
+                      refObjParam:
+                        type: string
+                        example: "bool,true,int,1,num,1.1,str,test"
+                    required:
+                      - str
+                      - bool
+                      - int
+                      - num
+                      - refObjParam
+                required:
+                  - url
+                  - args
+  /anything/queryParams/form/array:
+    get:
+      x-speakeasy-test: true
+      operationId: formQueryParamsArray
+      tags:
+        - parameters
+      parameters:
+        - name: arrParam
+          in: query
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              examples:
+                - test
+                - test2
+        - name: arrParamExploded
+          in: query
+          explode: true
+          schema:
+            type: array
+            items:
+              type: integer
+              examples:
+                - 1
+                - 2
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/form/array?arrParam=test%2Ctest2&arrParamExploded=1&arrParamExploded=2
+                  args:
+                    type: object
+                    properties:
+                      arrParam:
+                        type: string
+                        example: "test,test2"
+                      arrParamExploded:
+                        type: array
+                        items:
+                          type: string
+                          examples:
+                            - "1"
+                            - "2"
+                    required:
+                      - arrParam
+                      - arrParamExploded
+                required:
+                  - url
+                  - args
+  /anything/queryParams/pipe/array:
+    get:
+      x-speakeasy-test: true
+      operationId: pipeDelimitedQueryParamsArray
+      tags:
+        - parameters
+      parameters:
+        - name: arrParam
+          style: pipeDelimited
+          in: query
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+              examples:
+                - test
+                - test2
+        - name: arrParamExploded
+          style: pipeDelimited
+          in: query
+          explode: true
+          schema:
+            type: array
+            items:
+              type: integer
+              examples:
+                - 1
+                - 2
+        - name: objParam
+          style: pipeDelimited
+          in: query
+          explode: false
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        - name: mapParam
+          style: pipeDelimited
+          in: query
+          explode: false
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: { "key1": "val1", "key2": "val2" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: "http://localhost:35123/anything/queryParams/pipe/array?arrParam=test|test2&arrParamExploded=1&arrParamExploded=2&mapParam=key1|val1|key2|val2&objParam=any|any|bigint|8821239038968084|bigintStr|9223372036854775808|bool|true|boolOpt|true|date|2020-01-01|dateTime|2020-01-01T00%3A00%3A00.000000001Z|decimal|3.141592653589793|decimalStr|3.14159265358979344719667586|enum|one|float32|1.1|int|1|int32|1|int32Enum|55|intEnum|2|num|1.1|str|test|strOpt|testOptional"
+                    x-speakeasy-test-internal-directives:
+                      - sortSerializedMaps:
+                          { "regex": ".*?&mapParam=(.*?)&.*", "delim": "|" }
+                  args:
+                    type: object
+                    properties:
+                      arrParam:
+                        type: string
+                        example: "test|test2"
+                      arrParamExploded:
+                        type: array
+                        items:
+                          type: string
+                          examples:
+                            - "1"
+                            - "2"
+                    required:
+                      - arrParam
+                      - arrParamExploded
+                required:
+                  - url
+                  - args
+  /anything/queryParams/form/map:
+    get:
+      x-speakeasy-test: true
+      operationId: formQueryParamsMap
+      tags:
+        - parameters
+      parameters:
+        - name: mapParam
+          in: query
+          explode: false
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: { "test": "value", "test2": "value2" }
+        - name: mapParamExploded
+          in: query
+          explode: true
+          schema:
+            type: object
+            additionalProperties:
+              type: integer
+            example: { "test": 1, "test2": 2 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/form/map?mapParam=test%2Cvalue%2Ctest2%2Cvalue2&test=1&test2=2
+                    x-speakeasy-test-internal-directives:
+                      - sortSerializedMaps:
+                          {
+                            "regex": ".*?\\?mapParam=(.*?)&(.*)",
+                            "delim": "%2C",
+                          }
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    example:
+                      {
+                        "mapParam": "test,value,test2,value2",
+                        "test": "1",
+                        "test2": "2",
+                      }
+                    x-speakeasy-test-internal-directives:
+                      - sortSerializedMaps: { "regex": "(.*)", "delim": "," }
+                required:
+                  - url
+                  - args
+  /anything/queryParams/deepObject/obj:
+    get:
+      x-speakeasy-test: true
+      operationId: deepObjectQueryParamsObject
+      tags:
+        - parameters
+      parameters:
+        - name: objParam
+          in: query
+          style: deepObject
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+        - name: objArrParam
+          in: query
+          style: deepObject
+          schema:
+            type: object
+            properties:
+              arr:
+                type: array
+                items:
+                  type: string
+                  examples:
+                    - test
+                    - test2
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/deepObject/obj?objArrParam[arr]=test&objArrParam[arr]=test2&objParam[any]=any&objParam[bigintStr]=9223372036854775808&objParam[bigint]=8821239038968084&objParam[boolOpt]=true&objParam[bool]=true&objParam[dateTime]=2020-01-01T00%3A00%3A00.000000001Z&objParam[date]=2020-01-01&objParam[decimalStr]=3.14159265358979344719667586&objParam[decimal]=3.141592653589793&objParam[enum]=one&objParam[float32]=1.1&objParam[int32Enum]=55&objParam[int32]=1&objParam[intEnum]=2&objParam[int]=1&objParam[num]=1.1&objParam[strOpt]=testOptional&objParam[str]=test
+                  args:
+                    type: object
+                    properties:
+                      objArrParam[arr]:
+                        type: array
+                        items:
+                          type: string
+                          examples:
+                            - test
+                            - test2
+                      objParam[any]:
+                        type: string
+                        example: "any"
+                      objParam[boolOpt]:
+                        type: string
+                        example: "true"
+                      objParam[bool]:
+                        type: string
+                        example: "true"
+                      objParam[dateTime]:
+                        type: string
+                        example: "2020-01-01T00:00:00.000000001Z"
+                      objParam[date]:
+                        type: string
+                        example: "2020-01-01"
+                      objParam[enum]:
+                        type: string
+                        example: "one"
+                      objParam[float32]:
+                        type: string
+                        example: "1.1"
+                      objParam[int32]:
+                        type: string
+                        example: "1"
+                      objParam[int]:
+                        type: string
+                        example: "1"
+                      objParam[num]:
+                        type: string
+                        example: "1.1"
+                      objParam[strOpt]:
+                        type: string
+                        example: "testOptional"
+                      objParam[str]:
+                        type: string
+                        example: "test"
+                      objParam[intEnum]:
+                        type: string
+                        example: "2"
+                      objParam[int32Enum]:
+                        type: string
+                        example: "55"
+                      objParam[bigint]:
+                        type: string
+                        example: "8821239038968084"
+                      objParam[bigintStr]:
+                        type: string
+                        example: "9223372036854775808"
+                      objParam[decimal]:
+                        type: string
+                        example: "3.141592653589793"
+                      objParam[decimalStr]:
+                        type: string
+                        example: "3.14159265358979344719667586"
+                    required:
+                      - objArrParam[arr]
+                      - objParam[any]
+                      - objParam[boolOpt]
+                      - objParam[bool]
+                      - objParam[dateTime]
+                      - objParam[date]
+                      - objParam[enum]
+                      - objParam[float32]
+                      - objParam[int32]
+                      - objParam[int]
+                      - objParam[num]
+                      - objParam[strOpt]
+                      - objParam[str]
+                      - objParam[intEnum]
+                      - objParam[int32Enum]
+                required:
+                  - url
+                  - args
+  /anything/queryParams/deepObject/map:
+    get:
+      x-speakeasy-test: true
+      operationId: deepObjectQueryParamsMap
+      tags:
+        - parameters
+      parameters:
+        - name: mapParam
+          in: query
+          style: deepObject
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: { "test": "value", "test2": "value2" }
+          required: true
+        - name: mapArrParam
+          in: query
+          style: deepObject
+          schema:
+            type: object
+            additionalProperties:
+              type: array
+              items:
+                type: string
+            example: { "test": ["test", "test2"], "test2": ["test3", "test4"] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: http://localhost:35123/anything/queryParams/deepObject/map?mapArrParam[test2]=test3&mapArrParam[test2]=test4&mapArrParam[test]=test&mapArrParam[test]=test2&mapParam[test2]=value2&mapParam[test]=value
+                  args:
+                    type: object
+                    additionalProperties:
+                      anyOf:
+                        - type: string
+                        - type: array
+                          items:
+                            type: string
+                    example:
+                      {
+                        "mapArrParam[test]": ["test", "test2"],
+                        "mapArrParam[test2]": ["test3", "test4"],
+                        "mapParam[test]": "value",
+                        "mapParam[test2]": "value2",
+                      }
+                required:
+                  - url
+                  - args
+  /anything/queryParams/json/obj:
+    get:
+      x-speakeasy-test: true
+      operationId: jsonQueryParamsObject
+      tags:
+        - parameters
+      parameters:
+        - name: simpleObjParam
+          in: query
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+        - name: deepObjParam
+          in: query
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: 'http://localhost:35123/anything/queryParams/json/obj?deepObjParam={"any"%3A{"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}%2C"arr"%3A[{"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}%2C{"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}]%2C"bool"%3Atrue%2C"int"%3A1%2C"map"%3A{"key"%3A{"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}%2C"key2"%3A{"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}}%2C"num"%3A1.1%2C"obj"%3A{"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}%2C"str"%3A"test"}&simpleObjParam={"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}'
+                  args:
+                    type: object
+                    properties:
+                      simpleObjParam:
+                        type: string
+                        example: '{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"}'
+                      deepObjParam:
+                        type: string
+                        example: '{"any":{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"},"arr":[{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"},{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"}],"bool":true,"int":1,"map":{"key":{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"},"key2":{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"}},"num":1.1,"obj":{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"},"str":"test"}'
+                    required:
+                      - simpleObjParam
+                      - deepObjParam
+                required:
+                  - url
+                  - args
+  /anything/queryParams/mixed:
+    get:
+      x-speakeasy-test: true
+      operationId: mixedQueryParams
+      tags:
+        - parameters
+      parameters:
+        - name: jsonParam
+          in: query
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+        - name: formParam
+          in: query
+          style: form
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+        - name: deepObjectParam
+          in: query
+          style: deepObject
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                    example: 'http://localhost:35123/anything/queryParams/mixed?any=any&bigint=8821239038968084&bigintStr=9223372036854775808&bool=true&boolOpt=true&date=2020-01-01&dateTime=2020-01-01T00%3A00%3A00.000000001Z&decimal=3.141592653589793&decimalStr=3.14159265358979344719667586&deepObjectParam[any]=any&deepObjectParam[bigintStr]=9223372036854775808&deepObjectParam[bigint]=8821239038968084&deepObjectParam[boolOpt]=true&deepObjectParam[bool]=true&deepObjectParam[dateTime]=2020-01-01T00%3A00%3A00.000000001Z&deepObjectParam[date]=2020-01-01&deepObjectParam[decimalStr]=3.14159265358979344719667586&deepObjectParam[decimal]=3.141592653589793&deepObjectParam[enum]=one&deepObjectParam[float32]=1.1&deepObjectParam[int32Enum]=55&deepObjectParam[int32]=1&deepObjectParam[intEnum]=2&deepObjectParam[int]=1&deepObjectParam[num]=1.1&deepObjectParam[strOpt]=testOptional&deepObjectParam[str]=test&enum=one&float32=1.1&int=1&int32=1&int32Enum=55&intEnum=2&jsonParam={"any"%3A"any"%2C"bigint"%3A8821239038968084%2C"bigintStr"%3A"9223372036854775808"%2C"bool"%3Atrue%2C"boolOpt"%3Atrue%2C"date"%3A"2020-01-01"%2C"dateTime"%3A"2020-01-01T00%3A00%3A00.000000001Z"%2C"decimal"%3A3.141592653589793%2C"decimalStr"%3A"3.14159265358979344719667586"%2C"enum"%3A"one"%2C"float32"%3A1.1%2C"int"%3A1%2C"int32"%3A1%2C"int32Enum"%3A55%2C"intEnum"%3A2%2C"num"%3A1.1%2C"str"%3A"test"%2C"strOpt"%3A"testOptional"}&num=1.1&str=test&strOpt=testOptional'
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                    example:
+                      {
+                        "any": "any",
+                        "bigint": "8821239038968084",
+                        "bigintStr": "9223372036854775808",
+                        "bool": "true",
+                        "boolOpt": "true",
+                        "date": "2020-01-01",
+                        "dateTime": "2020-01-01T00:00:00.000000001Z",
+                        "deepObjectParam[any]": "any",
+                        "deepObjectParam[bigint]": "8821239038968084",
+                        "deepObjectParam[bigintStr]": "9223372036854775808",
+                        "deepObjectParam[boolOpt]": "true",
+                        "deepObjectParam[bool]": "true",
+                        "deepObjectParam[dateTime]": "2020-01-01T00:00:00.000000001Z",
+                        "deepObjectParam[date]": "2020-01-01",
+                        "deepObjectParam[enum]": "one",
+                        "deepObjectParam[float32]": "1.1",
+                        "deepObjectParam[int32]": "1",
+                        "deepObjectParam[int]": "1",
+                        "deepObjectParam[intEnum]": "2",
+                        "deepObjectParam[int32Enum]": "55",
+                        "deepObjectParam[num]": "1.1",
+                        "deepObjectParam[decimal]": "3.141592653589793",
+                        "deepObjectParam[decimalStr]": "3.14159265358979344719667586",
+                        "deepObjectParam[strOpt]": "testOptional",
+                        "deepObjectParam[str]": "test",
+                        "enum": "one",
+                        "float32": "1.1",
+                        "int": "1",
+                        "int32": "1",
+                        "intEnum": "2",
+                        "int32Enum": "55",
+                        "jsonParam": '{"any":"any","bigint":8821239038968084,"bigintStr":"9223372036854775808","bool":true,"boolOpt":true,"date":"2020-01-01","dateTime":"2020-01-01T00:00:00.000000001Z","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586","enum":"one","float32":1.1,"int":1,"int32":1,"int32Enum":55,"intEnum":2,"num":1.1,"str":"test","strOpt":"testOptional"}',
+                        "num": "1.1",
+                        "decimal": "3.141592653589793",
+                        "decimalStr": "3.14159265358979344719667586",
+                        "str": "test",
+                        "strOpt": "testOptional",
+                      }
+                required:
+                  - url
+                  - args
+  /anything/headers/primitive:
+    get:
+      x-speakeasy-test: true
+      operationId: headerParamsPrimitive
+      tags:
+        - parameters
+      parameters:
+        - name: X-Header-String
+          in: header
+          schema:
+            type: string
+            example: "test"
+          required: true
+        - name: X-Header-Boolean
+          in: header
+          schema:
+            type: boolean
+            example: true
+          required: true
+        - name: X-Header-Integer
+          in: header
+          schema:
+            type: integer
+            example: 1
+          required: true
+        - name: X-Header-Number
+          in: header
+          schema:
+            type: number
+            example: 1.1
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  headers:
+                    type: object
+                    properties:
+                      X-Header-String:
+                        type: string
+                        example: "test"
+                      X-Header-Boolean:
+                        type: string
+                        example: "true"
+                      X-Header-Integer:
+                        type: string
+                        example: "1"
+                      X-Header-Number:
+                        type: string
+                        example: "1.1"
+                    required:
+                      - X-Header-String
+                      - X-Header-Boolean
+                      - X-Header-Integer
+                      - X-Header-Number
+                required:
+                  - headers
+  /anything/headers/obj:
+    get:
+      x-speakeasy-test: true
+      operationId: headerParamsObject
+      tags:
+        - parameters
+      parameters:
+        - name: X-Header-Obj
+          in: header
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+        - name: X-Header-Obj-Explode
+          in: header
+          explode: true
+          schema:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  headers:
+                    type: object
+                    properties:
+                      X-Header-Obj:
+                        type: string
+                        example: any,any,bigint,8821239038968084,bigintStr,9223372036854775808,bool,true,boolOpt,true,date,2020-01-01,dateTime,2020-01-01T00:00:00.000000001Z,decimal,3.141592653589793,decimalStr,3.14159265358979344719667586,enum,one,float32,1.1,int,1,int32,1,int32Enum,55,intEnum,2,num,1.1,str,test,strOpt,testOptional
+                      X-Header-Obj-Explode:
+                        type: string
+                        example: any=any,bigint=8821239038968084,bigintStr=9223372036854775808,bool=true,boolOpt=true,date=2020-01-01,dateTime=2020-01-01T00:00:00.000000001Z,decimal=3.141592653589793,decimalStr=3.14159265358979344719667586,enum=one,float32=1.1,int=1,int32=1,int32Enum=55,intEnum=2,num=1.1,str=test,strOpt=testOptional
+                    required:
+                      - X-Header-Obj
+                      - X-Header-Obj-Explode
+                required:
+                  - headers
+  /anything/headers/map:
+    get:
+      x-speakeasy-test: true
+      operationId: headerParamsMap
+      tags:
+        - parameters
+      parameters:
+        - name: X-Header-Map
+          in: header
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: { "key1": "value1", "key2": "value2" }
+          required: true
+        - name: X-Header-Map-Explode
+          in: header
+          explode: true
+          schema:
+            type: object
+            additionalProperties:
+              type: string
+            example: { "test1": "val1", "test2": "val2" }
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  headers:
+                    type: object
+                    properties:
+                      X-Header-Map:
+                        type: string
+                        example: "key1,value1,key2,value2"
+                        x-speakeasy-test-internal-directives:
+                          - sortSerializedMaps:
+                              { "regex": "(.*)", "delim": "," }
+                      X-Header-Map-Explode:
+                        type: string
+                        example: "test1=val1,test2=val2"
+                        x-speakeasy-test-internal-directives:
+                          - sortSerializedMaps:
+                              { "regex": "(.*)", "delim": "," }
+                    required:
+                      - X-Header-Map
+                      - X-Header-Map-Explode
+                required:
+                  - headers
+  /anything/headers/array:
+    get:
+      x-speakeasy-test: true
+      operationId: headerParamsArray
+      tags:
+        - parameters
+      parameters:
+        - name: X-Header-Array
+          in: header
+          schema:
+            type: array
+            items:
+              type: string
+              examples:
+                - test1
+                - test2
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  headers:
+                    type: object
+                    properties:
+                      X-Header-Array:
+                        type: string
+                        example: "test1,test2"
+                    required:
+                      - X-Header-Array
+                required:
+                  - headers
+  /readonlyorwriteonly#readOnlyInput:
+    post:
+      operationId: requestBodyReadOnlyInput
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+  /writeonlyoutput#writeOnlyOutput:
+    post:
+      operationId: requestBodyWriteOnlyOutput
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/writeOnlyObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/writeOnlyObject"
+  /readonlyorwriteonly#writeOnly:
+    post:
+      operationId: requestBodyWriteOnly
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/writeOnlyObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+  /readonlyandwriteonly:
+    post:
+      operationId: requestBodyReadAndWrite
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/readWriteObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/readWriteObject"
+  /readonlyorwriteonly#readOnlyUnion:
+    post:
+      operationId: requestBodyReadOnlyUnion
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadOnlyObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadOnlyObject"
+  /writeonlyoutput#writeOnlyUnion:
+    post:
+      operationId: requestBodyWriteOnlyUnion
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfWriteOnlyObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfWriteOnlyObject"
+  /readonlyandwriteonly#readWriteOnlyUnion:
+    post:
+      operationId: requestBodyReadWriteOnlyUnion
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadWriteObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfReadWriteObject"
+  /anything/requestBodies/post/application/json/simple:
+    post:
+      operationId: requestBodyPostApplicationJsonSimple
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                required:
+                  - json
+  /anything/requestBodies/post/application/json/camelcase:
+    post:
+      operationId: requestBodyPostApplicationJsonSimpleCamelCase
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+                required:
+                  - json
+  /requestbody#array:
+    post:
+      operationId: requestBodyPostApplicationJsonArray
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /requestbody#arrayCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayCamelCase
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrValueCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+  /requestbody#arrayOfArrays:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayOfArray
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrArrValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  type: array
+                  title: arr
+                  items:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /requestbody#arrayOfArraysCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayOfArrayCamelCase
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrArrValueCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  type: array
+                  title: arr
+                  items:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+  /requestbody#map:
+    post:
+      operationId: requestBodyPostApplicationJsonMap
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /requestbody#mapCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonMapCamelCase
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapValueCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+  /requestbody#mapOfMaps:
+    post:
+      operationId: requestBodyPostApplicationJsonMapOfMap
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapMapValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /requestbody#mapOfMapsCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonMapOfMapCamelCase
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapMapValueCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+  /requestbody#mapOfArrays:
+    post:
+      operationId: requestBodyPostApplicationJsonMapOfArray
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapArrValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /requestbody#mapOfArraysCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonMapOfArrayCamelCase
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapArrValueCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+  /requestbody#arrayOfMaps:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayOfMap
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrMapValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  title: map
+                  type: object
+                  additionalProperties:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /requestbody#arrayOfMapsCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayOfMapCamelCase
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrMapValueCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  title: map
+                  type: object
+                  additionalProperties:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+  /requestbody#mapOfPrimitives:
+    post:
+      operationId: requestBodyPostApplicationJsonMapOfPrimitive
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapPrimitiveValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  type: string
+  /requestbody#arrayOfPrimitives:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayOfPrimitive
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrPrimitiveValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  title: string
+                  type: string
+  /requestbody#arrayOfArraysOfPrimitives:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayOfArrayOfPrimitive
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/arrArrPrimitiveValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: array
+                items:
+                  title: arr
+                  type: array
+                  items:
+                    title: string
+                    type: string
+  /requestbody#mapOfMapsOfPrimitives:
+    post:
+      operationId: requestBodyPostApplicationJsonMapOfMapOfPrimitive
+      tags:
+        - requestBodies
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/mapMapPrimitiveValue"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                additionalProperties:
+                  type: object
+                  additionalProperties:
+                    type: string
+  /anything/requestBodies/post/application/json/array/objResponse:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayObj
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/arrObjValue"
+  /anything/requestBodies/post/application/json/array/objResponseCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonArrayObjCamelCase
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/arrObjValueCamelCase"
+  /anything/requestBodies/post/application/json/map/objResponse:
+    post:
+      operationId: requestBodyPostApplicationJsonMapObj
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/mapObjValue"
+  /anything/requestBodies/post/application/json/map/objResponseCamelCase:
+    post:
+      operationId: requestBodyPostApplicationJsonMapObjCamelCase
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                $ref: "speakeasy-components.yaml#/components/schemas/simpleObjectCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/mapObjValueCamelCase"
+  /anything/requestBodies/post/application/json/deep:
+    post:
+      operationId: requestBodyPostApplicationJsonDeep
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+  /anything/requestBodies/post/application/json/deep/camelcase:
+    post:
+      operationId: requestBodyPostApplicationJsonDeepCamelCase
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/deepObjectCamelCase"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/deepObjectCamelCase"
+  /anything/requestBodies/post/application/json/multiple/json/filtered:
+    post:
+      operationId: requestBodyPostApplicationJsonMultipleJsonFiltered
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          text/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          application/test+json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          text/json.test:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                required:
+                  - json
+  /anything/requestBodies/post/multiple/contentTypes/component/filtered:
+    post:
+      operationId: requestBodyPostMultipleContentTypesComponentFiltered
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          multipart/form-data:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                required:
+                  - json
+  /anything/requestBodies/post/multiple/contentTypes/inline/filtered:
+    post:
+      operationId: requestBodyPostMultipleContentTypesInlineFiltered
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                str:
+                  type: string
+                num:
+                  type: number
+                bool:
+                  type: boolean
+              required:
+                - str
+                - num
+                - bool
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                str:
+                  type: string
+                num:
+                  type: number
+                bool:
+                  type: boolean
+              required:
+                - str
+                - num
+                - bool
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                str:
+                  type: string
+                num:
+                  type: number
+                bool:
+                  type: boolean
+              required:
+                - str
+                - num
+                - bool
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    type: object
+                    additionalProperties: true
+  /anything/requestBodies/post/multiple/contentTypes/split:
+    post:
+      operationId: requestBodyPostMultipleContentTypesSplit
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                str:
+                  type: string
+                num:
+                  type: number
+                bool:
+                  type: boolean
+              required:
+                - str
+                - num
+                - bool
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                str2:
+                  type: string
+                num2:
+                  type: number
+                bool2:
+                  type: boolean
+              required:
+                - str2
+                - num2
+                - bool2
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                str3:
+                  type: string
+                num3:
+                  type: number
+                bool3:
+                  type: boolean
+              required:
+                - str3
+                - num3
+                - bool3
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    type: object
+                    additionalProperties: true
+                  form:
+                    type: object
+                    additionalProperties: true
+  /anything/requestBodies/post/multiple/contentTypes/split/param:
+    post:
+      operationId: requestBodyPostMultipleContentTypesSplitParam
+      tags:
+        - requestBodies
+      parameters:
+        - name: paramStr
+          in: query
+          schema:
+            type: string
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                str:
+                  type: string
+                num:
+                  type: number
+                bool:
+                  type: boolean
+              required:
+                - str
+                - num
+                - bool
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                str2:
+                  type: string
+                num2:
+                  type: number
+                bool2:
+                  type: boolean
+              required:
+                - str2
+                - num2
+                - bool2
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                str3:
+                  type: string
+                num3:
+                  type: number
+                bool3:
+                  type: boolean
+              required:
+                - str3
+                - num3
+                - bool3
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    type: object
+                    additionalProperties: true
+                  form:
+                    type: object
+                    additionalProperties: true
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+  /anything/requestBodies/put/multipart/simple:
+    put:
+      operationId: requestBodyPutMultipartSimple
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/simpleObjectFormResponse"
+  /anything/requestBodies/put/multipart/deep:
+    put:
+      operationId: requestBodyPutMultipartDeep
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/deepObjectFormResponse"
+  /anything/requestBodies/put/multipart/file:
+    put:
+      operationId: requestBodyPutMultipartFile
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  files:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - files
+  /anything/requestBodies/put/multipart/differentFileName:
+    put:
+      operationId: requestBodyPutMultipartDifferentFileName
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                differentFileName:
+                  type: string
+                  format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  files:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - files
+  /anything/requestBodies/post/form/simple:
+    post:
+      operationId: requestBodyPostFormSimple
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/simpleObjectFormResponse"
+  /anything/requestBodies/post/form/deep:
+    post:
+      operationId: requestBodyPostFormDeep
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/deepObject"
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/deepObjectFormResponse"
+  /anything/requestBodies/post/form/map/primitive:
+    post:
+      operationId: requestBodyPostFormMapPrimitive
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  form:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - form
+  /anything/requestBodies/put/string:
+    put:
+      operationId: requestBodyPutString
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  data:
+                    type: string
+                required:
+                  - data
+  /anything/requestBodies/put/bytes:
+    put:
+      operationId: requestBodyPutBytes
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  data:
+                    type: string
+                required:
+                  - data
+  /anything/requestBodies/put/stringWithParams:
+    put:
+      operationId: requestBodyPutStringWithParams
+      tags:
+        - requestBodies
+      parameters:
+        - name: queryStringParam
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          text/plain:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  data:
+                    type: string
+                  args:
+                    type: object
+                    properties:
+                      queryStringParam:
+                        type: string
+                    required:
+                      - queryStringParam
+                required:
+                  - data
+                  - args
+  /anything/requestBodies/put/bytesWithParams:
+    put:
+      operationId: requestBodyPutBytesWithParams
+      tags:
+        - requestBodies
+      parameters:
+        - name: queryStringParam
+          in: query
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  data:
+                    type: string
+                  args:
+                    type: object
+                    properties:
+                      queryStringParam:
+                        type: string
+                    required:
+                      - queryStringParam
+                required:
+                  - data
+                  - args
+  /anything/requestBodies/post/empty-object:
+    post:
+      operationId: requestBodyPostEmptyObject
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                empty:
+                  type: object
+                emptyWithEmptyProperties:
+                  type: object
+                  properties: {}
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  empty:
+                    type: object
+                  emptyRespWithEmptyProperies:
+                    type: object
+                    properties: {}
+  /anything/requestBodies/post/null-dictionary:
+    post:
+      operationId: requestBodyPostNullDictionary
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                required:
+                  - data
+  /anything/requestBodies/post/null-array:
+    post:
+      operationId: requestBodyPostNullArray
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: string
+                required:
+                  - data
+  /anything/requestBodies/post/nullableRequiredObject:
+    post:
+      operationId: nullableObjectPost
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/nullableObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "#/components/schemas/nullableObject"
+                required:
+                  - json
+  /anything/requestBodies/post/nullableRequiredProperty:
+    post:
+      operationId: nullableRequiredPropertyPost
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - NullableRequiredInt
+                - NullableRequiredArray
+                - NullableRequiredEnum
+              properties:
+                NullableOptionalInt:
+                  type: integer
+                  nullable: true
+                NullableRequiredInt:
+                  type:
+                    - integer
+                    - null
+                NullableRequiredArray:
+                  type: [array, null]
+                  items:
+                    type: number
+                NullableRequiredEnum:
+                  type: ["string", "null"]
+                  enum:
+                    - first
+                    - second
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /anything/requestBodies/post/nullableRequiredSharedObject:
+    post:
+      operationId: nullableRequiredSharedObjectPost
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - NullableRequiredObj
+              properties:
+                NullableOptionalObj:
+                  $ref: "#/components/schemas/nullableObject"
+                NullableRequiredObj:
+                  $ref: "#/components/schemas/nullableObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /anything/requestBodies/post/nullableRequiredEmptyObject:
+    post:
+      operationId: nullableRequiredEmptyObjectPost
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - RequiredObj
+                - NullableRequiredObj
+              properties:
+                RequiredObj:
+                  type: ["object"]
+                NullableOptionalObj:
+                  type: ["object", "null"]
+                NullableRequiredObj:
+                  type: ["object", "null"]
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: string
+  /anything/requestBodies/post/{pathBigInt}/{pathBigIntStr}/{pathDecimal}/{pathDecimalStr}/complex-number-types:
+    post:
+      operationId: requestBodyPostComplexNumberTypes
+      tags:
+        - requestBodies
+      parameters:
+        - name: pathBigInt
+          in: path
+          schema:
+            type: integer
+            format: bigint
+          required: true
+        - name: pathBigIntStr
+          in: path
+          schema:
+            type: string
+            format: bigint
+          required: true
+        - name: pathDecimal
+          in: path
+          schema:
+            type: number
+            format: decimal
+          required: true
+        - name: pathDecimalStr
+          in: path
+          schema:
+            type: string
+            format: decimal
+          required: true
+        - name: queryBigInt
+          in: query
+          schema:
+            type: integer
+            format: bigint
+          required: true
+        - name: queryBigIntStr
+          in: query
+          schema:
+            type: string
+            format: bigint
+          required: true
+        - name: queryDecimal
+          in: query
+          schema:
+            type: number
+            format: decimal
+          required: true
+        - name: queryDecimalStr
+          in: query
+          schema:
+            type: string
+            format: decimal
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/complexNumberTypes"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/complexNumberTypes"
+                  url:
+                    type: string
+                required:
+                  - json
+                  - url
+  /anything/requestBodies/post/defaultsAndConsts:
+    post:
+      operationId: requestBodyPostDefaultsAndConsts
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/defaultsAndConsts"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/defaultsAndConstsOutput"
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/string:
+    post:
+      operationId: requestBodyPostJsonDataTypesString
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: string
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/integer:
+    post:
+      operationId: requestBodyPostJsonDataTypesInteger
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: integer
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: integer
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/int32:
+    post:
+      operationId: requestBodyPostJsonDataTypesInt32
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: integer
+              format: int32
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: integer
+                    format: int32
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/bigint:
+    post:
+      operationId: requestBodyPostJsonDataTypesBigInt
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: integer
+              format: bigint
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: integer
+                    format: bigint
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/bigintStr:
+    post:
+      operationId: requestBodyPostJsonDataTypesBigIntStr
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              format: bigint
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: string
+                    format: bigint
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/number:
+    post:
+      operationId: requestBodyPostJsonDataTypesNumber
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: number
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: number
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/float32:
+    post:
+      operationId: requestBodyPostJsonDataTypesFloat32
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: number
+              format: float32
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: number
+                    format: float32
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/decimal:
+    post:
+      operationId: requestBodyPostJsonDataTypesDecimal
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: number
+              format: decimal
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: number
+                    format: decimal
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/decimalStr:
+    post:
+      operationId: requestBodyPostJsonDataTypesDecimalStr
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              format: decimal
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: string
+                    format: decimal
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/boolean:
+    post:
+      operationId: requestBodyPostJsonDataTypesBoolean
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: boolean
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: boolean
+                required:
+                  - json
+  /anything/requestBodies/post/jsonDataTypes/date:
+    post:
+      operationId: requestBodyPostJsonDataTypesDate
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              format: date
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: string
+                    format: date
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/dateTime:
+    post:
+      operationId: requestBodyPostJsonDataTypesDateTime
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              format: date-time
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: string
+                    format: date-time
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/map/dateTime:
+    post:
+      operationId: requestBodyPostJsonDataTypesMapDateTime
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+                format: date-time
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: object
+                    additionalProperties:
+                      type: string
+                      format: date-time
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/map/bigIntStr:
+    post:
+      operationId: requestBodyPostJsonDataTypesMapBigIntStr
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+                format: bigint
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: object
+                    additionalProperties:
+                      type: string
+                      format: bigint
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/map/decimal:
+    post:
+      operationId: requestBodyPostJsonDataTypesMapDecimal
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: number
+                format: decimal
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: object
+                    additionalProperties:
+                      type: number
+                      format: decimal
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/array/date:
+    post:
+      operationId: requestBodyPostJsonDataTypesArrayDate
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: date
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: array
+                    items:
+                      type: string
+                      format: date
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/array/bigInt:
+    post:
+      operationId: requestBodyPostJsonDataTypesArrayBigInt
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: integer
+                format: bigint
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: array
+                    items:
+                      type: integer
+                      format: bigint
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/jsonDataTypes/array/decimalStr:
+    post:
+      operationId: requestBodyPostJsonDataTypesArrayDecimalStr
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+                format: decimal
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: array
+                    items:
+                      type: string
+                      format: decimal
+                  data:
+                    type: string
+                required:
+                  - json
+                  - data
+  /anything/requestBodies/post/nullable/required/string:
+    post:
+      operationId: requestBodyPostNullableRequiredStringBody
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              nullable: true
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type:
+                      - string
+                required:
+                  - data
+  /anything/requestBodies/post/nullable/notrequired/string:
+    post:
+      operationId: requestBodyPostNullableNotRequiredStringBody
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+              nullable: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type:
+                      - string
+                required:
+                  - data
+  /anything/requestBodies/post/notnullable/notrequired/string:
+    post:
+      operationId: requestBodyPostNotNullableNotRequiredStringBody
+      tags:
+        - requestBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type:
+                      - string
+                required:
+                  - data
+  /anything/flattening/inlineBodyAndParamNoConflict:
+    post:
+      operationId: inlineBodyAndParamNoConflict
+      tags:
+        - flattening
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                bodyStr:
+                  type: string
+              required:
+                - bodyStr
+        required: true
+      parameters:
+        - name: paramStr
+          in: query
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    type: object
+                    properties:
+                      bodyStr:
+                        type: string
+                    required:
+                      - bodyStr
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - json
+                  - args
+  /anything/flattening/componentBodyAndParamNoConflict:
+    post:
+      operationId: componentBodyAndParamNoConflict
+      tags:
+        - flattening
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      parameters:
+        - name: paramStr
+          in: query
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - json
+                  - args
+  /anything/flattening/inlineBodyAndParamConflict:
+    post:
+      operationId: inlineBodyAndParamConflict
+      tags:
+        - flattening
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                str:
+                  type: string
+              required:
+                - str
+        required: true
+      parameters:
+        - name: str
+          in: query
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    type: object
+                    properties:
+                      str:
+                        type: string
+                    required:
+                      - str
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - json
+                  - args
+  /anything/flattening/componentBodyAndParamConflict:
+    post:
+      operationId: componentBodyAndParamConflict
+      tags:
+        - flattening
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      parameters:
+        - name: str
+          in: query
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - json
+                  - args
+  /anything/flattening/conflictingParams/{str}:
+    get:
+      operationId: conflictingParams
+      tags:
+        - flattening
+      parameters:
+        - name: str
+          in: path
+          schema:
+            type: string
+          required: true
+        - name: str
+          in: query
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                  args:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - url
+                  - args
+  /json:
+    get:
+      operationId: responseBodyJsonGet
+      # No tag as we want this simple request in the root sdk for testing operations get generated there
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+  /html:
+    get:
+      operationId: responseBodyStringGet
+      tags:
+        - responseBodies
+      responses:
+        "200":
+          description: OK
+          content:
+            text/html:
+              schema:
+                title: html
+                type: string
+  /xml:
+    get:
+      operationId: responseBodyXmlGet
+      tags:
+        - responseBodies
+      responses:
+        "200":
+          description: OK
+          content:
+            application/xml:
+              schema:
+                title: xml
+                type: string
+  /bytes/100:
+    get:
+      operationId: responseBodyBytesGet
+      tags:
+        - responseBodies
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                title: bytes
+                type: string
+                format: binary
+  /optional:
+    get:
+      operationId: responseBodyOptionalGet
+      tags:
+        - responseBodies
+      servers:
+        - url: http://localhost:35456
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+            text/plain:
+              schema:
+                type: string
+  /readonlyorwriteonly#readOnly:
+    post:
+      operationId: responseBodyReadOnly
+      servers:
+        - url: http://localhost:35456
+      tags:
+        - responseBodies
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/readOnlyObject"
+  /response-headers:
+    post:
+      operationId: responseBodyEmptyWithHeaders
+      tags:
+        - responseBodies
+      parameters:
+        - name: X-String-Header
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: X-Number-Header
+          in: query
+          schema:
+            type: number
+          required: true
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-String-Header:
+              schema:
+                type: string
+            X-Number-Header:
+              schema:
+                type: number
+  /anything/responseBodies/additionalProperties:
+    post:
+      operationId: responseBodyAdditionalPropertiesPost
+      tags:
+        - responseBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/objWithStringAdditionalProperties"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/objWithStringAdditionalProperties"
+                required:
+                  - json
+  /anything/responseBodies/additionalPropertiesComplexNumbers:
+    post:
+      operationId: responseBodyAdditionalPropertiesComplexNumbersPost
+      tags:
+        - responseBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/objWithComplexNumbersAdditionalProperties"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/objWithComplexNumbersAdditionalProperties"
+                required:
+                  - json
+  /anything/responseBodies/zeroValueComplexTypePtrs:
+    post:
+      operationId: responseBodyZeroValueComplexTypePtrsPost
+      tags:
+        - responseBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/objWithZeroValueComplexTypePtrs"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/objWithZeroValueComplexTypePtrs"
+                required:
+                  - json
+  /anything/responseBodies/additionalPropertiesDate:
+    post:
+      operationId: responseBodyAdditionalPropertiesDatePost
+      tags:
+        - responseBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/objWithDateAdditionalProperties"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/objWithDateAdditionalProperties"
+                required:
+                  - json
+  /anything/responseBodies/additionalPropertiesObject:
+    post:
+      operationId: responseBodyAdditionalPropertiesObjectPost
+      tags:
+        - responseBodies
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/objWithObjAdditionalProperties"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/objWithObjAdditionalProperties"
+                required:
+                  - json
+  /anything/{emptyObject}:
+    get:
+      operationId: emptyObjectGet
+      tags:
+        - generation
+      parameters:
+        - $ref: "speakeasy-components.yaml#/components/parameters/emptyObjectParam"
+      responses:
+        "200":
+          description: OK
+  /anything/circularReference:
+    get:
+      operationId: circularReferenceGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/validCircularReferenceObject"
+  /anything/arrayCircularReference:
+    get:
+      operationId: arrayCircularReferenceGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/arrayCircularReferenceObject"
+  /anything/objectCircularReference:
+    get:
+      operationId: objectCircularReferenceGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/objectCircularReferenceObject"
+  /anything/oneOfCircularReference:
+    get:
+      operationId: oneOfCircularReferenceGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/oneOfCircularReferenceObject"
+  /anything/emptyResponseObjectWithComment:
+    get:
+      operationId: emptyResponseObjectWithCommentGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+          content:
+            application/octet-stream:
+              schema:
+                type: object
+  /anything/ignores:
+    post:
+      operationId: ignoresPost
+      tags:
+        - generation
+      parameters:
+        - name: testParam
+          in: query
+          schema:
+            type: string
+        - name: test_param
+          in: query
+          x-my-ignore: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                testProp:
+                  type: string
+                test_prop:
+                  x-my-ignore: true
+                  type: string
+                callbackUrl:
+                  type: string
+                  format: uri
+          application/xml:
+            x-my-ignore: true
+            schema:
+              type: object
+              properties:
+                testProp:
+                  type: string
+        required: true
+      callbacks:
+        cb:
+          "{$request.bodycomponents.yaml#/callbackUrl}":
+            x-my-ignore: true
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        testProp:
+                          type: string
+                required: true
+              responses:
+                "200":
+                  description: OK
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+            application/xml:
+              x-my-ignore: true
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+            text/plain:
+              x-my-ignore: true
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/httpBinSimpleJsonObject"
+        "201":
+          x-my-ignore: true
+          description: Created
+    get:
+      x-my-ignore: true
+      operationId: ignoresGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+  /anything/ignoreAll:
+    x-my-ignore: true
+    get:
+      operationId: ignoreAllGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: OK
+  /anything/usageExample:
+    post:
+      operationId: usageExamplePost
+      summary: An operation used for testing usage examples
+      description: An operation used for testing usage examples that includes a large array of parameters and input types to ensure that all are handled correctly
+      externalDocs:
+        description: Usage example docs
+        url: https://docs.example.com
+      x-speakeasy-usage-example:
+        title: "Second"
+        description: "Do this second"
+        position: 2
+      tags:
+        - generation
+      security:
+        - basicAuth: []
+      parameters:
+        - name: strParameter
+          in: query
+          required: true
+          description: A string parameter
+          schema:
+            type: string
+            description: A string type
+            examples:
+              - "example 1"
+              - "example 2"
+              - "example 3"
+        - name: intParameter
+          in: query
+          required: true
+          description: An integer parameter
+          schema:
+            type: integer
+            format: int32
+            description: An int32 type
+        - name: int64Parameter
+          in: query
+          required: true
+          description: An int64 parameter
+          schema:
+            type: integer
+            format: int64
+            description: An int64 type
+        - name: bigintParameter
+          in: query
+          required: true
+          description: An bigint parameter
+          schema:
+            type: integer
+            format: bigint
+            description: An bigint type
+        - name: bigintParameterOptional
+          in: query
+          description: An bigint parameter
+          schema:
+            type: integer
+            format: bigint
+            description: An bigint type
+        - name: bigintStrParameter
+          in: query
+          required: true
+          description: An bigint parameter
+          schema:
+            type: string
+            format: bigint
+            description: An bigint type
+        - name: bigintStrParameterOptional
+          in: query
+          description: An bigint parameter
+          schema:
+            type: string
+            format: bigint
+            description: An bigint type
+        - name: floatParameter
+          in: query
+          required: true
+          description: A float parameter
+          schema:
+            type: number
+            description: A float type
+        - name: float32Parameter
+          in: query
+          required: true
+          description: A float32 parameter
+          schema:
+            type: number
+            format: float
+            description: A float32 type
+        - name: decimalParameter
+          in: query
+          required: true
+          description: A decimal parameter
+          schema:
+            type: number
+            format: decimal
+            description: A decimal type
+        - name: decimalParameterOptional
+          in: query
+          required: false
+          description: A decimal parameter
+          schema:
+            type: number
+            format: decimal
+            description: A decimal type
+        - name: decimalStrParameter
+          in: query
+          required: true
+          description: A decimal parameter
+          schema:
+            type: string
+            format: decimal
+            description: A decimal type
+        - name: decimalStrParameterOptional
+          in: query
+          required: false
+          description: A decimal parameter
+          schema:
+            type: string
+            format: decimal
+            description: A decimal type
+        - name: doubleParameter
+          in: query
+          required: true
+          description: A double parameter
+          schema:
+            type: number
+            format: double
+            description: A double type
+        - name: boolParameter
+          in: query
+          required: true
+          description: A boolean parameter
+          schema:
+            type: boolean
+            description: A boolean type
+        - name: dateParameter
+          in: query
+          required: true
+          description: A date parameter
+          schema:
+            type: string
+            format: date
+            description: A date type
+        - name: dateTimeParameter
+          in: query
+          required: true
+          description: A date time parameter
+          schema:
+            type: string
+            format: date-time
+            description: A date time type
+        - name: dateTimeDefaultParameter
+          in: query
+          required: true
+          description: A date time parameter with a default value
+          schema:
+            type: string
+            format: date-time
+            description: A date time type
+        - name: enumParameter
+          in: query
+          required: true
+          description: An enum parameter
+          schema:
+            type: string
+            description: An enum type
+            enum:
+              - "value1"
+              - "value2"
+              - "value3"
+        - name: optEnumParameter
+          in: query
+          description: An enum parameter
+          schema:
+            type: string
+            description: An enum type
+            enum:
+              - "value1"
+              - "value2"
+              - "value3"
+            example: "value3"
+        - name: falseyNumberParameter
+          in: query
+          required: true
+          description: A number parameter that contains a falsey example value
+          schema:
+            type: number
+            description: A number type
+            example: 0
+      requestBody:
+        description: A request body that contains fields with different formats for testing example generation
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                simpleObject:
+                  $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                fakerStrings:
+                  $ref: "speakeasy-components.yaml#/components/schemas/fakerStrings"
+                fakerFormattedStrings:
+                  $ref: "speakeasy-components.yaml#/components/schemas/fakerFormattedStrings"
+      responses:
+        "200":
+          description: A successful response that contains the simpleObject sent in the request body
+          content:
+            application/json:
+              schema:
+                type: object
+                description: A response body that contains the simpleObject sent in the request body
+                properties:
+                  json:
+                    type: object
+                    properties:
+                      simpleObject:
+                        $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                      fakerStrings:
+                        $ref: "speakeasy-components.yaml#/components/schemas/fakerStrings"
+                      fakerFormattedStrings:
+                        $ref: "speakeasy-components.yaml#/components/schemas/fakerFormattedStrings"
+                required:
+                  - json
+  /anything/dateParamWithDefault:
+    get:
+      tags:
+        - generation
+      operationId: dateParamWithDefault
+      parameters:
+        - name: dateInput
+          in: query
+          required: true
+          description: A date parameter with a default value
+          schema:
+            type: string
+            format: date
+            description: A date type
+            default: "2023-10-13"
+      responses:
+        "204":
+          description: OK
+  /anything/dateTimeParamWithDefault:
+    get:
+      tags:
+        - generation
+      operationId: dateTimeParamWithDefault
+      parameters:
+        - name: dateTimeInput
+          in: query
+          required: true
+          description: A date time parameter with a default value
+          schema:
+            type: string
+            format: date-time
+            description: A date time type
+            default: "2023-10-13T12:42:42.999+00:00"
+      responses:
+        "204":
+          description: OK
+  /anything/decimalParamWithDefault:
+    get:
+      tags:
+        - generation
+      operationId: decimalParamWithDefault
+      parameters:
+        - name: decimalInput
+          in: query
+          required: true
+          description: A decimal parameter with a default value
+          schema:
+            type: number
+            format: decimal
+            description: A decimal type
+            default: "903275809834567386763"
+      responses:
+        "204":
+          description: OK
+
+  /anything/anchorTypes:
+    get:
+      operationId: anchorTypesGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: A successful response that contains the simpleObject sent in the request body
+          content:
+            application/json:
+              schema:
+                type: object
+                $anchor: TypeFromAnchor
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /anything/nameOverride:
+    get:
+      operationId: nameOverrideGet
+      x-speakeasy-name-override: nameOverride
+      x-speakeasy-usage-example: false
+      tags:
+        - generation
+      parameters:
+        - name: nameOverride
+          x-speakeasy-name-override: testQueryParam
+          in: query
+          required: true
+          schema:
+            type: string
+            description: A string type
+            example: "example"
+        - name: enumNameOverride
+          x-speakeasy-name-override: testEnumQueryParam
+          in: query
+          required: true
+          schema:
+            type: string
+            description: An enum type
+            enum:
+              - "value1"
+              - "value2"
+              - "value3"
+            example: "value3"
+      responses:
+        "200":
+          description: A successful response that contains the simpleObject sent in the request body
+          content:
+            application/json:
+              schema:
+                type: object
+                x-speakeasy-name-override: overriddenResponse
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /anything/globalNameOverride:
+    get:
+      x-speakeasy-usage-example: true
+      operationId: getGlobalNameOverride
+      tags:
+        - generation
+      responses:
+        "200":
+          description: A successful response that contains the simpleObject sent in the request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+  /anything/ignoredGeneration:
+    get:
+      operationId: ignoredGenerationGet
+      tags:
+        - generation
+      parameters:
+        - name: ignoredParameter
+          in: query
+          required: true
+          x-my-ignore: true
+          schema:
+            type: string
+            description: A string type
+            example: "example"
+      responses:
+        "200":
+          description: A successful response that contains the simpleObject sent in the request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                  ignoredProperty:
+                    type: string
+                    x-my-ignore: true
+      callbacks:
+        notIgnoredCallback:
+          "/somecallback":
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        someProp:
+                          type: string
+                required: true
+              responses:
+                "200":
+                  description: OK
+        ignoredCallbackItem:
+          "/someignoredcallback":
+            x-my-ignore: true
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: string
+                required: true
+              responses:
+                "200":
+                  description: OK
+        singledIgnoredCallbackOperation:
+          "/someothercallback":
+            post:
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: object
+                      properties:
+                        someProp:
+                          type: string
+                required: true
+              responses:
+                "200":
+                  description: OK
+            put:
+              x-my-ignore: true
+              requestBody:
+                content:
+                  application/json:
+                    schema:
+                      type: string
+                required: true
+              responses:
+                "200":
+                  description: OK
+    put:
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+          application/xml:
+            x-my-ignore: true
+            schema:
+              type: object
+              properties:
+                xml:
+                  type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    type: string
+            application/xml:
+              x-my-ignore: true
+              schema:
+                type: object
+                properties:
+                  xml:
+                    type: string
+        "201":
+          description: Created
+          x-my-ignore: true
+    post:
+      x-my-ignore: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: string
+        required: true
+      responses:
+        "200":
+          description: OK
+  /anything/deprecatedOperationWithComments:
+    get:
+      operationId: deprecatedOperationWithCommentsGet
+      tags:
+        - generation
+      deprecated: true
+      x-speakeasy-deprecation-replacement: simplePathParameterObjects
+      x-speakeasy-deprecation-message: This operation is deprecated
+      summary: This is an endpoint setup to test deprecation with comments
+      parameters:
+        - name: deprecatedParameter
+          in: query
+          schema:
+            type: string
+          deprecated: true
+          x-speakeasy-deprecation-replacement: newParameter
+          x-speakeasy-deprecation-message: This parameter is deprecated
+          description: This is a string parameter
+        - name: newParameter
+          in: query
+          schema:
+            type: string
+          description: This is a string parameter
+      responses:
+        "200":
+          description: OK
+  /anything/deprecatedOperationNoComments:
+    get:
+      operationId: deprecatedOperationNoCommentsGet
+      tags:
+        - generation
+      deprecated: true
+      parameters:
+        - name: deprecatedParameter
+          in: query
+          schema:
+            type: string
+          deprecated: true
+      responses:
+        "200":
+          description: OK
+  /anything/deprecatedObjectInSchema:
+    get:
+      operationId: deprecatedObjectInSchemaGet
+      tags:
+        - generation
+      responses:
+        "200":
+          description: A successful response that contains a deprecatedObject sent in the request body
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/deprecatedObject"
+  /anything/deprecatedFieldInSchema:
+    post:
+      operationId: deprecatedFieldInSchemaPost
+      tags:
+        - generation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/deprecatedFieldInObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+  /anything/typedParameterGeneration:
+    get:
+      operationId: typedParameterGenerationGet
+      tags:
+        - generation
+      parameters:
+        - name: date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: bigint
+          in: query
+          schema:
+            type: integer
+            format: bigint
+        - name: decimal
+          in: query
+          schema:
+            type: number
+            format: decimal
+        - name: obj
+          in: query
+          schema:
+            type: object
+            properties:
+              str:
+                type: string
+              num:
+                type: number
+              bool:
+                type: boolean
+            required:
+              - str
+              - num
+              - bool
+      responses:
+        "200":
+          description: OK
+  /anything/ignoredPath:
+    x-my-ignore: true
+    get:
+      responses:
+        "200":
+          description: OK
+  /anything/globals/queryParameter:
+    get:
+      x-speakeasy-usage-example:
+        tags:
+          - global-parameters
+      operationId: globalsQueryParameterGet
+      tags:
+        - globals
+      parameters:
+        - name: globalQueryParam
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  args:
+                    type: object
+                    properties:
+                      globalQueryParam:
+                        type: string
+                    required:
+                      - globalQueryParam
+                required:
+                  - args
+  /anything/globals/pathParameter/{globalPathParam}:
+    get:
+      x-speakeasy-usage-example:
+        tags:
+          - global-parameters
+      operationId: globalPathParameterGet
+      tags:
+        - globals
+      parameters:
+        - name: globalPathParam
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  url:
+                    type: string
+                required:
+                  - url
+  /anything/stronglyTypedOneOf:
+    post:
+      operationId: stronglyTypedOneOfPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/stronglyTypedOneOfObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/stronglyTypedOneOfObject"
+                required:
+                  - json
+  /anything/weaklyTypedOneOf:
+    post:
+      operationId: weaklyTypedOneOfPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/weaklyTypedOneOfObject"
+                required:
+                  - json
+  /anything/typedObjectOneOf:
+    post:
+      operationId: typedObjectOneOfPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/typedObjectOneOf"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/typedObjectOneOf"
+                required:
+                  - json
+  /anything/typedObjectNullableOneOf:
+    post:
+      operationId: typedObjectNullableOneOfPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/typedObjectNullableOneOf"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/typedObjectNullableOneOf"
+                required:
+                  - json
+  /anything/flattenedTypedObject:
+    post:
+      operationId: flattenedTypedObjectPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/flattenedTypedObject1"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/flattenedTypedObject1"
+                required:
+                  - json
+  /anything/nullableTypedObject:
+    post:
+      operationId: nullableTypedObjectPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/nullableTypedObject1"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "speakeasy-components.yaml#/components/schemas/nullableTypedObject1"
+                required:
+                  - json
+  /anything/nullableOneOfSchema:
+    post:
+      operationId: nullableOneOfSchemaPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+                - $ref: "speakeasy-components.yaml#/components/schemas/typedObject2"
+                - type: "null"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    oneOf:
+                      - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+                      - $ref: "speakeasy-components.yaml#/components/schemas/typedObject2"
+                      - type: "null"
+                required:
+                  - json
+  /anything/nullableOneOfInObject:
+    post:
+      operationId: nullableOneOfTypeInObjectPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/nullableOneOfTypeInObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "#/components/schemas/nullableOneOfTypeInObject"
+                required:
+                  - json
+  /anything/nullableOneOfRefInObject:
+    post:
+      operationId: nullableOneOfRefInObjectPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/nullableOneOfRefInObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    $ref: "#/components/schemas/nullableOneOfRefInObject"
+                required:
+                  - json
+  /anything/primitiveTypeOneOf:
+    post:
+      operationId: primitiveTypeOneOfPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: string
+                - type: integer
+                - type: number
+                - type: boolean
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    oneOf:
+                      - type: string
+                      - type: integer
+                      - type: number
+                      - type: boolean
+                required:
+                  - json
+  /anything/mixedTypeOneOf:
+    post:
+      operationId: mixedTypeOneOfPost
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: string
+                - type: integer
+                - $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    oneOf:
+                      - type: string
+                      - type: integer
+                      - $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+                required:
+                  - json
+  /anything/unionDateNull:
+    post:
+      operationId: unionDateNull
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: string
+                  format: date
+                - type: "null"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    oneOf:
+                      - type: string
+                        format: date
+                      - type: "null"
+                required:
+                  - json
+  /anything/unionDateTimeNull:
+    post:
+      operationId: unionDateTimeNull
+      tags:
+        - unions
+      requestBody:
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: string
+                  format: date-time
+                - type: "null"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  json:
+                    oneOf:
+                      - type: string
+                        format: date-time
+                      - type: "null"
+                required:
+                  - json
+  # /anything/unionDateTimeBigInt:
+  #   post:
+  #     operationId: unionDateTimeBigInt
+  #     tags:
+  #       - unions
+  #     requestBody:
+  #       content:
+  #         application/json:
+  #           schema:
+  #             oneOf:
+  #               - type: string
+  #                 format: date-time
+  #               - type: integer
+  #                 format: bigint
+  #       required: true
+  #     responses:
+  #       "200":
+  #         description: OK
+  #         content:
+  #           application/json:
+  #             schema:
+  #               title: res
+  #               type: object
+  #               properties:
+  #                 json:
+  #                   oneOf:
+  #                     - type: string
+  #                       format: date-time
+  #                     - type: integer
+  #                       format: bigint
+  #               required:
+  #                 - json
+  # /anything/unionBigIntDecimal:
+  #   post:
+  #     operationId: unionBigIntDecimal
+  #     tags:
+  #       - unions
+  #     requestBody:
+  #       content:
+  #         application/json:
+  #           schema:
+  #             oneOf:
+  #               - type: string
+  #                 format: bigint
+  #               - type: number
+  #                 format: decimal
+  #       required: true
+  #     responses:
+  #       "200":
+  #         description: OK
+  #         content:
+  #           application/json:
+  #             schema:
+  #               title: res
+  #               type: object
+  #               properties:
+  #                 json:
+  #                   oneOf:
+  #                     - type: string
+  #                       format: bigint
+  #                     - type: number
+  #                       format: decimal
+  #               required:
+  #                 - json
+  /status/{statusCode}:
+    get:
+      operationId: statusGetError
+      tags:
+        - errors
+      parameters:
+        - name: statusCode
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+        "300":
+          description: Multiple Choices
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+  /errors/{statusCode}:
+    servers:
+      - url: http://localhost:35456
+    get:
+      x-speakeasy-errors:
+        statusCodes:
+          - "400"
+          - "401"
+          - "4XX"
+          - "500"
+          - "501"
+      operationId: statusGetXSpeakeasyErrors
+      tags:
+        - errors
+      parameters:
+        - name: statusCode
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: OK
+        "300":
+          description: Multiple Choices
+        "400":
+          description: Bad Request
+        "500":
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: "speakeasy-components.yaml#/components/schemas/error"
+        "501":
+          description: Not Implemented
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                  message:
+                    type: string
+                  type:
+                    $ref: "speakeasy-components.yaml#/components/schemas/errorType"
+  /anything/connectionError:
+    get:
+      operationId: connectionErrorGet
+      servers:
+        - url: http://somebrokenapi.broken
+      tags:
+        - errors
+      responses:
+        "200":
+          description: OK
+  /anything/telemetry/user-agent:
+    get:
+      operationId: telemetryUserAgentGet
+      tags:
+        - telemetry
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  headers:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - headers
+  /anything/telemetry/speakeasy-user-agent:
+    get:
+      operationId: telemetrySpeakeasyUserAgentGet
+      tags:
+        - telemetry
+      parameters:
+        - name: User-Agent
+          in: header
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: res
+                type: object
+                properties:
+                  headers:
+                    type: object
+                    additionalProperties:
+                      type: string
+                required:
+                  - headers
+  /pagination/limitoffset/page:
+    get:
+      operationId: paginationLimitOffsetPageParams
+      servers:
+        - url: http://localhost:35456
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+          required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+      tags:
+        - pagination
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: page
+            in: parameters
+            type: page
+        outputs:
+          results: $.resultArray
+    put:
+      operationId: paginationLimitOffsetPageBody
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/limitOffsetConfig"
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+      tags:
+        - pagination
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: limit
+            in: requestBody
+            type: limit
+          - name: page
+            in: requestBody
+            type: page
+        outputs:
+          numPages: $.numPages
+  /pagination/limitoffset/offset:
+    get:
+      operationId: paginationLimitOffsetOffsetParams
+      servers:
+        - url: http://localhost:35456
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+      tags:
+        - pagination
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: limit
+            in: parameters
+            type: limit
+          - name: offset
+            in: parameters
+            type: offset
+        outputs:
+          results: $.resultArray
+    put:
+      operationId: paginationLimitOffsetOffsetBody
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "speakeasy-components.yaml#/components/schemas/limitOffsetConfig"
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+      tags:
+        - pagination
+      x-speakeasy-pagination:
+        type: offsetLimit
+        inputs:
+          - name: limit
+            in: requestBody
+            type: limit
+          - name: offset
+            in: requestBody
+            type: offset
+        outputs:
+          results: $.resultArray
+  /pagination/cursor:
+    get:
+      operationId: paginationCursorParams
+      servers:
+        - url: http://localhost:35456
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: integer
+          required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+      tags:
+        - pagination
+      x-speakeasy-pagination:
+        type: cursor
+        inputs:
+          - name: cursor
+            in: parameters
+            type: cursor
+        outputs:
+          nextCursor: $.resultArray[(@.length-1)]
+    put:
+      operationId: paginationCursorBody
+      servers:
+        - url: http://localhost:35456
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cursor:
+                  type: integer
+              required:
+                - cursor
+        required: true
+      responses:
+        "200":
+          $ref: "speakeasy-components.yaml#/components/responses/paginationResponse"
+      tags:
+        - pagination
+      x-speakeasy-pagination:
+        type: cursor
+        inputs:
+          - name: cursor
+            in: requestBody
+            type: cursor
+        outputs:
+          nextCursor: $.resultArray[(@.length-1)]
+  /group/first:
+    get:
+      operationId: groupFirstGet
+      x-speakeasy-name-override: get
+      x-speakeasy-group: first
+      responses:
+        "200":
+          description: OK
+  /group/second:
+    get:
+      operationId: groupSecondGet
+      x-speakeasy-name-override: get
+      x-speakeasy-group: second
+      responses:
+        "200":
+          description: OK
+  /anything/nested:
+    get:
+      operationId: nestedGet
+      x-speakeasy-name-override: get
+      x-speakeasy-group: nested
+      responses:
+        "200":
+          description: OK
+  /anything/nested/first:
+    get:
+      operationId: nestedFirstGet
+      x-speakeasy-name-override: get
+      x-speakeasy-group: nested.first
+      responses:
+        "200":
+          description: OK
+  /anything/nested/second:
+    get:
+      operationId: nestedSecondGet
+      x-speakeasy-name-override: get
+      x-speakeasy-group: nested.second
+      responses:
+        "200":
+          description: OK
+  /anything/nest/first:
+    get:
+      operationId: nestFirstGet
+      x-speakeasy-name-override: get
+      x-speakeasy-group: nest.first
+      responses:
+        "200":
+          description: OK
+  /resource:
+    post:
+      x-speakeasy-entity-operation: ExampleResource#create
+      operationId: createResource
+      tags:
+        - resource
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExampleResource"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleResource"
+  /fileResource:
+    post:
+      x-speakeasy-entity-operation: File#create
+      operationId: createFile
+      tags:
+        - resource
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileResource"
+  /resource/{resourceId}:
+    get:
+      x-speakeasy-entity-operation: ExampleResource#read
+      operationId: getResource
+      tags:
+        - resource
+      parameters:
+        - name: resourceId
+          in: path
+          x-speakeasy-match: id
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExampleResource"
+    post:
+      x-speakeasy-entity-operation: ExampleResource#update
+      operationId: updateResource
+      tags:
+        - resource
+      parameters:
+        - name: resourceId
+          in: path
+          x-speakeasy-match: id
+          schema:
+            type: string
+          required: true
+      responses:
+        "202":
+          description: OK
+    delete:
+      x-speakeasy-entity-operation: ExampleResource#delete
+      operationId: deleteResource
+      tags:
+        - resource
+      parameters:
+        - name: resourceId
+          in: path
+          x-speakeasy-match: id
+          schema:
+            type: string
+          required: true
+      responseBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExampleResource"
+      responses:
+        204:
+          description: No Content
+  /retries:
+    get:
+      operationId: retriesGet
+      servers:
+        - url: http://localhost:35456
+      parameters:
+        - name: request-id
+          in: query
+          schema:
+            type: string
+          required: true
+        - name: num-retries
+          in: query
+          schema:
+            type: integer
+      tags:
+        - retries
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                title: retries
+                type: object
+                properties:
+                  retries:
+                    type: integer
+                required:
+                  - retries
+      x-speakeasy-retries:
+        strategy: backoff
+        backoff:
+          initialInterval: 10 # 10 ms
+          maxInterval: 200 # 200 ms
+          maxElapsedTime: 1000 # 1 seconds
+          exponent: 1.5
+        statusCodes:
+          - 503
+        retryConnectionErrors: false
+  /docs/per-language-docs:
+    get:
+      operationId: getDocumentationPerLanguage
+      description: Gets documentation for some language, I guess.
+      x-speakeasy-docs:
+        go:
+          description: Get stuff in Golang.
+        python:
+          description: Get stuff in Python.
+        typescript:
+          description: Get stuff in TypeScript.
+      parameters:
+        - name: language
+          description: The language parameter for this endpoint.
+          in: query
+          required: true
+          schema:
+            type: string
+          x-speakeasy-docs:
+            go:
+              description: The Golang language is uptight.
+            python:
+              description: The Python language is popular.
+            typescript:
+              description: THe TypeScript language is corporate.
+      tags:
+        - documentation
+      responses:
+        "200":
+          description: OK
+          x-speakeasy-docs:
+            go:
+              description: Golang is OK
+            python:
+              description: Python is OK
+            typescript:
+              description: TypeScript is OK
+components:
+  schemas:
+    ExampleVehicle:
+      type: object
+      oneOf:
+        - $ref: "#/components/schemas/ExampleBoat"
+        - $ref: "#/components/schemas/ExampleCar"
+    ExampleBoat:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - boat
+        name:
+          type: string
+        length:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - type
+        - name
+        - length
+    ExampleCar:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - car
+        name:
+          type: string
+        make:
+          type: string
+        model:
+          type: string
+        year:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - type
+        - name
+        - make
+        - model
+        - year
+    FileResource:
+      x-speakeasy-entity: File
+      type: object
+      properties:
+        id:
+          type: string
+      required:
+        - id
+    ExampleResource:
+      x-speakeasy-entity: ExampleResource
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        mapOfString:
+          type: object
+          additionalProperties:
+            type: string
+        mapOfInteger:
+          type: object
+          additionalProperties:
+            type: integer
+        arrayOfString:
+          type: array
+          items:
+            type: string
+        arrayOfNumber:
+          type: array
+          items:
+            type: number
+        enumStr:
+          type: string
+          enum:
+            - one
+            - two
+            - three
+        enumNumber:
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+        updatedAt:
+          type: string
+          format: date-time
+        chocolates:
+          type: array
+          items:
+            type: object
+            properties:
+              description:
+                type: string
+            required:
+              - description
+        vehicle:
+          $ref: "#/components/schemas/ExampleVehicle"
+      required:
+        - id
+        - name
+        - chocolates
+        - vehicle
+    primitiveTypeUnion:
+      x-speakeasy-include: true
+      oneOf:
+        - type: string
+        - type: integer
+        - type: integer
+          format: int32
+        - type: number
+        - type: number
+          format: float
+        - type: boolean
+    numericUnion:
+      x-speakeasy-include: true
+      oneOf:
+        - type: integer
+        - type: number
+        - type: integer
+          format: bigint
+        - type: string
+          format: decimal
+    nullableTypes:
+      type: object
+      properties:
+        nullableTypeArray:
+          type:
+            - null
+            - string
+        nullableType:
+          type: string
+          nullable: true
+    nullableObject:
+      type: ["object", "null"]
+      required:
+        - required
+      properties:
+        required:
+          type: integer
+        optional:
+          type: string
+    oneOfObjectOrArrayOfObjects:
+      oneOf:
+        - $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+        - type: "array"
+          items:
+            $ref: "speakeasy-components.yaml#/components/schemas/simpleObject"
+    nullableOneOfTypeInObject:
+      type: object
+      required:
+        - OneOfOne
+        - NullableOneOfOne
+        - NullableOneOfTwo
+      properties:
+        OneOfOne:
+          oneOf:
+            - type: boolean
+        NullableOneOfOne:
+          oneOf:
+            - type: boolean
+            - type: "null"
+        NullableOneOfTwo:
+          oneOf:
+            - type: boolean
+            - type: integer
+            - type: "null"
+    nullableOneOfRefInObject:
+      type: object
+      required:
+        - OneOfOne
+        - NullableOneOfOne
+        - NullableOneOfTwo
+      properties:
+        OneOfOne:
+          oneOf:
+            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+        NullableOneOfOne:
+          oneOf:
+            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+            - type: "null"
+        NullableOneOfTwo:
+          oneOf:
+            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject1"
+            - $ref: "speakeasy-components.yaml#/components/schemas/typedObject2"
+            - type: "null"
+    allOfToAllOf:
+      x-speakeasy-include: true
+      title: "allOf1"
+      type: object
+      allOf:
+        - $ref: "#/components/schemas/allOf2"
+    allOf2:
+      type: object
+      title: "allOf2"
+      allOf:
+        - $ref: "#/components/schemas/allOf3"
+    allOf3:
+      type: object
+      title: "allOf3"
+      allOf:
+        - properties:
+            id:
+              type: string
+          title: "allOf4"
+    unsupportedEnums:
+      type: object
+      x-speakeasy-include: true
+      properties:
+        booleanEnum:
+          type: boolean
+          enum:
+            - false
+        numberEnum:
+          type: number
+          enum:
+            - 1.5
+            - 2.5
+      required:
+        - booleanEnum
+        - numberEnum
+    oneOfGenerationStressTest:
+      x-speakeasy-include: true
+      type: object
+      properties:
+        oneOfSameType:
+          oneOf:
+            - type: string
+              minLength: 40
+              maxLength: 40
+            - type: string
+              enum:
+                - latest
+            - type: "null"
+        oneOfFromArrayOfTypes:
+          type: [string, integer, "null"]
+        nullableAny:
+          type: "null"
+        any: {}
+      required:
+        - oneOfSameType
+        - oneOfFromArrayOfTypes
+        - nullableAny
+        - any
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      x-speakeasy-example: YOUR_USERNAME;YOUR_PASSWORD
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Authenticate using an API Key generated via our platform.
+      x-speakeasy-example: Token YOUR_API_KEY
+    bearerAuth:
+      type: http
+      scheme: bearer
+      x-speakeasy-example: YOUR_JWT
+    apiKeyAuthNew:
+      type: apiKey
+      in: header
+      name: x-api-key
+      x-speakeasy-example: Token <YOUR_API_KEY>
+    oauth2:
+      type: oauth2
+      flows:
+        implicit:
+          authorizationUrl: http://localhost:35123/oauth2/authorize
+          scopes: {}
+      x-speakeasy-example: Bearer YOUR_OAUTH2_TOKEN
+    openIdConnect:
+      type: openIdConnect
+      openIdConnectUrl: http://localhost:35123/.well-known/openid-configuration
+      x-speakeasy-example: Bearer YOUR_OPENID_TOKEN
