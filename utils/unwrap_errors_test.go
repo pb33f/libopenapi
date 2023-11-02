@@ -30,3 +30,7 @@ func TestUnwrapErrors(t *testing.T) {
 func TestUnwrapErrors_Empty(t *testing.T) {
 	assert.Len(t, UnwrapErrors(nil), 0)
 }
+
+func TestUnwrapErrors_SingleError(t *testing.T) {
+	assert.Len(t, UnwrapErrors(errors.New("single error")), 1)
+}

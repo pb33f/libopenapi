@@ -30,19 +30,13 @@ import (
 // how the index is set up.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
-	//if config != nil && config.seenRemoteSources == nil {
-	//	config.seenRemoteSources = &syncmap.Map{}
-	//}
-	//config.remoteLock = &sync.Mutex{}
 	index.config = config
 	index.rolodex = config.Rolodex
-	//index.parentIndex = config.ParentIndex
 	index.uri = config.uri
 	index.specAbsolutePath = config.SpecAbsolutePath
 	if rootNode == nil || len(rootNode.Content) <= 0 {
 		return index
 	}
-
 	if config.Logger != nil {
 		index.logger = config.Logger
 	} else {
@@ -50,7 +44,6 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 			Level: slog.LevelError,
 		}))
 	}
-
 	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }
@@ -99,15 +92,10 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 		index.BuildIndex()
 	}
 
-	// do a copy!
-	//index.config.seenRemoteSources.Range(func(k, v any) bool {
-	//	index.seenRemoteSources[k.(string)] = v.(*yaml.Node)
-	//	return true
-	//})
 	return index
 }
 
-// BuildIndex will run all of the count operations required to build up maps of everything. It's what makes the index
+// BuildIndex will run all the count operations required to build up maps of everything. It's what makes the index
 // useful for looking up things, the count operations are all run in parallel and then the final calculations are run
 // the index is ready.
 func (index *SpecIndex) BuildIndex() {
@@ -445,11 +433,6 @@ func (index *SpecIndex) GetAllRootServers() []*Reference {
 func (index *SpecIndex) GetAllOperationsServers() map[string]map[string][]*Reference {
 	return index.opServersRefs
 }
-
-//// GetAllExternalIndexes will return all indexes for external documents
-//func (index *SpecIndex) GetAllExternalIndexes() map[string]*SpecIndex {
-//	return index.externalSpecIndex
-//}
 
 // SetAllowCircularReferenceResolving will flip a bit that can be used by any consumers to determine if they want
 // to allow or disallow circular references to be resolved or visited
@@ -984,12 +967,10 @@ func (index *SpecIndex) GetOperationCount() int {
 							Path:       fmt.Sprintf("$.paths.%s.%s", p.Value, m.Value),
 							ParentNode: m,
 						}
-						//index.pathRefsLock.Lock()
 						if locatedPathRefs[p.Value] == nil {
 							locatedPathRefs[p.Value] = make(map[string]*Reference)
 						}
 						locatedPathRefs[p.Value][ref.Name] = ref
-						//index.pathRefsLock.Unlock()
 						// update
 						opCount++
 					}
@@ -997,11 +978,9 @@ func (index *SpecIndex) GetOperationCount() int {
 			}
 		}
 	}
-	index.pathRefsLock.Lock()
 	for k, v := range locatedPathRefs {
 		index.pathRefs[k] = v
 	}
-	index.pathRefsLock.Unlock()
 	index.operationCount = opCount
 	return opCount
 }
