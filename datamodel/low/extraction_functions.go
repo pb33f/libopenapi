@@ -601,7 +601,6 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	idx *index.SpecIndex,
 	extensions bool,
 ) (map[KeyReference[string]]ValueReference[PT], *yaml.Node, *yaml.Node, error) {
-	//var isReference bool
 	var referenceValue string
 	var labelNode, valueNode *yaml.Node
 	var circError error
@@ -612,7 +611,6 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
-			//isReference = true
 			referenceValue = rv
 			if err != nil {
 				circError = err
@@ -629,7 +627,6 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, valueNode, idx)
 				if ref != nil {
 					valueNode = ref
-					//isReference = true
 					referenceValue = rvt
 					idx = fIdx
 					ctx = nCtx
@@ -662,9 +659,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				return
 			}
 
-			//isRef := false
 			if ref != "" {
-				//isRef = true
 				SetReference(n, ref)
 			}
 
@@ -676,7 +671,6 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				v: ValueReference[PT]{
 					Value:     n,
 					ValueNode: value,
-					//IsReference: isRef,
 					Reference: ref,
 				},
 			}
