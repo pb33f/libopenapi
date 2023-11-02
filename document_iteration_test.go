@@ -2,7 +2,6 @@ package libopenapi
 
 import (
 	"os"
-	"slices"
 	"strings"
 	"testing"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 )
 
 type loopFrame struct {
