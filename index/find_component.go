@@ -75,7 +75,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 			Path:                  friendlySearch,
 			RemoteLocation:        absoluteFilePath,
 			Index:                 index,
-			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef),
+			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef, index),
 		}
 		return ref
 	}
@@ -174,7 +174,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 				IsRemote:              true,
 				RemoteLocation:        absoluteFileLocation,
 				Path:                  "$",
-				RequiredRefProperties: extractDefinitionRequiredRefProperties(parsedDocument, map[string][]string{}, absoluteFileLocation),
+				RequiredRefProperties: extractDefinitionRequiredRefProperties(parsedDocument, map[string][]string{}, absoluteFileLocation, index),
 			}
 			return foundRef
 		} else {
