@@ -87,9 +87,30 @@ func (resolver *Resolver) GetResolvingErrors() []*ResolvingError {
 	return resolver.resolvingErrors
 }
 
-// GetCircularErrors returns all circular reference errors found.
-func (resolver *Resolver) GetCircularErrors() []*CircularReferenceResult {
-	return resolver.circularReferences
+func (resolver *Resolver) GetCircularReferences() []*CircularReferenceResult {
+	return resolver.GetSafeCircularReferences()
+}
+
+// GetSafeCircularReferences returns all circular reference errors found.
+func (resolver *Resolver) GetSafeCircularReferences() []*CircularReferenceResult {
+	var refs []*CircularReferenceResult
+	for _, ref := range resolver.circularReferences {
+		if !ref.IsInfiniteLoop {
+			refs = append(refs, ref)
+		}
+	}
+	return refs
+}
+
+// GetInfiniteCircularReferences returns all circular reference errors found that are infinite / unrecoverable
+func (resolver *Resolver) GetInfiniteCircularReferences() []*CircularReferenceResult {
+	var refs []*CircularReferenceResult
+	for _, ref := range resolver.circularReferences {
+		if ref.IsInfiniteLoop {
+			refs = append(refs, ref)
+		}
+	}
+	return refs
 }
 
 // GetPolymorphicCircularErrors returns all circular errors that stem from polymorphism
@@ -339,9 +360,17 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 
 	for refDefinition := range ref.RequiredRefProperties {
 		r, _ := resolver.specIndex.SearchIndexForReference(refDefinition)
-		if initialRef != nil && initialRef.Definition == r.Definition {
+		if initialRef != nil && initialRef.FullDefinition == r.FullDefinition {
 			return true, visitedDefinitions
 		}
+		if len(visitedDefinitions) > 0 && ref.FullDefinition == r.FullDefinition {
+			return true, visitedDefinitions
+		}
+
+		if visitedDefinitions[r.FullDefinition] {
+			continue
+		}
+
 		visitedDefinitions[r.Definition] = true
 
 		ir := initialRef

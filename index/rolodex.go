@@ -49,20 +49,22 @@ type RolodexFS interface {
 // and the ability to resolve references across those file systems. It is used to hold references to external
 // files, and the indexes they hold. The rolodex is the master lookup for all references.
 type Rolodex struct {
-	localFS                   map[string]fs.FS
-	remoteFS                  map[string]fs.FS
-	indexed                   bool
-	built                     bool
-	manualBuilt               bool
-	resolved                  bool
-	circChecked               bool
-	indexConfig               *SpecIndexConfig
-	indexingDuration          time.Duration
-	indexes                   []*SpecIndex
-	rootIndex                 *SpecIndex
-	rootNode                  *yaml.Node
-	caughtErrors              []error
-	ignoredCircularReferences []*CircularReferenceResult
+	localFS                    map[string]fs.FS
+	remoteFS                   map[string]fs.FS
+	indexed                    bool
+	built                      bool
+	manualBuilt                bool
+	resolved                   bool
+	circChecked                bool
+	indexConfig                *SpecIndexConfig
+	indexingDuration           time.Duration
+	indexes                    []*SpecIndex
+	rootIndex                  *SpecIndex
+	rootNode                   *yaml.Node
+	caughtErrors               []error
+	safeCircularReferences     []*CircularReferenceResult
+	infiniteCircularReferences []*CircularReferenceResult
+	ignoredCircularReferences  []*CircularReferenceResult
 }
 
 // NewRolodex creates a new rolodex with the provided index configuration.
@@ -316,6 +318,8 @@ func (r *Rolodex) CheckForCircularReferences() {
 			if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
 				r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
 			}
+			r.safeCircularReferences = append(r.safeCircularReferences, r.rootIndex.resolver.GetSafeCircularReferences()...)
+			r.infiniteCircularReferences = append(r.infiniteCircularReferences, r.rootIndex.resolver.GetInfiniteCircularReferences()...)
 		}
 		r.circChecked = true
 	}
@@ -334,6 +338,8 @@ func (r *Rolodex) Resolve() {
 		if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
 			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
 		}
+		r.safeCircularReferences = append(r.safeCircularReferences, r.rootIndex.resolver.GetSafeCircularReferences()...)
+		r.infiniteCircularReferences = append(r.infiniteCircularReferences, r.rootIndex.resolver.GetInfiniteCircularReferences()...)
 	}
 	r.resolved = true
 }

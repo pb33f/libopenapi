@@ -75,7 +75,7 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 
 	assert.Len(t, rolo.GetCaughtErrors(), 3)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetResolvingErrors(), 3)
-	assert.Len(t, rolo.GetRootIndex().GetResolver().GetCircularErrors(), 3)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetInfiniteCircularReferences(), 3)
 
 }
 
@@ -107,8 +107,8 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 1)
 	assert.Len(t, resolver.GetResolvingErrors(), 1) // infinite loop is a resolving error.
-	assert.Len(t, resolver.GetCircularErrors(), 1)
-	assert.True(t, resolver.GetCircularErrors()[0].IsArrayResult)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 1)
+	assert.True(t, resolver.GetInfiniteCircularReferences()[0].IsArrayResult)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -144,7 +144,7 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetResolvingErrors(), 0)
-	assert.Len(t, resolver.GetCircularErrors(), 0)
+	assert.Len(t, resolver.GetCircularReferences(), 0)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -180,7 +180,7 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetResolvingErrors(), 0)
-	assert.Len(t, resolver.GetCircularErrors(), 0)
+	assert.Len(t, resolver.GetCircularReferences(), 0)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -216,7 +216,7 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetResolvingErrors(), 0)
-	assert.Len(t, resolver.GetCircularErrors(), 0)
+	assert.Len(t, resolver.GetCircularReferences(), 0)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -252,7 +252,7 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetResolvingErrors(), 0)
-	assert.Len(t, resolver.GetCircularErrors(), 0)
+	assert.Len(t, resolver.GetCircularReferences(), 0)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -286,8 +286,8 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetResolvingErrors(), 0) // not an infinite loop if poly.
-	assert.Len(t, resolver.GetCircularErrors(), 1)
-	assert.Equal(t, "anyOf", resolver.GetCircularErrors()[0].PolymorphicType)
+	assert.Len(t, resolver.GetCircularReferences(), 1)
+	assert.Equal(t, "anyOf", resolver.GetCircularReferences()[0].PolymorphicType)
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
 }
@@ -320,9 +320,9 @@ components:
 	circ := resolver.CheckForCircularReferences()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetResolvingErrors(), 0) // not an infinite loop if poly.
-	assert.Len(t, resolver.GetCircularErrors(), 1)
-	assert.Equal(t, "allOf", resolver.GetCircularErrors()[0].PolymorphicType)
-	assert.True(t, resolver.GetCircularErrors()[0].IsPolymorphicResult)
+	assert.Len(t, resolver.GetCircularReferences(), 1)
+	assert.Equal(t, "allOf", resolver.GetCircularReferences()[0].PolymorphicType)
+	assert.True(t, resolver.GetCircularReferences()[0].IsPolymorphicResult)
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
 }
@@ -595,7 +595,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	index := rolo.GetRootIndex
 	resolver := index().GetResolver()
 
-	assert.Len(t, resolver.GetCircularErrors(), 0)
+	assert.Len(t, resolver.GetCircularReferences(), 0)
 	assert.Equal(t, 2, resolver.GetIndexesVisited())
 
 	// in v0.8.2 a new check was added when indexing, to prevent re-indexing the same file multiple times.
@@ -778,3 +778,81 @@ func TestResolver_isInfiniteCircularDep_NoRef(t *testing.T) {
 	assert.False(t, a)
 	assert.Nil(t, b)
 }
+
+func TestResolver_AllowedCircle(t *testing.T) {
+
+	d := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Obj:
+      type: object
+      properties:
+        other:
+          $ref: '#/components/schemas/Obj2'
+    Obj2:
+      type: object
+      properties:
+        other:
+          $ref: '#/components/schemas/Obj'
+      required:
+        - other`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
+
+}
+
+func TestResolver_NotAllowedDeepCircle(t *testing.T) {
+
+	d := `openapi: 3.0
+components:
+  schemas:
+    Three:
+      description: "test three"
+      properties:
+        bester:
+          "$ref": "#/components/schemas/Seven"
+      required:
+       - bester
+    Seven:
+      properties:
+        wow:
+          "$ref": "#/components/schemas/Three"
+      required:
+        - wow`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 1)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 1)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
+
+}
+
+/*
+
+
+ */

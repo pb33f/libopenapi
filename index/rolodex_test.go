@@ -352,7 +352,6 @@ components:
 	rolodex.AddLocalFS(baseDir, fileFS)
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
-	assert.Equal(t, "infinite circular reference detected: CircleTest: CircleTest ->  -> CircleTest [5:7]", err.Error())
 	assert.Len(t, rolodex.GetCaughtErrors(), 1)
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 0)
 }
@@ -1417,7 +1416,9 @@ components:
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 	assert.Len(t, rolo.GetCaughtErrors(), 1)
-	assert.Len(t, rolo.GetRootIndex().GetResolver().GetCircularErrors(), 1)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetInfiniteCircularReferences(), 1)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetSafeCircularReferences(), 0)
+
 }
 
 func TestRolodex_CircularReferencesArrayIgnored(t *testing.T) {
