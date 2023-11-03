@@ -30,7 +30,8 @@ type Reference struct {
 	Name                  string
 	Node                  *yaml.Node
 	ParentNode            *yaml.Node
-	ParentNodeSchemaType  string // used to determine if the parent node is an array or not.
+	ParentNodeSchemaType  string   // used to determine if the parent node is an array or not.
+	ParentNodeTypes       []string // used to capture deep journeys, if any item is an array, we need to know.
 	Resolved              bool
 	Circular              bool
 	Seen                  bool

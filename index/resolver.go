@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"path/filepath"
@@ -308,7 +309,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup, visitedDefinitions, nil)
 
 					isArray := false
-					if r.ParentNodeSchemaType == "array" {
+					if r.ParentNodeSchemaType == "array" || slices.Contains(r.ParentNodeTypes, "array") {
 						isArray = true
 					}
 					circRef = &CircularReferenceResult{
@@ -529,7 +530,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						}
 					}
 				}
-
+				if ref.ParentNodeSchemaType != "" {
+					locatedRef.ParentNodeTypes = append(locatedRef.ParentNodeTypes, ref.ParentNodeSchemaType)
+				}
 				locatedRef.ParentNodeSchemaType = schemaType
 				found = append(found, locatedRef)
 				foundRelatives[value] = true

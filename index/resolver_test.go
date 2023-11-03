@@ -818,6 +818,48 @@ components:
 
 }
 
+func TestResolver_AllowedCircle_Array(t *testing.T) {
+
+	d := `openapi: 3.1.0
+components:
+  schemas:
+    Obj:
+      type: object
+      properties:
+        other:
+          $ref: '#/components/schemas/Obj2'
+      required:
+        - other
+    Obj2:
+      type: object
+      properties:
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Obj'
+      required:
+        - children`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	cf := CreateClosedAPIIndexConfig()
+	cf.IgnoreArrayCircularReferences = true
+
+	idx := NewSpecIndexWithConfig(&rootNode, cf)
+
+	resolver := NewResolver(idx)
+	resolver.IgnoreArrayCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
+	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
+
+}
+
 func TestResolver_NotAllowedDeepCircle(t *testing.T) {
 
 	d := `openapi: 3.0
