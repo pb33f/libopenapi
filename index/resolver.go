@@ -539,7 +539,11 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				}
 
 				if resolve {
-					ref.Node = locatedRef.Node
+					// if this is a reference also, we want to resolve it.
+					if ok, _, _ := utils.IsNodeRefValue(ref.Node); ok {
+						ref.Node = locatedRef.Node
+						ref.Resolved = true
+					}
 				}
 
 				schemaType := ""

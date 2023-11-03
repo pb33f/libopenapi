@@ -915,6 +915,29 @@ func TestExtractArray_BadBuild(t *testing.T) {
 	assert.Len(t, things, 0)
 }
 
+func TestExtractArray_BadRefPropsTupe(t *testing.T) {
+
+	yml := `components:
+  parameters:
+    cakes:
+      limes: cake`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+
+	yml = `limes: 
+  $ref: '#/components/parameters/cakes'`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+	things, _, _, err := ExtractArray[*test_noGood](context.Background(), "limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Len(t, things, 0)
+}
+
 func TestExtractExample_String(t *testing.T) {
 	yml := `hi`
 	var e yaml.Node
@@ -1572,6 +1595,17 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 	assert.Error(t, err)
 	assert.Len(t, things, 0)
 }
+
+/*
+  '/companies/{companyId}/data/payments/{paymentId}':
+    parameters:
+      - $ref: '#/components/parameters/companyId'
+    get:
+      tags:
+        - Accounts receivable
+      parameters:
+        - $ref: '#/paths/~1companies~1%7BcompanyId%7D~1connections~1%7BconnectionId%7D~1data~1commerce-payments~1%7BpaymentId%7D/parameters/2'
+*/
 
 func TestExtractExtensions(t *testing.T) {
 
