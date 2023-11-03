@@ -352,12 +352,14 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 	var ln, vn *yaml.Node
 	var circError error
 	root = utils.NodeAlias(root)
+	isRef := false
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
-		ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, root, idx)
+		ref, fIdx, err, nCtx := LocateRefEnd(ctx, root, idx, 0)
 		if ref != nil {
+			isRef = true
 			vn = ref
 			ln = rl
-			fIdx = fIdx
+			idx = fIdx
 			ctx = nCtx
 			if err != nil {
 				circError = err
@@ -370,8 +372,9 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 		_, ln, vn = utils.FindKeyNodeFullTop(label, root.Content)
 		if vn != nil {
 			if h, _, _ := utils.IsNodeRefValue(vn); h {
-				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, vn, idx)
+				ref, fIdx, err, nCtx := LocateRefEnd(ctx, vn, idx, 0)
 				if ref != nil {
+					isRef = true
 					vn = ref
 					idx = fIdx
 					ctx = nCtx
@@ -381,8 +384,9 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 					}
 				} else {
 					if err != nil {
-						return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed: reference cannot be found: %s",
-							err.Error())
+						return []ValueReference[T]{}, nil, nil,
+							fmt.Errorf("array build failed: reference cannot be found: %s",
+								err.Error())
 					}
 				}
 			}
@@ -392,7 +396,22 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 	var items []ValueReference[T]
 	if vn != nil && ln != nil {
 		if !utils.IsNodeArray(vn) {
-			return []ValueReference[T]{}, nil, nil, fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
+
+			if !isRef {
+				return []ValueReference[T]{}, nil, nil,
+					fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
+			}
+			// if this was pulled from a ref, but it's not a sequence, check the label and see if anything comes out,
+			// and then check that is a sequence, if not, fail it.
+			_, _, fvn := utils.FindKeyNodeFullTop(label, vn.Content)
+			if fvn != nil {
+				if !utils.IsNodeArray(vn) {
+					return []ValueReference[T]{}, nil, nil,
+						fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
+				} else {
+					vn = fvn
+				}
+			}
 		}
 		for _, node := range vn.Content {
 			localReferenceValue := ""
@@ -402,7 +421,7 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 			foundIndex := idx
 
 			if rf, _, rv := utils.IsNodeRefValue(node); rf {
-				refg, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, node, idx)
+				refg, fIdx, err, nCtx := LocateRefEnd(ctx, node, idx, 0)
 				if refg != nil {
 					node = refg
 					//localIsReference = true
@@ -601,11 +620,13 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	root = utils.NodeAlias(root)
 	if rf, rl, rv := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
-		ref, _, err := LocateRefNode(root, idx)
+		ref, fIdx, err, fCtx := LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
 			referenceValue = rv
+			ctx = fCtx
+			idx = fIdx
 			if err != nil {
 				circError = err
 			}
@@ -833,4 +854,28 @@ func GenerateHashString(v any) string {
 		v = reflect.ValueOf(v).Elem().Interface()
 	}
 	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
+}
+
+func LocateRefEnd(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, depth int) (*yaml.Node, *index.SpecIndex, error, context.Context) {
+	depth++
+	if depth > 100 {
+		return nil, nil, fmt.Errorf("reference resolution depth exceeded, possible circular reference"), ctx
+	}
+	ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, root, idx)
+	if err != nil {
+		return ref, fIdx, err, nCtx
+	}
+	if ref != nil {
+		if rf, _, _ := utils.IsNodeRefValue(ref); rf {
+			return LocateRefEnd(nCtx, ref, fIdx, depth)
+		} else {
+			return ref, fIdx, err, nCtx
+		}
+	} else {
+		if root.Content[1].Value == "" {
+			return nil, nil, fmt.Errorf("reference at line %d, column %d is empty, it cannot be resolved",
+				root.Content[1].Line, root.Content[1].Column), ctx
+		}
+		return nil, nil, fmt.Errorf("reference cannot be found: %s", root.Content[1].Value), ctx
+	}
 }

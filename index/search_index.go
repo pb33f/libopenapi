@@ -34,7 +34,8 @@ func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, 
 func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
 
 	if v, ok := index.cache.Load(searchRef.FullDefinition); ok {
-		return v.(*Reference), index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
+		//return v.(*Reference), index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
+		return v.(*Reference), v.(*Reference).Index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
 	}
 
 	ref := searchRef.FullDefinition
@@ -162,6 +163,16 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 					}
 				}
 			}
+		}
+	} else {
+		if r, ok := index.allMappedRefs[ref]; ok {
+			index.cache.Store(ref, r)
+			return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
+		}
+
+		if r, ok := index.allMappedRefs[refAlt]; ok {
+			index.cache.Store(refAlt, r)
+			return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
 		}
 	}
 

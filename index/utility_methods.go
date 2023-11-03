@@ -308,19 +308,24 @@ func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPr
 }
 
 func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yaml.Node, pathPrefix string) {
+
 	var name string
-	for i, secScheme := range securitySchemesNode.Content {
+	for i, schema := range securitySchemesNode.Content {
 		if i%2 == 0 {
-			name = secScheme.Value
+			name = schema.Value
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
+		fullDef := fmt.Sprintf("%s%s", index.specAbsolutePath, def)
+
 		ref := &Reference{
-			Definition: def,
-			Name:       name,
-			Node:       secScheme,
-			ParentNode: securitySchemesNode,
-			Path:       fmt.Sprintf("$.components.securitySchemes.%s", name),
+			FullDefinition:        fullDef,
+			Definition:            def,
+			Name:                  name,
+			Node:                  schema,
+			Path:                  fmt.Sprintf("$.components.securitySchemes.%s", name),
+			ParentNode:            securitySchemesNode,
+			RequiredRefProperties: extractDefinitionRequiredRefProperties(securitySchemesNode, map[string][]string{}, fullDef, index),
 		}
 		index.allSecuritySchemes[def] = ref
 	}
@@ -340,6 +345,16 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
 	return unique
 }
 
+func seekRefEnd(index *SpecIndex, refName string) *Reference {
+	ref, _ := index.SearchIndexForReference(refName)
+	if ref != nil {
+		if ok, _, v := utils.IsNodeRefValue(ref.Node); ok {
+			return seekRefEnd(ref.Index, v)
+		}
+	}
+	return ref
+}
+
 func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *yaml.Node, method string) {
 	for i, param := range params {
 		// param is ref
@@ -349,7 +364,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 			paramRef := index.allMappedRefs[paramRefName]
 			if paramRef == nil {
 				// could be in the rolodex
-				ref, _ := index.SearchIndexForReference(paramRefName)
+				ref := seekRefEnd(index, paramRefName)
 				if ref != nil {
 					paramRef = ref
 				}

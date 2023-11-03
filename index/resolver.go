@@ -265,6 +265,16 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 		}
 	}
 
+	schemas = idx.GetAllSecuritySchemes()
+	for s, schemaRef := range schemas {
+		if mappedIndex[s] == nil {
+			seenReferences := make(map[string]bool)
+			var journey []*Reference
+			res.journeysTaken++
+			schemaRef.Node.Content = res.VisitReference(schemaRef, seenReferences, journey, true)
+		}
+	}
+
 	// map everything
 	for _, sequenced := range idx.GetAllSequencedReferences() {
 		locatedDef := mappedIndex[sequenced.Definition]
@@ -279,7 +289,12 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
 func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
 	resolver.referencesVisited++
-	if ref.Resolved || ref.Seen {
+	if resolve && ref.Seen {
+		if ref.Resolved {
+			return ref.Node.Content
+		}
+	}
+	if !resolve && ref.Seen {
 		return ref.Node.Content
 	}
 
@@ -342,13 +357,15 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			}
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve && !original.Circular {
+				ref.Resolved = true
+				r.Resolved = true
 				r.Node.Content = resolved // this is where we perform the actual resolving.
 			}
 			r.Seen = true
 			ref.Seen = true
 		}
 	}
-	ref.Resolved = true
+
 	ref.Seen = true
 
 	return ref.Node.Content
@@ -519,6 +536,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					}
 					resolver.resolvingErrors = append(resolver.resolvingErrors, err)
 					continue
+				}
+
+				if resolve {
+					ref.Node = locatedRef.Node
 				}
 
 				schemaType := ""
