@@ -1596,17 +1596,6 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 	assert.Len(t, things, 0)
 }
 
-/*
-  '/companies/{companyId}/data/payments/{paymentId}':
-    parameters:
-      - $ref: '#/components/parameters/companyId'
-    get:
-      tags:
-        - Accounts receivable
-      parameters:
-        - $ref: '#/paths/~1companies~1%7BcompanyId%7D~1connections~1%7BconnectionId%7D~1data~1commerce-payments~1%7BpaymentId%7D/parameters/2'
-*/
-
 func TestExtractExtensions(t *testing.T) {
 
 	yml := `x-bing: ding
