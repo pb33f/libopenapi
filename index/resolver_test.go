@@ -532,7 +532,7 @@ components:
 	assert.NotNil(t, resolver)
 
 	err := resolver.Resolve()
-	assert.Len(t, err, 1)
+	assert.Len(t, err, 2)
 	assert.Equal(t, "cannot resolve reference `go home, I am drunk`, it's missing: $go home, I am drunk [18:11]", err[0].Error())
 }
 

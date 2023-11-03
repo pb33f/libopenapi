@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"strings"
@@ -15,7 +16,6 @@ import (
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestFindItemInMap(t *testing.T) {
@@ -748,7 +748,7 @@ func TestExtractArray_Ref_Circular(t *testing.T) {
 
 	things, _, _, err := ExtractArray[*test_Good](context.Background(), "", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Len(t, things, 2)
 }
 
 func TestExtractArray_Ref_Bad(t *testing.T) {
@@ -890,7 +890,7 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 	assert.NoError(t, e)
 	things, _, _, err := ExtractArray[*test_Good](context.Background(), "limes", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Len(t, things, 2)
 }
 
 func TestExtractArray_BadBuild(t *testing.T) {
@@ -1950,7 +1950,7 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 
 	// fake cache to a lookup for a file that does not exist will work.
 	fakeCache := new(syncmap.Map)
-	fakeCache.Store("/root.yaml#/components/schemas/Burger", &index.Reference{Node: &no})
+	fakeCache.Store("/root.yaml#/components/schemas/Burger", &index.Reference{Node: &no, Index: idx})
 	idx.SetCache(fakeCache)
 
 	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "/root.yaml#/components/schemas/Burger")

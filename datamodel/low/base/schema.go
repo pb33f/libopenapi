@@ -1254,10 +1254,12 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		isRef = true
-		ref, _, _ := low.LocateRefNode(root, idx)
+		ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
+			ctx = nCtx
+			idx = fIdx
 		} else {
 			return nil, fmt.Errorf(errStr,
 				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
