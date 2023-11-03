@@ -557,23 +557,20 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		located := index.FindComponent(ref.FullDefinition)
 		if located != nil {
 
-			index.refLock.Lock()
 			// have we already mapped this?
+			index.refLock.Lock()
 			if index.allMappedRefs[ref.FullDefinition] == nil {
 				found = append(found, located)
-				if located.FullDefinition != ref.FullDefinition {
-					located.FullDefinition = ref.FullDefinition
-				}
-
-				index.allMappedRefs[ref.FullDefinition] = located
+				index.allMappedRefs[located.FullDefinition] = located
 				rm := &ReferenceMapped{
 					Reference:      located,
-					Definition:     ref.Definition,
-					FullDefinition: ref.FullDefinition,
+					Definition:     located.Definition,
+					FullDefinition: located.FullDefinition,
 				}
 				sequence[refIndex] = rm
 			}
 			index.refLock.Unlock()
+
 		} else {
 
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)

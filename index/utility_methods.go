@@ -367,6 +367,9 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 				ref := seekRefEnd(index, paramRefName)
 				if ref != nil {
 					paramRef = ref
+					if strings.Contains(paramRefName, "%") {
+						paramRefName, _ = url.QueryUnescape(paramRefName)
+					}
 				}
 			}
 

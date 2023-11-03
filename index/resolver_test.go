@@ -536,6 +536,30 @@ components:
 	assert.Equal(t, "cannot resolve reference `go home, I am drunk`, it's missing: $go home, I am drunk [18:11]", err[0].Error())
 }
 
+func TestResolver_ResolveThroughPaths(t *testing.T) {
+	yml := `paths:
+  /pizza/{cake}/{pizza}/pie:
+    parameters:
+      - name: juicy
+  /companies/{companyId}/data/payments/{paymentId}:
+    get:
+      tags:
+        - Accounts receivable
+      parameters:
+        - $ref: '#/paths/~1pizza~1%7Bcake%7D~1%7Bpizza%7D~1pie/parameters/0'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	err := resolver.Resolve()
+	assert.Len(t, err, 0)
+}
+
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	mixedref, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node

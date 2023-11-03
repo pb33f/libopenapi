@@ -6,6 +6,7 @@ package index
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"path/filepath"
 	"strings"
 )
@@ -89,6 +90,10 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 		ref = uri[0]
 	}
+	if strings.Contains(ref, "%") {
+		// decode the url.
+		ref, _ = url.QueryUnescape(ref)
+	}
 
 	if r, ok := index.allMappedRefs[ref]; ok {
 		index.cache.Store(ref, r)
@@ -163,16 +168,6 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 					}
 				}
 			}
-		}
-	} else {
-		if r, ok := index.allMappedRefs[ref]; ok {
-			index.cache.Store(ref, r)
-			return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
-		}
-
-		if r, ok := index.allMappedRefs[refAlt]; ok {
-			index.cache.Store(refAlt, r)
-			return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
 		}
 	}
 

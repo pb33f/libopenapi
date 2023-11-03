@@ -164,13 +164,10 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 								u.Path = abs
 								rv = u.String()
 							}
-
 						}
 					}
-
 				}
 			}
-
 		}
 
 		foundRef, fIdx, newCtx := idx.SearchIndexForReferenceWithContext(ctx, rv)
