@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -1981,5 +1982,123 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 	assert.NotNil(t, n)
 	assert.NotNil(t, i)
 	assert.Nil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefEndNoRef_NoName(t *testing.T) {
+
+	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: ""}}}
+	n, i, e, c := LocateRefEnd(nil, r, nil, 0)
+	assert.Nil(t, n)
+	assert.Nil(t, i)
+	assert.Error(t, e)
+	assert.Nil(t, c)
+}
+
+func TestLocateRefEndNoRef(t *testing.T) {
+
+	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: "cake"}}}
+	n, i, e, c := LocateRefEnd(context.Background(), r, index.NewSpecIndexWithConfig(r, index.CreateClosedAPIIndexConfig()), 0)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.Error(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefEnd_TooDeep(t *testing.T) {
+	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: ""}}}
+	n, i, e, c := LocateRefEnd(nil, r, nil, 100)
+	assert.Nil(t, n)
+	assert.Nil(t, i)
+	assert.Error(t, e)
+	assert.Nil(t, c)
+}
+
+func TestLocateRefEnd_Loop(t *testing.T) {
+
+	yml, _ := os.ReadFile("../../test_specs/first.yaml")
+	var bsn yaml.Node
+	_ = yaml.Unmarshal(yml, &bsn)
+
+	cf := index.CreateOpenAPIIndexConfig()
+	cf.BasePath = "../../test_specs"
+
+	localFSConfig := &index.LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"first.yaml", "second.yaml", "third.yaml", "fourth.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+	localFs, _ := index.NewLocalFSWithConfig(localFSConfig)
+	rolo := index.NewRolodex(cf)
+	rolo.AddLocalFS(cf.BasePath, localFs)
+	rolo.SetRootNode(&bsn)
+	rolo.IndexTheRolodex()
+	idx := rolo.GetRootIndex()
+	loop := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "third.yaml#/properties/property/properties/statistics",
+			},
+		},
+	}
+
+	wd, _ := os.Getwd()
+	cp, _ := filepath.Abs(filepath.Join(wd, "../../test_specs/first.yaml"))
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, cp)
+	n, i, e, c := LocateRefEnd(ctx, &loop, idx, 0)
+	assert.NotNil(t, n)
+	assert.NotNil(t, i)
+	assert.Nil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefEnd_Empty(t *testing.T) {
+
+	yml, _ := os.ReadFile("../../test_specs/first.yaml")
+	var bsn yaml.Node
+	_ = yaml.Unmarshal(yml, &bsn)
+
+	cf := index.CreateOpenAPIIndexConfig()
+	cf.BasePath = "../../test_specs"
+
+	localFSConfig := &index.LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"first.yaml", "second.yaml", "third.yaml", "fourth.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+	localFs, _ := index.NewLocalFSWithConfig(localFSConfig)
+	rolo := index.NewRolodex(cf)
+	rolo.AddLocalFS(cf.BasePath, localFs)
+	rolo.SetRootNode(&bsn)
+	rolo.IndexTheRolodex()
+	idx := rolo.GetRootIndex()
+	loop := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "",
+			},
+		},
+	}
+
+	wd, _ := os.Getwd()
+	cp, _ := filepath.Abs(filepath.Join(wd, "../../test_specs/first.yaml"))
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, cp)
+	n, i, e, c := LocateRefEnd(ctx, &loop, idx, 0)
+	assert.Nil(t, n)
+	assert.Nil(t, i)
+	assert.Error(t, e)
+	assert.Equal(t, "reference at line 0, column 0 is empty, it cannot be resolved", e.Error())
 	assert.NotNil(t, c)
 }

@@ -129,10 +129,8 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 								u.Path = filepath.Join(p, explodedRefValue[0])
 								rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 							}
-
 						}
 					}
-
 				}
 			}
 		} else {
@@ -159,7 +157,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							// check for a config baseURL and use that if it exists.
 							if idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
-
 								abs, _ := filepath.Abs(filepath.Join(u.Path, rv))
 								u.Path = abs
 								rv = u.String()
@@ -375,7 +372,6 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 					vn = ref
 					idx = fIdx
 					ctx = nCtx
-					//referenceValue = rVal
 					if err != nil {
 						circError = err
 					}
@@ -412,8 +408,6 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 		}
 		for _, node := range vn.Content {
 			localReferenceValue := ""
-			//localIsReference := false
-
 			foundCtx := ctx
 			foundIndex := idx
 
@@ -421,7 +415,6 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 				refg, fIdx, err, nCtx := LocateRefEnd(ctx, node, idx, 0)
 				if refg != nil {
 					node = refg
-					//localIsReference = true
 					localReferenceValue = rv
 					foundIndex = fIdx
 					foundCtx = nCtx
@@ -853,6 +846,10 @@ func GenerateHashString(v any) string {
 	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
 }
 
+// LocateRefEnd will perform a complete lookup for a $ref node. This function searches the entire index for
+// the reference being supplied. If there is a match found, the reference *yaml.Node is returned.
+// the function operates recursively and will keep iterating through references until it finds a non-reference
+// node.
 func LocateRefEnd(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, depth int) (*yaml.Node, *index.SpecIndex, error, context.Context) {
 	depth++
 	if depth > 100 {
@@ -862,17 +859,9 @@ func LocateRefEnd(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, de
 	if err != nil {
 		return ref, fIdx, err, nCtx
 	}
-	if ref != nil {
-		if rf, _, _ := utils.IsNodeRefValue(ref); rf {
-			return LocateRefEnd(nCtx, ref, fIdx, depth)
-		} else {
-			return ref, fIdx, err, nCtx
-		}
+	if rf, _, _ := utils.IsNodeRefValue(ref); rf {
+		return LocateRefEnd(nCtx, ref, fIdx, depth)
 	} else {
-		if root.Content[1].Value == "" {
-			return nil, nil, fmt.Errorf("reference at line %d, column %d is empty, it cannot be resolved",
-				root.Content[1].Line, root.Content[1].Column), ctx
-		}
-		return nil, nil, fmt.Errorf("reference cannot be found: %s", root.Content[1].Value), ctx
+		return ref, fIdx, err, nCtx
 	}
 }

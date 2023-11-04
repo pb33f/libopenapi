@@ -17,14 +17,13 @@ import (
 	"time"
 )
 
-type HasIndex interface {
-	GetIndex() *SpecIndex
-}
-
+// CanBeIndexed is an interface that allows a file to be indexed.
 type CanBeIndexed interface {
 	Index(config *SpecIndexConfig) (*SpecIndex, error)
 }
 
+// RolodexFile is an interface that represents a file in the rolodex. It combines multiple `fs` interfaces
+// like `fs.FileInfo` and `fs.File` into one interface, so the same struct can be used for everything.
 type RolodexFile interface {
 	GetContent() string
 	GetFileExtension() FileExtension
@@ -40,6 +39,8 @@ type RolodexFile interface {
 	Mode() os.FileMode
 }
 
+// RolodexFS is an interface that represents a RolodexFS, is the same interface as `fs.FS`, except it
+// also exposes a GetFiles() signature, to extract all files in the FS.
 type RolodexFS interface {
 	Open(name string) (fs.File, error)
 	GetFiles() map[string]RolodexFile
@@ -226,7 +227,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 	// now that we have indexed all the files, we can build the index.
 	r.indexes = indexBuildQueue
-	//if !r.indexConfig.AvoidBuildIndex {
 
 	sort.Slice(indexBuildQueue, func(i, j int) bool {
 		return indexBuildQueue[i].specAbsolutePath < indexBuildQueue[j].specAbsolutePath

@@ -266,7 +266,6 @@ type SpecIndex struct {
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
 	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
 	config                              *SpecIndexConfig           // configuration for the index
-	httpClient                          *http.Client
 	componentIndexChan                  chan bool
 	polyComponentIndexChan              chan bool
 	resolver                            *Resolver

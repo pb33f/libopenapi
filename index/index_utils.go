@@ -5,9 +5,7 @@ package index
 
 import (
 	"gopkg.in/yaml.v3"
-	"net/http"
 	"strings"
-	"time"
 )
 
 func isHttpMethod(val string) bool {
@@ -68,7 +66,6 @@ func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
 	index.polymorphicRefs = make(map[string]*Reference)
 	index.refsWithSiblings = make(map[string]Reference)
 	index.opServersRefs = make(map[string]map[string][]*Reference)
-	index.httpClient = &http.Client{Timeout: time.Duration(5) * time.Second}
 	index.componentIndexChan = make(chan bool)
 	index.polyComponentIndexChan = make(chan bool)
 }

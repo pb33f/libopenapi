@@ -35,7 +35,6 @@ func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, 
 func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
 
 	if v, ok := index.cache.Load(searchRef.FullDefinition); ok {
-		//return v.(*Reference), index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
 		return v.(*Reference), v.(*Reference).Index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
 	}
 
