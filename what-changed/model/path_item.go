@@ -235,7 +235,7 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	}
 	if lPath.Get.IsEmpty() && !rPath.Get.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.GetLabel,
-			nil, rPath.Get.ValueNode, false, nil, lPath.Get.Value)
+			nil, rPath.Get.ValueNode, false, nil, rPath.Get.Value)
 	}
 
 	// put

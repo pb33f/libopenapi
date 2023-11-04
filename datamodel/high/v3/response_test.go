@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -38,7 +39,7 @@ links:
 
 	var n v3.Response
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewResponse(&n)
 
@@ -69,7 +70,7 @@ links:
 
 	var n v3.Response
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewResponse(&n)
 
@@ -97,7 +98,7 @@ links:
 
 	var n v3.Response
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewResponse(&n)
 

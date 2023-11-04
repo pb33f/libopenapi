@@ -1,6 +1,7 @@
 package low
 
 import (
+	"context"
 	"fmt"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -38,7 +39,7 @@ type IsReferenced interface {
 //
 // Used by generic functions when automatically building out structs based on yaml.Node inputs.
 type Buildable[T any] interface {
-	Build(key, value *yaml.Node, idx *index.SpecIndex) error
+	Build(ctx context.Context, key, value *yaml.Node, idx *index.SpecIndex) error
 	*T
 }
 
@@ -112,6 +113,8 @@ type NodeReference[T any] struct {
 
 	// If HasReference is true, then Reference contains the original $ref value.
 	Reference string
+
+	Context context.Context
 }
 
 // KeyReference is a low-level container for key nodes holding a Value of type T. A KeyNode is a pointer to the

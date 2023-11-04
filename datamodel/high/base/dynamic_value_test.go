@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
@@ -116,7 +117,7 @@ func TestDynamicValue_MarshalYAMLInline(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
 
 	lowProxy := new(lowbase.SchemaProxy)
-	err := lowProxy.Build(nil, node.Content[0], idx)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
 	assert.NoError(t, err)
 
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
@@ -160,7 +161,7 @@ func TestDynamicValue_MarshalYAMLInline_Error(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
 
 	lowProxy := new(lowbase.SchemaProxy)
-	err := lowProxy.Build(nil, node.Content[0], idx)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
 	assert.NoError(t, err)
 
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{

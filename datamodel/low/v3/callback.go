@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
@@ -39,7 +40,7 @@ func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
 }
 
 // Build will extract extensions, expressions and PathItem objects for Callback
-func (cb *Callback) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (cb *Callback) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	cb.Reference = new(low.Reference)
@@ -57,7 +58,7 @@ func (cb *Callback) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		if strings.HasPrefix(currentCB.Value, "x-") {
 			continue // ignore extension.
 		}
-		callback, eErr, _, rv := low.ExtractObjectRaw[*PathItem](currentCB, callbackNode, idx)
+		callback, eErr, _, rv := low.ExtractObjectRaw[*PathItem](ctx, currentCB, callbackNode, idx)
 		if eErr != nil {
 			return eErr
 		}

@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -162,8 +163,8 @@ func test_BuildDoc(l, r string) (*v3.Document, *v3.Document) {
 	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
 	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
 
-	leftDoc, _ := v3.CreateDocumentFromConfig(leftInfo, datamodel.NewOpenDocumentConfiguration())
-	rightDoc, _ := v3.CreateDocumentFromConfig(rightInfo, datamodel.NewOpenDocumentConfiguration())
+	leftDoc, _ := v3.CreateDocumentFromConfig(leftInfo, datamodel.NewDocumentConfiguration())
+	rightDoc, _ := v3.CreateDocumentFromConfig(rightInfo, datamodel.NewDocumentConfiguration())
 	return leftDoc, rightDoc
 }
 
@@ -171,14 +172,15 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 	leftInfo, _ := datamodel.ExtractSpecInfo([]byte(l))
 	rightInfo, _ := datamodel.ExtractSpecInfo([]byte(r))
 
-	var err []error
+	var err error
 	var leftDoc, rightDoc *v2.Swagger
-	leftDoc, err = v2.CreateDocumentFromConfig(leftInfo, datamodel.NewOpenDocumentConfiguration())
-	rightDoc, err = v2.CreateDocumentFromConfig(rightInfo, datamodel.NewOpenDocumentConfiguration())
+	leftDoc, err = v2.CreateDocumentFromConfig(leftInfo, datamodel.NewDocumentConfiguration())
+	rightDoc, err = v2.CreateDocumentFromConfig(rightInfo, datamodel.NewDocumentConfiguration())
 
-	if len(err) > 0 {
-		for i := range err {
-			fmt.Printf("error: %v\n", err[i])
+	uErr := utils.UnwrapErrors(err)
+	if len(uErr) > 0 {
+		for i := range uErr {
+			fmt.Printf("error: %v\n", uErr[i])
 		}
 		panic("failed to create doc")
 	}

@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
@@ -23,7 +24,7 @@ func TestExternalDoc_FindExtension(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "cake", n.FindExtension("x-fish").Value)
 
@@ -44,7 +45,7 @@ x-b33f: princess`
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
 	assert.Equal(t, "the ranch", n.Description.Value)
@@ -73,8 +74,8 @@ description: the ranch`
 	var rDoc ExternalDoc
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 	assert.Len(t, lDoc.GetExtensions(), 1)

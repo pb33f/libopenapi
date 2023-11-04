@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
@@ -31,7 +32,7 @@ explode: true`
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "hot/cakes", n.ContentType.Value)
 	assert.Equal(t, true, n.AllowReserved.Value)
@@ -59,7 +60,7 @@ headers:
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -79,7 +80,7 @@ allowReserved: true`
 
 	var n Encoding
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	yml2 := `explode: true
 contentType: application/waffle
@@ -96,7 +97,7 @@ style: post modern
 
 	var n2 Encoding
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(nil, idxNode2.Content[0], idx2)
+	_ = n2.Build(context.Background(), nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

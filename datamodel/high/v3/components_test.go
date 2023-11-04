@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -46,7 +47,7 @@ func TestComponents_MarshalYAML(t *testing.T) {
 
 	var n v3.Components
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), idxNode.Content[0], idx)
 
 	r := NewComponents(&n)
 

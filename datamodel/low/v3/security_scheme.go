@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -48,13 +49,13 @@ func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.Value
 }
 
 // Build will extract OAuthFlows and extensions from the node.
-func (ss *SecurityScheme) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (ss *SecurityScheme) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ss.Reference = new(low.Reference)
 	ss.Extensions = low.ExtractExtensions(root)
 
-	oa, oaErr := low.ExtractObject[*OAuthFlows](OAuthFlowsLabel, root, idx)
+	oa, oaErr := low.ExtractObject[*OAuthFlows](ctx, OAuthFlowsLabel, root, idx)
 	if oaErr != nil {
 		return oaErr
 	}

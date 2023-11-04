@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
@@ -25,7 +26,7 @@ func TestResponse_Build_Schema(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -44,7 +45,7 @@ func TestResponse_Build_Examples(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -63,7 +64,7 @@ func TestResponse_Build_Headers(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -87,7 +88,7 @@ x-herbs: missing`
 
 	var n Response
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	yml2 := `description: your thing, sir.
 examples:
@@ -106,7 +107,7 @@ headers:
 
 	var n2 Response
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(nil, idxNode2.Content[0], idx2)
+	_ = n2.Build(context.Background(), nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -38,12 +39,12 @@ func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.Value
 }
 
 // Build will extract extensions and scopes from the node.
-func (ss *SecurityScheme) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (ss *SecurityScheme) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ss.Extensions = low.ExtractExtensions(root)
 
-	scopes, sErr := low.ExtractObject[*Scopes](ScopesLabel, root, idx)
+	scopes, sErr := low.ExtractObject[*Scopes](ctx, ScopesLabel, root, idx)
 	if sErr != nil {
 		return sErr
 	}

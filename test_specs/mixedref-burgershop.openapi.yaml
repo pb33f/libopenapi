@@ -234,7 +234,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: 'https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/burgershop.openapi.yaml'
+                $ref: 'https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/burgershop.openapi.yaml#/components/schemas/Error'
 components:
   schemas:
     Error:

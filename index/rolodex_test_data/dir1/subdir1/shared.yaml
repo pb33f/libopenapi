@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: Dir1 Shared Components
+  version: 1.0.0
+components:
+  schemas:
+    SharedComponent:
+      type: object
+      description: Dir1 Shared Component
+      properties:
+        message:
+          type: string
+          description: I am pointless, but I am shared dir1.
+    SomeUtil:
+      $ref: "../utils/utils.yaml"

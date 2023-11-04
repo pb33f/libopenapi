@@ -405,7 +405,6 @@ func CompareOperations(l, r any) *OperationChanges {
 		oc.ServerChanges = checkServers(lOperation.Servers, rOperation.Servers)
 		oc.ExtensionChanges = CompareExtensions(lOperation.Extensions, rOperation.Extensions)
 
-		// todo: callbacks
 	}
 	CheckProperties(props)
 	oc.PropertyChanges = NewPropertyChanges(changes)

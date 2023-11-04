@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
@@ -76,7 +77,7 @@ func TestComponents_Build_Success(t *testing.T) {
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "one of many", n.FindSchema("one").Value.Schema().Description.Value)
@@ -118,7 +119,7 @@ func TestComponents_Build_Success_Skip(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 }
@@ -139,7 +140,7 @@ func TestComponents_Build_Fail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -161,7 +162,7 @@ func TestComponents_Build_ParameterFail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 
 }
@@ -191,7 +192,7 @@ func TestComponents_Build_ParameterFail_Many(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -211,7 +212,7 @@ func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -230,7 +231,7 @@ headers:
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "seagull", n.FindExtension("x-curry").Value)
 
@@ -249,7 +250,7 @@ func TestComponents_Build_HashEmpty(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(idxNode.Content[0], idx)
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "seagull", n.FindExtension("x-curry").Value)
 	assert.Len(t, n.GetExtensions(), 1)
