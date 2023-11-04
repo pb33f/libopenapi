@@ -327,19 +327,29 @@ func (r *Rolodex) CheckForCircularReferences() {
 
 // Resolve resolves references in the rolodex.
 func (r *Rolodex) Resolve() {
+
+	var resolvers []*Resolver
 	if r.rootIndex != nil && r.rootIndex.resolver != nil {
-		resolvingErrors := r.rootIndex.resolver.Resolve()
+		resolvers = append(resolvers, r.rootIndex.resolver)
+	}
+	for _, idx := range r.indexes {
+		if idx.resolver != nil {
+			resolvers = append(resolvers, idx.resolver)
+		}
+	}
+	for _, res := range resolvers {
+		resolvingErrors := res.Resolve()
 		for e := range resolvingErrors {
 			r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
 		}
 		if len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
-			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredPolyReferences...)
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, res.ignoredPolyReferences...)
 		}
 		if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
-			r.ignoredCircularReferences = append(r.ignoredCircularReferences, r.rootIndex.resolver.ignoredArrayReferences...)
+			r.ignoredCircularReferences = append(r.ignoredCircularReferences, res.ignoredArrayReferences...)
 		}
-		r.safeCircularReferences = append(r.safeCircularReferences, r.rootIndex.resolver.GetSafeCircularReferences()...)
-		r.infiniteCircularReferences = append(r.infiniteCircularReferences, r.rootIndex.resolver.GetInfiniteCircularReferences()...)
+		r.safeCircularReferences = append(r.safeCircularReferences, res.GetSafeCircularReferences()...)
+		r.infiniteCircularReferences = append(r.infiniteCircularReferences, res.GetInfiniteCircularReferences()...)
 	}
 	r.resolved = true
 }

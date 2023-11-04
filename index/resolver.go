@@ -32,13 +32,8 @@ func (r *ResolvingError) Error() string {
 	errs := utils.UnwrapErrors(r.ErrorRef)
 	var msgs []string
 	for _, e := range errs {
-		if idxErr, ok := e.(*IndexingError); ok {
-			msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", idxErr.Error(),
-				idxErr.Path, idxErr.Node.Line, idxErr.Node.Column))
-		} else {
-			msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", e.Error(),
-				r.Path, r.Node.Line, r.Node.Column))
-		}
+		msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", e.Error(),
+			r.Path, r.Node.Line, r.Node.Column))
 	}
 	return strings.Join(msgs, "\n")
 }
