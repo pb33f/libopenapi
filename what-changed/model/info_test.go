@@ -426,8 +426,8 @@ x-extension: new extension
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -457,8 +457,8 @@ version: '1.2.3'
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -489,8 +489,8 @@ x-extension: new extension
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
