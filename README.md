@@ -29,6 +29,17 @@ like our _very kind_ sponsors:
 
 [Speakeasy](https://speakeasyapi.dev/?utm_source=libopenapi+repo&utm_medium=github+sponsorship)
 
+<a href="https://scalar.com">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/scalar-dark.png">
+  <img alt="scalar'" src=".github/sponsors/scalar-light.png">
+</picture>
+</a>
+
+[scalar](https://scalar.com)
+
+
+
 ---
 
 `libopenapi` is pretty new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
@@ -39,7 +50,7 @@ like our _very kind_ sponsors:
 - [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
 - [github.com/speakeasy-api/speakeasy](https://github.com/speakeasy-api/speakeasy) - "Speakeasy CLI makes validating OpenAPI docs and generating idiomatic SDKs easy!"
 - [github.com/apicat/apicat](https://github.com/apicat/apicat) - "AI-powered API development tool"
-- [github.com/mattermost/mattermost](https://github.com/mattermost/mattermost) = "Software development lifecycle platform"
+- [github.com/mattermost/mattermost](https://github.com/mattermost/mattermost) - "Software development lifecycle platform"
 - Your project here?
 ---
 

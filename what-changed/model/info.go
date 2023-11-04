@@ -11,8 +11,9 @@ import (
 // InfoChanges represents the number of changes to an Info object. Part of an OpenAPI document
 type InfoChanges struct {
 	*PropertyChanges
-	ContactChanges *ContactChanges `json:"contact,omitempty" yaml:"contact,omitempty"`
-	LicenseChanges *LicenseChanges `json:"license,omitempty" yaml:"license,omitempty"`
+	ContactChanges   *ContactChanges   `json:"contact,omitempty" yaml:"contact,omitempty"`
+	LicenseChanges   *LicenseChanges   `json:"license,omitempty" yaml:"license,omitempty"`
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between Info objects
@@ -25,6 +26,9 @@ func (i *InfoChanges) GetAllChanges() []*Change {
 	if i.LicenseChanges != nil {
 		changes = append(changes, i.LicenseChanges.GetAllChanges()...)
 	}
+	if i.ExtensionChanges != nil {
+		changes = append(changes, i.ExtensionChanges.GetAllChanges()...)
+	}
 	return changes
 }
 
@@ -36,6 +40,9 @@ func (i *InfoChanges) TotalChanges() int {
 	}
 	if i.LicenseChanges != nil {
 		t += i.LicenseChanges.TotalChanges()
+	}
+	if i.ExtensionChanges != nil {
+		t += i.ExtensionChanges.TotalChanges()
 	}
 	return t
 }
@@ -139,6 +146,10 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 				l.License.ValueNode, nil, false, r.License.Value, nil)
 		}
 	}
+
+	// check extensions.
+	i.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
+
 	i.PropertyChanges = NewPropertyChanges(changes)
 	if i.TotalChanges() <= 0 {
 		return nil
