@@ -192,6 +192,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 
 	}
 
+	doc.Rolodex = rolodex
+
 	var errs []error
 
 	// index all the things!
