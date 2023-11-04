@@ -264,6 +264,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 
 	var docErr error
 	lowDoc, docErr = v2low.CreateDocumentFromConfig(d.info, d.config)
+	d.rolodex = lowDoc.Rolodex
 
 	if docErr != nil {
 		errs = append(errs, utils.UnwrapErrors(docErr)...)
@@ -280,6 +281,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 		}
 	}
 	highDoc := v2high.NewSwaggerDocument(lowDoc)
+
 	d.highSwaggerModel = &DocumentModel[v2high.Swagger]{
 		Model: *highDoc,
 		Index: lowDoc.Index,
