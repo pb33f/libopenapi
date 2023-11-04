@@ -471,7 +471,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 		BaseURL:               baseURL,
 	}
 
-	if os.Getenv("GITHUB_TOKEN") != "" {
+	if os.Getenv("GH_PAT") != "" {
 		client := &http.Client{
 			Timeout: time.Second * 60,
 		}
@@ -501,7 +501,7 @@ func TestDigitalOceanAsDocFromMain(t *testing.T) {
 		BaseURL:               baseURL,
 	}
 
-	if os.Getenv("GITHUB_TOKEN") != "" {
+	if os.Getenv("GH_PAT") != "" {
 		client := &http.Client{
 			Timeout: time.Second * 60,
 		}
