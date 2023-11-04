@@ -159,8 +159,8 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 
 	// create a handler that uses an env variable to capture any GITHUB_TOKEN in the OS ENV
 	// and inject it into the request header, so this does not fail when running lots of local tests.
-	if os.Getenv("GITHUB_TOKEN") != "" {
-		fmt.Println("GITHUB_TOKEN found, setting remote handler func")
+	if os.Getenv("GH_PAT") != "" {
+		fmt.Println("GH_PAT found, setting remote handler func")
 		client := &http.Client{
 			Timeout: time.Second * 120,
 		}
