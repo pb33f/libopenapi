@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -70,7 +71,7 @@ description: the ranch`
 	var lDoc License
 	err := low.BuildModel(lNode.Content[0], &lDoc)
 
-	err = lDoc.Build(nil, lNode.Content[0], nil)
+	err = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
 
 	assert.Error(t, err)
 	assert.Equal(t, "license cannot have both a URL and an identifier, they are mutually exclusive", err.Error())

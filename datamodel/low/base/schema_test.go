@@ -1,10 +1,10 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -166,7 +166,7 @@ func Test_Schema(t *testing.T) {
 	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
 
-	schErr := sch.Build(rootNode.Content[0], nil)
+	schErr := sch.Build(context.Background(), rootNode.Content[0], nil)
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.True(t, sch.AdditionalProperties.Value.B)
@@ -342,7 +342,7 @@ func TestSchemaAllOfSequenceOrder(t *testing.T) {
 	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
 
-	schErr := sch.Build(rootNode.Content[0], nil)
+	schErr := sch.Build(context.Background(), rootNode.Content[0], nil)
 	assert.NoError(t, schErr)
 	assert.Equal(t, "allOf sequence check", sch.Description.Value)
 
@@ -362,13 +362,13 @@ func TestSchema_Hash(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(testSpec), &sc1n)
 	sch1 := Schema{}
 	_ = low.BuildModel(&sc1n, &sch1)
-	_ = sch1.Build(sc1n.Content[0], nil)
+	_ = sch1.Build(context.Background(), sc1n.Content[0], nil)
 
 	var sc2n yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &sc2n)
 	sch2 := Schema{}
 	_ = low.BuildModel(&sc2n, &sch2)
-	_ = sch2.Build(sc2n.Content[0], nil)
+	_ = sch2.Build(context.Background(), sc2n.Content[0], nil)
 
 	assert.Equal(t, sch1.Hash(), sch2.Hash())
 }
@@ -380,13 +380,13 @@ func BenchmarkSchema_Hash(b *testing.B) {
 	_ = yaml.Unmarshal([]byte(testSpec), &sc1n)
 	sch1 := Schema{}
 	_ = low.BuildModel(&sc1n, &sch1)
-	_ = sch1.Build(sc1n.Content[0], nil)
+	_ = sch1.Build(context.Background(), sc1n.Content[0], nil)
 
 	var sc2n yaml.Node
 	_ = yaml.Unmarshal([]byte(testSpec), &sc2n)
 	sch2 := Schema{}
 	_ = low.BuildModel(&sc2n, &sch2)
-	_ = sch2.Build(sc2n.Content[0], nil)
+	_ = sch2.Build(context.Background(), sc2n.Content[0], nil)
 
 	for i := 0; i < b.N; i++ {
 		assert.Equal(b, sch1.Hash(), sch2.Hash())
@@ -416,7 +416,7 @@ const: tasty`
 	mbErr := low.BuildModel(rootNode.Content[0], &sch)
 	assert.NoError(t, mbErr)
 
-	schErr := sch.Build(rootNode.Content[0], nil)
+	schErr := sch.Build(context.Background(), rootNode.Content[0], nil)
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.Len(t, sch.Type.Value.B, 2)
@@ -457,7 +457,7 @@ properties:
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	var n Schema
-	err := n.Build(idxNode.Content[0], idx)
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "this is something", n.FindProperty("aValue").Value.Schema().Description.Value)
 }
@@ -483,7 +483,7 @@ properties:
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	var n Schema
-	err := n.Build(idxNode.Content[0], idx)
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -508,7 +508,7 @@ dependentSchemas:
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	var n Schema
-	err := n.Build(idxNode.Content[0], idx)
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -533,7 +533,7 @@ patternProperties:
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	var n Schema
-	err := n.Build(idxNode.Content[0], idx)
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -573,7 +573,7 @@ items:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, schErr)
 
 	desc := "poly thing"
@@ -620,7 +620,7 @@ items:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, schErr)
 }
 
@@ -660,7 +660,7 @@ items:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, schErr)
 
 	desc := "poly thing"
@@ -707,7 +707,7 @@ items:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, schErr)
 }
 
@@ -733,7 +733,7 @@ allOf:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, schErr)
 }
 
@@ -759,7 +759,7 @@ allOf:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, schErr)
 }
 
@@ -787,7 +787,7 @@ allOf:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, schErr)
 	assert.Nil(t, sch.AllOf.Value[0].Value.Schema()) // child can't be resolved, so this will be nil.
 	assert.Error(t, sch.AllOf.Value[0].Value.GetBuildError())
@@ -817,7 +817,7 @@ allOf:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, schErr)
 
 	desc := "madness"
@@ -848,7 +848,7 @@ allOf:
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	err = sch.Build(idxNode.Content[0], idx)
+	err = sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -876,7 +876,7 @@ func Test_Schema_Polymorphism_RefMadnessIllegal(t *testing.T) {
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, schErr)
 }
 
@@ -901,14 +901,14 @@ func Test_Schema_RefMadnessIllegal_Circular(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, schErr)
 }
 
@@ -933,14 +933,14 @@ func Test_Schema_RefMadnessIllegal_Nonexist(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
 	err := low.BuildModel(&idxNode, &sch)
 	assert.NoError(t, err)
 
-	schErr := sch.Build(idxNode.Content[0], idx)
+	schErr := sch.Build(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, schErr)
 }
 
@@ -965,7 +965,7 @@ func TestExtractSchema(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	aValue := res.Value.Schema().FindProperty("aValue")
@@ -981,7 +981,7 @@ schema:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], nil)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	sch := res.Value.Schema()
@@ -997,7 +997,7 @@ schema:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], nil)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	sch := res.Value.Schema()
@@ -1022,7 +1022,7 @@ func TestExtractSchema_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	assert.Equal(t, "this is something", res.Value.Schema().Description.Value)
@@ -1046,7 +1046,7 @@ func TestExtractSchema_Ref_Fail(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	_, err := ExtractSchema(idxNode.Content[0], idx)
+	_, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -1074,14 +1074,14 @@ func TestExtractSchema_CheckChildPropCircular(t *testing.T) {
 
 	yml = `$ref: '#/components/schemas/Something'`
 
-	resolve := resolver.NewResolver(idx)
+	resolve := index.NewResolver(idx)
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 
@@ -1106,7 +1106,7 @@ func TestExtractSchema_RefRoot(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	assert.Equal(t, "this is something", res.Value.Schema().Description.Value)
@@ -1129,7 +1129,7 @@ func TestExtractSchema_RefRoot_Fail(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	_, err := ExtractSchema(idxNode.Content[0], idx)
+	_, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -1149,7 +1149,7 @@ func TestExtractSchema_RefRoot_Child_Fail(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	_, err := ExtractSchema(idxNode.Content[0], idx)
+	_, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -1170,7 +1170,7 @@ func TestExtractSchema_AdditionalPropertiesAsSchema(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.A.Schema())
 	assert.Nil(t, err)
@@ -1192,7 +1192,7 @@ func TestExtractSchema_DoNothing(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.Nil(t, res)
 	assert.Nil(t, err)
 }
@@ -1220,7 +1220,7 @@ func TestExtractSchema_AdditionalProperties_Ref(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.NotNil(t, res.Value.Schema().AdditionalProperties.Value.A.Schema())
 	assert.Nil(t, err)
 }
@@ -1334,7 +1334,7 @@ func TestExtractSchema_OneOfRef(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, err := ExtractSchema(idxNode.Content[0], idx)
+	res, err := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
 		res.Value.Schema().OneOf.Value[0].Value.Schema().Description.Value)
@@ -1427,8 +1427,8 @@ func TestSchema_Hash_Equal(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(left), &lNode)
 	_ = yaml.Unmarshal([]byte(right), &rNode)
 
-	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
-	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+	lDoc, _ := ExtractSchema(context.Background(), lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(context.Background(), rNode.Content[0], nil)
 
 	assert.NotNil(t, lDoc)
 	assert.NotNil(t, rDoc)
@@ -1452,8 +1452,8 @@ func TestSchema_Hash_AdditionalPropsSlice(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(left), &lNode)
 	_ = yaml.Unmarshal([]byte(right), &rNode)
 
-	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
-	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+	lDoc, _ := ExtractSchema(context.Background(), lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(context.Background(), rNode.Content[0], nil)
 
 	assert.NotNil(t, lDoc)
 	assert.NotNil(t, rDoc)
@@ -1477,8 +1477,8 @@ func TestSchema_Hash_AdditionalPropsSliceNoMap(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(left), &lNode)
 	_ = yaml.Unmarshal([]byte(right), &rNode)
 
-	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
-	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+	lDoc, _ := ExtractSchema(context.Background(), lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(context.Background(), rNode.Content[0], nil)
 
 	assert.NotNil(t, lDoc)
 	assert.NotNil(t, rDoc)
@@ -1514,8 +1514,8 @@ func TestSchema_Hash_NotEqual(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(left), &lNode)
 	_ = yaml.Unmarshal([]byte(right), &rNode)
 
-	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
-	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+	lDoc, _ := ExtractSchema(context.Background(), lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(context.Background(), rNode.Content[0], nil)
 
 	assert.False(t, low.AreEqual(lDoc.Value.Schema(), rDoc.Value.Schema()))
 }
@@ -1551,8 +1551,8 @@ func TestSchema_Hash_EqualJumbled(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(left), &lNode)
 	_ = yaml.Unmarshal([]byte(right), &rNode)
 
-	lDoc, _ := ExtractSchema(lNode.Content[0], nil)
-	rDoc, _ := ExtractSchema(rNode.Content[0], nil)
+	lDoc, _ := ExtractSchema(context.Background(), lNode.Content[0], nil)
+	rDoc, _ := ExtractSchema(context.Background(), rNode.Content[0], nil)
 	assert.True(t, low.AreEqual(lDoc.Value.Schema(), rDoc.Value.Schema()))
 }
 
@@ -1585,7 +1585,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.B)
@@ -1610,7 +1610,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
 	assert.False(t, res.Value.Schema().UnevaluatedProperties.Value.B)
@@ -1632,7 +1632,7 @@ func TestSchema_UnevaluatedPropertiesAsBool_Undefined(t *testing.T) {
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.Nil(t, res.Value.Schema().UnevaluatedProperties.Value)
 }
@@ -1662,7 +1662,7 @@ components:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.True(t, res.Value.Schema().ExclusiveMinimum.Value.A)
 }
@@ -1692,7 +1692,7 @@ components:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.Equal(t, 3.0, res.Value.Schema().ExclusiveMinimum.Value.B)
 }
@@ -1722,7 +1722,7 @@ components:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.True(t, res.Value.Schema().ExclusiveMaximum.Value.A)
 }
@@ -1752,7 +1752,7 @@ components:
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	res, _ := ExtractSchema(idxNode.Content[0], idx)
+	res, _ := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 
 	assert.Equal(t, 3.0, res.Value.Schema().ExclusiveMaximum.Value.B)
 }

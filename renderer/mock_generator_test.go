@@ -4,6 +4,7 @@
 package renderer
 
 import (
+	"context"
 	"encoding/json"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -43,7 +44,7 @@ func createFakeMock(mock string, values map[string]any, example any) *fakeMockab
 	var root yaml.Node
 	_ = yaml.Unmarshal([]byte(mock), &root)
 	var lowProxy lowbase.SchemaProxy
-	_ = lowProxy.Build(&root, root.Content[0], nil)
+	_ = lowProxy.Build(context.Background(), &root, root.Content[0], nil)
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
 		Value: &lowProxy,
 	}
@@ -66,7 +67,7 @@ func createFakeMockWithoutProxy(mock string, values map[string]any, example any)
 	var root yaml.Node
 	_ = yaml.Unmarshal([]byte(mock), &root)
 	var lowProxy lowbase.SchemaProxy
-	_ = lowProxy.Build(&root, root.Content[0], nil)
+	_ = lowProxy.Build(context.Background(), &root, root.Content[0], nil)
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
 		Value: &lowProxy,
 	}

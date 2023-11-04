@@ -96,8 +96,6 @@ type OpenAPIParameter interface {
 //TODO: this needs to be fixed, move returns to pointers.
 
 type SharedOperations interface {
-	//HasDescription
-	//HasExternalDocs
 	GetOperationId() NodeReference[string]
 	GetExternalDocs() NodeReference[any]
 	GetDescription() NodeReference[string]

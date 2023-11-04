@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
@@ -53,7 +54,7 @@ content:
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, "michelle, meddy and maddy", n.Description.Value)
 	assert.True(t, n.AllowReserved.Value)
@@ -101,7 +102,7 @@ func TestHeader_Build_Success_Examples(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	exp := n.FindExample("family").Value
@@ -129,7 +130,7 @@ func TestHeader_Build_Fail_Examples(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -145,7 +146,7 @@ func TestHeader_Build_Fail_Schema(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -162,7 +163,7 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 	err := low.BuildModel(&idxNode, &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
 
@@ -195,7 +196,7 @@ x-mango: chutney`
 
 	var n Header
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	yml2 := `x-mango: chutney
 required: true
@@ -224,7 +225,7 @@ schema:
 
 	var n2 Header
 	_ = low.BuildModel(idxNode2.Content[0], &n2)
-	_ = n2.Build(nil, idxNode2.Content[0], idx2)
+	_ = n2.Build(context.Background(), nil, idxNode2.Content[0], idx2)
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())

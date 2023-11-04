@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -28,7 +29,7 @@ type SecurityRequirement struct {
 }
 
 // Build will extract security requirements from the node (the structure is odd, to be honest)
-func (s *SecurityRequirement) Build(_, root *yaml.Node, _ *index.SpecIndex) error {
+func (s *SecurityRequirement) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)

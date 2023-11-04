@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -60,7 +61,7 @@ func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[
 }
 
 // Build will extract extensions and all PathItems. This happens asynchronously for speed.
-func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
@@ -134,15 +135,9 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 			cNode := value.currentNode
 
 			if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
-				r, err := low.LocateRefNode(pNode, idx)
+				r, _, err := low.LocateRefNode(pNode, idx)
 				if r != nil {
 					pNode = r
-					if r.Tag == "" {
-						// If it's a node from file, tag is empty
-						// If it's a reference we need to extract actual operation node
-						pNode = r.Content[0]
-					}
-
 					if err != nil {
 						if !idx.AllowCircularReferenceResolving() {
 							return buildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
@@ -156,9 +151,13 @@ func (p *Paths) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 
 			path := new(PathItem)
 			_ = low.BuildModel(pNode, path)
-			err := path.Build(cNode, pNode, idx)
+			err := path.Build(ctx, cNode, pNode, idx)
+
 			if err != nil {
-				return buildResult{}, err
+				if idx.GetLogger() != nil {
+					idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
+				}
+				//return buildResult{}, err
 			}
 
 			return buildResult{
