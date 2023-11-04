@@ -4,6 +4,7 @@
 package index
 
 import (
+	"errors"
 	"fmt"
 	"github.com/pb33f/libopenapi/utils"
 	"golang.org/x/exp/slices"
@@ -32,8 +33,14 @@ func (r *ResolvingError) Error() string {
 	errs := utils.UnwrapErrors(r.ErrorRef)
 	var msgs []string
 	for _, e := range errs {
-		msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", e.Error(),
-			r.Path, r.Node.Line, r.Node.Column))
+		var idxErr *IndexingError
+		if errors.As(e, &idxErr) {
+			msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", idxErr.Error(),
+				idxErr.Path, idxErr.Node.Line, idxErr.Node.Column))
+		} else {
+			msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", e.Error(),
+				r.Path, r.Node.Line, r.Node.Column))
+		}
 	}
 	return strings.Join(msgs, "\n")
 }

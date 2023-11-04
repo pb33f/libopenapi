@@ -44,6 +44,43 @@ func TestResolvingError_Error(t *testing.T) {
 	assert.Equal(t, "test2: $.test2 [1:1]", errs[1].Error())
 }
 
+func TestResolvingError_Error_Index(t *testing.T) {
+
+	errs := []error{
+		&ResolvingError{
+			ErrorRef: errors.Join(&IndexingError{
+				Path: "$.test1",
+				Err:  errors.New("test1"),
+				Node: &yaml.Node{
+					Line:   1,
+					Column: 1,
+				},
+			}),
+			Node: &yaml.Node{
+				Line:   1,
+				Column: 1,
+			},
+		},
+		&ResolvingError{
+			ErrorRef: errors.Join(&IndexingError{
+				Path: "$.test2",
+				Err:  errors.New("test2"),
+				Node: &yaml.Node{
+					Line:   1,
+					Column: 1,
+				},
+			}),
+			Node: &yaml.Node{
+				Line:   1,
+				Column: 1,
+			},
+		},
+	}
+
+	assert.Equal(t, "test1: $.test1 [1:1]", errs[0].Error())
+	assert.Equal(t, "test2: $.test2 [1:1]", errs[1].Error())
+}
+
 func Benchmark_ResolveDocumentStripe(b *testing.B) {
 	baseDir := "../test_specs/stripe.yaml"
 	resolveFile, _ := os.ReadFile(baseDir)
