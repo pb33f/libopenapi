@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -16,6 +17,31 @@ import (
 
 func TestNewResolver(t *testing.T) {
 	assert.Nil(t, NewResolver(nil))
+}
+
+func TestResolvingError_Error(t *testing.T) {
+
+	errs := []error{
+		&ResolvingError{
+			Path:     "$.test1",
+			ErrorRef: errors.New("test1"),
+			Node: &yaml.Node{
+				Line:   1,
+				Column: 1,
+			},
+		},
+		&ResolvingError{
+			Path:     "$.test2",
+			ErrorRef: errors.New("test2"),
+			Node: &yaml.Node{
+				Line:   1,
+				Column: 1,
+			},
+		},
+	}
+
+	assert.Equal(t, "test1: $.test1 [1:1]", errs[0].Error())
+	assert.Equal(t, "test2: $.test2 [1:1]", errs[1].Error())
 }
 
 func Benchmark_ResolveDocumentStripe(b *testing.B) {
@@ -918,7 +944,40 @@ components:
 
 }
 
-/*
+func TestLocateRefEnd_WithResolve(t *testing.T) {
 
+	yml, _ := os.ReadFile("../../test_specs/first.yaml")
+	var bsn yaml.Node
+	_ = yaml.Unmarshal(yml, &bsn)
 
- */
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = "../test_specs"
+
+	localFSConfig := &LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"first.yaml", "second.yaml", "third.yaml", "fourth.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+	localFs, _ := NewLocalFSWithConfig(localFSConfig)
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(cf.BasePath, localFs)
+	rolo.SetRootNode(&bsn)
+	rolo.IndexTheRolodex()
+
+	wd, _ := os.Getwd()
+	cp, _ := filepath.Abs(filepath.Join(wd, "../test_specs/third.yaml"))
+	third := localFs.GetFiles()[cp]
+	refs := third.GetIndex().GetMappedReferences()
+	fullDef := fmt.Sprintf("%s#/properties/property/properties/statistics", cp)
+	ref := refs[fullDef]
+
+	assert.Equal(t, "statistics", ref.Name)
+	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
+	assert.True(t, isRef)
+
+	// resolve the stack, it should convert the ref to a node.
+	rolo.Resolve()
+
+	isRef, _, _ = utils.IsNodeRefValue(ref.Node)
+	assert.False(t, isRef)
+}
