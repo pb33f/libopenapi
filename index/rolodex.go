@@ -105,6 +105,11 @@ func (r *Rolodex) GetRootIndex() *SpecIndex {
 	return r.rootIndex
 }
 
+// GetRootNode returns the root index of the rolodex (the entry point, the main document)
+func (r *Rolodex) GetRootNode() *yaml.Node {
+	return r.rootNode
+}
+
 // GetIndexes returns all the indexes in the rolodex.
 func (r *Rolodex) GetIndexes() []*SpecIndex {
 	return r.indexes

@@ -38,8 +38,13 @@ func (r *ResolvingError) Error() string {
 			msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", idxErr.Error(),
 				idxErr.Path, idxErr.Node.Line, idxErr.Node.Column))
 		} else {
+			var l, c int
+			if r.Node != nil {
+				l = r.Node.Line
+				c = r.Node.Column
+			}
 			msgs = append(msgs, fmt.Sprintf("%s: %s [%d:%d]", e.Error(),
-				r.Path, r.Node.Line, r.Node.Column))
+				r.Path, l, c))
 		}
 	}
 	return strings.Join(msgs, "\n")

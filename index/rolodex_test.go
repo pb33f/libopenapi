@@ -624,6 +624,7 @@ components:
 
 	rolodex.AddLocalFS(baseDir, fileFS)
 	rolodex.SetRootNode(&rootNode)
+	assert.NotNil(t, rolodex.GetRootNode())
 
 	err = rolodex.IndexTheRolodex()
 	assert.NoError(t, err)
