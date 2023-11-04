@@ -411,7 +411,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if len(remoteFile.data) > 0 {
 		i.logger.Debug("successfully loaded file", "file", absolutePath)
 	}
-	//i.seekRelatives(remoteFile)
+
 	// remove from processing
 	i.ProcessingFiles.Delete(remoteParsedURL.Path)
 	i.Files.Store(absolutePath, remoteFile)
