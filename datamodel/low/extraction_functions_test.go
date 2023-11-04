@@ -2033,6 +2033,52 @@ func TestLocateRefEnd_Loop(t *testing.T) {
 	rolo.AddLocalFS(cf.BasePath, localFs)
 	rolo.SetRootNode(&bsn)
 	rolo.IndexTheRolodex()
+
+	idx := rolo.GetRootIndex()
+	loop := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "third.yaml#/properties/property/properties/statistics",
+			},
+		},
+	}
+
+	wd, _ := os.Getwd()
+	cp, _ := filepath.Abs(filepath.Join(wd, "../../test_specs/first.yaml"))
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, cp)
+	n, i, e, c := LocateRefEnd(ctx, &loop, idx, 0)
+	assert.NotNil(t, n)
+	assert.NotNil(t, i)
+	assert.Nil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefEnd_Loop_WithResolve(t *testing.T) {
+
+	yml, _ := os.ReadFile("../../test_specs/first.yaml")
+	var bsn yaml.Node
+	_ = yaml.Unmarshal(yml, &bsn)
+
+	cf := index.CreateOpenAPIIndexConfig()
+	cf.BasePath = "../../test_specs"
+
+	localFSConfig := &index.LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"first.yaml", "second.yaml", "third.yaml", "fourth.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+	localFs, _ := index.NewLocalFSWithConfig(localFSConfig)
+	rolo := index.NewRolodex(cf)
+	rolo.AddLocalFS(cf.BasePath, localFs)
+	rolo.SetRootNode(&bsn)
+	rolo.IndexTheRolodex()
+	rolo.Resolve()
 	idx := rolo.GetRootIndex()
 	loop := yaml.Node{
 		Kind: yaml.MappingNode,
@@ -2101,4 +2147,25 @@ func TestLocateRefEnd_Empty(t *testing.T) {
 	assert.Error(t, e)
 	assert.Equal(t, "reference at line 0, column 0 is empty, it cannot be resolved", e.Error())
 	assert.NotNil(t, c)
+}
+
+func TestArray_NotRefNotArray(t *testing.T) {
+
+	yml := ``
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+
+	yml = `limes: 
+  not: array`
+
+	var cNode yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &cNode)
+	assert.NoError(t, e)
+	things, _, _, err := ExtractArray[*test_noGood](context.Background(), "limes", cNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Equal(t, err.Error(), "array build failed, input is not an array, line 2, column 3")
+	assert.Len(t, things, 0)
+
 }
