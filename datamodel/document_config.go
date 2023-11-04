@@ -54,16 +54,23 @@ type DocumentConfiguration struct {
 
 	// AllowFileReferences will allow the index to locate relative file references. This is disabled by default.
 	//
-	// Deprecated: This behavior is now driven by the inclusion of a BasePath. If a BasePath is set, then the
+	// This behavior is now driven by the inclusion of a BasePath. If a BasePath is set, then the
 	// rolodex will look for relative file references. If no BasePath is set, then the rolodex will not look for
-	// relative file references. This value has no effect as of version 0.13.0 and will be removed in a future release.
+	// relative file references.
+	//
+	// This value when set, will force the creation of a local file system even when the BasePath has not been set.
+	// it will suck in and index everything from the current working directory, down... so be warned
+	// FileFilter should be used to limit the scope of the rolodex.
 	AllowFileReferences bool
 
 	// AllowRemoteReferences will allow the index to lookup remote references. This is disabled by default.
 	//
-	// Deprecated: This behavior is now driven by the inclusion of a BaseURL. If a BaseURL is set, then the
+	// This behavior is now driven by the inclusion of a BaseURL. If a BaseURL is set, then the
 	// rolodex will look for remote references. If no BaseURL is set, then the rolodex will not look for
 	// remote references. This value has no effect as of version 0.13.0 and will be removed in a future release.
+	//
+	// This value when set, will force the creation of a remote file system even when the BaseURL has not been set.
+	// it will suck in every http link it finds, and recurse through all references located in each document.
 	AllowRemoteReferences bool
 
 	// AvoidIndexBuild will avoid building the index. This is disabled by default, only use if you are sure you don't need it.
