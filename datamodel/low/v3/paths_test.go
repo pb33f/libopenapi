@@ -221,7 +221,8 @@ func TestPaths_Build_BadParams(t *testing.T) {
 	assert.NoError(t, err)
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
-	assert.Contains(t, buf.String(), "array build failed, input is not an array, line 3, column 5'")
+	er := buf.String()
+	assert.Contains(t, er, "array build failed, input is not an array, line 3, column 5'")
 
 }
 

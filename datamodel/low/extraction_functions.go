@@ -401,8 +401,6 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 				if !utils.IsNodeArray(vn) {
 					return []ValueReference[T]{}, nil, nil,
 						fmt.Errorf("array build failed, input is not an array, line %d, column %d", vn.Line, vn.Column)
-				} else {
-					vn = fvn
 				}
 			}
 		}
