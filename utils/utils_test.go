@@ -317,6 +317,19 @@ func TestFindKeyNode(t *testing.T) {
 	assert.Equal(t, 47, k.Line)
 }
 
+func TestFindKeyNodeOffByOne(t *testing.T) {
+
+	k, v := FindKeyNode("key", []*yaml.Node{
+		{
+			Value: "key",
+			Line:  999,
+		},
+	})
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, 999, k.Line)
+}
+
 func TestFindKeyNode_ValueIsKey(t *testing.T) {
 
 	a := &yaml.Node{

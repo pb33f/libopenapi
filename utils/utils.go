@@ -253,6 +253,9 @@ func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode 
 	//numNodes := len(nodes)
 	for i, v := range nodes {
 		if i%2 == 0 && key == v.Value {
+			if len(nodes) <= i+1 {
+				return v, nodes[i]
+			}
 			return v, nodes[i+1] // next node is what we need.
 		}
 		for x, j := range v.Content {
