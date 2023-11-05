@@ -4,17 +4,59 @@
 package index
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/sync/syncmap"
 	"log"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
+
+func TestSpecIndex_GetCache(t *testing.T) {
+
+	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(petstore, &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	extCache := index.GetCache()
+	assert.NotNil(t, extCache)
+	extCache.Store("test", "test")
+	loaded, ok := extCache.Load("test")
+	assert.Equal(t, "test", loaded)
+	assert.True(t, ok)
+
+	// create a new cache
+	newCache := new(syncmap.Map)
+	index.SetCache(newCache)
+
+	// check that the cache has been set.
+	assert.Equal(t, newCache, index.GetCache())
+
+	// add an item to the new cache and check it exists
+	newCache.Store("test2", "test2")
+	loaded, ok = newCache.Load("test2")
+	assert.Equal(t, "test2", loaded)
+	assert.True(t, ok)
+
+	// now check that the new item in the new cache does not exist in the old cache.
+	loaded, ok = extCache.Load("test2")
+	assert.Nil(t, loaded)
+	assert.False(t, ok)
+
+}
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	stripe, _ := os.ReadFile("../test_specs/stripe.yaml")
@@ -46,6 +88,8 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.Len(t, index.GetAllReferenceSchemas(), 1972)
 	assert.NotNil(t, index.GetRootServersNode())
 	assert.Len(t, index.GetAllRootServers(), 1)
+	assert.Equal(t, "", index.GetSpecAbsolutePath())
+	assert.NotNil(t, index.GetLogger())
 
 	// not required, but flip the circular result switch on and off.
 	assert.False(t, index.AllowCircularReferenceResolving())
@@ -60,7 +104,6 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.Len(t, index.GetRefsByLine(), 537)
 	assert.Len(t, index.GetLinesWithReferences(), 1972)
 	assert.Len(t, index.GetAllExternalDocuments(), 0)
-	assert.Len(t, index.GetAllExternalIndexes(), 0)
 }
 
 func TestSpecIndex_Asana(t *testing.T) {
@@ -90,15 +133,61 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
 
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		BaseURL:           baseURL,
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-	})
+	location := "https://raw.githubusercontent.com/digitalocean/openapi/main/specification"
+	baseURL, _ := url.Parse(location)
 
-	assert.Len(t, index.GetAllExternalIndexes(), 291)
-	assert.NotNil(t, index)
+	// create a new config that allows remote lookups.
+	cf := &SpecIndexConfig{}
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+
+	// setting this baseURL will override the base
+	cf.BaseURL = baseURL
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
+
+	// create a handler that uses an env variable to capture any GITHUB_TOKEN in the OS ENV
+	// and inject it into the request header, so this does not fail when running lots of local tests.
+	if os.Getenv("GH_PAT") != "" {
+		fmt.Println("GH_PAT found, setting remote handler func")
+		client := &http.Client{
+			Timeout: time.Second * 120,
+		}
+		remoteFS.SetRemoteHandlerFunc(func(url string) (*http.Response, error) {
+			request, _ := http.NewRequest(http.MethodGet, url, nil)
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			return client.Do(request)
+		})
+	}
+
+	// add remote filesystem
+	rolo.AddRemoteFS(location, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	assert.NoError(t, indexedErr)
+
+	files := remoteFS.GetFiles()
+	fileLen := len(files)
+	assert.Equal(t, 1646, fileLen)
+	assert.Len(t, remoteFS.GetErrors(), 0)
+
+	// check circular references
+	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
@@ -106,69 +195,166 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	tmp, _ := os.MkdirTemp("", "openapi")
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
 	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
+
 	err := cmd.Run()
 	if err != nil {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
+
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	doLocal, _ := os.ReadFile(spec)
+
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(doLocal, &rootNode)
 
-	config := CreateOpenAPIIndexConfig()
-	config.BasePath = filepath.Join(tmp, "specification")
+	basePath := filepath.Join(tmp, "specification")
 
-	index := NewSpecIndexWithConfig(&rootNode, config)
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = basePath
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		DirFS:         os.DirFS(cf.BasePath),
+		Logger:        cf.Logger,
+	}
+
+	// create a new local filesystem.
+	fileFS, fsErr := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, fsErr)
+
+	files := fileFS.GetFiles()
+	fileLen := len(files)
+
+	assert.Equal(t, 1691, fileLen)
+
+	rolo.AddLocalFS(basePath, fileFS)
+
+	rErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, rErr)
+
+	index := rolo.GetRootIndex()
 
 	assert.NotNil(t, index)
-	assert.Len(t, index.GetAllExternalIndexes(), 296)
 
-	ref := index.SearchIndexForReference("resources/apps/apps_list_instanceSizes.yml")
-	assert.NotNil(t, ref)
-	assert.Equal(t, "operationId", ref[0].Node.Content[0].Value)
+	assert.Len(t, index.GetMappedReferencesSequenced(), 299)
+	assert.Len(t, index.GetMappedReferences(), 299)
+	assert.Len(t, fileFS.GetErrors(), 0)
 
-	ref = index.SearchIndexForReference("examples/ruby/domains_create.yml")
-	assert.NotNil(t, ref)
-	assert.Equal(t, "lang", ref[0].Node.Content[0].Value)
+	// check circular references
+	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	ref = index.SearchIndexForReference("../../shared/responses/server_error.yml")
-	assert.NotNil(t, ref)
-	assert.Equal(t, "description", ref[0].Node.Content[0].Value)
-
-	ref = index.SearchIndexForReference("../models/options.yml")
-	assert.NotNil(t, ref)
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
-	asana, _ := os.ReadFile("../test_specs/digitalocean.yaml")
+	do, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
-	_ = yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(do, &rootNode)
 
-	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
-	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		BaseURL: baseURL,
-	})
+	location := "https://raw.githubusercontent.com/digitalocean/openapi/main/specification"
+	baseURL, _ := url.Parse(location)
+
+	// create a new config that does not allow remote lookups.
+	cf := &SpecIndexConfig{}
+	cf.AvoidBuildIndex = true
+	cf.AvoidCircularReferenceCheck = true
+	var op []byte
+	buf := bytes.NewBuffer(op)
+	cf.Logger = slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// setting this baseURL will override the base
+	cf.BaseURL = baseURL
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
+
+	// add remote filesystem
+	rolo.AddRemoteFS(location, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	assert.Error(t, indexedErr)
+	assert.Len(t, utils.UnwrapErrors(indexedErr), 291)
+
+	index := rolo.GetRootIndex()
+
+	files := remoteFS.GetFiles()
+	fileLen := len(files)
+	assert.Equal(t, 0, fileLen)
+	assert.Len(t, remoteFS.GetErrors(), 0)
 
 	// no lookups allowed, bits have not been set, so there should just be a bunch of errors.
-	assert.Len(t, index.GetAllExternalIndexes(), 0)
 	assert.True(t, len(index.GetReferenceIndexErrors()) > 0)
 }
 
 func TestSpecIndex_BaseURLError(t *testing.T) {
-	asana, _ := os.ReadFile("../test_specs/digitalocean.yaml")
+
+	do, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
-	_ = yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(do, &rootNode)
 
-	// this should fail because the base url is not a valid url and digital ocean won't be able to resolve
-	// anything.
-	baseURL, _ := url.Parse("https://githerbs.com/fresh/herbs/for/you")
-	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		BaseURL:           baseURL,
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-	})
+	location := "https://githerbsandcoffeeandcode.com/fresh/herbs/for/you" // not gonna work bro.
+	baseURL, _ := url.Parse(location)
 
-	assert.Len(t, index.GetAllExternalIndexes(), 0)
+	// create a new config that allows remote lookups.
+	cf := &SpecIndexConfig{}
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	var op []byte
+	buf := bytes.NewBuffer(op)
+	cf.Logger = slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// setting this baseURL will override the base
+	cf.BaseURL = baseURL
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
+
+	// add remote filesystem
+	rolo.AddRemoteFS(location, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	assert.Error(t, indexedErr)
+	assert.Len(t, utils.UnwrapErrors(indexedErr), 291)
+
+	files := remoteFS.GetFiles()
+	fileLen := len(files)
+	assert.Equal(t, 0, fileLen)
+	assert.GreaterOrEqual(t, len(remoteFS.GetErrors()), 200)
+
 }
 
 func TestSpecIndex_k8s(t *testing.T) {
@@ -421,7 +607,7 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 	docs := index.ExtractExternalDocuments(nil)
 	assert.Nil(t, docs)
 	assert.Nil(t, refs)
-	assert.Nil(t, index.FindComponent("nothing", nil))
+	assert.Nil(t, index.FindComponent("nothing"))
 	assert.Equal(t, -1, index.GetOperationCount())
 	assert.Equal(t, -1, index.GetPathCount())
 	assert.Equal(t, -1, index.GetGlobalTagsCount())
@@ -433,18 +619,79 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 	assert.Equal(t, -1, index.GetGlobalLinksCount())
 }
 
+func test_buildMixedRefServer() *httptest.Server {
+
+	bs, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
+	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT")
+		_, _ = rw.Write(bs)
+
+	}))
+}
+
 func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
-	spec, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
+
+	// create a test server.
+	server := test_buildMixedRefServer()
+	defer server.Close()
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "../test_specs"
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// setting this baseURL will override the base
+	cf.BaseURL, _ = url.Parse(server.URL)
+
+	cFile := "../test_specs/mixedref-burgershop.openapi.yaml"
+	yml, _ := os.ReadFile(cFile)
 	var rootNode yaml.Node
-	_ = yaml.Unmarshal(spec, &rootNode)
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	cwd, _ := os.Getwd()
+	// create a new rolodex
+	rolo := NewRolodex(cf)
 
-	index := NewSpecIndexWithConfig(&rootNode, &SpecIndexConfig{
-		AllowRemoteLookup: true,
-		AllowFileLookup:   true,
-		BasePath:          cwd,
-	})
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
+	remoteFS.SetIndexConfig(cf)
+
+	// set our remote handler func
+
+	c := http.Client{}
+
+	remoteFS.RemoteHandlerFunc = c.Get
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"burgershop.openapi.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+
+	// add file systems to the rolodex
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rolo.AddRemoteFS(server.URL, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	rolo.BuildIndexes()
+
+	assert.NoError(t, indexedErr)
+
+	index := rolo.GetRootIndex()
+	rolo.CheckForCircularReferences()
 
 	assert.Len(t, index.allRefs, 5)
 	assert.Len(t, index.allMappedRefs, 5)
@@ -459,12 +706,14 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
+	assert.Len(t, index.refErrors, 0)
+	assert.Len(t, index.GetCircularReferences(), 0)
 }
 
 func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
-	asana, _ := os.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
+	badref, _ := os.ReadFile("../test_specs/badref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
-	_ = yaml.Unmarshal(asana, &rootNode)
+	_ = yaml.Unmarshal(badref, &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, 5, index.GetPathCount())
@@ -478,7 +727,7 @@ func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
 	assert.Equal(t, 2, index.GetOperationsParameterCount())
 	assert.Equal(t, 1, index.GetInlineDuplicateParamCount())
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
-	assert.Len(t, index.refErrors, 7)
+	assert.Len(t, index.refErrors, 6)
 }
 
 func TestTagsNoDescription(t *testing.T) {
@@ -593,13 +842,13 @@ func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	assert.Equal(t, "#/paths/~1crazy~1ass~1references/get/parameters/0",
-		index.FindComponent("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema", nil).Node.Content[1].Value)
+		index.FindComponent("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema").Node.Content[1].Value)
 
 	assert.Equal(t, "a param",
-		index.FindComponent("#/paths/~1crazy~1ass~1references/get/parameters/0", nil).Node.Content[1].Value)
+		index.FindComponent("#/paths/~1crazy~1ass~1references/get/parameters/0").Node.Content[1].Value)
 }
 
-func TestSpecIndex_FindComponenth(t *testing.T) {
+func TestSpecIndex_FindComponent(t *testing.T) {
 	yml := `components:
   schemas:
     pizza:
@@ -613,7 +862,7 @@ func TestSpecIndex_FindComponenth(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Nil(t, index.FindComponent("I-do-not-exist", nil))
+	assert.Nil(t, index.FindComponent("I-do-not-exist"))
 }
 
 func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
@@ -630,68 +879,7 @@ func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Nil(t, index.performExternalLookup(nil, "unknown", nil, nil))
-}
-
-func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_Error(t *testing.T) {
-	index := new(SpecIndex)
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
-	_, _, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/$.....#[;]something")
-	assert.Error(t, err)
-}
-
-func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadFind(t *testing.T) {
-	index := new(SpecIndex)
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenRemoteSources["https://no-hope-for-a-dope.com"] = &yaml.Node{}
-	a, b, err := index.lookupRemoteReference("https://no-hope-for-a-dope.com#/hey")
-	assert.Error(t, err)
-	assert.Nil(t, a)
-	assert.Nil(t, b)
-}
-
-// Discovered in issue https://github.com/pb33f/libopenapi/issues/37
-func TestSpecIndex_lookupRemoteReference_NoComponent(t *testing.T) {
-	index := new(SpecIndex)
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenRemoteSources["https://api.rest.sh/schemas/ErrorModel.json"] = &yaml.Node{}
-	a, b, err := index.lookupRemoteReference("https://api.rest.sh/schemas/ErrorModel.json")
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	assert.NotNil(t, b)
-}
-
-// Discovered in issue https://github.com/daveshanley/vacuum/issues/225
-func TestSpecIndex_lookupFileReference_NoComponent(t *testing.T) {
-	cwd, _ := os.Getwd()
-	index := new(SpecIndex)
-	index.config = &SpecIndexConfig{BasePath: cwd}
-
-	_ = os.WriteFile("coffee-time.yaml", []byte("time: for coffee"), 0o664)
-	defer os.Remove("coffee-time.yaml")
-
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	a, b, err := index.lookupFileReference("coffee-time.yaml")
-	assert.NoError(t, err)
-	assert.NotNil(t, a)
-	assert.NotNil(t, b)
-}
-
-func TestSpecIndex_CheckBadURLRef(t *testing.T) {
-	yml := `openapi: 3.1.0
-paths:
-  /cakes:
-    post:
-      parameters:
-        - $ref: 'httpsss://badurl'`
-
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
-
-	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-
-	assert.Len(t, index.refErrors, 2)
+	assert.Nil(t, index.lookupRolodex(nil))
 }
 
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
@@ -708,14 +896,33 @@ paths:
 	c := CreateClosedAPIIndexConfig()
 	idx := NewSpecIndexWithConfig(&rootNode, c)
 
-	assert.Len(t, idx.refErrors, 2)
-	assert.Equal(t, "remote lookups are not permitted, "+
-		"please set AllowRemoteLookup to true in the configuration", idx.refErrors[0].Error())
+	assert.Len(t, idx.refErrors, 1)
 }
 
 func TestSpecIndex_CheckIndexDiscoversNoComponentLocalFileReference(t *testing.T) {
-	_ = os.WriteFile("coffee-time.yaml", []byte("name: time for coffee"), 0o664)
+	c := []byte("name: time for coffee")
+
+	_ = os.WriteFile("coffee-time.yaml", c, 0o664)
 	defer os.Remove("coffee-time.yaml")
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "."
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"coffee-time.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
 
 	yml := `openapi: 3.0.3
 paths:
@@ -724,79 +931,120 @@ paths:
       parameters:
         - $ref: 'coffee-time.yaml'`
 
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	var coffee yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &coffee)
 
-	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&coffee)
+
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, rErr)
+
+	index := rolo.GetRootIndex()
 
 	assert.NotNil(t, index.GetAllParametersFromOperations()["/cakes"]["post"]["coffee-time.yaml"][0].Node)
 }
 
-func TestSpecIndex_lookupRemoteReference_SeenSourceSimulation_BadJSON(t *testing.T) {
-	index := NewSpecIndexWithConfig(nil, &SpecIndexConfig{
-		AllowRemoteLookup: true,
-	})
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	a, b, err := index.lookupRemoteReference("https://google.com//logos/doodles/2022/labor-day-2022-6753651837109490.3-l.png#/hey")
-	assert.Error(t, err)
-	assert.Nil(t, a)
-	assert.Nil(t, b)
-}
-
-func TestSpecIndex_lookupFileReference_BadFileName(t *testing.T) {
-	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-	_, _, err := index.lookupFileReference("not-a-reference")
-	assert.Error(t, err)
-}
-
-func TestSpecIndex_lookupFileReference_SeenSourceSimulation_Error(t *testing.T) {
-	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenRemoteSources["magic-money-file.json"] = &yaml.Node{}
-	_, _, err := index.lookupFileReference("magic-money-file.json#something")
-	assert.Error(t, err)
-}
-
-func TestSpecIndex_lookupFileReference_BadFile(t *testing.T) {
-	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-	_, _, err := index.lookupFileReference("chickers.json#no-rice")
-	assert.Error(t, err)
-}
-
-func TestSpecIndex_lookupFileReference_BadFileDataRead(t *testing.T) {
-	_ = os.WriteFile("chickers.yaml", []byte("broke: the: thing: [again]"), 0o664)
-	defer os.Remove("chickers.yaml")
-	var root yaml.Node
-	index := NewSpecIndexWithConfig(&root, CreateOpenAPIIndexConfig())
-	_, _, err := index.lookupFileReference("chickers.yaml#no-rice")
-	assert.Error(t, err)
-}
-
 func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
-	_ = os.WriteFile("embie.yaml", []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy"), 0o664)
+
+	embie := []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy")
+
+	_ = os.WriteFile("embie.yaml", embie, 0o664)
 	defer os.Remove("embie.yaml")
 
-	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	k, doc, err := index.lookupFileReference("embie.yaml#/.naughty")
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "."
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	var myPuppy yaml.Node
+	_ = yaml.Unmarshal(embie, &myPuppy)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&myPuppy)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"embie.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
 	assert.NoError(t, err)
-	assert.NotNil(t, doc)
-	assert.Nil(t, k)
+
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, rErr)
+
+	embieRoloFile, fErr := rolo.Open("embie.yaml")
+
+	assert.NoError(t, fErr)
+	assert.NotNil(t, embieRoloFile)
+
+	index := rolo.GetRootIndex()
+	//index.seenRemoteSources = make(map[string]*yaml.Node)
+	absoluteRef, _ := filepath.Abs("embie.yaml#/naughty")
+	fRef, _ := index.SearchIndexForReference(absoluteRef)
+	assert.NotNil(t, fRef)
+
 }
 
 func TestSpecIndex_lookupFileReference(t *testing.T) {
-	_ = os.WriteFile("fox.yaml", []byte("good:\n - puppy: dog\n - puppy: forever-more"), 0o664)
+
+	pup := []byte("good:\n - puppy: dog\n - puppy: forever-more")
+
+	var myPuppy yaml.Node
+	_ = yaml.Unmarshal(pup, &myPuppy)
+
+	_ = os.WriteFile("fox.yaml", pup, 0o664)
 	defer os.Remove("fox.yaml")
 
-	index := NewSpecIndexWithConfig(nil, CreateOpenAPIIndexConfig())
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	k, doc, err := index.lookupFileReference("fox.yaml#/good")
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "."
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&myPuppy)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"fox.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
 	assert.NoError(t, err)
-	assert.NotNil(t, doc)
-	assert.NotNil(t, k)
+
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, rErr)
+
+	fox, fErr := rolo.Open("fox.yaml")
+	assert.NoError(t, fErr)
+	assert.Equal(t, "fox.yaml", fox.Name())
+	assert.Equal(t, "good:\n - puppy: dog\n - puppy: forever-more", string(fox.GetContent()))
+
 }
 
 func TestSpecIndex_parameterReferencesHavePaths(t *testing.T) {
+
 	_ = os.WriteFile("paramour.yaml", []byte(`components:
   parameters:
     param3:
@@ -805,6 +1053,13 @@ func TestSpecIndex_parameterReferencesHavePaths(t *testing.T) {
       schema:
         type: string`), 0o664)
 	defer os.Remove("paramour.yaml")
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "."
 
 	yml := `paths:
   /:
@@ -836,7 +1091,32 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
-	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"paramour.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+
+	// add file system
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	assert.NoError(t, indexedErr)
+	rolo.BuildIndexes()
+
+	index := rolo.GetRootIndex()
 
 	params := index.GetAllParametersFromOperations()
 

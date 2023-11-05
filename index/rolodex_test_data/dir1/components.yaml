@@ -1,0 +1,15 @@
+openapi: 3.1.0
+info:
+  title: Dir1 Test Components
+  version: 1.0.0
+components:
+  schemas:
+    GlobalComponent:
+      type: object
+      description: Dir1 Global Component
+      properties:
+        message:
+          type: string
+          description: I am pointless, but I am global dir1.
+    SomeUtil:
+      $ref: "utils/utils.yaml"

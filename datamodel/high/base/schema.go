@@ -302,7 +302,6 @@ func NewSchema(schema *base.Schema) *Schema {
 		s.Anchor = schema.Anchor.Value
 	}
 
-	// TODO: check this behavior.
 	for i := range schema.Enum.Value {
 		enum = append(enum, schema.Enum.Value[i].Value)
 	}

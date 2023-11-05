@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"fmt"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -70,7 +71,7 @@ email: buckaroo@pb33f.io
 	// build low
 	var lowContact lowbase.Contact
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowContact)
-	_ = lowContact.Build(nil, cNode.Content[0], nil)
+	_ = lowContact.Build(context.Background(), nil, cNode.Content[0], nil)
 
 	// build high
 	highContact := NewContact(&lowContact)

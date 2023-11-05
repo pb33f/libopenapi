@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -23,7 +24,7 @@ type Contact struct {
 }
 
 // Build is not implemented for Contact (there is nothing to build).
-func (c *Contact) Build(_, _ *yaml.Node, _ *index.SpecIndex) error {
+func (c *Contact) Build(_ context.Context, _, _ *yaml.Node, _ *index.SpecIndex) error {
 	c.Reference = new(low.Reference)
 	// not implemented.
 	return nil

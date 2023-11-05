@@ -89,7 +89,11 @@ type Document struct {
 	//
 	// This property is not a part of the OpenAPI schema, this is custom to libopenapi.
 	Index *index.SpecIndex `json:"-" yaml:"-"`
-	low   *low.Document
+
+	// Rolodex is the low-level rolodex used when creating this document.
+	// This in an internal structure and not part of the OpenAPI schema.
+	Rolodex *index.Rolodex `json:"-" yaml:"-"`
+	low     *low.Document
 }
 
 // NewDocument will create a new high-level Document from a low-level one.

@@ -1,6 +1,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -490,13 +491,13 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //   - UnevaluatedItems
 //   - UnevaluatedProperties
 //   - Anchor
-func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	s.Index = idx
 	if h, _, _ := utils.IsNodeRefValue(root); h {
-		ref, err := low.LocateRefNode(root, idx)
+		ref, _, err := low.LocateRefNode(root, idx)
 		if ref != nil {
 			root = ref
 			if err != nil {
@@ -704,7 +705,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if extDocNode != nil {
 		var exDoc ExternalDoc
 		_ = low.BuildModel(extDocNode, &exDoc)
-		_ = exDoc.Build(extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
+		_ = exDoc.Build(ctx, extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
 		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
 	}
 
@@ -719,7 +720,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle properties
-	props, err := buildPropertyMap(root, idx, PropertiesLabel)
+	props, err := buildPropertyMap(ctx, root, idx, PropertiesLabel)
 	if err != nil {
 		return err
 	}
@@ -728,7 +729,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle dependent schemas
-	props, err = buildPropertyMap(root, idx, DependentSchemasLabel)
+	props, err = buildPropertyMap(ctx, root, idx, DependentSchemasLabel)
 	if err != nil {
 		return err
 	}
@@ -737,7 +738,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle pattern properties
-	props, err = buildPropertyMap(root, idx, PatternPropertiesLabel)
+	props, err = buildPropertyMap(ctx, root, idx, PatternPropertiesLabel)
 	if err != nil {
 		return err
 	}
@@ -826,56 +827,56 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		countSubSchemaItems(prefixItemsValue)
 
 	if allOfValue != nil {
-		go buildSchema(allOfChan, allOfLabel, allOfValue, errorChan, idx)
+		go buildSchema(ctx, allOfChan, allOfLabel, allOfValue, errorChan, idx)
 	}
 	if anyOfValue != nil {
-		go buildSchema(anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
+		go buildSchema(ctx, anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
 	}
 	if oneOfValue != nil {
-		go buildSchema(oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
+		go buildSchema(ctx, oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
 	}
 	if prefixItemsValue != nil {
-		go buildSchema(prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
+		go buildSchema(ctx, prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
 	}
 	if notValue != nil {
 		totalBuilds++
-		go buildSchema(notChan, notLabel, notValue, errorChan, idx)
+		go buildSchema(ctx, notChan, notLabel, notValue, errorChan, idx)
 	}
 	if containsValue != nil {
 		totalBuilds++
-		go buildSchema(containsChan, containsLabel, containsValue, errorChan, idx)
+		go buildSchema(ctx, containsChan, containsLabel, containsValue, errorChan, idx)
 	}
 	if !itemsIsBool && itemsValue != nil {
 		totalBuilds++
-		go buildSchema(itemsChan, itemsLabel, itemsValue, errorChan, idx)
+		go buildSchema(ctx, itemsChan, itemsLabel, itemsValue, errorChan, idx)
 	}
 	if sifValue != nil {
 		totalBuilds++
-		go buildSchema(ifChan, sifLabel, sifValue, errorChan, idx)
+		go buildSchema(ctx, ifChan, sifLabel, sifValue, errorChan, idx)
 	}
 	if selseValue != nil {
 		totalBuilds++
-		go buildSchema(elseChan, selseLabel, selseValue, errorChan, idx)
+		go buildSchema(ctx, elseChan, selseLabel, selseValue, errorChan, idx)
 	}
 	if sthenValue != nil {
 		totalBuilds++
-		go buildSchema(thenChan, sthenLabel, sthenValue, errorChan, idx)
+		go buildSchema(ctx, thenChan, sthenLabel, sthenValue, errorChan, idx)
 	}
 	if propNamesValue != nil {
 		totalBuilds++
-		go buildSchema(propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
+		go buildSchema(ctx, propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
 	}
 	if unevalItemsValue != nil {
 		totalBuilds++
-		go buildSchema(unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
+		go buildSchema(ctx, unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
 	}
 	if !unevalIsBool && unevalPropsValue != nil {
 		totalBuilds++
-		go buildSchema(unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
+		go buildSchema(ctx, unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
 	}
 	if !addPropsIsBool && addPropsValue != nil {
 		totalBuilds++
-		go buildSchema(addPropsChan, addPropsLabel, addPropsValue, errorChan, idx)
+		go buildSchema(ctx, addPropsChan, addPropsLabel, addPropsValue, errorChan, idx)
 	}
 
 	completeCount := 0
@@ -1035,11 +1036,11 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	return nil
 }
 
-func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
+func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*SchemaProxy]], error) {
 	// for property, build in a new thread!
 	bChan := make(chan schemaProxyBuildResult)
 
-	buildProperty := func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
+	buildProperty := func(ctx context.Context, label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
 		refString string,
 	) {
 		c <- schemaProxyBuildResult{
@@ -1048,7 +1049,7 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 				Value:   label.Value,
 			},
 			v: low.ValueReference[*SchemaProxy]{
-				Value:     &SchemaProxy{kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
+				Value:     &SchemaProxy{ctx: ctx, kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
 				ValueNode: value,
 			},
 		}
@@ -1065,22 +1066,24 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 				continue
 			}
 
+			foundCtx := ctx
 			// check our prop isn't reference
 			isRef := false
 			refString := ""
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _ := low.LocateRefNode(prop, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
 				if ref != nil {
 					isRef = true
 					prop = ref
 					refString = l
+					foundCtx = fctx
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
 			totalProps++
-			go buildProperty(currentProp, prop, bChan, isRef, refString)
+			go buildProperty(foundCtx, currentProp, prop, bChan, isRef, refString)
 		}
 		completedProps := 0
 		for completedProps < totalProps {
@@ -1122,7 +1125,7 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 }
 
 // build out a child schema for parent schema.
-func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
+func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
 	if valueNode != nil {
 		type buildResult struct {
 			res *low.ValueReference[*SchemaProxy]
@@ -1132,7 +1135,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 		syncChan := make(chan buildResult)
 
 		// build out a SchemaProxy for every sub-schema.
-		build := func(kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
+		build := func(pctx context.Context, kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
 			isRef bool, refLocation string,
 		) {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
@@ -1145,6 +1148,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			sp.kn = kn
 			sp.vn = vn
 			sp.idx = idx
+			sp.ctx = pctx
 			if isRef {
 				sp.referenceLookup = refLocation
 				sp.isReference = true
@@ -1161,13 +1165,15 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 		isRef := false
 		refLocation := ""
+		foundCtx := ctx
 		if utils.IsNodeMap(valueNode) {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
 				isRef = true
-				ref, _ := low.LocateRefNode(valueNode, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, valueNode, idx)
 				if ref != nil {
 					valueNode = ref
+					foundCtx = fctx
 				} else {
 					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
@@ -1176,7 +1182,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
-			go build(labelNode, valueNode, -1, syncChan, isRef, refLocation)
+			go build(foundCtx, labelNode, valueNode, -1, syncChan, isRef, refLocation)
 			select {
 			case r := <-syncChan:
 				schemas <- schemaProxyBuildResult{
@@ -1196,9 +1202,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				h := false
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
 					isRef = true
-					ref, _ := low.LocateRefNode(vn, idx)
+					ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, vn, idx)
 					if ref != nil {
 						vn = ref
+						foundCtx = fctx
 					} else {
 						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
@@ -1207,7 +1214,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					}
 				}
 				refBuilds++
-				go build(vn, vn, i, syncChan, isRef, refLocation)
+				go build(foundCtx, vn, vn, i, syncChan, isRef, refLocation)
 			}
 
 			completedBuilds := 0
@@ -1237,19 +1244,22 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 // ExtractSchema will return a pointer to a NodeReference that contains a *SchemaProxy if successful. The function
 // will specifically look for a key node named 'schema' and extract the value mapped to that key. If the operation
 // fails then no NodeReference is returned and an error is returned instead.
-func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
+func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
 	var schLabel, schNode *yaml.Node
 	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
 
 	isRef := false
 	refLocation := ""
+
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		isRef = true
-		ref, _ := low.LocateRefNode(root, idx)
+		ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
+			ctx = nCtx
+			idx = fIdx
 		} else {
 			return nil, fmt.Errorf(errStr,
 				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
@@ -1260,9 +1270,13 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
 				isRef = true
-				ref, _ := low.LocateRefNode(schNode, idx)
+				ref, foundIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
 				if ref != nil {
 					schNode = ref
+					if foundIdx != nil {
+						//idx = foundIdx
+					}
+					ctx = nCtx
 				} else {
 					return nil, fmt.Errorf(errStr,
 						schNode.Content[1].Value, schNode.Content[1].Line, schNode.Content[1].Column)
@@ -1273,7 +1287,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 
 	if schNode != nil {
 		// check if schema has already been built.
-		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, isReference: isRef, referenceLookup: refLocation}
+		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, ctx: ctx, isReference: isRef, referenceLookup: refLocation}
 		return &low.NodeReference[*SchemaProxy]{
 			Value: schema, KeyNode: schLabel, ValueNode: schNode, ReferenceNode: isRef,
 			Reference: refLocation,

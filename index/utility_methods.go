@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"net/url"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -22,20 +23,23 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 		}
 
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
+		fullDef := fmt.Sprintf("%s%s", index.specAbsolutePath, def)
+
 		ref := &Reference{
+			FullDefinition:        fullDef,
 			Definition:            def,
 			Name:                  name,
 			Node:                  schema,
 			Path:                  fmt.Sprintf("$.components.schemas.%s", name),
 			ParentNode:            schemasNode,
-			RequiredRefProperties: index.extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}),
+			RequiredRefProperties: extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}, fullDef, index),
 		}
 		index.allComponentSchemaDefinitions[def] = ref
 	}
 }
 
 // extractDefinitionRequiredRefProperties goes through the direct properties of a schema and extracts the map of required definitions from within it
-func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string) map[string][]string {
+func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps map[string][]string, fulldef string, idx *SpecIndex) map[string][]string {
 	if schemaNode == nil {
 		return reqRefProps
 	}
@@ -70,7 +74,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 		// Check to see if the current property is directly embedded within the current schema, and handle its properties if so
 		_, paramPropertiesMapNode := utils.FindKeyNodeTop("properties", param.Content)
 		if paramPropertiesMapNode != nil {
-			reqRefProps = index.extractDefinitionRequiredRefProperties(param, reqRefProps)
+			reqRefProps = extractDefinitionRequiredRefProperties(param, reqRefProps, fulldef, idx)
 		}
 
 		// Check to see if the current property is polymorphic, and dive into that model if so
@@ -78,7 +82,7 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 			_, ofNode := utils.FindKeyNodeTop(key, param.Content)
 			if ofNode != nil {
 				for _, ofNodeItem := range ofNode.Content {
-					reqRefProps = index.extractRequiredReferenceProperties(ofNodeItem, name, reqRefProps)
+					reqRefProps = extractRequiredReferenceProperties(fulldef, idx, ofNodeItem, name, reqRefProps)
 				}
 			}
 		}
@@ -91,24 +95,89 @@ func (index *SpecIndex) extractDefinitionRequiredRefProperties(schemaNode *yaml.
 			continue
 		}
 
-		reqRefProps = index.extractRequiredReferenceProperties(requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
+		reqRefProps = extractRequiredReferenceProperties(fulldef, idx, requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
 	}
 
 	return reqRefProps
 }
 
 // extractRequiredReferenceProperties returns a map of definition names to the property or properties which reference it within a node
-func (index *SpecIndex) extractRequiredReferenceProperties(requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
-	isRef, _, defPath := utils.IsNodeRefValue(requiredPropDefNode)
+func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
+	isRef, _, refName := utils.IsNodeRefValue(requiredPropDefNode)
 	if !isRef {
 		_, defItems := utils.FindKeyNodeTop("items", requiredPropDefNode.Content)
 		if defItems != nil {
-			isRef, _, defPath = utils.IsNodeRefValue(defItems)
+			isRef, _, refName = utils.IsNodeRefValue(defItems)
 		}
 	}
 
 	if /* still */ !isRef {
 		return reqRefProps
+	}
+
+	defPath := fulldef
+
+	if strings.HasPrefix(refName, "http") || filepath.IsAbs(refName) {
+		defPath = refName
+	} else {
+		exp := strings.Split(fulldef, "#/")
+		if len(exp) == 2 {
+			if exp[0] != "" {
+				if strings.HasPrefix(exp[0], "http") {
+					u, _ := url.Parse(exp[0])
+					r := strings.Split(refName, "#/")
+					if len(r) == 2 {
+						var abs string
+						if r[0] == "" {
+							abs = u.Path
+						} else {
+							abs, _ = filepath.Abs(filepath.Join(filepath.Dir(u.Path), r[0]))
+						}
+
+						u.Path = abs
+						u.Fragment = ""
+						defPath = fmt.Sprintf("%s#/%s", u.String(), r[1])
+					} else {
+						u.Path = filepath.Join(filepath.Dir(u.Path), r[0])
+						u.Fragment = ""
+						defPath = u.String()
+					}
+				} else {
+					r := strings.Split(refName, "#/")
+					if len(r) == 2 {
+						var abs string
+						if r[0] == "" {
+							abs, _ = filepath.Abs(exp[0])
+						} else {
+							abs, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0]))
+						}
+
+						defPath = fmt.Sprintf("%s#/%s", abs, r[1])
+					} else {
+						defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0]))
+					}
+				}
+			} else {
+				defPath = refName
+			}
+		} else {
+			if strings.HasPrefix(exp[0], "http") {
+				u, _ := url.Parse(exp[0])
+				r := strings.Split(refName, "#/")
+				if len(r) == 2 {
+					abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), r[0]))
+					u.Path = abs
+					u.Fragment = ""
+					defPath = fmt.Sprintf("%s#/%s", u.String(), r[1])
+				} else {
+					u.Path = filepath.Join(filepath.Dir(u.Path), r[0])
+					u.Fragment = ""
+					defPath = u.String()
+				}
+			} else {
+				defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), refName))
+			}
+		}
 	}
 
 	if _, ok := reqRefProps[defPath]; !ok {
@@ -239,19 +308,24 @@ func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPr
 }
 
 func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yaml.Node, pathPrefix string) {
+
 	var name string
-	for i, secScheme := range securitySchemesNode.Content {
+	for i, schema := range securitySchemesNode.Content {
 		if i%2 == 0 {
-			name = secScheme.Value
+			name = schema.Value
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
+		fullDef := fmt.Sprintf("%s%s", index.specAbsolutePath, def)
+
 		ref := &Reference{
-			Definition: def,
-			Name:       name,
-			Node:       secScheme,
-			ParentNode: securitySchemesNode,
-			Path:       fmt.Sprintf("$.components.securitySchemes.%s", name),
+			FullDefinition:        fullDef,
+			Definition:            def,
+			Name:                  name,
+			Node:                  schema,
+			Path:                  fmt.Sprintf("$.components.securitySchemes.%s", name),
+			ParentNode:            securitySchemesNode,
+			RequiredRefProperties: extractDefinitionRequiredRefProperties(securitySchemesNode, map[string][]string{}, fullDef, index),
 		}
 		index.allSecuritySchemes[def] = ref
 	}
@@ -271,6 +345,16 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
 	return unique
 }
 
+func seekRefEnd(index *SpecIndex, refName string) *Reference {
+	ref, _ := index.SearchIndexForReference(refName)
+	if ref != nil {
+		if ok, _, v := utils.IsNodeRefValue(ref.Node); ok {
+			return seekRefEnd(ref.Index, v)
+		}
+	}
+	return ref
+}
+
 func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *yaml.Node, method string) {
 	for i, param := range params {
 		// param is ref
@@ -278,6 +362,16 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 
 			paramRefName := param.Content[1].Value
 			paramRef := index.allMappedRefs[paramRefName]
+			if paramRef == nil {
+				// could be in the rolodex
+				ref := seekRefEnd(index, paramRefName)
+				if ref != nil {
+					paramRef = ref
+					if strings.Contains(paramRefName, "%") {
+						paramRefName, _ = url.QueryUnescape(paramRefName)
+					}
+				}
+			}
 
 			if index.paramOpRefs[pathItemNode.Value] == nil {
 				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)
@@ -441,9 +535,5 @@ func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bo
 		}
 
 	}
-	if strings.HasSuffix(p, "/") {
-		p = p[:len(p)-1]
-	}
-	return p
-
+	return strings.TrimSuffix(p, "/")
 }

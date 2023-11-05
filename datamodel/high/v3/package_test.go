@@ -5,6 +5,7 @@ package v3
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"os"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -19,17 +20,14 @@ func Example_createHighLevelOpenAPIDocument() {
 	// Create a new *datamodel.SpecInfo from bytes.
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	var err []error
+	var err error
 
 	// Create a new low-level Document, capture any errors thrown during creation.
-	lowDoc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// Get upset if any errors were thrown.
-	if len(err) > 0 {
-		for i := range err {
-			fmt.Printf("error: %e", err[i])
-		}
-		panic("something went wrong")
+	for i := range utils.UnwrapErrors(err) {
+		fmt.Printf("error: %v", i)
 	}
 
 	// Create a high-level Document from the low-level one.

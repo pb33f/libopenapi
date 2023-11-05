@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -40,14 +41,14 @@ func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType]
 }
 
 // Build will extract extensions and MediaType objects from the node.
-func (rb *RequestBody) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (rb *RequestBody) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	rb.Reference = new(low.Reference)
 	rb.Extensions = low.ExtractExtensions(root)
 
 	// handle content, if set.
-	con, cL, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMap[*MediaType](ctx, ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

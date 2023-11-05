@@ -5,16 +5,22 @@ package v3
 
 import (
 	"fmt"
-	"net/url"
-	"os"
-	"strings"
-	"testing"
-
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
 	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
 )
 
 var lowDoc *lowv3.Document
@@ -22,7 +28,7 @@ var lowDoc *lowv3.Document
 func initTest() {
 	data, _ := os.ReadFile("../../../test_specs/burgershop.openapi.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -382,9 +388,9 @@ func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 func TestStripeAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	assert.Len(t, err, 3)
+	var err error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
+	assert.Len(t, utils.UnwrapErrors(err), 3)
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
 }
@@ -392,18 +398,18 @@ func TestStripeAsDoc(t *testing.T) {
 func TestK8sAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/k8s.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	var err error
+	lowSwag, err := lowv2.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	d := v2.NewSwaggerDocument(lowSwag)
-	assert.Len(t, err, 0)
+	assert.Len(t, utils.UnwrapErrors(err), 0)
 	assert.NotNil(t, d)
 }
 
 func TestAsanaAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/asana.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	var err error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}
@@ -412,10 +418,51 @@ func TestAsanaAsDoc(t *testing.T) {
 	assert.Equal(t, 118, len(d.Paths.PathItems))
 }
 
+func TestDigitalOceanAsDocViaCheckout(t *testing.T) {
+
+	// this is a full checkout of the digitalocean API repo.
+	tmp, _ := os.MkdirTemp("", "openapi")
+	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
+	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+
+	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
+	doLocal, _ := os.ReadFile(spec)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(doLocal, &rootNode)
+
+	basePath := filepath.Join(tmp, "specification")
+
+	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BasePath:              basePath,
+	}
+
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
+	if err != nil {
+		er := utils.UnwrapErrors(err)
+		for e := range er {
+			fmt.Println(er[e])
+		}
+	}
+	d := NewDocument(lowDoc)
+	assert.NotNil(t, d)
+	assert.Equal(t, 183, len(d.Paths.PathItems))
+}
+
 func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/82e1d558e15a59edc1d47d2c5544e7138f5b3cbf/specification")
 	config := datamodel.DocumentConfiguration{
@@ -424,12 +471,53 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 		BaseURL:               baseURL,
 	}
 
+	if os.Getenv("GH_PAT") != "" {
+		client := &http.Client{
+			Timeout: time.Second * 60,
+		}
+		config.RemoteURLHandler = func(url string) (*http.Response, error) {
+			request, _ := http.NewRequest(http.MethodGet, url, nil)
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			return client.Do(request)
+		}
+	}
+
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
+	assert.Len(t, utils.UnwrapErrors(err), 3) // there are 3 404's in this release of the API.
+	d := NewDocument(lowDoc)
+	assert.NotNil(t, d)
+	assert.Equal(t, 183, len(d.Paths.PathItems))
+}
+
+func TestDigitalOceanAsDocFromMain(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/digitalocean.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	var err error
+
+	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+	config := datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BaseURL:               baseURL,
+	}
+
+	if os.Getenv("GH_PAT") != "" {
+		client := &http.Client{
+			Timeout: time.Second * 60,
+		}
+		config.RemoteURLHandler = func(url string) (*http.Response, error) {
+			request, _ := http.NewRequest(http.MethodGet, url, nil)
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			return client.Do(request)
+		}
+	}
+
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
 	if err != nil {
-		for e := range err {
-			fmt.Println(err[e])
+		er := utils.UnwrapErrors(err)
+		for e := range er {
+			fmt.Printf("Reported Error: %s\n", er[e])
 		}
-		panic("broken something")
 	}
 	d := NewDocument(lowDoc)
 	assert.NotNil(t, d)
@@ -439,8 +527,8 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 func TestPetstoreAsDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	var err error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic("broken something")
 	}
@@ -452,10 +540,10 @@ func TestPetstoreAsDoc(t *testing.T) {
 func TestCircularReferencesDoc(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
-	assert.Len(t, err, 3)
-	d := NewDocument(lowDoc)
+
+	lDoc, err := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
+	assert.Len(t, utils.UnwrapErrors(err), 3)
+	d := NewDocument(lDoc)
 	assert.Len(t, d.Components.Schemas, 9)
 	assert.Len(t, d.Index.GetCircularReferences(), 3)
 }
@@ -469,7 +557,7 @@ func TestDocument_MarshalYAML(t *testing.T) {
 	r, _ := h.Render()
 
 	info, _ := datamodel.ExtractSpecInfo(r)
-	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Nil(t, e)
 
 	highDoc := NewDocument(lDoc)
@@ -480,7 +568,7 @@ func TestDocument_MarshalIndention(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	highDoc := NewDocument(lowDoc)
 	rendered := highDoc.RenderWithIndention(2)
@@ -496,7 +584,7 @@ func TestDocument_MarshalIndention_Error(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	highDoc := NewDocument(lowDoc)
 	rendered := highDoc.RenderWithIndention(2)
@@ -512,7 +600,7 @@ func TestDocument_MarshalJSON(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	highDoc := NewDocument(lowDoc)
 
@@ -520,7 +608,7 @@ func TestDocument_MarshalJSON(t *testing.T) {
 
 	// now read back in the JSON
 	info, _ = datamodel.ExtractSpecInfo(rendered)
-	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	newDoc := NewDocument(lowDoc)
 
 	assert.Equal(t, len(newDoc.Paths.PathItems), len(highDoc.Paths.PathItems))
@@ -536,7 +624,7 @@ func TestDocument_MarshalYAMLInline(t *testing.T) {
 	r, _ := h.RenderInline()
 
 	info, _ := datamodel.ExtractSpecInfo(r)
-	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewOpenDocumentConfiguration())
+	lDoc, e := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Nil(t, e)
 
 	highDoc := NewDocument(lDoc)
@@ -604,7 +692,7 @@ components:
                 numPatties: 1`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -657,7 +745,7 @@ components:
             required: true`
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
@@ -685,7 +773,7 @@ components:
 `
 
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
-	var err []error
+	var err error
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,

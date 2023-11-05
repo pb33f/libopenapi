@@ -50,7 +50,7 @@ definitions:
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 2)
+	assert.Len(t, docErr, 3)
 	assert.Nil(t, v2Doc)
 }
 
@@ -97,7 +97,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.NotNil(t, v3Doc)
 }
 
-func TestLoadDocument_Simple_V3_Error_BadSpec(t *testing.T) {
+func TestLoadDocument_Simple_V3_Error_BadSpec_BuildModel(t *testing.T) {
 
 	yml := `openapi: 3.0
 paths:
@@ -106,9 +106,10 @@ paths:
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
 
-	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 2)
-	assert.Nil(t, v3Doc)
+	doc.BuildV3Model()
+	rolo := doc.GetRolodex()
+	assert.Len(t, rolo.GetCaughtErrors(), 1)
+
 }
 
 func TestDocument_Serialize_Error(t *testing.T) {
@@ -417,17 +418,15 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
 	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
-	assert.NotNil(t, m)
-	assert.Len(t, e, 3)
+	doc.BuildV3Model()
+	assert.Len(t, doc.GetRolodex().GetCaughtErrors(), 3)
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
-	assert.Nil(t, m)
-	assert.Len(t, e, 9)
+	doc.BuildV3Model()
+	assert.Len(t, doc.GetRolodex().GetCaughtErrors(), 6)
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
@@ -493,7 +492,7 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, errors, 9)
+	assert.Len(t, errors, 6)
 	assert.Nil(t, changes)
 }
 
@@ -504,7 +503,7 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 9)
+	assert.Len(t, errors, 6)
 	assert.Nil(t, changes)
 
 }
@@ -516,7 +515,7 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 2)
+	assert.Len(t, errors, 14)
 	assert.Nil(t, changes)
 
 }
@@ -635,7 +634,7 @@ paths:
 //      parameters:
 //        - $ref: "https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"`
 //
-//	config := datamodel.NewOpenDocumentConfiguration()
+//	config := datamodel.NewDocumentConfiguration()
 //
 //	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
 //	if err != nil {
@@ -698,10 +697,17 @@ paths:
         get:
             $ref: test-operation.yaml`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BasePath = "."
+	cf.FileFilter = []string{"test-operation.yaml"}
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), cf)
 	if err != nil {
 		panic(err)
 	}
+
+	assert.NotNil(t, doc.GetConfiguration())
+	assert.Equal(t, doc.GetConfiguration(), cf)
 
 	result, errs := doc.BuildV3Model()
 	if len(errs) > 0 {
@@ -727,7 +733,7 @@ func TestDocument_InputAsJSON(t *testing.T) {
   }
 }`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic(err)
 	}
@@ -753,7 +759,7 @@ func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
     }
 }`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic(err)
 	}
@@ -777,7 +783,7 @@ paths:
             get:
                   operationId: 'test'`
 
-	config := datamodel.NewOpenDocumentConfiguration()
+	config := datamodel.NewDocumentConfiguration()
 
 	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
 	if err != nil {
@@ -810,7 +816,7 @@ components:
         - "name"
         - "children"`
 
-	config := datamodel.NewClosedDocumentConfiguration()
+	config := datamodel.NewDocumentConfiguration()
 	config.IgnorePolymorphicCircularReferences = true
 
 	doc, err := NewDocumentWithConfiguration([]byte(d), config)
@@ -822,6 +828,7 @@ components:
 
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
+	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularPolyReferences(), 1)
 
 }
 
@@ -844,7 +851,7 @@ components:
         - "name"
         - "children"`
 
-	config := datamodel.NewClosedDocumentConfiguration()
+	config := datamodel.NewDocumentConfiguration()
 	config.IgnoreArrayCircularReferences = true
 
 	doc, err := NewDocumentWithConfiguration([]byte(d), config)
@@ -856,5 +863,6 @@ components:
 
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
+	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularArrayReferences(), 1)
 
 }
