@@ -92,6 +92,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	if strings.Contains(ref, "%") {
 		// decode the url.
 		ref, _ = url.QueryUnescape(ref)
+		refAlt, _ = url.QueryUnescape(refAlt)
 	}
 
 	if r, ok := index.allMappedRefs[ref]; ok {
