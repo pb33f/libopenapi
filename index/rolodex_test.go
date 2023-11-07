@@ -540,6 +540,98 @@ func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
 	}))
 }
 
+func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_WithFiles_RecursiveLookup(t *testing.T) {
+
+	fourth := `type: "object"
+properties:
+  name:
+    type: "string"
+  children:
+    type: "object"`
+
+	third := `type: "object"
+properties:
+  name:
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml"`
+
+	second := `openapi: 3.1.0
+components:
+  schemas:
+    CircleTest:
+      type: "object"
+      properties:
+        bing:
+          $ref: "not_found.yaml"
+        name:
+          type: "string"
+        children:
+          type: "object"
+          anyOf:
+            - $ref: "third.yaml"
+      required:
+        - "name"
+        - "children"`
+
+	first := `openapi: 3.1.0
+components:
+  schemas:
+    StartTest:
+      type: object
+      required:
+        - muffins
+      properties:
+        muffins:
+         $ref: "second_n.yaml#/components/schemas/CircleTest"`
+
+	cwd, _ := os.Getwd()
+
+	_ = os.WriteFile("third_n.yaml", []byte(strings.ReplaceAll(third, "$PWD", cwd)), 0644)
+	_ = os.WriteFile("second_n.yaml", []byte(second), 0644)
+	_ = os.WriteFile("first_n.yaml", []byte(first), 0644)
+	_ = os.WriteFile("fourth_n.yaml", []byte(fourth), 0644)
+	defer os.Remove("first_n.yaml")
+	defer os.Remove("second_n.yaml")
+	defer os.Remove("third_n.yaml")
+	defer os.Remove("fourth_n.yaml")
+
+	baseDir := "."
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.IgnorePolymorphicCircularReferences = true
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(baseDir, fileFS)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+	rolodex.SetRootNode(&rootNode)
+
+	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
+		[]byte(strings.ReplaceAll(third, "$PWD", cwd)), []byte(fourth), nil)
+	defer srv.Close()
+
+	u, _ := url.Parse(srv.URL)
+	cf.BaseURL = u
+	remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	assert.NoError(t, rErr)
+
+	rolodex.AddRemoteFS(srv.URL, remoteFS)
+
+	err = rolodex.IndexTheRolodex()
+	assert.Error(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 2)
+}
+
 func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_WithFiles(t *testing.T) {
 
 	first := `openapi: 3.1.0
