@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
+	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
@@ -14,22 +15,32 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 )
 
 // LocalFS is a file system that indexes local files.
 type LocalFS struct {
+	fsConfig            *LocalFSConfig
 	indexConfig         *SpecIndexConfig
 	entryPointDirectory string
 	baseDirectory       string
-	Files               map[string]RolodexFile
+	Files               syncmap.Map
+	extractedFiles      map[string]RolodexFile
 	logger              *slog.Logger
+	fileLock            sync.Mutex
 	readingErrors       []error
 }
 
 // GetFiles returns the files that have been indexed. A map of RolodexFile objects keyed by the full path of the file.
 func (l *LocalFS) GetFiles() map[string]RolodexFile {
-	return l.Files
+	files := make(map[string]RolodexFile)
+	l.Files.Range(func(key, value interface{}) bool {
+		files[key.(string)] = value.(*LocalFile)
+		return true
+	})
+	l.extractedFiles = files
+	return files
 }
 
 // GetErrors returns any errors that occurred during the indexing process.
@@ -50,11 +61,47 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 		name, _ = filepath.Abs(filepath.Join(l.baseDirectory, name))
 	}
 
-	if f, ok := l.Files[name]; ok {
+	if f, ok := l.Files.Load(name); ok {
 		return f.(*LocalFile), nil
 	} else {
-		return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+
+		if l.fsConfig != nil && l.fsConfig.DirFS == nil {
+			var extractedFile *LocalFile
+			var extErr error
+			// attempt to open the file from the local filesystem
+			extractedFile, extErr = l.extractFile(name)
+			if extErr != nil {
+				return nil, extErr
+			}
+			if extractedFile != nil {
+
+				// in this mode, we need the index config to be set.
+				if l.indexConfig != nil {
+					copiedCfg := *l.indexConfig
+					copiedCfg.SpecAbsolutePath = name
+					copiedCfg.AvoidBuildIndex = true
+
+					idx, idxError := extractedFile.Index(&copiedCfg)
+
+					if idxError != nil && idx == nil {
+						l.readingErrors = append(l.readingErrors, idxError)
+					} else {
+
+						// for each index, we need a resolver
+						resolver := NewResolver(idx)
+						idx.resolver = resolver
+						idx.BuildIndex()
+					}
+
+					if len(extractedFile.data) > 0 {
+						l.logger.Debug("successfully loaded and indexed file", "file", name)
+					}
+					return extractedFile, nil
+				}
+			}
+		}
 	}
+	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
 // LocalFile is a file that has been indexed by the LocalFS. It implements the RolodexFile interface.
@@ -212,11 +259,13 @@ type LocalFSConfig struct {
 
 	// supply a custom fs.FS to use
 	DirFS fs.FS
+
+	// supply an index configuration to use
+	IndexConfig *SpecIndexConfig
 }
 
 // NewLocalFSWithConfig creates a new LocalFS with the supplied configuration.
 func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
-	localFiles := make(map[string]RolodexFile)
 	var allErrors []error
 
 	log := config.Logger
@@ -233,70 +282,107 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 	var absBaseDir string
 	absBaseDir, _ = filepath.Abs(config.BaseDirectory)
 
-	walkErr := fs.WalkDir(config.DirFS, ".", func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// we don't care about directories, or errors, just read everything we can.
-		if d.IsDir() {
-			return nil
-		}
-		if len(ext) > 2 && p != file {
-			return nil
-		}
-		if strings.HasPrefix(p, ".") {
-			return nil
-		}
-		if len(config.FileFilters) > 0 {
-			if !slices.Contains(config.FileFilters, p) {
-				return nil
-			}
-		}
-
-		extension := ExtractFileType(p)
-		var readingErrors []error
-		abs, _ := filepath.Abs(filepath.Join(config.BaseDirectory, p))
-
-		var fileData []byte
-
-		switch extension {
-		case YAML, JSON:
-
-			dirFile, _ := config.DirFS.Open(p)
-			modTime := time.Now()
-			stat, _ := dirFile.Stat()
-			if stat != nil {
-				modTime = stat.ModTime()
-			}
-			fileData, _ = io.ReadAll(dirFile)
-			log.Debug("collecting JSON/YAML file", "file", abs)
-			localFiles[abs] = &LocalFile{
-				filename:      p,
-				name:          filepath.Base(p),
-				extension:     ExtractFileType(p),
-				data:          fileData,
-				fullPath:      abs,
-				lastModified:  modTime,
-				readingErrors: readingErrors,
-			}
-		case UNSUPPORTED:
-			log.Debug("skipping non JSON/YAML file", "file", abs)
-		}
-		return nil
-	})
-
-	if walkErr != nil {
-		return nil, walkErr
-	}
-
-	return &LocalFS{
-		Files:               localFiles,
+	localFS := &LocalFS{
+		indexConfig:         config.IndexConfig,
+		fsConfig:            config,
 		logger:              log,
 		baseDirectory:       absBaseDir,
 		entryPointDirectory: config.BaseDirectory,
-		readingErrors:       allErrors,
-	}, nil
+	}
+
+	// if a directory filesystem is supplied, use that to walk the directory and pick up everything it finds.
+	if config.DirFS != nil {
+		walkErr := fs.WalkDir(config.DirFS, ".", func(p string, d fs.DirEntry, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// we don't care about directories, or errors, just read everything we can.
+			if d.IsDir() {
+				return nil
+			}
+			if len(ext) > 2 && p != file {
+				return nil
+			}
+			if strings.HasPrefix(p, ".") {
+				return nil
+			}
+			if len(config.FileFilters) > 0 {
+				if !slices.Contains(config.FileFilters, p) {
+					return nil
+				}
+			}
+			_, fErr := localFS.extractFile(p)
+			return fErr
+		})
+
+		if walkErr != nil {
+			return nil, walkErr
+		}
+	}
+
+	localFS.readingErrors = allErrors
+	return localFS, nil
+}
+
+func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
+	extension := ExtractFileType(p)
+	var readingErrors []error
+	abs := p
+	config := l.fsConfig
+	if !filepath.IsAbs(p) {
+		if config != nil && config.BaseDirectory != "" {
+			abs, _ = filepath.Abs(filepath.Join(config.BaseDirectory, p))
+		} else {
+			abs, _ = filepath.Abs(p)
+		}
+	}
+	var fileData []byte
+
+	switch extension {
+	case YAML, JSON:
+		var file fs.File
+		var fileError error
+		if config != nil && config.DirFS != nil {
+			file, _ = config.DirFS.Open(p)
+		} else {
+			file, fileError = os.Open(abs)
+		}
+
+		// if reading without a directory FS, error out on any error, do not continue.
+		if fileError != nil {
+			readingErrors = append(readingErrors, fileError)
+			return nil, fileError
+		}
+
+		modTime := time.Now()
+		stat, _ := file.Stat()
+		if stat != nil {
+			modTime = stat.ModTime()
+		}
+		fileData, _ = io.ReadAll(file)
+		if config != nil && config.DirFS != nil {
+			l.logger.Debug("collecting JSON/YAML file", "file", abs)
+		} else {
+			l.logger.Debug("parsing file", "file", abs)
+		}
+		lf := &LocalFile{
+			filename:      p,
+			name:          filepath.Base(p),
+			extension:     ExtractFileType(p),
+			data:          fileData,
+			fullPath:      abs,
+			lastModified:  modTime,
+			readingErrors: readingErrors,
+		}
+		l.Files.Store(abs, lf)
+		return lf, nil
+	case UNSUPPORTED:
+		if config != nil && config.DirFS != nil {
+			l.logger.Debug("skipping non JSON/YAML file", "file", abs)
+		}
+	}
+	return nil, nil
 }
 
 // NewLocalFS creates a new LocalFS with the supplied base directory.
