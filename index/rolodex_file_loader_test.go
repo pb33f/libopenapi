@@ -5,8 +5,10 @@ package index
 
 import (
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
@@ -132,6 +134,14 @@ func TestRolodexLocalFile_NoIndexRoot(t *testing.T) {
 
 }
 
+func TestRolodexLocalFS_NoBaseRelative(t *testing.T) {
+
+	lfs := &LocalFS{}
+	f, e := lfs.extractFile("test.jpg")
+	assert.Nil(t, f)
+	assert.NoError(t, e)
+}
+
 func TestRolodexLocalFile_IndexSingleFile(t *testing.T) {
 
 	testFS := fstest.MapFS{
@@ -183,4 +193,46 @@ func TestNewRolodexLocalFile_BadOffset(t *testing.T) {
 	z, y := io.ReadAll(lf)
 	assert.Len(t, z, 0)
 	assert.Error(t, y)
+}
+
+func TestRecursiveLocalFile_IndexFail(t *testing.T) {
+
+	pup := []byte("I:\n miss you fox, you're: my good boy:")
+
+	var myPuppy yaml.Node
+	_ = yaml.Unmarshal(pup, &myPuppy)
+
+	_ = os.WriteFile("fox.yaml", pup, 0o664)
+	defer os.Remove("fox.yaml")
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidBuildIndex = true
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&myPuppy)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		IndexConfig: cf,
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rErr := rolo.IndexTheRolodex()
+
+	assert.NoError(t, rErr)
+
+	fox, fErr := rolo.Open("fox.yaml")
+	assert.NoError(t, fErr)
+	assert.NotNil(t, fox)
+	assert.Len(t, fox.GetErrors(), 1)
+	assert.Equal(t, "unable to parse specification: yaml: line 2: mapping values are not allowed in this context", fox.GetErrors()[0].Error())
+
 }
