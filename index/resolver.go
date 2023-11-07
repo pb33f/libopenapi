@@ -732,7 +732,8 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 												if strings.HasPrefix(ref.FullDefinition, "#/") {
 													def = fmt.Sprintf("#/%s", exp[1])
 												} else {
-													def = fmt.Sprintf("%s#/%s", ref.FullDefinition, exp[1])
+													fdexp := strings.Split(ref.FullDefinition, "#/")
+													def = fmt.Sprintf("%s#/%s", fdexp[0], exp[1])
 												}
 											}
 										}
