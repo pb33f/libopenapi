@@ -165,10 +165,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 				IndexConfig:   idxConfig,
 				FileFilters:   config.FileFilter,
 			}
-			fileFS, err := index.NewLocalFSWithConfig(&localFSConf)
-			if err != nil {
-				return nil, err
-			}
+			fileFS, _ := index.NewLocalFSWithConfig(&localFSConf)
 			idxConfig.AllowFileLookup = true
 
 			// add the filesystem to the rolodex
