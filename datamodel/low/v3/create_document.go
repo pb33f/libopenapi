@@ -3,7 +3,6 @@ package v3
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -61,7 +60,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 			// create a local filesystem
 			localFSConf := index.LocalFSConfig{
 				BaseDirectory: cwd,
-				DirFS:         os.DirFS(cwd),
+				IndexConfig:   idxConfig,
 				FileFilters:   config.FileFilter,
 			}
 

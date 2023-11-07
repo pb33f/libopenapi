@@ -114,7 +114,7 @@ func TestRolodexLocalFileSystem_BadPath(t *testing.T) {
 	cf.BasePath = "/NOWHERE"
 	cf.FileFilter = []string{"first.yaml", "second.yaml", "third.yaml"}
 	lDoc, err := CreateDocumentFromConfig(info, cf)
-	assert.Nil(t, lDoc)
+	assert.NotNil(t, lDoc)
 	assert.Error(t, err)
 }
 

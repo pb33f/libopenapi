@@ -19,7 +19,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"gopkg.in/yaml.v3"
-	"os"
 	"path/filepath"
 )
 
@@ -163,7 +162,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 			// create a local filesystem
 			localFSConf := index.LocalFSConfig{
 				BaseDirectory: cwd,
-				DirFS:         os.DirFS(cwd),
+				IndexConfig:   idxConfig,
 				FileFilters:   config.FileFilter,
 			}
 			fileFS, err := index.NewLocalFSWithConfig(&localFSConf)

@@ -71,6 +71,49 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	assert.Nil(t, c)
 }
 
+func TestSpecIndex_CheckCircularIndex_NoDirFS(t *testing.T) {
+
+	cFile := "../test_specs/first.yaml"
+	yml, _ := os.ReadFile(cFile)
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = "../test_specs"
+
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&rootNode)
+	cf.Rolodex = rolo
+
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		IndexConfig:   cf,
+	}
+
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+
+	assert.NoError(t, err)
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+
+	indexedErr := rolo.IndexTheRolodex()
+	rolo.BuildIndexes()
+
+	assert.NoError(t, indexedErr)
+
+	index := rolo.GetRootIndex()
+
+	assert.Nil(t, index.uri)
+
+	a, _ := index.SearchIndexForReference("second.yaml#/properties/property2")
+	b, _ := index.SearchIndexForReference("second.yaml")
+	c, _ := index.SearchIndexForReference("fourth.yaml")
+
+	assert.NotNil(t, a)
+	assert.NotNil(t, b)
+	assert.Nil(t, c)
+}
+
 func TestFindComponent_RolodexFileParseError(t *testing.T) {
 
 	badData := "I cannot be parsed: \"I am not a YAML file or a JSON file"

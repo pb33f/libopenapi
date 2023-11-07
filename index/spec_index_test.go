@@ -261,6 +261,76 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 }
 
+func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
+	// this is a full checkout of the digitalocean API repo.
+	tmp, _ := os.MkdirTemp("", "openapi")
+	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
+	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatalf("cmd.Run() failed with %s\n", err)
+	}
+
+	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
+	doLocal, _ := os.ReadFile(spec)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(doLocal, &rootNode)
+
+	basePath := filepath.Join(tmp, "specification")
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.BasePath = basePath
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		IndexConfig:   cf,
+		Logger:        cf.Logger,
+	}
+
+	// create a new local filesystem.
+	fileFS, fsErr := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, fsErr)
+
+	rolo.AddLocalFS(basePath, fileFS)
+
+	rErr := rolo.IndexTheRolodex()
+	files := fileFS.GetFiles()
+	fileLen := len(files)
+
+	assert.Equal(t, 1677, fileLen)
+
+	assert.NoError(t, rErr)
+
+	index := rolo.GetRootIndex()
+
+	assert.NotNil(t, index)
+
+	assert.Len(t, index.GetMappedReferencesSequenced(), 299)
+	assert.Len(t, index.GetMappedReferences(), 299)
+	assert.Len(t, fileFS.GetErrors(), 0)
+
+	// check circular references
+	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+
+}
+
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 	do, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
