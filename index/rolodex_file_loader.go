@@ -84,7 +84,7 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 					idx, idxError := extractedFile.Index(&copiedCfg)
 
 					if idxError != nil && idx == nil {
-						l.readingErrors = append(l.readingErrors, idxError)
+						extractedFile.readingErrors = append(l.readingErrors, idxError)
 					} else {
 
 						// for each index, we need a resolver
