@@ -44,9 +44,10 @@ type Reference struct {
 
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
 type ReferenceMapped struct {
-	Reference      *Reference
-	Definition     string
-	FullDefinition string
+	OriginalReference *Reference
+	Reference         *Reference
+	Definition        string
+	FullDefinition    string
 }
 
 // SpecIndexConfig is a configuration struct for the SpecIndex introduced in 0.6.0 that provides an expandable

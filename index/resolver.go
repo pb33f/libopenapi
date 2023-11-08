@@ -258,7 +258,11 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 		var journey []*Reference
 		res.journeysTaken++
 		if ref != nil && ref.Reference != nil {
-			ref.Reference.Node.Content = res.VisitReference(ref.Reference, seenReferences, journey, true)
+			n := res.VisitReference(ref.Reference, seenReferences, journey, true)
+			ref.Reference.Node.Content = n
+			if !ref.Reference.Circular {
+				ref.OriginalReference.Node.Content = n
+			}
 		}
 	}
 
@@ -548,7 +552,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				if resolve {
 					// if this is a reference also, we want to resolve it.
 					if ok, _, _ := utils.IsNodeRefValue(ref.Node); ok {
-						ref.Node = locatedRef.Node
+						ref.Node.Content = locatedRef.Node.Content
 						ref.Resolved = true
 					}
 				}
