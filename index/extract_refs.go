@@ -563,9 +563,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 				found = append(found, located)
 				index.allMappedRefs[located.FullDefinition] = located
 				rm := &ReferenceMapped{
-					Reference:      located,
-					Definition:     located.Definition,
-					FullDefinition: located.FullDefinition,
+					OriginalReference: ref,
+					Reference:         located,
+					Definition:        located.Definition,
+					FullDefinition:    located.FullDefinition,
 				}
 				sequence[refIndex] = rm
 			}
