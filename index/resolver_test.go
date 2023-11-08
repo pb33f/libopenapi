@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"net/http"
 	"net/url"
 	"os"
@@ -1017,4 +1018,75 @@ func TestLocateRefEnd_WithResolve(t *testing.T) {
 
 	isRef, _, _ = utils.IsNodeRefValue(ref.Node)
 	assert.False(t, isRef)
+}
+
+func TestResolveDoc_Issue195(t *testing.T) {
+
+	spec := `openapi: 3.0.1
+info:
+  title: Some Example!
+paths:
+  "/pet/findByStatus":
+    get:
+      responses:
+        default:
+          content:
+            application/json:
+              schema:
+                "$ref": https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml#/components/schemas/Error`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	// create an index config
+	config := CreateOpenAPIIndexConfig()
+
+	// the rolodex will automatically try and check for circular references, you don't want to do this
+	// if you're resolving the spec, as the node tree is marked as 'seen' and you won't be able to resolve
+	// correctly.
+	config.AvoidCircularReferenceCheck = true
+
+	// new in 0.13+ is the ability to add remote and local file systems to the index
+	// requires a new part, the rolodex. It holds all the indexes and knows where to find
+	// every reference across local and remote files.
+	rolodex := NewRolodex(config)
+
+	// add a new remote file system.
+	remoteFS, _ := NewRemoteFSWithConfig(config)
+
+	// add the remote file system to the rolodex
+	rolodex.AddRemoteFS("", remoteFS)
+
+	// set the root node of the rolodex, this is your spec.
+	rolodex.SetRootNode(&rootNode)
+
+	// index the rolodex
+	indexingError := rolodex.IndexTheRolodex()
+	if indexingError != nil {
+		panic(indexingError)
+	}
+
+	// resolve the rolodex
+	rolodex.Resolve()
+
+	// there should be no errors at this point
+	resolvingErrors := rolodex.GetCaughtErrors()
+	if resolvingErrors != nil {
+		panic(resolvingErrors)
+	}
+
+	// perform some lookups.
+	var nodes []*yaml.Node
+
+	// pull out schema type
+	path, _ := yamlpath.NewPath("$.paths./pet/findByStatus.get.responses.default.content['application/json'].schema.type")
+	nodes, _ = path.Find(&rootNode)
+	assert.Equal(t, nodes[0].Value, "object")
+
+	// pull out required array
+	path, _ = yamlpath.NewPath("$.paths./pet/findByStatus.get.responses.default.content['application/json'].schema.required")
+	nodes, _ = path.Find(&rootNode)
+	assert.Equal(t, nodes[0].Content[0].Value, "code")
+	assert.Equal(t, nodes[0].Content[1].Value, "message")
+
 }
