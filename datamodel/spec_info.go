@@ -101,17 +101,19 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			spec.APISchema = OpenAPI2SchemaData
 		}
 
-		if utils.IsYAML(string(bytes)) {
-			_ = parsedNode.Decode(&jsonSpec)
-			b, _ := json.Marshal(&jsonSpec)
-			spec.SpecJSONBytes = &b
-			spec.SpecJSON = &jsonSpec
-		} else {
-			_ = json.Unmarshal(bytes, &jsonSpec)
-			spec.SpecJSONBytes = &bytes
-			spec.SpecJSON = &jsonSpec
-		}
-		close(spec.JsonParsingChannel) // this needs removing at some point
+		go func() {
+			if utils.IsYAML(string(bytes)) {
+				_ = parsedNode.Decode(&jsonSpec)
+				b, _ := json.Marshal(&jsonSpec)
+				spec.SpecJSONBytes = &b
+				spec.SpecJSON = &jsonSpec
+			} else {
+				_ = json.Unmarshal(bytes, &jsonSpec)
+				spec.SpecJSONBytes = &bytes
+				spec.SpecJSON = &jsonSpec
+			}
+			close(spec.JsonParsingChannel)
+		}()
 	}
 
 	if !bypass {
@@ -177,23 +179,25 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 		if specInfo.SpecType == "" {
 			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+			go parseJSON(spec, specInfo, &parsedSpec)
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
 			return specInfo, specInfo.Error
 		}
 	} else {
-		var jsonSpec map[string]interface{}
-		if utils.IsYAML(string(spec)) {
-			_ = parsedSpec.Decode(&jsonSpec)
-			b, _ := json.Marshal(&jsonSpec)
-			specInfo.SpecJSONBytes = &b
-			specInfo.SpecJSON = &jsonSpec
-		} else {
-			_ = json.Unmarshal(spec, &jsonSpec)
-			specInfo.SpecJSONBytes = &spec
-			specInfo.SpecJSON = &jsonSpec
-		}
-		close(specInfo.JsonParsingChannel) // this needs removing at some point
+		go func() {
+			var jsonSpec map[string]interface{}
+			if utils.IsYAML(string(spec)) {
+				_ = parsedSpec.Decode(&jsonSpec)
+				b, _ := json.Marshal(&jsonSpec)
+				specInfo.SpecJSONBytes = &b
+				specInfo.SpecJSON = &jsonSpec
+			} else {
+				_ = json.Unmarshal(spec, &jsonSpec)
+				specInfo.SpecJSONBytes = &spec
+				specInfo.SpecJSON = &jsonSpec
+			}
+			close(specInfo.JsonParsingChannel) // this needs removing at some point
+		}()
 	}
 
 	// detect the original whitespace indentation
