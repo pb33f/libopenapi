@@ -713,10 +713,11 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	return res
 }
 
+var whitespaceExp = regexp.MustCompile(`\n( +)`)
+
 // DetermineWhitespaceLength will determine the length of the whitespace for a JSON or YAML file.
 func DetermineWhitespaceLength(input string) int {
-	exp := regexp.MustCompile(`\n( +)`)
-	whiteSpace := exp.FindAllStringSubmatch(input, -1)
+	whiteSpace := whitespaceExp.FindAllStringSubmatch(input, -1)
 	var filtered []string
 	for i := range whiteSpace {
 		filtered = append(filtered, whiteSpace[i][1])
