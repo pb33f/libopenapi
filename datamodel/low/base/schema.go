@@ -1261,8 +1261,8 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 			ctx = nCtx
 			idx = fIdx
 		} else {
-			v := schNode.Content[1].Value
-			if schNode.Content[1].Value == "" {
+			v := root.Content[1].Value
+			if root.Content[1].Value == "" {
 				v = "[empty]"
 			}
 			return nil, fmt.Errorf(errStr,
