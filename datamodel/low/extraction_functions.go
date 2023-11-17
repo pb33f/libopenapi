@@ -823,7 +823,14 @@ func AreEqual(l, r Hashable) bool {
 	if l == nil || r == nil {
 		return false
 	}
+	vol := reflect.ValueOf(l)
+	vor := reflect.ValueOf(r)
 
+	if vol.Kind() != reflect.Struct && vor.Kind() != reflect.Struct {
+		if vol.IsNil() || vor.IsNil() {
+			return false
+		}
+	}
 	return l.Hash() == r.Hash()
 }
 
