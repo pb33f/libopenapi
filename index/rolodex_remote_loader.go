@@ -287,6 +287,10 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return r.(*RemoteFile), nil
 	}
 
+	if remoteParsedURL.Scheme == "" {
+		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
+	}
+
 	// if we're processing, we need to block and wait for the file to be processed
 	// try path first
 	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
