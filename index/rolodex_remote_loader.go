@@ -287,10 +287,6 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return r.(*RemoteFile), nil
 	}
 
-	if remoteParsedURL.Scheme == "" {
-		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
-	}
-
 	// if we're processing, we need to block and wait for the file to be processed
 	// try path first
 	if _, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
@@ -336,6 +332,11 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		if !filepath.IsAbs(remoteParsedURL.Path) {
 			remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
 		}
+	}
+
+	if remoteParsedURL.Scheme == "" {
+		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
 	}
 
 	i.logger.Debug("loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
