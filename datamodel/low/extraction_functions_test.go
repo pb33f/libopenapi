@@ -1650,8 +1650,15 @@ func (f test_fresh) Hash() [32]byte {
 	return sha256.Sum256([]byte(strings.Join(data, "|")))
 }
 func TestAreEqual(t *testing.T) {
+
+	var hey *test_fresh
+
 	assert.True(t, AreEqual(test_fresh{val: "hello"}, test_fresh{val: "hello"}))
+	assert.True(t, AreEqual(&test_fresh{val: "hello"}, &test_fresh{val: "hello"}))
 	assert.False(t, AreEqual(test_fresh{val: "hello"}, test_fresh{val: "goodbye"}))
+	assert.False(t, AreEqual(&test_fresh{val: "hello"}, &test_fresh{val: "goodbye"}))
+	assert.False(t, AreEqual(nil, &test_fresh{val: "goodbye"}))
+	assert.False(t, AreEqual(&test_fresh{val: "hello"}, hey))
 	assert.False(t, AreEqual(nil, nil))
 }
 
