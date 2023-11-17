@@ -1261,8 +1261,12 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 			ctx = nCtx
 			idx = fIdx
 		} else {
+			v := schNode.Content[1].Value
+			if schNode.Content[1].Value == "" {
+				v = "[empty]"
+			}
 			return nil, fmt.Errorf(errStr,
-				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
+				v, root.Content[1].Line, root.Content[1].Column)
 		}
 	} else {
 		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
@@ -1274,12 +1278,17 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 				if ref != nil {
 					schNode = ref
 					if foundIdx != nil {
+						// TODO: check on this
 						//idx = foundIdx
 					}
 					ctx = nCtx
 				} else {
+					v := schNode.Content[1].Value
+					if schNode.Content[1].Value == "" {
+						v = "[empty]"
+					}
 					return nil, fmt.Errorf(errStr,
-						schNode.Content[1].Value, schNode.Content[1].Line, schNode.Content[1].Column)
+						v, schNode.Content[1].Line, schNode.Content[1].Column)
 				}
 			}
 		}
