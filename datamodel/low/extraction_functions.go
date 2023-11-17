@@ -823,9 +823,7 @@ func AreEqual(l, r Hashable) bool {
 	if l == nil || r == nil {
 		return false
 	}
-	if reflect.ValueOf(l).IsNil() || reflect.ValueOf(r).IsNil() {
-		return false
-	}
+
 	return l.Hash() == r.Hash()
 }
 
