@@ -154,7 +154,7 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 			err := path.Build(ctx, cNode, pNode, idx)
 
 			if err != nil {
-				if idx.GetLogger() != nil {
+				if idx != nil && idx.GetLogger() != nil {
 					idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
 				}
 				//return buildResult{}, err
