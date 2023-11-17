@@ -109,6 +109,20 @@ func TestNewRemoteFS_BasicCheck(t *testing.T) {
 	assert.Equal(t, "2015-10-21 07:28:00 +0000 GMT", lastMod.String())
 }
 
+func TestNewRemoteFS_BasicCheck_NoScheme(t *testing.T) {
+
+	server := test_buildServer()
+	defer server.Close()
+
+	remoteFS, _ := NewRemoteFSWithRootURL("")
+	remoteFS.RemoteHandlerFunc = test_httpClient.Get
+
+	file, err := remoteFS.Open("/file1.yaml")
+
+	assert.NoError(t, err)
+	assert.Nil(t, file)
+}
+
 func TestNewRemoteFS_BasicCheck_Relative(t *testing.T) {
 
 	server := test_buildServer()

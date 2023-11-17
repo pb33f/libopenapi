@@ -1756,3 +1756,62 @@ components:
 
 	assert.Equal(t, 3.0, res.Value.Schema().ExclusiveMaximum.Value.B)
 }
+
+func TestSchema_EmptyySchemaRef(t *testing.T) {
+	yml := `openapi: 3.0.3
+components:
+  schemas:
+    Something:
+      $ref: ''`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `schema:
+  $ref: ''`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, e := ExtractSchema(context.Background(), idxNode.Content[0], idx)
+	assert.Nil(t, res)
+	assert.Equal(t, "schema build failed: reference '[empty]' cannot be found at line 2, col 9", e.Error())
+
+}
+
+func TestSchema_EmptyRef(t *testing.T) {
+	yml := `openapi: 3.0.3
+components:
+  schemas:
+    Something:
+      $ref: ''`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `$ref: ''`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	res, e := ExtractSchema(context.Background(), idxNode.Content[0], idx)
+	assert.Nil(t, res)
+	assert.Equal(t, "schema build failed: reference '[empty]' cannot be found at line 1, col 7", e.Error())
+
+}
