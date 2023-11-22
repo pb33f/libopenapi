@@ -6,6 +6,7 @@ package base
 import (
 	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"testing"
@@ -94,5 +95,69 @@ x-common-definitions:
 	assert.NoError(t, err)
 	assert.Len(t, sch.Schema().Enum.Value, 3)
 	assert.Equal(t, "The type of life cycle", sch.Schema().Description.Value)
+
+}
+
+func TestSchemaProxy_GetSchemaReferenceLocation(t *testing.T) {
+
+	yml := `type: object
+properties:
+  name:
+    type: string
+    description: thing`
+
+	var idxNodeA yaml.Node
+	e := yaml.Unmarshal([]byte(yml), &idxNodeA)
+	assert.NoError(t, e)
+
+	yml = `
+type: object
+properties:
+  name:
+    type: string
+    description: thang`
+
+	var schA SchemaProxy
+	var schB SchemaProxy
+	var schC SchemaProxy
+	var idxNodeB yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNodeB)
+
+	c := index.CreateOpenAPIIndexConfig()
+	rolo := index.NewRolodex(c)
+	rolo.SetRootNode(&idxNodeA)
+	_ = rolo.IndexTheRolodex()
+
+	err := schA.Build(context.Background(), nil, idxNodeA.Content[0], rolo.GetRootIndex())
+	assert.NoError(t, err)
+	err = schB.Build(context.Background(), nil, idxNodeB.Content[0].Content[3].Content[1], rolo.GetRootIndex())
+	assert.NoError(t, err)
+
+	rolo.GetRootIndex().SetAbsolutePath("/rooty/rootster")
+	origin := schA.GetSchemaReferenceLocation()
+	assert.NotNil(t, origin)
+	assert.Equal(t, "/rooty/rootster", origin.AbsoluteLocation)
+
+	// mess things up so it cannot be found
+	schA.vn = schB.vn
+	origin = schA.GetSchemaReferenceLocation()
+	assert.Nil(t, origin)
+
+	// create a new index
+	idx := index.NewSpecIndexWithConfig(&idxNodeB, c)
+	idx.SetAbsolutePath("/boaty/mcboatface")
+
+	// add the index to the rolodex
+	rolo.AddIndex(idx)
+
+	// can now find the origin
+	origin = schA.GetSchemaReferenceLocation()
+	assert.NotNil(t, origin)
+	assert.Equal(t, "/boaty/mcboatface", origin.AbsoluteLocation)
+
+	// do it again, but with no index
+	err = schC.Build(context.Background(), nil, idxNodeA.Content[0], nil)
+	origin = schC.GetSchemaReferenceLocation()
+	assert.Nil(t, origin)
 
 }

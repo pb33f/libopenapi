@@ -70,13 +70,16 @@ func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
 	close(index.nodeMapCompleted)
 }
 
+// FindNodeOrigin searches this index for a matching node. If the node is found, a NodeOrigin
+// is returned, otherwise nil is returned.
 func (index *SpecIndex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
-
-	// local search, then throw up to rolodex for a full search
 	if node != nil {
 		if index.nodeMap[node.Line] != nil {
 			if index.nodeMap[node.Line][node.Column] != nil {
 				foundNode := index.nodeMap[node.Line][node.Column]
+				if foundNode.Kind == yaml.DocumentNode {
+					foundNode = foundNode.Content[0]
+				}
 				match := true
 				if foundNode.Value != node.Value || foundNode.Kind != node.Kind || foundNode.Tag != node.Tag {
 					match = false
