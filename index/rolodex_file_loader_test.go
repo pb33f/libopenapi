@@ -251,3 +251,74 @@ func TestRecursiveLocalFile_IndexFail(t *testing.T) {
 	assert.Equal(t, "unable to parse specification: yaml: line 2: mapping values are not allowed in this context", fox.GetErrors()[0].Error())
 
 }
+
+func TestRecursiveLocalFile_MultipleRequests(t *testing.T) {
+
+	pup := []byte(`components:
+  schemas:
+    fox:
+      type: string
+      description: fox, such a good boy
+    cotton:
+      type: string
+      description: my good girl
+      properties:
+        fox:
+          $ref: 'fox.yaml#/components/schemas/fox'
+        foxy:
+          $ref: 'fox.yaml#/components/schemas/fox'
+        sgtfox:
+          $ref: 'fox.yaml#/components/schemas/fox'`)
+
+	var myPuppy yaml.Node
+	_ = yaml.Unmarshal(pup, &myPuppy)
+
+	_ = os.WriteFile("fox.yaml", pup, 0o664)
+	defer os.Remove("fox.yaml")
+
+	// create a new config that allows local and remote to be mixed up.
+	cf := CreateOpenAPIIndexConfig()
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&myPuppy)
+
+	// configure the local filesystem.
+	fsCfg := LocalFSConfig{
+		IndexConfig: cf,
+	}
+
+	// create a new local filesystem.
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+	rolo.SetRootNode(&myPuppy)
+
+	c := make(chan RolodexFile)
+	run := func(i int) {
+		fox, fErr := rolo.Open("fox.yaml")
+		assert.NoError(t, fErr)
+		if fox == nil {
+		}
+		assert.NotNil(t, fox)
+		c <- fox
+	}
+
+	for i := 0; i < 10; i++ {
+		go run(i)
+	}
+
+	completed := 0
+	for completed < 10 {
+		select {
+		case <-c:
+			completed++
+		}
+	}
+}
