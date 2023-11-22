@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -53,7 +54,13 @@ func TestRolodex_LocalNativeFS(t *testing.T) {
 
 	baseDir := "/tmp"
 
-	fileFS, err := NewLocalFS(baseDir, testFS)
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+		DirFS: testFS,
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1313,7 +1320,14 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 
 	baseDir := "rolodex_test_data"
 
-	fileFS, err := NewLocalFS(baseDir, os.DirFS(baseDir))
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+		DirFS: os.DirFS(baseDir),
+	})
+
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,68 @@
+// Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
+// SPDX-License-Identifier: MIT
+
+package index
+
+import (
+	"github.com/stretchr/testify/assert"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"strings"
+	"testing"
+)
+
+func TestRolodex_FindNodeOrigin(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+
+	err = rolo.IndexTheRolodex()
+	rolo.Resolve()
+
+	assert.Len(t, rolo.indexes, 4)
+
+	// extract something that can only exist after resolution
+	path := "$.paths./nested/files3.get.responses.200.content.application/json.schema.properties.message.properties.utilMessage.properties.message.description"
+	yp, _ := yamlpath.NewPath(path)
+	results, _ := yp.Find(node)
+
+	assert.NotNil(t, results)
+	assert.Len(t, results, 1)
+	assert.Equal(t, "I am pointless dir2 utility, I am multiple levels deep.", results[0].Value)
+
+	// now for the truth, where did this come from?
+	origin := rolo.FindNodeOrigin(results[0])
+
+	assert.NotNil(t, origin)
+	assert.True(t, strings.HasSuffix(origin.AbsoluteLocation, "index/rolodex_test_data/dir2/utils/utils.yaml"))
+
+	// should be identical to the original node
+	assert.Equal(t, results[0], origin.Node)
+
+	// look for something that cannot exist
+	origin = rolo.FindNodeOrigin(nil)
+	assert.Nil(t, origin)
+
+}
