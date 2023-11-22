@@ -6,6 +6,7 @@ package index
 import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
 )
@@ -63,6 +64,23 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 
 	// look for something that cannot exist
 	origin = rolo.FindNodeOrigin(nil)
+	assert.Nil(t, origin)
+
+	// modify the node and try again
+	m := *results[0]
+	m.Value = "I am a new message"
+	origin = rolo.FindNodeOrigin(&m)
+	assert.Nil(t, origin)
+
+	// copy, modify, and try again
+	o := *results[0]
+	o.Content = []*yaml.Node{
+		{Value: "beer"},
+	}
+	results[0].Content = []*yaml.Node{
+		{Value: "wine"},
+	}
+	origin = rolo.FindNodeOrigin(&o)
 	assert.Nil(t, origin)
 
 }

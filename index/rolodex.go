@@ -61,6 +61,7 @@ type Rolodex struct {
 	indexConfig                *SpecIndexConfig
 	indexingDuration           time.Duration
 	indexes                    []*SpecIndex
+	indexMap                   map[string]*SpecIndex
 	indexLock                  sync.Mutex
 	rootIndex                  *SpecIndex
 	rootNode                   *yaml.Node
@@ -69,6 +70,7 @@ type Rolodex struct {
 	infiniteCircularReferences []*CircularReferenceResult
 	ignoredCircularReferences  []*CircularReferenceResult
 	logger                     *slog.Logger
+	rolodex                    *Rolodex
 }
 
 // NewRolodex creates a new rolodex with the provided index configuration.
@@ -86,6 +88,7 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 		localFS:     make(map[string]fs.FS),
 		remoteFS:    make(map[string]fs.FS),
 		logger:      logger,
+		indexMap:    make(map[string]*SpecIndex),
 	}
 	indexConfig.Rolodex = r
 	return r
@@ -147,10 +150,20 @@ func (r *Rolodex) SetRootNode(node *yaml.Node) {
 	r.rootNode = node
 }
 
-func (r *Rolodex) AddIndex(idx *SpecIndex) {
+func (r *Rolodex) AddExternalIndex(idx *SpecIndex, location string) {
 	r.indexLock.Lock()
-	r.indexes = append(r.indexes, idx)
+	if r.indexMap[location] == nil {
+		r.indexMap[location] = idx
+	}
 	r.indexLock.Unlock()
+}
+
+func (r *Rolodex) AddIndex(idx *SpecIndex) {
+	r.indexes = append(r.indexes, idx)
+	if idx != nil {
+		p := idx.specAbsolutePath
+		r.AddExternalIndex(idx, p)
+	}
 }
 
 // AddRemoteFS adds a remote file system to the rolodex.
