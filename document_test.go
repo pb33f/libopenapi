@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -865,4 +866,66 @@ components:
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
 	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularArrayReferences(), 1)
 
+}
+
+func TestDocument_TestMixedReferenceOrigin(t *testing.T) {
+
+	bs, _ := os.ReadFile("test_specs/mixedref-burgershop.openapi.yaml")
+
+	config := datamodel.NewDocumentConfiguration()
+	config.AllowRemoteReferences = true
+	config.AllowFileReferences = true
+	config.SkipCircularReferenceCheck = true
+	config.BasePath = "test_specs"
+
+	config.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	doc, _ := NewDocumentWithConfiguration(bs, config)
+	m, _ := doc.BuildV3Model()
+
+	// extract something that can only exist after being located by the rolodex.
+	mediaType := m.Model.Paths.PathItems["/burgers/{burgerId}/dressings"].
+		Get.Responses.Codes["200"].Content["application/json"].Schema.Schema().Items
+
+	items := mediaType.A.Schema()
+
+	origin := items.ParentProxy.GetReferenceOrigin()
+	assert.NotNil(t, origin)
+	assert.True(t, strings.HasSuffix(origin.AbsoluteLocation, "test_specs/burgershop.openapi.yaml"))
+
+}
+
+func BenchmarkReferenceOrigin(b *testing.B) {
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		bs, _ := os.ReadFile("test_specs/mixedref-burgershop.openapi.yaml")
+
+		config := datamodel.NewDocumentConfiguration()
+		config.AllowRemoteReferences = true
+		config.AllowFileReferences = true
+		config.BasePath = "test_specs"
+		config.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+		doc, _ := NewDocumentWithConfiguration(bs, config)
+		m, _ := doc.BuildV3Model()
+
+		// extract something that can only exist after being located by the rolodex.
+		mediaType := m.Model.Paths.PathItems["/burgers/{burgerId}/dressings"].
+			Get.Responses.Codes["200"].Content["application/json"].Schema.Schema().Items
+
+		items := mediaType.A.Schema()
+
+		origin := items.ParentProxy.GetReferenceOrigin()
+		if origin == nil {
+			//fmt.Println("nil origin")
+		} else {
+			//fmt.Println(origin.AbsoluteLocation)
+		}
+		assert.NotNil(b, origin)
+		assert.True(b, strings.HasSuffix(origin.AbsoluteLocation, "test_specs/burgershop.openapi.yaml"))
+	}
 }
