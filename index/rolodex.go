@@ -9,6 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
+	"log/slog"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -60,20 +61,31 @@ type Rolodex struct {
 	indexConfig                *SpecIndexConfig
 	indexingDuration           time.Duration
 	indexes                    []*SpecIndex
+	indexLock                  sync.Mutex
 	rootIndex                  *SpecIndex
 	rootNode                   *yaml.Node
 	caughtErrors               []error
 	safeCircularReferences     []*CircularReferenceResult
 	infiniteCircularReferences []*CircularReferenceResult
 	ignoredCircularReferences  []*CircularReferenceResult
+	logger                     *slog.Logger
 }
 
 // NewRolodex creates a new rolodex with the provided index configuration.
 func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
+
+	logger := indexConfig.Logger
+	if logger == nil {
+		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		}))
+	}
+
 	r := &Rolodex{
 		indexConfig: indexConfig,
 		localFS:     make(map[string]fs.FS),
 		remoteFS:    make(map[string]fs.FS),
+		logger:      logger,
 	}
 	indexConfig.Rolodex = r
 	return r
@@ -123,6 +135,10 @@ func (r *Rolodex) GetCaughtErrors() []error {
 // AddLocalFS adds a local file system to the rolodex.
 func (r *Rolodex) AddLocalFS(baseDir string, fileSystem fs.FS) {
 	absBaseDir, _ := filepath.Abs(baseDir)
+	if f, ok := fileSystem.(*LocalFS); ok {
+		f.rolodex = r
+		f.logger = r.logger
+	}
 	r.localFS[absBaseDir] = fileSystem
 }
 
@@ -131,8 +147,18 @@ func (r *Rolodex) SetRootNode(node *yaml.Node) {
 	r.rootNode = node
 }
 
+func (r *Rolodex) AddIndex(idx *SpecIndex) {
+	r.indexLock.Lock()
+	r.indexes = append(r.indexes, idx)
+	r.indexLock.Unlock()
+}
+
 // AddRemoteFS adds a remote file system to the rolodex.
 func (r *Rolodex) AddRemoteFS(baseURL string, fileSystem fs.FS) {
+	if f, ok := fileSystem.(*RemoteFS); ok {
+		f.rolodex = r
+		f.logger = r.logger
+	}
 	r.remoteFS[baseURL] = fileSystem
 }
 
@@ -281,7 +307,9 @@ func (r *Rolodex) IndexTheRolodex() error {
 			resolver.IgnorePolymorphicCircularReferences()
 		}
 
+		r.logger.Debug("[rolodex] starting root index build")
 		index.BuildIndex()
+		r.logger.Debug("[rolodex] root index build completed")
 
 		if !r.indexConfig.AvoidCircularReferenceCheck {
 			resolvingErrors := resolver.CheckForCircularReferences()
@@ -347,10 +375,10 @@ func (r *Rolodex) Resolve() {
 		for e := range resolvingErrors {
 			r.caughtErrors = append(r.caughtErrors, resolvingErrors[e])
 		}
-		if len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
+		if r.rootIndex != nil && len(r.rootIndex.resolver.ignoredPolyReferences) > 0 {
 			r.ignoredCircularReferences = append(r.ignoredCircularReferences, res.ignoredPolyReferences...)
 		}
-		if len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
+		if r.rootIndex != nil && len(r.rootIndex.resolver.ignoredArrayReferences) > 0 {
 			r.ignoredCircularReferences = append(r.ignoredCircularReferences, res.ignoredArrayReferences...)
 		}
 		r.safeCircularReferences = append(r.safeCircularReferences, res.GetSafeCircularReferences()...)

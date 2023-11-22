@@ -274,6 +274,8 @@ type SpecIndex struct {
 	built                               bool
 	uri                                 []string
 	logger                              *slog.Logger
+	nodeMap                             map[int]map[int]*yaml.Node
+	nodeMapCompleted                    chan bool
 }
 
 // GetResolver returns the resolver for this index.

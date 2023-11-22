@@ -142,7 +142,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
+		Level: slog.LevelDebug,
 	}))
 
 	// setting this baseURL will override the base
@@ -166,7 +166,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 		}
 		remoteFS.SetRemoteHandlerFunc(func(url string) (*http.Response, error) {
 			request, _ := http.NewRequest(http.MethodGet, url, nil)
-			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GH_PAT")))
 			return client.Do(request)
 		})
 	}
@@ -178,6 +178,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	indexedErr := rolo.IndexTheRolodex()
 	assert.NoError(t, indexedErr)
 
+	// get all the files!
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
 	assert.Equal(t, 1646, fileLen)

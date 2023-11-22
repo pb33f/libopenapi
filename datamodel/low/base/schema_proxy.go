@@ -6,6 +6,7 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -130,6 +131,21 @@ func (sp *SchemaProxy) SetReference(ref string) {
 // IsSchemaReference()
 func (sp *SchemaProxy) GetSchemaReference() string {
 	return sp.referenceLookup
+}
+
+func (sp *SchemaProxy) GetSchemaReferenceLocation() *index.NodeOrigin {
+	if sp.idx != nil {
+		origin := sp.idx.FindNodeOrigin(sp.vn)
+		if origin != nil {
+			return origin
+		}
+		if sp.idx.GetRolodex() != nil {
+			origin = sp.idx.GetRolodex().FindNodeOrigin(sp.vn)
+			return origin
+		}
+	}
+	fmt.Println("ooooooh my arse")
+	return nil
 }
 
 // GetKeyNode will return the yaml.Node pointer that is a key for value node.
