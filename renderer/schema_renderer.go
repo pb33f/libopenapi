@@ -57,7 +57,8 @@ func init() {
 // SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
 // The dictionary is just a slice of strings that is used to generate random words.
 type SchemaRenderer struct {
-	words []string
+	words           []string
+	disableRequired bool
 }
 
 // CreateRendererUsingDictionary will create a new SchemaRenderer using a custom dictionary file.
@@ -83,6 +84,13 @@ func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 	structure := make(map[string]any)
 	wr.DiveIntoSchema(schema, rootType, structure, 0)
 	return structure[rootType].(any)
+}
+
+// DisableRequiredCheck will disable the required check when rendering a schema. This means that all properties
+// will be rendered, not just the required ones.
+// https://github.com/pb33f/libopenapi/issues/200
+func (wr *SchemaRenderer) DisableRequiredCheck() {
+	wr.disableRequired = true
 }
 
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
@@ -219,7 +227,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			// check if this schema has required properties, if so, then only render required props, if not
 			// render everything in the schema.
 			checkProps := make(map[string]*base.SchemaProxy)
-			if len(schema.Required) > 0 {
+			if !wr.disableRequired && len(schema.Required) > 0 {
 				for _, requiredProp := range schema.Required {
 					checkProps[requiredProp] = properties[requiredProp]
 				}
