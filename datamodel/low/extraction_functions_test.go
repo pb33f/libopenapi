@@ -1724,12 +1724,38 @@ func TestLocateRefNode_CurrentPathKey_HttpLink(t *testing.T) {
 			},
 			{
 				Kind:  yaml.ScalarNode,
-				Value: "http://cakes.com#/components/schemas/thing",
+				Value: "http://cakes.com/nice#/components/schemas/thing",
 			},
 		},
 	}
 
 	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "http://cakes.com#/components/schemas/thing")
+
+	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
+func TestLocateRefNode_CurrentPathKey_HttpLink_Local(t *testing.T) {
+
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: ".#/components/schemas/thing",
+			},
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "http://cakes.com/nice/rice#/components/schemas/thing")
 
 	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
 	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
