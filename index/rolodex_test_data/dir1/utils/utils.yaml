@@ -2,10 +2,8 @@ type: object
 description: I am a utility for dir1
 properties:
   message:
-    type: string
+    type: object
     description: I am pointless dir1.
     properties:
-      link:
-        $ref: "../components.yaml#/components/schemas/GlobalComponent"
       shared:
         $ref: '../subdir1/shared.yaml#/components/schemas/SharedComponent'

@@ -53,7 +53,6 @@ func TestSpecIndex_MapNodes(t *testing.T) {
 	mappedKeyNode, ok = index.GetNode(15, 999)
 	assert.False(t, ok)
 	assert.Nil(t, mappedKeyNode)
-
 }
 
 func BenchmarkSpecIndex_MapNodes(b *testing.B) {

@@ -8,6 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +26,14 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 		"subfolder2/hello.jpg":  {Data: []byte("shop"), ModTime: time.Now()},
 	}
 
-	fileFS, err := NewLocalFS(".", testFS)
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: ".",
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+		DirFS: testFS,
+	})
+
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +158,14 @@ func TestRolodexLocalFile_IndexSingleFile(t *testing.T) {
 		"i-am-a-dir": {Mode: fs.FileMode(fs.ModeDir), ModTime: time.Now()},
 	}
 
-	fileFS, _ := NewLocalFS("spec.yaml", testFS)
+	fileFS, _ := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: "spec.yaml",
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+		DirFS: testFS,
+	})
+
 	files := fileFS.GetFiles()
 	assert.Len(t, files, 1)
 

@@ -8,8 +8,8 @@ components:
       type: object
       description: Dir2 Shared Component
       properties:
+        utilMessage:
+            $ref: "../utils/utils.yaml"
         message:
           type: string
           description: I am pointless, but I am shared dir2.
-    SomeUtil:
-      $ref: "../utils/utils.yaml"

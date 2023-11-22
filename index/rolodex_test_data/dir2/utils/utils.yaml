@@ -2,10 +2,5 @@ type: object
 description: I am a utility for dir2
 properties:
   message:
-    type: string
-    description: I am pointless dir2.
-    properties:
-      link:
-        $ref: "../components.yaml#/components/schemas/GlobalComponent"
-      shared:
-        $ref: '../subdir2/shared.yaml#/components/schemas/SharedComponent'
+    type: object
+    description: I am pointless dir2 utility, I am multiple levels deep.

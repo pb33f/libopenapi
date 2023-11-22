@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -123,6 +124,9 @@ func TestRolodexRemoteFileSystem(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo(data)
 
 	cf := datamodel.NewDocumentConfiguration()
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
 
 	baseUrl := "https://raw.githubusercontent.com/pb33f/libopenapi/main/test_specs"
 	u, _ := url.Parse(baseUrl)

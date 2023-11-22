@@ -78,13 +78,7 @@ func (index *SpecIndex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
 			if index.nodeMap[node.Line][node.Column] != nil {
 				foundNode := index.nodeMap[node.Line][node.Column]
 				match := true
-				if foundNode.Value != node.Value {
-					match = false
-				}
-				if foundNode.Kind != node.Kind {
-					match = false
-				}
-				if foundNode.Tag != node.Tag {
+				if foundNode.Value != node.Value || foundNode.Kind != node.Kind || foundNode.Tag != node.Tag {
 					match = false
 				}
 				if len(foundNode.Content) == len(node.Content) {

@@ -4,7 +4,6 @@
 package base
 
 import (
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -122,7 +121,6 @@ func (sp *SchemaProxy) GetReferenceOrigin() *index.NodeOrigin {
 	if sp.schema != nil {
 		return sp.schema.Value.GetSchemaReferenceLocation()
 	}
-	fmt.Print("fuck man")
 	return nil
 }
 
