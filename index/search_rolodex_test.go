@@ -72,6 +72,9 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	origin = rolo.FindNodeOrigin(&m)
 	assert.Nil(t, origin)
 
+	// extract the doc root
+	origin = rolo.FindNodeOrigin(node)
+	assert.Nil(t, origin)
 }
 
 func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {

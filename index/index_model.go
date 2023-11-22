@@ -301,8 +301,8 @@ func (index *SpecIndex) SetAbsolutePath(absolutePath string) {
 	index.specAbsolutePath = absolutePath
 }
 
-// GetAbsolutePath returns the absolute path to the spec file for the index. Will be absolute, either as a http link or a file.
-func (index *SpecIndex) GetAbsolutePath() string {
+// GetSpecAbsolutePath returns the absolute path to the spec file for the index. Will be absolute, either as a http link or a file.
+func (index *SpecIndex) GetSpecAbsolutePath() string {
 	return index.specAbsolutePath
 }
 
