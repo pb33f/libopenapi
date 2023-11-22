@@ -519,6 +519,10 @@ func TestSpecIndex_PetstoreV3(t *testing.T) {
 	assert.Equal(t, 19, index.GetAllSummariesCount())
 	assert.Len(t, index.GetAllDescriptions(), 90)
 	assert.Len(t, index.GetAllSummaries(), 19)
+
+	index.SetAbsolutePath("/rooty/rootster")
+	assert.Equal(t, "/rooty/rootster", index.GetSpecAbsolutePath())
+
 }
 
 var mappedRefs = 15

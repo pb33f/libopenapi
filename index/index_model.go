@@ -296,6 +296,16 @@ func (index *SpecIndex) GetCache() *syncmap.Map {
 	return index.cache
 }
 
+// SetAbsolutePath sets the absolute path to the spec file for the index. Will be absolute, either as a http link or a file.
+func (index *SpecIndex) SetAbsolutePath(absolutePath string) {
+	index.specAbsolutePath = absolutePath
+}
+
+// GetAbsolutePath returns the absolute path to the spec file for the index. Will be absolute, either as a http link or a file.
+func (index *SpecIndex) GetAbsolutePath() string {
+	return index.specAbsolutePath
+}
+
 // ExternalLookupFunction is for lookup functions that take a JSONSchema reference and tries to find that node in the
 // URI based document. Decides if the reference is local, remote or in a file.
 type ExternalLookupFunction func(id string) (foundNode *yaml.Node, rootNode *yaml.Node, lookupError error)
