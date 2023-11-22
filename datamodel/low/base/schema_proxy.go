@@ -6,8 +6,6 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -144,7 +142,6 @@ func (sp *SchemaProxy) GetSchemaReferenceLocation() *index.NodeOrigin {
 			return origin
 		}
 	}
-	fmt.Println("ooooooh my arse")
 	return nil
 }
 
