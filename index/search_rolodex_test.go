@@ -107,20 +107,15 @@ func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 
 	assert.Len(t, rolo.indexes, 4)
 
-	// extract something that can only exist after resolution
-	path := "$.paths./nested/files3.get.responses.200.content.application/json.schema.properties.message.properties.utilMessage.properties.message.description"
+	path := "$.paths./nested/files3.get.responses.200.content.application/json.schema"
 	yp, _ := yamlpath.NewPath(path)
 	results, _ := yp.Find(node)
 
 	// copy, modify, and try again
 	o := *results[0]
 	o.Content = []*yaml.Node{
-		{Value: "beer"},
-	}
-	results[0].Content = []*yaml.Node{
-		{Value: "wine"},
+		{Value: "beer"}, {Value: "wine"}, {Value: "cake"}, {Value: "burgers"}, {Value: "herbs"}, {Value: "spices"},
 	}
 	origin := rolo.FindNodeOrigin(&o)
 	assert.Nil(t, origin)
-
 }
