@@ -1366,6 +1366,9 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.Equal(t, fs.FileMode(0), f.Mode())
 	assert.Len(t, f.GetErrors(), 0)
 
+	// check the index has a rolodex reference
+	assert.NotNil(t, idx.GetRolodex())
+
 	// re-run the index should be a no-op
 	assert.NoError(t, rolo.IndexTheRolodex())
 	rolo.CheckForCircularReferences()

@@ -44,6 +44,7 @@ type RemoteFS struct {
 	remoteErrors      []error
 	logger            *slog.Logger
 	extractedFiles    map[string]RolodexFile
+	rolodex           *Rolodex
 }
 
 // RemoteFile is a file that has been indexed by the RemoteFS. It implements the RolodexFile interface.
@@ -293,8 +294,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL,
 			"remoteURL", remoteParsedURL.String())
-		// Create a context with a timeout of 50ms
-		ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*50)
+		// Create a context with a timeout of 100 milliseconds.
+		ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
 		defer cancel()
 		f := make(chan *RemoteFile)
 		fwait := func(path string, c chan *RemoteFile) {
@@ -431,6 +432,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		resolver := NewResolver(idx)
 		idx.resolver = resolver
 		idx.BuildIndex()
+		if i.rolodex != nil {
+			i.rolodex.AddExternalIndex(idx, remoteParsedURL.String())
+		}
 	}
 	return remoteFile, errors.Join(i.remoteErrors...)
 }

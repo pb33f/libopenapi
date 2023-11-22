@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -445,6 +446,9 @@ func TestDigitalOceanAsDocViaCheckout(t *testing.T) {
 		AllowFileReferences:   true,
 		AllowRemoteReferences: true,
 		BasePath:              basePath,
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
 	}
 
 	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &config)
@@ -500,6 +504,10 @@ func TestDigitalOceanAsDocFromMain(t *testing.T) {
 		AllowRemoteReferences: true,
 		BaseURL:               baseURL,
 	}
+
+	config.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
 
 	if os.Getenv("GH_PAT") != "" {
 		client := &http.Client{

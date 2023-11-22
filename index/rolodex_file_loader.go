@@ -30,6 +30,9 @@ type LocalFS struct {
 	logger              *slog.Logger
 	fileLock            sync.Mutex
 	readingErrors       []error
+	rolodex             *Rolodex
+	processingFiles     syncmap.Map
+	fileListeners       int
 }
 
 // GetFiles returns the files that have been indexed. A map of RolodexFile objects keyed by the full path of the file.
@@ -46,6 +49,12 @@ func (l *LocalFS) GetFiles() map[string]RolodexFile {
 // GetErrors returns any errors that occurred during the indexing process.
 func (l *LocalFS) GetErrors() []error {
 	return l.readingErrors
+}
+
+type waiterLocal struct {
+	f         string
+	c         chan *LocalFile
+	listeners int
 }
 
 // Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
@@ -66,11 +75,40 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 	} else {
 
 		if l.fsConfig != nil && l.fsConfig.DirFS == nil {
+
+			// create a complete channel
+			c := make(chan *LocalFile)
+
+			// if we're processing, we need to block and wait for the file to be processed
+			// try path first
+			if r, ko := l.processingFiles.Load(name); ko {
+
+				wait := r.(*waiterLocal)
+				wait.listeners++
+
+				l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
+
+				select {
+				case v := <-wait.c:
+					wait.listeners--
+					l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
+					return v, nil
+				}
+			}
+
+			processingWaiter := &waiterLocal{f: name, c: c}
+
+			// add to processing
+			l.processingFiles.Store(name, processingWaiter)
+
 			var extractedFile *LocalFile
 			var extErr error
 			// attempt to open the file from the local filesystem
+			l.logger.Debug("[rolodex file loader]: extracting file from OS", "file", name)
 			extractedFile, extErr = l.extractFile(name)
 			if extErr != nil {
+				close(c)
+				l.processingFiles.Delete(name)
 				return nil, extErr
 			}
 			if extractedFile != nil {
@@ -83,6 +121,10 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 
 					idx, idxError := extractedFile.Index(&copiedCfg)
 
+					if idx != nil && l.rolodex != nil {
+						idx.rolodex = l.rolodex
+					}
+
 					if idxError != nil && idx == nil {
 						extractedFile.readingErrors = append(l.readingErrors, idxError)
 					} else {
@@ -94,8 +136,22 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 					}
 
 					if len(extractedFile.data) > 0 {
-						l.logger.Debug("successfully loaded and indexed file", "file", name)
+						l.logger.Debug("[rolodex file loader]: successfully loaded and indexed file", "file", name)
 					}
+
+					// add index to rolodex indexes
+					if l.rolodex != nil {
+						l.rolodex.AddIndex(idx)
+					}
+					if processingWaiter.listeners > 0 {
+						l.logger.Debug("[rolodex file loader]: alerting file subscribers", "file", name, "subs", processingWaiter.listeners)
+					}
+					for x := 0; x < processingWaiter.listeners; x++ {
+						c <- extractedFile
+					}
+					close(c)
+
+					l.processingFiles.Delete(name)
 					return extractedFile, nil
 				}
 			}
@@ -344,7 +400,15 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 		var file fs.File
 		var fileError error
 		if config != nil && config.DirFS != nil {
+			l.logger.Debug("[rolodex file loader]: collecting JSON/YAML file from dirFS", "file", abs)
 			file, _ = config.DirFS.Open(p)
+		} else {
+			l.logger.Debug("[rolodex file loader]: reading local file from OS", "file", abs)
+			file, fileError = os.Open(abs)
+		}
+
+		if config != nil && config.DirFS != nil {
+
 		} else {
 			file, fileError = os.Open(abs)
 		}
@@ -361,11 +425,7 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 			modTime = stat.ModTime()
 		}
 		fileData, _ = io.ReadAll(file)
-		if config != nil && config.DirFS != nil {
-			l.logger.Debug("collecting JSON/YAML file", "file", abs)
-		} else {
-			l.logger.Debug("parsing file", "file", abs)
-		}
+
 		lf := &LocalFile{
 			filename:      p,
 			name:          filepath.Base(p),
@@ -379,17 +439,8 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 		return lf, nil
 	case UNSUPPORTED:
 		if config != nil && config.DirFS != nil {
-			l.logger.Debug("skipping non JSON/YAML file", "file", abs)
+			l.logger.Debug("[rolodex file loader]: skipping non JSON/YAML file", "file", abs)
 		}
 	}
 	return nil, nil
-}
-
-// NewLocalFS creates a new LocalFS with the supplied base directory.
-func NewLocalFS(baseDir string, dirFS fs.FS) (*LocalFS, error) {
-	config := &LocalFSConfig{
-		BaseDirectory: baseDir,
-		DirFS:         dirFS,
-	}
-	return NewLocalFSWithConfig(config)
 }
