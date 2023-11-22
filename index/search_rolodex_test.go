@@ -72,6 +72,46 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	origin = rolo.FindNodeOrigin(&m)
 	assert.Nil(t, origin)
 
+}
+
+func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+
+	err = rolo.IndexTheRolodex()
+	rolo.Resolve()
+
+	assert.Len(t, rolo.indexes, 4)
+
+	// extract something that can only exist after resolution
+	path := "$.paths./nested/files3.get.responses.200.content.application/json.schema.properties.message.properties.utilMessage.properties.message.description"
+	yp, _ := yamlpath.NewPath(path)
+	results, _ := yp.Find(node)
+
 	// copy, modify, and try again
 	o := *results[0]
 	o.Content = []*yaml.Node{
@@ -80,7 +120,7 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	results[0].Content = []*yaml.Node{
 		{Value: "wine"},
 	}
-	origin = rolo.FindNodeOrigin(&o)
+	origin := rolo.FindNodeOrigin(&o)
 	assert.Nil(t, origin)
 
 }

@@ -94,7 +94,7 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	if !avoidBuildOut {
 		index.BuildIndex()
 	}
-	<- index.nodeMapCompleted
+	<-index.nodeMapCompleted
 	return index
 }
 
