@@ -18,20 +18,20 @@ type nodeMap struct {
 // of files a node has come from.
 type NodeOrigin struct {
 	// Node is the node in question
-	Node *yaml.Node
+	Node *yaml.Node `json:"-"`
 
 	// Line is yhe original line of where the node was found in the original file
-	Line int
+	Line int `json:"line" yaml:"line"`
 
 	// Column is the original column of where the node was found in the original file
-	Column int
+	Column int `json:"column" yaml:"column"`
 
 	// AbsoluteLocation is the absolute path to the reference was extracted from.
 	// This can either be an absolute path to a file, or a URL.
-	AbsoluteLocation string
+	AbsoluteLocation string `json:"absolute_location" yaml:"absolute_location"`
 
 	// Index is the index that contains the node that was located in.
-	Index *SpecIndex
+	Index *SpecIndex `json:"-" yaml:"-"`
 }
 
 // GetNode returns a node from the spec based on a line and column. The second return var bool is true
@@ -68,42 +68,6 @@ func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
 	close(cruising)
 	index.nodeMapCompleted <- true
 	close(index.nodeMapCompleted)
-}
-
-// FindNodeOrigin searches this index for a matching node. If the node is found, a NodeOrigin
-// is returned, otherwise nil is returned.
-func (index *SpecIndex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
-	if node != nil {
-		if index.nodeMap[node.Line] != nil {
-			if index.nodeMap[node.Line][node.Column] != nil {
-				foundNode := index.nodeMap[node.Line][node.Column]
-				if foundNode.Kind == yaml.DocumentNode {
-					foundNode = foundNode.Content[0]
-				}
-				match := true
-				if foundNode.Value != node.Value || foundNode.Kind != node.Kind || foundNode.Tag != node.Tag {
-					match = false
-				}
-				if len(foundNode.Content) == len(node.Content) {
-					for i := range foundNode.Content {
-						if foundNode.Content[i].Value != node.Content[i].Value {
-							match = false
-						}
-					}
-				}
-				if match {
-					return &NodeOrigin{
-						Node:             foundNode,
-						Line:             node.Line,
-						Column:           node.Column,
-						AbsoluteLocation: index.specAbsolutePath,
-						Index:            index,
-					}
-				}
-			}
-		}
-	}
-	return nil
 }
 
 func enjoyALuxuryCruise(node *yaml.Node, nodeChan chan *nodeMap, root bool) {
