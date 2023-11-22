@@ -66,6 +66,9 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	if rootNode == nil {
 		return index
 	}
+	index.nodeMapCompleted = make(chan bool)
+	index.nodeMap = make(map[int]map[int]*yaml.Node)
+	go index.MapNodes(rootNode) // this can run async.
 
 	index.cache = new(syncmap.Map)
 
@@ -91,7 +94,7 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	if !avoidBuildOut {
 		index.BuildIndex()
 	}
-
+	<- index.nodeMapCompleted
 	return index
 }
 
@@ -145,6 +148,10 @@ func (index *SpecIndex) GetLogger() *slog.Logger {
 // GetRootNode returns document root node.
 func (index *SpecIndex) GetRootNode() *yaml.Node {
 	return index.root
+}
+
+func (index *SpecIndex) GetRolodex() *Rolodex {
+	return index.rolodex
 }
 
 // GetGlobalTagsNode returns document root tags node.
