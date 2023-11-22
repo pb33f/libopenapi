@@ -481,7 +481,7 @@ func TestDigitalOceanAsDocFromSHA(t *testing.T) {
 		}
 		config.RemoteURLHandler = func(url string) (*http.Response, error) {
 			request, _ := http.NewRequest(http.MethodGet, url, nil)
-			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GITHUB_TOKEN")))
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GH_PAT")))
 			return client.Do(request)
 		}
 	}
@@ -506,7 +506,7 @@ func TestDigitalOceanAsDocFromMain(t *testing.T) {
 	}
 
 	config.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelError,
 	}))
 
 	if os.Getenv("GH_PAT") != "" {

@@ -100,10 +100,12 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 					if strings.HasPrefix(specPath, "http") {
 						u, _ := url.Parse(specPath)
 						p := ""
-						if u.Path != "" {
+						if u.Path != "" && explodedRefValue[0] != "" {
 							p = filepath.Dir(u.Path)
 						}
-						u.Path = filepath.Join(p, explodedRefValue[0])
+						if p != "" && explodedRefValue[0] != "" {
+							u.Path = filepath.Join(p, explodedRefValue[0])
+						}
 						u.Fragment = ""
 						rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 
