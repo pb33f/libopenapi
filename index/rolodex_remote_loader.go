@@ -312,7 +312,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 			i.logger.Info("waiting for remote file timed out, trying again", "file", remoteURL,
 				"remoteURL", remoteParsedURL.String())
 		case v := <-f:
-			close(f)
+			//close(f)
 			return v, nil
 		}
 	}
