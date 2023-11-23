@@ -294,8 +294,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 		i.logger.Debug("waiting for existing fetch to complete", "file", remoteURL,
 			"remoteURL", remoteParsedURL.String())
-		// Create a context with a timeout of 100 milliseconds.
-		ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*100)
+		// Create a context with a timeout of 120 milliseconds.
+		ctxTimeout, cancel := context.WithTimeout(context.Background(), time.Millisecond*120)
 		defer cancel()
 		f := make(chan *RemoteFile)
 		fwait := func(path string, c chan *RemoteFile) {
@@ -312,6 +312,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 			i.logger.Info("waiting for remote file timed out, trying again", "file", remoteURL,
 				"remoteURL", remoteParsedURL.String())
 		case v := <-f:
+			close(f)
 			return v, nil
 		}
 	}
