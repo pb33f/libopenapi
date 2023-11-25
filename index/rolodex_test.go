@@ -1630,3 +1630,12 @@ components:
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 
 }
+
+func TestHumanFileSize(t *testing.T) {
+
+	// test bytes for different units
+	assert.Equal(t, "1 B", HumanFileSize(1))
+	assert.Equal(t, "1 KB", HumanFileSize(1024))
+	assert.Equal(t, "1 MB", HumanFileSize(1024*1024))
+
+}
