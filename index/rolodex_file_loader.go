@@ -53,7 +53,8 @@ func (l *LocalFS) GetErrors() []error {
 
 type waiterLocal struct {
 	f         string
-	c         chan *LocalFile
+	done      bool
+	file      *LocalFile
 	listeners int
 }
 
@@ -76,9 +77,6 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 
 		if l.fsConfig != nil && l.fsConfig.DirFS == nil {
 
-			// create a complete channel
-			c := make(chan *LocalFile)
-
 			// if we're processing, we need to block and wait for the file to be processed
 			// try path first
 			if r, ko := l.processingFiles.Load(name); ko {
@@ -88,15 +86,15 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 
 				l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
 
-				select {
-				case v := <-wait.c:
-					wait.listeners--
-					l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
-					return v, nil
+				for !wait.done {
+					time.Sleep(100 * time.Nanosecond) // breathe for nano second.
 				}
+				wait.listeners--
+				l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
+				return wait.file, nil
 			}
 
-			processingWaiter := &waiterLocal{f: name, c: c}
+			processingWaiter := &waiterLocal{f: name}
 
 			// add to processing
 			l.processingFiles.Store(name, processingWaiter)
@@ -107,7 +105,6 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 			l.logger.Debug("[rolodex file loader]: extracting file from OS", "file", name)
 			extractedFile, extErr = l.extractFile(name)
 			if extErr != nil {
-				close(c)
 				l.processingFiles.Delete(name)
 				return nil, extErr
 			}
@@ -146,11 +143,8 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 					if processingWaiter.listeners > 0 {
 						l.logger.Debug("[rolodex file loader]: alerting file subscribers", "file", name, "subs", processingWaiter.listeners)
 					}
-					for x := 0; x < processingWaiter.listeners; x++ {
-						c <- extractedFile
-					}
-					close(c)
-
+					processingWaiter.file = extractedFile
+					processingWaiter.done = true
 					l.processingFiles.Delete(name)
 					return extractedFile, nil
 				}

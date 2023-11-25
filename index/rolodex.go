@@ -311,6 +311,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 		}
 
 		index := NewSpecIndexWithConfig(r.rootNode, r.indexConfig)
+		r.rootIndex = index
 		resolver := NewResolver(index)
 
 		if r.indexConfig.IgnoreArrayCircularReferences {
@@ -337,7 +338,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 				r.ignoredCircularReferences = append(r.ignoredCircularReferences, resolver.GetIgnoredCircularArrayReferences()...)
 			}
 		}
-		r.rootIndex = index
 		if len(index.refErrors) > 0 {
 			caughtErrors = append(caughtErrors, index.refErrors...)
 		}
