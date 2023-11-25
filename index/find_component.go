@@ -127,12 +127,14 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			rFile, rError := index.rolodex.Open(absoluteFileLocation)
 
 			if rError != nil {
-				index.logger.Error("unable to open rolodex file", "file", absoluteFileLocation, "error", rError)
+				index.logger.Error("unable to open the rolodex file, check specification references and base path",
+					"file", absoluteFileLocation, "error", rError)
 				return nil
 			}
 
 			if rFile == nil {
-				index.logger.Error("rolodex file is empty!", "file", absoluteFileLocation)
+				index.logger.Error("cannot locate file in the rolodex, check specification references and base path",
+					"file", absoluteFileLocation)
 				return nil
 			}
 			if rFile.GetIndex() != nil {
