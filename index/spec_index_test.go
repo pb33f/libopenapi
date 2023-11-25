@@ -260,6 +260,10 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
+	assert.Equal(t, int64(1328224), rolo.RolodexFileSize())
+	assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
+	assert.Equal(t, 1691, rolo.RolodexTotalFiles())
+
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
@@ -329,6 +333,10 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+
+	assert.Equal(t, int64(1266728), rolo.RolodexFileSize())
+	assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
+	assert.Equal(t, 1677, rolo.RolodexTotalFiles())
 
 }
 
@@ -783,6 +791,21 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	assert.Equal(t, 1, index.GetInlineUniqueParamCount())
 	assert.Len(t, index.refErrors, 0)
 	assert.Len(t, index.GetCircularReferences(), 0)
+
+	// get the size of the rolodex.
+	assert.Equal(t, int64(60232), rolo.RolodexFileSize()+int64(len(yml)))
+	assert.Equal(t, "50.48 KB", rolo.RolodexFileSizeAsString())
+	assert.Equal(t, 3, rolo.RolodexTotalFiles())
+
+}
+
+func TestCalcSizeAsString(t *testing.T) {
+	assert.Equal(t, "345 B", HumanFileSize(345))
+	assert.Equal(t, "1 KB", HumanFileSize(1024))
+	assert.Equal(t, "1 KB", HumanFileSize(1025))
+	assert.Equal(t, "1.98 KB", HumanFileSize(2025))
+	assert.Equal(t, "1 MB", HumanFileSize(1025*1024))
+	assert.Equal(t, "1 GB", HumanFileSize(1025*1025*1025))
 }
 
 func TestSpecIndex_TestEmptyBrokenReferences(t *testing.T) {
