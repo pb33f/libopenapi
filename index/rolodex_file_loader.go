@@ -87,7 +87,7 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 				l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
 
 				for !wait.done {
-					time.Sleep(100 * time.Nanosecond) // breathe for nano second.
+					time.Sleep(200 * time.Nanosecond) // breathe for a few nanoseconds.
 				}
 				wait.listeners--
 				l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
