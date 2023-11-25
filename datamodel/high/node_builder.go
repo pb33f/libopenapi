@@ -632,7 +632,7 @@ func (n *NodeBuilder) extractLowMapKeysWrapped(iu reflect.Value, x string, order
 }
 
 func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, orderedCollection []*NodeEntry, m reflect.Value, k reflect.Value) (bool, []*NodeEntry) {
-	if !fg.IsZero() {
+	if fg.IsValid() && !fg.IsZero() {
 		for j, ky := range fg.MapKeys() {
 			hu := ky.Interface()
 			if we, wok := hu.(low.HasKeyNode); wok {
