@@ -10,10 +10,12 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"math"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -557,4 +559,67 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	}
 
 	return nil, errors.Join(errorStack...)
+}
+
+var suffixes = []string{"B", "KB", "MB", "GB", "TB"}
+
+func Round(val float64, roundOn float64, places int) (newVal float64) {
+	var round float64
+	pow := math.Pow(10, float64(places))
+	digit := pow * val
+	_, div := math.Modf(digit)
+	if div >= roundOn {
+		round = math.Ceil(digit)
+	} else {
+		round = math.Floor(digit)
+	}
+	newVal = round / pow
+	return
+}
+
+func HumanFileSize(size float64) string {
+	base := math.Log(size) / math.Log(1024)
+	getSize := Round(math.Pow(1024, base-math.Floor(base)), .5, 2)
+	getSuffix := suffixes[int(math.Floor(base))]
+	return strconv.FormatFloat(getSize, 'f', -1, 64) + " " + string(getSuffix)
+}
+
+func (r *Rolodex) RolodexFileSizeAsString() string {
+	size := r.RolodexFileSize()
+	return HumanFileSize(float64(size))
+}
+
+func (r *Rolodex) RolodexTotalFiles() int {
+	// look through each file system and count the files
+	var total int
+	for _, v := range r.localFS {
+		if lfs, ok := v.(RolodexFS); ok {
+			total += len(lfs.GetFiles())
+		}
+	}
+	for _, v := range r.remoteFS {
+		if lfs, ok := v.(RolodexFS); ok {
+			total += len(lfs.GetFiles())
+		}
+	}
+	return total
+}
+
+func (r *Rolodex) RolodexFileSize() int64 {
+	var size int64
+	for _, v := range r.localFS {
+		if lfs, ok := v.(RolodexFS); ok {
+			for _, f := range lfs.GetFiles() {
+				size += f.Size()
+			}
+		}
+	}
+	for _, v := range r.remoteFS {
+		if lfs, ok := v.(RolodexFS); ok {
+			for _, f := range lfs.GetFiles() {
+				size += f.Size()
+			}
+		}
+	}
+	return size
 }
