@@ -78,6 +78,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Using Vendor Extensions](https://pb33f.io/libopenapi/extensions/)
 - [The Index](https://pb33f.io/libopenapi/index/)
 - [The Resolver](https://pb33f.io/libopenapi/resolver/)
+- [The Rolodex](https://pb33f.io/libopenapi/rolodex/)
 - [Circular References](https://pb33f.io/libopenapi/circular-references/)
 - [What Changed / Diff Engine](https://pb33f.io/libopenapi/what-changed/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
