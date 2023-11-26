@@ -322,6 +322,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	fileExt := ExtractFileType(remoteParsedURL.Path)
 
 	if fileExt == UNSUPPORTED {
+		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+		i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
+		i.logger.Warn("[rolodex remote loader] unsupported file in reference will be ignored", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 		return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 	}
 
