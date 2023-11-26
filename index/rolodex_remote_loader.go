@@ -314,21 +314,20 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return wait.file, nil
 	}
 
-	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}
-
-	// add to processing
-	i.ProcessingFiles.Store(remoteParsedURL.Path, processingWaiter)
-
 	fileExt := ExtractFileType(remoteParsedURL.Path)
 
 	if fileExt == UNSUPPORTED {
-		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
 		if i.logger != nil {
 			i.logger.Warn("[rolodex remote loader] unsupported file in reference will be ignored", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 		}
 		return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 	}
+
+	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}
+
+	// add to processing
+	i.ProcessingFiles.Store(remoteParsedURL.Path, processingWaiter)
 
 	// if the remote URL is absolute (http:// or https://), and we have a rootURL defined, we need to override
 	// the host being defined by this URL, and use the rootURL instead, but keep the path.
