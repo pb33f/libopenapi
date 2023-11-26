@@ -397,3 +397,14 @@ func TestNewRemoteFS_RemoteBaseURL_EmptySpecFailIndex(t *testing.T) {
 	assert.Error(t, y)
 	assert.Equal(t, "there is nothing in the spec, it's empty - so there is nothing to be done", y.Error())
 }
+
+func TestNewRemoteFS_Unsupported(t *testing.T) {
+
+	cf := CreateOpenAPIIndexConfig()
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("/woof.png")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "open /woof.png: invalid argument", y.Error())
+}
