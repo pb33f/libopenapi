@@ -42,9 +42,11 @@ type wrapPair[K comparable, V any] struct {
 	*wk8orderedmap.Pair[K, V]
 }
 
-type ActionFunc[K comparable, V any] func(Pair[K, V]) error
-type TranslateFunc[IN any, OUT any] func(IN) (OUT, error)
-type ResultFunc[V any] func(V) error
+type (
+	ActionFunc[K comparable, V any] func(Pair[K, V]) error
+	TranslateFunc[IN any, OUT any]  func(IN) (OUT, error)
+	ResultFunc[V any]               func(V) error
+)
 
 // New creates an ordered map generic object.
 func New[K comparable, V any]() Map[K, V] {
@@ -63,6 +65,10 @@ func (o *wrapOrderedMap[K, V]) GetOrZero(k K) V {
 }
 
 func (o *wrapOrderedMap[K, V]) First() Pair[K, V] {
+	if o == nil {
+		return nil
+	}
+
 	pair := o.OrderedMap.Oldest()
 	if pair == nil {
 		return nil
@@ -76,7 +82,7 @@ func (o *wrapOrderedMap[K, V]) First() Pair[K, V] {
 func NewPair[K comparable, V any](key K, value V) Pair[K, V] {
 	return &wrapPair[K, V]{
 		Pair: &wk8orderedmap.Pair[K, V]{
-			Key: key,
+			Key:   key,
 			Value: value,
 		},
 	}
@@ -172,6 +178,20 @@ func First[K comparable, V any](m Map[K, V]) Pair[K, V] {
 		return nil
 	}
 	return m.First()
+}
+
+// Cast converts `any` to `Map`.
+func Cast[K comparable, V any](v any) Map[K, V] {
+	if v == nil {
+		return nil
+	}
+
+	m, ok := v.(*wrapOrderedMap[K, V])
+	if !ok {
+		return nil
+	}
+
+	return m
 }
 
 type jobStatus[T any] struct {

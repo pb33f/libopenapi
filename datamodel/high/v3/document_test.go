@@ -231,7 +231,7 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	assert.Len(t, d.Schema().Required, 2)
 	assert.True(t, d.Schema().AdditionalProperties.B)
 	assert.Equal(t, "drinkType", d.Schema().Discriminator.PropertyName)
-	assert.Equal(t, "some value", d.Schema().Discriminator.Mapping["drink"])
+	assert.Equal(t, "some value", d.Schema().Discriminator.Mapping.GetOrZero("drink"))
 	assert.Equal(t, 516, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Line)
 	assert.Equal(t, 23, d.Schema().Discriminator.GoLow().PropertyName.ValueNode.Column)
 
@@ -300,8 +300,8 @@ func TestNewDocument_Components_SecuritySchemes(t *testing.T) {
 	assert.Equal(t, "an oAuth security scheme", oAuth.Description)
 	assert.Equal(t, 375, oAuth.GoLow().Description.ValueNode.Line)
 	assert.Equal(t, 20, oAuth.GoLow().Description.ValueNode.Column)
-	assert.Equal(t, 2, len(oAuth.Flows.Implicit.Scopes))
-	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes["read:burgers"])
+	assert.Equal(t, 2, oAuth.Flows.Implicit.Scopes.Len())
+	assert.Equal(t, "read all burgers", oAuth.Flows.Implicit.Scopes.GetOrZero("read:burgers"))
 	assert.Equal(t, "https://pb33f.io/oauth", oAuth.Flows.AuthorizationCode.AuthorizationUrl)
 
 	// check the lowness is low.
@@ -553,7 +553,7 @@ func TestCircularReferencesDoc(t *testing.T) {
 	lDoc, err := lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.Len(t, utils.UnwrapErrors(err), 3)
 	d := NewDocument(lDoc)
-	assert.Len(t, d.Components.Schemas, 9)
+	assert.Equal(t, 9, d.Components.Schemas.Len())
 	assert.Len(t, d.Index.GetCircularReferences(), 3)
 }
 

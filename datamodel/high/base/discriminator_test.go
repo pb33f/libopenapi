@@ -5,16 +5,16 @@ package base
 
 import (
 	"fmt"
+	"strings"
+	"testing"
+
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestNewDiscriminator(t *testing.T) {
-
 	var cNode yaml.Node
 
 	yml := `propertyName: coffee
@@ -31,17 +31,15 @@ mapping:
 	highDiscriminator := NewDiscriminator(&lowDiscriminator)
 
 	assert.Equal(t, "coffee", highDiscriminator.PropertyName)
-	assert.Equal(t, "in the morning", highDiscriminator.Mapping["fogCleaner"])
+	assert.Equal(t, "in the morning", highDiscriminator.Mapping.GetOrZero("fogCleaner"))
 	assert.Equal(t, 3, highDiscriminator.GoLow().FindMappingValue("fogCleaner").ValueNode.Line)
 
 	// render the example as YAML
 	rendered, _ := highDiscriminator.Render()
 	assert.Equal(t, strings.TrimSpace(string(rendered)), yml)
-
 }
 
 func ExampleNewDiscriminator() {
-
 	// create a yaml representation of a discriminator (can be JSON, doesn't matter)
 	yml := `propertyName: coffee
 mapping:
@@ -59,6 +57,6 @@ mapping:
 	highDiscriminator := NewDiscriminator(&lowDiscriminator)
 
 	// print out a mapping defined for the discriminator.
-	fmt.Print(highDiscriminator.Mapping["coffee"])
+	fmt.Print(highDiscriminator.Mapping.GetOrZero("coffee"))
 	// Output: in the morning
 }

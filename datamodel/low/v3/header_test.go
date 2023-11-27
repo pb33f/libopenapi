@@ -5,12 +5,14 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestHeader_Build(t *testing.T) {
@@ -168,7 +170,6 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 }
 
 func TestEncoding_Hash_n_Grab(t *testing.T) {
-
 	yml := `description: heady
 required: true
 deprecated: true
@@ -241,7 +242,6 @@ schema:
 	sch := n.GetSchema().Value.(*base.SchemaProxy).Schema()
 	assert.Len(t, sch.Type.Value.B, 2) // using multiple types for 3.1 testing.
 	assert.Equal(t, "what a good puppy", n.GetExample().Value)
-	assert.Len(t, n.GetExamples().Value, 1)
-	assert.Len(t, n.GetContent().Value.(map[low.KeyReference[string]]low.ValueReference[*MediaType]), 1)
-
+	assert.Equal(t, 1, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*base.Example]](n.GetExamples().Value).Len())
+	assert.Equal(t, 1, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*MediaType]](n.GetContent().Value).Len())
 }

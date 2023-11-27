@@ -64,8 +64,8 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	CheckProperties(props)
 
 	// flatten maps
-	lMap := FlattenLowLevelMap[string](l.Mapping.Value)
-	rMap := FlattenLowLevelMap[string](r.Mapping.Value)
+	lMap := FlattenLowLevelOrderedMap[string](l.Mapping.Value)
+	rMap := FlattenLowLevelOrderedMap[string](r.Mapping.Value)
 
 	// check for removals, modifications and moves
 	for i := range lMap {
@@ -92,5 +92,4 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 		return nil
 	}
 	return dc
-
 }

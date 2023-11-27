@@ -5,16 +5,16 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestOperation_Build(t *testing.T) {
-
 	yml := `tags:
  - meddy
  - maddy
@@ -61,9 +61,9 @@ servers:
 	assert.Equal(t, "beefyBeef", n.OperationId.Value)
 	assert.Len(t, n.Parameters.Value, 2)
 	assert.Equal(t, "a requestBody", n.RequestBody.Value.Description.Value)
-	assert.Len(t, n.Responses.Value.Codes, 1)
+	assert.Equal(t, 1, n.Responses.Value.Codes.Len())
 	assert.Equal(t, "an OK response", n.Responses.Value.FindResponseByCode("200").Value.Description.Value)
-	assert.Len(t, n.Callbacks.Value, 1)
+	assert.Equal(t, 1, n.Callbacks.Value.Len())
 	assert.Equal(t, "a nice callback",
 		n.FindCallback("niceCallback").Value.FindExpression("ohISee").Value.Description.Value)
 	assert.True(t, n.Deprecated.Value)
@@ -76,7 +76,6 @@ servers:
 }
 
 func TestOperation_Build_FailDocs(t *testing.T) {
-
 	yml := `externalDocs:
   $ref: #borked`
 
@@ -93,7 +92,6 @@ func TestOperation_Build_FailDocs(t *testing.T) {
 }
 
 func TestOperation_Build_FailParams(t *testing.T) {
-
 	yml := `parameters:
   $ref: #borked`
 
@@ -110,7 +108,6 @@ func TestOperation_Build_FailParams(t *testing.T) {
 }
 
 func TestOperation_Build_FailRequestBody(t *testing.T) {
-
 	yml := `requestBody:
   $ref: #borked`
 
@@ -127,7 +124,6 @@ func TestOperation_Build_FailRequestBody(t *testing.T) {
 }
 
 func TestOperation_Build_FailResponses(t *testing.T) {
-
 	yml := `responses:
   $ref: #borked`
 
@@ -144,7 +140,6 @@ func TestOperation_Build_FailResponses(t *testing.T) {
 }
 
 func TestOperation_Build_FailCallbacks(t *testing.T) {
-
 	yml := `callbacks:
   $ref: #borked`
 
@@ -161,7 +156,6 @@ func TestOperation_Build_FailCallbacks(t *testing.T) {
 }
 
 func TestOperation_Build_FailSecurity(t *testing.T) {
-
 	yml := `security:
   $ref: #borked`
 
@@ -178,7 +172,6 @@ func TestOperation_Build_FailSecurity(t *testing.T) {
 }
 
 func TestOperation_Build_FailServers(t *testing.T) {
-
 	yml := `servers:
   $ref: #borked`
 
@@ -195,7 +188,6 @@ func TestOperation_Build_FailServers(t *testing.T) {
 }
 
 func TestOperation_Hash_n_Grab(t *testing.T) {
-
 	yml := `tags:
   - nice
   - rice
@@ -282,14 +274,12 @@ x-mint: sweet`
 	assert.True(t, n.GetDeprecated().Value)
 	assert.Len(t, n.GetExtensions(), 1)
 	assert.Len(t, n.GetServers().Value.([]low.ValueReference[*Server]), 1)
-	assert.Len(t, n.GetCallbacks().Value, 1)
-	assert.Len(t, n.GetResponses().Value.(*Responses).Codes, 1)
+	assert.Equal(t, 1, n.GetCallbacks().Value.Len())
+	assert.Equal(t, 1, n.GetResponses().Value.(*Responses).Codes.Len())
 	assert.Nil(t, n.FindSecurityRequirement("I do not exist"))
-
 }
 
 func TestOperation_EmptySecurity(t *testing.T) {
-
 	yml := `
 security: []`
 
@@ -305,5 +295,4 @@ security: []`
 	assert.NoError(t, err)
 
 	assert.Len(t, n.Security.Value, 0)
-
 }

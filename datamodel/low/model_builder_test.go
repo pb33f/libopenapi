@@ -1,10 +1,12 @@
 package low
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"sync"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 type hotdog struct {
@@ -27,11 +29,10 @@ type hotdog struct {
 	LotsOfUnknowns  []NodeReference[any]
 	Where           map[string]NodeReference[any]
 	There           map[string]NodeReference[string]
-	AllTheThings    NodeReference[map[KeyReference[string]]ValueReference[string]]
+	AllTheThings    NodeReference[orderedmap.Map[KeyReference[string], ValueReference[string]]]
 }
 
 func TestBuildModel_Mismatch(t *testing.T) {
-
 	yml := `crisps: are tasty`
 
 	var rootNode yaml.Node
@@ -42,11 +43,9 @@ func TestBuildModel_Mismatch(t *testing.T) {
 	cErr := BuildModel(&rootNode, &hd)
 	assert.NoError(t, cErr)
 	assert.Empty(t, hd.Name)
-
 }
 
 func TestBuildModel(t *testing.T) {
-
 	yml := `name: yummy
 valueName: yammy
 beef: true
@@ -135,19 +134,18 @@ allTheThings:
 	assert.Equal(t, 324938249028.98234892374892374923874823974, hd.Mustard.Value)
 
 	allTheThings := hd.AllTheThings.Value
-	for i := range allTheThings {
-		if i.Value == "beer" {
-			assert.Equal(t, "isGood", allTheThings[i].Value)
+	for pair := allTheThings.First(); pair != nil; pair = pair.Next() {
+		if pair.Key().Value == "beer" {
+			assert.Equal(t, "isGood", pair.Value().Value)
 		}
-		if i.Value == "cake" {
-			assert.Equal(t, "isNice", allTheThings[i].Value)
+		if pair.Key().Value == "cake" {
+			assert.Equal(t, "isNice", pair.Value().Value)
 		}
 	}
 	assert.NoError(t, cErr)
 }
 
 func TestBuildModel_UseCopyNotRef(t *testing.T) {
-
 	yml := `cake: -99999`
 
 	var rootNode yaml.Node
@@ -158,11 +156,9 @@ func TestBuildModel_UseCopyNotRef(t *testing.T) {
 	cErr := BuildModel(&rootNode, hd)
 	assert.Error(t, cErr)
 	assert.Empty(t, hd.Name)
-
 }
 
 func TestBuildModel_UseUnsupportedPrimitive(t *testing.T) {
-
 	type notSupported struct {
 		cake string
 	}
@@ -176,11 +172,9 @@ func TestBuildModel_UseUnsupportedPrimitive(t *testing.T) {
 	cErr := BuildModel(rootNode.Content[0], &ns)
 	assert.Error(t, cErr)
 	assert.Empty(t, ns.cake)
-
 }
 
 func TestBuildModel_UsingInternalConstructs(t *testing.T) {
-
 	type internal struct {
 		Extensions NodeReference[string]
 		PathItems  NodeReference[string]
@@ -208,7 +202,6 @@ thing: yeah`
 }
 
 func TestSetField_NodeRefAny_Error(t *testing.T) {
-
 	type internal struct {
 		Thing []NodeReference[any]
 	}
@@ -224,11 +217,9 @@ func TestSetField_NodeRefAny_Error(t *testing.T) {
 
 	try := BuildModel(rootNode.Content[0], ins)
 	assert.Error(t, try)
-
 }
 
 func TestSetField_MapHelperWrapped(t *testing.T) {
-
 	type internal struct {
 		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
 	}
@@ -249,7 +240,6 @@ func TestSetField_MapHelperWrapped(t *testing.T) {
 }
 
 func TestSetField_MapHelper(t *testing.T) {
-
 	type internal struct {
 		Thing map[KeyReference[string]]ValueReference[string]
 	}
@@ -270,7 +260,6 @@ func TestSetField_MapHelper(t *testing.T) {
 }
 
 func TestSetField_ArrayHelper(t *testing.T) {
-
 	type internal struct {
 		Thing NodeReference[[]ValueReference[string]]
 	}
@@ -291,7 +280,6 @@ func TestSetField_ArrayHelper(t *testing.T) {
 }
 
 func TestSetField_Enum_Helper(t *testing.T) {
-
 	type internal struct {
 		Thing NodeReference[[]ValueReference[any]]
 	}
@@ -312,7 +300,6 @@ func TestSetField_Enum_Helper(t *testing.T) {
 }
 
 func TestSetField_Default_Helper(t *testing.T) {
-
 	type cake struct {
 		thing int
 	}
@@ -336,7 +323,6 @@ func TestSetField_Default_Helper(t *testing.T) {
 }
 
 func TestHandleSlicesOfInts(t *testing.T) {
-
 	type internal struct {
 		Thing NodeReference[[]ValueReference[any]]
 	}
@@ -377,7 +363,6 @@ func TestHandleSlicesOfBools(t *testing.T) {
 }
 
 func TestSetField_Ignore(t *testing.T) {
-
 	type Complex struct {
 		name string
 	}
@@ -401,7 +386,6 @@ func TestSetField_Ignore(t *testing.T) {
 }
 
 func TestBuildModelAsync(t *testing.T) {
-
 	type internal struct {
 		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
 	}
@@ -422,11 +406,9 @@ func TestBuildModelAsync(t *testing.T) {
 	BuildModelAsync(rootNode.Content[0], ins, &wg, &errors)
 	wg.Wait()
 	assert.Len(t, ins.Thing.Value, 3)
-
 }
 
 func TestBuildModelAsync_Error(t *testing.T) {
-
 	type internal struct {
 		Thing []NodeReference[any]
 	}
@@ -447,5 +429,4 @@ func TestBuildModelAsync_Error(t *testing.T) {
 	wg.Wait()
 	assert.Len(t, errors, 1)
 	assert.Len(t, ins.Thing, 0)
-
 }

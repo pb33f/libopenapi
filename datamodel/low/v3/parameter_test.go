@@ -5,12 +5,14 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestParameter_Build(t *testing.T) {
@@ -172,7 +174,6 @@ func TestParameter_Build_Fail_Content(t *testing.T) {
 }
 
 func TestParameter_Hash_n_grab(t *testing.T) {
-
 	yml := `description: michelle, meddy and maddy
 required: true
 deprecated: false
@@ -275,11 +276,11 @@ content:
 	assert.True(t, n.GetRequired().Value)
 	assert.False(t, n.GetDeprecated().Value)
 	assert.False(t, n.GetAllowEmptyValue().Value)
-	assert.Len(t, n.GetSchema().Value.(*base.SchemaProxy).Schema().Properties.Value, 3)
+	assert.Equal(t, 3, n.GetSchema().Value.(*base.SchemaProxy).Schema().Properties.Value.Len())
 	assert.Equal(t, "beautiful", n.GetStyle().Value)
 	assert.True(t, n.GetAllowReserved().Value)
 	assert.True(t, n.GetExplode().Value)
 	assert.NotNil(t, n.GetExample().Value)
-	assert.Len(t, n.GetExamples().Value.(map[low.KeyReference[string]]low.ValueReference[*base.Example]), 2)
-	assert.Len(t, n.GetContent().Value.(map[low.KeyReference[string]]low.ValueReference[*MediaType]), 1)
+	assert.Equal(t, 2, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*base.Example]](n.GetExamples().Value).Len())
+	assert.Equal(t, 1, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*MediaType]](n.GetContent().Value).Len())
 }

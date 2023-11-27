@@ -5,12 +5,13 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSecurityRequirement_Build(t *testing.T) {
@@ -29,7 +30,7 @@ func TestSecurityRequirement_Build(t *testing.T) {
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	assert.NoError(t, err)
-	assert.Len(t, n.Requirements.Value, 1)
+	assert.Equal(t, 1, n.Requirements.Value.Len())
 	assert.Equal(t, "read:me", n.FindRequirement("something")[0].Value)
 	assert.Equal(t, "write:me", n.FindRequirement("something")[1].Value)
 	assert.Nil(t, n.FindRequirement("none"))
@@ -72,7 +73,6 @@ x-milk: please`
 	assert.Equal(t, "please", n.FindExtension("x-milk").Value)
 	assert.Equal(t, "https://pb33f.io", n.Flows.Value.Implicit.Value.TokenUrl.Value)
 	assert.Len(t, n.GetExtensions(), 1)
-
 }
 
 func TestSecurityScheme_Build_Fail(t *testing.T) {

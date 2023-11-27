@@ -549,7 +549,6 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	// determine exclusive minimum type, bool (3.0) or int (3.1)
 	_, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
 	if exMinValue != nil {
-
 		// if there is an index, determine if this a 3.0 or 3.1 schema
 		if idx != nil {
 			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
@@ -593,7 +592,6 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	// determine exclusive maximum type, bool (3.0) or int (3.1)
 	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
 	if exMaxValue != nil {
-
 		// if there is an index, determine if this a 3.0 or 3.1 schema
 		if idx != nil {
 			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
@@ -1038,62 +1036,40 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 }
 
 func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]], error) {
-	// for property, build in a new thread!
-	bChan := make(chan schemaProxyBuildResult)
-
-	buildProperty := func(ctx context.Context, label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
-		refString string,
-	) {
-		c <- schemaProxyBuildResult{
-			k: low.KeyReference[string]{
-				KeyNode: label,
-				Value:   label.Value,
-			},
-			v: low.ValueReference[*SchemaProxy]{
-				Value:     &SchemaProxy{ctx: ctx, kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
-				ValueNode: value,
-			},
-		}
-	}
-
 	_, propLabel, propsNode := utils.FindKeyNodeFullTop(label, root.Content)
 	if propsNode != nil {
 		propertyMap := orderedmap.New[low.KeyReference[string], low.ValueReference[*SchemaProxy]]()
 		var currentProp *yaml.Node
-		totalProps := 0
 		for i, prop := range propsNode.Content {
 			if i%2 == 0 {
 				currentProp = prop
 				continue
 			}
 
-			foundCtx := ctx
 			// check our prop isn't reference
 			isRef := false
 			refString := ""
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
+				ref, _, _, _ := low.LocateRefNodeWithContext(ctx, prop, idx)
 				if ref != nil {
 					isRef = true
 					prop = ref
 					refString = l
-					foundCtx = fctx
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
-			totalProps++
-			go buildProperty(foundCtx, currentProp, prop, bChan, isRef, refString)
+
+			propertyMap.Set(low.KeyReference[string]{
+				KeyNode: currentProp,
+				Value:   currentProp.Value,
+			}, low.ValueReference[*SchemaProxy]{
+				Value:     &SchemaProxy{ctx: ctx, kn: currentProp, vn: prop, idx: idx, isReference: isRef, referenceLookup: refString},
+				ValueNode: prop,
+			})
 		}
-		completedProps := 0
-		for completedProps < totalProps {
-			select {
-			case res := <-bChan:
-				completedProps++
-				propertyMap.Set(res.k, res.v)
-			}
-		}
+
 		return &low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]{
 			Value:     propertyMap,
 			KeyNode:   propLabel,
@@ -1280,7 +1256,7 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 					schNode = ref
 					if foundIdx != nil {
 						// TODO: check on this
-						//idx = foundIdx
+						// idx = foundIdx
 					}
 					ctx = nCtx
 				} else {

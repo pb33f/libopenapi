@@ -2,13 +2,14 @@ package v3
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"testing"
+
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -525,7 +526,7 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 
 	components := doc.Components.Value
 	assert.NotNil(t, components)
-	assert.Len(t, components.Schemas.Value, 6)
+	assert.Equal(t, 6, components.Schemas.Value.Len())
 
 	burger := components.FindSchema("Burger").Value
 	assert.NotNil(t, burger)
@@ -539,7 +540,7 @@ func TestCreateDocument_Components_Schemas(t *testing.T) {
 	fries := components.FindSchema("Fries")
 	assert.NotNil(t, fries.Value)
 
-	assert.Len(t, fries.Value.Schema().Properties.Value, 3)
+	assert.Equal(t, 3, fries.Value.Schema().Properties.Value.Len())
 	p := fries.Value.Schema().FindProperty("favoriteDrink")
 	assert.Equal(t, "a frosty cold beverage can be coke or sprite",
 		p.Value.Schema().Description.Value)
@@ -549,7 +550,7 @@ func TestCreateDocument_Components_SecuritySchemes(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	securitySchemes := components.SecuritySchemes.Value
-	assert.Len(t, securitySchemes, 3)
+	assert.Equal(t, 3, securitySchemes.Len())
 
 	apiKey := components.FindSecurityScheme("APIKeyScheme").Value
 	assert.NotNil(t, apiKey)
@@ -577,19 +578,19 @@ func TestCreateDocument_Components_Responses(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	responses := components.Responses.Value
-	assert.Len(t, responses, 1)
+	assert.Equal(t, 1, responses.Len())
 
 	dressingResponse := components.FindResponse("DressingResponse")
 	assert.NotNil(t, dressingResponse.Value)
 	assert.Equal(t, "all the dressings for a burger.", dressingResponse.Value.Description.Value)
-	assert.Len(t, dressingResponse.Value.Content.Value, 1)
+	assert.Equal(t, 1, dressingResponse.Value.Content.Value.Len())
 }
 
 func TestCreateDocument_Components_Examples(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	examples := components.Examples.Value
-	assert.Len(t, examples, 1)
+	assert.Equal(t, 1, examples.Len())
 
 	quarterPounder := components.FindExample("QuarterPounder")
 	assert.NotNil(t, quarterPounder.Value)
@@ -601,19 +602,19 @@ func TestCreateDocument_Components_RequestBodies(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	requestBodies := components.RequestBodies.Value
-	assert.Len(t, requestBodies, 1)
+	assert.Equal(t, 1, requestBodies.Len())
 
 	burgerRequest := components.FindRequestBody("BurgerRequest")
 	assert.NotNil(t, burgerRequest.Value)
 	assert.Equal(t, "Give us the new burger!", burgerRequest.Value.Description.Value)
-	assert.Len(t, burgerRequest.Value.Content.Value, 1)
+	assert.Equal(t, 1, burgerRequest.Value.Content.Value.Len())
 }
 
 func TestCreateDocument_Components_Headers(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	headers := components.Headers.Value
-	assert.Len(t, headers, 1)
+	assert.Equal(t, 1, headers.Len())
 
 	useOil := components.FindHeader("UseOil")
 	assert.NotNil(t, useOil.Value)
@@ -625,7 +626,7 @@ func TestCreateDocument_Components_Links(t *testing.T) {
 	initTest()
 	components := doc.Components.Value
 	links := components.Links.Value
-	assert.Len(t, links, 2)
+	assert.Equal(t, 2, links.Len())
 
 	locateBurger := components.FindLink("LocateBurger")
 	assert.NotNil(t, locateBurger.Value)
@@ -646,11 +647,11 @@ func TestCreateDocument_Doc_Security(t *testing.T) {
 func TestCreateDocument_Callbacks(t *testing.T) {
 	initTest()
 	callbacks := doc.Components.Value.Callbacks.Value
-	assert.Len(t, callbacks, 1)
+	assert.Equal(t, 1, callbacks.Len())
 
 	bCallback := doc.Components.Value.FindCallback("BurgerCallback")
 	assert.NotNil(t, bCallback.Value)
-	assert.Len(t, callbacks, 1)
+	assert.Equal(t, 1, callbacks.Len())
 
 	exp := bCallback.Value.FindExpression("{$request.query.queryUrl}")
 	assert.NotNil(t, exp.Value)
@@ -791,7 +792,6 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 
 	// build low-level document model
 	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
-
 	if err != nil {
 		fmt.Printf("error: %s\n", err.Error())
 		panic("cannot build document")
@@ -851,7 +851,6 @@ func ExampleCreateDocument() {
 
 	// build low-level document model
 	document, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
-
 	if err != nil {
 		fmt.Printf("error: %s\n", err.Error())
 		panic("cannot build document")
