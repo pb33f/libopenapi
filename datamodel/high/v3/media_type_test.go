@@ -4,7 +4,8 @@
 package v3
 
 import (
-	"io/ioutil"
+	"context"
+	"os"
 	"strings"
 	"testing"
 
@@ -18,9 +19,9 @@ import (
 
 func TestMediaType_MarshalYAMLInline(t *testing.T) {
 	// load the petstore spec
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = v3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
 	if err != nil {
 		panic("broken something")
@@ -108,9 +109,9 @@ example: testing a nice mutation`
 
 func TestMediaType_MarshalYAML(t *testing.T) {
 	// load the petstore spec
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 	info, _ := datamodel.ExtractSpecInfo(data)
-	var err []error
+	var err error
 	lowDoc, err = v3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
 	if err != nil {
 		panic("broken something")
@@ -161,7 +162,7 @@ func TestMediaType_Examples(t *testing.T) {
 
 	var n v3.MediaType
 	_ = low.BuildModel(idxNode.Content[0], &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewMediaType(&n)
 

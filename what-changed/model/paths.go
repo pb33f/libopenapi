@@ -148,11 +148,16 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v3.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v3.PathItem])
-		for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
-			lKeys[pair.Key().Value] = pair.Value()
+
+		if lPath != nil {
+			for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
+				lKeys[pair.Key().Value] = pair.Value()
+			}
 		}
-		for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
-			rKeys[pair.Key().Value] = pair.Value()
+		if rPath != nil {
+			for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
+				rKeys[pair.Key().Value] = pair.Value()
+			}
 		}
 
 		// run every comparison in a thread.
@@ -201,7 +206,15 @@ func ComparePaths(l, r any) *PathsChanges {
 			pc.PathItemsChanges = pathChanges
 		}
 
-		pc.ExtensionChanges = CompareExtensions(lPath.Extensions, rPath.Extensions)
+		var lExt, rExt map[low.KeyReference[string]]low.ValueReference[any]
+		if lPath != nil {
+			lExt = lPath.Extensions
+		}
+		if rPath != nil {
+			rExt = rPath.Extensions
+		}
+
+		pc.ExtensionChanges = CompareExtensions(lExt, rExt)
 	}
 	pc.PropertyChanges = NewPropertyChanges(changes)
 	return pc

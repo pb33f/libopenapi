@@ -6,7 +6,8 @@ additionalProperties: false
 maxProperties: 1
 
 properties:
-
+  pencils:
+    $ref: '#/properties/property/properties/statistics'
   property:
     title: title of third prop in third doc
     type: object

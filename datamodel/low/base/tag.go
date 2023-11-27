@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -34,14 +35,14 @@ func (t *Tag) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and external docs for the Tag.
-func (t *Tag) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (t *Tag) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	t.Reference = new(low.Reference)
 	t.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, err := low.ExtractObject[*ExternalDoc](ExternalDocsLabel, root, idx)
+	extDocs, err := low.ExtractObject[*ExternalDoc](ctx, ExternalDocsLabel, root, idx)
 	t.ExternalDocs = extDocs
 	return err
 }
@@ -73,25 +74,3 @@ func (t *Tag) Hash() [32]byte {
 	f = append(f, keys...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
-
-// TODO: future mutation API experiment code is here. this snippet is to re-marshal the object.
-//func (t *Tag) MarshalYAML() (interface{}, error) {
-//	m := make(map[string]interface{})
-//	for i := range t.Extensions {
-//		m[i.Value] = t.Extensions[i].Value
-//	}
-//	if t.Name.Value != "" {
-//		m[NameLabel] = t.Name.Value
-//	}
-//	if t.Description.Value != "" {
-//		m[DescriptionLabel] = t.Description.Value
-//	}
-//	if t.ExternalDocs.Value != nil {
-//		m[ExternalDocsLabel] = t.ExternalDocs.Value
-//	}
-//	return m, nil
-//}
-//
-//func NewTag() *Tag {
-//	return new(Tag)
-//}

@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
@@ -40,7 +41,7 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
 
 	lowProxy := new(lowbase.SchemaProxy)
-	err := lowProxy.Build(nil, node.Content[0], idx)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
 	assert.NoError(t, err)
 
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
@@ -48,6 +49,9 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 	}
 
 	sp := NewSchemaProxy(&lowRef)
+
+	origin := sp.GetReferenceOrigin()
+	assert.Nil(t, origin)
 
 	rend, _ := sp.Render()
 	assert.Equal(t, "$ref: '#/components/schemas/nice'", strings.TrimSpace(string(rend)))
@@ -64,4 +68,9 @@ func TestCreateSchemaProxyRef(t *testing.T) {
 	sp := CreateSchemaProxyRef("#/components/schemas/MySchema")
 	assert.Equal(t, "#/components/schemas/MySchema", sp.GetReference())
 	assert.True(t, sp.IsReference())
+}
+
+func TestSchemaProxy_NoSchema_GetOrigin(t *testing.T) {
+	sp := &SchemaProxy{}
+	assert.Nil(t, sp.GetReferenceOrigin())
 }

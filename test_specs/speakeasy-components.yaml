@@ -1,0 +1,1452 @@
+components:
+  schemas:
+    readOnlyObject:
+      type: object
+      properties:
+        string:
+          type: string
+          readOnly: true
+        bool:
+          type: boolean
+          readOnly: true
+        num:
+          type: number
+          readOnly: true
+      required:
+        - string
+        - bool
+        - num
+    writeOnlyObject:
+      type: object
+      properties:
+        string:
+          type: string
+          writeOnly: true
+        bool:
+          type: boolean
+          writeOnly: true
+        num:
+          type: number
+          writeOnly: true
+      required:
+        - string
+        - bool
+        - num
+    readWriteObject:
+      type: object
+      properties:
+        num1:
+          type: integer
+          writeOnly: true
+        num2:
+          type: integer
+          writeOnly: true
+        num3:
+          type: integer
+        sum:
+          type: integer
+          readOnly: true
+      required:
+        - num1
+        - num2
+        - num3
+        - sum
+    stronglyTypedOneOfObject:
+      oneOf:
+        - $ref: "#/components/schemas/simpleObjectWithType"
+        - $ref: "#/components/schemas/deepObjectWithType"
+      discriminator:
+        propertyName: type
+    weaklyTypedOneOfObject:
+      oneOf:
+        - $ref: "#/components/schemas/simpleObject"
+        - $ref: "#/components/schemas/deepObject"
+    weaklyTypedOneOfReadOnlyObject:
+      oneOf:
+        - $ref: "#/components/schemas/simpleObject"
+        - $ref: "#/components/schemas/readOnlyObject"
+    weaklyTypedOneOfWriteOnlyObject:
+      oneOf:
+        - $ref: "#/components/schemas/simpleObject"
+        - $ref: "#/components/schemas/writeOnlyObject"
+    weaklyTypedOneOfReadWriteObject:
+      oneOf:
+        - $ref: "#/components/schemas/simpleObject"
+        - $ref: "#/components/schemas/readWriteObject"
+    typedObjectOneOf:
+      oneOf:
+        - $ref: "#/components/schemas/typedObject1"
+        - $ref: "#/components/schemas/typedObject2"
+        - $ref: "#/components/schemas/typedObject3"
+    typedObjectNullableOneOf:
+      oneOf:
+        - $ref: "#/components/schemas/typedObject1"
+        - $ref: "#/components/schemas/typedObject2"
+        - type: "null"
+    flattenedTypedObject1:
+      oneOf:
+        - $ref: "#/components/schemas/typedObject1"
+    nullableTypedObject1:
+      oneOf:
+        - $ref: "#/components/schemas/typedObject1"
+        - type: "null"
+    typedObject1:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - "obj1"
+        value:
+          type: string
+      required:
+        - type
+        - value
+    typedObject2:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - "obj2"
+        value:
+          type: string
+      required:
+        - type
+        - value
+    typedObject3:
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - "obj3"
+        value:
+          type: string
+      required:
+        - type
+        - value
+    httpBinSimpleJsonObject:
+      type: object
+      properties:
+        slideshow:
+          type: object
+          properties:
+            author:
+              type: string
+            date:
+              type: string
+            title:
+              type: string
+            slides:
+              type: array
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  type:
+                    type: string
+                  items:
+                    type: array
+                    items:
+                      type: string
+                required:
+                  - title
+                  - type
+          required:
+            - author
+            - date
+            - title
+            - slides
+      required:
+        - slideshow
+    enum:
+      type: string
+      description: "A string based enum"
+      enum:
+        - "one"
+        - "two"
+        - "three"
+        - "four_and_more"
+      example: "one"
+    simpleObject:
+      description: "A simple object that uses all our supported primitive types and enums and has optional properties."
+      externalDocs:
+        description: "A link to the external docs."
+        url: "https://docs.speakeasyapi.dev"
+      type: object
+      properties:
+        str:
+          type: string
+          description: "A string property."
+          example: "test"
+        bool:
+          type: boolean
+          description: "A boolean property."
+          example: true
+        int:
+          type: integer
+          description: "An integer property."
+          example: 1
+        int32:
+          type: integer
+          format: int32
+          description: "An int32 property."
+          example: 1
+        num:
+          type: number
+          description: "A number property."
+          example: 1.1
+        float32:
+          type: number
+          format: float
+          description: "A float32 property."
+          example: 1.1
+        enum:
+          $ref: "#/components/schemas/enum"
+        date:
+          type: string
+          format: date
+          description: "A date property."
+          example: "2020-01-01"
+        dateTime:
+          type: string
+          format: date-time
+          description: "A date-time property."
+          example: "2020-01-01T00:00:00.000000001Z"
+        any:
+          description: "An any property."
+          example: "any"
+        strOpt:
+          type: string
+          description: "An optional string property."
+          example: "testOptional"
+        boolOpt:
+          type: boolean
+          description: "An optional boolean property."
+          example: true
+        intOptNull:
+          type: integer
+          description: "An optional integer property will be null for tests."
+        numOptNull:
+          type: number
+          description: "An optional number property will be null for tests."
+        intEnum:
+          type: integer
+          description: "An integer enum property."
+          enum:
+            - 1
+            - 2
+            - 3
+          example: 2
+          x-speakeasy-enums:
+            - First
+            - Second
+            - Third
+        int32Enum:
+          type: integer
+          format: int32
+          description: "An int32 enum property."
+          enum:
+            - 55
+            - 69
+            - 181
+          example: 55
+        bigint:
+          type: integer
+          format: bigint
+          example: 8821239038968084
+        bigintStr:
+          type: string
+          format: bigint
+          example: "9223372036854775808"
+        decimal:
+          type: number
+          format: decimal
+          example: 3.141592653589793
+        decimalStr:
+          type: string
+          format: decimal
+          example: "3.14159265358979344719667586"
+      required:
+        - str
+        - bool
+        - int
+        - int32
+        - num
+        - float32
+        - enum
+        - date
+        - dateTime
+        - any
+        - intEnum
+        - int32Enum
+    simpleObjectCamelCase:
+      description: "A simple object that uses all our supported primitive types and enums and has optional properties."
+      externalDocs:
+        description: "A link to the external docs."
+        url: "https://docs.speakeasyapi.dev"
+      type: object
+      properties:
+        str_val:
+          type: string
+          description: "A string property."
+          example: "example"
+        bool_val:
+          type: boolean
+          description: "A boolean property."
+          example: true
+        int_val:
+          type: integer
+          description: "An integer property."
+          example: 999999
+        int32_val:
+          type: integer
+          format: int32
+          description: "An int32 property."
+          example: 1
+        num_val:
+          type: number
+          description: "A number property."
+          example: 1.1
+        float32_val:
+          type: number
+          format: float
+          description: "A float32 property."
+          example: 2.2222222
+        enum_val:
+          $ref: "#/components/schemas/enum"
+        date_val:
+          type: string
+          format: date
+          description: "A date property."
+          example: "2020-01-01"
+        date_time_val:
+          type: string
+          format: date-time
+          description: "A date-time property."
+          example: "2020-01-01T00:00:00Z"
+        any_val:
+          description: "An any property."
+          example: "any example"
+        str_opt_val:
+          type: string
+          description: "An optional string property."
+          example: "optional example"
+        bool_opt_val:
+          type: boolean
+          description: "An optional boolean property."
+          example: true
+        int_opt_null_val:
+          type: integer
+          description: "An optional integer property will be null for tests."
+          example: 999999
+        num_opt_null_val:
+          type: number
+          description: "An optional number property will be null for tests."
+          example: 1.1
+        int_enum_val:
+          type: integer
+          description: "An integer enum property."
+          enum:
+            - 1
+            - 2
+            - 3
+          example: 3
+          x-speakeasy-enums:
+            - First
+            - Second
+            - Third
+        int32_enum_val:
+          type: integer
+          format: int32
+          description: "An int32 enum property."
+          enum:
+            - 55
+            - 69
+            - 181
+          example: 69
+        bigint_val:
+          type: integer
+          format: bigint
+        bigint_str_val:
+          type: string
+          format: bigint
+        decimal_val:
+          type: number
+          format: decimal
+      required:
+        - str_val
+        - bool_val
+        - int_val
+        - int32_val
+        - num_val
+        - float32_val
+        - enum_val
+        - date_val
+        - date_time_val
+        - any_val
+        - int_enum_val
+        - int32_enum_val
+    simpleObjectWithType:
+      allOf:
+        - $ref: "#/components/schemas/simpleObject"
+        - type: object
+          properties:
+            type:
+              type: string
+          required:
+            - type
+    deepObject:
+      type: object
+      properties:
+        str:
+          type: string
+          example: "test"
+        bool:
+          type: boolean
+          example: true
+        int:
+          type: integer
+          example: 1
+        num:
+          type: number
+          example: 1.1
+        obj:
+          $ref: "#/components/schemas/simpleObject"
+        map:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/simpleObject"
+          example: { "key": "...", "key2": "..." }
+        arr:
+          type: array
+          items:
+            $ref: "#/components/schemas/simpleObject"
+          example: ["...", "..."]
+        any:
+          anyOf:
+            - $ref: "#/components/schemas/simpleObject"
+            - type: string
+          example: "anyOf[0]"
+        type:
+          type: string
+      required:
+        - str
+        - bool
+        - int
+        - num
+        - obj
+        - map
+        - arr
+        - any
+    deepObjectCamelCase:
+      type: object
+      properties:
+        str_val:
+          type: string
+        bool_val:
+          type: boolean
+        int_val:
+          type: integer
+        num_val:
+          type: number
+        obj_val:
+          $ref: "#/components/schemas/simpleObjectCamelCase"
+        map_val:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/simpleObjectCamelCase"
+        arr_val:
+          type: array
+          items:
+            $ref: "#/components/schemas/simpleObjectCamelCase"
+        any_val:
+          anyOf:
+            - $ref: "#/components/schemas/simpleObjectCamelCase"
+            - type: string
+        type:
+          type: string
+      required:
+        - str_val
+        - bool_val
+        - int_val
+        - num_val
+        - obj_val
+        - map_val
+        - arr_val
+        - any_val
+    deepObjectWithType:
+      allOf:
+        - $ref: "#/components/schemas/deepObject"
+        - type: object
+          properties:
+            type:
+              type: string
+    fakerFormattedStrings:
+      type: object
+      description: A set of strings with format values that lead to relevant examples being generated for them
+      properties:
+        imageFormat:
+          format: image
+          type: string
+          description: A field that will have a image url generated as example
+        addressFormat:
+          format: address
+          type: string
+          description: A field that will have an address generated as example
+        timezoneFormat:
+          format: timezone
+          type: string
+          description: A field that will have a timezone generated as example
+        zipcodeFormat:
+          format: zipcode
+          type: string
+          description: A field that will have a postal code generated as example
+        jsonFormat:
+          format: json
+          type: string
+          description: A field that will have a JSON generated as example
+        uuidFormat:
+          format: uuid
+          type: string
+          description: A field that will have a UUID generated as example
+        domainFormat:
+          format: domain
+          type: string
+          description: A field that will have a domain name generated as example
+        emailFormat:
+          format: email
+          type: string
+          description: A field that will have an email address generated as example
+        ipv4Format:
+          format: ipv4
+          type: string
+          description: A field that will have an IPv4 address generated as example
+        ipv6Format:
+          format: ipv6
+          type: string
+          description: A field that will have an IPv6 address generated as example
+        macFormat:
+          format: mac
+          type: string
+          description: A field that will have a MAC address generated as example
+        passwordFormat:
+          format: password
+          type: string
+          description: A field that will have a fake password generated as example
+        urlFormat:
+          format: url
+          type: string
+          description: A field that will have a URL generated as example
+        phoneFormat:
+          format: phone
+          type: string
+          description: A field that will have a phone number generated as example
+        filenameFormat:
+          format: filename
+          type: string
+          description: A field that will have a filename generated as example
+        directoryFormat:
+          format: directory
+          type: string
+          description: A field that will have a directory path generated as example
+        filepathFormat:
+          format: filepath
+          type: string
+          description: A field that will have a file path generated as example
+        unknownFormat:
+          format: unknown
+          type: string
+          description: A field that will have random words generated as example
+    fakerStrings:
+      type: object
+      description: A set of strings with fieldnames that lead to relevant examples being generated for them
+      properties:
+        City:
+          type: string
+        country:
+          type: string
+        country_code:
+          type: string
+        latitude:
+          type: string
+        longitude:
+          type: string
+        street:
+          type: string
+        address:
+          type: string
+        timezone:
+          type: string
+        postal-code:
+          type: string
+        color:
+          type: string
+        price:
+          type: string
+        product:
+          type: string
+        material:
+          type: string
+        comment:
+          type: string
+        description:
+          type: string
+        company:
+          type: string
+        datatype:
+          type: string
+        json:
+          type: string
+        uuid:
+          type: string
+        account:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        IBAN:
+          type: string
+        pin:
+          type: string
+        avatar:
+          type: string
+        domainName:
+          type: string
+        emailAddr:
+          type: string
+        IPv4:
+          type: string
+        IPv6:
+          type: string
+        mac:
+          type: string
+        password:
+          type: string
+        url:
+          type: string
+        username:
+          type: string
+        firstName:
+          type: string
+        fullName:
+          type: string
+        gender:
+          type: string
+        job:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+        sex:
+          type: string
+        phone:
+          type: string
+        locale:
+          type: string
+        unit:
+          type: string
+        extension:
+          type: string
+        filename:
+          type: string
+        filetype:
+          type: string
+        directory:
+          type: string
+        filepath:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        key:
+          type: string
+        ID:
+          type: string
+        default:
+          type: string
+    authServiceRequestBody:
+      type: object
+      properties:
+        headerAuth:
+          type: array
+          items:
+            type: object
+            properties:
+              headerName:
+                type: string
+              expectedValue:
+                type: string
+            required:
+              - headerName
+              - expectedValue
+        basicAuth:
+          type: object
+          properties:
+            username:
+              type: string
+            password:
+              type: string
+          required:
+            - username
+            - password
+    arrValue:
+      type: array
+      items:
+        $ref: "#/components/schemas/simpleObject"
+    arrValueCamelCase:
+      type: array
+      items:
+        $ref: "#/components/schemas/simpleObjectCamelCase"
+    arrArrValue:
+      type: array
+      items:
+        type: array
+        items:
+          $ref: "#/components/schemas/simpleObject"
+    arrArrValueCamelCase:
+      type: array
+      items:
+        type: array
+        items:
+          $ref: "#/components/schemas/simpleObjectCamelCase"
+    arrObjValue:
+      type: object
+      properties:
+        json:
+          items:
+            $ref: "#/components/schemas/simpleObject"
+          type: array
+        required:
+          - json
+    arrObjValueCamelCase:
+      type: object
+      properties:
+        json:
+          items:
+            $ref: "#/components/schemas/simpleObjectCamelCase"
+          type: array
+        required:
+          - json
+    mapValue:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/simpleObject"
+    mapValueCamelCase:
+      type: object
+      additionalProperties:
+        $ref: "#/components/schemas/simpleObjectCamelCase"
+    mapMapValue:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties:
+          $ref: "#/components/schemas/simpleObject"
+    mapMapValueCamelCase:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties:
+          $ref: "#/components/schemas/simpleObjectCamelCase"
+    mapObjValue:
+      type: object
+      properties:
+        json:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/simpleObject"
+        required:
+          - json
+    mapObjValueCamelCase:
+      type: object
+      properties:
+        json:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/simpleObjectCamelCase"
+        required:
+          - json
+    arrMapValue:
+      type: array
+      items:
+        type: object
+        additionalProperties:
+          $ref: "#/components/schemas/simpleObject"
+    arrMapValueCamelCase:
+      type: array
+      items:
+        type: object
+        additionalProperties:
+          $ref: "#/components/schemas/simpleObjectCamelCase"
+    mapArrValue:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          $ref: "#/components/schemas/simpleObject"
+    mapArrValueCamelCase:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          $ref: "#/components/schemas/simpleObjectCamelCase"
+    arrPrimitiveValue:
+      type: array
+      items:
+        type: string
+    mapPrimitiveValue:
+      type: object
+      additionalProperties:
+        type: string
+    arrArrPrimitiveValue:
+      type: array
+      items:
+        type: array
+        items:
+          type: string
+    mapMapPrimitiveValue:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties:
+          type: string
+    orphanedObject:
+      x-speakeasy-include: true
+      type: object
+      properties:
+        orphaned:
+          type: string
+        required:
+          - orphaned
+    validCircularReferenceObject:
+      type: object
+      properties:
+        circular:
+          type: array
+          items:
+            $ref: "#/components/schemas/validCircularReferenceObject"
+    arrayCircularReferenceObject:
+      type: array
+      items:
+        type: object
+        properties:
+          circular:
+            $ref: "#/components/schemas/arrayCircularReferenceObject"
+        required:
+          - circular
+    objectCircularReferenceObject:
+      type: object
+      properties:
+        circular:
+          $ref: "#/components/schemas/objectCircularReferenceObject"
+    oneOfCircularReferenceObject:
+      type: object
+      properties:
+        child:
+          oneOf:
+            - $ref: "#/components/schemas/oneOfCircularReferenceObject"
+            - $ref: "#/components/schemas/simpleObject"
+      required:
+        - child
+    deprecatedObject:
+      type: object
+      deprecated: true
+      x-speakeasy-deprecation-message: This object is deprecated
+      properties:
+        str:
+          type: string
+    deprecatedFieldInObject:
+      type: object
+      properties:
+        deprecatedField:
+          type: string
+          deprecated: true
+          x-speakeasy-deprecation-replacement: newField
+        deprecatedEnum:
+          type: string
+          enum: ["a", "b", "c"]
+          deprecated: true
+          x-speakeasy-deprecation-message: This enum is deprecated
+        newField:
+          type: string
+    limitOffsetConfig:
+      type: object
+      properties:
+        offset:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+          x-speakeasy-error-message: true
+        type:
+          $ref: "#/components/schemas/errorType"
+    errorType:
+      type: string
+      enum:
+        - "not_found"
+        - "invalid"
+        - "internal"
+    complexNumberTypes:
+      type: object
+      properties:
+        bigintStr:
+          type: string
+          format: bigint
+        bigint:
+          type: integer
+          format: bigint
+        decimal:
+          type: number
+          format: decimal
+        decimalStr:
+          type: string
+          format: decimal
+      required:
+        - bigintStr
+        - bigint
+        - decimal
+        - decimalStr
+    defaultsAndConsts:
+      type: object
+      properties:
+        normalField:
+          type: string
+        constStr:
+          type: string
+          const: "const"
+        constStrNull:
+          type: string
+          const: null
+          nullable: true
+        constInt:
+          type: integer
+          const: 123
+        constNum:
+          type: number
+          const: 123.456
+        constBool:
+          type: boolean
+          const: true
+        constDate:
+          type: string
+          format: date
+          const: "2020-01-01"
+        constDateTime:
+          type: string
+          format: date-time
+          const: "2020-01-01T00:00:00Z"
+        constEnumStr:
+          type: string
+          enum:
+            - "one"
+            - "two"
+            - "three"
+          const: "two"
+        constEnumInt:
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+          const: 2
+        constBigInt:
+          type: integer
+          format: bigint
+          const: 9007199254740991
+        constBigIntStr:
+          type: string
+          format: bigint
+          const: "9223372036854775807"
+        constDecimal:
+          type: number
+          format: decimal
+          const: 3.141592653589793
+        constDecimalStr:
+          type: string
+          format: decimal
+          const: "3.141592653589793238462643383279"
+        defaultStr:
+          type: string
+          default: "default"
+        defaultStrNullable:
+          type: string
+          default: null
+          nullable: true
+        defaultStrOptional:
+          type: string
+          default: "default"
+        defaultInt:
+          type: integer
+          default: 123
+        defaultNum:
+          type: number
+          default: 123.456
+        defaultBool:
+          type: boolean
+          default: true
+        defaultDate:
+          type: string
+          format: date
+          default: "2020-01-01"
+        defaultDateTime:
+          type: string
+          format: date-time
+          default: "2020-01-01T00:00:00Z"
+        defaultEnumStr:
+          type: string
+          enum:
+            - "one"
+            - "two"
+            - "three"
+          default: "two"
+        defaultEnumInt:
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+          default: 2
+        defaultBigInt:
+          type: integer
+          format: bigint
+          default: 9007199254740991
+        defaultBigIntStr:
+          type: string
+          format: bigint
+          default: "9223372036854775807"
+        defaultDecimal:
+          type: number
+          format: decimal
+          default: 3.141592653589793
+        defaultDecimalStr:
+          type: string
+          format: decimal
+          default: "3.141592653589793238462643383279"
+      required:
+        - normalField
+        - constStr
+        - constStrNull
+        - constInt
+        - constNum
+        - constBool
+        - constDate
+        - constDateTime
+        - constEnumStr
+        - constEnumInt
+        - constBigInt
+        - constBigIntStr
+        - constDecimal
+        - constDecimalStr
+        - defaultStr
+        - defaultStrNullable
+        - defaultInt
+        - defaultNum
+        - defaultBool
+        - defaultDate
+        - defaultDateTime
+        - defaultEnumStr
+        - defaultEnumInt
+        - defaultBigInt
+        - defaultBigIntStr
+        - defaultDecimal
+        - defaultDecimalStr
+    defaultsAndConstsOutput:
+      type: object
+      properties:
+        normalField:
+          type: string
+        constStr:
+          type: string
+        constStrNull:
+          type: string
+          nullable: true
+        constInt:
+          type: integer
+        constNum:
+          type: number
+        constBool:
+          type: boolean
+        constDate:
+          type: string
+          format: date
+        constDateTime:
+          type: string
+          format: date-time
+        constEnumStr:
+          type: string
+          enum:
+            - "one"
+            - "two"
+            - "three"
+        constEnumInt:
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+        constBigInt:
+          type: integer
+          format: bigint
+        constBigIntStr:
+          type: string
+          format: bigint
+        constDecimal:
+          type: number
+          format: decimal
+        constDecimalStr:
+          type: string
+          format: decimal
+        defaultStr:
+          type: string
+        defaultStrNullable:
+          type: string
+          nullable: true
+        defaultStrOptional:
+          type: string
+        defaultInt:
+          type: integer
+        defaultNum:
+          type: number
+        defaultBool:
+          type: boolean
+        defaultDate:
+          type: string
+          format: date
+        defaultDateTime:
+          type: string
+          format: date-time
+        defaultEnumStr:
+          type: string
+          enum:
+            - "one"
+            - "two"
+            - "three"
+        defaultEnumInt:
+          type: integer
+          enum:
+            - 1
+            - 2
+            - 3
+        defaultBigInt:
+          type: integer
+          format: bigint
+        defaultBigIntStr:
+          type: string
+          format: bigint
+        defaultDecimal:
+          type: number
+          format: decimal
+        defaultDecimalStr:
+          type: string
+          format: decimal
+      required:
+        - normalField
+        - constStr
+        - constStrNull
+        - constInt
+        - constNum
+        - constBool
+        - constDate
+        - constDateTime
+        - constEnumStr
+        - constEnumInt
+        - constBigInt
+        - constBigIntStr
+        - constDecimal
+        - constDecimalStr
+        - defaultStr
+        - defaultStrNullable
+        - defaultInt
+        - defaultNum
+        - defaultBool
+        - defaultDate
+        - defaultDateTime
+        - defaultEnumStr
+        - defaultEnumInt
+        - defaultBigInt
+        - defaultBigIntStr
+        - defaultDecimal
+        - defaultDecimalStr
+    objWithStringAdditionalProperties:
+      type: object
+      properties:
+        normalField:
+          type: string
+      additionalProperties:
+        type: string
+      required:
+        - normalField
+    objWithComplexNumbersAdditionalProperties:
+      type: object
+      properties:
+        normalField:
+          type: string
+      additionalProperties:
+        type: string
+        format: bigint
+      required:
+        - normalField
+    objWithZeroValueComplexTypePtrs:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          description: "A date property."
+          example: "2020-01-01"
+        dateTime:
+          type: string
+          format: date-time
+          description: "A date-time property."
+          example: "2020-01-01T00:00:00Z"
+        bigint:
+          type: integer
+          format: bigint
+        bigintStr:
+          type: string
+          format: bigint
+        decimal:
+          type: number
+          format: decimal
+    objWithDateAdditionalProperties:
+      type: object
+      properties:
+        normalField:
+          type: string
+      additionalProperties:
+        type: string
+        format: date
+      required:
+        - normalField
+    objWithObjAdditionalProperties:
+      type: object
+      required:
+        - datetime
+        - AdditionalProperties
+      properties:
+        datetime:
+          type: string
+          format: date-time
+        AdditionalProperties:
+          type: array
+          items:
+            type: integer
+      additionalProperties:
+        $ref: "#/components/schemas/simpleObject"
+  responses:
+    tokenAuthResponse:
+      description: Successful authentication.
+      content:
+        application/json:
+          schema:
+            title: token
+            type: object
+            properties:
+              authenticated:
+                type: boolean
+              token:
+                type: string
+            required:
+              - authenticated
+              - token
+    simpleObjectFormResponse:
+      description: OK
+      content:
+        application/json:
+          schema:
+            title: res
+            type: object
+            properties:
+              form:
+                type: object
+                properties:
+                  str:
+                    type: string
+                  bool:
+                    type: string
+                  int:
+                    type: string
+                  int32:
+                    type: string
+                  num:
+                    type: string
+                  float32:
+                    type: string
+                  enum:
+                    type: string
+                  date:
+                    type: string
+                  dateTime:
+                    type: string
+                  any:
+                    type: string
+                  strOpt:
+                    type: string
+                  boolOpt:
+                    type: string
+                  intOptNull:
+                    type: string
+                  numOptNull:
+                    type: string
+                required:
+                  - str
+                  - bool
+                  - int
+                  - int32
+                  - num
+                  - float32
+                  - enum
+                  - date
+                  - dateTime
+                  - any
+            required:
+              - form
+    deepObjectFormResponse:
+      description: OK
+      content:
+        application/json:
+          schema:
+            title: res
+            type: object
+            properties:
+              form:
+                type: object
+                properties:
+                  str:
+                    type: string
+                  bool:
+                    type: string
+                  int:
+                    type: string
+                  num:
+                    type: string
+                  obj:
+                    type: string
+                  map:
+                    type: string
+                  arr:
+                    type: string
+                required:
+                  - str
+                  - bool
+                  - int
+                  - num
+                  - obj
+                  - map
+                  - arr
+            required:
+              - form
+    paginationResponse:
+      description: OK
+      content:
+        application/json:
+          schema:
+            title: res
+            type: object
+            properties:
+              numPages:
+                type: integer
+              resultArray:
+                type: array
+                items:
+                  type: integer
+            required:
+              - numPages
+              - resultArray
+  parameters:
+    emptyObjectParam:
+      name: emptyObject
+      in: path
+      required: true
+      schema:
+        type: object
+        properties: {}
+    strPathParam:
+      name: strParam
+      in: path
+      required: true
+      schema:
+        type: string
+        example: test
+    boolPathParam:
+      name: boolParam
+      in: path
+      required: true
+      schema:
+        type: boolean
+        example: true
+    intPathParam:
+      name: intParam
+      in: path
+      required: true
+      schema:
+        type: integer
+        example: 1
+    numPathParam:
+      name: numParam
+      in: path
+      required: true
+      schema:
+        type: number
+        example: 1.1
+    refQueryParamObjExploded:
+      name: refObjParamExploded
+      in: query
+      explode: true
+      schema:
+        type: object
+        properties:
+          str:
+            type: string
+            example: test
+          bool:
+            type: boolean
+            example: true
+          int:
+            type: integer
+            example: 1
+          num:
+            type: number
+            example: 1.1
+        required:
+          - str
+          - bool
+          - int
+          - num
+    refQueryParamObj:
+      name: refObjParam
+      in: query
+      explode: false
+      schema:
+        type: object
+        properties:
+          str:
+            type: string
+            example: test
+          bool:
+            type: boolean
+            example: true
+          int:
+            type: integer
+            example: 1
+          num:
+            type: number
+            example: 1.1
+        required:
+          - str
+          - bool
+          - int
+          - num

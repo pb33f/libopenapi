@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"sync"
@@ -112,6 +113,15 @@ func (sp *SchemaProxy) GetReference() string {
 		return sp.refStr
 	}
 	return sp.schema.Value.GetSchemaReference()
+}
+
+// GetReferenceOrigin returns a pointer to the index.NodeOrigin of the $ref if this SchemaProxy is a reference to another Schema.
+// returns nil if the origin cannot be found (which, means there is a bug, and we need to fix it).
+func (sp *SchemaProxy) GetReferenceOrigin() *index.NodeOrigin {
+	if sp.schema != nil {
+		return sp.schema.Value.GetSchemaReferenceLocation()
+	}
+	return nil
 }
 
 // BuildSchema operates the same way as Schema, except it will return any error along with the *Schema

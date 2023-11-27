@@ -1,0 +1,6 @@
+type: object
+description: I am a utility for dir2
+properties:
+  message:
+    type: object
+    description: I am pointless dir2 utility, I am multiple levels deep.

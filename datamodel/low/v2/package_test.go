@@ -5,8 +5,10 @@ package v2
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"os"
+
 	"github.com/pb33f/libopenapi/datamodel"
-	"io/ioutil"
 )
 
 // How to create a low-level Swagger / OpenAPI 2 Document from a specification
@@ -15,18 +17,19 @@ func Example_createLowLevelSwaggerDocument() {
 	// How to create a low-level OpenAPI 2 Document
 
 	// load petstore into bytes
-	petstoreBytes, _ := ioutil.ReadFile("../../../test_specs/petstorev2.json")
+	petstoreBytes, _ := os.ReadFile("../../../test_specs/petstorev2.json")
 
 	// read in specification
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
+	errs := utils.UnwrapErrors(err)
+	if len(errs) > 0 {
+		for i := range errs {
+			fmt.Printf("error: %s\n", errs[i].Error())
 		}
 		panic("cannot build document")
 	}
@@ -43,18 +46,19 @@ func ExampleCreateDocument() {
 	// How to create a low-level OpenAPI 2 Document
 
 	// load petstore into bytes
-	petstoreBytes, _ := ioutil.ReadFile("../../../test_specs/petstorev2.json")
+	petstoreBytes, _ := os.ReadFile("../../../test_specs/petstorev2.json")
 
 	// read in specification
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
+	errs := utils.UnwrapErrors(err)
+	if len(errs) > 0 {
+		for i := range errs {
+			fmt.Printf("error: %s\n", errs[i].Error())
 		}
 		panic("cannot build document")
 	}

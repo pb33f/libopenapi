@@ -5,7 +5,8 @@ package v3
 
 import (
 	"fmt"
-	"io/ioutil"
+	"github.com/pb33f/libopenapi/utils"
+	"os"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -15,22 +16,19 @@ import (
 // An example of how to create a new high-level OpenAPI 3+ document from an OpenAPI specification.
 func Example_createHighLevelOpenAPIDocument() {
 	// Load in an OpenAPI 3+ specification as a byte slice.
-	data, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	data, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 
 	// Create a new *datamodel.SpecInfo from bytes.
 	info, _ := datamodel.ExtractSpecInfo(data)
 
-	var err []error
+	var err error
 
 	// Create a new low-level Document, capture any errors thrown during creation.
-	lowDoc, err = lowv3.CreateDocument(info)
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// Get upset if any errors were thrown.
-	if len(err) > 0 {
-		for i := range err {
-			fmt.Printf("error: %e", err[i])
-		}
-		panic("something went wrong")
+	for i := range utils.UnwrapErrors(err) {
+		fmt.Printf("error: %v", i)
 	}
 
 	// Create a high-level Document from the low-level one.

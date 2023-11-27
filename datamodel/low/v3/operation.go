@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -58,21 +59,21 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 }
 
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
-func (o *Operation) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (o *Operation) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
 
 	// extract externalDocs
-	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](base.ExternalDocsLabel, root, idx)
+	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](ctx, base.ExternalDocsLabel, root, idx)
 	if dErr != nil {
 		return dErr
 	}
 	o.ExternalDocs = extDocs
 
 	// extract parameters
-	params, ln, vn, pErr := low.ExtractArray[*Parameter](ParametersLabel, root, idx)
+	params, ln, vn, pErr := low.ExtractArray[*Parameter](ctx, ParametersLabel, root, idx)
 	if pErr != nil {
 		return pErr
 	}
@@ -85,21 +86,21 @@ func (o *Operation) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// extract request body
-	rBody, rErr := low.ExtractObject[*RequestBody](RequestBodyLabel, root, idx)
+	rBody, rErr := low.ExtractObject[*RequestBody](ctx, RequestBodyLabel, root, idx)
 	if rErr != nil {
 		return rErr
 	}
 	o.RequestBody = rBody
 
 	// extract responses
-	respBody, respErr := low.ExtractObject[*Responses](ResponsesLabel, root, idx)
+	respBody, respErr := low.ExtractObject[*Responses](ctx, ResponsesLabel, root, idx)
 	if respErr != nil {
 		return respErr
 	}
 	o.Responses = respBody
 
 	// extract callbacks
-	callbacks, cbL, cbN, cbErr := low.ExtractMap[*Callback](CallbacksLabel, root, idx)
+	callbacks, cbL, cbN, cbErr := low.ExtractMap[*Callback](ctx, CallbacksLabel, root, idx)
 	if cbErr != nil {
 		return cbErr
 	}
@@ -112,7 +113,7 @@ func (o *Operation) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// extract security
-	sec, sln, svn, sErr := low.ExtractArray[*base.SecurityRequirement](SecurityLabel, root, idx)
+	sec, sln, svn, sErr := low.ExtractArray[*base.SecurityRequirement](ctx, SecurityLabel, root, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -137,7 +138,7 @@ func (o *Operation) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// extract servers
-	servers, sl, sn, serErr := low.ExtractArray[*Server](ServersLabel, root, idx)
+	servers, sl, sn, serErr := low.ExtractArray[*Server](ctx, ServersLabel, root, idx)
 	if serErr != nil {
 		return serErr
 	}

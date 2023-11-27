@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"context"
 	"crypto/sha256"
 	"sort"
 	"strings"
@@ -73,7 +74,7 @@ func (s *SecurityDefinitions) FindSecurityDefinition(securityDef string) *low.Va
 }
 
 // Build will extract all definitions into SchemaProxy instances.
-func (d *Definitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (d *Definitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	// TODO: Refactor with orderedmap.TranslatePipeline.
@@ -84,7 +85,7 @@ func (d *Definitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 		r chan definitionResult[*base.SchemaProxy], e chan error) {
 
-		obj, err, _, rv := low.ExtractObjectRaw[*base.SchemaProxy](label, value, idx)
+		obj, err, _, rv := low.ExtractObjectRaw[*base.SchemaProxy](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}
@@ -137,7 +138,7 @@ func (d *Definitions) Hash() [32]byte {
 }
 
 // Build will extract all ParameterDefinitions into Parameter instances.
-func (pd *ParameterDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (pd *ParameterDefinitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
 	resultChan := make(chan definitionResult[*Parameter])
 	var defLabel *yaml.Node
@@ -145,7 +146,7 @@ func (pd *ParameterDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) 
 	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 		r chan definitionResult[*Parameter], e chan error) {
 
-		obj, err, _, rv := low.ExtractObjectRaw[*Parameter](label, value, idx)
+		obj, err, _, rv := low.ExtractObjectRaw[*Parameter](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}
@@ -187,7 +188,7 @@ type definitionResult[T any] struct {
 }
 
 // Build will extract all ResponsesDefinitions into Response instances.
-func (r *ResponsesDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (r *ResponsesDefinitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
 	resultChan := make(chan definitionResult[*Response])
 	var defLabel *yaml.Node
@@ -195,7 +196,7 @@ func (r *ResponsesDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) e
 	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 		r chan definitionResult[*Response], e chan error) {
 
-		obj, err, _, rv := low.ExtractObjectRaw[*Response](label, value, idx)
+		obj, err, _, rv := low.ExtractObjectRaw[*Response](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}
@@ -231,7 +232,7 @@ func (r *ResponsesDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) e
 }
 
 // Build will extract all SecurityDefinitions into SecurityScheme instances.
-func (s *SecurityDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (s *SecurityDefinitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	errorChan := make(chan error)
 	resultChan := make(chan definitionResult[*SecurityScheme])
 	var defLabel *yaml.Node
@@ -240,7 +241,7 @@ func (s *SecurityDefinitions) Build(_, root *yaml.Node, idx *index.SpecIndex) er
 	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 		r chan definitionResult[*SecurityScheme], e chan error) {
 
-		obj, err, _, rv := low.ExtractObjectRaw[*SecurityScheme](label, value, idx)
+		obj, err, _, rv := low.ExtractObjectRaw[*SecurityScheme](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}

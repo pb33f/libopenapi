@@ -4,17 +4,18 @@
 package reports
 
 import (
+	"os"
+	"testing"
+
 	"github.com/pb33f/libopenapi"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"testing"
 )
 
 func createDiff() *model.DocumentChanges {
-	burgerShopOriginal, _ := ioutil.ReadFile("../../test_specs/burgershop.openapi.yaml")
-	burgerShopUpdated, _ := ioutil.ReadFile("../../test_specs/burgershop.openapi-modified.yaml")
+	burgerShopOriginal, _ := os.ReadFile("../../test_specs/burgershop.openapi.yaml")
+	burgerShopUpdated, _ := os.ReadFile("../../test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := libopenapi.NewDocument(burgerShopOriginal)
 	updatedDoc, _ := libopenapi.NewDocument(burgerShopUpdated)
 	documentChanges, _ := libopenapi.CompareDocuments(originalDoc, updatedDoc)

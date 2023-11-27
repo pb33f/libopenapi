@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -56,14 +57,14 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 }
 
 // Build will extract headers, extensions, content and links from node.
-func (r *Response) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
 
 	//extract headers
-	headers, lN, kN, err := low.ExtractMapExtensions[*Header](HeadersLabel, root, idx, true)
+	headers, lN, kN, err := low.ExtractMapExtensions[*Header](ctx, HeadersLabel, root, idx, true)
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (r *Response) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	con, clN, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
+	con, clN, cN, cErr := low.ExtractMap[*MediaType](ctx, ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}
@@ -88,7 +89,7 @@ func (r *Response) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle links if set
-	links, linkLabel, linkValue, lErr := low.ExtractMap[*Link](LinksLabel, root, idx)
+	links, linkLabel, linkValue, lErr := low.ExtractMap[*Link](ctx, LinksLabel, root, idx)
 	if lErr != nil {
 		return lErr
 	}

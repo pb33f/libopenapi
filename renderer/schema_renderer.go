@@ -58,7 +58,8 @@ func init() {
 // SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
 // The dictionary is just a slice of strings that is used to generate random words.
 type SchemaRenderer struct {
-	words []string
+	words           []string
+	disableRequired bool
 }
 
 // CreateRendererUsingDictionary will create a new SchemaRenderer using a custom dictionary file.
@@ -84,6 +85,13 @@ func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 	structure := make(map[string]any)
 	wr.DiveIntoSchema(schema, rootType, structure, 0)
 	return structure[rootType].(any)
+}
+
+// DisableRequiredCheck will disable the required check when rendering a schema. This means that all properties
+// will be rendered, not just the required ones.
+// https://github.com/pb33f/libopenapi/issues/200
+func (wr *SchemaRenderer) DisableRequiredCheck() {
+	wr.disableRequired = true
 }
 
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
@@ -220,7 +228,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			// check if this schema has required properties, if so, then only render required props, if not
 			// render everything in the schema.
 			checkProps := orderedmap.New[string, *base.SchemaProxy]()
-			if len(schema.Required) > 0 {
+			if !wr.disableRequired && len(schema.Required) > 0 {
 				for _, requiredProp := range schema.Required {
 					checkProps.Set(requiredProp, properties.GetOrZero(requiredProp))
 				}
@@ -267,29 +275,23 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		// handle oneOf
 		oneOf := schema.OneOf
-		if oneOf != nil {
+		if len(oneOf) > 0 {
 			oneOfMap := make(map[string]any)
-			for _, oneOfSchema := range oneOf {
-				oneOfCompiled := oneOfSchema.Schema()
-				wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
-				for k, v := range oneOfMap[oneOfType].(map[string]any) {
-					propertyMap[k] = v
-				}
-				break // one run once for the first result.
+			oneOfCompiled := oneOf[0].Schema()
+			wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
+			for k, v := range oneOfMap[oneOfType].(map[string]any) {
+				propertyMap[k] = v
 			}
 		}
 
 		// handle anyOf
 		anyOf := schema.AnyOf
-		if anyOf != nil {
+		if len(anyOf) > 0 {
 			anyOfMap := make(map[string]any)
-			for _, anyOfSchema := range anyOf {
-				anyOfCompiled := anyOfSchema.Schema()
-				wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
-				for k, v := range anyOfMap[anyOfType].(map[string]any) {
-					propertyMap[k] = v
-				}
-				break // one run once for the first result only, same as oneOf
+			anyOfCompiled := anyOf[0].Schema()
+			wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
+			for k, v := range anyOfMap[anyOfType].(map[string]any) {
+				propertyMap[k] = v
 			}
 		}
 		structure[key] = propertyMap

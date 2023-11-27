@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -61,11 +62,11 @@ func (en *Encoding) Hash() [32]byte {
 }
 
 // Build will extract all Header objects from supplied node.
-func (en *Encoding) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (en *Encoding) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	en.Reference = new(low.Reference)
-	headers, hL, hN, err := low.ExtractMap[*Header](HeadersLabel, root, idx)
+	headers, hL, hN, err := low.ExtractMap[*Header](ctx, HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}

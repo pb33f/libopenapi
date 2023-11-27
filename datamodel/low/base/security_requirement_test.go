@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -35,8 +36,8 @@ one:
 	var idxNode2 yaml.Node
 	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
 
-	_ = sr.Build(nil, idxNode.Content[0], nil)
-	_ = sr2.Build(nil, idxNode2.Content[0], nil)
+	_ = sr.Build(context.Background(), nil, idxNode.Content[0], nil)
+	_ = sr2.Build(context.Background(), nil, idxNode2.Content[0], nil)
 
 	assert.Equal(t, 2, orderedmap.Len(sr.Requirements.Value))
 	assert.Len(t, sr.GetKeys(), 2)

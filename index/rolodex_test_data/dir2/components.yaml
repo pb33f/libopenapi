@@ -1,0 +1,21 @@
+openapi: 3.1.0
+info:
+  title: Dir2 Test Components
+  version: 1.0.0
+components:
+  schemas:
+    GlobalComponent:
+      type: object
+      description: Dir2 Global Component
+      properties:
+        message:
+          type: string
+          description: I am pointless, but I am global dir2.
+    AnotherComponent:
+      type: object
+      description: Dir2 Another Component
+      properties:
+        message:
+          $ref: "subdir2/shared.yaml#/components/schemas/SharedComponent"
+    SomeUtil:
+      $ref: "utils/utils.yaml"

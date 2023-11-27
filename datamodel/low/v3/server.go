@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"sort"
 	"strings"
@@ -36,7 +37,7 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 }
 
 // Build will extract server variables from the supplied node.
-func (s *Server) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (s *Server) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
