@@ -7,19 +7,20 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestOAuthFlow_MarshalYAML(t *testing.T) {
+	scopes := orderedmap.New[string, string]()
+	scopes.Set("chicken", "nuggets")
+	scopes.Set("beefy", "soup")
 
 	oflow := &OAuthFlow{
 		AuthorizationUrl: "https://pb33f.io",
 		TokenUrl:         "https://pb33f.io/token",
 		RefreshUrl:       "https://pb33f.io/refresh",
-		Scopes:           map[string]string{
-			"chicken": "nuggets",
-			"beefy": "soup",
-		},
+		Scopes:           scopes,
 	}
 
 	rend, _ := oflow.Render()
@@ -45,5 +46,4 @@ x-burgers: why not?`
 
 	rend, _ = oflow.Render()
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }

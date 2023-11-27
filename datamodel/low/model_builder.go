@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -389,25 +390,25 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 				field.Set(reflect.ValueOf(ref))
 			}
 		}
-	case reflect.TypeOf(NodeReference[map[KeyReference[string]]ValueReference[string]]{}):
+	case reflect.TypeOf(NodeReference[orderedmap.Map[KeyReference[string], ValueReference[string]]]{}):
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
-				items := make(map[KeyReference[string]]ValueReference[string])
+				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
 				var cf *yaml.Node
 				for i, sliceItem := range valueNode.Content {
 					if i%2 == 0 {
 						cf = sliceItem
 						continue
 					}
-					items[KeyReference[string]{
+					items.Set(KeyReference[string]{
 						Value:   cf.Value,
 						KeyNode: cf,
-					}] = ValueReference[string]{
+					}, ValueReference[string]{
 						Value:     sliceItem.Value,
 						ValueNode: sliceItem,
-					}
+					})
 				}
-				ref := NodeReference[map[KeyReference[string]]ValueReference[string]]{
+				ref := NodeReference[orderedmap.Map[KeyReference[string], ValueReference[string]]]{
 					Value:     items,
 					KeyNode:   keyNode,
 					ValueNode: valueNode,
