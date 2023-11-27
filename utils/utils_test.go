@@ -1,11 +1,12 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 type petstore []byte
@@ -168,8 +169,7 @@ func TestConvertInterfaceToStringArray_NoType(t *testing.T) {
 }
 
 func TestConvertInterfaceToStringArray_Invalid(t *testing.T) {
-	var d interface{}
-	d = "I am a carrot"
+	var d interface{} = "I am a carrot"
 	parsed := ConvertInterfaceToStringArray(d)
 	assert.Nil(t, parsed)
 }
@@ -195,8 +195,7 @@ func TestConvertInterfaceArrayToStringArray_NoType(t *testing.T) {
 }
 
 func TestConvertInterfaceArrayToStringArray_Invalid(t *testing.T) {
-	var d interface{}
-	d = "weed is good"
+	var d interface{} = "weed is good"
 	parsed := ConvertInterfaceArrayToStringArray(d)
 	assert.Nil(t, parsed)
 }
@@ -229,12 +228,11 @@ func TestExtractValueFromInterfaceMap_Flat(t *testing.T) {
 	m["maddy"] = "niblet"
 	d = m
 	parsed := ExtractValueFromInterfaceMap("maddy", d)
-	assert.Equal(t, "niblet", parsed.(interface{}))
+	assert.Equal(t, "niblet", parsed)
 }
 
 func TestExtractValueFromInterfaceMap_NotFound(t *testing.T) {
-	var d interface{}
-	d = "not a map"
+	var d interface{} = "not a map"
 	parsed := ExtractValueFromInterfaceMap("melody", d)
 	assert.Nil(t, parsed)
 }
@@ -317,6 +315,19 @@ func TestFindKeyNode(t *testing.T) {
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, 47, k.Line)
+}
+
+func TestFindKeyNodeOffByOne(t *testing.T) {
+
+	k, v := FindKeyNode("key", []*yaml.Node{
+		{
+			Value: "key",
+			Line:  999,
+		},
+	})
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, 999, k.Line)
 }
 
 func TestFindKeyNode_ValueIsKey(t *testing.T) {
@@ -684,6 +695,14 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/example/0/expires_at")
 	assert.Equal(t, "$.components.schemas.gpg-key.properties.subkeys.example[0].expires_at", path)
 	assert.Equal(t, "expires_at", segment)
+}
+
+func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.B) {
+	for n := 0; n < t.N; n++ {
+		segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/example/0/expires_at")
+		assert.Equal(t, "$.components.schemas.gpg-key.properties.subkeys.example[0].expires_at", path)
+		assert.Equal(t, "expires_at", segment)
+	}
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Simple(t *testing.T) {

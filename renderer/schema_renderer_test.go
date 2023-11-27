@@ -4,6 +4,7 @@
 package renderer
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -57,7 +58,7 @@ func getSchema(schema []byte) *highbase.Schema {
 		panic(e)
 	}
 	sp := new(lowbase.SchemaProxy)
-	_ = sp.Build(nil, compNode.Content[0], nil)
+	_ = sp.Build(context.Background(), nil, compNode.Content[0], nil)
 	lp := low.NodeReference[*lowbase.SchemaProxy]{
 		Value:     sp,
 		ValueNode: compNode.Content[0],
@@ -960,6 +961,32 @@ properties:
 	assert.Nil(t, journeyMap["pb33f"].(map[string]interface{})["fries"])
 }
 
+func TestRenderExample_Test_RequiredCheckDisabled(t *testing.T) {
+	testObject := `type: [object]
+required:
+  - drink
+properties:
+  burger:
+    type: string
+  fries:
+    type: string
+  drink:
+    type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DisableRequiredCheck()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	drink := journeyMap["pb33f"].(map[string]interface{})["drink"].(string)
+	assert.NotNil(t, drink)
+	assert.NotNil(t, journeyMap["pb33f"].(map[string]interface{})["burger"])
+	assert.NotNil(t, journeyMap["pb33f"].(map[string]interface{})["fries"])
+}
+
 func TestRenderSchema_WithExample(t *testing.T) {
 	testObject := `type: [object]
 properties:
@@ -1132,7 +1159,7 @@ properties:
 
 	buildSchema := func() *highbase.SchemaProxy {
 		sp := new(lowbase.SchemaProxy)
-		_ = sp.Build(nil, compNode.Content[0], nil)
+		_ = sp.Build(context.Background(), nil, compNode.Content[0], nil)
 		lp := low.NodeReference[*lowbase.SchemaProxy]{
 			Value:     sp,
 			ValueNode: compNode.Content[0],

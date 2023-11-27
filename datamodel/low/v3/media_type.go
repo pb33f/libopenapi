@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -56,7 +57,7 @@ func (mt *MediaType) GetAllExamples() orderedmap.Map[low.KeyReference[string], l
 }
 
 // Build will extract examples, extensions, schema and encoding from node.
-func (mt *MediaType) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (mt *MediaType) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	mt.Reference = new(low.Reference)
@@ -85,7 +86,7 @@ func (mt *MediaType) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	//handle schema
-	sch, sErr := base.ExtractSchema(root, idx)
+	sch, sErr := base.ExtractSchema(ctx, root, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -94,7 +95,7 @@ func (mt *MediaType) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](base.ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](ctx, base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -107,7 +108,7 @@ func (mt *MediaType) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle encoding
-	encs, encsL, encsN, encErr := low.ExtractMap[*Encoding](EncodingLabel, root, idx)
+	encs, encsL, encsN, encErr := low.ExtractMap[*Encoding](ctx, EncodingLabel, root, idx)
 	if encErr != nil {
 		return encErr
 	}

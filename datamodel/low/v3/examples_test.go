@@ -5,8 +5,9 @@ package v3
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/pb33f/libopenapi/datamodel"
-	"io/ioutil"
 )
 
 // How to create a low-level OpenAPI 3+ Document from an OpenAPI specification
@@ -14,19 +15,17 @@ func Example_createLowLevelOpenAPIDocument() {
 	// How to create a low-level OpenAPI 3 Document
 
 	// load petstore into bytes
-	petstoreBytes, _ := ioutil.ReadFile("../../../test_specs/petstorev3.json")
+	petstoreBytes, _ := os.ReadFile("../../../test_specs/petstorev3.json")
 
 	// read in specification
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errors := CreateDocument(info)
+	document, errs := CreateDocument(info)
 
 	// if something went wrong, a slice of errors is returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %s\n", errors[i].Error())
-		}
+	if errs != nil {
+		fmt.Printf("error: %s\n", errs.Error())
 		panic("cannot build document")
 	}
 

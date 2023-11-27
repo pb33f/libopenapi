@@ -4,12 +4,14 @@
 package model
 
 import (
+	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareInfo_DescriptionAdded(t *testing.T) {
@@ -42,8 +44,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -83,8 +85,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -123,8 +125,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -161,8 +163,8 @@ contact:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -199,8 +201,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -239,8 +241,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -276,8 +278,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -313,8 +315,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -353,8 +355,8 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
@@ -374,7 +376,8 @@ contact:
   name: buckaroo
   email: buckaroo@pb33f.io
 license:
-  name: MIT`
+  name: MIT
+x-extension: extension`
 
 	right := `title: a nice spec
 termsOfService: https://pb33f.io/terms
@@ -383,7 +386,8 @@ contact:
   name: buckaroo
   email: buckaroo@pb33f.io
 license:
-  name: MIT`
+  name: MIT
+x-extension: extension`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -394,10 +398,104 @@ license:
 	var rDoc base.Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
 	extChanges := CompareInfo(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
+}
+
+func TestCompareInfo_ExtensionAdded(t *testing.T) {
+
+	left := `title: a nice spec
+version: '1.2.3'
+`
+
+	right := `title: a nice spec
+version: '1.2.3'
+x-extension: new extension
+`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Info
+	var rDoc base.Info
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareInfo(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
+	assert.Equal(t, "x-extension", extChanges.ExtensionChanges.Changes[0].Property)
+}
+
+func TestCompareInfo_ExtensionRemoved(t *testing.T) {
+
+	left := `title: a nice spec
+version: '1.2.3'
+x-extension: extension
+`
+
+	right := `title: a nice spec
+version: '1.2.3'
+`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Info
+	var rDoc base.Info
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareInfo(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, ObjectRemoved, extChanges.ExtensionChanges.Changes[0].ChangeType)
+	assert.Equal(t, "x-extension", extChanges.ExtensionChanges.Changes[0].Property)
+}
+
+func TestCompareInfo_ExtensionModified(t *testing.T) {
+
+	left := `title: a nice spec
+version: '1.2.3'
+x-extension: original extension
+`
+
+	right := `title: a nice spec
+version: '1.2.3'
+x-extension: new extension
+`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Info
+	var rDoc base.Info
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareInfo(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, Modified, extChanges.ExtensionChanges.Changes[0].ChangeType)
+	assert.Equal(t, "x-extension", extChanges.ExtensionChanges.Changes[0].Property)
 }

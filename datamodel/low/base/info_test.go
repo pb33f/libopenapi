@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -34,7 +35,7 @@ x-cli-name: pizza cli`
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
 
-	err = n.Build(nil, idxNode.Content[0], idx)
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
 	assert.Equal(t, "pizza", n.Title.Value)
@@ -61,13 +62,13 @@ x-cli-name: pizza cli`
 
 func TestContact_Build(t *testing.T) {
 	n := &Contact{}
-	k := n.Build(nil, nil, nil)
+	k := n.Build(context.Background(), nil, nil, nil)
 	assert.Nil(t, k)
 }
 
 func TestLicense_Build(t *testing.T) {
 	n := &License{}
-	k := n.Build(nil, nil, nil)
+	k := n.Build(context.Background(), nil, nil, nil)
 	assert.Nil(t, k)
 }
 
@@ -107,8 +108,8 @@ x-b33f: princess`
 	var rDoc Info
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
-	_ = lDoc.Build(nil, lNode.Content[0], nil)
-	_ = rDoc.Build(nil, rNode.Content[0], nil)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 }

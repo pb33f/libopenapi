@@ -90,6 +90,7 @@ type test1 struct {
 	Thugg      *bool                 `yaml:"thugg,renderZero"`
 	Thurr      *int64                `yaml:"thurr,omitempty"`
 	Thral      *float64              `yaml:"thral,omitempty"`
+	Throo      *float64              `yaml:"throo,renderZero,omitempty"`
 	Tharg      []string              `yaml:"tharg,omitempty"`
 	Type       []string              `yaml:"type,omitempty"`
 	Throg      []*key                `yaml:"throg,omitempty"`
@@ -421,8 +422,9 @@ func TestNewNodeBuilder_MapKeyHasValue(t *testing.T) {
 	}
 
 	type test1low struct {
-		Thrug key   `yaml:"thrug"`
-		Thugg *bool `yaml:"thugg"`
+		Thrug key      `yaml:"thrug"`
+		Thugg *bool    `yaml:"thugg"`
+		Throo *float32 `yaml:"throo"`
 	}
 
 	t2 := test1low{
@@ -454,8 +456,9 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValue(t *testing.T) {
 	}
 
 	type test1low struct {
-		Thomp key   `yaml:"thomp"`
-		Thugg *bool `yaml:"thugg"`
+		Thomp key      `yaml:"thomp"`
+		Thugg *bool    `yaml:"thugg"`
+		Throo *float32 `yaml:"throo"`
 	}
 
 	t2 := test1low{
@@ -495,6 +498,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch(t *testing.T) {
 	type test1low struct {
 		Thomp low.NodeReference[map[key]string] `yaml:"thomp"`
 		Thugg *bool                             `yaml:"thugg"`
+		Throo *float32                          `yaml:"throo"`
 	}
 
 	g := low.NodeReference[map[key]string]{
@@ -529,6 +533,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatchKeyNode(t *testing.T) {
 	type test1low struct {
 		Thomp low.NodeReference[map[key]string] `yaml:"thomp"`
 		Thugg *bool                             `yaml:"thugg"`
+		Throo *float32                          `yaml:"throo"`
 	}
 
 	g := low.NodeReference[map[key]string]{
@@ -563,6 +568,7 @@ func TestNewNodeBuilder_MapKeyHasValueThatHasValueMatch_NoWrap(t *testing.T) {
 	type test1low struct {
 		Thomp map[key]string `yaml:"thomp"`
 		Thugg *bool          `yaml:"thugg"`
+		Throo *float32       `yaml:"throo"`
 	}
 
 	t2 := test1low{
@@ -922,6 +928,40 @@ func TestNewNodeBuilder_TestRenderZero(t *testing.T) {
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
+func TestNewNodeBuilder_TestRenderZero_Float(t *testing.T) {
+
+	f := 0.0
+	t1 := test1{
+		Throo: &f,
+	}
+
+	nb := NewNodeBuilder(&t1, &t1)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `throo: 0`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_TestRenderZero_Float_NotZero(t *testing.T) {
+
+	f := 0.12
+	t1 := test1{
+		Throo: &f,
+	}
+
+	nb := NewNodeBuilder(&t1, &t1)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `throo: 0.12`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
 func TestNewNodeBuilder_TestRenderServerVariableSimulation(t *testing.T) {
 
 	t1 := test1{
@@ -961,7 +1001,8 @@ func TestNewNodeBuilder_ShouldHaveNotDoneTestsLikeThisOhWell(t *testing.T) {
 
 	type t1low struct {
 		Thril low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*key]]
-		Thugg *bool `yaml:"thugg"`
+		Thugg *bool    `yaml:"thugg"`
+		Throo *float32 `yaml:"throo"`
 	}
 
 	t1 := test1{

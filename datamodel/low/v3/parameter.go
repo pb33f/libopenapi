@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -60,7 +61,7 @@ func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueRefere
 }
 
 // Build will extract examples, extensions and content/media types.
-func (p *Parameter) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
@@ -73,7 +74,7 @@ func (p *Parameter) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle schema
-	sch, sErr := base.ExtractSchema(root, idx)
+	sch, sErr := base.ExtractSchema(ctx, root, idx)
 	if sErr != nil {
 		return sErr
 	}
@@ -82,7 +83,7 @@ func (p *Parameter) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle examples if set.
-	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](base.ExamplesLabel, root, idx)
+	exps, expsL, expsN, eErr := low.ExtractMap[*base.Example](ctx, base.ExamplesLabel, root, idx)
 	if eErr != nil {
 		return eErr
 	}
@@ -95,7 +96,7 @@ func (p *Parameter) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle content, if set.
-	con, cL, cN, cErr := low.ExtractMap[*MediaType](ContentLabel, root, idx)
+	con, cL, cN, cErr := low.ExtractMap[*MediaType](ctx, ContentLabel, root, idx)
 	if cErr != nil {
 		return cErr
 	}

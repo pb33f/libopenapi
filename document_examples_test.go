@@ -4,20 +4,21 @@
 package libopenapi
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"log/slog"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/orderedmap"
-
 	"github.com/pb33f/libopenapi/datamodel/high"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/resolver"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 )
@@ -66,13 +67,24 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	digitalOcean, _ := os.ReadFile("test_specs/digitalocean.yaml")
 
 	// create a DocumentConfiguration that prevents loading file and remote references
-	config := datamodel.DocumentConfiguration{
-		AllowFileReferences:   false,
-		AllowRemoteReferences: false,
-	}
+	config := datamodel.NewDocumentConfiguration()
+
+	// create a new structured logger to capture error logs that will be spewed out by the rolodex
+	// when it tries to load external references. We're going to create a byte buffer to capture the logs
+	// and then look at them after the document is built.
+	var logs []byte
+	buf := bytes.NewBuffer(logs)
+	logger := slog.New(slog.NewTextHandler(buf, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+	config.Logger = logger // set the config logger to our new logger.
+
+	// Do not set any baseURL, as this will allow the rolodex to resolve relative references.
+	// without a baseURL (for remote references, or a basePath for local references) the rolodex
+	// will consider the reference to be local, and will not attempt to load it from the network.
 
 	// create a new document from specification bytes
-	doc, err := NewDocumentWithConfiguration(digitalOcean, &config)
+	doc, err := NewDocumentWithConfiguration(digitalOcean, config)
 
 	// if anything went wrong, an error is thrown
 	if err != nil {
@@ -82,11 +94,16 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 	// only errors will be thrown, so just capture them and print the number of errors.
 	_, errors := doc.BuildV3Model()
 
+	// there should be 475 errors logs
+	logItems := strings.Split(buf.String(), "\n")
+	fmt.Printf("There are %d errors logged\n", len(logItems))
+
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
 	if len(errors) > 0 {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	}
-	// Output: Error building Digital Ocean spec errors reported
+	// Output: There are 475 errors logged
+	//Error building Digital Ocean spec errors reported
 }
 
 func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
@@ -103,9 +120,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	// create a DocumentConfiguration that allows loading file and remote references, and sets the baseURL
 	// to somewhere that can resolve the relative references.
 	config := datamodel.DocumentConfiguration{
-		AllowFileReferences:   true,
-		AllowRemoteReferences: true,
-		BaseURL:               baseURL,
+		BaseURL: baseURL,
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelError,
+		})),
 	}
 
 	// create a new document from specification bytes
@@ -435,7 +453,7 @@ components:
 
 	// resolving error is a pointer to *resolver.ResolvingError
 	// which provides access to rich details about the error.
-	circularReference := resolvingError.(*resolver.ResolvingError).CircularReference
+	circularReference := resolvingError.(*index.ResolvingError).CircularReference
 
 	// capture the journey with all details
 	var buf strings.Builder

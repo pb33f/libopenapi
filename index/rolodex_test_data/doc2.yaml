@@ -1,0 +1,59 @@
+openapi: 3.1.0
+info:
+  title: Rolodex Test Data
+  version: 1.0.0
+paths:
+#  /one/local:
+#    get:
+#      responses:
+#        '200':
+#          description: OK
+#          content:
+#            application/json:
+#              schema:
+#                $ref: '#/components/schemas/Thing'
+#  /one/file:
+#    get:
+#      responses:
+#        '200':
+#          description: OK
+#          content:
+#            application/json:
+#              schema:
+#                $ref: 'components.yaml#/components/schemas/Ding'
+#  /nested/files1:
+#    get:
+#      responses:
+#        '200':
+#          description: OK
+#          content:
+#            application/json:
+#              schema:
+#                $ref: 'dir1/components.yaml#/components/schemas/GlobalComponent'
+#  /nested/files2:
+#    get:
+#      responses:
+#        '200':
+#          description: OK
+#          content:
+#            application/json:
+#              schema:
+#                $ref: 'dir2/components.yaml#/components/schemas/GlobalComponent'
+  /nested/files3:
+    get:
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'dir2/components.yaml#/components/schemas/AnotherComponent'
+components:
+  schemas:
+    Thing:
+      type: object
+      description: A thing that does nothing.
+      properties:
+        message:
+          type: string
+          description: I am pointless.

@@ -6,12 +6,16 @@ import (
 	"io"
 	"runtime"
 	"sync"
+
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
-type ActionFunc[T any] func(T) error
-type TranslateFunc[IN any, OUT any] func(IN) (OUT, error)
-type TranslateSliceFunc[IN any, OUT any] func(int, IN) (OUT, error)
-type TranslateMapFunc[K any, V any, OUT any] func(K, V) (OUT, error)
+type (
+	ActionFunc[T any]                   func(T) error
+	TranslateFunc[IN any, OUT any]      func(IN) (OUT, error)
+	TranslateSliceFunc[IN any, OUT any] func(int, IN) (OUT, error)
+	TranslateMapFunc[IN any, OUT any]   func(IN) (OUT, error)
+)
 
 type continueError struct {
 	error
@@ -28,7 +32,6 @@ type jobStatus[OUT any] struct {
 type pipelineJobStatus[IN any, OUT any] struct {
 	done   chan struct{}
 	cont   bool
-	eof    bool
 	input  IN
 	result OUT
 }
@@ -124,14 +127,15 @@ JOBLOOP:
 // translate() or result() may return `io.EOF` to break iteration.
 // Results are provided sequentially to result().  Result order is
 // nondeterministic.
-func TranslateMapParallel[K comparable, V any, OUT any](m map[K]V, translate TranslateMapFunc[K, V, OUT], result ActionFunc[OUT]) error {
-	if len(m) == 0 {
+func TranslateMapParallel[K comparable, V any, OUT any](m orderedmap.Map[K, V], translate TranslateMapFunc[orderedmap.Pair[K, V], OUT], result ActionFunc[OUT]) error {
+	if m == nil {
 		return nil
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	concurrency := runtime.NumCPU()
+	c := orderedmap.Iterate(ctx, m)
 	resultChan := make(chan OUT, concurrency)
 	var reterr error
 	var mu sync.Mutex
@@ -141,11 +145,11 @@ func TranslateMapParallel[K comparable, V any, OUT any](m map[K]V, translate Tra
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		for k, v := range m {
+		for pair := range c {
 			wg.Add(1)
-			go func(k K, v V) {
+			go func(pair orderedmap.Pair[K, V]) {
 				defer wg.Done()
-				value, err := translate(k, v)
+				value, err := translate(pair)
 				if err == Continue {
 					return
 				}
@@ -162,7 +166,7 @@ func TranslateMapParallel[K comparable, V any, OUT any](m map[K]V, translate Tra
 				case resultChan <- value:
 				case <-ctx.Done():
 				}
-			}(k, v)
+			}(pair)
 		}
 	}()
 

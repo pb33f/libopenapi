@@ -4,8 +4,8 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
-
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -51,14 +51,16 @@ type SchemaProxy struct {
 	buildError      error
 	isReference     bool   // Is the schema underneath originally a $ref?
 	referenceLookup string // If the schema is a $ref, what's its name?
+	ctx             context.Context
 }
 
 // Build will prepare the SchemaProxy for rendering, it does not build the Schema, only sets up internal state.
 // Key maybe nil if absent.
-func (sp *SchemaProxy) Build(key, value *yaml.Node, idx *index.SpecIndex) error {
+func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *index.SpecIndex) error {
 	sp.kn = key
 	sp.vn = value
 	sp.idx = idx
+	sp.ctx = ctx
 	if rf, _, r := utils.IsNodeRefValue(value); rf {
 		sp.isReference = true
 		sp.referenceLookup = r
@@ -83,7 +85,7 @@ func (sp *SchemaProxy) Schema() *Schema {
 	}
 	schema := new(Schema)
 	utils.CheckForMergeNodes(sp.vn)
-	err := schema.Build(sp.vn, sp.idx)
+	err := schema.Build(sp.ctx, sp.vn, sp.idx)
 	if err != nil {
 		sp.buildError = err
 		return nil
@@ -127,6 +129,20 @@ func (sp *SchemaProxy) SetReference(ref string) {
 // IsSchemaReference()
 func (sp *SchemaProxy) GetSchemaReference() string {
 	return sp.referenceLookup
+}
+
+func (sp *SchemaProxy) GetSchemaReferenceLocation() *index.NodeOrigin {
+	if sp.idx != nil {
+		origin := sp.idx.FindNodeOrigin(sp.vn)
+		if origin != nil {
+			return origin
+		}
+		if sp.idx.GetRolodex() != nil {
+			origin = sp.idx.GetRolodex().FindNodeOrigin(sp.vn)
+			return origin
+		}
+	}
+	return nil
 }
 
 // GetKeyNode will return the yaml.Node pointer that is a key for value node.

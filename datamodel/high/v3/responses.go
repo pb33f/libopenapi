@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -47,14 +48,9 @@ func NewResponses(responses *low.Responses) *Responses {
 	}
 	codes := orderedmap.New[string, *Response]()
 
-	type respRes struct {
-		code string
-		resp *Response
-	}
-
 	translateFunc := func(pair orderedmap.Pair[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response]]) (asyncResult[*Response], error) {
 		return asyncResult[*Response]{
-			key: pair.Key().Value,
+			key:    pair.Key().Value,
 			result: NewResponse(pair.Value().Value),
 		}, nil
 	}
@@ -62,7 +58,7 @@ func NewResponses(responses *low.Responses) *Responses {
 		codes.Set(value.key, value.result)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response], asyncResult[*Response]](responses.Codes, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response]](responses.Codes, translateFunc, resultFunc)
 	r.Codes = codes
 	return r
 }
@@ -126,8 +122,10 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 				label = extNode.Content[u].Value
 				continue
 			}
-			mapped = append(mapped, &responseItem{nil, label,
-				extNode.Content[u].Line, extNode.Content[u]})
+			mapped = append(mapped, &responseItem{
+				nil, label,
+				extNode.Content[u].Line, extNode.Content[u],
+			})
 		}
 	}
 
@@ -183,8 +181,10 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 				label = extNode.Content[u].Value
 				continue
 			}
-			mapped = append(mapped, &responseItem{nil, label,
-				extNode.Content[u].Line, extNode.Content[u]})
+			mapped = append(mapped, &responseItem{
+				nil, label,
+				extNode.Content[u].Line, extNode.Content[u],
+			})
 		}
 	}
 

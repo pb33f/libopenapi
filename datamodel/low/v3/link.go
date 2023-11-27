@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -55,13 +56,13 @@ func (l *Link) FindExtension(ext string) *low.ValueReference[any] {
 }
 
 // Build will extract extensions and servers from the node.
-func (l *Link) Build(_, root *yaml.Node, idx *index.SpecIndex) error {
+func (l *Link) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
 	l.Extensions = low.ExtractExtensions(root)
 	// extract server.
-	ser, sErr := low.ExtractObject[*Server](ServerLabel, root, idx)
+	ser, sErr := low.ExtractObject[*Server](ctx, ServerLabel, root, idx)
 	if sErr != nil {
 		return sErr
 	}

@@ -5,9 +5,7 @@ package index
 
 import (
 	"gopkg.in/yaml.v3"
-	"net/http"
 	"strings"
-	"time"
 )
 
 func isHttpMethod(val string) bool {
@@ -28,21 +26,6 @@ func isHttpMethod(val string) bool {
 		return true
 	}
 	return false
-}
-
-func DetermineReferenceResolveType(ref string) int {
-	if ref != "" && ref[0] == '#' {
-		return LocalResolve
-	}
-	if ref != "" && len(ref) >= 5 && (ref[:5] == "https" || ref[:5] == "http:") {
-		return HttpResolve
-	}
-	if strings.Contains(ref, ".json") ||
-		strings.Contains(ref, ".yaml") ||
-		strings.Contains(ref, ".yml") {
-		return FileResolve
-	}
-	return -1
 }
 
 func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
@@ -82,10 +65,7 @@ func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
 	index.securityRequirementRefs = make(map[string]map[string][]*Reference)
 	index.polymorphicRefs = make(map[string]*Reference)
 	index.refsWithSiblings = make(map[string]Reference)
-	index.seenRemoteSources = make(map[string]*yaml.Node)
-	index.seenLocalSources = make(map[string]*yaml.Node)
 	index.opServersRefs = make(map[string]map[string][]*Reference)
-	index.httpClient = &http.Client{Timeout: time.Duration(5) * time.Second}
 	index.componentIndexChan = make(chan bool)
 	index.polyComponentIndexChan = make(chan bool)
 }

@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"testing"
@@ -31,7 +32,7 @@ x-hack: code`
 	var lowExample lowbase.Example
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowExample)
 
-	_ = lowExample.Build(&cNode, cNode.Content[0], nil)
+	_ = lowExample.Build(context.Background(), &cNode, cNode.Content[0], nil)
 
 	// build high
 	highExample := NewExample(&lowExample)
@@ -61,7 +62,7 @@ func TestExtractExamples(t *testing.T) {
 	var lowExample lowbase.Example
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowExample)
 
-	_ = lowExample.Build(nil, cNode.Content[0], nil)
+	_ = lowExample.Build(context.Background(), nil, cNode.Content[0], nil)
 
 	examplesMap := orderedmap.New[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowbase.Example]]()
 	examplesMap.Set(
@@ -90,7 +91,7 @@ x-hack: code`
 	_ = lowmodel.BuildModel(node.Content[0], &lowExample)
 
 	// build out low-level example
-	_ = lowExample.Build(nil, node.Content[0], nil)
+	_ = lowExample.Build(context.Background(), nil, node.Content[0], nil)
 
 	// create a new high-level example
 	highExample := NewExample(&lowExample)

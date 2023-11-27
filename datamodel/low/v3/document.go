@@ -83,6 +83,9 @@ type Document struct {
 	//
 	// This property is not a part of the OpenAPI schema, this is custom to libopenapi.
 	Index *index.SpecIndex
+
+	// Rolodex is a reference to the rolodex used when creating this document.
+	Rolodex *index.Rolodex
 }
 
 // FindSecurityRequirement will attempt to locate a security requirement string from a supplied name.

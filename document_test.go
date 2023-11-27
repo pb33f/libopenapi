@@ -4,6 +4,7 @@ package libopenapi
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -19,7 +20,6 @@ import (
 )
 
 func TestLoadDocument_Simple_V2(t *testing.T) {
-
 	yml := `swagger: 2.0.1`
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
@@ -31,11 +31,9 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 	assert.NotNil(t, doc.GetSpecInfo())
 
 	fmt.Print()
-
 }
 
 func TestLoadDocument_Simple_V2_Error(t *testing.T) {
-
 	yml := `swagger: 2.0`
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
@@ -46,7 +44,6 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 }
 
 func TestLoadDocument_Simple_V2_Error_BadSpec(t *testing.T) {
-
 	yml := `swagger: 2.0
 definitions:
   thing:
@@ -55,12 +52,11 @@ definitions:
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 2)
+	assert.Len(t, docErr, 3)
 	assert.Nil(t, v2Doc)
 }
 
 func TestLoadDocument_Simple_V3_Error(t *testing.T) {
-
 	yml := `openapi: 3.0.1`
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
@@ -71,14 +67,12 @@ func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 }
 
 func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
-
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV2Model()
 	assert.Len(t, err, 1)
 }
 
 func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
-
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV3Model()
 	assert.Len(t, err, 1)
@@ -91,7 +85,6 @@ func TestLoadDocument_Empty(t *testing.T) {
 }
 
 func TestLoadDocument_Simple_V3(t *testing.T) {
-
 	yml := `openapi: 3.0.1`
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
@@ -102,8 +95,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.NotNil(t, v3Doc)
 }
 
-func TestLoadDocument_Simple_V3_Error_BadSpec(t *testing.T) {
-
+func TestLoadDocument_Simple_V3_Error_BadSpec_BuildModel(t *testing.T) {
 	yml := `openapi: 3.0
 paths:
   "/some":
@@ -111,9 +103,9 @@ paths:
 	doc, err := NewDocument([]byte(yml))
 	assert.NoError(t, err)
 
-	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 2)
-	assert.Nil(t, v3Doc)
+	doc.BuildV3Model()
+	rolo := doc.GetRolodex()
+	assert.Len(t, rolo.GetCaughtErrors(), 1)
 }
 
 func TestDocument_Serialize_Error(t *testing.T) {
@@ -123,7 +115,6 @@ func TestDocument_Serialize_Error(t *testing.T) {
 }
 
 func TestDocument_Serialize(t *testing.T) {
-
 	yml := `openapi: 3.0
 info:
     title: The magic API
@@ -135,7 +126,6 @@ info:
 }
 
 func TestDocument_Serialize_Modified(t *testing.T) {
-
 	yml := `openapi: 3.0
 info:
     title: The magic API
@@ -157,7 +147,6 @@ info:
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
-
 	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 	doc, _ := NewDocument(bs)
 	doc.BuildV3Model()
@@ -171,11 +160,9 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 	assert.Nil(t, errs)
 	assert.NotNil(t, rend)
 	assert.Nil(t, compReport)
-
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
-
 	bs, _ := os.ReadFile("test_specs/stripe.yaml")
 	doc, _ := NewDocument(bs)
 	doc.BuildV3Model()
@@ -204,11 +191,9 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 
 	// there should be no other changes than the 519 descriptions.
 	assert.Equal(t, 0, len(filtered))
-
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
-
 	bs, _ := os.ReadFile("test_specs/asana.yaml")
 	doc, _ := NewDocument(bs)
 	doc.BuildV3Model()
@@ -228,17 +213,14 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 
 	// there are some properties re-rendered that trigger changes.
 	assert.Equal(t, 21, len(flatChanges))
-
 }
 
 func TestDocument_RenderAndReload(t *testing.T) {
-
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
 	// create a new document from specification bytes
 	doc, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -251,8 +233,7 @@ func TestDocument_RenderAndReload(t *testing.T) {
 	h := m.Model
 	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId = "findACakeInABakery"
 	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.Responses.Codes.GetOrZero("400").Description = "a nice bucket of mice"
-	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags =
-		append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
+	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags = append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
 
 	h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security = append(h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security,
 		&base.SecurityRequirement{Requirements: orderedmap.ToOrderedMap(map[string][]string{
@@ -284,13 +265,11 @@ func TestDocument_RenderAndReload(t *testing.T) {
 }
 
 func TestDocument_Render(t *testing.T) {
-
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
 	// create a new document from specification bytes
 	doc, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -304,8 +283,7 @@ func TestDocument_Render(t *testing.T) {
 	h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId = "findACakeInABakery"
 	h.Paths.PathItems.GetOrZero("/pet/findByStatus").
 		Get.Responses.Codes.GetOrZero("400").Description = "a nice bucket of mice"
-	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags =
-		append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
+	h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags = append(h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, "gurgle", "giggle")
 
 	h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security = append(h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security,
 		&base.SecurityRequirement{Requirements: orderedmap.ToOrderedMap(map[string][]string{
@@ -344,7 +322,6 @@ func TestDocument_Render(t *testing.T) {
 }
 
 func TestDocument_RenderWithLargeIndention(t *testing.T) {
-
 	json := `{
       "openapi": "3.0"
 }`
@@ -356,7 +333,6 @@ func TestDocument_RenderWithLargeIndention(t *testing.T) {
 }
 
 func TestDocument_Render_ChangeCheck_Burgershop(t *testing.T) {
-
 	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 	doc, _ := NewDocument(bs)
 	doc.BuildV3Model()
@@ -372,7 +348,6 @@ func TestDocument_Render_ChangeCheck_Burgershop(t *testing.T) {
 	assert.Nil(t, errs)
 	assert.NotNil(t, rend)
 	assert.Nil(t, compReport)
-
 }
 
 func TestDocument_RenderAndReload_Swagger(t *testing.T) {
@@ -383,7 +358,6 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 	_, _, _, e := doc.RenderAndReload()
 	assert.Len(t, e, 1)
 	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e[0].Error())
-
 }
 
 func TestDocument_Render_Swagger(t *testing.T) {
@@ -394,7 +368,6 @@ func TestDocument_Render_Swagger(t *testing.T) {
 	_, e := doc.Render()
 	assert.Error(t, e)
 	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e.Error())
-
 }
 
 func TestDocument_BuildModelPreBuild(t *testing.T) {
@@ -424,21 +397,18 @@ func TestDocument_AnyDocWithConfig(t *testing.T) {
 func TestDocument_BuildModelCircular(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/circular-tests.yaml")
 	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
-	assert.NotNil(t, m)
-	assert.Len(t, e, 3)
+	doc.BuildV3Model()
+	assert.Len(t, doc.GetRolodex().GetCaughtErrors(), 3)
 }
 
 func TestDocument_BuildModelBad(t *testing.T) {
 	petstore, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	doc, _ := NewDocument(petstore)
-	m, e := doc.BuildV3Model()
-	assert.Nil(t, m)
-	assert.Len(t, e, 9)
+	doc.BuildV3Model()
+	assert.Len(t, doc.GetRolodex().GetCaughtErrors(), 6)
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
-
 	json := `{ 'openapi': '3.0',
  'info': {
    'title': 'The magic API'
@@ -463,7 +433,7 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 }
 
 func TestExtractReference(t *testing.T) {
-	var data = `
+	data := `
 openapi: "3.1"
 components:
   parameters:
@@ -500,36 +470,31 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, errors, 9)
+	assert.Len(t, errors, 6)
 	assert.Nil(t, changes)
 }
 
 func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
-
 	burgerShopOriginal, _ := os.ReadFile("test_specs/badref-burgershop.openapi.yaml")
 	burgerShopUpdated, _ := os.ReadFile("test_specs/burgershop.openapi-modified.yaml")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 9)
+	assert.Len(t, errors, 6)
 	assert.Nil(t, changes)
-
 }
 
 func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
-
 	burgerShopOriginal, _ := os.ReadFile("test_specs/petstorev2-badref.json")
 	burgerShopUpdated, _ := os.ReadFile("test_specs/petstorev2-badref.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 2)
+	assert.Len(t, errors, 14)
 	assert.Nil(t, changes)
-
 }
 
 func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
-
 	burgerShopOriginal, _ := os.ReadFile("test_specs/petstorev2.json")
 	burgerShopUpdated, _ := os.ReadFile("test_specs/petstorev3.json")
 	originalDoc, _ := NewDocument(burgerShopOriginal)
@@ -537,7 +502,6 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
 	assert.Len(t, errors, 1)
 	assert.Nil(t, changes)
-
 }
 
 func TestSchemaRefIsFollowed(t *testing.T) {
@@ -545,7 +509,6 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -583,7 +546,7 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 }
 
 func TestDocument_ParamsAndRefsRender(t *testing.T) {
-	var d = `openapi: "3.1"
+	d := `openapi: "3.1"
 components:
     parameters:
         limit:
@@ -642,7 +605,7 @@ paths:
 //      parameters:
 //        - $ref: "https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"`
 //
-//	config := datamodel.NewOpenDocumentConfiguration()
+//	config := datamodel.NewDocumentConfiguration()
 //
 //	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
 //	if err != nil {
@@ -658,7 +621,7 @@ paths:
 //}
 
 func TestDocument_ExampleMap(t *testing.T) {
-	var d = `openapi: "3.1"
+	d := `openapi: "3.1"
 components:
     schemas:
         ProjectRequest:
@@ -692,24 +655,30 @@ components:
 }
 
 func TestDocument_OperationsAsRefs(t *testing.T) {
-
 	ae := `operationId: thisIsAnOperationId
 summary: a test thing
 description: this is a test, that does a test.`
 
-	_ = os.WriteFile("test-operation.yaml", []byte(ae), 0644)
+	_ = os.WriteFile("test-operation.yaml", []byte(ae), 0o644)
 	defer os.Remove("test-operation.yaml")
 
-	var d = `openapi: "3.1"
+	d := `openapi: "3.1"
 paths:
     /an/operation:
         get:
             $ref: test-operation.yaml`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	cf := datamodel.NewDocumentConfiguration()
+	cf.BasePath = "."
+	cf.FileFilter = []string{"test-operation.yaml"}
+
+	doc, err := NewDocumentWithConfiguration([]byte(d), cf)
 	if err != nil {
 		panic(err)
 	}
+
+	assert.NotNil(t, doc.GetConfiguration())
+	assert.Equal(t, doc.GetConfiguration(), cf)
 
 	result, errs := doc.BuildV3Model()
 	if len(errs) > 0 {
@@ -723,8 +692,7 @@ paths:
 }
 
 func TestDocument_InputAsJSON(t *testing.T) {
-
-	var d = `{
+	d := `{
   "openapi": "3.1",
   "paths": {
     "/an/operation": {
@@ -735,7 +703,7 @@ func TestDocument_InputAsJSON(t *testing.T) {
   }
 }`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic(err)
 	}
@@ -749,8 +717,7 @@ func TestDocument_InputAsJSON(t *testing.T) {
 }
 
 func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
-
-	var d = `{
+	d := `{
     "openapi": "3.1",
     "paths": {
         "/an/operation": {
@@ -761,7 +728,7 @@ func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
     }
 }`
 
-	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewOpenDocumentConfiguration())
+	doc, err := NewDocumentWithConfiguration([]byte(d), datamodel.NewDocumentConfiguration())
 	if err != nil {
 		panic(err)
 	}
@@ -775,7 +742,6 @@ func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
 }
 
 func TestDocument_RenderWithIndention(t *testing.T) {
-
 	spec := `openapi: "3.1.0"
 info:
       title: Test
@@ -785,7 +751,7 @@ paths:
             get:
                   operationId: 'test'`
 
-	config := datamodel.NewOpenDocumentConfiguration()
+	config := datamodel.NewDocumentConfiguration()
 
 	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
 	if err != nil {
@@ -800,8 +766,7 @@ paths:
 }
 
 func TestDocument_IgnorePolymorphicCircularReferences(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -818,7 +783,7 @@ components:
         - "name"
         - "children"`
 
-	config := datamodel.NewClosedDocumentConfiguration()
+	config := datamodel.NewDocumentConfiguration()
 	config.IgnorePolymorphicCircularReferences = true
 
 	doc, err := NewDocumentWithConfiguration([]byte(d), config)
@@ -830,12 +795,11 @@ components:
 
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
-
+	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularPolyReferences(), 1)
 }
 
 func TestDocument_IgnoreArrayCircularReferences(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -852,7 +816,7 @@ components:
         - "name"
         - "children"`
 
-	config := datamodel.NewClosedDocumentConfiguration()
+	config := datamodel.NewDocumentConfiguration()
 	config.IgnoreArrayCircularReferences = true
 
 	doc, err := NewDocumentWithConfiguration([]byte(d), config)
@@ -864,7 +828,66 @@ components:
 
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
+	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularArrayReferences(), 1)
+}
 
+func TestDocument_TestMixedReferenceOrigin(t *testing.T) {
+	bs, _ := os.ReadFile("test_specs/mixedref-burgershop.openapi.yaml")
+
+	config := datamodel.NewDocumentConfiguration()
+	config.AllowRemoteReferences = true
+	config.AllowFileReferences = true
+	config.SkipCircularReferenceCheck = true
+	config.BasePath = "test_specs"
+
+	config.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	doc, _ := NewDocumentWithConfiguration(bs, config)
+	m, _ := doc.BuildV3Model()
+
+	// extract something that can only exist after being located by the rolodex.
+	mediaType := m.Model.Paths.PathItems.GetOrZero("/burgers/{burgerId}/dressings").
+		Get.Responses.Codes.GetOrZero("200").Content.GetOrZero("application/json").Schema.Schema().Items
+
+	items := mediaType.A.Schema()
+
+	origin := items.ParentProxy.GetReferenceOrigin()
+	assert.NotNil(t, origin)
+	assert.True(t, strings.HasSuffix(origin.AbsoluteLocation, "test_specs/burgershop.openapi.yaml"))
+}
+
+func BenchmarkReferenceOrigin(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+
+		bs, _ := os.ReadFile("test_specs/mixedref-burgershop.openapi.yaml")
+
+		config := datamodel.NewDocumentConfiguration()
+		config.AllowRemoteReferences = true
+		config.AllowFileReferences = true
+		config.BasePath = "test_specs"
+		config.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+
+		doc, _ := NewDocumentWithConfiguration(bs, config)
+		m, _ := doc.BuildV3Model()
+
+		// extract something that can only exist after being located by the rolodex.
+		mediaType := m.Model.Paths.PathItems.GetOrZero("/burgers/{burgerId}/dressings").
+			Get.Responses.Codes.GetOrZero("200").Content.GetOrZero("application/json").Schema.Schema().Items
+
+		items := mediaType.A.Schema()
+
+		origin := items.ParentProxy.GetReferenceOrigin()
+		if origin == nil {
+			// fmt.Println("nil origin")
+		} else {
+			// fmt.Println(origin.AbsoluteLocation)
+		}
+		assert.NotNil(b, origin)
+		assert.True(b, strings.HasSuffix(origin.AbsoluteLocation, "test_specs/burgershop.openapi.yaml"))
+	}
 }
 
 // Ensure document ordering is preserved after building, rendering, and reloading.

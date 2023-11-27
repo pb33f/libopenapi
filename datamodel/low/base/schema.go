@@ -1,9 +1,9 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -101,7 +101,7 @@ type Schema struct {
 	PatternProperties     low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
 	PropertyNames         low.NodeReference[*SchemaProxy]
 	UnevaluatedItems      low.NodeReference[*SchemaProxy]
-	UnevaluatedProperties low.NodeReference[*SchemaDynamicValue[*SchemaProxy, *bool]]
+	UnevaluatedProperties low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]
 	Anchor                low.NodeReference[string]
 
 	// Compatible with all versions
@@ -122,7 +122,7 @@ type Schema struct {
 	Enum                 low.NodeReference[[]low.ValueReference[any]]
 	Not                  low.NodeReference[*SchemaProxy]
 	Properties           low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
-	AdditionalProperties low.NodeReference[any]
+	AdditionalProperties low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]
 	Description          low.NodeReference[string]
 	ContentEncoding      low.NodeReference[string]
 	ContentMediaType     low.NodeReference[string]
@@ -139,6 +139,9 @@ type Schema struct {
 
 	// Parent Proxy refers back to the low level SchemaProxy that is proxying this schema.
 	ParentProxy *SchemaProxy
+
+	// Index is a reference to the SpecIndex that was used to build this schema.
+	Index *index.SpecIndex
 	*low.Reference
 }
 
@@ -190,53 +193,7 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, fmt.Sprint(s.MinProperties.Value))
 	}
 	if !s.AdditionalProperties.IsEmpty() {
-
-		// check type of properties, if we have a low level map, we need to hash the values in a repeatable
-		// order.
-		to := reflect.TypeOf(s.AdditionalProperties.Value)
-		vo := reflect.ValueOf(s.AdditionalProperties.Value)
-		var values []string
-		switch to.Kind() {
-		case reflect.Slice:
-			for i := 0; i < vo.Len(); i++ {
-				vn := vo.Index(i).Interface()
-
-				if jh, ok := vn.(low.HasValueUnTyped); ok {
-					vn = jh.GetValueUntyped()
-					fg := reflect.TypeOf(vn)
-					gf := reflect.ValueOf(vn)
-
-					if fg.Kind() == reflect.Map {
-						for _, ky := range gf.MapKeys() {
-							hu := ky.Interface()
-							values = append(values, fmt.Sprintf("%s:%s", hu, low.GenerateHashString(gf.MapIndex(ky).Interface())))
-						}
-						continue
-					}
-					values = append(values, fmt.Sprintf("%d:%s", i, low.GenerateHashString(vn)))
-				}
-			}
-			sort.Strings(values)
-			d = append(d, strings.Join(values, "||"))
-
-		case reflect.Map:
-			for _, k := range vo.MapKeys() {
-				var x string
-				var l int
-				var v any
-				// extract key
-				if o, ok := k.Interface().(low.HasKeyNode); ok {
-					x = o.GetKeyNode().Value
-					l = o.GetKeyNode().Line
-					v = vo.MapIndex(k).Interface().(low.HasValueNodeUntyped).GetValueNode().Value
-				}
-				values = append(values, fmt.Sprintf("%d:%s:%s", l, x, low.GenerateHashString(v)))
-			}
-			sort.Strings(values)
-			d = append(d, strings.Join(values, "||"))
-		default:
-			d = append(d, low.GenerateHashString(s.AdditionalProperties.Value))
-		}
+		d = append(d, low.GenerateHashString(s.AdditionalProperties.Value))
 	}
 	if !s.Description.IsEmpty() {
 		d = append(d, fmt.Sprint(s.Description.Value))
@@ -535,12 +492,13 @@ func (s *Schema) GetExtensions() map[low.KeyReference[string]]low.ValueReference
 //   - UnevaluatedItems
 //   - UnevaluatedProperties
 //   - Anchor
-func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
+	s.Index = idx
 	if h, _, _ := utils.IsNodeRefValue(root); h {
-		ref, err := low.LocateRefNode(root, idx)
+		ref, _, err := low.LocateRefNode(root, idx)
 		if ref != nil {
 			root = ref
 			if err != nil {
@@ -591,20 +549,43 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// determine exclusive minimum type, bool (3.0) or int (3.1)
 	_, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
 	if exMinValue != nil {
-		if utils.IsNodeBoolValue(exMinValue) {
-			val, _ := strconv.ParseBool(exMinValue.Value)
-			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMinLabel,
-				ValueNode: exMinValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+
+		// if there is an index, determine if this a 3.0 or 3.1 schema
+		if idx != nil {
+			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
+				val, _ := strconv.ParseFloat(exMinValue.Value, 64)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
-		}
-		if utils.IsNodeIntValue(exMinValue) {
-			val, _ := strconv.ParseFloat(exMinValue.Value, 64)
-			s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMinLabel,
-				ValueNode: exMinValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+			if idx.GetConfig().SpecInfo.VersionNumeric <= 3.0 {
+				val, _ := strconv.ParseBool(exMinValue.Value)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+		} else {
+
+			// there is no index, so we have to determine the type based on the value
+			if utils.IsNodeBoolValue(exMinValue) {
+				val, _ := strconv.ParseBool(exMinValue.Value)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+			if utils.IsNodeIntValue(exMinValue) {
+				val, _ := strconv.ParseFloat(exMinValue.Value, 64)
+				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMinLabel,
+					ValueNode: exMinValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
 		}
 	}
@@ -612,20 +593,43 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	// determine exclusive maximum type, bool (3.0) or int (3.1)
 	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
 	if exMaxValue != nil {
-		if utils.IsNodeBoolValue(exMaxValue) {
-			val, _ := strconv.ParseBool(exMaxValue.Value)
-			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMaxLabel,
-				ValueNode: exMaxValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+
+		// if there is an index, determine if this a 3.0 or 3.1 schema
+		if idx != nil {
+			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
+				val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
-		}
-		if utils.IsNodeIntValue(exMaxValue) {
-			val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
-			s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
-				KeyNode:   exMaxLabel,
-				ValueNode: exMaxValue,
-				Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+			if idx.GetConfig().SpecInfo.VersionNumeric <= 3.0 {
+				val, _ := strconv.ParseBool(exMaxValue.Value)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+		} else {
+
+			// there is no index, so we have to determine the type based on the value
+			if utils.IsNodeBoolValue(exMaxValue) {
+				val, _ := strconv.ParseBool(exMaxValue.Value)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 0, A: val},
+				}
+			}
+			if utils.IsNodeIntValue(exMaxValue) {
+				val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
+				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
+					KeyNode:   exMaxLabel,
+					ValueNode: exMaxValue,
+					Value:     &SchemaDynamicValue[bool, float64]{N: 1, B: val},
+				}
 			}
 		}
 	}
@@ -668,77 +672,24 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 
-	_, addPLabel, addPNode := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
-	if addPNode != nil {
-		if utils.IsNodeMap(addPNode) || utils.IsNodeArray(addPNode) {
-			// check if this is a reference, or an inline schema.
-			isRef, _, _ := utils.IsNodeRefValue(addPNode)
-			var sp *SchemaProxy
-			// now check if this object has a 'type' if so, it's a schema, if not... it's a random
-			// object, and we should treat it as a raw map.
-			if _, v := utils.FindKeyNodeTop(TypeLabel, addPNode.Content); v != nil {
-				sp = &SchemaProxy{
-					kn:  addPLabel,
-					vn:  addPNode,
-					idx: idx,
-				}
-			}
-			if isRef {
-				_, vn := utils.FindKeyNodeTop("$ref", addPNode.Content)
-				sp = &SchemaProxy{
-					kn:              addPLabel,
-					vn:              addPNode,
-					idx:             idx,
-					isReference:     true,
-					referenceLookup: vn.Value,
-				}
-			}
-
-			// if this is a reference, or a schema, we're done.
-			if sp != nil {
-				s.AdditionalProperties = low.NodeReference[any]{Value: sp, KeyNode: addPLabel, ValueNode: addPNode}
-			} else {
-
-				// if this is a map, collect all the keys and values.
-				if utils.IsNodeMap(addPNode) {
-
-					addProps := make(map[low.KeyReference[string]]low.ValueReference[any])
-					var label string
-					for g := range addPNode.Content {
-						if g%2 == 0 {
-							label = addPNode.Content[g].Value
-							continue
-						} else {
-							addProps[low.KeyReference[string]{Value: label, KeyNode: addPNode.Content[g-1]}] = low.ValueReference[any]{Value: addPNode.Content[g].Value, ValueNode: addPNode.Content[g]}
-						}
-					}
-					s.AdditionalProperties = low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
-				}
-
-				// if the node is an array, extract everything into a trackable structure
-				if utils.IsNodeArray(addPNode) {
-					var addProps []low.ValueReference[any]
-
-					// if this is an array or maps, encode the map items correctly.
-					for i := range addPNode.Content {
-						if utils.IsNodeMap(addPNode.Content[i]) {
-							var prop map[string]any
-							_ = addPNode.Content[i].Decode(&prop)
-							addProps = append(addProps,
-								low.ValueReference[any]{Value: prop, ValueNode: addPNode.Content[i]})
-						} else {
-							addProps = append(addProps,
-								low.ValueReference[any]{Value: addPNode.Content[i].Value, ValueNode: addPNode.Content[i]})
-						}
-					}
-
-					s.AdditionalProperties = low.NodeReference[any]{Value: addProps, KeyNode: addPLabel, ValueNode: addPNode}
-				}
-			}
+	// check additionalProperties type for schema or bool
+	addPropsIsBool := false
+	addPropsBoolValue := true
+	_, addPLabel, addPValue := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
+	if addPValue != nil {
+		if utils.IsNodeBoolValue(addPValue) {
+			addPropsIsBool = true
+			addPropsBoolValue, _ = strconv.ParseBool(addPValue.Value)
 		}
-		if utils.IsNodeBoolValue(addPNode) {
-			b, _ := strconv.ParseBool(addPNode.Value)
-			s.AdditionalProperties = low.NodeReference[any]{Value: b, KeyNode: addPLabel, ValueNode: addPNode}
+	}
+	if addPropsIsBool {
+		s.AdditionalProperties = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]{
+			Value: &SchemaDynamicValue[*SchemaProxy, bool]{
+				B: addPropsBoolValue,
+				N: 1,
+			},
+			KeyNode:   addPLabel,
+			ValueNode: addPValue,
 		}
 	}
 
@@ -755,7 +706,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	if extDocNode != nil {
 		var exDoc ExternalDoc
 		_ = low.BuildModel(extDocNode, &exDoc)
-		_ = exDoc.Build(extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
+		_ = exDoc.Build(ctx, extDocLabel, extDocNode, idx) // throws no errors, can't check for one.
 		s.ExternalDocs = low.NodeReference[*ExternalDoc]{Value: &exDoc, KeyNode: extDocLabel, ValueNode: extDocNode}
 	}
 
@@ -770,7 +721,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle properties
-	props, err := buildPropertyMap(root, idx, PropertiesLabel)
+	props, err := buildPropertyMap(ctx, root, idx, PropertiesLabel)
 	if err != nil {
 		return err
 	}
@@ -779,7 +730,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle dependent schemas
-	props, err = buildPropertyMap(root, idx, DependentSchemasLabel)
+	props, err = buildPropertyMap(ctx, root, idx, DependentSchemasLabel)
 	if err != nil {
 		return err
 	}
@@ -788,7 +739,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	// handle pattern properties
-	props, err = buildPropertyMap(root, idx, PatternPropertiesLabel)
+	props, err = buildPropertyMap(ctx, root, idx, PatternPropertiesLabel)
 	if err != nil {
 		return err
 	}
@@ -828,9 +779,9 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	if unevalIsBool {
-		s.UnevaluatedProperties = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, *bool]]{
-			Value: &SchemaDynamicValue[*SchemaProxy, *bool]{
-				B: &unevalBoolValue,
+		s.UnevaluatedProperties = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]{
+			Value: &SchemaDynamicValue[*SchemaProxy, bool]{
+				B: unevalBoolValue,
 				N: 1,
 			},
 			KeyNode:   unevalLabel,
@@ -839,7 +790,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	var allOf, anyOf, oneOf, prefixItems []low.ValueReference[*SchemaProxy]
-	var items, not, contains, sif, selse, sthen, propertyNames, unevalItems, unevalProperties low.ValueReference[*SchemaProxy]
+	var items, not, contains, sif, selse, sthen, propertyNames, unevalItems, unevalProperties, addProperties low.ValueReference[*SchemaProxy]
 
 	_, allOfLabel, allOfValue := utils.FindKeyNodeFullTop(AllOfLabel, root.Content)
 	_, anyOfLabel, anyOfValue := utils.FindKeyNodeFullTop(AnyOfLabel, root.Content)
@@ -853,6 +804,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	_, propNamesLabel, propNamesValue := utils.FindKeyNodeFullTop(PropertyNamesLabel, root.Content)
 	_, unevalItemsLabel, unevalItemsValue := utils.FindKeyNodeFullTop(UnevaluatedItemsLabel, root.Content)
 	_, unevalPropsLabel, unevalPropsValue := utils.FindKeyNodeFullTop(UnevaluatedPropertiesLabel, root.Content)
+	_, addPropsLabel, addPropsValue := utils.FindKeyNodeFullTop(AdditionalPropertiesLabel, root.Content)
 
 	errorChan := make(chan error)
 	allOfChan := make(chan schemaProxyBuildResult)
@@ -868,6 +820,7 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	propNamesChan := make(chan schemaProxyBuildResult)
 	unevalItemsChan := make(chan schemaProxyBuildResult)
 	unevalPropsChan := make(chan schemaProxyBuildResult)
+	addPropsChan := make(chan schemaProxyBuildResult)
 
 	totalBuilds := countSubSchemaItems(allOfValue) +
 		countSubSchemaItems(anyOfValue) +
@@ -875,52 +828,56 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		countSubSchemaItems(prefixItemsValue)
 
 	if allOfValue != nil {
-		go buildSchema(allOfChan, allOfLabel, allOfValue, errorChan, idx)
+		go buildSchema(ctx, allOfChan, allOfLabel, allOfValue, errorChan, idx)
 	}
 	if anyOfValue != nil {
-		go buildSchema(anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
+		go buildSchema(ctx, anyOfChan, anyOfLabel, anyOfValue, errorChan, idx)
 	}
 	if oneOfValue != nil {
-		go buildSchema(oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
+		go buildSchema(ctx, oneOfChan, oneOfLabel, oneOfValue, errorChan, idx)
 	}
 	if prefixItemsValue != nil {
-		go buildSchema(prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
+		go buildSchema(ctx, prefixItemsChan, prefixItemsLabel, prefixItemsValue, errorChan, idx)
 	}
 	if notValue != nil {
 		totalBuilds++
-		go buildSchema(notChan, notLabel, notValue, errorChan, idx)
+		go buildSchema(ctx, notChan, notLabel, notValue, errorChan, idx)
 	}
 	if containsValue != nil {
 		totalBuilds++
-		go buildSchema(containsChan, containsLabel, containsValue, errorChan, idx)
+		go buildSchema(ctx, containsChan, containsLabel, containsValue, errorChan, idx)
 	}
 	if !itemsIsBool && itemsValue != nil {
 		totalBuilds++
-		go buildSchema(itemsChan, itemsLabel, itemsValue, errorChan, idx)
+		go buildSchema(ctx, itemsChan, itemsLabel, itemsValue, errorChan, idx)
 	}
 	if sifValue != nil {
 		totalBuilds++
-		go buildSchema(ifChan, sifLabel, sifValue, errorChan, idx)
+		go buildSchema(ctx, ifChan, sifLabel, sifValue, errorChan, idx)
 	}
 	if selseValue != nil {
 		totalBuilds++
-		go buildSchema(elseChan, selseLabel, selseValue, errorChan, idx)
+		go buildSchema(ctx, elseChan, selseLabel, selseValue, errorChan, idx)
 	}
 	if sthenValue != nil {
 		totalBuilds++
-		go buildSchema(thenChan, sthenLabel, sthenValue, errorChan, idx)
+		go buildSchema(ctx, thenChan, sthenLabel, sthenValue, errorChan, idx)
 	}
 	if propNamesValue != nil {
 		totalBuilds++
-		go buildSchema(propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
+		go buildSchema(ctx, propNamesChan, propNamesLabel, propNamesValue, errorChan, idx)
 	}
 	if unevalItemsValue != nil {
 		totalBuilds++
-		go buildSchema(unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
+		go buildSchema(ctx, unevalItemsChan, unevalItemsLabel, unevalItemsValue, errorChan, idx)
 	}
 	if !unevalIsBool && unevalPropsValue != nil {
 		totalBuilds++
-		go buildSchema(unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
+		go buildSchema(ctx, unevalPropsChan, unevalPropsLabel, unevalPropsValue, errorChan, idx)
+	}
+	if !addPropsIsBool && addPropsValue != nil {
+		totalBuilds++
+		go buildSchema(ctx, addPropsChan, addPropsLabel, addPropsValue, errorChan, idx)
 	}
 
 	completeCount := 0
@@ -967,6 +924,9 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		case r := <-unevalPropsChan:
 			completeCount++
 			unevalProperties = r.v
+		case r := <-addPropsChan:
+			completeCount++
+			addProperties = r.v
 		}
 	}
 
@@ -1057,22 +1017,31 @@ func (s *Schema) Build(root *yaml.Node, idx *index.SpecIndex) error {
 		}
 	}
 	if !unevalIsBool && !unevalProperties.IsEmpty() {
-		s.UnevaluatedProperties = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, *bool]]{
-			Value: &SchemaDynamicValue[*SchemaProxy, *bool]{
+		s.UnevaluatedProperties = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]{
+			Value: &SchemaDynamicValue[*SchemaProxy, bool]{
 				A: unevalProperties.Value,
 			},
 			KeyNode:   unevalPropsLabel,
 			ValueNode: unevalPropsValue,
 		}
 	}
+	if !addPropsIsBool && !addProperties.IsEmpty() {
+		s.AdditionalProperties = low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]{
+			Value: &SchemaDynamicValue[*SchemaProxy, bool]{
+				A: addProperties.Value,
+			},
+			KeyNode:   addPropsLabel,
+			ValueNode: addPropsValue,
+		}
+	}
 	return nil
 }
 
-func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]], error) {
+func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, label string) (*low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]], error) {
 	// for property, build in a new thread!
 	bChan := make(chan schemaProxyBuildResult)
 
-	buildProperty := func(label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
+	buildProperty := func(ctx context.Context, label *yaml.Node, value *yaml.Node, c chan schemaProxyBuildResult, isRef bool,
 		refString string,
 	) {
 		c <- schemaProxyBuildResult{
@@ -1081,7 +1050,7 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 				Value:   label.Value,
 			},
 			v: low.ValueReference[*SchemaProxy]{
-				Value:     &SchemaProxy{kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
+				Value:     &SchemaProxy{ctx: ctx, kn: label, vn: value, idx: idx, isReference: isRef, referenceLookup: refString},
 				ValueNode: value,
 			},
 		}
@@ -1098,22 +1067,24 @@ func buildPropertyMap(root *yaml.Node, idx *index.SpecIndex, label string) (*low
 				continue
 			}
 
+			foundCtx := ctx
 			// check our prop isn't reference
 			isRef := false
 			refString := ""
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _ := low.LocateRefNode(prop, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
 				if ref != nil {
 					isRef = true
 					prop = ref
 					refString = l
+					foundCtx = fctx
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
 			totalProps++
-			go buildProperty(currentProp, prop, bChan, isRef, refString)
+			go buildProperty(foundCtx, currentProp, prop, bChan, isRef, refString)
 		}
 		completedProps := 0
 		for completedProps < totalProps {
@@ -1155,7 +1126,7 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 }
 
 // build out a child schema for parent schema.
-func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
+func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
 	if valueNode != nil {
 		type buildResult struct {
 			res *low.ValueReference[*SchemaProxy]
@@ -1165,7 +1136,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 		syncChan := make(chan buildResult)
 
 		// build out a SchemaProxy for every sub-schema.
-		build := func(kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
+		build := func(pctx context.Context, kn *yaml.Node, vn *yaml.Node, schemaIdx int, c chan buildResult,
 			isRef bool, refLocation string,
 		) {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
@@ -1178,6 +1149,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 			sp.kn = kn
 			sp.vn = vn
 			sp.idx = idx
+			sp.ctx = pctx
 			if isRef {
 				sp.referenceLookup = refLocation
 				sp.isReference = true
@@ -1194,13 +1166,15 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 		isRef := false
 		refLocation := ""
+		foundCtx := ctx
 		if utils.IsNodeMap(valueNode) {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
 				isRef = true
-				ref, _ := low.LocateRefNode(valueNode, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, valueNode, idx)
 				if ref != nil {
 					valueNode = ref
+					foundCtx = fctx
 				} else {
 					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
@@ -1209,7 +1183,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
-			go build(labelNode, valueNode, -1, syncChan, isRef, refLocation)
+			go build(foundCtx, labelNode, valueNode, -1, syncChan, isRef, refLocation)
 			select {
 			case r := <-syncChan:
 				schemas <- schemaProxyBuildResult{
@@ -1220,8 +1194,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					v: *r.res,
 				}
 			}
-		}
-		if utils.IsNodeArray(valueNode) {
+		} else if utils.IsNodeArray(valueNode) {
 			refBuilds := 0
 			results := make([]*low.ValueReference[*SchemaProxy], len(valueNode.Content))
 
@@ -1230,9 +1203,10 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 				h := false
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
 					isRef = true
-					ref, _ := low.LocateRefNode(vn, idx)
+					ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, vn, idx)
 					if ref != nil {
 						vn = ref
+						foundCtx = fctx
 					} else {
 						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
@@ -1241,7 +1215,7 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					}
 				}
 				refBuilds++
-				go build(vn, vn, i, syncChan, isRef, refLocation)
+				go build(foundCtx, vn, vn, i, syncChan, isRef, refLocation)
 			}
 
 			completedBuilds := 0
@@ -1262,6 +1236,8 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 					v: *r,
 				}
 			}
+		} else {
+			errors <- fmt.Errorf("build schema failed: unexpected node type: %s, line %d, col %d", valueNode.Tag, valueNode.Line, valueNode.Column)
 		}
 	}
 }
@@ -1269,22 +1245,29 @@ func buildSchema(schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml
 // ExtractSchema will return a pointer to a NodeReference that contains a *SchemaProxy if successful. The function
 // will specifically look for a key node named 'schema' and extract the value mapped to that key. If the operation
 // fails then no NodeReference is returned and an error is returned instead.
-func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
+func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*SchemaProxy], error) {
 	var schLabel, schNode *yaml.Node
 	errStr := "schema build failed: reference '%s' cannot be found at line %d, col %d"
 
 	isRef := false
 	refLocation := ""
+
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		isRef = true
-		ref, _ := low.LocateRefNode(root, idx)
+		ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
+			ctx = nCtx
+			idx = fIdx
 		} else {
+			v := root.Content[1].Value
+			if root.Content[1].Value == "" {
+				v = "[empty]"
+			}
 			return nil, fmt.Errorf(errStr,
-				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
+				v, root.Content[1].Line, root.Content[1].Column)
 		}
 	} else {
 		_, schLabel, schNode = utils.FindKeyNodeFull(SchemaLabel, root.Content)
@@ -1292,12 +1275,21 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
 				isRef = true
-				ref, _ := low.LocateRefNode(schNode, idx)
+				ref, foundIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
 				if ref != nil {
 					schNode = ref
+					if foundIdx != nil {
+						// TODO: check on this
+						//idx = foundIdx
+					}
+					ctx = nCtx
 				} else {
+					v := schNode.Content[1].Value
+					if schNode.Content[1].Value == "" {
+						v = "[empty]"
+					}
 					return nil, fmt.Errorf(errStr,
-						schNode.Content[1].Value, schNode.Content[1].Line, schNode.Content[1].Column)
+						v, schNode.Content[1].Line, schNode.Content[1].Column)
 				}
 			}
 		}
@@ -1305,7 +1297,7 @@ func ExtractSchema(root *yaml.Node, idx *index.SpecIndex) (*low.NodeReference[*S
 
 	if schNode != nil {
 		// check if schema has already been built.
-		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, isReference: isRef, referenceLookup: refLocation}
+		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, ctx: ctx, isReference: isRef, referenceLookup: refLocation}
 		return &low.NodeReference[*SchemaProxy]{
 			Value: schema, KeyNode: schLabel, ValueNode: schNode, ReferenceNode: isRef,
 			Reference: refLocation,

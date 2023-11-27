@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
@@ -44,7 +45,7 @@ clientCredentials:
 
 	var n v3.OAuthFlows
 	_ = low.BuildModel(&idxNode, &n)
-	_ = n.Build(nil, idxNode.Content[0], idx)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	r := NewOAuthFlows(&n)
 

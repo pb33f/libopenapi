@@ -6,6 +6,7 @@ package v3
 import (
 	"sort"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
@@ -45,7 +46,7 @@ func NewPaths(paths *v3low.Paths) *Paths {
 		items.Set(value.key, value.value)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pathItemResult](
+	_ = datamodel.TranslateMapParallel[low.KeyReference[string], low.ValueReference[*v3low.PathItem], pathItemResult](
 		paths.PathItems, translateFunc, resultFunc,
 	)
 	p.PathItems = items

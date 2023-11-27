@@ -3,6 +3,7 @@ package utils
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
@@ -252,6 +253,9 @@ func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode 
 	//numNodes := len(nodes)
 	for i, v := range nodes {
 		if i%2 == 0 && key == v.Value {
+			if len(nodes) <= i+1 {
+				return v, nodes[i]
+			}
 			return v, nodes[i+1] // next node is what we need.
 		}
 		for x, j := range v.Content {
@@ -564,7 +568,8 @@ func IsHttpVerb(verb string) bool {
 }
 
 // define bracket name expression
-var bracketNameExp = regexp.MustCompile("^(\\w+)\\[(\\w+)\\]$")
+var bracketNameExp = regexp.MustCompile(`^(\w+)\[(\w+)\]$`)
+var pathCharExp = regexp.MustCompile(`[%=;~.]`)
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
@@ -573,8 +578,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
-		pathCharExp, _ := regexp.MatchString("[%=;~.]", segs[i])
-		if pathCharExp {
+		if pathCharExp.Match([]byte(segs[i])) {
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
 			if len(cleaned) > 0 {
@@ -612,11 +616,9 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	_, err := strconv.ParseInt(name, 10, 32)
 	var replaced string
 	if err != nil {
-		replaced = strings.ReplaceAll(fmt.Sprintf("%s",
-			strings.Join(cleaned, ".")), "#", "$")
+		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
 	} else {
-		replaced = strings.ReplaceAll(fmt.Sprintf("%s",
-			strings.Join(cleaned, ".")), "#", "$")
+		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
 	}
 
 	if len(replaced) > 0 {
@@ -711,10 +713,11 @@ func CheckEnumForDuplicates(seq []*yaml.Node) []*yaml.Node {
 	return res
 }
 
+var whitespaceExp = regexp.MustCompile(`\n( +)`)
+
 // DetermineWhitespaceLength will determine the length of the whitespace for a JSON or YAML file.
 func DetermineWhitespaceLength(input string) int {
-	exp := regexp.MustCompile(`\n( +)`)
-	whiteSpace := exp.FindAllStringSubmatch(input, -1)
+	whiteSpace := whitespaceExp.FindAllStringSubmatch(input, -1)
 	var filtered []string
 	for i := range whiteSpace {
 		filtered = append(filtered, whiteSpace[i][1])
@@ -749,3 +752,5 @@ func CheckForMergeNodes(node *yaml.Node) {
 		}
 	}
 }
+
+type RemoteURLHandler = func(url string) (*http.Response, error)

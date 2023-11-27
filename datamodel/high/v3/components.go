@@ -6,6 +6,7 @@ package v3
 import (
 	"sync"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
@@ -121,7 +122,7 @@ func buildComponent[IN any, OUT any](inMap orderedmap.Map[lowmodel.KeyReference[
 		outMap.Set(value.key, value.res)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel(inMap, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(inMap, translateFunc, resultFunc)
 }
 
 // buildSchema builds a schema from low level structs.
@@ -139,7 +140,7 @@ func buildSchema(inMap orderedmap.Map[lowmodel.KeyReference[string], lowmodel.Va
 		outMap.Set(value.key, value.res)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel(inMap, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(inMap, translateFunc, resultFunc)
 }
 
 // GoLow returns the low-level Components instance used to create the high-level one.

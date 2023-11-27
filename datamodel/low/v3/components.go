@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"sort"
@@ -142,7 +143,7 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 
 // Build converts root YAML node containing components to low level model.
 // Process each component in parallel.
-func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
+func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	co.Reference = new(low.Reference)
@@ -162,55 +163,55 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	}
 
 	go func() {
-		schemas, err := extractComponentValues[*base.SchemaProxy](SchemasLabel, root, idx)
+		schemas, err := extractComponentValues[*base.SchemaProxy](ctx, SchemasLabel, root, idx)
 		captureError(err)
 		co.Schemas = schemas
 		wg.Done()
 	}()
 	go func() {
-		parameters, err := extractComponentValues[*Parameter](ParametersLabel, root, idx)
+		parameters, err := extractComponentValues[*Parameter](ctx, ParametersLabel, root, idx)
 		captureError(err)
 		co.Parameters = parameters
 		wg.Done()
 	}()
 	go func() {
-		responses, err := extractComponentValues[*Response](ResponsesLabel, root, idx)
+		responses, err := extractComponentValues[*Response](ctx, ResponsesLabel, root, idx)
 		captureError(err)
 		co.Responses = responses
 		wg.Done()
 	}()
 	go func() {
-		examples, err := extractComponentValues[*base.Example](base.ExamplesLabel, root, idx)
+		examples, err := extractComponentValues[*base.Example](ctx, base.ExamplesLabel, root, idx)
 		captureError(err)
 		co.Examples = examples
 		wg.Done()
 	}()
 	go func() {
-		requestBodies, err := extractComponentValues[*RequestBody](RequestBodiesLabel, root, idx)
+		requestBodies, err := extractComponentValues[*RequestBody](ctx, RequestBodiesLabel, root, idx)
 		captureError(err)
 		co.RequestBodies = requestBodies
 		wg.Done()
 	}()
 	go func() {
-		headers, err := extractComponentValues[*Header](HeadersLabel, root, idx)
+		headers, err := extractComponentValues[*Header](ctx, HeadersLabel, root, idx)
 		captureError(err)
 		co.Headers = headers
 		wg.Done()
 	}()
 	go func() {
-		securitySchemes, err := extractComponentValues[*SecurityScheme](SecuritySchemesLabel, root, idx)
+		securitySchemes, err := extractComponentValues[*SecurityScheme](ctx, SecuritySchemesLabel, root, idx)
 		captureError(err)
 		co.SecuritySchemes = securitySchemes
 		wg.Done()
 	}()
 	go func() {
-		links, err := extractComponentValues[*Link](LinksLabel, root, idx)
+		links, err := extractComponentValues[*Link](ctx, LinksLabel, root, idx)
 		captureError(err)
 		co.Links = links
 		wg.Done()
 	}()
 	go func() {
-		callbacks, err := extractComponentValues[*Callback](CallbacksLabel, root, idx)
+		callbacks, err := extractComponentValues[*Callback](ctx, CallbacksLabel, root, idx)
 		captureError(err)
 		co.Callbacks = callbacks
 		wg.Done()
@@ -223,7 +224,7 @@ func (co *Components) Build(root *yaml.Node, idx *index.SpecIndex) error {
 // extractComponentValues converts all the YAML nodes of a component type to
 // low level model.
 // Process each node in parallel.
-func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]], error) {
+func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]], error) {
 	var emptyResult low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]
 	_, nodeLabel, nodeValue := utils.FindKeyNodeFullTop(label, root.Content)
 	if nodeValue == nil {
@@ -289,7 +290,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 		// TODO: check circular crazy on this. It may explode
 		var err error
 		if h, _, _ := utils.IsNodeRefValue(node); h && label != SchemasLabel {
-			node, err = low.LocateRefNode(node, idx)
+			node, _, err = low.LocateRefNode(node, idx)
 		}
 		if err != nil {
 			return componentBuildResult[T]{}, err
@@ -297,7 +298,7 @@ func extractComponentValues[T low.Buildable[N], N any](label string, root *yaml.
 
 		// build.
 		_ = low.BuildModel(node, n)
-		err = n.Build(currentLabel, node, idx)
+		err = n.Build(ctx, currentLabel, node, idx)
 		if err != nil {
 			return componentBuildResult[T]{}, err
 		}

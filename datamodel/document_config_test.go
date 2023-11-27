@@ -9,13 +9,6 @@ import (
 )
 
 func TestNewClosedDocumentConfiguration(t *testing.T) {
-	cfg := NewClosedDocumentConfiguration()
-	assert.False(t, cfg.AllowRemoteReferences)
-	assert.False(t, cfg.AllowFileReferences)
-}
-
-func TestNewOpenDocumentConfiguration(t *testing.T) {
-	cfg := NewOpenDocumentConfiguration()
-	assert.True(t, cfg.AllowRemoteReferences)
-	assert.True(t, cfg.AllowFileReferences)
+	cfg := NewDocumentConfiguration()
+	assert.NotNil(t, cfg)
 }
