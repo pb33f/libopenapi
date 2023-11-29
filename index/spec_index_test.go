@@ -239,7 +239,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1691, fileLen)
+	assert.Equal(t, 1696, fileLen)
 
 	rolo.AddLocalFS(basePath, fileFS)
 
@@ -251,8 +251,8 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	assert.NotNil(t, index)
 
-	assert.Len(t, index.GetMappedReferencesSequenced(), 299)
-	assert.Len(t, index.GetMappedReferences(), 299)
+	assert.Len(t, index.GetMappedReferencesSequenced(), 300)
+	assert.Len(t, index.GetMappedReferences(), 300)
 	assert.Len(t, fileFS.GetErrors(), 0)
 
 	// check circular references
@@ -260,9 +260,9 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, int64(1328224), rolo.RolodexFileSize())
+	assert.Equal(t, int64(1331012), rolo.RolodexFileSize())
 	assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
-	assert.Equal(t, 1691, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1696, rolo.RolodexTotalFiles())
 
 }
 
@@ -317,7 +317,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1677, fileLen)
+	assert.Equal(t, 1682, fileLen)
 
 	assert.NoError(t, rErr)
 
@@ -325,8 +325,8 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 
 	assert.NotNil(t, index)
 
-	assert.Len(t, index.GetMappedReferencesSequenced(), 299)
-	assert.Len(t, index.GetMappedReferences(), 299)
+	assert.Len(t, index.GetMappedReferencesSequenced(), 300)
+	assert.Len(t, index.GetMappedReferences(), 300)
 	assert.Len(t, fileFS.GetErrors(), 0)
 
 	// check circular references
@@ -334,9 +334,9 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, int64(1266728), rolo.RolodexFileSize())
+	assert.Equal(t, int64(1269396), rolo.RolodexFileSize())
 	assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
-	assert.Equal(t, 1677, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1682, rolo.RolodexTotalFiles())
 
 }
 
