@@ -714,8 +714,19 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
 													} else {
-														abs, _ := filepath.Abs(filepath.Join(filepath.Dir(ref.FullDefinition), exp[0]))
-														def = fmt.Sprintf("%s#/%s", abs, exp[1])
+														z := strings.Split(ref.FullDefinition, "#/")
+														if len(z) == 2 {
+															if len(z[0]) > 0 {
+																abs, _ := filepath.Abs(filepath.Join(filepath.Dir(z[0]), exp[0]))
+																def = fmt.Sprintf("%s#/%s", abs, exp[1])
+															} else {
+																abs, _ := filepath.Abs(exp[0])
+																def = fmt.Sprintf("%s#/%s", abs, exp[1])
+															}
+														} else {
+															abs, _ := filepath.Abs(filepath.Join(filepath.Dir(ref.FullDefinition), exp[0]))
+															def = fmt.Sprintf("%s#/%s", abs, exp[1])
+														}
 													}
 												}
 											} else {
