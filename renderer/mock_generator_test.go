@@ -96,6 +96,18 @@ func TestNewMockGeneratorWithDictionary(t *testing.T) {
 	assert.NotNil(t, mg)
 }
 
+func TestMockGenerator_GenerateJSONMock_NoObject(t *testing.T) {
+
+	mg := NewMockGenerator(JSON)
+
+	var isNil any
+	isNil = nil
+
+	mock, err := mg.GenerateMock(isNil, "")
+	assert.NoError(t, err)
+	assert.Nil(t, mock)
+}
+
 func TestMockGenerator_GenerateJSONMock_BadObject(t *testing.T) {
 	type NotMockable struct {
 		pizza string
