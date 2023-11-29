@@ -439,6 +439,7 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	if !isUrl {
 		if len(r.localFS) <= 0 {
 			r.logger.Warn("[rolodex] no local file systems configured, cannot open local file", "location", location)
+			return nil, fmt.Errorf("the rolodex has no local file systems configured, cannot open local file '%s'", location)
 		}
 
 		for k, v := range r.localFS {
