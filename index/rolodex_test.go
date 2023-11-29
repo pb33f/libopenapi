@@ -42,6 +42,17 @@ func TestRolodex_NoFS(t *testing.T) {
 
 }
 
+func TestRolodex_NoFSButHasRemoteFS(t *testing.T) {
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddRemoteFS("http://localhost", nil)
+	rf, err := rolo.Open("spec.yaml")
+	assert.Error(t, err)
+	assert.Equal(t, "the rolodex has no local file systems configured, cannot open local file 'spec.yaml'", err.Error())
+	assert.Nil(t, rf)
+
+}
+
 func TestRolodex_LocalNativeFS(t *testing.T) {
 
 	t.Parallel()
