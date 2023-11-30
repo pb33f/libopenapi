@@ -65,27 +65,27 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
-	assert.Len(t, index.allRefs, 385)
-	assert.Equal(t, 537, len(index.allMappedRefs))
+	assert.Equal(t, 626, len(index.allRefs))
+	assert.Equal(t, 871, len(index.allMappedRefs))
 	combined := index.GetAllCombinedReferences()
-	assert.Equal(t, 537, len(combined))
+	assert.Equal(t, 871, len(combined))
 
-	assert.Len(t, index.rawSequencedRefs, 1972)
-	assert.Equal(t, 246, index.pathCount)
-	assert.Equal(t, 402, index.operationCount)
-	assert.Equal(t, 537, index.schemaCount)
+	assert.Equal(t, len(index.rawSequencedRefs), 2712)
+	assert.Equal(t, 336, index.pathCount)
+	assert.Equal(t, 494, index.operationCount)
+	assert.Equal(t, 871, index.schemaCount)
 	assert.Equal(t, 0, index.globalTagsCount)
 	assert.Equal(t, 0, index.globalLinksCount)
 	assert.Equal(t, 0, index.componentParamCount)
-	assert.Equal(t, 143, index.operationParamCount)
-	assert.Equal(t, 88, index.componentsInlineParamDuplicateCount)
-	assert.Equal(t, 55, index.componentsInlineParamUniqueCount)
-	assert.Equal(t, 1516, index.enumCount)
-	assert.Len(t, index.GetAllEnums(), 1516)
+	assert.Equal(t, 162, index.operationParamCount)
+	assert.Equal(t, 102, index.componentsInlineParamDuplicateCount)
+	assert.Equal(t, 60, index.componentsInlineParamUniqueCount)
+	assert.Equal(t, 2579, index.enumCount)
+	assert.Equal(t, len(index.GetAllEnums()), 2579)
 	assert.Len(t, index.GetPolyAllOfReferences(), 0)
-	assert.Len(t, index.GetPolyOneOfReferences(), 275)
-	assert.Len(t, index.GetPolyAnyOfReferences(), 553)
-	assert.Len(t, index.GetAllReferenceSchemas(), 1972)
+	assert.Len(t, index.GetPolyOneOfReferences(), 315)
+	assert.Len(t, index.GetPolyAnyOfReferences(), 708)
+	assert.Len(t, index.GetAllReferenceSchemas(), 2712)
 	assert.NotNil(t, index.GetRootServersNode())
 	assert.Len(t, index.GetAllRootServers(), 1)
 	assert.Equal(t, "", index.GetSpecAbsolutePath())
@@ -101,9 +101,9 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	index.SetCircularReferences([]*CircularReferenceResult{new(CircularReferenceResult)})
 	assert.Len(t, index.GetCircularReferences(), 1)
 
-	assert.Len(t, index.GetRefsByLine(), 537)
-	assert.Len(t, index.GetLinesWithReferences(), 1972)
-	assert.Len(t, index.GetAllExternalDocuments(), 0)
+	assert.Equal(t, 871, len(index.GetRefsByLine()))
+	assert.Equal(t, 2712, len(index.GetLinesWithReferences()), 1972)
+	assert.Equal(t, 0, len(index.GetAllExternalDocuments()))
 }
 
 func TestSpecIndex_Asana(t *testing.T) {
@@ -260,7 +260,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, int64(1331498), rolo.RolodexFileSize())
+	assert.Equal(t, int64(1330184), rolo.RolodexFileSize())
 	assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 1696, rolo.RolodexTotalFiles())
 
@@ -334,7 +334,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, int64(1269882), rolo.RolodexFileSize())
+	assert.Equal(t, int64(1270079), rolo.RolodexFileSize())
 	assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 1682, rolo.RolodexTotalFiles())
 
@@ -1469,16 +1469,16 @@ func ExampleNewSpecIndex() {
 		len(index.GetAllSchemas()),
 		len(index.GetAllEnums()),
 		len(index.GetPolyOneOfReferences())+len(index.GetPolyAnyOfReferences()))
-	// Output: There are 537 references
-	// 246 paths
-	// 402 operations
-	// 537 component schemas
-	// 1972 reference schemas
-	// 11749 inline schemas
-	// 2612 inline schemas that are objects or arrays
-	// 14258 total schemas
-	// 1516 enums
-	// 828 polymorphic references
+	// Output: There are 871 references
+	// 336 paths
+	// 494 operations
+	// 871 component schemas
+	// 2712 reference schemas
+	// 15928 inline schemas
+	// 3857 inline schemas that are objects or arrays
+	// 19511 total schemas
+	// 2579 enums
+	// 1023 polymorphic references
 }
 
 func TestSpecIndex_GetAllPathsHavePathAndParent(t *testing.T) {

@@ -332,7 +332,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 					loop := append(journey, foundDup)
 
 					visitedDefinitions := make(map[string]bool)
-					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup, visitedDefinitions, nil)
+					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup,
+						visitedDefinitions, nil)
 
 					isArray := false
 					if r.ParentNodeSchemaType == "array" || slices.Contains(r.ParentNodeTypes, "array") {
@@ -382,11 +383,11 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	return ref.Node.Content
 }
 
-func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDefinitions map[string]bool, initialRef *Reference) (bool, map[string]bool) {
+func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDefinitions map[string]bool,
+	initialRef *Reference) (bool, map[string]bool) {
 	if ref == nil {
 		return false, visitedDefinitions
 	}
-
 	for refDefinition := range ref.RequiredRefProperties {
 		r, _ := resolver.specIndex.SearchIndexForReference(refDefinition)
 		if initialRef != nil && initialRef.FullDefinition == r.FullDefinition {
@@ -400,7 +401,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 			continue
 		}
 
-		visitedDefinitions[r.Definition] = true
+		visitedDefinitions[r.FullDefinition] = true
 
 		ir := initialRef
 		if ir == nil {
@@ -408,6 +409,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 		}
 
 		var isChildICD bool
+
 		isChildICD, visitedDefinitions = resolver.isInfiniteCircularDependency(r, visitedDefinitions, ir)
 		if isChildICD {
 			return true, visitedDefinitions
