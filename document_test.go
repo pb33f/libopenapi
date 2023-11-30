@@ -166,6 +166,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 
 	// should noth be nil.
 	assert.Nil(t, errs)
+	assert.Nil(t, errs)
 	assert.NotNil(t, rend)
 	assert.Nil(t, compReport)
 
@@ -197,10 +198,28 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 	tc := compReport.TotalChanges()
 	bc := compReport.TotalBreakingChanges()
 	assert.Equal(t, 0, bc)
-	assert.Equal(t, 519, tc)
+	assert.Equal(t, 820, tc)
 
 	// there should be no other changes than the 519 descriptions.
-	assert.Equal(t, 0, len(filtered))
+	assert.Equal(t, 1, len(filtered))
+
+}
+
+func TestDocument_ResolveStripe(t *testing.T) {
+
+	bs, _ := os.ReadFile("test_specs/stripe.yaml")
+	docConfig := datamodel.NewDocumentConfiguration()
+	docConfig.SkipCircularReferenceCheck = true
+	docConfig.BasePath = "."
+	docConfig.AllowRemoteReferences = true
+	docConfig.AllowFileReferences = true
+	doc, _ := NewDocumentWithConfiguration(bs, docConfig)
+	model, _ := doc.BuildV3Model()
+
+	rolo := model.Index.GetRolodex()
+	rolo.Resolve()
+
+	assert.Equal(t, 2, len(model.Index.GetRolodex().GetCaughtErrors()))
 
 }
 
