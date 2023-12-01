@@ -12,12 +12,12 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
 func TestComponents_MarshalYAML(t *testing.T) {
-
 	comp := &Components{
 		Responses: orderedmap.ToOrderedMap(map[string]*Response{
 			"200": {
@@ -34,7 +34,7 @@ func TestComponents_MarshalYAML(t *testing.T) {
 			"body": {
 				Content: orderedmap.ToOrderedMap(map[string]*MediaType{
 					"application/json": {
-						Example: "why?",
+						Example: utils.CreateStringNode("why?"),
 					},
 				}),
 			},

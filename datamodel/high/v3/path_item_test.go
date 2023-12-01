@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -73,7 +74,7 @@ trace:
 	expectedOrder := []string{"get", "put", "post", "patch", "delete", "head", "options", "trace"}
 
 	i := 0
-	for pair := r.GetOperations().First(); pair != nil; pair = pair.Next() {
+	for pair := orderedmap.First(r.GetOperations()); pair != nil; pair = pair.Next() {
 		assert.Equal(t, expectedOrder[i], pair.Value().Description)
 		i++
 	}

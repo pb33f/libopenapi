@@ -70,17 +70,6 @@ func CreateContext(l, r *yaml.Node) *ChangeContext {
 	return ctx
 }
 
-func FlattenLowLevelMap[T any](
-	lowMap map[low.KeyReference[string]]low.ValueReference[T],
-) map[string]*low.ValueReference[T] {
-	flat := make(map[string]*low.ValueReference[T])
-	for i := range lowMap {
-		l := lowMap[i]
-		flat[i.Value] = &l
-	}
-	return flat
-}
-
 func FlattenLowLevelOrderedMap[T any](
 	lowMap *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 ) map[string]*low.ValueReference[T] {
