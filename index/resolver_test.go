@@ -454,7 +454,7 @@ func TestResolver_ResolveComponents_Stripe_NoRolodex(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
-	assert.Len(t, circ, 3)
+	assert.Len(t, circ, 2)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -483,8 +483,8 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	// after resolving, the rolodex will have errors.
 	rolo.Resolve()
 
-	assert.Len(t, rolo.GetCaughtErrors(), 3)
-	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 3)
+	assert.Len(t, rolo.GetCaughtErrors(), 2)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 2)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetPolymorphicCircularErrors(), 0)
 
 }
@@ -733,7 +733,7 @@ func ExampleNewResolver() {
 	//
 	fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
 		len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
-	// Output: There are 3 circular reference errors, 0 of them are polymorphic errors, 3 are not
+	// Output: There are 2 circular reference errors, 0 of them are polymorphic errors, 2 are not
 }
 
 func ExampleResolvingError() {
