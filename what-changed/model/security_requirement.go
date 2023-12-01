@@ -34,7 +34,6 @@ func (s *SecurityRequirementChanges) TotalBreakingChanges() int {
 // CompareSecurityRequirement compares left and right SecurityRequirement objects for changes. If anything
 // is found, then a pointer to SecurityRequirementChanges is returned, otherwise nil.
 func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequirementChanges {
-
 	var changes []*Change
 	sc := new(SecurityRequirementChanges)
 
@@ -57,9 +56,9 @@ func addedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
 }
 
 // tricky to do this correctly, this is my solution.
-func checkSecurityRequirement(lSec, rSec orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]],
-	changes *[]*Change) {
-
+func checkSecurityRequirement(lSec, rSec *orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]],
+	changes *[]*Change,
+) {
 	lKeys := make([]string, orderedmap.Len(lSec))
 	rKeys := make([]string, orderedmap.Len(rSec))
 	lValues := make(map[string]low.ValueReference[[]low.ValueReference[string]])

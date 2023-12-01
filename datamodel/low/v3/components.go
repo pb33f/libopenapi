@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 
@@ -26,16 +25,16 @@ import (
 // will have no effect on the API unless they are explicitly referenced from properties outside the components object.
 //   - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
-	Schemas         low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]
-	Responses       low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Response]]]
-	Parameters      low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Parameter]]]
-	Examples        low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
-	RequestBodies   low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*RequestBody]]]
-	Headers         low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
-	SecuritySchemes low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*SecurityScheme]]]
-	Links           low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
-	Callbacks       low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
-	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
+	Schemas         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]]
+	Responses       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Response]]]
+	Parameters      low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Parameter]]]
+	Examples        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
+	RequestBodies   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*RequestBody]]]
+	Headers         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
+	SecuritySchemes low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SecurityScheme]]]
+	Links           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
+	Callbacks       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
+	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
@@ -50,7 +49,7 @@ type componentInput struct {
 }
 
 // GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
-func (co *Components) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (co *Components) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return co.Extensions
 }
 
@@ -66,38 +65,19 @@ func (co *Components) Hash() [32]byte {
 	generateHashForObjectMap(co.SecuritySchemes.Value, &f)
 	generateHashForObjectMap(co.Links.Value, &f)
 	generateHashForObjectMap(co.Callbacks.Value, &f)
-	keys := make([]string, len(co.Extensions))
-	z := 0
-	for k := range co.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(co.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(co.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
-func generateHashForObjectMap[T any](collection orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], hash *[]string) {
-	if collection == nil {
-		return
-	}
-	l := make([]string, orderedmap.Len(collection))
-	keys := make(map[string]low.ValueReference[T])
-	z := 0
-	for pair := orderedmap.First(collection); pair != nil; pair = pair.Next() {
-		keys[pair.Key().Value] = pair.Value()
-		l[z] = pair.Key().Value
-		z++
-	}
-	sort.Strings(l)
-	for k := range l {
-		*hash = append(*hash, low.GenerateHashString(keys[l[k]].Value))
+func generateHashForObjectMap[T any](collection *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], hash *[]string) {
+	for pair := orderedmap.First(orderedmap.SortAlpha(collection)); pair != nil; pair = pair.Next() {
+		*hash = append(*hash, low.GenerateHashString(pair.Value().Value))
 	}
 }
 
 // FindExtension attempts to locate an extension with the supplied key
-func (co *Components) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, co.Extensions)
+func (co *Components) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, co.Extensions)
 }
 
 // FindSchema attempts to locate a SchemaProxy from 'schemas' with a specific name
@@ -224,8 +204,8 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 // extractComponentValues converts all the YAML nodes of a component type to
 // low level model.
 // Process each node in parallel.
-func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]], error) {
-	var emptyResult low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]
+func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]], error) {
+	var emptyResult low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]
 	_, nodeLabel, nodeValue := utils.FindKeyNodeFullTop(label, root.Content)
 	if nodeValue == nil {
 		return emptyResult, nil
@@ -319,7 +299,7 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 		return emptyResult, err
 	}
 
-	results := low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]{
+	results := low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]{
 		KeyNode:   nodeLabel,
 		ValueNode: nodeValue,
 		Value:     componentValues,

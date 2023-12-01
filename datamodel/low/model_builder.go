@@ -78,72 +78,63 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 
 	switch field.Type() {
 
-	case reflect.TypeOf(map[string]NodeReference[any]{}):
+	case reflect.TypeOf(orderedmap.New[string, NodeReference[*yaml.Node]]()):
+
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
-				items := make(map[string]NodeReference[any])
+				items := orderedmap.New[string, NodeReference[*yaml.Node]]()
 				var currentLabel string
 				for i, sliceItem := range valueNode.Content {
 					if i%2 == 0 {
 						currentLabel = sliceItem.Value
 						continue
 					}
-					var decoded map[string]interface{}
-					// I cannot think of a way to make this error out by this point.
-					_ = sliceItem.Decode(&decoded)
-					items[currentLabel] = NodeReference[any]{
-						Value:     decoded,
+					items.Set(currentLabel, NodeReference[*yaml.Node]{
+						Value:     sliceItem,
 						ValueNode: sliceItem,
 						KeyNode:   valueNode,
-					}
+					})
 				}
 				field.Set(reflect.ValueOf(items))
 			}
 		}
 
-	case reflect.TypeOf(map[string]NodeReference[string]{}):
+	case reflect.TypeOf(orderedmap.New[string, NodeReference[string]]()):
 
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
-				items := make(map[string]NodeReference[string])
+				items := orderedmap.New[string, NodeReference[string]]()
 				var currentLabel string
 				for i, sliceItem := range valueNode.Content {
 					if i%2 == 0 {
 						currentLabel = sliceItem.Value
 						continue
 					}
-					items[currentLabel] = NodeReference[string]{
+					items.Set(currentLabel, NodeReference[string]{
 						Value:     fmt.Sprintf("%v", sliceItem.Value),
 						ValueNode: sliceItem,
 						KeyNode:   valueNode,
-					}
+					})
 				}
 				field.Set(reflect.ValueOf(items))
 			}
 		}
 
-	case reflect.TypeOf(NodeReference[any]{}):
+	case reflect.TypeOf(NodeReference[*yaml.Node]{}):
 
-		var decoded interface{}
-		_ = valueNode.Decode(&decoded)
 		if field.CanSet() {
-			or := NodeReference[any]{Value: decoded, ValueNode: valueNode, KeyNode: keyNode}
+			or := NodeReference[*yaml.Node]{Value: valueNode, ValueNode: valueNode, KeyNode: keyNode}
 			field.Set(reflect.ValueOf(or))
 		}
 
-	case reflect.TypeOf([]NodeReference[any]{}):
+	case reflect.TypeOf([]NodeReference[*yaml.Node]{}):
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []NodeReference[any]
+				var items []NodeReference[*yaml.Node]
 				for _, sliceItem := range valueNode.Content {
-					var decoded map[string]interface{}
-					err := sliceItem.Decode(&decoded)
-					if err != nil {
-						return err
-					}
-					items = append(items, NodeReference[any]{
-						Value:     decoded,
+					items = append(items, NodeReference[*yaml.Node]{
+						Value:     sliceItem,
 						ValueNode: sliceItem,
 						KeyNode:   valueNode,
 					})
@@ -340,57 +331,9 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 			}
 		}
 
-		// helper for unpacking string maps.
-	case reflect.TypeOf(map[KeyReference[string]]ValueReference[string]{}):
+	// helper for unpacking string maps.
+	case reflect.TypeOf(orderedmap.New[KeyReference[string], ValueReference[string]]()):
 
-		if utils.IsNodeMap(valueNode) {
-			if field.CanSet() {
-				items := make(map[KeyReference[string]]ValueReference[string])
-				var cf *yaml.Node
-				for i, sliceItem := range valueNode.Content {
-					if i%2 == 0 {
-						cf = sliceItem
-						continue
-					}
-					items[KeyReference[string]{
-						Value:   cf.Value,
-						KeyNode: cf,
-					}] = ValueReference[string]{
-						Value:     sliceItem.Value,
-						ValueNode: sliceItem,
-					}
-				}
-				field.Set(reflect.ValueOf(items))
-			}
-		}
-
-	case reflect.TypeOf(KeyReference[map[KeyReference[string]]ValueReference[string]]{}):
-
-		if utils.IsNodeMap(valueNode) {
-			if field.CanSet() {
-				items := make(map[KeyReference[string]]ValueReference[string])
-				var cf *yaml.Node
-				for i, sliceItem := range valueNode.Content {
-					if i%2 == 0 {
-						cf = sliceItem
-						continue
-					}
-					items[KeyReference[string]{
-						Value:   cf.Value,
-						KeyNode: cf,
-					}] = ValueReference[string]{
-						Value:     sliceItem.Value,
-						ValueNode: sliceItem,
-					}
-				}
-				ref := KeyReference[map[KeyReference[string]]ValueReference[string]]{
-					Value:   items,
-					KeyNode: keyNode,
-				}
-				field.Set(reflect.ValueOf(ref))
-			}
-		}
-	case reflect.TypeOf(NodeReference[orderedmap.Map[KeyReference[string], ValueReference[string]]]{}):
 		if utils.IsNodeMap(valueNode) {
 			if field.CanSet() {
 				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
@@ -408,7 +351,55 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 						ValueNode: sliceItem,
 					})
 				}
-				ref := NodeReference[orderedmap.Map[KeyReference[string], ValueReference[string]]]{
+				field.Set(reflect.ValueOf(items))
+			}
+		}
+
+	case reflect.TypeOf(KeyReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]{}):
+
+		if utils.IsNodeMap(valueNode) {
+			if field.CanSet() {
+				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
+				var cf *yaml.Node
+				for i, sliceItem := range valueNode.Content {
+					if i%2 == 0 {
+						cf = sliceItem
+						continue
+					}
+					items.Set(KeyReference[string]{
+						Value:   cf.Value,
+						KeyNode: cf,
+					}, ValueReference[string]{
+						Value:     sliceItem.Value,
+						ValueNode: sliceItem,
+					})
+				}
+				ref := KeyReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]{
+					Value:   items,
+					KeyNode: keyNode,
+				}
+				field.Set(reflect.ValueOf(ref))
+			}
+		}
+	case reflect.TypeOf(NodeReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]{}):
+		if utils.IsNodeMap(valueNode) {
+			if field.CanSet() {
+				items := orderedmap.New[KeyReference[string], ValueReference[string]]()
+				var cf *yaml.Node
+				for i, sliceItem := range valueNode.Content {
+					if i%2 == 0 {
+						cf = sliceItem
+						continue
+					}
+					items.Set(KeyReference[string]{
+						Value:   cf.Value,
+						KeyNode: cf,
+					}, ValueReference[string]{
+						Value:     sliceItem.Value,
+						ValueNode: sliceItem,
+					})
+				}
+				ref := NodeReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]{
 					Value:     items,
 					KeyNode:   keyNode,
 					ValueNode: valueNode,
@@ -436,34 +427,18 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 			}
 		}
 
-	case reflect.TypeOf(NodeReference[[]ValueReference[any]]{}):
+	case reflect.TypeOf(NodeReference[[]ValueReference[*yaml.Node]]{}):
 
 		if utils.IsNodeArray(valueNode) {
 			if field.CanSet() {
-				var items []ValueReference[any]
+				var items []ValueReference[*yaml.Node]
 				for _, sliceItem := range valueNode.Content {
-
-					var val any
-					if utils.IsNodeIntValue(sliceItem) || utils.IsNodeFloatValue(sliceItem) {
-						if utils.IsNodeIntValue(sliceItem) {
-							val, _ = strconv.ParseInt(sliceItem.Value, 10, 64)
-						} else {
-							val, _ = strconv.ParseFloat(sliceItem.Value, 64)
-						}
-					}
-					if utils.IsNodeBoolValue(sliceItem) {
-						val, _ = strconv.ParseBool(sliceItem.Value)
-					}
-					if utils.IsNodeStringValue(sliceItem) {
-						val = sliceItem.Value
-					}
-
-					items = append(items, ValueReference[any]{
-						Value:     val,
+					items = append(items, ValueReference[*yaml.Node]{
+						Value:     sliceItem,
 						ValueNode: sliceItem,
 					})
 				}
-				n := NodeReference[[]ValueReference[any]]{
+				n := NodeReference[[]ValueReference[*yaml.Node]]{
 					Value:     items,
 					KeyNode:   keyNode,
 					ValueNode: valueNode,

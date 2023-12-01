@@ -6,6 +6,7 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,9 +17,9 @@ import (
 //	v2 - https://swagger.io/specification/v2/#externalDocumentationObject
 //	v3 - https://spec.openapis.org/oas/v3.1.0#external-documentation-object
 type ExternalDoc struct {
-	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
-	URL         string         `json:"url,omitempty" yaml:"url,omitempty"`
-	Extensions  map[string]any `json:"-" yaml:"-"`
+	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	URL         string                              `json:"url,omitempty" yaml:"url,omitempty"`
+	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low         *low.ExternalDoc
 }
 
@@ -46,7 +47,7 @@ func (e *ExternalDoc) GoLowUntyped() any {
 	return e.low
 }
 
-func (e *ExternalDoc) GetExtensions() map[string]any {
+func (e *ExternalDoc) GetExtensions() *orderedmap.Map[string, *yaml.Node] {
 	return e.Extensions
 }
 

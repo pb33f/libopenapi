@@ -5,15 +5,16 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestHeader_Build(t *testing.T) {
-
 	yml := `items:
   $ref: break`
 
@@ -28,11 +29,9 @@ func TestHeader_Build(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestHeader_DefaultAsSlice(t *testing.T) {
-
 	yml := `x-ext: thing
 default:
   - why
@@ -48,12 +47,15 @@ default:
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
 	assert.NotNil(t, n.Default.Value)
-	assert.Len(t, n.Default.Value, 3)
-	assert.Len(t, n.GetExtensions(), 1)
+
+	var def []string
+	_ = n.Default.GetValue().Decode(&def)
+
+	assert.Len(t, def, 3)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestHeader_DefaultAsObject(t *testing.T) {
-
 	yml := `default:
   lets:
     create:
@@ -72,7 +74,6 @@ func TestHeader_DefaultAsObject(t *testing.T) {
 }
 
 func TestHeader_NoDefault(t *testing.T) {
-
 	yml := `minimum: 12`
 
 	var idxNode yaml.Node
@@ -87,7 +88,6 @@ func TestHeader_NoDefault(t *testing.T) {
 }
 
 func TestHeader_Hash_n_Grab(t *testing.T) {
-
 	yml := `description: head
 type: string
 format: left
@@ -160,7 +160,11 @@ pattern: wow
 	assert.Equal(t, "left", n.GetFormat().Value)
 	assert.Equal(t, "left", n.GetFormat().Value)
 	assert.Equal(t, "nice", n.GetCollectionFormat().Value)
-	assert.Equal(t, "shut that door!", n.GetDefault().Value)
+
+	var def string
+	_ = n.GetDefault().Value.Decode(&def)
+	assert.Equal(t, "shut that door!", def)
+
 	assert.Equal(t, 10, n.GetMaximum().Value)
 	assert.Equal(t, 1, n.GetMinimum().Value)
 	assert.True(t, n.GetExclusiveMinimum().Value)
@@ -174,6 +178,8 @@ pattern: wow
 	assert.Equal(t, "wow", n.GetPattern().Value)
 	assert.Equal(t, "int", n.GetItems().Value.(*Items).Type.Value)
 	assert.Len(t, n.GetEnum().Value, 2)
-	assert.Equal(t, "large", n.FindExtension("x-belly").Value)
 
+	var xBelly string
+	_ = n.FindExtension("x-belly").GetValue().Decode(&xBelly)
+	assert.Equal(t, "large", xBelly)
 }

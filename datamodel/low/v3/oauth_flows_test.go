@@ -5,15 +5,16 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestOAuthFlows_Build(t *testing.T) {
-
 	yml := `authorizationUrl: https://pb33f.io/auth
 tokenUrl: https://pb33f.io/token
 refreshUrl: https://pb33f.io/refresh
@@ -33,16 +34,18 @@ x-tasty: herbs
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Equal(t, "herbs", n.FindExtension("x-tasty").Value)
+
+	var xTasty string
+	_ = n.FindExtension("x-tasty").Value.Decode(&xTasty)
+	assert.Equal(t, "herbs", xTasty)
 	assert.Equal(t, "https://pb33f.io/auth", n.AuthorizationUrl.Value)
 	assert.Equal(t, "https://pb33f.io/token", n.TokenUrl.Value)
 	assert.Equal(t, "https://pb33f.io/refresh", n.RefreshUrl.Value)
 	assert.Equal(t, "vanilla", n.FindScope("fresh:cake").Value)
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestOAuthFlow_Build_Implicit(t *testing.T) {
-
 	yml := `implicit:
   authorizationUrl: https://pb33f.io/auth
 x-tasty: herbs`
@@ -57,13 +60,15 @@ x-tasty: herbs`
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Equal(t, "herbs", n.FindExtension("x-tasty").Value)
+
+	var xTasty string
+	_ = n.FindExtension("x-tasty").GetValue().Decode(&xTasty)
+	assert.Equal(t, "herbs", xTasty)
 	assert.Equal(t, "https://pb33f.io/auth", n.Implicit.Value.AuthorizationUrl.Value)
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {
-
 	yml := `implicit:
   $ref: #bork"`
 
@@ -80,7 +85,6 @@ func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_Password(t *testing.T) {
-
 	yml := `password:
   authorizationUrl: https://pb33f.io/auth`
 
@@ -98,7 +102,6 @@ func TestOAuthFlow_Build_Password(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_Password_Fail(t *testing.T) {
-
 	yml := `password:
   $ref: #bork"`
 
@@ -115,7 +118,6 @@ func TestOAuthFlow_Build_Password_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_ClientCredentials(t *testing.T) {
-
 	yml := `clientCredentials:
   authorizationUrl: https://pb33f.io/auth`
 
@@ -133,7 +135,6 @@ func TestOAuthFlow_Build_ClientCredentials(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_ClientCredentials_Fail(t *testing.T) {
-
 	yml := `clientCredentials:
   $ref: #bork"`
 
@@ -150,7 +151,6 @@ func TestOAuthFlow_Build_ClientCredentials_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_AuthCode(t *testing.T) {
-
 	yml := `authorizationCode:
   authorizationUrl: https://pb33f.io/auth`
 
@@ -168,7 +168,6 @@ func TestOAuthFlow_Build_AuthCode(t *testing.T) {
 }
 
 func TestOAuthFlow_Build_AuthCode_Fail(t *testing.T) {
-
 	yml := `authorizationCode:
   $ref: #bork"`
 
@@ -185,7 +184,6 @@ func TestOAuthFlow_Build_AuthCode_Fail(t *testing.T) {
 }
 
 func TestOAuthFlow_Hash(t *testing.T) {
-
 	yml := `authorizationUrl: https://pb33f.io/auth
 tokenUrl: https://pb33f.io/token
 refreshUrl: https://pb33f.io/refresh
@@ -218,11 +216,9 @@ scopes:
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-
 }
 
 func TestOAuthFlows_Hash(t *testing.T) {
-
 	yml := `implicit:
   authorizationUrl: https://pb33f.io/auth
 password:

@@ -31,9 +31,9 @@ import (
 // be the response for a successful operation call.
 //   - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
-	Codes      orderedmap.Map[string, *Response] `json:"-" yaml:"-"`
-	Default    *Response                         `json:"default,omitempty" yaml:"default,omitempty"`
-	Extensions map[string]any                    `json:"-" yaml:"-"`
+	Codes      *orderedmap.Map[string, *Response]  `json:"-" yaml:"-"`
+	Default    *Response                           `json:"default,omitempty" yaml:"default,omitempty"`
+	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.Responses
 }
 
@@ -93,23 +93,26 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
 	type responseItem struct {
-		resp *Response
-		code string
-		line int
-		ext  *yaml.Node
+		resp  *Response
+		code  string
+		line  int
+		ext   *yaml.Node
+		style yaml.Style
 	}
 	var mapped []*responseItem
 
 	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
 		if r.low != nil {
 			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
 				if lPair.Key().Value == pair.Key() {
 					ln = lPair.Key().KeyNode.Line
+					style = lPair.Key().KeyNode.Style
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil})
+		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil, style})
 	}
 
 	// extract extensions
@@ -124,7 +127,7 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 			}
 			mapped = append(mapped, &responseItem{
 				nil, label,
-				extNode.Content[u].Line, extNode.Content[u],
+				extNode.Content[u].Line, extNode.Content[u], 0,
 			})
 		}
 	}
@@ -132,15 +135,19 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
-	for j := range mapped {
-		if mapped[j].resp != nil {
-			rendered, _ := mapped[j].resp.MarshalYAML()
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
+	for _, mp := range mapped {
+		if mp.resp != nil {
+			rendered, _ := mp.resp.MarshalYAML()
+
+			kn := utils.CreateStringNode(mp.code)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
-		if mapped[j].ext != nil {
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
-			m.Content = append(m.Content, mapped[j].ext)
+		if mp.ext != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.code))
+			m.Content = append(m.Content, mp.ext)
 		}
 
 	}
@@ -151,23 +158,26 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
 	type responseItem struct {
-		resp *Response
-		code string
-		line int
-		ext  *yaml.Node
+		resp  *Response
+		code  string
+		line  int
+		ext   *yaml.Node
+		style yaml.Style
 	}
 	var mapped []*responseItem
 
 	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
 		if r.low != nil {
 			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
 				if lPair.Key().Value == pair.Key() {
 					ln = lPair.Key().KeyNode.Line
+					style = lPair.Key().KeyNode.Style
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil})
+		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil, style})
 	}
 
 	// extract extensions
@@ -183,7 +193,7 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 			}
 			mapped = append(mapped, &responseItem{
 				nil, label,
-				extNode.Content[u].Line, extNode.Content[u],
+				extNode.Content[u].Line, extNode.Content[u], 0,
 			})
 		}
 	}
@@ -191,16 +201,20 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
-	for j := range mapped {
-		if mapped[j].resp != nil {
-			rendered, _ := mapped[j].resp.MarshalYAMLInline()
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
+	for _, mp := range mapped {
+		if mp.resp != nil {
+			rendered, _ := mp.resp.MarshalYAMLInline()
+
+			kn := utils.CreateStringNode(mp.code)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 
 		}
-		if mapped[j].ext != nil {
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
-			m.Content = append(m.Content, mapped[j].ext)
+		if mp.ext != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.code))
+			m.Content = append(m.Content, mp.ext)
 		}
 
 	}

@@ -6,8 +6,6 @@ package v2
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"sort"
 	"strings"
 	"sync"
 
@@ -21,12 +19,12 @@ import (
 
 // Paths represents a low-level Swagger / OpenAPI Paths object.
 type Paths struct {
-	PathItems  orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	PathItems  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
-func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (p *Paths) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return p.Extensions
 }
 
@@ -54,8 +52,8 @@ func (p *Paths) FindPathAndKey(path string) (key *low.KeyReference[string], valu
 }
 
 // FindExtension will attempt to locate an extension value given a name.
-func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, p.Extensions)
+func (p *Paths) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, p.Extensions)
 }
 
 // Build will extract extensions and paths from node.
@@ -159,28 +157,9 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 // Hash will return a consistent SHA256 Hash of the PathItem object
 func (p *Paths) Hash() [32]byte {
 	var f []string
-	l := make([]string, orderedmap.Len(p.PathItems))
-	keys := make(map[string]low.ValueReference[*PathItem])
-	z := 0
-
-	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
-		k := pair.Key().Value
-		keys[k] = pair.Value()
-		l[z] = k
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(p.PathItems)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-
-	sort.Strings(l)
-	for k := range l {
-		f = append(f, low.GenerateHashString(keys[l[k]].Value))
-	}
-	ekeys := make([]string, len(p.Extensions))
-	z = 0
-	for k := range p.Extensions {
-		ekeys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(ekeys)
-	f = append(f, ekeys...)
+	f = append(f, low.HashExtensions(p.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

@@ -6,8 +6,6 @@ package v2
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -25,18 +23,18 @@ import (
 type Response struct {
 	Description low.NodeReference[string]
 	Schema      low.NodeReference[*base.SchemaProxy]
-	Headers     low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
+	Headers     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
 	Examples    low.NodeReference[*Examples]
-	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // FindExtension will attempt to locate an extension value given a key to lookup.
-func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, r.Extensions)
+func (r *Response) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, r.Extensions)
 }
 
 // GetExtensions returns all Response extensions and satisfies the low.HasExtensions interface.
-func (r *Response) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (r *Response) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return r.Extensions
 }
 
@@ -65,13 +63,13 @@ func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 	}
 	r.Examples = examples
 
-	//extract headers
+	// extract headers
 	headers, lN, kN, err := low.ExtractMap[*Header](ctx, HeadersLabel, root, idx)
 	if err != nil {
 		return err
 	}
 	if headers != nil {
-		r.Headers = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
+		r.Headers = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
 			Value:     headers,
 			KeyNode:   lN,
 			ValueNode: kN,
@@ -90,17 +88,10 @@ func (r *Response) Hash() [32]byte {
 		f = append(f, low.GenerateHashString(r.Schema.Value))
 	}
 	if !r.Examples.IsEmpty() {
-		for pair := orderedmap.First(r.Examples.Value.Values); pair != nil; pair = pair.Next() {
+		for pair := orderedmap.First(orderedmap.SortAlpha(r.Examples.Value.Values)); pair != nil; pair = pair.Next() {
 			f = append(f, low.GenerateHashString(pair.Value().Value))
 		}
 	}
-	keys := make([]string, len(r.Extensions))
-	z := 0
-	for k := range r.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(r.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

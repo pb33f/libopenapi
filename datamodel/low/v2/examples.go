@@ -6,8 +6,6 @@ package v2
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -21,12 +19,12 @@ import (
 // Allows sharing examples for operation responses
 //   - https://swagger.io/specification/v2/#exampleObject
 type Examples struct {
-	Values orderedmap.Map[low.KeyReference[string], low.ValueReference[any]]
+	Values *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // FindExample attempts to locate an example value, using a key label.
-func (e *Examples) FindExample(name string) *low.ValueReference[any] {
-	return low.FindItemInOrderedMap[any](name, e.Values)
+func (e *Examples) FindExample(name string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(name, e.Values)
 }
 
 // Build will extract all examples and will attempt to unmarshal content into a map or slice based on type.
@@ -34,54 +32,21 @@ func (e *Examples) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecInd
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	var keyNode, currNode *yaml.Node
-	var err error
-	e.Values = orderedmap.New[low.KeyReference[string], low.ValueReference[any]]()
+	e.Values = orderedmap.New[low.KeyReference[string], low.ValueReference[*yaml.Node]]()
 	for i := range root.Content {
 		if i%2 == 0 {
 			keyNode = root.Content[i]
 			continue
 		}
 		currNode = root.Content[i]
-		var n map[string]interface{}
-		err = currNode.Decode(&n)
-		if err != nil {
-			var k []interface{}
-			err = currNode.Decode(&k)
-			if err != nil {
-				// lets just default to interface
-				var j interface{}
-				_ = currNode.Decode(&j)
-				e.Values.Set(
-					low.KeyReference[string]{
-						Value:   keyNode.Value,
-						KeyNode: keyNode,
-					},
-					low.ValueReference[any]{
-						Value:     j,
-						ValueNode: currNode,
-					},
-				)
-				continue
-			}
-			e.Values.Set(
-				low.KeyReference[string]{
-					Value:   keyNode.Value,
-					KeyNode: keyNode,
-				},
-				low.ValueReference[any]{
-					Value:     k,
-					ValueNode: currNode,
-				},
-			)
-			continue
-		}
+
 		e.Values.Set(
 			low.KeyReference[string]{
 				Value:   keyNode.Value,
 				KeyNode: keyNode,
 			},
-			low.ValueReference[any]{
-				Value:     n,
+			low.ValueReference[*yaml.Node]{
+				Value:     currNode,
 				ValueNode: currNode,
 			},
 		)
@@ -92,15 +57,8 @@ func (e *Examples) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecInd
 // Hash will return a consistent SHA256 Hash of the Examples object
 func (e *Examples) Hash() [32]byte {
 	var f []string
-	keys := make([]string, orderedmap.Len(e.Values))
-	z := 0
-	for pair := orderedmap.First(e.Values); pair != nil; pair = pair.Next() {
-		keys[z] = pair.Key().Value
-		z++
-	}
-	sort.Strings(keys)
-	for k := range keys {
-		f = append(f, fmt.Sprintf("%v", e.FindExample(keys[k]).Value))
+	for pair := orderedmap.First(orderedmap.SortAlpha(e.Values)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

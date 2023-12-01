@@ -6,6 +6,7 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -25,7 +26,7 @@ type XML struct {
 	Prefix     string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
 	Attribute  bool   `json:"attribute,omitempty" yaml:"attribute,omitempty"`
 	Wrapped    bool   `json:"wrapped,omitempty" yaml:"wrapped,omitempty"`
-	Extensions map[string]any
+	Extensions *orderedmap.Map[string, *yaml.Node]
 	low        *low.XML
 }
 

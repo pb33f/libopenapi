@@ -5,15 +5,16 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestRequestBody_Build(t *testing.T) {
-
 	yml := `description: a nice request
 required: true
 content:
@@ -33,14 +34,18 @@ x-requesto: presto`
 	assert.NoError(t, err)
 	assert.Equal(t, "a nice request", n.Description.Value)
 	assert.True(t, n.Required.Value)
-	assert.Equal(t, "nice.", n.FindContent("fresh/fish").Value.Example.Value)
-	assert.Equal(t, "presto", n.FindExtension("x-requesto").Value)
-	assert.Len(t, n.GetExtensions(), 1)
 
+	var example string
+	_ = n.FindContent("fresh/fish").Value.Example.Value.Decode(&example)
+	assert.Equal(t, "nice.", example)
+
+	var xRequesto string
+	_ = n.FindExtension("x-requesto").Value.Decode(&xRequesto)
+	assert.Equal(t, "presto", xRequesto)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestRequestBody_Fail(t *testing.T) {
-
 	yml := `content:
   $ref: #illegal`
 
@@ -57,7 +62,6 @@ func TestRequestBody_Fail(t *testing.T) {
 }
 
 func TestRequestBody_Hash(t *testing.T) {
-
 	yml := `description: nice toast
 content:
   jammy/toast:
@@ -99,5 +103,4 @@ x-toast: nice`
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-
 }

@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -16,7 +17,7 @@ import (
 // schemes on the operations and only serves to provide the relevant details for each scheme
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityDefinitions struct {
-	Definitions orderedmap.Map[string, *SecurityScheme]
+	Definitions *orderedmap.Map[string, *SecurityScheme]
 	low         *low.SecurityDefinitions
 }
 
@@ -35,12 +36,8 @@ func NewSecurityDefinitions(definitions *low.SecurityDefinitions) *SecurityDefin
 		schemes.Set(value.key, value.result)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel(definitions.Definitions, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(definitions.Definitions, translateFunc, resultFunc)
 
-	// schemes := make(map[string]*SecurityScheme)
-	// for k := range definitions.Definitions {
-	// 	schemes[k.Value] = NewSecurityScheme(definitions.Definitions[k].Value)
-	// }
 	sd.Definitions = schemes
 	return sd
 }

@@ -21,7 +21,7 @@ import (
 // The name used for each property MUST correspond to a security scheme declared in the Security Definitions
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
-	Requirements orderedmap.Map[string, []string] `json:"-" yaml:"-"`
+	Requirements *orderedmap.Map[string, []string] `json:"-" yaml:"-"`
 	low          *base.SecurityRequirement
 }
 
@@ -59,7 +59,6 @@ func (s *SecurityRequirement) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the SecurityRequirement object.
 func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
-
 	type req struct {
 		line   int
 		key    string

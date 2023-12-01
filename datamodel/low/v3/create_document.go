@@ -277,7 +277,7 @@ func extractWebhooks(ctx context.Context, info *datamodel.SpecInfo, doc *Documen
 		return eErr
 	}
 	if hooks != nil {
-		doc.Webhooks = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]{
+		doc.Webhooks = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]{
 			Value:     hooks,
 			KeyNode:   hooksL,
 			ValueNode: hooksN,

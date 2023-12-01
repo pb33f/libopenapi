@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -20,13 +21,13 @@ import (
 type fakeMockable struct {
 	Schema   *highbase.SchemaProxy
 	Example  any
-	Examples orderedmap.Map[string, *highbase.Example]
+	Examples *orderedmap.Map[string, *highbase.Example]
 }
 
 type fakeMockableButWithASchemaNotAProxy struct {
 	Schema   *highbase.Schema
 	Example  any
-	Examples orderedmap.Map[string, *highbase.Example]
+	Examples *orderedmap.Map[string, *highbase.Example]
 }
 
 var simpleFakeMockSchema = `type: string
@@ -55,7 +56,7 @@ func createFakeMock(mock string, values map[string]any, example any) *fakeMockab
 
 	for k, v := range values {
 		examples.Set(k, &highbase.Example{
-			Value: v,
+			Value: utils.CreateYamlNode(v),
 		})
 	}
 	return &fakeMockable{
@@ -78,7 +79,7 @@ func createFakeMockWithoutProxy(mock string, values map[string]any, example any)
 
 	for k, v := range values {
 		examples.Set(k, &highbase.Example{
-			Value: v,
+			Value: utils.CreateYamlNode(v),
 		})
 	}
 	return &fakeMockableButWithASchemaNotAProxy{
@@ -110,7 +111,6 @@ func TestMockGenerator_GenerateJSONMock_BadObject(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_EmptyObject(t *testing.T) {
-
 	mg := NewMockGenerator(JSON)
 	mock, err := mg.GenerateMock(&fakeMockable{}, "")
 	assert.NoError(t, err)
@@ -118,7 +118,6 @@ func TestMockGenerator_GenerateJSONMock_EmptyObject(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_SuppliedExample_JSON(t *testing.T) {
-
 	fakeExample := map[string]any{
 		"fish-and-chips": "cod-and-chips-twice",
 	}
@@ -130,7 +129,6 @@ func TestMockGenerator_GenerateJSONMock_SuppliedExample_JSON(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_SuppliedExample_YAML(t *testing.T) {
-
 	fakeExample := map[string]any{
 		"fish-and-chips": "cod-and-chips-twice",
 	}
@@ -208,7 +206,6 @@ func TestMockGenerator_GenerateJSONMock_MultiExamples_YAML(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_NoExamples_JSON(t *testing.T) {
-
 	fake := createFakeMock(simpleFakeMockSchema, nil, nil)
 	mg := NewMockGenerator(JSON)
 	mock, err := mg.GenerateMock(fake, "")
@@ -217,16 +214,14 @@ func TestMockGenerator_GenerateJSONMock_NoExamples_JSON(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_NoExamples_YAML(t *testing.T) {
-
 	fake := createFakeMock(simpleFakeMockSchema, nil, nil)
 	mg := NewMockGenerator(YAML)
 	mock, err := mg.GenerateMock(fake, "")
 	assert.NoError(t, err)
-	assert.Equal(t, "magic-herbs", string(mock))
+	assert.Equal(t, "magic-herbs", strings.TrimSpace(string(mock)))
 }
 
 func TestMockGenerator_GenerateJSONMock_Object_NoExamples_JSON(t *testing.T) {
-
 	fake := createFakeMock(objectFakeMockSchema, nil, nil)
 	mg := NewMockGenerator(JSON)
 	mock, err := mg.GenerateMock(fake, "")
@@ -244,7 +239,6 @@ func TestMockGenerator_GenerateJSONMock_Object_NoExamples_JSON(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_Object_NoExamples_YAML(t *testing.T) {
-
 	fake := createFakeMock(objectFakeMockSchema, nil, nil)
 	mg := NewMockGenerator(YAML)
 	mock, err := mg.GenerateMock(fake, "")
@@ -263,7 +257,6 @@ func TestMockGenerator_GenerateJSONMock_Object_NoExamples_YAML(t *testing.T) {
 
 // should result in the exact same output as the above test
 func TestMockGenerator_GenerateJSONMock_Object_RawSchema(t *testing.T) {
-
 	fake := createFakeMockWithoutProxy(objectFakeMockSchema, nil, nil)
 
 	mg := NewMockGenerator(YAML)

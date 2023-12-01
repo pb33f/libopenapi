@@ -6,13 +6,13 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // SecurityScheme represents a low-level OpenAPI 3+ SecurityScheme object.
@@ -34,17 +34,17 @@ type SecurityScheme struct {
 	BearerFormat     low.NodeReference[string]
 	Flows            low.NodeReference[*OAuthFlows]
 	OpenIdConnectUrl low.NodeReference[string]
-	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // FindExtension attempts to locate an extension using the supplied key.
-func (ss *SecurityScheme) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, ss.Extensions)
+func (ss *SecurityScheme) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, ss.Extensions)
 }
 
 // GetExtensions returns all SecurityScheme extensions and satisfies the low.HasExtensions interface.
-func (ss *SecurityScheme) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (ss *SecurityScheme) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return ss.Extensions
 }
 
@@ -92,13 +92,6 @@ func (ss *SecurityScheme) Hash() [32]byte {
 	if !ss.OpenIdConnectUrl.IsEmpty() {
 		f = append(f, ss.OpenIdConnectUrl.Value)
 	}
-	keys := make([]string, len(ss.Extensions))
-	z := 0
-	for k := range ss.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(ss.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(ss.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

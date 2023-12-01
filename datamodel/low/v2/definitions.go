@@ -6,9 +6,10 @@ package v2
 import (
 	"context"
 	"crypto/sha256"
-	"sort"
 	"strings"
+	"sync"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
@@ -23,7 +24,7 @@ import (
 // referenced to the ones defined here. It does not define global operation parameters
 //   - https://swagger.io/specification/v2/#parametersDefinitionsObject
 type ParameterDefinitions struct {
-	Definitions orderedmap.Map[low.KeyReference[string], low.ValueReference[*Parameter]]
+	Definitions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*Parameter]]
 }
 
 // ResponsesDefinitions is a low-level representation of a Swagger / OpenAPI 2 Responses Definitions object.
@@ -32,7 +33,7 @@ type ParameterDefinitions struct {
 // referenced to the ones defined here. It does not define global operation responses
 //   - https://swagger.io/specification/v2/#responsesDefinitionsObject
 type ResponsesDefinitions struct {
-	Definitions orderedmap.Map[low.KeyReference[string], low.ValueReference[*Response]]
+	Definitions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*Response]]
 }
 
 // SecurityDefinitions is a low-level representation of a Swagger / OpenAPI 2 Security Definitions object.
@@ -41,7 +42,7 @@ type ResponsesDefinitions struct {
 // schemes on the operations and only serves to provide the relevant details for each scheme
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityDefinitions struct {
-	Definitions orderedmap.Map[low.KeyReference[string], low.ValueReference[*SecurityScheme]]
+	Definitions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*SecurityScheme]]
 }
 
 // Definitions is a low-level representation of a Swagger / OpenAPI 2 Definitions object
@@ -50,7 +51,7 @@ type SecurityDefinitions struct {
 // arrays or models.
 //   - https://swagger.io/specification/v2/#definitionsObject
 type Definitions struct {
-	Schemas orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]
+	Schemas *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]
 }
 
 // FindSchema will attempt to locate a base.SchemaProxy instance using a name.
@@ -77,46 +78,79 @@ func (s *SecurityDefinitions) FindSecurityDefinition(securityDef string) *low.Va
 func (d *Definitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
-	// TODO: Refactor with orderedmap.TranslatePipeline.
-	errorChan := make(chan error)
-	resultChan := make(chan definitionResult[*base.SchemaProxy])
-	var defLabel *yaml.Node
-	totalDefinitions := 0
-	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
-		r chan definitionResult[*base.SchemaProxy], e chan error) {
-
-		obj, err, _, rv := low.ExtractObjectRaw[*base.SchemaProxy](ctx, label, value, idx)
-		if err != nil {
-			e <- err
-		}
-		r <- definitionResult[*base.SchemaProxy]{k: label, v: low.ValueReference[*base.SchemaProxy]{
-			Value: obj, ValueNode: value, Reference: rv,
-		}}
+	type buildInput struct {
+		label *yaml.Node
+		value *yaml.Node
 	}
-	for i := range root.Content {
-		if i%2 == 0 {
-			defLabel = root.Content[i]
-			continue
-		}
-		totalDefinitions++
-		go buildFunc(defLabel, root.Content[i], idx, resultChan, errorChan)
-	}
-
-	completedDefs := 0
 	results := orderedmap.New[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]()
-	for completedDefs < totalDefinitions {
-		select {
-		case err := <-errorChan:
-			return err
-		case sch := <-resultChan:
-			completedDefs++
-			key := low.KeyReference[string]{
-				Value:   sch.k.Value,
-				KeyNode: sch.k,
+	in := make(chan buildInput)
+	out := make(chan definitionResult[*base.SchemaProxy])
+	done := make(chan struct{})
+	var wg sync.WaitGroup
+	wg.Add(2) // input and output goroutines.
+
+	// TranslatePipeline input.
+	go func() {
+		defer func() {
+			close(in)
+			wg.Done()
+		}()
+		var label *yaml.Node
+		for i, value := range root.Content {
+			if i%2 == 0 {
+				label = value
+				continue
 			}
-			results.Set(key, sch.v)
+
+			select {
+			case in <- buildInput{
+				label: label,
+				value: value,
+			}:
+			case <-done:
+				return
+			}
 		}
+	}()
+
+	// TranslatePipeline output.
+	go func() {
+		for {
+			result, ok := <-out
+			if !ok {
+				break
+			}
+
+			key := low.KeyReference[string]{
+				Value:   result.k.Value,
+				KeyNode: result.k,
+			}
+			results.Set(key, result.v)
+		}
+		close(done)
+		wg.Done()
+	}()
+
+	translateFunc := func(value buildInput) (definitionResult[*base.SchemaProxy], error) {
+		obj, err, _, rv := low.ExtractObjectRaw[*base.SchemaProxy](ctx, value.label, value.value, idx)
+		if err != nil {
+			return definitionResult[*base.SchemaProxy]{}, err
+		}
+
+		v := low.ValueReference[*base.SchemaProxy]{
+			Value: obj, ValueNode: value.value,
+		}
+		v.SetReference(rv, value.value)
+
+		return definitionResult[*base.SchemaProxy]{k: value.label, v: v}, nil
 	}
+
+	err := datamodel.TranslatePipeline[buildInput, definitionResult[*base.SchemaProxy]](in, out, translateFunc)
+	wg.Wait()
+	if err != nil {
+		return err
+	}
+
 	d.Schemas = results
 	return nil
 }
@@ -124,15 +158,8 @@ func (d *Definitions) Build(ctx context.Context, _, root *yaml.Node, idx *index.
 // Hash will return a consistent SHA256 Hash of the Definitions object
 func (d *Definitions) Hash() [32]byte {
 	var f []string
-	keys := make([]string, orderedmap.Len(d.Schemas))
-	z := 0
-	for pair := orderedmap.First(d.Schemas); pair != nil; pair = pair.Next() {
-		keys[z] = pair.Key().Value
-		z++
-	}
-	sort.Strings(keys)
-	for k := range keys {
-		f = append(f, low.GenerateHashString(d.FindSchema(keys[k]).Value))
+	for pair := orderedmap.First(orderedmap.SortAlpha(d.Schemas)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(d.FindSchema(pair.Key().Value).Value))
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
@@ -143,15 +170,21 @@ func (pd *ParameterDefinitions) Build(ctx context.Context, _, root *yaml.Node, i
 	resultChan := make(chan definitionResult[*Parameter])
 	var defLabel *yaml.Node
 	totalDefinitions := 0
-	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
-		r chan definitionResult[*Parameter], e chan error) {
-
+	buildFunc := func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
+		r chan definitionResult[*Parameter], e chan error,
+	) {
 		obj, err, _, rv := low.ExtractObjectRaw[*Parameter](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}
-		r <- definitionResult[*Parameter]{k: label, v: low.ValueReference[*Parameter]{Value: obj,
-			ValueNode: value, Reference: rv}}
+
+		v := low.ValueReference[*Parameter]{
+			Value:     obj,
+			ValueNode: value,
+		}
+		v.SetReference(rv, value)
+
+		r <- definitionResult[*Parameter]{k: label, v: v}
 	}
 	for i := range root.Content {
 		if i%2 == 0 {
@@ -193,15 +226,21 @@ func (r *ResponsesDefinitions) Build(ctx context.Context, _, root *yaml.Node, id
 	resultChan := make(chan definitionResult[*Response])
 	var defLabel *yaml.Node
 	totalDefinitions := 0
-	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
-		r chan definitionResult[*Response], e chan error) {
-
+	buildFunc := func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
+		r chan definitionResult[*Response], e chan error,
+	) {
 		obj, err, _, rv := low.ExtractObjectRaw[*Response](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}
-		r <- definitionResult[*Response]{k: label, v: low.ValueReference[*Response]{Value: obj,
-			ValueNode: value, Reference: rv}}
+
+		v := low.ValueReference[*Response]{
+			Value:     obj,
+			ValueNode: value,
+		}
+		v.SetReference(rv, value)
+
+		r <- definitionResult[*Response]{k: label, v: v}
 	}
 	for i := range root.Content {
 		if i%2 == 0 {
@@ -238,16 +277,20 @@ func (s *SecurityDefinitions) Build(ctx context.Context, _, root *yaml.Node, idx
 	var defLabel *yaml.Node
 	totalDefinitions := 0
 
-	var buildFunc = func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
-		r chan definitionResult[*SecurityScheme], e chan error) {
-
+	buildFunc := func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
+		r chan definitionResult[*SecurityScheme], e chan error,
+	) {
 		obj, err, _, rv := low.ExtractObjectRaw[*SecurityScheme](ctx, label, value, idx)
 		if err != nil {
 			e <- err
 		}
-		r <- definitionResult[*SecurityScheme]{k: label, v: low.ValueReference[*SecurityScheme]{
-			Value: obj, ValueNode: value, Reference: rv,
-		}}
+
+		v := low.ValueReference[*SecurityScheme]{
+			Value: obj, ValueNode: value,
+		}
+		v.SetReference(rv, value)
+
+		r <- definitionResult[*SecurityScheme]{k: label, v: v}
 	}
 
 	for i := range root.Content {

@@ -35,7 +35,7 @@ variables:
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "ec69dfcf68ad8988f3804e170ee6c4a7ad2e4ac51084796eea93168820827546",
+	assert.Equal(t, "25535d0a6dd30c609aeae6e08f9eaa82fef49df540fc048fe4adffbce7841c0b",
 		low.GenerateHashString(&n))
 
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
@@ -48,7 +48,7 @@ variables:
 	assert.Equal(t, "00eef99ee4a7b746be7b4ccdece59c5a96222c6206f846fafed782c9f3f9b46b",
 		low.GenerateHashString(s.Value))
 
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestServer_Build_NoVars(t *testing.T) {

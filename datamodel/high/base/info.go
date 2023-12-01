@@ -6,6 +6,7 @@ package base
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -17,14 +18,14 @@ import (
 //	v2 - https://swagger.io/specification/v2/#infoObject
 //	v3 - https://spec.openapis.org/oas/v3.1.0#info-object
 type Info struct {
-	Summary        string   `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Title          string   `json:"title,omitempty" yaml:"title,omitempty"`
-	Description    string   `json:"description,omitempty" yaml:"description,omitempty"`
-	TermsOfService string   `json:"termsOfService,omitempty" yaml:"termsOfService,omitempty"`
-	Contact        *Contact `json:"contact,omitempty" yaml:"contact,omitempty"`
-	License        *License `json:"license,omitempty" yaml:"license,omitempty"`
-	Version        string   `json:"version,omitempty" yaml:"version,omitempty"`
-	Extensions     map[string]any
+	Summary        string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Title          string                              `json:"title,omitempty" yaml:"title,omitempty"`
+	Description    string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	TermsOfService string                              `json:"termsOfService,omitempty" yaml:"termsOfService,omitempty"`
+	Contact        *Contact                            `json:"contact,omitempty" yaml:"contact,omitempty"`
+	License        *License                            `json:"license,omitempty" yaml:"license,omitempty"`
+	Version        string                              `json:"version,omitempty" yaml:"version,omitempty"`
+	Extensions     *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low            *low.Info
 }
 
@@ -53,7 +54,7 @@ func NewInfo(info *low.Info) *Info {
 	if !info.Version.IsEmpty() {
 		i.Version = info.Version.Value
 	}
-	if len(info.Extensions) > 0 {
+	if orderedmap.Len(info.Extensions) > 0 {
 		i.Extensions = high.ExtractExtensions(info.Extensions)
 	}
 	return i

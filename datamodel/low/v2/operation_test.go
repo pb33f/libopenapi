@@ -16,7 +16,6 @@ import (
 )
 
 func TestOperation_Build_ExternalDocs(t *testing.T) {
-
 	yml := `externalDocs:
   $ref: break`
 
@@ -31,11 +30,9 @@ func TestOperation_Build_ExternalDocs(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestOperation_Build_Params(t *testing.T) {
-
 	yml := `parameters:
   $ref: break`
 
@@ -50,11 +47,9 @@ func TestOperation_Build_Params(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestOperation_Build_Responses(t *testing.T) {
-
 	yml := `responses:
   $ref: break`
 
@@ -69,11 +64,9 @@ func TestOperation_Build_Responses(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestOperation_Build_Security(t *testing.T) {
-
 	yml := `security:
   $ref: break`
 
@@ -88,11 +81,9 @@ func TestOperation_Build_Security(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestOperation_Hash_n_Grab(t *testing.T) {
-
 	yml := `tags:
   - nice
   - hat
@@ -185,5 +176,5 @@ security:
 	assert.True(t, n.GetDeprecated().Value)
 	assert.Equal(t, 1, orderedmap.Len(n.GetResponses().Value.(*Responses).Codes))
 	assert.Len(t, n.GetSecurity().Value, 1)
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }

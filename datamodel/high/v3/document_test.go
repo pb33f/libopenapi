@@ -51,7 +51,11 @@ func BenchmarkNewDocument(b *testing.B) {
 func TestNewDocument_Extensions(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
-	assert.Equal(t, "darkside", h.Extensions["x-something-something"])
+
+	var xSomethingSomething string
+	_ = h.Extensions.GetOrZero("x-something-something").Decode(&xSomethingSomething)
+
+	assert.Equal(t, "darkside", xSomethingSomething)
 }
 
 func TestNewDocument_ExternalDocs(t *testing.T) {
@@ -133,15 +137,28 @@ func TestNewDocument_Servers(t *testing.T) {
 func TestNewDocument_Tags(t *testing.T) {
 	initTest()
 	h := NewDocument(lowDoc)
+
+	var xInternalTing string
+	_ = h.Tags[0].Extensions.GetOrZero("x-internal-ting").Decode(&xInternalTing)
+
+	var xInternalTong int64
+	_ = h.Tags[0].Extensions.GetOrZero("x-internal-tong").Decode(&xInternalTong)
+
+	var xInternalTang float64
+	_ = h.Tags[0].Extensions.GetOrZero("x-internal-tang").Decode(&xInternalTang)
+
 	assert.Len(t, h.Tags, 2)
 	assert.Equal(t, "Burgers", h.Tags[0].Name)
 	assert.Equal(t, "All kinds of yummy burgers.", h.Tags[0].Description)
 	assert.Equal(t, "Find out more", h.Tags[0].ExternalDocs.Description)
 	assert.Equal(t, "https://pb33f.io", h.Tags[0].ExternalDocs.URL)
-	assert.Equal(t, "somethingSpecial", h.Tags[0].Extensions["x-internal-ting"])
-	assert.Equal(t, int64(1), h.Tags[0].Extensions["x-internal-tong"])
-	assert.Equal(t, 1.2, h.Tags[0].Extensions["x-internal-tang"])
-	assert.True(t, h.Tags[0].Extensions["x-internal-tung"].(bool))
+	assert.Equal(t, "somethingSpecial", xInternalTing)
+	assert.Equal(t, int64(1), xInternalTong)
+	assert.Equal(t, 1.2, xInternalTang)
+
+	var tung bool
+	_ = h.Tags[0].Extensions.GetOrZero("x-internal-tung").Decode(&tung)
+	assert.True(t, tung)
 
 	wentLow := h.Tags[1].GoLow()
 	assert.Equal(t, 39, wentLow.Description.KeyNode.Line)
@@ -191,7 +208,10 @@ func TestNewDocument_Components_Callbacks(t *testing.T) {
 		h.Components.Callbacks.GetOrZero("BurgerCallback").GoLow().FindExpression("{$request.query.queryUrl}").ValueNode.Column,
 	)
 
-	assert.Equal(t, "please", h.Components.Callbacks.GetOrZero("BurgerCallback").Extensions["x-break-everything"])
+	var xBreakEverything string
+	_ = h.Components.Callbacks.GetOrZero("BurgerCallback").Extensions.GetOrZero("x-break-everything").Decode(&xBreakEverything)
+
+	assert.Equal(t, "please", xBreakEverything)
 
 	for pair := orderedmap.First(h.Components.GoLow().Callbacks.Value); pair != nil; pair = pair.Next() {
 		if pair.Key().Value == "BurgerCallback" {
@@ -209,7 +229,9 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	goLow := h.Components.GoLow()
 
 	a := h.Components.Schemas.GetOrZero("Error")
-	abcd := a.Schema().Properties.GetOrZero("message").Schema().Example
+
+	var abcd string
+	_ = a.Schema().Properties.GetOrZero("message").Schema().Example.Decode(&abcd)
 	assert.Equal(t, "No such burger as 'Big-Whopper'", abcd)
 	assert.Equal(t, 433, goLow.Schemas.KeyNode.Line)
 	assert.Equal(t, 3, goLow.Schemas.KeyNode.Column)
@@ -218,13 +240,21 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	b := h.Components.Schemas.GetOrZero("Burger")
 	assert.Len(t, b.Schema().Required, 2)
 	assert.Equal(t, "golden slices of happy fun joy", b.Schema().Properties.GetOrZero("fries").Schema().Description)
-	assert.Equal(t, int64(2), b.Schema().Properties.GetOrZero("numPatties").Schema().Example)
+
+	var numPattiesExample int64
+	_ = b.Schema().Properties.GetOrZero("numPatties").Schema().Example.Decode(&numPattiesExample)
+
+	assert.Equal(t, int64(2), numPattiesExample)
 	assert.Equal(t, 448, goLow.FindSchema("Burger").Value.Schema().Properties.KeyNode.Line)
 	assert.Equal(t, 7, goLow.FindSchema("Burger").Value.Schema().Properties.KeyNode.Column)
 	assert.Equal(t, 450, b.Schema().GoLow().FindProperty("name").ValueNode.Line)
 
 	f := h.Components.Schemas.GetOrZero("Fries")
-	assert.Equal(t, "salt", f.Schema().Properties.GetOrZero("seasoning").Schema().Items.A.Schema().Example)
+
+	var seasoningExample string
+	_ = f.Schema().Properties.GetOrZero("seasoning").Schema().Items.A.Schema().Example.Decode(&seasoningExample)
+
+	assert.Equal(t, "salt", seasoningExample)
 	assert.Len(t, f.Schema().Properties.GetOrZero("favoriteDrink").Schema().Properties.GetOrZero("drinkType").Schema().Enum, 1)
 
 	d := h.Components.Schemas.GetOrZero("Drink")
@@ -240,7 +270,11 @@ func TestNewDocument_Components_Schemas(t *testing.T) {
 	assert.Equal(t, 523, pl.Schema().XML.GoLow().Name.ValueNode.Line)
 
 	ext := h.Components.Extensions
-	assert.Equal(t, "loud", ext["x-screaming-baby"])
+
+	var xScreamingBaby string
+	_ = ext.GetOrZero("x-screaming-baby").Decode(&xScreamingBaby)
+
+	assert.Equal(t, "loud", xScreamingBaby)
 }
 
 func TestNewDocument_Components_Headers(t *testing.T) {
@@ -319,8 +353,12 @@ func TestNewDocument_Components_Parameters(t *testing.T) {
 	assert.Equal(t, "burgerHeader", bh.Name)
 	assert.Equal(t, 392, bh.GoLow().Name.KeyNode.Line)
 	assert.Equal(t, 2, orderedmap.Len(bh.Schema.Schema().Properties))
-	assert.Equal(t, "big-mac", bh.Example)
-	assert.True(t, bh.Required)
+
+	var example string
+	_ = bh.Example.Decode(&example)
+
+	assert.Equal(t, "big-mac", example)
+	assert.True(t, *bh.Required)
 	assert.Equal(
 		t,
 		"this is a header",
@@ -341,8 +379,12 @@ func TestNewDocument_Paths(t *testing.T) {
 func testBurgerShop(t *testing.T, h *Document, checkLines bool) {
 	burgersOp := h.Paths.PathItems.GetOrZero("/burgers")
 
-	assert.Len(t, burgersOp.GetOperations(), 1)
-	assert.Equal(t, "meaty", burgersOp.Extensions["x-burger-meta"])
+	assert.Equal(t, 1, burgersOp.GetOperations().Len())
+
+	var xBurgerMeta string
+	_ = burgersOp.Extensions.GetOrZero("x-burger-meta").Decode(&xBurgerMeta)
+
+	assert.Equal(t, "meaty", xBurgerMeta)
 	assert.Nil(t, burgersOp.Get)
 	assert.Nil(t, burgersOp.Put)
 	assert.Nil(t, burgersOp.Patch)

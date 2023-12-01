@@ -3,7 +3,9 @@ package low
 import (
 	"context"
 	"fmt"
+
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -13,25 +15,35 @@ const (
 )
 
 type Reference struct {
-	Reference string `json:"-" yaml:"-"`
+	refNode   *yaml.Node
+	reference string
 }
 
-func (r *Reference) GetReference() string {
-	return r.Reference
+func (r Reference) GetReference() string {
+	return r.reference
 }
 
-func (r *Reference) IsReference() bool {
-	return r.Reference != ""
+func (r Reference) IsReference() bool {
+	return r.reference != ""
 }
 
-func (r *Reference) SetReference(ref string) {
-	r.Reference = ref
+func (r Reference) GetReferenceNode() *yaml.Node {
+	return r.refNode
+}
+
+func (r *Reference) SetReference(ref string, node *yaml.Node) {
+	r.reference = ref
+	r.refNode = node
 }
 
 type IsReferenced interface {
 	IsReference() bool
 	GetReference() string
-	SetReference(string)
+	GetReferenceNode() *yaml.Node
+}
+
+type SetReferencer interface {
+	SetReference(ref string, node *yaml.Node)
 }
 
 // Buildable is an interface for any struct that can be 'built out'. This means that a struct can accept
@@ -63,16 +75,14 @@ type Hashable interface {
 
 // HasExtensions is implemented by any object that exposes extensions
 type HasExtensions[T any] interface {
-
 	// GetExtensions returns generic low level extensions
-	GetExtensions() map[KeyReference[string]]ValueReference[any]
+	GetExtensions() *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]
 }
 
 // HasExtensionsUntyped is implemented by any object that exposes extensions
 type HasExtensionsUntyped interface {
-
 	// GetExtensions returns generic low level extensions
-	GetExtensions() map[KeyReference[string]]ValueReference[any]
+	GetExtensions() *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]
 }
 
 // HasValue is implemented by NodeReference and ValueReference to return the yaml.Node backing the value.
@@ -98,6 +108,7 @@ type HasKeyNode interface {
 // a key yaml.Node that points to the key node that contains the value node, and the value node that contains
 // the actual value.
 type NodeReference[T any] struct {
+	Reference
 
 	// The value being referenced
 	Value T
@@ -108,19 +119,14 @@ type NodeReference[T any] struct {
 	// The yaml.Node that is the key, that contains the value.
 	KeyNode *yaml.Node
 
-	// Is this value actually a reference in the original tree?
-	ReferenceNode bool
-
-	// If HasReference is true, then Reference contains the original $ref value.
-	Reference string
-
 	Context context.Context
 }
+
+var _ HasValueNodeUntyped = &NodeReference[any]{}
 
 // KeyReference is a low-level container for key nodes holding a Value of type T. A KeyNode is a pointer to the
 // yaml.Node that holds a key to a value.
 type KeyReference[T any] struct {
-
 	// The value being referenced.
 	Value T
 
@@ -131,18 +137,13 @@ type KeyReference[T any] struct {
 // ValueReference is a low-level container for value nodes that hold a Value of type T. A ValueNode is a pointer
 // to the yaml.Node that holds the value.
 type ValueReference[T any] struct {
+	Reference
 
 	// The value being referenced.
 	Value T
 
 	// The yaml.Node that holds the referenced value
 	ValueNode *yaml.Node
-
-	// Is this value actually a reference in the original tree?
-	ReferenceNode bool
-
-	// If HasReference is true, then Reference contains the original $ref value.
-	Reference string
 }
 
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)
@@ -156,32 +157,6 @@ func (n NodeReference[T]) NodeLineNumber() int {
 	} else {
 		return 0
 	}
-}
-
-func (n NodeReference[T]) GetReference() string {
-	return n.Reference
-}
-
-func (n NodeReference[T]) SetReference(ref string) {
-	n.Reference = ref
-}
-
-// IsReference will return true if the key node contains a $ref key.
-func (n NodeReference[T]) IsReference() bool {
-	if n.ReferenceNode {
-		return true
-	}
-	if n.KeyNode != nil {
-		for k := range n.KeyNode.Content {
-			if k%2 == 0 {
-				if n.KeyNode.Content[k].Value == "$ref" {
-					n.ReferenceNode = true
-					return true
-				}
-			}
-		}
-	}
-	return false
 }
 
 // GenerateMapKey will return a string based on the line and column number of the node, e.g. 33:56 for line 33, col 56.
@@ -251,34 +226,17 @@ func (n ValueReference[T]) GetValueUntyped() any {
 	return n.Value
 }
 
-func (n ValueReference[T]) GetReference() string {
-	return n.Reference
-}
-
-func (n ValueReference[T]) SetReference(ref string) {
-	n.Reference = ref
-}
-
-// IsReference will return true if the key node contains a $ref
-func (n ValueReference[T]) IsReference() bool {
-	if n.Reference != "" {
-		return true
-	}
-	return false
-}
-
 func (n ValueReference[T]) MarshalYAML() (interface{}, error) {
 	if n.IsReference() {
-		nodes := make([]*yaml.Node, 2)
-		nodes[0] = utils.CreateStringNode("$ref")
-		nodes[1] = utils.CreateStringNode(n.Reference)
-		m := utils.CreateEmptyMapNode()
-		m.Content = nodes
-		return m, nil
+		return n.GetReferenceNode(), nil
 	}
 	var h yaml.Node
 	e := n.ValueNode.Decode(&h)
 	return h, e
+}
+
+func (n KeyReference[T]) MarshalYAML() (interface{}, error) {
+	return n.KeyNode, nil
 }
 
 // IsEmpty will return true if this reference has no key or value nodes assigned (it's been ignored)

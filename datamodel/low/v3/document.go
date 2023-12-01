@@ -13,10 +13,10 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 type Document struct {
-
 	// Version is the version of OpenAPI being used, extracted from the 'openapi: x.x.x' definition.
 	// This is not a standard property of the OpenAPI model, it's a convenience mechanism only.
 	Version low.NodeReference[string]
@@ -38,7 +38,7 @@ type Document struct {
 	// for example by an out-of-band registration. The key name is a unique string to refer to each webhook,
 	// while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider
 	// and the expected responses. An example is available.
-	Webhooks low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]] // 3.1
+	Webhooks low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]] // 3.1
 
 	// Servers is a slice of Server instances which provide connectivity information to a target server. If the servers
 	// property is not provided, or is an empty array, the default value would be a Server Object with an url value of /.
@@ -75,7 +75,7 @@ type Document struct {
 	ExternalDocs low.NodeReference[*base.ExternalDoc]
 
 	// Extensions contains all custom extensions defined for the top-level document.
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 
 	// Index is a reference to the *index.SpecIndex that was created for the document and used
 	// as a guide when building out the Document. Ideal if further processing is required on the model and
@@ -102,7 +102,7 @@ func (d *Document) FindSecurityRequirement(name string) []low.ValueReference[str
 }
 
 // GetExtensions returns all Document extensions and satisfies the low.HasExtensions interface.
-func (d *Document) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (d *Document) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return d.Extensions
 }
 

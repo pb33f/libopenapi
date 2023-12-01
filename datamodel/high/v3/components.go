@@ -22,16 +22,16 @@ import (
 // will have no effect on the API unless they are explicitly referenced from properties outside the components object.
 //   - https://spec.openapis.org/oas/v3.1.0#components-object
 type Components struct {
-	Schemas         orderedmap.Map[string, *highbase.SchemaProxy] `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	Responses       orderedmap.Map[string, *Response]             `json:"responses,omitempty" yaml:"responses,omitempty"`
-	Parameters      orderedmap.Map[string, *Parameter]            `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Examples        orderedmap.Map[string, *highbase.Example]     `json:"examples,omitempty" yaml:"examples,omitempty"`
-	RequestBodies   orderedmap.Map[string, *RequestBody]          `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
-	Headers         orderedmap.Map[string, *Header]               `json:"headers,omitempty" yaml:"headers,omitempty"`
-	SecuritySchemes orderedmap.Map[string, *SecurityScheme]       `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
-	Links           orderedmap.Map[string, *Link]                 `json:"links,omitempty" yaml:"links,omitempty"`
-	Callbacks       orderedmap.Map[string, *Callback]             `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
-	Extensions      map[string]any                                `json:"-" yaml:"-"`
+	Schemas         *orderedmap.Map[string, *highbase.SchemaProxy] `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	Responses       *orderedmap.Map[string, *Response]             `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Parameters      *orderedmap.Map[string, *Parameter]            `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Examples        *orderedmap.Map[string, *highbase.Example]     `json:"examples,omitempty" yaml:"examples,omitempty"`
+	RequestBodies   *orderedmap.Map[string, *RequestBody]          `json:"requestBodies,omitempty" yaml:"requestBodies,omitempty"`
+	Headers         *orderedmap.Map[string, *Header]               `json:"headers,omitempty" yaml:"headers,omitempty"`
+	SecuritySchemes *orderedmap.Map[string, *SecurityScheme]       `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
+	Links           *orderedmap.Map[string, *Link]                 `json:"links,omitempty" yaml:"links,omitempty"`
+	Callbacks       *orderedmap.Map[string, *Callback]             `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Extensions      *orderedmap.Map[string, *yaml.Node]            `json:"-" yaml:"-"`
 	low             *low.Components
 }
 
@@ -41,7 +41,7 @@ type Components struct {
 func NewComponents(comp *low.Components) *Components {
 	c := new(Components)
 	c.low = comp
-	if len(comp.Extensions) > 0 {
+	if orderedmap.Len(comp.Extensions) > 0 {
 		c.Extensions = high.ExtractExtensions(comp.Extensions)
 	}
 	cbMap := orderedmap.New[string, *Callback]()
@@ -109,12 +109,12 @@ func NewComponents(comp *low.Components) *Components {
 
 // contains a component build result.
 type componentResult[T any] struct {
-	res  T
-	key  string
+	res T
+	key string
 }
 
 // buildComponent builds component structs from low level structs.
-func buildComponent[IN any, OUT any](inMap orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[IN]], outMap orderedmap.Map[string, OUT], translateItem func(IN) OUT) {
+func buildComponent[IN any, OUT any](inMap *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[IN]], outMap *orderedmap.Map[string, OUT], translateItem func(IN) OUT) {
 	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[IN]]) (componentResult[OUT], error) {
 		return componentResult[OUT]{key: pair.Key().Value, res: translateItem(pair.Value().Value)}, nil
 	}
@@ -126,7 +126,7 @@ func buildComponent[IN any, OUT any](inMap orderedmap.Map[lowmodel.KeyReference[
 }
 
 // buildSchema builds a schema from low level structs.
-func buildSchema(inMap orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*base.SchemaProxy]], outMap orderedmap.Map[string, *highbase.SchemaProxy]) {
+func buildSchema(inMap *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*base.SchemaProxy]], outMap *orderedmap.Map[string, *highbase.SchemaProxy]) {
 	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*base.SchemaProxy]]) (componentResult[*highbase.SchemaProxy], error) {
 		value := pair.Value()
 		var sch *highbase.SchemaProxy

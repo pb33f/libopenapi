@@ -14,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var doc *Document
@@ -274,7 +275,7 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, "Burger Shop", doc.Info.Value.Title.Value)
 	assert.NotEmpty(t, doc.Info.Value.Title.Value)
 	assert.Equal(t, "https://pb33f.io/schema", doc.JsonSchemaDialect.Value)
-	assert.Len(t, doc.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(doc.GetExtensions()))
 }
 
 //func TestCreateDocumentHash(t *testing.T) {
@@ -363,28 +364,45 @@ func TestCreateDocument_Tags(t *testing.T) {
 	assert.NotNil(t, doc.Tags.Value[0].Value.ExternalDocs.Value)
 	assert.Equal(t, "https://pb33f.io", doc.Tags.Value[0].Value.ExternalDocs.Value.URL.Value)
 	assert.NotEmpty(t, doc.Tags.Value[0].Value.ExternalDocs.Value.URL.Value)
-	assert.Len(t, doc.Tags.Value[0].Value.Extensions, 7)
+	assert.Equal(t, 7, orderedmap.Len(doc.Tags.Value[0].Value.Extensions))
 
-	for key, extension := range doc.Tags.Value[0].Value.Extensions {
+	for pair := orderedmap.First(doc.Tags.Value[0].Value.Extensions); pair != nil; pair = pair.Next() {
+		key := pair.Key()
+		extension := pair.Value()
+
+		var val any
+		_ = extension.Value.Decode(&val)
 		switch key.Value {
 		case "x-internal-ting":
-			assert.Equal(t, "somethingSpecial", extension.Value)
+			assert.Equal(t, "somethingSpecial", val)
 		case "x-internal-tong":
-			assert.Equal(t, int64(1), extension.Value)
+			assert.Equal(t, 1, val)
 		case "x-internal-tang":
-			assert.Equal(t, 1.2, extension.Value)
+			assert.Equal(t, 1.2, val)
 		case "x-internal-tung":
-			assert.Equal(t, true, extension.Value)
+			assert.Equal(t, true, val)
 		case "x-internal-arr":
-			assert.Len(t, extension.Value, 2)
-			assert.Equal(t, "one", extension.Value.([]interface{})[0].(string))
+			var a []any
+			err := extension.Value.Decode(&a)
+			require.NoError(t, err)
+
+			assert.Len(t, a, 2)
+			assert.Equal(t, "one", a[0].(string))
 		case "x-internal-arrmap":
-			assert.Len(t, extension.Value, 2)
-			assert.Equal(t, "now", extension.Value.([]interface{})[0].(map[string]interface{})["what"])
+			var a []any
+			err := extension.Value.Decode(&a)
+			require.NoError(t, err)
+
+			assert.Len(t, a, 2)
+			assert.Equal(t, "now", a[0].(map[string]interface{})["what"])
 		case "x-something-else":
+			var m map[string]any
+			err := extension.Value.Decode(&m)
+			require.NoError(t, err)
+
 			// crazy times in the upside down. this API should be avoided for the higher up use cases.
 			// this is why we will need a higher level API to this model, this looks cool and all, but dude.
-			assert.Equal(t, "now?", extension.Value.(map[string]interface{})["ok"].([]interface{})[0].(map[string]interface{})["what"])
+			assert.Equal(t, "now?", m["ok"].([]interface{})[0].(map[string]interface{})["what"])
 		}
 	}
 
@@ -394,7 +412,7 @@ func TestCreateDocument_Tags(t *testing.T) {
 	assert.NotNil(t, doc.Tags.Value[1].Value.ExternalDocs.Value)
 	assert.Equal(t, "https://pb33f.io", doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
 	assert.NotEmpty(t, doc.Tags.Value[1].Value.ExternalDocs.Value.URL.Value)
-	assert.Len(t, doc.Tags.Value[1].Value.Extensions, 0)
+	assert.Equal(t, 0, orderedmap.Len(doc.Tags.Value[1].Value.Extensions))
 }
 
 func TestCreateDocument_Paths(t *testing.T) {
@@ -407,11 +425,17 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.Equal(t, "burgerHeader", param.Value.Name.Value)
 	prop := param.Value.Schema.Value.Schema().FindProperty("burgerTheme").Value
 	assert.Equal(t, "something about a theme goes in here?", prop.Schema().Description.Value)
-	assert.Equal(t, "big-mac", param.Value.Example.Value)
+
+	var paramExample string
+	_ = param.GetValue().Example.Value.Decode(&paramExample)
+	assert.Equal(t, "big-mac", paramExample)
 
 	// check content
 	pContent := param.Value.FindContent("application/json")
-	assert.Equal(t, "somethingNice", pContent.Value.Example.Value)
+
+	var contentExample string
+	_ = pContent.Value.Example.Value.Decode(&contentExample)
+	assert.Equal(t, "somethingNice", contentExample)
 
 	encoding := pContent.Value.FindPropertyEncoding("burgerTheme")
 	assert.NotNil(t, encoding.Value)
@@ -445,25 +469,25 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.NotEmpty(t, ex.Value.Summary.Value)
 	assert.NotNil(t, ex.Value.Value.Value)
 
-	if n, ok := ex.Value.Value.Value.(map[string]interface{}); ok {
-		assert.Len(t, n, 2)
-		assert.Equal(t, 3, n["numPatties"])
-	} else {
-		assert.Fail(t, "should easily be convertable. something changed!")
-	}
+	var pbjBurgerExample map[string]any
+	err := ex.Value.Value.Value.Decode(&pbjBurgerExample)
+	require.NoError(t, err)
+
+	assert.Len(t, pbjBurgerExample, 2)
+	assert.Equal(t, 3, pbjBurgerExample["numPatties"])
 
 	cb := content.FindExample("cakeBurger")
 	assert.NotNil(t, cb.Value)
 	assert.NotEmpty(t, cb.Value.Summary.Value)
 	assert.NotNil(t, cb.Value.Value.Value)
 
-	if n, ok := cb.Value.Value.Value.(map[string]interface{}); ok {
-		assert.Len(t, n, 2)
-		assert.Equal(t, "Chocolate Cake Burger", n["name"])
-		assert.Equal(t, 5, n["numPatties"])
-	} else {
-		assert.Fail(t, "should easily be convertable. something changed!")
-	}
+	var cakeBurgerExample map[string]any
+	err = cb.Value.Value.Value.Decode(&cakeBurgerExample)
+	require.NoError(t, err)
+
+	assert.Len(t, cakeBurgerExample, 2)
+	assert.Equal(t, "Chocolate Cake Burger", cakeBurgerExample["name"])
+	assert.Equal(t, 5, cakeBurgerExample["numPatties"])
 
 	// check responses
 	responses := burgersPost.Responses.Value
@@ -490,13 +514,13 @@ func TestCreateDocument_Paths(t *testing.T) {
 	assert.NotNil(t, respExample.Value)
 	assert.NotNil(t, respExample.Value.Value.Value)
 
-	if n, ok := respExample.Value.Value.Value.(map[string]interface{}); ok {
-		assert.Len(t, n, 2)
-		assert.Equal(t, "Quarter Pounder with Cheese", n["name"])
-		assert.Equal(t, 1, n["numPatties"])
-	} else {
-		assert.Fail(t, "should easily be convertable. something changed!")
-	}
+	var quarterPounderExample map[string]any
+	err = respExample.Value.Value.Value.Decode(&quarterPounderExample)
+	require.NoError(t, err)
+
+	assert.Len(t, quarterPounderExample, 2)
+	assert.Equal(t, "Quarter Pounder with Cheese", quarterPounderExample["name"])
+	assert.Equal(t, 1, quarterPounderExample["numPatties"])
 
 	// check links
 	links := okCode.Value.Links

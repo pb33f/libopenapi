@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -60,7 +61,7 @@ x-milk: please`
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-	assert.Equal(t, "0b5ee36519fdfc6383c7befd92294d77b5799cd115911ff8c3e194f345a8c103",
+	assert.Equal(t, "306c5ee231d9854f21f03e909517c1fa8a8cb9431f11e8429a501eafaca31652",
 		low.GenerateHashString(&n))
 
 	assert.Equal(t, "tea", n.Type.Value)
@@ -70,9 +71,12 @@ x-milk: please`
 	assert.Equal(t, "lovely", n.Scheme.Value)
 	assert.Equal(t, "wow", n.BearerFormat.Value)
 	assert.Equal(t, "https://pb33f.io/openid", n.OpenIdConnectUrl.Value)
-	assert.Equal(t, "please", n.FindExtension("x-milk").Value)
+
+	var xMilk string
+	_ = n.FindExtension("x-milk").Value.Decode(&xMilk)
+	assert.Equal(t, "please", xMilk)
 	assert.Equal(t, "https://pb33f.io", n.Flows.Value.Implicit.Value.TokenUrl.Value)
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestSecurityScheme_Build_Fail(t *testing.T) {

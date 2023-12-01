@@ -23,13 +23,13 @@ import (
 // in an operation and using them as parameters while invoking the linked operation.
 //   - https://spec.openapis.org/oas/v3.1.0#link-object
 type Link struct {
-	OperationRef string                         `json:"operationRef,omitempty" yaml:"operationRef,omitempty"`
-	OperationId  string                         `json:"operationId,omitempty" yaml:"operationId,omitempty"`
-	Parameters   orderedmap.Map[string, string] `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	RequestBody  string                         `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
-	Description  string                         `json:"description,omitempty" yaml:"description,omitempty"`
-	Server       *Server                        `json:"server,omitempty" yaml:"server,omitempty"`
-	Extensions   map[string]any                 `json:"-" yaml:"-"`
+	OperationRef string                              `json:"operationRef,omitempty" yaml:"operationRef,omitempty"`
+	OperationId  string                              `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Parameters   *orderedmap.Map[string, string]     `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  string                              `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Description  string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Server       *Server                             `json:"server,omitempty" yaml:"server,omitempty"`
+	Extensions   *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low          *low.Link
 }
 

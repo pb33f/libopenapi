@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -21,13 +20,13 @@ import (
 type Server struct {
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]
-	Variables   low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]
-	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	Variables   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
-func (s *Server) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (s *Server) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return s.Extensions
 }
 
@@ -70,7 +69,7 @@ func (s *Server) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex
 				},
 			)
 		}
-		s.Variables = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]{
+		s.Variables = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]{
 			KeyNode:   kn,
 			ValueNode: vars,
 			Value:     variablesMap,
@@ -82,19 +81,15 @@ func (s *Server) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex
 // Hash will return a consistent SHA256 Hash of the Server object
 func (s *Server) Hash() [32]byte {
 	var f []string
-	keys := make([]string, orderedmap.Len(s.Variables.Value))
-	z := 0
-	for pair := orderedmap.First(s.Variables.Value); pair != nil; pair = pair.Next() {
-		keys[z] = low.GenerateHashString(pair.Value().Value)
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(s.Variables.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
 	if !s.URL.IsEmpty() {
 		f = append(f, s.URL.Value)
 	}
 	if !s.Description.IsEmpty() {
 		f = append(f, s.Description.Value)
 	}
+	f = append(f, low.HashExtensions(s.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

@@ -13,11 +13,11 @@ import (
 // OAuthFlow represents a high-level OpenAPI 3+ OAuthFlow object that is backed by a low-level one.
 //   - https://spec.openapis.org/oas/v3.1.0#oauth-flow-object
 type OAuthFlow struct {
-	AuthorizationUrl string                         `json:"authorizationUrl,omitempty" yaml:"authorizationUrl,omitempty"`
-	TokenUrl         string                         `json:"tokenUrl,omitempty" yaml:"tokenUrl,omitempty"`
-	RefreshUrl       string                         `json:"refreshUrl,omitempty" yaml:"refreshUrl,omitempty"`
-	Scopes           orderedmap.Map[string, string] `json:"scopes,omitempty" yaml:"scopes,omitempty"`
-	Extensions       map[string]any                 `json:"-" yaml:"-"`
+	AuthorizationUrl string                              `json:"authorizationUrl,omitempty" yaml:"authorizationUrl,omitempty"`
+	TokenUrl         string                              `json:"tokenUrl,omitempty" yaml:"tokenUrl,omitempty"`
+	RefreshUrl       string                              `json:"refreshUrl,omitempty" yaml:"refreshUrl,omitempty"`
+	Scopes           *orderedmap.Map[string, string]     `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	Extensions       *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low              *low.OAuthFlow
 }
 
@@ -29,7 +29,7 @@ func NewOAuthFlow(flow *low.OAuthFlow) *OAuthFlow {
 	o.AuthorizationUrl = flow.AuthorizationUrl.Value
 	o.RefreshUrl = flow.RefreshUrl.Value
 	scopes := orderedmap.New[string, string]()
-	for pair := flow.Scopes.Value.First(); pair != nil; pair = pair.Next() {
+	for pair := orderedmap.First(flow.Scopes.Value); pair != nil; pair = pair.Next() {
 		scopes.Set(pair.Key().Value, pair.Value().Value)
 	}
 	o.Scopes = scopes

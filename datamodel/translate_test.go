@@ -205,7 +205,7 @@ func TestTranslateMapParallel(t *testing.T) {
 	})
 
 	t.Run("nil", func(t *testing.T) {
-		var m orderedmap.Map[string, int]
+		var m *orderedmap.Map[string, int]
 		var translateCounter int64
 		translateFunc := func(pair orderedmap.Pair[string, int]) (string, error) {
 			atomic.AddInt64(&translateCounter, 1)
@@ -296,26 +296,6 @@ func TestTranslateMapParallel(t *testing.T) {
 		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 		require.NoError(t, err)
 		assert.Less(t, resultCounter, mapSize)
-	})
-
-	t.Run("Continue in translate", func(t *testing.T) {
-		m := orderedmap.New[string, int]()
-		for i := 0; i < mapSize; i++ {
-			m.Set(fmt.Sprintf("key%d", i), i+1000)
-		}
-
-		var translateCounter int64
-		translateFunc := func(_ orderedmap.Pair[string, int]) (string, error) {
-			atomic.AddInt64(&translateCounter, 1)
-			return "", datamodel.Continue
-		}
-		resultFunc := func(_ string) error {
-			t.Fatal("Expected no call to resultFunc()")
-			return nil
-		}
-		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
-		require.NoError(t, err)
-		assert.Equal(t, int64(mapSize), translateCounter)
 	})
 }
 

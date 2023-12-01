@@ -12,6 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -74,22 +75,23 @@ content:
 	assert.Equal(t, "she is my song.", n.Schema.Value.Schema().FindProperty("meddy").Value.Schema().Description.Value)
 	assert.Equal(t, "he is my champion.", n.Schema.Value.Schema().FindProperty("maddy").Value.Schema().Description.Value)
 
-	if v, ok := n.Example.Value.(map[string]interface{}); ok {
-		assert.Equal(t, "my love.", v["michelle"])
-		assert.Equal(t, "my song.", v["meddy"])
-		assert.Equal(t, "my champion.", v["maddy"])
-	} else {
-		assert.Fail(t, "should not fail")
-	}
+	var m map[string]any
+	err = n.Example.Value.Decode(&m)
+	require.NoError(t, err)
+
+	assert.Equal(t, "my love.", m["michelle"])
+	assert.Equal(t, "my song.", m["meddy"])
+	assert.Equal(t, "my champion.", m["maddy"])
 
 	con := n.FindContent("family/love").Value
 	assert.NotNil(t, con)
 	assert.Equal(t, "family love.", con.Schema.Value.Schema().Description.Value)
 	assert.Nil(t, n.FindContent("unknown"))
 
-	ext := n.FindExtension("x-family-love").Value
-	assert.Equal(t, "strong", ext)
-	assert.Len(t, n.GetExtensions(), 1)
+	var xFamilyLove string
+	_ = n.FindExtension("x-family-love").Value.Decode(&xFamilyLove)
+	assert.Equal(t, "strong", xFamilyLove)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestParameter_Build_Success_Examples(t *testing.T) {
@@ -114,13 +116,13 @@ func TestParameter_Build_Success_Examples(t *testing.T) {
 	exp := n.FindExample("family").Value
 	assert.NotNil(t, exp)
 
-	if v, ok := exp.Value.Value.(map[string]interface{}); ok {
-		assert.Equal(t, "my love.", v["michelle"])
-		assert.Equal(t, "my song.", v["meddy"])
-		assert.Equal(t, "my champion.", v["maddy"])
-	} else {
-		assert.Fail(t, "should not fail")
-	}
+	var m map[string]any
+	err = exp.Value.Value.Decode(&m)
+	require.NoError(t, err)
+
+	assert.Equal(t, "my love.", m["michelle"])
+	assert.Equal(t, "my song.", m["meddy"])
+	assert.Equal(t, "my champion.", m["maddy"])
 }
 
 func TestParameter_Build_Fail_Examples(t *testing.T) {

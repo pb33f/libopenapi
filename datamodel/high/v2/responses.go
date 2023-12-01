@@ -4,17 +4,19 @@
 package v2
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Responses is a high-level representation of a Swagger / OpenAPI 2 Responses object, backed by a low level one.
 type Responses struct {
-	Codes      orderedmap.Map[string, *Response]
+	Codes      *orderedmap.Map[string, *Response]
 	Default    *Response
-	Extensions map[string]any
+	Extensions *orderedmap.Map[string, *yaml.Node]
 	low        *low.Responses
 }
 
@@ -32,7 +34,7 @@ func NewResponses(responses *low.Responses) *Responses {
 		resp := orderedmap.New[string, *Response]()
 		translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Response]]) (asyncResult[*Response], error) {
 			return asyncResult[*Response]{
-				key: pair.Key().Value,
+				key:    pair.Key().Value,
 				result: NewResponse(pair.Value().Value),
 			}, nil
 		}
@@ -40,7 +42,7 @@ func NewResponses(responses *low.Responses) *Responses {
 			resp.Set(value.key, value.result)
 			return nil
 		}
-		_ = orderedmap.TranslateMapParallel(responses.Codes, translateFunc, resultFunc)
+		_ = datamodel.TranslateMapParallel(responses.Codes, translateFunc, resultFunc)
 		r.Codes = resp
 	}
 

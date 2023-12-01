@@ -306,8 +306,8 @@ $anchor: anchor`
 	assert.Equal(t, "string", compiled.PropertyNames.Schema().Type[0])
 	assert.Equal(t, "boolean", compiled.UnevaluatedItems.Schema().Type[0])
 	assert.Equal(t, "integer", compiled.UnevaluatedProperties.A.Schema().Type[0])
-	assert.True(t, compiled.ReadOnly)
-	assert.True(t, compiled.WriteOnly)
+	assert.True(t, *compiled.ReadOnly)
+	assert.True(t, *compiled.WriteOnly)
 	assert.True(t, *compiled.Deprecated)
 	assert.True(t, *compiled.Nullable)
 	assert.Equal(t, "anchor", compiled.Anchor)
@@ -548,7 +548,7 @@ func TestSchemaProxy_GoLow(t *testing.T) {
 
 	sp := NewSchemaProxy(&lowRef)
 	assert.Equal(t, lowProxy, sp.GoLow())
-	assert.Equal(t, ref, sp.GoLow().GetSchemaReference())
+	assert.Equal(t, ref, sp.GoLow().GetReference())
 	assert.Equal(t, ref, sp.GoLow().GetReference())
 
 	spNil := NewSchemaProxy(nil)
@@ -703,7 +703,14 @@ examples:
 `
 	highSchema := getHighSchema(t, yml)
 
-	assert.Equal(t, []any{int64(5), int64(10)}, highSchema.Examples)
+	examples := []any{}
+	for _, ex := range highSchema.Examples {
+		var v int64
+		assert.NoError(t, ex.Decode(&v))
+		examples = append(examples, v)
+	}
+
+	assert.Equal(t, []any{int64(5), int64(10)}, examples)
 }
 
 func ExampleNewSchema() {
@@ -1123,7 +1130,7 @@ components:
 
 	// now render it out, it should be identical.
 	schemaBytes, _ := compiled.RenderInline()
-	assert.Len(t, schemaBytes, 585)
+	assert.Equal(t, "properties:\n    bigBank:\n        type: object\n        properties:\n            failure_balance_transaction:\n                allOf:\n                    - type: object\n                      properties:\n                        name:\n                            type: string\n                        price:\n                            type: number\n                      anyOf:\n                        - description: A balance transaction\n                anyOf:\n                    - maxLength: 5000\n                      type: string\n                    - description: A balance transaction\n", string(schemaBytes))
 }
 
 func TestUnevaluatedPropertiesBoolean_True(t *testing.T) {

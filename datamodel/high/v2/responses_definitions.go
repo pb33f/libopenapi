@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -16,7 +17,7 @@ import (
 // referenced to the ones defined here. It does not define global operation responses
 //   - https://swagger.io/specification/v2/#responsesDefinitionsObject
 type ResponsesDefinitions struct {
-	Definitions orderedmap.Map[string, *Response]
+	Definitions *orderedmap.Map[string, *Response]
 	low         *low.ResponsesDefinitions
 }
 
@@ -36,7 +37,7 @@ func NewResponsesDefinitions(responsesDefinitions *low.ResponsesDefinitions) *Re
 		return nil
 	}
 
-	_ = orderedmap.TranslateMapParallel(responsesDefinitions.Definitions, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(responsesDefinitions.Definitions, translateFunc, resultFunc)
 	rd.Definitions = responses
 	return rd
 }

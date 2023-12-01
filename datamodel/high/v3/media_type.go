@@ -4,6 +4,7 @@
 package v3
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
@@ -17,11 +18,11 @@ import (
 // Each Media Type Object provides schema and examples for the media type identified by its key.
 //   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
-	Schema     *base.SchemaProxy                     `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Example    any                                   `json:"example,omitempty" yaml:"example,omitempty"`
-	Examples   orderedmap.Map[string, *base.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Encoding   orderedmap.Map[string, *Encoding]     `json:"encoding,omitempty" yaml:"encoding,omitempty"`
-	Extensions map[string]any                        `json:"-" yaml:"-"`
+	Schema     *base.SchemaProxy                      `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example    any                                    `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples   *orderedmap.Map[string, *base.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Encoding   *orderedmap.Map[string, *Encoding]     `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	Extensions *orderedmap.Map[string, *yaml.Node]    `json:"-" yaml:"-"`
 	low        *low.MediaType
 }
 
@@ -73,7 +74,7 @@ func (m *MediaType) MarshalYAMLInline() (interface{}, error) {
 
 // ExtractContent takes in a complex and hard to navigate low-level content map, and converts it in to a much simpler
 // and easier to navigate high-level one.
-func ExtractContent(elements orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.MediaType]]) orderedmap.Map[string, *MediaType] {
+func ExtractContent(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.MediaType]]) *orderedmap.Map[string, *MediaType] {
 	extracted := orderedmap.New[string, *MediaType]()
 	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.MediaType]]) (asyncResult[*MediaType], error) {
 		return asyncResult[*MediaType]{
@@ -85,6 +86,6 @@ func ExtractContent(elements orderedmap.Map[lowmodel.KeyReference[string], lowmo
 		extracted.Set(value.key, value.result)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel(elements, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(elements, translateFunc, resultFunc)
 	return extracted
 }

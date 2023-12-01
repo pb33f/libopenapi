@@ -39,7 +39,8 @@ func Test_Speakeasy_Document_Iteration(t *testing.T) {
 	require.Empty(t, errs)
 
 	for pair := orderedmap.First(m.Model.Paths.PathItems); pair != nil; pair = pair.Next() {
-		t.Log(pair.Key())
+		path := pair.Key()
+		t.Log(path)
 
 		iterateOperations(t, pair.Value().GetOperations())
 	}
@@ -57,19 +58,24 @@ func Test_Speakeasy_Document_Iteration(t *testing.T) {
 	}
 }
 
-func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
-	t.Helper()
+func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation]) {
+	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
+		method := pair.Key()
+		op := pair.Value()
 
-	for method, op := range ops {
 		t.Log(method)
 
-		for _, param := range op.Parameters {
+		for i, param := range op.Parameters {
+			t.Log("param", i, param.Name)
+
 			if param.Schema != nil {
 				handleSchema(t, param.Schema, context{})
 			}
 		}
 
 		if op.RequestBody != nil {
+			t.Log("request body")
+
 			for pair := orderedmap.First(op.RequestBody.Content); pair != nil; pair = pair.Next() {
 				t.Log(pair.Key())
 
@@ -79,6 +85,10 @@ func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
 					handleSchema(t, mediaType.Schema, context{})
 				}
 			}
+		}
+
+		if orderedmap.Len(op.Responses.Codes) > 0 {
+			t.Log("responses")
 		}
 
 		for codePair := orderedmap.First(op.Responses.Codes); codePair != nil; codePair = codePair.Next() {
@@ -95,6 +105,10 @@ func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
 			}
 		}
 
+		if orderedmap.Len(op.Responses.Codes) > 0 {
+			t.Log("callbacks")
+		}
+
 		for callacksPair := orderedmap.First(op.Callbacks); callacksPair != nil; callacksPair = callacksPair.Next() {
 			t.Log(callacksPair.Key())
 
@@ -108,8 +122,6 @@ func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
 }
 
 func handleSchema(t *testing.T, schProxy *base.SchemaProxy, ctx context) {
-	t.Helper()
-
 	if checkCircularReference(t, &ctx, schProxy) {
 		return
 	}
@@ -118,6 +130,8 @@ func handleSchema(t *testing.T, schProxy *base.SchemaProxy, ctx context) {
 	require.NoError(t, err)
 
 	typ, subTypes := getResolvedType(sch)
+
+	t.Log("schema", typ, subTypes)
 
 	if len(sch.Enum) > 0 {
 		switch typ {
@@ -178,7 +192,7 @@ func getResolvedType(sch *base.Schema) (string, []string) {
 			return "string", nil
 		}
 
-		if sch.Properties.Len() > 0 {
+		if orderedmap.Len(sch.Properties) > 0 {
 			return "object", nil
 		}
 
@@ -201,8 +215,6 @@ func getResolvedType(sch *base.Schema) (string, []string) {
 }
 
 func handleAllOfAnyOfOneOf(t *testing.T, sch *base.Schema, ctx context) {
-	t.Helper()
-
 	var schemas []*base.SchemaProxy
 
 	switch {
@@ -222,8 +234,6 @@ func handleAllOfAnyOfOneOf(t *testing.T, sch *base.Schema, ctx context) {
 }
 
 func handleArray(t *testing.T, sch *base.Schema, ctx context) {
-	t.Helper()
-
 	ctx.stack = append(ctx.stack, loopFrame{Type: "array", Restricted: sch.MinItems != nil && *sch.MinItems > 0})
 
 	if sch.Items != nil && sch.Items.IsA() {
@@ -242,8 +252,6 @@ func handleArray(t *testing.T, sch *base.Schema, ctx context) {
 }
 
 func handleObject(t *testing.T, sch *base.Schema, ctx context) {
-	t.Helper()
-
 	for pair := orderedmap.First(sch.Properties); pair != nil; pair = pair.Next() {
 		ctx.stack = append(ctx.stack, loopFrame{Type: "object", Restricted: slices.Contains(sch.Required, pair.Key())})
 		handleSchema(t, pair.Value(), ctx)

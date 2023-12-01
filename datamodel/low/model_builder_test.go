@@ -25,11 +25,11 @@ type hotdog struct {
 	Temps           []NodeReference[int]
 	HighTemps       []NodeReference[int64]
 	Buns            []NodeReference[bool]
-	UnknownElements NodeReference[any]
-	LotsOfUnknowns  []NodeReference[any]
-	Where           map[string]NodeReference[any]
-	There           map[string]NodeReference[string]
-	AllTheThings    NodeReference[orderedmap.Map[KeyReference[string], ValueReference[string]]]
+	UnknownElements NodeReference[*yaml.Node]
+	LotsOfUnknowns  []NodeReference[*yaml.Node]
+	Where           *orderedmap.Map[string, NodeReference[*yaml.Node]]
+	There           *orderedmap.Map[string, NodeReference[string]]
+	AllTheThings    NodeReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]
 }
 
 func TestBuildModel_Mismatch(t *testing.T) {
@@ -126,11 +126,15 @@ allTheThings:
 	assert.Equal(t, int64(7392837462032342), hd.MaxTempHigh.Value)
 	assert.Equal(t, 2, hd.Temps[1].Value)
 	assert.Equal(t, 27, hd.Temps[1].ValueNode.Line)
-	assert.Len(t, hd.UnknownElements.Value, 2)
+
+	var unknownElements map[string]any
+	_ = hd.UnknownElements.Value.Decode(&unknownElements)
+
+	assert.Len(t, unknownElements, 2)
 	assert.Len(t, hd.LotsOfUnknowns, 3)
-	assert.Len(t, hd.Where, 2)
-	assert.Len(t, hd.There, 2)
-	assert.Equal(t, "bear", hd.There["care"].Value)
+	assert.Equal(t, 2, orderedmap.Len(hd.Where))
+	assert.Equal(t, 2, orderedmap.Len(hd.There))
+	assert.Equal(t, "bear", hd.There.GetOrZero("care").Value)
 	assert.Equal(t, 324938249028.98234892374892374923874823974, hd.Mustard.Value)
 
 	allTheThings := hd.AllTheThings.Value
@@ -201,27 +205,9 @@ thing: yeah`
 	assert.Equal(t, "yeah", ins.Thing.Value)
 }
 
-func TestSetField_NodeRefAny_Error(t *testing.T) {
-	type internal struct {
-		Thing []NodeReference[any]
-	}
-
-	yml := `thing:
-  - 999
-  - false`
-
-	ins := new(internal)
-	var rootNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
-	assert.NoError(t, mErr)
-
-	try := BuildModel(rootNode.Content[0], ins)
-	assert.Error(t, try)
-}
-
 func TestSetField_MapHelperWrapped(t *testing.T) {
 	type internal struct {
-		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
+		Thing KeyReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]
 	}
 
 	yml := `thing: 
@@ -236,12 +222,12 @@ func TestSetField_MapHelperWrapped(t *testing.T) {
 
 	try := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, try)
-	assert.Len(t, ins.Thing.Value, 3)
+	assert.Equal(t, 3, orderedmap.Len(ins.Thing.Value))
 }
 
 func TestSetField_MapHelper(t *testing.T) {
 	type internal struct {
-		Thing map[KeyReference[string]]ValueReference[string]
+		Thing *orderedmap.Map[KeyReference[string], ValueReference[string]]
 	}
 
 	yml := `thing: 
@@ -256,7 +242,7 @@ func TestSetField_MapHelper(t *testing.T) {
 
 	try := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, try)
-	assert.Len(t, ins.Thing, 3)
+	assert.Equal(t, 3, orderedmap.Len(ins.Thing))
 }
 
 func TestSetField_ArrayHelper(t *testing.T) {
@@ -281,7 +267,7 @@ func TestSetField_ArrayHelper(t *testing.T) {
 
 func TestSetField_Enum_Helper(t *testing.T) {
 	type internal struct {
-		Thing NodeReference[[]ValueReference[any]]
+		Thing NodeReference[[]ValueReference[*yaml.Node]]
 	}
 
 	yml := `thing: 
@@ -324,7 +310,7 @@ func TestSetField_Default_Helper(t *testing.T) {
 
 func TestHandleSlicesOfInts(t *testing.T) {
 	type internal struct {
-		Thing NodeReference[[]ValueReference[any]]
+		Thing NodeReference[[]ValueReference[*yaml.Node]]
 	}
 
 	yml := `thing:
@@ -338,13 +324,20 @@ func TestHandleSlicesOfInts(t *testing.T) {
 
 	try := BuildModel(rootNode.Content[0], ins)
 	assert.NoError(t, try)
-	assert.Equal(t, int64(5), ins.Thing.Value[0].Value)
-	assert.Equal(t, 1.234, ins.Thing.Value[1].Value)
+
+	var thing0 int64
+	_ = ins.Thing.GetValue()[0].Value.Decode(&thing0)
+
+	var thing1 float64
+	_ = ins.Thing.GetValue()[1].Value.Decode(&thing1)
+
+	assert.Equal(t, int64(5), thing0)
+	assert.Equal(t, 1.234, thing1)
 }
 
 func TestHandleSlicesOfBools(t *testing.T) {
 	type internal struct {
-		Thing NodeReference[[]ValueReference[any]]
+		Thing NodeReference[[]ValueReference[*yaml.Node]]
 	}
 
 	yml := `thing:
@@ -357,9 +350,16 @@ func TestHandleSlicesOfBools(t *testing.T) {
 	assert.NoError(t, mErr)
 
 	try := BuildModel(rootNode.Content[0], ins)
+
+	var thing0 bool
+	_ = ins.Thing.GetValue()[0].Value.Decode(&thing0)
+
+	var thing1 bool
+	_ = ins.Thing.GetValue()[1].Value.Decode(&thing1)
+
 	assert.NoError(t, try)
-	assert.Equal(t, true, ins.Thing.Value[0].Value)
-	assert.Equal(t, false, ins.Thing.Value[1].Value)
+	assert.Equal(t, true, thing0)
+	assert.Equal(t, false, thing1)
 }
 
 func TestSetField_Ignore(t *testing.T) {
@@ -387,7 +387,7 @@ func TestSetField_Ignore(t *testing.T) {
 
 func TestBuildModelAsync(t *testing.T) {
 	type internal struct {
-		Thing KeyReference[map[KeyReference[string]]ValueReference[string]]
+		Thing KeyReference[*orderedmap.Map[KeyReference[string], ValueReference[string]]]
 	}
 
 	yml := `thing: 
@@ -405,28 +405,5 @@ func TestBuildModelAsync(t *testing.T) {
 	wg.Add(1)
 	BuildModelAsync(rootNode.Content[0], ins, &wg, &errors)
 	wg.Wait()
-	assert.Len(t, ins.Thing.Value, 3)
-}
-
-func TestBuildModelAsync_Error(t *testing.T) {
-	type internal struct {
-		Thing []NodeReference[any]
-	}
-
-	yml := `thing:
-  - 999
-  - false`
-
-	ins := new(internal)
-	var rootNode yaml.Node
-	mErr := yaml.Unmarshal([]byte(yml), &rootNode)
-	assert.NoError(t, mErr)
-
-	var wg sync.WaitGroup
-	var errors []error
-	wg.Add(1)
-	BuildModelAsync(rootNode.Content[0], ins, &wg, &errors)
-	wg.Wait()
-	assert.Len(t, errors, 1)
-	assert.Len(t, ins.Thing, 0)
+	assert.Equal(t, 3, orderedmap.Len(ins.Thing.Value))
 }

@@ -7,13 +7,15 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Parameter represents a low-level Swagger / OpenAPI 2 Parameter object.
@@ -68,7 +70,7 @@ type Parameter struct {
 	Schema           low.NodeReference[*base.SchemaProxy]
 	Items            low.NodeReference[*Items]
 	CollectionFormat low.NodeReference[string]
-	Default          low.NodeReference[any]
+	Default          low.NodeReference[*yaml.Node]
 	Maximum          low.NodeReference[int]
 	ExclusiveMaximum low.NodeReference[bool]
 	Minimum          low.NodeReference[int]
@@ -79,18 +81,18 @@ type Parameter struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]low.ValueReference[any]]
+	Enum             low.NodeReference[[]low.ValueReference[*yaml.Node]]
 	MultipleOf       low.NodeReference[int]
-	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // FindExtension attempts to locate a extension value given a name.
-func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, p.Extensions)
+func (p *Parameter) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, p.Extensions)
 }
 
 // GetExtensions returns all Parameter extensions and satisfies the low.HasExtensions interface.
-func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (p *Parameter) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return p.Extensions
 }
 
@@ -114,30 +116,8 @@ func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 
 	_, ln, vn := utils.FindKeyNodeFull(DefaultLabel, root.Content)
 	if vn != nil {
-		var n map[string]interface{}
-		err := vn.Decode(&n)
-		if err != nil {
-			var k []interface{}
-			err = vn.Decode(&k)
-			if err != nil {
-				var j interface{}
-				_ = vn.Decode(&j)
-				p.Default = low.NodeReference[any]{
-					Value:     j,
-					KeyNode:   ln,
-					ValueNode: vn,
-				}
-				return nil
-			}
-			p.Default = low.NodeReference[any]{
-				Value:     k,
-				KeyNode:   ln,
-				ValueNode: vn,
-			}
-			return nil
-		}
-		p.Default = low.NodeReference[any]{
-			Value:     n,
+		p.Default = low.NodeReference[*yaml.Node]{
+			Value:     vn,
 			KeyNode:   ln,
 			ValueNode: vn,
 		}
@@ -172,8 +152,8 @@ func (p *Parameter) Hash() [32]byte {
 	if p.CollectionFormat.Value != "" {
 		f = append(f, p.CollectionFormat.Value)
 	}
-	if p.Default.Value != "" {
-		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(p.Default.Value)))))
+	if p.Default.Value != nil && !p.Default.Value.IsZero() {
+		f = append(f, low.GenerateHashString(p.Default.Value))
 	}
 	f = append(f, fmt.Sprint(p.Maximum.Value))
 	f = append(f, fmt.Sprint(p.Minimum.Value))
@@ -192,20 +172,13 @@ func (p *Parameter) Hash() [32]byte {
 	keys := make([]string, len(p.Enum.Value))
 	z := 0
 	for k := range p.Enum.Value {
-		keys[z] = fmt.Sprint(p.Enum.Value[k].Value)
+		keys[z] = low.ValueToString(p.Enum.Value[k].Value)
 		z++
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
 
-	keys = make([]string, len(p.Extensions))
-	z = 0
-	for k := range p.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(p.Extensions)...)
 	if p.Items.Value != nil {
 		f = append(f, fmt.Sprintf("%x", p.Items.Value.Hash()))
 	}
@@ -217,21 +190,27 @@ func (p *Parameter) Hash() [32]byte {
 func (p *Parameter) GetName() *low.NodeReference[string] {
 	return &p.Name
 }
+
 func (p *Parameter) GetIn() *low.NodeReference[string] {
 	return &p.In
 }
+
 func (p *Parameter) GetType() *low.NodeReference[string] {
 	return &p.Type
 }
+
 func (p *Parameter) GetDescription() *low.NodeReference[string] {
 	return &p.Description
 }
+
 func (p *Parameter) GetRequired() *low.NodeReference[bool] {
 	return &p.Required
 }
+
 func (p *Parameter) GetAllowEmptyValue() *low.NodeReference[bool] {
 	return &p.AllowEmptyValue
 }
+
 func (p *Parameter) GetSchema() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Schema.KeyNode,
@@ -240,9 +219,11 @@ func (p *Parameter) GetSchema() *low.NodeReference[any] {
 	}
 	return &i
 }
+
 func (p *Parameter) GetFormat() *low.NodeReference[string] {
 	return &p.Format
 }
+
 func (p *Parameter) GetItems() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Items.KeyNode,
@@ -251,45 +232,59 @@ func (p *Parameter) GetItems() *low.NodeReference[any] {
 	}
 	return &i
 }
+
 func (p *Parameter) GetCollectionFormat() *low.NodeReference[string] {
 	return &p.CollectionFormat
 }
-func (p *Parameter) GetDefault() *low.NodeReference[any] {
+
+func (p *Parameter) GetDefault() *low.NodeReference[*yaml.Node] {
 	return &p.Default
 }
+
 func (p *Parameter) GetMaximum() *low.NodeReference[int] {
 	return &p.Maximum
 }
+
 func (p *Parameter) GetExclusiveMaximum() *low.NodeReference[bool] {
 	return &p.ExclusiveMaximum
 }
+
 func (p *Parameter) GetMinimum() *low.NodeReference[int] {
 	return &p.Minimum
 }
+
 func (p *Parameter) GetExclusiveMinimum() *low.NodeReference[bool] {
 	return &p.ExclusiveMinimum
 }
+
 func (p *Parameter) GetMaxLength() *low.NodeReference[int] {
 	return &p.MaxLength
 }
+
 func (p *Parameter) GetMinLength() *low.NodeReference[int] {
 	return &p.MinLength
 }
+
 func (p *Parameter) GetPattern() *low.NodeReference[string] {
 	return &p.Pattern
 }
+
 func (p *Parameter) GetMaxItems() *low.NodeReference[int] {
 	return &p.MaxItems
 }
+
 func (p *Parameter) GetMinItems() *low.NodeReference[int] {
 	return &p.MinItems
 }
+
 func (p *Parameter) GetUniqueItems() *low.NodeReference[bool] {
 	return &p.UniqueItems
 }
-func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[any]] {
+
+func (p *Parameter) GetEnum() *low.NodeReference[[]low.ValueReference[*yaml.Node]] {
 	return &p.Enum
 }
+
 func (p *Parameter) GetMultipleOf() *low.NodeReference[int] {
 	return &p.MultipleOf
 }

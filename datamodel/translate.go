@@ -15,6 +15,7 @@ type (
 	TranslateFunc[IN any, OUT any]      func(IN) (OUT, error)
 	TranslateSliceFunc[IN any, OUT any] func(int, IN) (OUT, error)
 	TranslateMapFunc[IN any, OUT any]   func(IN) (OUT, error)
+	ResultFunc[V any]                   func(V) error
 )
 
 type continueError struct {
@@ -122,12 +123,12 @@ JOBLOOP:
 	return reterr
 }
 
-// TranslateMapParallel iterates a map in parallel and calls translate()
+// TranslateMapParallel iterates a `*orderedmap.Map` in parallel and calls translate()
 // asynchronously.
 // translate() or result() may return `io.EOF` to break iteration.
-// Results are provided sequentially to result().  Result order is
-// nondeterministic.
-func TranslateMapParallel[K comparable, V any, OUT any](m orderedmap.Map[K, V], translate TranslateMapFunc[orderedmap.Pair[K, V], OUT], result ActionFunc[OUT]) error {
+// Safely handles nil pointer.
+// Results are provided sequentially to result() in stable order from `*orderedmap.Map`.
+func TranslateMapParallel[K comparable, V any, RV any](m *orderedmap.Map[K, V], translate TranslateFunc[orderedmap.Pair[K, V], RV], result ResultFunc[RV]) error {
 	if m == nil {
 		return nil
 	}
@@ -136,54 +137,66 @@ func TranslateMapParallel[K comparable, V any, OUT any](m orderedmap.Map[K, V], 
 	defer cancel()
 	concurrency := runtime.NumCPU()
 	c := orderedmap.Iterate(ctx, m)
-	resultChan := make(chan OUT, concurrency)
+	jobChan := make(chan *jobStatus[RV], concurrency)
 	var reterr error
-	var mu sync.Mutex
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	// Fan out input translation.
+	// Fan out translate jobs.
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
+		defer func() {
+			close(jobChan)
+			wg.Done()
+		}()
 		for pair := range c {
+			j := &jobStatus[RV]{
+				done: make(chan struct{}),
+			}
+			select {
+			case jobChan <- j:
+			case <-ctx.Done():
+				return
+			}
+
 			wg.Add(1)
 			go func(pair orderedmap.Pair[K, V]) {
-				defer wg.Done()
 				value, err := translate(pair)
-				if err == Continue {
-					return
-				}
 				if err != nil {
 					mu.Lock()
+					defer func() {
+						mu.Unlock()
+						wg.Done()
+						cancel()
+					}()
 					if reterr == nil {
 						reterr = err
 					}
-					mu.Unlock()
-					cancel()
 					return
 				}
-				select {
-				case resultChan <- value:
-				case <-ctx.Done():
-				}
+				j.result = value
+				close(j.done)
+				wg.Done()
 			}(pair)
 		}
 	}()
 
-	go func() {
-		// Indicate EOF after all translate goroutines finish.
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// Iterate results.
-	for value := range resultChan {
-		err := result(value)
-		if err != nil {
-			cancel()
-			wg.Wait()
-			reterr = err
-			break
+	// Iterate jobChan as jobs complete.
+	defer wg.Wait()
+JOBLOOP:
+	for j := range jobChan {
+		select {
+		case <-j.done:
+			err := result(j.result)
+			if err != nil {
+				cancel()
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+		case <-ctx.Done():
+			break JOBLOOP
 		}
 	}
 

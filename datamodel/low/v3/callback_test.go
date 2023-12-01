@@ -15,7 +15,6 @@ import (
 )
 
 func TestCallback_Build_Success(t *testing.T) {
-
 	yml := `'{$request.query.queryUrl}':
     post:
       requestBody:
@@ -39,12 +38,10 @@ func TestCallback_Build_Success(t *testing.T) {
 	err = n.Build(context.Background(), nil, rootNode.Content[0], nil)
 	assert.NoError(t, err)
 
-	assert.Equal(t, 1, orderedmap.Len(n.Expression.Value))
-
+	assert.Equal(t, 1, orderedmap.Len(n.Expression))
 }
 
 func TestCallback_Build_Error(t *testing.T) {
-
 	// first we need an index.
 	doc := `components:
   schemas:
@@ -70,11 +67,9 @@ func TestCallback_Build_Error(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, rootNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestCallback_Build_Using_InlineRef(t *testing.T) {
-
 	// first we need an index.
 	doc := `components:
   schemas:
@@ -105,17 +100,15 @@ func TestCallback_Build_Using_InlineRef(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, rootNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Equal(t, 1, orderedmap.Len(n.Expression.Value))
+	assert.Equal(t, 1, orderedmap.Len(n.Expression))
 
 	exp := n.FindExpression("{$request.query.queryUrl}")
 	assert.NotNil(t, exp.Value)
 	assert.NotNil(t, exp.Value.Post.Value)
 	assert.Equal(t, "this is something", exp.Value.Post.Value.RequestBody.Value.Description.Value)
-
 }
 
 func TestCallback_Hash(t *testing.T) {
-
 	yml := `x-seed: grow
 pizza:
   description: cheesy
@@ -152,6 +145,5 @@ beer:
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-	assert.Len(t, n.GetExtensions(), 2)
-
+	assert.Equal(t, 2, orderedmap.Len(n.GetExtensions()))
 }

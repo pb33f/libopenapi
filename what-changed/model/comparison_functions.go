@@ -82,7 +82,7 @@ func FlattenLowLevelMap[T any](
 }
 
 func FlattenLowLevelOrderedMap[T any](
-	lowMap orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+	lowMap *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 ) map[string]*low.ValueReference[T] {
 	flat := make(map[string]*low.ValueReference[T])
 
@@ -252,13 +252,13 @@ func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Chan
 
 // CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to
 // values. The compareFunc argument should reference the correct comparison function for the generic type.
-func CheckMapForChanges[T any, R any](expLeft, expRight orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+func CheckMapForChanges[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R,
 ) map[string]R {
 	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, compareFunc, true)
 }
 
-func CheckMapForAdditionRemoval[T any](expLeft, expRight orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+func CheckMapForAdditionRemoval[T any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string,
 ) any {
 	// do nothing
@@ -282,7 +282,7 @@ func CheckMapForAdditionRemoval[T any](expLeft, expRight orderedmap.Map[low.KeyR
 // CheckMapForChangesWithComp checks a left and right low level map for any additions, subtractions or modifications to
 // values. The compareFunc argument should reference the correct comparison function for the generic type. The compare
 // bit determines if the comparison should be run or not.
-func CheckMapForChangesWithComp[T any, R any](expLeft, expRight orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R, compare bool,
 ) map[string]R {
 	// stop concurrent threads screwing up changes.
@@ -420,20 +420,28 @@ func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
 	}
 }
 
+func toString(v any) string {
+	if y, ok := v.(*yaml.Node); ok {
+		_ = y.Encode(&v)
+	}
+
+	return fmt.Sprint(v)
+}
+
 // ExtractRawValueSliceChanges will compare two low level interface{} slices for changes.
-func ExtractRawValueSliceChanges(lParam, rParam []low.ValueReference[any],
+func ExtractRawValueSliceChanges[T any](lParam, rParam []low.ValueReference[T],
 	changes *[]*Change, label string, breaking bool,
 ) {
 	lKeys := make([]string, len(lParam))
 	rKeys := make([]string, len(rParam))
-	lValues := make(map[string]low.ValueReference[any])
-	rValues := make(map[string]low.ValueReference[any])
+	lValues := make(map[string]low.ValueReference[T])
+	rValues := make(map[string]low.ValueReference[T])
 	for i := range lParam {
-		lKeys[i] = strings.ToLower(fmt.Sprint(lParam[i].Value))
+		lKeys[i] = strings.ToLower(toString(lParam[i].Value))
 		lValues[lKeys[i]] = lParam[i]
 	}
 	for i := range rParam {
-		rKeys[i] = strings.ToLower(fmt.Sprint(rParam[i].Value))
+		rKeys[i] = strings.ToLower(toString(rParam[i].Value))
 		rValues[rKeys[i]] = rParam[i]
 	}
 	for i := range lValues {

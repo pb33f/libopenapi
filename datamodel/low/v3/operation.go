@@ -32,17 +32,17 @@ type Operation struct {
 	Parameters   low.NodeReference[[]low.ValueReference[*Parameter]]
 	RequestBody  low.NodeReference[*RequestBody]
 	Responses    low.NodeReference[*Responses]
-	Callbacks    low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
+	Callbacks    low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
 	Deprecated   low.NodeReference[bool]
 	Security     low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
-	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // FindCallback will attempt to locate a Callback instance by the supplied name.
 func (o *Operation) FindCallback(callback string) *low.ValueReference[*Callback] {
-	return low.FindItemInOrderedMap[*Callback](callback, o.Callbacks.Value)
+	return low.FindItemInOrderedMap(callback, o.Callbacks.GetValue())
 }
 
 // FindSecurityRequirement will attempt to locate a security requirement string from a supplied name.
@@ -105,7 +105,7 @@ func (o *Operation) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 		return cbErr
 	}
 	if callbacks != nil {
-		o.Callbacks = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]{
+		o.Callbacks = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]{
 			Value:     callbacks,
 			KeyNode:   cbL,
 			ValueNode: cbN,
@@ -206,23 +206,10 @@ func (o *Operation) Hash() [32]byte {
 	sort.Strings(keys)
 	f = append(f, keys...)
 
-	keys = make([]string, orderedmap.Len(o.Callbacks.Value))
-	z := 0
-	for pair := orderedmap.First(o.Callbacks.Value); pair != nil; pair = pair.Next() {
-		keys[z] = low.GenerateHashString(pair.Value().Value)
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(o.Callbacks.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-
-	keys = make([]string, len(o.Extensions))
-	z = 0
-	for k := range o.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(o.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(o.Extensions)...)
 
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
@@ -232,12 +219,15 @@ func (o *Operation) Hash() [32]byte {
 func (o *Operation) GetTags() low.NodeReference[[]low.ValueReference[string]] {
 	return o.Tags
 }
+
 func (o *Operation) GetSummary() low.NodeReference[string] {
 	return o.Summary
 }
+
 func (o *Operation) GetDescription() low.NodeReference[string] {
 	return o.Description
 }
+
 func (o *Operation) GetExternalDocs() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.ExternalDocs.ValueNode,
@@ -245,15 +235,19 @@ func (o *Operation) GetExternalDocs() low.NodeReference[any] {
 		Value:     o.ExternalDocs.Value,
 	}
 }
+
 func (o *Operation) GetOperationId() low.NodeReference[string] {
 	return o.OperationId
 }
+
 func (o *Operation) GetDeprecated() low.NodeReference[bool] {
 	return o.Deprecated
 }
-func (o *Operation) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+
+func (o *Operation) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return o.Extensions
 }
+
 func (o *Operation) GetResponses() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Responses.ValueNode,
@@ -261,6 +255,7 @@ func (o *Operation) GetResponses() low.NodeReference[any] {
 		Value:     o.Responses.Value,
 	}
 }
+
 func (o *Operation) GetParameters() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Parameters.ValueNode,
@@ -268,6 +263,7 @@ func (o *Operation) GetParameters() low.NodeReference[any] {
 		Value:     o.Parameters.Value,
 	}
 }
+
 func (o *Operation) GetSecurity() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Security.ValueNode,
@@ -275,6 +271,7 @@ func (o *Operation) GetSecurity() low.NodeReference[any] {
 		Value:     o.Security.Value,
 	}
 }
+
 func (o *Operation) GetServers() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Servers.ValueNode,
@@ -282,6 +279,7 @@ func (o *Operation) GetServers() low.NodeReference[any] {
 		Value:     o.Servers.Value,
 	}
 }
-func (o *Operation) GetCallbacks() low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]] {
+
+func (o *Operation) GetCallbacks() low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]] {
 	return o.Callbacks
 }
