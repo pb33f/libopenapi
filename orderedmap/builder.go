@@ -52,7 +52,7 @@ func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 		}
 	}
 
-	for pair := o.First(); pair != nil; pair = pair.Next() {
+	for pair := First(o); pair != nil; pair = pair.Next() {
 		var k any = pair.Key()
 		if m, ok := k.(Marshaler); ok { // TODO marshal inline?
 			k, _ = m.MarshalYAML()
@@ -114,7 +114,7 @@ func findKeyNode(key string, m *yaml.Node) *yaml.Node {
 }
 
 func (o *Map[K, V]) FindValueUntyped(key string) any {
-	for pair := o.First(); pair != nil; pair = pair.Next() {
+	for pair := First(o); pair != nil; pair = pair.Next() {
 		var k any = pair.Key()
 		if hvut, ok := k.(HasValueUntyped); ok {
 			if fmt.Sprintf("%v", hvut.GetValueUntyped()) == key {

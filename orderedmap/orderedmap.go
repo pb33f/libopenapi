@@ -140,7 +140,7 @@ func Iterate[K comparable, V any](ctx context.Context, m *Map[K, V]) <-chan Pair
 	}
 	go func() {
 		defer close(c)
-		for pair := m.First(); pair != nil; pair = pair.Next() {
+		for pair := First(m); pair != nil; pair = pair.Next() {
 			select {
 			case c <- pair:
 			case <-ctx.Done():
@@ -196,7 +196,7 @@ func SortAlpha[K comparable, V any](m *Map[K, V]) *Map[K, V] {
 	}
 
 	keys := []key{}
-	for pair := m.First(); pair != nil; pair = pair.Next() {
+	for pair := First(m); pair != nil; pair = pair.Next() {
 		keys = append(keys, key{
 			key: fmt.Sprintf("%v", pair.Key()),
 			k:   pair.Key(),

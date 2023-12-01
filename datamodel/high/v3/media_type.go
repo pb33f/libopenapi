@@ -19,7 +19,7 @@ import (
 //   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
 	Schema     *base.SchemaProxy                      `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Example    any                                    `json:"example,omitempty" yaml:"example,omitempty"`
+	Example    *yaml.Node                             `json:"example,omitempty" yaml:"example,omitempty"`
 	Examples   *orderedmap.Map[string, *base.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
 	Encoding   *orderedmap.Map[string, *Encoding]     `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 	Extensions *orderedmap.Map[string, *yaml.Node]    `json:"-" yaml:"-"`

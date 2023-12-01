@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -40,7 +41,7 @@ func TestMediaType_MarshalYAMLInline(t *testing.T) {
 	assert.Equal(t, op, strings.TrimSpace(string(yml)))
 
 	// modify the media type to have an example
-	mt.Example = "testing a nice mutation"
+	mt.Example = utils.CreateStringNode("testing a nice mutation")
 
 	op = `schema:
     required:
@@ -128,7 +129,7 @@ func TestMediaType_MarshalYAML(t *testing.T) {
 	assert.Equal(t, op, strings.TrimSpace(string(yml)))
 
 	// modify the media type to have an example
-	mt.Example = "testing a nice mutation"
+	mt.Example = utils.CreateStringNode("testing a nice mutation")
 
 	op = `schema: {"$ref": "#/components/schemas/Pet"}
 example: testing a nice mutation`

@@ -138,7 +138,7 @@ allTheThings:
 	assert.Equal(t, 324938249028.98234892374892374923874823974, hd.Mustard.Value)
 
 	allTheThings := hd.AllTheThings.Value
-	for pair := allTheThings.First(); pair != nil; pair = pair.Next() {
+	for pair := orderedmap.First(allTheThings); pair != nil; pair = pair.Next() {
 		if pair.Key().Value == "beer" {
 			assert.Equal(t, "isGood", pair.Value().Value)
 		}

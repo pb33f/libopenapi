@@ -31,7 +31,7 @@ func NewDiscriminator(disc *low.Discriminator) *Discriminator {
 	d.low = disc
 	d.PropertyName = disc.PropertyName.Value
 	mapping := orderedmap.New[string, string]()
-	for pair := disc.Mapping.Value.First(); pair != nil; pair = pair.Next() {
+	for pair := orderedmap.First(disc.Mapping.Value); pair != nil; pair = pair.Next() {
 		mapping.Set(pair.Key().Value, pair.Value().Value)
 	}
 	d.Mapping = mapping
