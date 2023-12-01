@@ -28,6 +28,10 @@ func (r Reference) IsReference() bool {
 }
 
 func (r Reference) GetReferenceNode() *yaml.Node {
+	if r.IsReference() && r.refNode == nil {
+		return utils.CreateRefNode(r.reference)
+	}
+
 	return r.refNode
 }
 

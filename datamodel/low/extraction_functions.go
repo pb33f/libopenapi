@@ -676,6 +676,9 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 						continue // yo, don't pay any attention to extensions, not here anyway.
 					}
 				}
+				if currentLabelNode == nil && i%2 != 0 {
+					continue // we need a label node first, and we don't have one because of extensions.
+				}
 
 				en = utils.NodeAlias(en)
 				if i%2 == 0 {
