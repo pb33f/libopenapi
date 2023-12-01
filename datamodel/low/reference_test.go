@@ -55,6 +55,7 @@ func TestNodeReference_RefNode(t *testing.T) {
 			Value: "$ref",
 		}},
 	}
+	nr.SetReference("#/components/schemas/SomeSchema", nr.KeyNode)
 	assert.True(t, nr.IsReference())
 }
 
