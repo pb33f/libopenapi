@@ -20,7 +20,7 @@ import (
 //   - https://spec.openapis.org/oas/v3.1.0#encoding-object
 type Encoding struct {
 	ContentType   low.NodeReference[string]
-	Headers       low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
+	Headers       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
 	Style         low.NodeReference[string]
 	Explode       low.NodeReference[bool]
 	AllowReserved low.NodeReference[bool]
@@ -38,20 +38,8 @@ func (en *Encoding) Hash() [32]byte {
 	if en.ContentType.Value != "" {
 		f = append(f, en.ContentType.Value)
 	}
-	if orderedmap.Len(en.Headers.Value) > 0 {
-		l := make([]string, orderedmap.Len(en.Headers.Value))
-		keys := make(map[string]low.ValueReference[*Header])
-		z := 0
-		for pair := orderedmap.First(en.Headers.Value); pair != nil; pair = pair.Next() {
-			keys[pair.Key().Value] = pair.Value()
-			l[z] = pair.Key().Value
-			z++
-		}
-
-		// FIXME: Redundant iteration?
-		for pair := orderedmap.First(en.Headers.Value); pair != nil; pair = pair.Next() {
-			f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, pair.Value().Value.Hash()))
-		}
+	for pair := orderedmap.First(orderedmap.SortAlpha(en.Headers.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, pair.Value().Value.Hash()))
 	}
 	if en.Style.Value != "" {
 		f = append(f, en.Style.Value)
@@ -71,7 +59,7 @@ func (en *Encoding) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 		return err
 	}
 	if headers != nil {
-		en.Headers = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
+		en.Headers = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
 			Value:     headers,
 			KeyNode:   hL,
 			ValueNode: hN,

@@ -6,25 +6,13 @@ package orderedmap
 
 import (
 	"context"
-	"io"
-	"runtime"
-	"sync"
+	"fmt"
+	"reflect"
+	"slices"
+	"strings"
 
 	wk8orderedmap "github.com/wk8/go-ordered-map/v2"
 )
-
-type Map[K comparable, V any] interface {
-	Lengthiness
-	Get(K) (V, bool)
-	GetOrZero(K) V
-	Set(K, V) (V, bool)
-	Delete(K) (V, bool)
-	First() Pair[K, V]
-}
-
-type Lengthiness interface {
-	Len() int
-}
 
 type Pair[K comparable, V any] interface {
 	Key() K
@@ -34,7 +22,7 @@ type Pair[K comparable, V any] interface {
 	Next() Pair[K, V]
 }
 
-type wrapOrderedMap[K comparable, V any] struct {
+type Map[K comparable, V any] struct {
 	*wk8orderedmap.OrderedMap[K, V]
 }
 
@@ -42,20 +30,22 @@ type wrapPair[K comparable, V any] struct {
 	*wk8orderedmap.Pair[K, V]
 }
 
-type (
-	ActionFunc[K comparable, V any] func(Pair[K, V]) error
-	TranslateFunc[IN any, OUT any]  func(IN) (OUT, error)
-	ResultFunc[V any]               func(V) error
-)
-
 // New creates an ordered map generic object.
-func New[K comparable, V any]() Map[K, V] {
-	return &wrapOrderedMap[K, V]{
+func New[K comparable, V any]() *Map[K, V] {
+	return &Map[K, V]{
 		OrderedMap: wk8orderedmap.New[K, V](),
 	}
 }
 
-func (o *wrapOrderedMap[K, V]) GetOrZero(k K) V {
+func (o *Map[K, V]) GetKeyType() reflect.Type {
+	return reflect.TypeOf(new(K))
+}
+
+func (o *Map[K, V]) GetValueType() reflect.Type {
+	return reflect.TypeOf(new(V))
+}
+
+func (o *Map[K, V]) GetOrZero(k K) V {
 	v, ok := o.OrderedMap.Get(k)
 	if !ok {
 		var zero V
@@ -64,7 +54,7 @@ func (o *wrapOrderedMap[K, V]) GetOrZero(k K) V {
 	return v
 }
 
-func (o *wrapOrderedMap[K, V]) First() Pair[K, V] {
+func (o *Map[K, V]) First() Pair[K, V] {
 	if o == nil {
 		return nil
 	}
@@ -90,7 +80,7 @@ func NewPair[K comparable, V any](key K, value V) Pair[K, V] {
 
 // FromPairs creates an `OrderedMap` from an array of pairs.
 // Use `NewPair()` to generate input parameters.
-func FromPairs[K comparable, V any](pairs ...Pair[K, V]) Map[K, V] {
+func FromPairs[K comparable, V any](pairs ...Pair[K, V]) *Map[K, V] {
 	om := New[K, V]()
 	for _, pair := range pairs {
 		om.Set(pair.Key(), pair.Value())
@@ -99,8 +89,8 @@ func FromPairs[K comparable, V any](pairs ...Pair[K, V]) Map[K, V] {
 }
 
 // IsZero is required to support `omitempty` tag for YAML/JSON marshaling.
-func (o *wrapOrderedMap[K, V]) IsZero() bool {
-	return o.Len() == 0
+func (o *Map[K, V]) IsZero() bool {
+	return Len(o) == 0
 }
 
 func (p *wrapPair[K, V]) Next() Pair[K, V] {
@@ -131,19 +121,18 @@ func (p *wrapPair[K, V]) ValuePtr() *V {
 
 // Len returns the length of a container implementing a `Len()` method.
 // Safely returns zero on nil pointer.
-func Len(l Lengthiness) int {
-	if l == nil {
+func Len[K comparable, V any](m *Map[K, V]) int {
+	if m == nil {
 		return 0
 	}
-	return l.Len()
+	return m.Len()
 }
 
-// ToOrderedMap converts map built-in to OrderedMap.
 // Iterate the map in order.
 // Safely handles nil pointer.
 // Be sure to iterate to end or cancel the context when done to release
 // resources.
-func Iterate[K comparable, V any](ctx context.Context, m Map[K, V]) <-chan Pair[K, V] {
+func Iterate[K comparable, V any](ctx context.Context, m *Map[K, V]) <-chan Pair[K, V] {
 	c := make(chan Pair[K, V])
 	if Len(m) == 0 {
 		close(c)
@@ -163,7 +152,7 @@ func Iterate[K comparable, V any](ctx context.Context, m Map[K, V]) <-chan Pair[
 }
 
 // ToOrderedMap converts a `map` to `OrderedMap`.
-func ToOrderedMap[K comparable, V any](m map[K]V) Map[K, V] {
+func ToOrderedMap[K comparable, V any](m map[K]V) *Map[K, V] {
 	om := New[K, V]()
 	for k, v := range m {
 		om.Set(k, v)
@@ -173,7 +162,7 @@ func ToOrderedMap[K comparable, V any](m map[K]V) Map[K, V] {
 
 // First returns map's first pair for iteration.
 // Safely handles nil pointer.
-func First[K comparable, V any](m Map[K, V]) Pair[K, V] {
+func First[K comparable, V any](m *Map[K, V]) Pair[K, V] {
 	if m == nil {
 		return nil
 	}
@@ -181,12 +170,12 @@ func First[K comparable, V any](m Map[K, V]) Pair[K, V] {
 }
 
 // Cast converts `any` to `Map`.
-func Cast[K comparable, V any](v any) Map[K, V] {
+func Cast[K comparable, V any](v any) *Map[K, V] {
 	if v == nil {
 		return nil
 	}
 
-	m, ok := v.(*wrapOrderedMap[K, V])
+	m, ok := v.(*Map[K, V])
 	if !ok {
 		return nil
 	}
@@ -194,90 +183,33 @@ func Cast[K comparable, V any](v any) Map[K, V] {
 	return m
 }
 
-type jobStatus[T any] struct {
-	done   chan struct{}
-	result T
-}
-
-// TranslateMapParallel iterates a `Map` in parallel and calls translate()
-// asynchronously.
-// translate() or result() may return `io.EOF` to break iteration.
-// Safely handles nil pointer.
-// Results are provided sequentially to result() in stable order from `Map`.
-func TranslateMapParallel[K comparable, V any, RV any](m Map[K, V], translate TranslateFunc[Pair[K, V], RV], result ResultFunc[RV]) error {
+func SortAlpha[K comparable, V any](m *Map[K, V]) *Map[K, V] {
 	if m == nil {
 		return nil
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	concurrency := runtime.NumCPU()
-	c := Iterate(ctx, m)
-	jobChan := make(chan *jobStatus[RV], concurrency)
-	var reterr error
-	var wg sync.WaitGroup
-	var mu sync.Mutex
+	om := New[K, V]()
 
-	// Fan out translate jobs.
-	wg.Add(1)
-	go func() {
-		defer func() {
-			close(jobChan)
-			wg.Done()
-		}()
-		for pair := range c {
-			j := &jobStatus[RV]{
-				done: make(chan struct{}),
-			}
-			select {
-			case jobChan <- j:
-			case <-ctx.Done():
-				return
-			}
-
-			wg.Add(1)
-			go func(pair Pair[K, V]) {
-				value, err := translate(pair)
-				if err != nil {
-					mu.Lock()
-					defer func() {
-						mu.Unlock()
-						wg.Done()
-						cancel()
-					}()
-					if reterr == nil {
-						reterr = err
-					}
-					return
-				}
-				j.result = value
-				close(j.done)
-				wg.Done()
-			}(pair)
-		}
-	}()
-
-	// Iterate jobChan as jobs complete.
-	defer wg.Wait()
-JOBLOOP:
-	for j := range jobChan {
-		select {
-		case <-j.done:
-			err := result(j.result)
-			if err != nil {
-				cancel()
-				if err == io.EOF {
-					return nil
-				}
-				return err
-			}
-		case <-ctx.Done():
-			break JOBLOOP
-		}
+	type key struct {
+		key string
+		k   K
 	}
 
-	if reterr == io.EOF {
-		return nil
+	keys := []key{}
+	for pair := m.First(); pair != nil; pair = pair.Next() {
+		keys = append(keys, key{
+			key: fmt.Sprintf("%v", pair.Key()),
+			k:   pair.Key(),
+		})
 	}
-	return reterr
+
+	slices.SortFunc(keys, func(a, b key) int {
+		return strings.Compare(a.key, b.key)
+	})
+
+	for _, k := range keys {
+		om.Set(k.k, m.GetOrZero(k.k))
+	}
+
+	return om
 }

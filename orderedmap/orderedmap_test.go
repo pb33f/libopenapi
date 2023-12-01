@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -90,7 +91,7 @@ func TestMap(t *testing.T) {
 		assert.Equal(t, mapSize, orderedmap.Len(m))
 
 		t.Run("Nil pointer", func(t *testing.T) {
-			var m orderedmap.Map[string, int]
+			var m *orderedmap.Map[string, int]
 			assert.Zero(t, orderedmap.Len(m))
 		})
 	})
@@ -180,7 +181,7 @@ func TestMap(t *testing.T) {
 				resultCounter++
 				return nil
 			}
-			err := orderedmap.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
+			err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 			require.NoError(t, err)
 			assert.Equal(t, int64(mapSize), translateCounter)
 			assert.Equal(t, mapSize, resultCounter)
@@ -200,7 +201,7 @@ func TestMap(t *testing.T) {
 				resultCounter++
 				return nil
 			}
-			err := orderedmap.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
+			err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 			require.ErrorContains(t, err, "Foobar")
 			assert.Zero(t, resultCounter)
 		})
@@ -219,7 +220,7 @@ func TestMap(t *testing.T) {
 				resultCounter++
 				return errors.New("Foobar")
 			}
-			err := orderedmap.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
+			err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 			require.ErrorContains(t, err, "Foobar")
 			assert.Equal(t, 1, resultCounter)
 		})
@@ -238,7 +239,7 @@ func TestMap(t *testing.T) {
 				resultCounter++
 				return nil
 			}
-			err := orderedmap.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
+			err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 			require.NoError(t, err)
 			assert.Zero(t, resultCounter)
 		})
@@ -257,7 +258,7 @@ func TestMap(t *testing.T) {
 				resultCounter++
 				return io.EOF
 			}
-			err := orderedmap.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
+			err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 			require.NoError(t, err)
 			assert.Equal(t, 1, resultCounter)
 		})
@@ -298,7 +299,8 @@ func TestFirst(t *testing.T) {
 
 func TestLen(t *testing.T) {
 	t.Run("Nil", func(t *testing.T) {
-		require.Zero(t, orderedmap.Len(nil))
+		m := (*orderedmap.Map[string, int])(nil)
+		require.Zero(t, orderedmap.Len(m))
 	})
 
 	t.Run("Single item", func(t *testing.T) {

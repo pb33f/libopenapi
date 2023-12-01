@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // ExamplesChanges represents changes made between Swagger Examples objects (Not OpenAPI 3).
@@ -32,11 +33,10 @@ func (a *ExamplesChanges) TotalBreakingChanges() int {
 // CompareExamplesV2 compares two Swagger Examples objects, returning a pointer to
 // ExamplesChanges if anything was found.
 func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
-
 	lHashes := make(map[string]string)
 	rHashes := make(map[string]string)
-	lValues := make(map[string]low.ValueReference[any])
-	rValues := make(map[string]low.ValueReference[any])
+	lValues := make(map[string]low.ValueReference[*yaml.Node])
+	rValues := make(map[string]low.ValueReference[*yaml.Node])
 
 	for pair := orderedmap.First(l.Values); pair != nil; pair = pair.Next() {
 		lHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
@@ -67,7 +67,7 @@ func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
 
 	}
 
-	//check right example hashes
+	// check right example hashes
 	for k := range rHashes {
 		lhash := lHashes[k]
 		if lhash == "" {

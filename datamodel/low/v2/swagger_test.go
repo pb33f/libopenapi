@@ -5,16 +5,18 @@ package v2
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
 	"net/http"
 	"net/url"
 	"os"
 	"testing"
 
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/utils"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 var doc *Swagger
@@ -63,10 +65,13 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, 15, orderedmap.Len(doc.Paths.Value.PathItems))
 	assert.Equal(t, 2, orderedmap.Len(doc.Responses.Value.Definitions))
 	assert.Equal(t, "http://swagger.io", doc.ExternalDocs.Value.URL.Value)
-	assert.Equal(t, true, doc.FindExtension("x-pet").Value)
-	assert.Equal(t, true, doc.FindExtension("X-Pet").Value)
+
+	var xPet bool
+	_ = doc.FindExtension("x-pet").Value.Decode(&xPet)
+
+	assert.Equal(t, true, xPet)
 	assert.NotNil(t, doc.GetExternalDocs())
-	assert.Len(t, doc.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(doc.GetExtensions()))
 }
 
 func TestCreateDocument_Info(t *testing.T) {
@@ -81,8 +86,11 @@ func TestCreateDocument_Parameters(t *testing.T) {
 	simpleParam := doc.Parameters.Value.FindParameter("simpleParam")
 	assert.NotNil(t, simpleParam)
 	assert.Equal(t, "simple", simpleParam.Value.Name.Value)
-	assert.Equal(t, "nuggets", simpleParam.Value.FindExtension("x-chicken").Value)
 
+	var xChicken string
+	_ = simpleParam.Value.FindExtension("x-chicken").Value.Decode(&xChicken)
+
+	assert.Equal(t, "nuggets", xChicken)
 }
 
 func TestCreateDocument_Tags(t *testing.T) {
@@ -128,30 +136,43 @@ func TestCreateDocument_ResponseDefinitions(t *testing.T) {
 	apiResp := doc.Responses.Value.FindResponse("200")
 	assert.NotNil(t, apiResp)
 	assert.Equal(t, "OK", apiResp.Value.Description.Value)
-	assert.Equal(t, "morning", apiResp.Value.FindExtension("x-coffee").Value)
+
+	var xCoffee string
+	_ = apiResp.Value.FindExtension("x-coffee").Value.Decode(&xCoffee)
+
+	assert.Equal(t, "morning", xCoffee)
 
 	header := apiResp.Value.FindHeader("noHeader")
 	assert.NotNil(t, header)
-	assert.True(t, header.Value.FindExtension("x-empty").Value.(bool))
+
+	var xEmpty bool
+	_ = header.Value.FindExtension("x-empty").Value.Decode(&xEmpty)
+
+	assert.True(t, xEmpty)
 
 	header = apiResp.Value.FindHeader("myHeader")
-	if k, ok := header.Value.Items.Value.Default.Value.(map[string]interface{}); ok {
-		assert.Equal(t, "here", k["something"])
-	} else {
-		panic("should not fail.")
-	}
-	if k, ok := header.Value.Items.Value.Items.Value.Default.Value.([]interface{}); ok {
-		assert.Len(t, k, 2)
-		assert.Equal(t, "two", k[1])
-	} else {
-		panic("should not fail.")
-	}
+
+	var m map[string]any
+	err := header.Value.Items.Value.Default.Value.Decode(&m)
+	require.NoError(t, err)
+
+	assert.Equal(t, "here", m["something"])
+
+	var a []any
+	err = header.Value.Items.Value.Items.Value.Default.Value.Decode(&a)
+	require.NoError(t, err)
+
+	assert.Len(t, a, 2)
+	assert.Equal(t, "two", a[1])
 
 	header = apiResp.Value.FindHeader("yourHeader")
-	assert.Equal(t, "somethingSimple", header.Value.Items.Value.Default.Value)
+
+	var def string
+	_ = header.Value.Items.Value.Default.Value.Decode(&def)
+
+	assert.Equal(t, "somethingSimple", def)
 
 	assert.NotNil(t, apiResp.Value.Examples.Value.FindExample("application/json").Value)
-
 }
 
 func TestCreateDocument_Paths(t *testing.T) {
@@ -159,15 +180,21 @@ func TestCreateDocument_Paths(t *testing.T) {
 	uploadImage := doc.Paths.Value.FindPath("/pet/{petId}/uploadImage").Value
 	assert.NotNil(t, uploadImage)
 	assert.Nil(t, doc.Paths.Value.FindPath("/nothing-nowhere-nohow"))
-	assert.Equal(t, "man", uploadImage.FindExtension("x-potato").Value)
-	assert.Equal(t, "fresh", doc.Paths.Value.FindExtension("x-minty").Value)
+
+	var xPotato string
+	_ = uploadImage.FindExtension("x-potato").Value.Decode(&xPotato)
+
+	assert.Equal(t, "man", xPotato)
+
+	var xMinty string
+	_ = doc.Paths.Value.FindExtension("x-minty").Value.Decode(&xMinty)
+
+	assert.Equal(t, "fresh", xMinty)
 	assert.Equal(t, "successful operation",
 		uploadImage.Post.Value.Responses.Value.FindResponseByCode("200").Value.Description.Value)
-
 }
 
 func TestCreateDocument_Bad(t *testing.T) {
-
 	yml := `swagger:
   $ref: bork`
 
@@ -177,7 +204,6 @@ func TestCreateDocument_Bad(t *testing.T) {
 }
 
 func TestCreateDocument_ExternalDocsBad(t *testing.T) {
-
 	yml := `externalDocs:
   $ref: bork`
 
@@ -195,7 +221,6 @@ func TestCreateDocument_ExternalDocsBad(t *testing.T) {
 }
 
 func TestCreateDocument_TagsBad(t *testing.T) {
-
 	yml := `tags:
   $ref: bork`
 
@@ -213,7 +238,6 @@ func TestCreateDocument_TagsBad(t *testing.T) {
 }
 
 func TestCreateDocument_PathsBad(t *testing.T) {
-
 	yml := `paths:
   "/hey":
     post:
@@ -235,7 +259,6 @@ func TestCreateDocument_PathsBad(t *testing.T) {
 }
 
 func TestCreateDocument_SecurityBad(t *testing.T) {
-
 	yml := `security:
   $ref: `
 
@@ -253,7 +276,6 @@ func TestCreateDocument_SecurityBad(t *testing.T) {
 }
 
 func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
-
 	yml := `securityDefinitions:
   $ref: `
 
@@ -271,7 +293,6 @@ func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
 }
 
 func TestCreateDocument_ResponsesBad(t *testing.T) {
-
 	yml := `responses:
   $ref: `
 
@@ -289,7 +310,6 @@ func TestCreateDocument_ResponsesBad(t *testing.T) {
 }
 
 func TestCreateDocument_ParametersBad(t *testing.T) {
-
 	yml := `parameters:
   $ref: `
 
@@ -307,7 +327,6 @@ func TestCreateDocument_ParametersBad(t *testing.T) {
 }
 
 func TestCreateDocument_DefinitionsBad(t *testing.T) {
-
 	yml := `definitions:
   $ref: `
 
@@ -325,7 +344,6 @@ func TestCreateDocument_DefinitionsBad(t *testing.T) {
 }
 
 func TestCreateDocument_InfoBad(t *testing.T) {
-
 	yml := `info:
   $ref: `
 
@@ -343,13 +361,11 @@ func TestCreateDocument_InfoBad(t *testing.T) {
 }
 
 func TestCircularReferenceError(t *testing.T) {
-
 	data, _ := os.ReadFile("../../../test_specs/swagger-circular-tests.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	circDoc, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	assert.NotNil(t, circDoc)
 	assert.Len(t, utils.UnwrapErrors(err), 3)
-
 }
 
 func TestRolodexLocalFileSystem(t *testing.T) {

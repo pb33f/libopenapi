@@ -7,12 +7,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // Items is a low-level representation of a Swagger / OpenAPI 2 Items object.
@@ -25,7 +27,7 @@ type Items struct {
 	Format           low.NodeReference[string]
 	CollectionFormat low.NodeReference[string]
 	Items            low.NodeReference[*Items]
-	Default          low.NodeReference[any]
+	Default          low.NodeReference[*yaml.Node]
 	Maximum          low.NodeReference[int]
 	ExclusiveMaximum low.NodeReference[bool]
 	Minimum          low.NodeReference[int]
@@ -36,18 +38,18 @@ type Items struct {
 	MaxItems         low.NodeReference[int]
 	MinItems         low.NodeReference[int]
 	UniqueItems      low.NodeReference[bool]
-	Enum             low.NodeReference[[]low.ValueReference[any]]
+	Enum             low.NodeReference[[]low.ValueReference[*yaml.Node]]
 	MultipleOf       low.NodeReference[int]
-	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // FindExtension will attempt to locate an extension value using a name lookup.
-func (i *Items) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, i.Extensions)
+func (i *Items) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, i.Extensions)
 }
 
 // GetExtensions returns all Items extensions and satisfies the low.HasExtensions interface.
-func (i *Items) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (i *Items) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return i.Extensions
 }
 
@@ -63,8 +65,8 @@ func (i *Items) Hash() [32]byte {
 	if i.CollectionFormat.Value != "" {
 		f = append(f, i.CollectionFormat.Value)
 	}
-	if i.Default.Value != "" {
-		f = append(f, fmt.Sprintf("%x", sha256.Sum256([]byte(fmt.Sprint(i.Default.Value)))))
+	if i.Default.Value != nil && !i.Default.Value.IsZero() {
+		f = append(f, low.GenerateHashString(i.Default.Value))
 	}
 	f = append(f, fmt.Sprint(i.Maximum.Value))
 	f = append(f, fmt.Sprint(i.Minimum.Value))
@@ -82,7 +84,7 @@ func (i *Items) Hash() [32]byte {
 	keys := make([]string, len(i.Enum.Value))
 	z := 0
 	for k := range i.Enum.Value {
-		keys[z] = fmt.Sprint(i.Enum.Value[k].Value)
+		keys[z] = low.ValueToString(i.Enum.Value[k].Value)
 		z++
 	}
 	sort.Strings(keys)
@@ -91,14 +93,7 @@ func (i *Items) Hash() [32]byte {
 	if i.Items.Value != nil {
 		f = append(f, low.GenerateHashString(i.Items.Value))
 	}
-	keys = make([]string, len(i.Extensions))
-	z = 0
-	for k := range i.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(i.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(i.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
@@ -115,32 +110,8 @@ func (i *Items) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 
 	_, ln, vn := utils.FindKeyNodeFull(DefaultLabel, root.Content)
 	if vn != nil {
-		var n map[string]interface{}
-		err := vn.Decode(&n)
-		if err != nil {
-			// if not a map, then try an array
-			var k []interface{}
-			err = vn.Decode(&k)
-			if err != nil {
-				// lets just default to interface
-				var j interface{}
-				_ = vn.Decode(&j)
-				i.Default = low.NodeReference[any]{
-					Value:     j,
-					KeyNode:   ln,
-					ValueNode: vn,
-				}
-				return nil
-			}
-			i.Default = low.NodeReference[any]{
-				Value:     k,
-				KeyNode:   ln,
-				ValueNode: vn,
-			}
-			return nil
-		}
-		i.Default = low.NodeReference[any]{
-			Value:     n,
+		i.Default = low.NodeReference[*yaml.Node]{
+			Value:     vn,
 			KeyNode:   ln,
 			ValueNode: vn,
 		}
@@ -154,9 +125,11 @@ func (i *Items) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 func (i *Items) GetType() *low.NodeReference[string] {
 	return &i.Type
 }
+
 func (i *Items) GetFormat() *low.NodeReference[string] {
 	return &i.Format
 }
+
 func (i *Items) GetItems() *low.NodeReference[any] {
 	k := low.NodeReference[any]{
 		KeyNode:   i.Items.KeyNode,
@@ -165,48 +138,63 @@ func (i *Items) GetItems() *low.NodeReference[any] {
 	}
 	return &k
 }
+
 func (i *Items) GetCollectionFormat() *low.NodeReference[string] {
 	return &i.CollectionFormat
 }
+
 func (i *Items) GetDescription() *low.NodeReference[string] {
 	return nil // not implemented, but required to align with header contract
 }
-func (i *Items) GetDefault() *low.NodeReference[any] {
+
+func (i *Items) GetDefault() *low.NodeReference[*yaml.Node] {
 	return &i.Default
 }
+
 func (i *Items) GetMaximum() *low.NodeReference[int] {
 	return &i.Maximum
 }
+
 func (i *Items) GetExclusiveMaximum() *low.NodeReference[bool] {
 	return &i.ExclusiveMaximum
 }
+
 func (i *Items) GetMinimum() *low.NodeReference[int] {
 	return &i.Minimum
 }
+
 func (i *Items) GetExclusiveMinimum() *low.NodeReference[bool] {
 	return &i.ExclusiveMinimum
 }
+
 func (i *Items) GetMaxLength() *low.NodeReference[int] {
 	return &i.MaxLength
 }
+
 func (i *Items) GetMinLength() *low.NodeReference[int] {
 	return &i.MinLength
 }
+
 func (i *Items) GetPattern() *low.NodeReference[string] {
 	return &i.Pattern
 }
+
 func (i *Items) GetMaxItems() *low.NodeReference[int] {
 	return &i.MaxItems
 }
+
 func (i *Items) GetMinItems() *low.NodeReference[int] {
 	return &i.MinItems
 }
+
 func (i *Items) GetUniqueItems() *low.NodeReference[bool] {
 	return &i.UniqueItems
 }
-func (i *Items) GetEnum() *low.NodeReference[[]low.ValueReference[any]] {
+
+func (i *Items) GetEnum() *low.NodeReference[[]low.ValueReference[*yaml.Node]] {
 	return &i.Enum
 }
+
 func (i *Items) GetMultipleOf() *low.NodeReference[int] {
 	return &i.MultipleOf
 }

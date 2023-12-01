@@ -13,7 +13,7 @@ import (
 // Scopes lists the available scopes for an OAuth2 security scheme.
 //   - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
-	Values orderedmap.Map[string, string]
+	Values *orderedmap.Map[string, string]
 	low    *low.Scopes
 }
 

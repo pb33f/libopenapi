@@ -14,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -146,6 +147,109 @@ info:
 	assert.Equal(t, ymlModified, string(serial))
 }
 
+func TestDocument_RoundTrip(t *testing.T) {
+	orig := `openapi: 3.1.0
+info:
+  title: "The magic API"
+  description: |
+    A multi-line description
+    of the API. That should be retained.
+tags:
+  - name: "Burgers"
+security:
+  - oauth2: []
+paths:
+  "/test":
+    parameters:
+      - $ref: "#/components/parameters/completed_since"
+    post:
+      tags:
+        - "Burgers"
+      operationId: "test"
+      requestBody:
+        description: Callback payload
+        content:
+          'application/json':
+            schema:
+              type: string
+      responses:
+        "200":
+          description: "OK"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/test"
+                  arr:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/test"
+      callbacks:
+        BurgerCallback:
+          x-break-everything: please
+          "{$request.query.queryUrl}":
+            post:
+              requestBody:
+                description: Callback payload
+                content:
+                  application/json:
+                    schema:
+                      type: string
+              responses:
+                '200':
+                  description: callback successfully processes
+components:
+  schemas:
+    test:
+      type: string
+  parameters:
+    completed_since:
+      in: query
+      name: completed_since
+      required: false
+      explode: false
+      schema:
+        example: 2012-02-22T02:06:58.158Z
+        format: date-time
+        type: string
+  links:
+    LocateBurger:
+      operationId: locateBurger
+      parameters:
+        burgerId: '$response.body#/id'
+      description: Go and get a tasty burger
+  securitySchemes:
+    oauth2:
+      description: |-
+        We require that applications designed to access the Asana API on behalf of multiple users implement OAuth 2.0.
+        Asana supports the Authorization Code Grant flow.
+      flows:
+        authorizationCode:
+          authorizationUrl: https://app.asana.com/-/oauth_authorize
+          refreshUrl: https://app.asana.com/-/oauth_token
+          scopes:
+            default: Provides access to all endpoints documented in our API reference. If no scopes are requested, this scope is assumed by default.
+            email: Provides access to the user’s email through the OpenID Connect user info endpoint.
+            openid: Provides access to OpenID Connect ID tokens and the OpenID Connect user info endpoint.
+            profile: Provides access to the user’s name and profile photo through the OpenID Connect user info endpoint.
+          tokenUrl: https://app.asana.com/-/oauth_token
+      type: oauth2
+`
+
+	doc, err := NewDocument([]byte(orig))
+	require.NoError(t, err)
+
+	_, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	out, err := doc.Render()
+	require.NoError(t, err)
+
+	assert.Equal(t, orig, string(out))
+}
+
 func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 	bs, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 	doc, _ := NewDocument(bs)
@@ -201,6 +305,8 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 	dat, newDoc, _, _ := doc.RenderAndReload()
 	assert.NotNil(t, dat)
 
+	assert.Equal(t, string(bs), string(dat))
+
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
 
@@ -209,10 +315,10 @@ func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {
 
 	assert.Nil(t, errs)
 	tc := compReport.TotalChanges()
-	assert.Equal(t, 21, tc)
+	assert.Equal(t, 0, tc)
 
 	// there are some properties re-rendered that trigger changes.
-	assert.Equal(t, 21, len(flatChanges))
+	assert.Equal(t, 0, len(flatChanges))
 }
 
 func TestDocument_RenderAndReload(t *testing.T) {
@@ -241,7 +347,7 @@ func TestDocument_RenderAndReload(t *testing.T) {
 		})},
 	)
 
-	h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example = "I am a teapot, filled with love."
+	h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example = utils.CreateStringNode("I am a teapot, filled with love.")
 	h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
 
 	bytes, _, newDocModel, e := doc.RenderAndReload()
@@ -257,8 +363,10 @@ func TestDocument_RenderAndReload(t *testing.T) {
 	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
 	yu := h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security
 	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements.GetOrZero("pizza-and-cake")[0])
-	assert.Equal(t, "I am a teapot, filled with love.",
-		h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example)
+
+	var example string
+	_ = h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example.Decode(&example)
+	assert.Equal(t, "I am a teapot, filled with love.", example)
 
 	assert.Equal(t, "https://pb33f.io",
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
@@ -291,7 +399,7 @@ func TestDocument_Render(t *testing.T) {
 		})},
 	)
 
-	h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example = "I am a teapot, filled with love."
+	h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example = utils.CreateStringNode("I am a teapot, filled with love.")
 	h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl = "https://pb33f.io"
 
 	bytes, e := doc.Render()
@@ -314,8 +422,10 @@ func TestDocument_Render(t *testing.T) {
 	assert.Len(t, h.Paths.PathItems.GetOrZero("/pet/findByTags").Get.Tags, 3)
 	yu := h.Paths.PathItems.GetOrZero("/pet/{petId}").Delete.Security
 	assert.Equal(t, "read:abook", yu[len(yu)-1].Requirements.GetOrZero("pizza-and-cake")[0])
-	assert.Equal(t, "I am a teapot, filled with love.",
-		h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example)
+
+	var example string
+	_ = h.Components.Schemas.GetOrZero("Order").Schema().Properties.GetOrZero("status").Schema().Example.Decode(&example)
+	assert.Equal(t, "I am a teapot, filled with love.", example)
 
 	assert.Equal(t, "https://pb33f.io",
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
@@ -425,7 +535,7 @@ func TestDocument_Serialize_JSON_Modified(t *testing.T) {
 	newTitle := v3Doc.Model.Info.GoLow().Title.Mutate("The magic API - but now, altered!")
 	v3Doc.Model.Info.GoLow().Title = newTitle
 
-	assert.Equal(t, "The magic API - but now, altered!", v3Doc.Model.Info.GoLow().Title.Value)
+	assert.Equal(t, "The magic API - but now, altered!", v3Doc.Model.Info.GoLow().Title.GetValue())
 
 	serial, err := doc.Serialize()
 	assert.NoError(t, err)
@@ -461,7 +571,7 @@ paths:
 	// print it out.
 	fmt.Printf("param1: %s, is reference? %t, original reference %s",
 		operation.Parameters[0].Description, operation.GoLow().Parameters.Value[0].IsReference(),
-		operation.GoLow().Parameters.Value[0].Reference)
+		operation.GoLow().Parameters.Value[0].GetReference())
 }
 
 func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
@@ -1056,14 +1166,14 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 				example := &base.Example{
 					Summary:     fmt.Sprintf("Summary example %d", i),
 					Description: "Description example",
-					Value: testExampleDetails{
+					Value: utils.CreateYamlNode(testExampleDetails{
 						Message: "Foobar message",
 						Domain: testExampleDomain{
 							ID:   "12345",
 							Name: "example.com",
 							Type: "Foobar type",
 						},
-					},
+					}),
 				}
 				exampleName := fmt.Sprintf("FoobarExample%d", i)
 				mediaTypeResp.Examples.Set(exampleName, example)

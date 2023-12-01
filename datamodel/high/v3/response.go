@@ -16,11 +16,11 @@ import (
 // operations based on the response.
 //   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
-	Description string                             `json:"description,omitempty" yaml:"description,omitempty"`
-	Headers     orderedmap.Map[string, *Header]    `json:"headers,omitempty" yaml:"headers,omitempty"`
-	Content     orderedmap.Map[string, *MediaType] `json:"content,omitempty" yaml:"content,omitempty"`
-	Links       orderedmap.Map[string, *Link]      `json:"links,omitempty" yaml:"links,omitempty"`
-	Extensions  map[string]any                     `json:"-" yaml:"-"`
+	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Headers     *orderedmap.Map[string, *Header]    `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Content     *orderedmap.Map[string, *MediaType] `json:"content,omitempty" yaml:"content,omitempty"`
+	Links       *orderedmap.Map[string, *Link]      `json:"links,omitempty" yaml:"links,omitempty"`
+	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low         *low.Response
 }
 

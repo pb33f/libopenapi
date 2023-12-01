@@ -2,6 +2,8 @@ package base
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -9,7 +11,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func test_get_schema_blob() string {
@@ -192,8 +193,8 @@ func Test_Schema(t *testing.T) {
 	assert.Equal(t, "an xml namespace", j.XML.Value.Namespace.Value)
 	assert.Equal(t, "a prefix", j.XML.Value.Prefix.Value)
 	assert.Equal(t, true, j.XML.Value.Attribute.Value)
-	assert.Len(t, j.XML.Value.Extensions, 1)
-	assert.Len(t, j.XML.Value.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(j.XML.Value.Extensions))
+	assert.Equal(t, 1, orderedmap.Len(j.XML.Value.GetExtensions()))
 
 	assert.NotNil(t, v.Value.Schema().AdditionalProperties.Value)
 
@@ -213,12 +214,20 @@ func Test_Schema(t *testing.T) {
 	io := v.Value.Schema()
 
 	assert.Equal(t, "allOfA description", io.Description.Value)
-	assert.Equal(t, "allOfAExp", io.Example.Value)
+
+	var ioExample string
+	_ = io.Example.GetValueNode().Decode(&ioExample)
+
+	assert.Equal(t, "allOfAExp", ioExample)
 
 	qw := f.FindProperty("allOfB").Value.Schema()
 	assert.NotNil(t, v)
 	assert.Equal(t, "allOfB description", qw.Description.Value)
-	assert.Equal(t, "allOfBExp", qw.Example.Value)
+
+	var qwExample string
+	_ = qw.Example.GetValueNode().Decode(&qwExample)
+
+	assert.Equal(t, "allOfBExp", qwExample)
 
 	// check polymorphic values anyOf
 	assert.Equal(t, "an anyOf thing", sch.AnyOf.Value[0].Value.Schema().Description.Value)
@@ -227,12 +236,18 @@ func Test_Schema(t *testing.T) {
 	v = sch.AnyOf.Value[0].Value.Schema().FindProperty("anyOfA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "anyOfA description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "anyOfAExp", v.Value.Schema().Example.Value)
+
+	var vSchemaExample string
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+
+	assert.Equal(t, "anyOfAExp", vSchemaExample)
 
 	v = sch.AnyOf.Value[0].Value.Schema().FindProperty("anyOfB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "anyOfB description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "anyOfBExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "anyOfBExp", vSchemaExample)
 
 	// check polymorphic values oneOf
 	assert.Equal(t, "a oneof thing", sch.OneOf.Value[0].Value.Schema().Description.Value)
@@ -241,12 +256,16 @@ func Test_Schema(t *testing.T) {
 	v = sch.OneOf.Value[0].Value.Schema().FindProperty("oneOfA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "oneOfA description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "oneOfAExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "oneOfAExp", vSchemaExample)
 
 	v = sch.OneOf.Value[0].Value.Schema().FindProperty("oneOfB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "oneOfB description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "oneOfBExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "oneOfBExp", vSchemaExample)
 
 	// check values NOT
 	assert.Equal(t, "a not thing", sch.Not.Value.Schema().Description.Value)
@@ -255,12 +274,16 @@ func Test_Schema(t *testing.T) {
 	v = sch.Not.Value.Schema().FindProperty("notA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "notA description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "notAExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "notAExp", vSchemaExample)
 
 	v = sch.Not.Value.Schema().FindProperty("notB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "notB description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "notBExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "notBExp", vSchemaExample)
 
 	// check values Items
 	assert.Equal(t, "an items thing", sch.Items.Value.A.Schema().Description.Value)
@@ -269,12 +292,16 @@ func Test_Schema(t *testing.T) {
 	v = sch.Items.Value.A.Schema().FindProperty("itemsA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsA description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "itemsAExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "itemsAExp", vSchemaExample)
 
 	v = sch.Items.Value.A.Schema().FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "itemsBExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "itemsBExp", vSchemaExample)
 
 	// check values PrefixItems
 	assert.Equal(t, "an items thing", sch.PrefixItems.Value[0].Value.Schema().Description.Value)
@@ -283,17 +310,21 @@ func Test_Schema(t *testing.T) {
 	v = sch.PrefixItems.Value[0].Value.Schema().FindProperty("itemsA")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsA description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "itemsAExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValueNode().Decode(&vSchemaExample)
+	assert.Equal(t, "itemsAExp", vSchemaExample)
 
 	v = sch.PrefixItems.Value[0].Value.Schema().FindProperty("itemsB")
 	assert.NotNil(t, v)
 	assert.Equal(t, "itemsB description", v.Value.Schema().Description.Value)
-	assert.Equal(t, "itemsBExp", v.Value.Schema().Example.Value)
+
+	_ = v.GetValue().Schema().Example.GetValue().Decode(&vSchemaExample)
+	assert.Equal(t, "itemsBExp", vSchemaExample)
 
 	// check discriminator
 	assert.NotNil(t, sch.Discriminator.Value)
 	assert.Equal(t, "athing", sch.Discriminator.Value.PropertyName.Value)
-	assert.Len(t, sch.Discriminator.Value.Mapping.Value, 2)
+	assert.Equal(t, 2, sch.Discriminator.GetValue().Mapping.GetValue().Len())
 	mv := sch.Discriminator.Value.FindMappingValue("log")
 	assert.Equal(t, "cat", mv.Value)
 	mv = sch.Discriminator.Value.FindMappingValue("pizza")
@@ -429,12 +460,20 @@ const: tasty`
 	assert.Equal(t, float64(12), sch.ExclusiveMinimum.Value.B)
 	assert.Equal(t, float64(13), sch.ExclusiveMaximum.Value.B)
 	assert.Len(t, sch.Examples.Value, 1)
-	assert.Equal(t, "testing", sch.Examples.Value[0].Value)
+
+	var example0 string
+	_ = sch.Examples.GetValue()[0].GetValue().Decode(&example0)
+
+	assert.Equal(t, "testing", example0)
 	assert.Equal(t, "fish64", sch.ContentEncoding.Value)
 	assert.Equal(t, "fish/paste", sch.ContentMediaType.Value)
 	assert.True(t, sch.Items.Value.IsB())
 	assert.True(t, sch.Items.Value.B)
-	assert.Equal(t, "tasty", sch.Const.Value)
+
+	var schConst string
+	_ = sch.Const.GetValue().Decode(&schConst)
+
+	assert.Equal(t, "tasty", schConst)
 }
 
 func TestSchema_Build_PropsLookup(t *testing.T) {
@@ -986,7 +1025,11 @@ schema:
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	sch := res.Value.Schema()
-	assert.Equal(t, 5, sch.Default.Value)
+
+	var def int
+	_ = sch.Default.GetValueNode().Decode(&def)
+
+	assert.Equal(t, 5, def)
 }
 
 func TestExtractSchema_ConstPrimitive(t *testing.T) {
@@ -1002,7 +1045,11 @@ schema:
 	assert.NoError(t, err)
 	assert.NotNil(t, res.Value)
 	sch := res.Value.Schema()
-	assert.Equal(t, 5, sch.Const.Value)
+
+	var cnst int
+	_ = sch.Const.GetValueNode().Decode(&cnst)
+
+	assert.Equal(t, 5, cnst)
 }
 
 func TestExtractSchema_Ref(t *testing.T) {
@@ -1785,7 +1832,6 @@ components:
 	res, e := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.Nil(t, res)
 	assert.Equal(t, "schema build failed: reference '[empty]' cannot be found at line 2, col 9", e.Error())
-
 }
 
 func TestSchema_EmptyRef(t *testing.T) {
@@ -1814,5 +1860,4 @@ components:
 	res, e := ExtractSchema(context.Background(), idxNode.Content[0], idx)
 	assert.Nil(t, res)
 	assert.Equal(t, "schema build failed: reference '[empty]' cannot be found at line 1, col 7", e.Error())
-
 }

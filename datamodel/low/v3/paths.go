@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 	"sync"
 
@@ -26,8 +25,8 @@ import (
 // constraints.
 //   - https://spec.openapis.org/oas/v3.1.0#paths-object
 type Paths struct {
-	PathItems  orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	PathItems  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
@@ -55,12 +54,12 @@ func (p *Paths) FindPathAndKey(path string) (key *low.KeyReference[string], valu
 }
 
 // FindExtension will attempt to locate an extension using the specified string.
-func (p *Paths) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, p.Extensions)
+func (p *Paths) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, p.Extensions)
 }
 
 // GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
-func (p *Paths) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (p *Paths) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return p.Extensions
 }
 
@@ -71,6 +70,26 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
 
+	pathsMap, err := extractPathItemsMap(ctx, root, idx)
+	if err != nil {
+		return err
+	}
+
+	p.PathItems = pathsMap
+	return nil
+}
+
+// Hash will return a consistent SHA256 Hash of the PathItem object
+func (p *Paths) Hash() [32]byte {
+	var f []string
+	for pair := orderedmap.First(orderedmap.SortAlpha(p.PathItems)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
+	}
+	f = append(f, low.HashExtensions(p.Extensions)...)
+	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
+func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]], error) {
 	// Translate YAML nodes to pathsMap using `TranslatePipeline`.
 	type buildResult struct {
 		key   low.KeyReference[string]
@@ -120,7 +139,6 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 		}
 	}()
 
-
 	// TranslatePipeline output.
 	go func() {
 		for {
@@ -134,12 +152,10 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 		wg.Done()
 	}()
 
-
 	err := datamodel.TranslatePipeline[buildInput, buildResult](in, out,
 		func(value buildInput) (buildResult, error) {
 			pNode := value.pathNode
 			cNode := value.currentNode
-
 
 			if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
 				r, _, err := low.LocateRefNode(pNode, idx)
@@ -156,18 +172,15 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 				}
 			}
 
-
 			path := new(PathItem)
 			_ = low.BuildModel(pNode, path)
 			err := path.Build(ctx, cNode, pNode, idx)
-
 			if err != nil {
 				if idx != nil && idx.GetLogger() != nil {
 					idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
 				}
-				//return buildResult{}, err
+				// return buildResult{}, err
 			}
-
 
 			return buildResult{
 				key: low.KeyReference[string]{
@@ -183,39 +196,7 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 	)
 	wg.Wait()
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-
-	p.PathItems = pathsMap
-	return nil
-}
-
-// Hash will return a consistent SHA256 Hash of the PathItem object
-func (p *Paths) Hash() [32]byte {
-	var f []string
-	l := make([]string, orderedmap.Len(p.PathItems))
-	keys := make(map[string]low.ValueReference[*PathItem])
-	z := 0
-
-	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
-		k := pair.Key().Value
-		keys[k] = pair.Value()
-		l[z] = k
-		z++
-	}
-
-	sort.Strings(l)
-	for k := range l {
-		f = append(f, fmt.Sprintf("%s-%s", l[k], low.GenerateHashString(keys[l[k]].Value)))
-	}
-	ekeys := make([]string, len(p.Extensions))
-	z = 0
-	for k := range p.Extensions {
-		ekeys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(ekeys)
-	f = append(f, ekeys...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	return pathsMap, nil
 }

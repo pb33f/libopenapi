@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
@@ -16,9 +17,9 @@ import (
 type Response struct {
 	Description string
 	Schema      *base.SchemaProxy
-	Headers     orderedmap.Map[string, *Header]
+	Headers     *orderedmap.Map[string, *Header]
 	Examples    *Example
-	Extensions  map[string]any
+	Extensions  *orderedmap.Map[string, *yaml.Node]
 	low         *low.Response
 }
 

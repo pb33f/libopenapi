@@ -21,8 +21,8 @@ import (
 // that identifies a URL to use for the callback operation.
 //   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
-	Expression orderedmap.Map[string, *PathItem] `json:"-" yaml:"-"`
-	Extensions map[string]any                    `json:"-" yaml:"-"`
+	Expression *orderedmap.Map[string, *PathItem]  `json:"-" yaml:"-"`
+	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.Callback
 }
 
@@ -31,13 +31,11 @@ func NewCallback(lowCallback *low.Callback) *Callback {
 	n := new(Callback)
 	n.low = lowCallback
 	n.Expression = orderedmap.New[string, *PathItem]()
-	for pair := orderedmap.First(lowCallback.Expression.Value); pair != nil; pair = pair.Next() {
+	for pair := orderedmap.First(lowCallback.Expression); pair != nil; pair = pair.Next() {
 		n.Expression.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
 	}
-	n.Extensions = make(map[string]any)
-	for k, v := range lowCallback.Extensions {
-		n.Extensions[k.Value] = v.Value
-	}
+
+	n.Extensions = high.ExtractExtensions(lowCallback.Extensions)
 	return n
 }
 
@@ -51,36 +49,50 @@ func (c *Callback) GoLowUntyped() any {
 	return c.low
 }
 
-// Render will return a YAML representation of the Callback object as a byte slice.
+// Render will return a YAML representation of the Paths object as a byte slice.
 func (c *Callback) Render() ([]byte, error) {
 	return yaml.Marshal(c)
 }
 
-// MarshalYAML will create a ready to render YAML representation of the Callback object.
+func (c *Callback) RenderInline() ([]byte, error) {
+	d, _ := c.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Paths object.
 func (c *Callback) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
-	type cbItem struct {
-		cb   *PathItem
-		exp  string
-		line int
-		ext  *yaml.Node
+	type pathItem struct {
+		pi       *PathItem
+		path     string
+		line     int
+		style    yaml.Style
+		rendered *yaml.Node
 	}
-	var mapped []*cbItem
+	var mapped []*pathItem
 
 	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
-		ln := 999 // default to a high value to weight new content to the bottom.
+		k := pair.Key()
+		pi := pair.Value()
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
 		if c.low != nil {
-			for lPair := orderedmap.First(c.low.Expression.Value); lPair != nil; lPair = lPair.Next() {
-				if lPair.Key().Value == pair.Key() {
-					ln = lPair.Key().KeyNode.Line
+			lpi := c.low.FindExpression(k)
+			if lpi != nil {
+				ln = lpi.ValueNode.Line
+			}
+
+			for pair := orderedmap.First(c.low.Expression); pair != nil; pair = pair.Next() {
+				if pair.Key().Value == k {
+					style = pair.Key().KeyNode.Style
+					break
 				}
 			}
 		}
-		mapped = append(mapped, &cbItem{pair.Value(), pair.Key(), ln, nil})
+		mapped = append(mapped, &pathItem{pi, k, ln, style, nil})
 	}
 
-	// extract extensions
 	nb := high.NewNodeBuilder(c, c.low)
 	extNode := nb.Render()
 	if extNode != nil && extNode.Content != nil {
@@ -90,23 +102,101 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 				label = extNode.Content[u].Value
 				continue
 			}
-			mapped = append(mapped, &cbItem{nil, label,
-				extNode.Content[u].Line, extNode.Content[u]})
+			mapped = append(mapped, &pathItem{
+				nil, label,
+				extNode.Content[u].Line, 0, extNode.Content[u],
+			})
 		}
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
-	for j := range mapped {
-		if mapped[j].cb != nil {
-			rendered, _ := mapped[j].cb.MarshalYAML()
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].exp))
+	for _, mp := range mapped {
+		if mp.pi != nil {
+			rendered, _ := mp.pi.MarshalYAML()
+
+			kn := utils.CreateStringNode(mp.path)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
-		if mapped[j].ext != nil {
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].exp))
-			m.Content = append(m.Content, mapped[j].ext)
+		if mp.rendered != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.path))
+			m.Content = append(m.Content, mp.rendered)
+		}
+	}
+
+	return m, nil
+}
+
+func (c *Callback) MarshalYAMLInline() (interface{}, error) {
+	// map keys correctly.
+	m := utils.CreateEmptyMapNode()
+	type pathItem struct {
+		pi       *PathItem
+		path     string
+		line     int
+		style    yaml.Style
+		rendered *yaml.Node
+	}
+	var mapped []*pathItem
+
+	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
+		k := pair.Key()
+		pi := pair.Value()
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
+		if c.low != nil {
+			lpi := c.low.FindExpression(k)
+			if lpi != nil {
+				ln = lpi.ValueNode.Line
+			}
+
+			for pair := orderedmap.First(c.low.Expression); pair != nil; pair = pair.Next() {
+				if pair.Key().Value == k {
+					style = pair.Key().KeyNode.Style
+					break
+				}
+			}
+		}
+		mapped = append(mapped, &pathItem{pi, k, ln, style, nil})
+	}
+
+	nb := high.NewNodeBuilder(c, c.low)
+	nb.Resolve = true
+	extNode := nb.Render()
+	if extNode != nil && extNode.Content != nil {
+		var label string
+		for u := range extNode.Content {
+			if u%2 == 0 {
+				label = extNode.Content[u].Value
+				continue
+			}
+			mapped = append(mapped, &pathItem{
+				nil, label,
+				extNode.Content[u].Line, 0, extNode.Content[u],
+			})
+		}
+	}
+
+	sort.Slice(mapped, func(i, j int) bool {
+		return mapped[i].line < mapped[j].line
+	})
+	for _, mp := range mapped {
+		if mp.pi != nil {
+			rendered, _ := mp.pi.MarshalYAMLInline()
+
+			kn := utils.CreateStringNode(mp.path)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
+			m.Content = append(m.Content, rendered.(*yaml.Node))
+		}
+		if mp.rendered != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.path))
+			m.Content = append(m.Content, mp.rendered)
 		}
 	}
 

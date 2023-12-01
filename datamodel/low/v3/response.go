@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -24,20 +23,20 @@ import (
 //   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
 	Description low.NodeReference[string]
-	Headers     low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
-	Content     low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
-	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
-	Links       low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
+	Headers     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
+	Content     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	Links       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
 	*low.Reference
 }
 
 // FindExtension will attempt to locate an extension using the supplied key
-func (r *Response) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, r.Extensions)
+func (r *Response) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, r.Extensions)
 }
 
 // GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
-func (r *Response) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (r *Response) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return r.Extensions
 }
 
@@ -63,13 +62,13 @@ func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
 
-	//extract headers
+	// extract headers
 	headers, lN, kN, err := low.ExtractMapExtensions[*Header](ctx, HeadersLabel, root, idx, true)
 	if err != nil {
 		return err
 	}
 	if headers != nil {
-		r.Headers = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
+		r.Headers = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]{
 			Value:     headers,
 			KeyNode:   lN,
 			ValueNode: kN,
@@ -81,7 +80,7 @@ func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		return cErr
 	}
 	if con != nil {
-		r.Content = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
+		r.Content = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
 			Value:     con,
 			KeyNode:   clN,
 			ValueNode: cN,
@@ -94,7 +93,7 @@ func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		return lErr
 	}
 	if links != nil {
-		r.Links = low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]{
+		r.Links = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]{
 			Value:     links,
 			KeyNode:   linkLabel,
 			ValueNode: linkValue,
@@ -109,37 +108,15 @@ func (r *Response) Hash() [32]byte {
 	if r.Description.Value != "" {
 		f = append(f, r.Description.Value)
 	}
-	keys := make([]string, orderedmap.Len(r.Headers.Value))
-	z := 0
-	for pair := orderedmap.First(r.Headers.Value); pair != nil; pair = pair.Next() {
-		keys[z] = fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value))
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(r.Headers.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, orderedmap.Len(r.Content.Value))
-	z = 0
-	for pair := orderedmap.First(r.Content.Value); pair != nil; pair = pair.Next() {
-		keys[z] = fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value))
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(r.Content.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, orderedmap.Len(r.Links.Value))
-	z = 0
-	for pair := orderedmap.First(r.Links.Value); pair != nil; pair = pair.Next() {
-		keys[z] = fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value))
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(r.Links.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(r.Extensions))
-	z = 0
-	for k := range r.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(r.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(r.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

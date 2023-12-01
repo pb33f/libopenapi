@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -16,7 +17,7 @@ import (
 // referenced to the ones defined here. It does not define global operation parameters
 //   - https://swagger.io/specification/v2/#parametersDefinitionsObject
 type ParameterDefinitions struct {
-	Definitions orderedmap.Map[string, *Parameter]
+	Definitions *orderedmap.Map[string, *Parameter]
 	low         *low.ParameterDefinitions
 }
 
@@ -36,7 +37,7 @@ func NewParametersDefinitions(parametersDefinitions *low.ParameterDefinitions) *
 		params.Set(value.key, value.result)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel(parametersDefinitions.Definitions, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(parametersDefinitions.Definitions, translateFunc, resultFunc)
 	pd.Definitions = params
 	return pd
 }

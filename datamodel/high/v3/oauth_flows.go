@@ -6,17 +6,18 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
 // OAuthFlows represents a high-level OpenAPI 3+ OAuthFlows object that is backed by a low-level one.
 //   - https://spec.openapis.org/oas/v3.1.0#oauth-flows-object
 type OAuthFlows struct {
-	Implicit          *OAuthFlow     `json:"implicit,omitempty" yaml:"implicit,omitempty"`
-	Password          *OAuthFlow     `json:"password,omitempty" yaml:"password,omitempty"`
-	ClientCredentials *OAuthFlow     `json:"clientCredentials,omitempty" yaml:"clientCredentials,omitempty"`
-	AuthorizationCode *OAuthFlow     `json:"authorizationCode,omitempty" yaml:"authorizationCode,omitempty"`
-	Extensions        map[string]any `json:"-" yaml:"-"`
+	Implicit          *OAuthFlow                          `json:"implicit,omitempty" yaml:"implicit,omitempty"`
+	Password          *OAuthFlow                          `json:"password,omitempty" yaml:"password,omitempty"`
+	ClientCredentials *OAuthFlow                          `json:"clientCredentials,omitempty" yaml:"clientCredentials,omitempty"`
+	AuthorizationCode *OAuthFlow                          `json:"authorizationCode,omitempty" yaml:"authorizationCode,omitempty"`
+	Extensions        *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low               *low.OAuthFlows
 }
 

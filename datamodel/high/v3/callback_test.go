@@ -12,11 +12,14 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
 func TestCallback_MarshalYAML(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
 
 	cb := &Callback{
 		Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
@@ -31,9 +34,7 @@ func TestCallback_MarshalYAML(t *testing.T) {
 				},
 			},
 		}),
-		Extensions: map[string]any{
-			"x-burgers": "why not?",
-		},
+		Extensions: ext,
 	}
 
 	rend, _ := cb.Render()
@@ -43,7 +44,10 @@ func TestCallback_MarshalYAML(t *testing.T) {
 
 	// mutate
 	cb.Expression.GetOrZero("https://pb33f.io").Get.OperationId = "blim-blam"
-	cb.Extensions = map[string]interface{}{"x-burgers": "yes please!"}
+
+	ext = orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("yes please!"))
+	cb.Extensions = ext
 
 	rend, _ = cb.Render()
 	// there is no way to determine order in brand new maps, so we have to check length.
@@ -72,7 +76,10 @@ func TestCallback_MarshalYAML(t *testing.T) {
 
 	r := NewCallback(&n)
 
-	assert.Equal(t, "please", r.Extensions["x-break-everything"])
+	var xBreakEverything string
+	_ = r.Extensions.GetOrZero("x-break-everything").Decode(&xBreakEverything)
+
+	assert.Equal(t, "please", xBreakEverything)
 
 	rend, _ = r.Render()
 	assert.Equal(t, k, strings.TrimSpace(string(rend)))

@@ -14,12 +14,14 @@ package v2
 import (
 	"context"
 	"errors"
+	"path/filepath"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
-	"path/filepath"
 )
 
 // processes a property of a Swagger document asynchronously using bool and error channels for signals.
@@ -27,7 +29,6 @@ type documentFunction func(ctx context.Context, root *yaml.Node, doc *Swagger, i
 
 // Swagger represents a high-level Swagger / OpenAPI 2 document. An instance of Swagger is the root of the specification.
 type Swagger struct {
-
 	// Swagger is the version of Swagger / OpenAPI being used, extracted from the 'swagger: 2.x' definition.
 	Swagger low.ValueReference[string]
 
@@ -98,7 +99,7 @@ type Swagger struct {
 	ExternalDocs low.NodeReference[*base.ExternalDoc]
 
 	// Extensions contains all custom extensions defined for the top-level document.
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 
 	// Index is a reference to the index.SpecIndex that was created for the document and used
 	// as a guide when building out the Document. Ideal if further processing is required on the model and
@@ -118,12 +119,12 @@ type Swagger struct {
 }
 
 // FindExtension locates an extension from the root of the Swagger document.
-func (s *Swagger) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, s.Extensions)
+func (s *Swagger) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, s.Extensions)
 }
 
 // GetExtensions returns all Swagger/Top level extensions and satisfies the low.HasExtensions interface.
-func (s *Swagger) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (s *Swagger) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return s.Extensions
 }
 
@@ -279,6 +280,7 @@ func extractPaths(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index
 	doc.Paths = paths
 	c <- true
 }
+
 func extractDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
 	def, err := low.ExtractObject[*Definitions](ctx, DefinitionsLabel, root, idx)
 	if err != nil {
@@ -288,6 +290,7 @@ func extractDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx 
 	doc.Definitions = def
 	c <- true
 }
+
 func extractParamDefinitions(ctx context.Context, root *yaml.Node, doc *Swagger, idx *index.SpecIndex, c chan<- bool, e chan<- error) {
 	param, err := low.ExtractObject[*ParameterDefinitions](ctx, ParametersLabel, root, idx)
 	if err != nil {

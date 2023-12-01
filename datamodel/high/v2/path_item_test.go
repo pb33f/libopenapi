@@ -5,16 +5,17 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPathItem_GetOperations(t *testing.T) {
-
 	yml := `get:
   description: get
 put:
@@ -41,5 +42,5 @@ options:
 
 	r := NewPathItem(&n)
 
-	assert.Len(t, r.GetOperations(), 7)
+	assert.Equal(t, 7, orderedmap.Len(r.GetOperations()))
 }

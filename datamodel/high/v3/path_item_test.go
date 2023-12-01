@@ -67,11 +67,19 @@ trace:
 
 	r := NewPathItem(&n)
 
-	assert.Len(t, r.GetOperations(), 8)
+	assert.Equal(t, 8, r.GetOperations().Len())
+
+	// test that the operations are in the correct order
+	expectedOrder := []string{"get", "put", "post", "patch", "delete", "head", "options", "trace"}
+
+	i := 0
+	for pair := r.GetOperations().First(); pair != nil; pair = pair.Next() {
+		assert.Equal(t, expectedOrder[i], pair.Value().Description)
+		i++
+	}
 }
 
 func TestPathItem_MarshalYAML(t *testing.T) {
-
 	pi := &PathItem{
 		Description: "a path item",
 		Summary:     "It's a test, don't worry about it, Jim",
@@ -112,7 +120,6 @@ parameters:
 }
 
 func TestPathItem_MarshalYAMLInline(t *testing.T) {
-
 	pi := &PathItem{
 		Description: "a path item",
 		Summary:     "It's a test, don't worry about it, Jim",

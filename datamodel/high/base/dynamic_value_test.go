@@ -127,7 +127,7 @@ func TestDynamicValue_MarshalYAMLInline(t *testing.T) {
 
 	// convert node into yaml
 	bits, _ := yaml.Marshal(rend)
-	assert.Equal(t, "properties:\n    rice:\n        $ref: '#/components/schemas/rice'", strings.TrimSpace(string(bits)))
+	assert.Equal(t, "properties:\n    rice:\n        type: array\n        items:\n            type: string", strings.TrimSpace(string(bits)))
 }
 
 func TestDynamicValue_MarshalYAMLInline_Error(t *testing.T) {

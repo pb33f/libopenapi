@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -272,7 +273,7 @@ x-mint: sweet`
 	assert.Len(t, n.GetParameters().Value, 1)
 	assert.Len(t, n.GetSecurity().Value, 1)
 	assert.True(t, n.GetDeprecated().Value)
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 	assert.Len(t, n.GetServers().Value.([]low.ValueReference[*Server]), 1)
 	assert.Equal(t, 1, n.GetCallbacks().Value.Len())
 	assert.Equal(t, 1, n.GetResponses().Value.(*Responses).Codes.Len())

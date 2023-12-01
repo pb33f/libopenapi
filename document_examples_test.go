@@ -6,14 +6,15 @@ package libopenapi
 import (
 	"bytes"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"log/slog"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -24,7 +25,6 @@ import (
 )
 
 func ExampleNewDocument_fromOpenAPI3Document() {
-
 	// How to read in an OpenAPI 3 Specification, into a Document.
 
 	// load an OpenAPI 3 specification from bytes
@@ -32,7 +32,6 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -59,7 +58,6 @@ func ExampleNewDocument_fromOpenAPI3Document() {
 }
 
 func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
-
 	// This example shows how to create a document that prevents the loading of external references/
 	// from files or the network
 
@@ -85,7 +83,6 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 
 	// create a new document from specification bytes
 	doc, err := NewDocumentWithConfiguration(digitalOcean, config)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -103,11 +100,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 		fmt.Println("Error building Digital Ocean spec errors reported")
 	}
 	// Output: There are 475 errors logged
-	//Error building Digital Ocean spec errors reported
+	// Error building Digital Ocean spec errors reported
 }
 
 func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
-
 	// This example shows how to create a document that prevents the loading of external references/
 	// from files or the network
 
@@ -128,7 +124,6 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 
 	// create a new document from specification bytes
 	doc, err := NewDocumentWithConfiguration(digitalOcean, &config)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -147,7 +142,6 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 }
 
 func ExampleNewDocument_fromSwaggerDocument() {
-
 	// How to read in a Swagger / OpenAPI 2 Specification, into a Document.
 
 	// load a Swagger specification from bytes
@@ -155,7 +149,6 @@ func ExampleNewDocument_fromSwaggerDocument() {
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -182,13 +175,11 @@ func ExampleNewDocument_fromSwaggerDocument() {
 }
 
 func ExampleNewDocument_fromUnknownVersion() {
-
 	// load an unknown version of an OpenAPI spec
 	petstore, _ := os.ReadFile("test_specs/burgershop.openapi.yaml")
 
 	// create a new document from specification bytes
 	document, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -233,7 +224,6 @@ func ExampleNewDocument_fromUnknownVersion() {
 }
 
 func ExampleNewDocument_mutateValuesAndSerialize() {
-
 	// How to mutate values in an OpenAPI Specification, without re-ordering original content.
 
 	// create very small, and useless spec that does nothing useful, except showcase this feature.
@@ -249,7 +239,6 @@ info:
 `
 	// create a new document from specification bytes
 	document, err := NewDocument([]byte(spec))
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -289,7 +278,7 @@ info:
 	// print our modified spec!
 	fmt.Println(string(mutatedSpec))
 	// Output: openapi: 3.1.0
-	//info:
+	// info:
 	//     title: A new title for a useless spec
 	//     contact:
 	//         name: Buckaroo
@@ -298,8 +287,7 @@ info:
 	//         url: https://pb33f.io/license
 }
 
-func ExampleCompareDocuments_openAPI() {
-
+func TestExampleCompareDocuments_openAPI(t *testing.T) {
 	// How to compare two different OpenAPI specifications.
 
 	// load an original OpenAPI 3 specification from bytes
@@ -310,7 +298,6 @@ func ExampleCompareDocuments_openAPI() {
 
 	// create a new document from original specification bytes
 	originalDoc, err := NewDocument(burgerShopOriginal)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -318,7 +305,6 @@ func ExampleCompareDocuments_openAPI() {
 
 	// create a new document from updated specification bytes
 	updatedDoc, err := NewDocument(burgerShopUpdated)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -339,14 +325,11 @@ func ExampleCompareDocuments_openAPI() {
 	schemaChanges := documentChanges.ComponentsChanges.SchemaChanges
 
 	// Print out some interesting stats about the OpenAPI document changes.
-	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
-		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges))
-	//Output: There are 75 changes, of which 19 are breaking. 6 schemas have changes.
-
+	assert.Equal(t, `There are 75 changes, of which 19 are breaking. 6 schemas have changes.`, fmt.Sprintf("There are %d changes, of which %d are breaking. %v schemas have changes.",
+		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges)))
 }
 
-func ExampleCompareDocuments_swagger() {
-
+func TestExampleCompareDocuments_swagger(t *testing.T) {
 	// How to compare two different Swagger specifications.
 
 	// load an original OpenAPI 3 specification from bytes
@@ -357,7 +340,6 @@ func ExampleCompareDocuments_swagger() {
 
 	// create a new document from original specification bytes
 	originalDoc, err := NewDocument(petstoreOriginal)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -365,7 +347,6 @@ func ExampleCompareDocuments_swagger() {
 
 	// create a new document from updated specification bytes
 	updatedDoc, err := NewDocument(petstoreUpdated)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -386,14 +367,11 @@ func ExampleCompareDocuments_swagger() {
 	schemaChanges := documentChanges.ComponentsChanges.SchemaChanges
 
 	// Print out some interesting stats about the Swagger document changes.
-	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
-		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges))
-	//Output: There are 52 changes, of which 27 are breaking. 5 schemas have changes.
-
+	assert.Equal(t, `There are 52 changes, of which 27 are breaking. 5 schemas have changes.`, fmt.Sprintf("There are %d changes, of which %d are breaking. %v schemas have changes.",
+		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges)))
 }
 
 func TestDocument_Paths_As_Array(t *testing.T) {
-
 	// paths can now be wrapped in an array.
 	spec := `{
     "openapi": "3.1.0",
@@ -406,7 +384,6 @@ func TestDocument_Paths_As_Array(t *testing.T) {
 `
 	// create a new document from specification bytes
 	doc, err := NewDocument([]byte(spec))
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -419,7 +396,6 @@ func TestDocument_Paths_As_Array(t *testing.T) {
 // during the parsing/indexing/building of a document, you can capture the
 // []errors thrown which are pointers to *resolver.ResolvingError
 func ExampleNewDocument_infinite_circular_references() {
-
 	// create a specification with an obvious and deliberate circular reference
 	spec := `openapi: "3.1"
 components:
@@ -441,7 +417,6 @@ components:
 `
 	// create a new document from specification bytes
 	doc, err := NewDocument([]byte(spec))
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -475,7 +450,6 @@ components:
 
 // This tests checks that circular references which are _not_ marked as required pass correctly
 func TestNewDocument_terminable_circular_references(t *testing.T) {
-
 	// create a specification with an obvious and deliberate circular reference
 	spec := `openapi: "3.1"
 components:
@@ -493,7 +467,6 @@ components:
 `
 	// create a new document from specification bytes
 	doc, err := NewDocument([]byte(spec))
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -509,7 +482,6 @@ components:
 //
 // This example demonstrates how to use the `UnpackExtensions` with custom OpenAPI extensions.
 func ExampleNewDocument_unpacking_extensions() {
-
 	// define an example struct representing a cake
 	type cake struct {
 		Candles               int    `yaml:"candles"`
@@ -565,7 +537,6 @@ components:
             patty: lamb`
 	// create a new document from specification bytes
 	doc, err := NewDocument([]byte(spec))
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -596,10 +567,10 @@ components:
 	}
 
 	// extract extension by name for schemaOne
-	customCakes := schemaOneExtensions["x-custom-cakes"]
+	customCakes := schemaOneExtensions.GetOrZero("x-custom-cakes")
 
 	// extract extension by name for schemaOne
-	customBurgers := parameterOneExtensions["x-custom-burgers"]
+	customBurgers := parameterOneExtensions.GetOrZero("x-custom-burgers")
 
 	// print out schemaOne complex extension details.
 	fmt.Printf("schemaOne 'x-custom-cakes' (%s) has %d cakes, 'someCake' has %d candles and %s frosting\n",
@@ -618,11 +589,10 @@ components:
 	)
 
 	// Output: schemaOne 'x-custom-cakes' (some cakes) has 2 cakes, 'someCake' has 10 candles and blue frosting
-	//parameterOne 'x-custom-burgers' (some burgers) has 2 burgers, 'anotherBurger' has mayo sauce and a lamb patty
+	// parameterOne 'x-custom-burgers' (some burgers) has 2 burgers, 'anotherBurger' has mayo sauce and a lamb patty
 }
 
 func ExampleNewDocument_modifyAndReRender() {
-
 	// How to read in an OpenAPI 3 Specification, into a Document,
 	// modify the document and then re-render it back to YAML bytes.
 
@@ -631,7 +601,6 @@ func ExampleNewDocument_modifyAndReRender() {
 
 	// create a new document from specification bytes
 	doc, err := NewDocument(petstore)
-
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -681,5 +650,5 @@ func ExampleNewDocument_modifyAndReRender() {
 	fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
 	fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
 	// Output: There were 13 original paths. There are now 14 paths in the document
-	//The original spec had 31143 bytes, the new one has 31027
+	// The original spec had 31143 bytes, the new one has 31213
 }

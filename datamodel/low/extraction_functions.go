@@ -7,37 +7,24 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"net/url"
+	"path/filepath"
 	"reflect"
-	"strconv"
 	"strings"
+	"sync"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
-	"net/url"
-	"path/filepath"
 )
-
-// FindItemInMap accepts a string key and a collection of KeyReference[string] and ValueReference[T]. Every
-// KeyReference will have its value checked against the string key and if there is a match, it will be returned.
-func FindItemInMap[T any](item string, collection map[KeyReference[string]]ValueReference[T]) *ValueReference[T] {
-	for n, o := range collection {
-		if n.Value == item {
-			return &o
-		}
-		if strings.EqualFold(item, n.Value) {
-			return &o
-		}
-	}
-	return nil
-}
 
 // FindItemInOrderedMap accepts a string key and a collection of KeyReference[string] and ValueReference[T].
 // Every KeyReference will have its value checked against the string key and if there is a match, it will be
 // returned.
-func FindItemInOrderedMap[T any](item string, collection orderedmap.Map[KeyReference[string], ValueReference[T]]) *ValueReference[T] {
+func FindItemInOrderedMap[T any](item string, collection *orderedmap.Map[KeyReference[string], ValueReference[T]]) *ValueReference[T] {
 	for pair := orderedmap.First(collection); pair != nil; pair = pair.Next() {
 		n := pair.Key()
 		if n.Value == item {
@@ -48,6 +35,18 @@ func FindItemInOrderedMap[T any](item string, collection orderedmap.Map[KeyRefer
 		}
 	}
 	return nil
+}
+
+// HashExtensions will generate a hash from the low representation of extensions.
+func HashExtensions(ext *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]) []string {
+	f := []string{}
+
+	for pair := orderedmap.First(orderedmap.SortAlpha(ext)); pair != nil; pair = pair.Next() {
+		b, _ := yaml.Marshal(pair.Value().GetValue())
+		f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, sha256.Sum256([]byte(b))))
+	}
+
+	return f
 }
 
 // helper function to generate a list of all the things an index should be searched for.
@@ -68,7 +67,6 @@ func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Re
 }
 
 func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*yaml.Node, *index.SpecIndex, error, context.Context) {
-
 	if rf, _, rv := utils.IsNodeRefValue(root); rf {
 
 		if rv == "" {
@@ -112,9 +110,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		explodedRefValue := strings.Split(rv, "#")
 		if len(explodedRefValue) == 2 {
 			if !strings.HasPrefix(explodedRefValue[0], "http") {
-
 				if !filepath.IsAbs(explodedRefValue[0]) {
-
 					if strings.HasPrefix(specPath, "http") {
 						u, _ := url.Parse(specPath)
 						p := ""
@@ -137,7 +133,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							}
 							rv = fmt.Sprintf("%s#%s", abs, explodedRefValue[1])
 						} else {
-
 							// check for a config baseURL and use that if it exists.
 							if idx.GetConfig().BaseURL != nil {
 
@@ -154,11 +149,8 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 				}
 			}
 		} else {
-
 			if !strings.HasPrefix(explodedRefValue[0], "http") {
-
 				if !filepath.IsAbs(explodedRefValue[0]) {
-
 					if strings.HasPrefix(specPath, "http") {
 						u, _ := url.Parse(specPath)
 						p := filepath.Dir(u.Path)
@@ -173,7 +165,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							rv = abs
 
 						} else {
-
 							// check for a config baseURL and use that if it exists.
 							if idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
@@ -211,7 +202,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 			rv, root.Line, root.Column), ctx
 	}
 	return nil, idx, nil, ctx
-
 }
 
 // LocateRefNode will perform a complete lookup for a $ref node. This function searches the entire index for
@@ -227,10 +217,12 @@ func ExtractObjectRaw[T Buildable[N], N any](ctx context.Context, key, root *yam
 	var circError error
 	var isReference bool
 	var referenceValue string
+	var refNode *yaml.Node
 	root = utils.NodeAlias(root)
 	if h, _, rv := utils.IsNodeRefValue(root); h {
 		ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
+			refNode = root
 			root = ref
 			isReference = true
 			referenceValue = rv
@@ -257,7 +249,7 @@ func ExtractObjectRaw[T Buildable[N], N any](ctx context.Context, key, root *yam
 
 	// if this is a reference, keep track of the reference in the value
 	if isReference {
-		SetReference(n, referenceValue)
+		SetReference(n, referenceValue, refNode)
 	}
 
 	// do we want to throw an error as well if circular error reporting is on?
@@ -274,10 +266,12 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 	var circError error
 	var isReference bool
 	var referenceValue string
+	var refNode *yaml.Node
 	root = utils.NodeAlias(root)
 	if rf, rl, refVal := utils.IsNodeRefValue(root); rf {
 		ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
+			refNode = root
 			vn = ref
 			ln = rl
 			isReference = true
@@ -298,6 +292,7 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 			if h, _, rVal := utils.IsNodeRefValue(vn); h {
 				ref, fIdx, lerr, nCtx := LocateRefNodeWithContext(ctx, vn, idx)
 				if ref != nil {
+					refNode = vn
 					vn = ref
 					if fIdx != nil {
 						idx = fIdx
@@ -331,16 +326,15 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 
 	// if this is a reference, keep track of the reference in the value
 	if isReference {
-		SetReference(n, referenceValue)
+		SetReference(n, referenceValue, refNode)
 	}
 
 	res := NodeReference[T]{
-		Value:         n,
-		KeyNode:       ln,
-		ValueNode:     vn,
-		ReferenceNode: isReference,
-		Reference:     referenceValue,
+		Value:     n,
+		KeyNode:   ln,
+		ValueNode: vn,
 	}
+	res.SetReference(referenceValue, refNode)
 
 	// do we want to throw an error as well if circular error reporting is on?
 	if circError != nil && !idx.AllowCircularReferenceResolving() {
@@ -349,12 +343,13 @@ func ExtractObject[T Buildable[N], N any](ctx context.Context, label string, roo
 	return res, nil
 }
 
-func SetReference(obj any, ref string) {
+func SetReference(obj any, ref string, refNode *yaml.Node) {
 	if obj == nil {
 		return
 	}
-	if r, ok := obj.(IsReferenced); ok {
-		r.SetReference(ref)
+
+	if r, ok := obj.(SetReferencer); ok {
+		r.SetReference(ref, refNode)
 	}
 }
 
@@ -429,9 +424,12 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 			foundCtx := ctx
 			foundIndex := idx
 
+			var refNode *yaml.Node
+
 			if rf, _, rv := utils.IsNodeRefValue(node); rf {
 				refg, fIdx, err, nCtx := LocateRefEnd(ctx, node, idx, 0)
 				if refg != nil {
+					refNode = node
 					node = refg
 					localReferenceValue = rv
 					foundIndex = fIdx
@@ -457,15 +455,16 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 			}
 
 			if localReferenceValue != "" {
-				SetReference(n, localReferenceValue)
+				SetReference(n, localReferenceValue, refNode)
 			}
 
-			items = append(items, ValueReference[T]{
-				Value:         n,
-				ValueNode:     node,
-				ReferenceNode: localReferenceValue != "",
-				Reference:     localReferenceValue,
-			})
+			v := ValueReference[T]{
+				Value:     n,
+				ValueNode: node,
+			}
+			v.SetReference(localReferenceValue, refNode)
+
+			items = append(items, v)
 		}
 	}
 	// include circular errors?
@@ -473,23 +472,6 @@ func ExtractArray[T Buildable[N], N any](ctx context.Context, label string, root
 		return items, ln, vn, circError
 	}
 	return items, ln, vn, nil
-}
-
-// ExtractExample will extract a value supplied as an example into a NodeReference. Value can be anything.
-// the node value is untyped, so casting will be required when trying to use it.
-func ExtractExample(expNode, expLabel *yaml.Node) NodeReference[any] {
-	ref := NodeReference[any]{Value: expNode.Value, KeyNode: expLabel, ValueNode: expNode}
-	if utils.IsNodeMap(expNode) {
-		var decoded map[string]interface{}
-		_ = expNode.Decode(&decoded)
-		ref.Value = decoded
-	}
-	if utils.IsNodeArray(expNode) {
-		var decoded []interface{}
-		_ = expNode.Decode(&decoded)
-		ref.Value = decoded
-	}
-	return ref
 }
 
 // ExtractMapNoLookupExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
@@ -502,7 +484,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 	root *yaml.Node,
 	idx *index.SpecIndex,
 	includeExtensions bool,
-) (orderedmap.Map[KeyReference[string], ValueReference[PT]], error) {
+) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], error) {
 	valueMap := orderedmap.New[KeyReference[string], ValueReference[PT]]()
 	var circError error
 	if utils.IsNodeMap(root) {
@@ -540,10 +522,12 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 
 			var isReference bool
 			var referenceValue string
+			var refNode *yaml.Node
 			// if value is a reference, we have to look it up in the index!
 			if h, _, rv := utils.IsNodeRefValue(node); h {
 				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, node, idx)
 				if ref != nil {
+					refNode = node
 					node = ref
 					isReference = true
 					referenceValue = rv
@@ -570,19 +554,21 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 				return nil, berr
 			}
 			if isReference {
-				SetReference(n, referenceValue)
+				SetReference(n, referenceValue, refNode)
 			}
 			if currentKey != nil {
+				v := ValueReference[PT]{
+					Value:     n,
+					ValueNode: node,
+				}
+				v.SetReference(referenceValue, refNode)
+
 				valueMap.Set(
 					KeyReference[string]{
 						Value:   currentKey.Value,
 						KeyNode: currentKey,
 					},
-					ValueReference[PT]{
-						Value:     n,
-						ValueNode: node,
-						Reference: referenceValue,
-					},
+					v,
 				)
 			}
 		}
@@ -591,7 +577,6 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 		return valueMap, circError
 	}
 	return valueMap, nil
-
 }
 
 // ExtractMapNoLookup will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'NoLookup' part
@@ -603,7 +588,7 @@ func ExtractMapNoLookup[PT Buildable[N], N any](
 	ctx context.Context,
 	root *yaml.Node,
 	idx *index.SpecIndex,
-) (orderedmap.Map[KeyReference[string], ValueReference[PT]], error) {
+) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], error) {
 	return ExtractMapNoLookupExtensions[PT, N](ctx, root, idx, false)
 }
 
@@ -624,7 +609,186 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	root *yaml.Node,
 	idx *index.SpecIndex,
 	extensions bool,
-) (orderedmap.Map[KeyReference[string], ValueReference[PT]], *yaml.Node, *yaml.Node, error) {
+) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], *yaml.Node, *yaml.Node, error) {
+	var labelNode, valueNode *yaml.Node
+	var circError error
+	root = utils.NodeAlias(root)
+	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
+		// locate reference in index.
+		ref, fIdx, err, fCtx := LocateRefNodeWithContext(ctx, root, idx)
+		if ref != nil {
+			valueNode = ref
+			labelNode = rl
+			ctx = fCtx
+			idx = fIdx
+			if err != nil {
+				circError = err
+			}
+		} else {
+			return nil, labelNode, valueNode, fmt.Errorf("map build failed: reference cannot be found: %s",
+				root.Content[1].Value)
+		}
+	} else {
+		_, labelNode, valueNode = utils.FindKeyNodeFull(label, root.Content)
+		valueNode = utils.NodeAlias(valueNode)
+		if valueNode != nil {
+			if h, _, _ := utils.IsNodeRefValue(valueNode); h {
+				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, valueNode, idx)
+				if ref != nil {
+					valueNode = ref
+					idx = fIdx
+					ctx = nCtx
+					if err != nil {
+						circError = err
+					}
+				} else {
+					if err != nil {
+						return nil, labelNode, valueNode, fmt.Errorf("map build failed: reference cannot be found: %s",
+							err.Error())
+					}
+				}
+			}
+		}
+	}
+	if valueNode != nil {
+		valueMap := orderedmap.New[KeyReference[string], ValueReference[PT]]()
+
+		type buildInput struct {
+			label *yaml.Node
+			value *yaml.Node
+		}
+		in := make(chan buildInput)
+		out := make(chan mappingResult[PT])
+		done := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(2) // input and output goroutines.
+
+		// TranslatePipeline input.
+		go func() {
+			defer func() {
+				close(in)
+				wg.Done()
+			}()
+			var currentLabelNode *yaml.Node
+			for i, en := range valueNode.Content {
+				if !extensions {
+					if strings.HasPrefix(en.Value, "x-") {
+						continue // yo, don't pay any attention to extensions, not here anyway.
+					}
+				}
+
+				en = utils.NodeAlias(en)
+				if i%2 == 0 {
+					currentLabelNode = en
+					continue
+				}
+
+				select {
+				case in <- buildInput{
+					label: currentLabelNode,
+					value: en,
+				}:
+				case <-done:
+					return
+				}
+			}
+		}()
+
+		// TranslatePipeline output.
+		go func() {
+			for {
+				result, ok := <-out
+				if !ok {
+					break
+				}
+				valueMap.Set(result.k, result.v)
+			}
+			close(done)
+			wg.Done()
+		}()
+
+		translateFunc := func(input buildInput) (mappingResult[PT], error) {
+			foundIndex := idx
+			foundContext := ctx
+
+			en := input.value
+
+			var refNode *yaml.Node
+			var referenceValue string
+			// check our valueNode isn't a reference still.
+			if h, _, refVal := utils.IsNodeRefValue(en); h {
+				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, en, idx)
+				if ref != nil {
+					refNode = en
+					en = ref
+					referenceValue = refVal
+					if fIdx != nil {
+						foundIndex = fIdx
+					}
+					foundContext = nCtx
+					if err != nil {
+						circError = err
+					}
+				} else {
+					if err != nil {
+						return mappingResult[PT]{}, fmt.Errorf("flat map build failed: reference cannot be found: %s",
+							err.Error())
+					}
+				}
+			}
+
+			var n PT = new(N)
+			en = utils.NodeAlias(en)
+			_ = BuildModel(en, n)
+			err := n.Build(foundContext, input.label, en, foundIndex)
+			if err != nil {
+				return mappingResult[PT]{}, err
+			}
+
+			if referenceValue != "" {
+				SetReference(n, referenceValue, refNode)
+			}
+
+			v := ValueReference[PT]{
+				Value:     n,
+				ValueNode: en,
+			}
+			v.SetReference(referenceValue, refNode)
+
+			return mappingResult[PT]{
+				k: KeyReference[string]{
+					KeyNode: input.label,
+					Value:   input.label.Value,
+				},
+				v: v,
+			}, nil
+		}
+		err := datamodel.TranslatePipeline[buildInput, mappingResult[PT]](in, out, translateFunc)
+		wg.Wait()
+		if err != nil {
+			return nil, labelNode, valueNode, err
+		}
+		if circError != nil && !idx.AllowCircularReferenceResolving() {
+			return valueMap, labelNode, valueNode, circError
+		}
+		return valueMap, labelNode, valueNode, nil
+	}
+	return nil, labelNode, valueNode, nil
+}
+
+// ExtractMapExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
+// used to locate the node to be extracted from the root node supplied. Supply a bit to decide if extensions should
+// be included or not. required in some use cases.
+//
+// The second return value is the yaml.Node found for the 'label' and the third return value is the yaml.Node
+// found for the value extracted from the label node.
+func ExtractMapExtensionsOld[PT Buildable[N], N any](
+	ctx context.Context,
+	label string,
+	root *yaml.Node,
+	idx *index.SpecIndex,
+	extensions bool,
+) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], *yaml.Node, *yaml.Node, error) {
 	var referenceValue string
 	var labelNode, valueNode *yaml.Node
 	var circError error
@@ -687,7 +851,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 			}
 
 			if ref != "" {
-				SetReference(n, ref)
+				SetReference(n, ref, nil)
 			}
 
 			c <- mappingResult[PT]{
@@ -698,7 +862,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				v: ValueReference[PT]{
 					Value:     n,
 					ValueNode: value,
-					Reference: ref,
+					// Reference: ref,
 				},
 			}
 		}
@@ -773,7 +937,7 @@ func ExtractMap[PT Buildable[N], N any](
 	label string,
 	root *yaml.Node,
 	idx *index.SpecIndex,
-) (orderedmap.Map[KeyReference[string], ValueReference[PT]], *yaml.Node, *yaml.Node, error) {
+) (*orderedmap.Map[KeyReference[string], ValueReference[PT]], *yaml.Node, *yaml.Node, error) {
 	return ExtractMapExtensions[PT, N](ctx, label, root, idx, false)
 }
 
@@ -781,7 +945,7 @@ func ExtractMap[PT Buildable[N], N any](
 //
 // Maps
 //
-//	map[string]interface{} for maps
+//	*orderedmap.Map[string, *yaml.Node] for maps
 //
 // Slices
 //
@@ -790,54 +954,15 @@ func ExtractMap[PT Buildable[N], N any](
 // int, float, bool, string
 //
 //	int64, float64, bool, string
-func ExtractExtensions(root *yaml.Node) map[KeyReference[string]]ValueReference[any] {
+func ExtractExtensions(root *yaml.Node) *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]] {
 	root = utils.NodeAlias(root)
 	extensions := utils.FindExtensionNodes(root.Content)
-	extensionMap := make(map[KeyReference[string]]ValueReference[any])
+	extensionMap := orderedmap.New[KeyReference[string], ValueReference[*yaml.Node]]()
 	for _, ext := range extensions {
-		if utils.IsNodeMap(ext.Value) {
-			var v interface{}
-			_ = ext.Value.Decode(&v)
-			extensionMap[KeyReference[string]{
-				Value:   ext.Key.Value,
-				KeyNode: ext.Key,
-			}] = ValueReference[any]{Value: v, ValueNode: ext.Value}
-		}
-		if utils.IsNodeStringValue(ext.Value) {
-			extensionMap[KeyReference[string]{
-				Value:   ext.Key.Value,
-				KeyNode: ext.Key,
-			}] = ValueReference[any]{Value: ext.Value.Value, ValueNode: ext.Value}
-		}
-		if utils.IsNodeFloatValue(ext.Value) {
-			fv, _ := strconv.ParseFloat(ext.Value.Value, 64)
-			extensionMap[KeyReference[string]{
-				Value:   ext.Key.Value,
-				KeyNode: ext.Key,
-			}] = ValueReference[any]{Value: fv, ValueNode: ext.Value}
-		}
-		if utils.IsNodeIntValue(ext.Value) {
-			iv, _ := strconv.ParseInt(ext.Value.Value, 10, 64)
-			extensionMap[KeyReference[string]{
-				Value:   ext.Key.Value,
-				KeyNode: ext.Key,
-			}] = ValueReference[any]{Value: iv, ValueNode: ext.Value}
-		}
-		if utils.IsNodeBoolValue(ext.Value) {
-			bv, _ := strconv.ParseBool(ext.Value.Value)
-			extensionMap[KeyReference[string]{
-				Value:   ext.Key.Value,
-				KeyNode: ext.Key,
-			}] = ValueReference[any]{Value: bv, ValueNode: ext.Value}
-		}
-		if utils.IsNodeArray(ext.Value) {
-			var v []interface{}
-			_ = ext.Value.Decode(&v)
-			extensionMap[KeyReference[string]{
-				Value:   ext.Key.Value,
-				KeyNode: ext.Key,
-			}] = ValueReference[any]{Value: v, ValueNode: ext.Value}
-		}
+		extensionMap.Set(KeyReference[string]{
+			Value:   ext.Key.Value,
+			KeyNode: ext.Key,
+		}, ValueReference[*yaml.Node]{Value: ext.Value, ValueNode: ext.Value})
 	}
 	return extensionMap
 }
@@ -869,11 +994,24 @@ func GenerateHashString(v any) string {
 			return fmt.Sprintf(HASH, h.Hash())
 		}
 	}
+	if n, ok := v.(*yaml.Node); ok {
+		b, _ := yaml.Marshal(n)
+		return fmt.Sprintf(HASH, sha256.Sum256(b))
+	}
 	// if we get here, we're a primitive, check if we're a pointer and de-point
 	if reflect.TypeOf(v).Kind() == reflect.Ptr {
 		v = reflect.ValueOf(v).Elem().Interface()
 	}
 	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
+}
+
+func ValueToString(v any) string {
+	if n, ok := v.(*yaml.Node); ok {
+		b, _ := yaml.Marshal(n)
+		return string(b)
+	}
+
+	return fmt.Sprint(v)
 }
 
 // LocateRefEnd will perform a complete lookup for a $ref node. This function searches the entire index for

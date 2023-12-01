@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -24,18 +23,18 @@ type OAuthFlows struct {
 	Password          low.NodeReference[*OAuthFlow]
 	ClientCredentials low.NodeReference[*OAuthFlow]
 	AuthorizationCode low.NodeReference[*OAuthFlow]
-	Extensions        map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions        *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // GetExtensions returns all OAuthFlows extensions and satisfies the low.HasExtensions interface.
-func (o *OAuthFlows) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (o *OAuthFlows) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return o.Extensions
 }
 
 // FindExtension will attempt to locate an extension with the supplied name.
-func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, o.Extensions)
+func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, o.Extensions)
 }
 
 // Build will extract extensions and all OAuthFlow types from the supplied node.
@@ -86,9 +85,7 @@ func (o *OAuthFlows) Hash() [32]byte {
 	if !o.AuthorizationCode.IsEmpty() {
 		f = append(f, low.GenerateHashString(o.AuthorizationCode.Value))
 	}
-	for k := range o.Extensions {
-		f = append(f, fmt.Sprintf("%s-%v", k.Value, o.Extensions[k].Value))
-	}
+	f = append(f, low.HashExtensions(o.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
@@ -98,13 +95,13 @@ type OAuthFlow struct {
 	AuthorizationUrl low.NodeReference[string]
 	TokenUrl         low.NodeReference[string]
 	RefreshUrl       low.NodeReference[string]
-	Scopes           low.NodeReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
-	Extensions       map[low.KeyReference[string]]low.ValueReference[any]
+	Scopes           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
+	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
-func (o *OAuthFlow) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (o *OAuthFlow) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return o.Extensions
 }
 
@@ -114,8 +111,8 @@ func (o *OAuthFlow) FindScope(scope string) *low.ValueReference[string] {
 }
 
 // FindExtension attempts to locate an extension with a specified key
-func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, o.Extensions)
+func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, o.Extensions)
 }
 
 // Build will extract extensions from the node.
@@ -137,21 +134,9 @@ func (o *OAuthFlow) Hash() [32]byte {
 	if !o.RefreshUrl.IsEmpty() {
 		f = append(f, o.RefreshUrl.Value)
 	}
-	keys := make([]string, orderedmap.Len(o.Scopes.Value))
-	z := 0
-	for pair := orderedmap.First(o.Scopes.Value); pair != nil; pair = pair.Next() {
-		keys[z] = fmt.Sprintf("%s-%s", pair.Key().Value, sha256.Sum256([]byte(fmt.Sprint(pair.Value().Value))))
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(o.Scopes.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, sha256.Sum256([]byte(fmt.Sprint(pair.Value().Value)))))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(o.Extensions))
-	z = 0
-	for k := range o.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(o.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(o.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

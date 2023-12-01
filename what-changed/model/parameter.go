@@ -4,12 +4,14 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
-	"reflect"
 )
 
 // ParameterChanges represents changes found between Swagger or OpenAPI Parameter objects.
@@ -222,14 +224,13 @@ func CompareParametersV3(l, r *v3.Parameter) *ParameterChanges {
 // CompareParameters compares a left and right Swagger or OpenAPI Parameter object for any changes. If found returns
 // a pointer to ParameterChanges. If nothing is found, returns nil.
 func CompareParameters(l, r any) *ParameterChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 
 	pc := new(ParameterChanges)
 	var lSchema *base.SchemaProxy
 	var rSchema *base.SchemaProxy
-	var lext, rext map[low.KeyReference[string]]low.ValueReference[any]
+	var lext, rext *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 
 	if reflect.TypeOf(&v2.Parameter{}) == reflect.TypeOf(l) && reflect.TypeOf(&v2.Parameter{}) == reflect.TypeOf(r) {
 		lParam := l.(*v2.Parameter)
@@ -331,7 +332,7 @@ func CompareParameters(l, r any) *ParameterChanges {
 	return pc
 }
 
-func checkParameterExample(expLeft, expRight low.NodeReference[any], changes []*Change) {
+func checkParameterExample(expLeft, expRight low.NodeReference[*yaml.Node], changes []*Change) {
 	if !expLeft.IsEmpty() && !expRight.IsEmpty() {
 		if low.GenerateHashString(expLeft.GetValue()) != low.GenerateHashString(expRight.GetValue()) {
 			CreateChange(&changes, Modified, v3.ExampleLabel,

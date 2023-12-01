@@ -26,7 +26,7 @@ import (
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 //   - https://swagger.io/specification/#security-requirement-object
 type SecurityRequirement struct {
-	Requirements low.ValueReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
+	Requirements low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
 	*low.Reference
 }
 
@@ -61,7 +61,7 @@ func (s *SecurityRequirement) Build(_ context.Context, _, root *yaml.Node, _ *in
 			},
 		)
 	}
-	s.Requirements = low.ValueReference[orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]{
+	s.Requirements = low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]{
 		Value:     valueMap,
 		ValueNode: root,
 	}
@@ -91,22 +91,14 @@ func (s *SecurityRequirement) GetKeys() []string {
 // Hash will return a consistent SHA256 Hash of the SecurityRequirement object
 func (s *SecurityRequirement) Hash() [32]byte {
 	var f []string
-	values := make(map[string][]string, orderedmap.Len(s.Requirements.Value))
-	var valKeys []string
-	for pair := orderedmap.First(s.Requirements.Value); pair != nil; pair = pair.Next() {
+	for pair := orderedmap.First(orderedmap.SortAlpha(s.Requirements.Value)); pair != nil; pair = pair.Next() {
 		var vals []string
 		for y := range pair.Value().Value {
 			vals = append(vals, pair.Value().Value[y].Value)
 		}
 		sort.Strings(vals)
-		valKeys = append(valKeys, pair.Key().Value)
-		if len(vals) > 0 {
-			values[pair.Key().Value] = vals
-		}
-	}
-	sort.Strings(valKeys)
-	for val := range valKeys {
-		f = append(f, fmt.Sprintf("%s-%s", valKeys[val], strings.Join(values[valKeys[val]], "|")))
+
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, strings.Join(vals, "|")))
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

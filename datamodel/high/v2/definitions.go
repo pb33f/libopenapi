@@ -4,6 +4,7 @@
 package v2
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -17,7 +18,7 @@ import (
 // arrays or models.
 //   - https://swagger.io/specification/v2/#definitionsObject
 type Definitions struct {
-	Definitions orderedmap.Map[string, *highbase.SchemaProxy]
+	Definitions *orderedmap.Map[string, *highbase.SchemaProxy]
 	low         *low.Definitions
 }
 
@@ -28,7 +29,7 @@ func NewDefinitions(definitions *low.Definitions) *Definitions {
 	defs := orderedmap.New[string, *highbase.SchemaProxy]()
 	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowbase.SchemaProxy]]) (asyncResult[*highbase.SchemaProxy], error) {
 		return asyncResult[*highbase.SchemaProxy]{
-			key:    pair.Key().Value,
+			key: pair.Key().Value,
 			result: highbase.NewSchemaProxy(&lowmodel.NodeReference[*lowbase.SchemaProxy]{
 				Value: pair.Value().Value,
 			}),
@@ -38,7 +39,7 @@ func NewDefinitions(definitions *low.Definitions) *Definitions {
 		defs.Set(value.key, value.result)
 		return nil
 	}
-	_ = orderedmap.TranslateMapParallel(definitions.Schemas, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel(definitions.Schemas, translateFunc, resultFunc)
 	rd.Definitions = defs
 	return rd
 }

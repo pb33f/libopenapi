@@ -11,6 +11,7 @@ import (
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // PathsChanges represents changes found between two Swagger or OpenAPI Paths Objects.
@@ -57,7 +58,6 @@ func (p *PathsChanges) TotalBreakingChanges() int {
 // ComparePaths compares a left and right Swagger or OpenAPI Paths Object for changes. If found, returns a pointer
 // to a PathsChanges instance. Returns nil if nothing is found.
 func ComparePaths(l, r any) *PathsChanges {
-
 	var changes []*Change
 
 	pc := new(PathsChanges)
@@ -206,7 +206,7 @@ func ComparePaths(l, r any) *PathsChanges {
 			pc.PathItemsChanges = pathChanges
 		}
 
-		var lExt, rExt map[low.KeyReference[string]]low.ValueReference[any]
+		var lExt, rExt *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 		if lPath != nil {
 			lExt = lPath.Extensions
 		}

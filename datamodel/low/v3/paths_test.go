@@ -13,12 +13,12 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
 func TestPaths_Build(t *testing.T) {
-
 	yml := `"/some/path":
   get:
     description: get method
@@ -57,7 +57,10 @@ x-milk: cold`
 	path := n.FindPath("/some/path").Value
 	assert.NotNil(t, path)
 	assert.Equal(t, "get method", path.Get.Value.Description.Value)
-	assert.Equal(t, "yummy", path.FindExtension("x-cake").Value)
+
+	var xCake string
+	_ = path.FindExtension("x-cake").Value.Decode(&xCake)
+	assert.Equal(t, "yummy", xCake)
 	assert.Equal(t, "post method", path.Post.Value.Description.Value)
 	assert.Equal(t, "put method", path.Put.Value.Description.Value)
 	assert.Equal(t, "patch method", path.Patch.Value.Description.Value)
@@ -65,13 +68,15 @@ x-milk: cold`
 	assert.Equal(t, "head method", path.Head.Value.Description.Value)
 	assert.Equal(t, "trace method", path.Trace.Value.Description.Value)
 	assert.Len(t, path.Parameters.Value, 1)
-	assert.Equal(t, "cold", n.FindExtension("x-milk").Value)
+
+	var xMilk string
+	_ = n.FindExtension("x-milk").Value.Decode(&xMilk)
+	assert.Equal(t, "cold", xMilk)
 	assert.Equal(t, "hello", path.Parameters.Value[0].Value.Name.Value)
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestPaths_Build_Fail(t *testing.T) {
-
 	yml := `"/some/path":
   $ref: $bork`
 
@@ -85,11 +90,9 @@ func TestPaths_Build_Fail(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestPaths_Build_FailRef(t *testing.T) {
-
 	// this is kinda nuts, and, it's completely illegal, but you never know!
 	yml := `"/some/path":
  description: this is some path
@@ -125,7 +128,6 @@ func TestPaths_Build_FailRef(t *testing.T) {
 }
 
 func TestPaths_Build_FailRefDeadEnd(t *testing.T) {
-
 	// this is nuts.
 	yml := `"/no/path":
   get:
@@ -160,7 +162,6 @@ func TestPaths_Build_FailRefDeadEnd(t *testing.T) {
 }
 
 func TestPaths_Build_SuccessRef(t *testing.T) {
-
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -198,7 +199,6 @@ func TestPaths_Build_SuccessRef(t *testing.T) {
 }
 
 func TestPaths_Build_BadParams(t *testing.T) {
-
 	yml := `"/some/path":
   parameters:
     this: shouldFail`
@@ -223,11 +223,9 @@ func TestPaths_Build_BadParams(t *testing.T) {
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	er := buf.String()
 	assert.Contains(t, er, "array build failed, input is not an array, line 3, column 5'")
-
 }
 
 func TestPaths_Build_BadRef(t *testing.T) {
-
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -262,11 +260,9 @@ func TestPaths_Build_BadRef(t *testing.T) {
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Contains(t, buf.String(), "unable to locate reference anywhere in the rolodex\" reference=#/no-where")
 	assert.Contains(t, buf.String(), "error building path item 'path item build failed: cannot find reference: #/no-where at line 4, col 10'")
-
 }
 
 func TestPathItem_Build_GoodRef(t *testing.T) {
-
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -296,7 +292,6 @@ func TestPathItem_Build_GoodRef(t *testing.T) {
 }
 
 func TestPathItem_Build_BadRef(t *testing.T) {
-
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
  description: this is some path
@@ -333,11 +328,9 @@ func TestPathItem_Build_BadRef(t *testing.T) {
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Contains(t, buf.String(), "unable to locate reference anywhere in the rolodex\" reference=#/~1cakes/NotFound")
 	assert.Contains(t, buf.String(), "error building path item 'path item build failed: cannot find reference: #/~1another~1path/get at line 4, col 10")
-
 }
 
 func TestPathNoOps(t *testing.T) {
-
 	// this is kinda nuts, it's also not illegal, however the mechanics still need to work.
 	yml := `"/some/path":
 "/cakes":`
@@ -355,7 +348,6 @@ func TestPathNoOps(t *testing.T) {
 }
 
 func TestPathItem_Build_Using_Ref(t *testing.T) {
-
 	// first we need an index.
 	yml := `paths:
  '/something/here':
@@ -393,7 +385,6 @@ func TestPathItem_Build_Using_Ref(t *testing.T) {
 }
 
 func TestPath_Build_Using_CircularRef(t *testing.T) {
-
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -425,11 +416,9 @@ func TestPath_Build_Using_CircularRef(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, rootNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
-
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -471,11 +460,9 @@ func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
 
 	_ = n.Build(context.Background(), nil, rootNode.Content[0], idx)
 	assert.Contains(t, buf.String(), "error building path item 'build schema failed: circular reference 'post -> post -> post' found during lookup at line 4, column 7, It cannot be resolved'")
-
 }
 
 func TestPaths_Build_BrokenOp(t *testing.T) {
-
 	yml := `"/some/path":
   post:
     externalDocs:
@@ -503,7 +490,6 @@ func TestPaths_Build_BrokenOp(t *testing.T) {
 }
 
 func TestPaths_Hash(t *testing.T) {
-
 	yml := `/french/toast:
   description: toast
 /french/hen:
@@ -545,7 +531,6 @@ x-france: french`
 	a, b = n.FindPathAndKey("I do not exist")
 	assert.Nil(t, a)
 	assert.Nil(t, b)
-
 }
 
 // Test parse failure among many paths.

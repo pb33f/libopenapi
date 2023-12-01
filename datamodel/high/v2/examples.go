@@ -6,13 +6,14 @@ package v2
 import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Example represents a high-level Swagger / OpenAPI 2 Example object, backed by a low level one.
 // Allows sharing examples for operation responses
 //   - https://swagger.io/specification/v2/#exampleObject
 type Example struct {
-	Values orderedmap.Map[string, any]
+	Values *orderedmap.Map[string, *yaml.Node]
 	low    *low.Examples
 }
 
@@ -21,7 +22,7 @@ func NewExample(examples *low.Examples) *Example {
 	e := new(Example)
 	e.low = examples
 	if orderedmap.Len(examples.Values) > 0 {
-		values := orderedmap.New[string, any]()
+		values := orderedmap.New[string, *yaml.Node]()
 		for pair := orderedmap.First(examples.Values); pair != nil; pair = pair.Next() {
 			values.Set(pair.Key().Value, pair.Value().Value)
 		}

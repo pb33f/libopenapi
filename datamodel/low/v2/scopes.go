@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -22,12 +21,12 @@ import (
 // Scopes lists the available scopes for an OAuth2 security scheme.
 //   - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
-	Values     orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	Values     *orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // GetExtensions returns all Scopes extensions and satisfies the low.HasExtensions interface.
-func (s *Scopes) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (s *Scopes) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return s.Extensions
 }
 
@@ -68,25 +67,9 @@ func (s *Scopes) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex
 // Hash will return a consistent SHA256 Hash of the Scopes object
 func (s *Scopes) Hash() [32]byte {
 	var f []string
-	vals := make(map[string]low.ValueReference[string], orderedmap.Len(s.Values))
-	keys := make([]string, orderedmap.Len(s.Values))
-	z := 0
-	for pair := orderedmap.First(s.Values); pair != nil; pair = pair.Next() {
-		keys[z] = pair.Key().Value
-		vals[pair.Key().Value] = pair.Value()
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(s.Values)); pair != nil; pair = pair.Next() {
+		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, pair.Value().Value))
 	}
-	sort.Strings(keys)
-	for k := range keys {
-		f = append(f, fmt.Sprintf("%s-%s", keys[k], vals[keys[k]].Value))
-	}
-	keys = make([]string, len(s.Extensions))
-	z = 0
-	for k := range s.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(s.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(s.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

@@ -17,19 +17,19 @@ import (
 // happens here. The entire being for existence of this library and the specification, is this Operation.
 //   - https://spec.openapis.org/oas/v3.1.0#operation-object
 type Operation struct {
-	Tags         []string                          `json:"tags,omitempty" yaml:"tags,omitempty"`
-	Summary      string                            `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Description  string                            `json:"description,omitempty" yaml:"description,omitempty"`
-	ExternalDocs *base.ExternalDoc                 `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
-	OperationId  string                            `json:"operationId,omitempty" yaml:"operationId,omitempty"`
-	Parameters   []*Parameter                      `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	RequestBody  *RequestBody                      `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
-	Responses    *Responses                        `json:"responses,omitempty" yaml:"responses,omitempty"`
-	Callbacks    orderedmap.Map[string, *Callback] `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
-	Deprecated   *bool                             `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	Security     []*base.SecurityRequirement       `json:"security,omitempty" yaml:"security,omitempty"`
-	Servers      []*Server                         `json:"servers,omitempty" yaml:"servers,omitempty"`
-	Extensions   map[string]any                    `json:"-" yaml:"-"`
+	Tags         []string                            `json:"tags,omitempty" yaml:"tags,omitempty"`
+	Summary      string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description  string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	ExternalDocs *base.ExternalDoc                   `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	OperationId  string                              `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Parameters   []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  *RequestBody                        `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Responses    *Responses                          `json:"responses,omitempty" yaml:"responses,omitempty"`
+	Callbacks    *orderedmap.Map[string, *Callback]  `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	Deprecated   *bool                               `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	Security     []*base.SecurityRequirement         `json:"security,omitempty" yaml:"security,omitempty"`
+	Servers      []*Server                           `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Extensions   *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low          *low.Operation
 }
 
@@ -45,7 +45,9 @@ func NewOperation(operation *low.Operation) *Operation {
 	}
 	o.Tags = tags
 	o.Summary = operation.Summary.Value
-	o.Deprecated = &operation.Deprecated.Value
+	if !operation.Deprecated.IsEmpty() {
+		o.Deprecated = &operation.Deprecated.Value
+	}
 	o.Description = operation.Description.Value
 	if !operation.ExternalDocs.IsEmpty() {
 		o.ExternalDocs = base.NewExternalDoc(operation.ExternalDocs.Value)

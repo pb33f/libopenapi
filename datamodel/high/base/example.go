@@ -15,11 +15,11 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
-	Summary       string         `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Description   string         `json:"description,omitempty" yaml:"description,omitempty"`
-	Value         any            `json:"value,omitempty" yaml:"value,omitempty"`
-	ExternalValue string         `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
-	Extensions    map[string]any `json:"-" yaml:"-"`
+	Summary       string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description   string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Value         *yaml.Node                          `json:"value,omitempty" yaml:"value,omitempty"`
+	ExternalValue string                              `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
+	Extensions    *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low           *low.Example
 }
 
@@ -58,7 +58,7 @@ func (e *Example) MarshalYAML() (interface{}, error) {
 
 // ExtractExamples will convert a low-level example map, into a high level one that is simple to navigate.
 // no fidelity is lost, everything is still available via GoLow()
-func ExtractExamples(elements orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Example]]) orderedmap.Map[string, *Example] {
+func ExtractExamples(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Example]]) *orderedmap.Map[string, *Example] {
 	extracted := orderedmap.New[string, *Example]()
 	for pair := orderedmap.First(elements); pair != nil; pair = pair.Next() {
 		extracted.Set(pair.Key().Value, NewExample(pair.Value().Value))

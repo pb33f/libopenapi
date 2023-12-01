@@ -9,12 +9,13 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Paths represents a high-level Swagger / OpenAPI Paths object, backed by a low-level one.
 type Paths struct {
-	PathItems  orderedmap.Map[string, *PathItem]
-	Extensions map[string]any
+	PathItems  *orderedmap.Map[string, *PathItem]
+	Extensions *orderedmap.Map[string, *yaml.Node]
 	low        *v2low.Paths
 }
 

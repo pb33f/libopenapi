@@ -13,10 +13,10 @@ import (
 // Server represents a high-level OpenAPI 3+ Server object, that is backed by a low level one.
 //   - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
-	URL         string                                  `json:"url,omitempty" yaml:"url,omitempty"`
-	Description string                                  `json:"description,omitempty" yaml:"description,omitempty"`
-	Variables   orderedmap.Map[string, *ServerVariable] `json:"variables,omitempty" yaml:"variables,omitempty"`
-	Extensions  map[string]any                          `json:"-" yaml:"-"`
+	URL         string                                   `json:"url,omitempty" yaml:"url,omitempty"`
+	Description string                                   `json:"description,omitempty" yaml:"description,omitempty"`
+	Variables   *orderedmap.Map[string, *ServerVariable] `json:"variables,omitempty" yaml:"variables,omitempty"`
+	Extensions  *orderedmap.Map[string, *yaml.Node]      `json:"-" yaml:"-"`
 	low         *low.Server
 }
 

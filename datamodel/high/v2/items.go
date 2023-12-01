@@ -5,6 +5,7 @@ package v2
 
 import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"gopkg.in/yaml.v3"
 )
 
 // Items is a high-level representation of a Swagger / OpenAPI 2 Items object, backed by a low level one.
@@ -16,7 +17,7 @@ type Items struct {
 	Format           string
 	CollectionFormat string
 	Items            *Items
-	Default          any
+	Default          *yaml.Node
 	Maximum          int
 	ExclusiveMaximum bool
 	Minimum          int
@@ -27,7 +28,7 @@ type Items struct {
 	MaxItems         int
 	MinItems         int
 	UniqueItems      bool
-	Enum             []any
+	Enum             []*yaml.Node
 	MultipleOf       int
 	low              *low.Items
 }
@@ -82,7 +83,7 @@ func NewItems(items *low.Items) *Items {
 		i.UniqueItems = items.UniqueItems.Value
 	}
 	if !items.Enum.IsEmpty() {
-		var enums []any
+		var enums []*yaml.Node
 		for e := range items.Enum.Value {
 			enums = append(enums, items.Enum.Value[e].Value)
 		}

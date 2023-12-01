@@ -20,8 +20,8 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
-	PropertyName string                         `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
-	Mapping      orderedmap.Map[string, string] `json:"mapping,omitempty" yaml:"mapping,omitempty"`
+	PropertyName string                          `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
+	Mapping      *orderedmap.Map[string, string] `json:"mapping,omitempty" yaml:"mapping,omitempty"`
 	low          *low.Discriminator
 }
 
