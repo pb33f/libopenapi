@@ -68,6 +68,9 @@ func (mg *MockGenerator) SetPretty() {
 // The name parameter is optional, if provided, the mock generator will attempt to find an example with the given name.
 // If no name is provided, the first example will be used.
 func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
+	if mock == nil || !reflect.ValueOf(mock).IsValid() || reflect.ValueOf(mock).IsNil() {
+		return nil, nil
+	}
 	v := reflect.ValueOf(mock).Elem()
 	num := v.NumField()
 	fieldCount := 0
