@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type Marshaler interface {
+type marshaler interface {
 	MarshalYAML() (interface{}, error)
 }
 
@@ -21,19 +21,19 @@ type MapToYamlNoder interface {
 	ToYamlNode(n NodeBuilder, l any) *yaml.Node
 }
 
-type HasKeyNode interface {
+type hasKeyNode interface {
 	GetKeyNode() *yaml.Node
 }
 
-type HasValueNode interface {
+type hasValueNode interface {
 	GetValueNode() *yaml.Node
 }
 
-type HasValueUntyped interface {
+type hasValueUntyped interface {
 	GetValueUntyped() any
 }
 
-type FindValueUntyped interface {
+type findValueUntyped interface {
 	FindValueUntyped(k string) any
 }
 
@@ -44,7 +44,7 @@ func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 
 	i := 99999
 	if l != nil {
-		if hvn, ok := l.(HasValueNode); ok {
+		if hvn, ok := l.(hasValueNode); ok {
 			vn = hvn.GetValueNode()
 			if vn != nil && len(vn.Content) > 0 {
 				i = vn.Content[0].Line
@@ -54,7 +54,7 @@ func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 
 	for pair := First(o); pair != nil; pair = pair.Next() {
 		var k any = pair.Key()
-		if m, ok := k.(Marshaler); ok { // TODO marshal inline?
+		if m, ok := k.(marshaler); ok { // TODO marshal inline?
 			k, _ = m.MarshalYAML()
 		}
 
@@ -78,9 +78,9 @@ func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 
 		var lv any
 		if l != nil {
-			if hvut, ok := l.(HasValueUntyped); ok {
+			if hvut, ok := l.(hasValueUntyped); ok {
 				vut := hvut.GetValueUntyped()
-				if m, ok := vut.(FindValueUntyped); ok {
+				if m, ok := vut.(findValueUntyped); ok {
 					lv = m.FindValueUntyped(ks)
 				}
 			}
@@ -116,7 +116,7 @@ func findKeyNode(key string, m *yaml.Node) *yaml.Node {
 func (o *Map[K, V]) FindValueUntyped(key string) any {
 	for pair := First(o); pair != nil; pair = pair.Next() {
 		var k any = pair.Key()
-		if hvut, ok := k.(HasValueUntyped); ok {
+		if hvut, ok := k.(hasValueUntyped); ok {
 			if fmt.Sprintf("%v", hvut.GetValueUntyped()) == key {
 				return pair.Value()
 			}
