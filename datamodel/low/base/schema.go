@@ -1011,22 +1011,24 @@ func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex
 				continue
 			}
 
+			foundCtx := ctx
 			// check our prop isn't reference
 			refString := ""
 			var refNode *yaml.Node
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _, _, _ := low.LocateRefNodeWithContext(ctx, prop, idx)
+				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
 				if ref != nil {
 					refNode = prop
 					prop = ref
 					refString = l
+					foundCtx = fctx
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
 
-			sp := &SchemaProxy{ctx: ctx, kn: currentProp, vn: prop, idx: idx}
+			sp := &SchemaProxy{ctx: foundCtx, kn: currentProp, vn: prop, idx: idx}
 			sp.SetReference(refString, refNode)
 
 			propertyMap.Set(low.KeyReference[string]{
