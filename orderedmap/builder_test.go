@@ -68,7 +68,7 @@ three: four
 			},
 			want: `one: two
 three: four
-		`,
+`,
 		},
 	}
 	for _, tt := range tests {
