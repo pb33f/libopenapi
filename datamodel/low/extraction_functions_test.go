@@ -1561,6 +1561,8 @@ func TestGenerateHashString(t *testing.T) {
 
 	assert.Equal(t, "",
 		GenerateHashString(nil))
+
+	assert.Equal(t, "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2", GenerateHashString(utils.CreateStringNode("test")))
 }
 
 func TestGenerateHashString_Pointer(t *testing.T) {
@@ -2103,6 +2105,45 @@ func TestHashExtensions(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			hash := HashExtensions(tt.args.ext)
 			assert.Equal(t, tt.want, hash)
+		})
+	}
+}
+
+func TestValueToString(t *testing.T) {
+	type args struct {
+		v any
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "string",
+			args: args{
+				v: "hello",
+			},
+			want: "hello",
+		},
+		{
+			name: "int",
+			args: args{
+				v: 1,
+			},
+			want: "1",
+		},
+		{
+			name: "yaml.Node",
+			args: args{
+				v: utils.CreateStringNode("world"),
+			},
+			want: "world",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ValueToString(tt.args.v)
+			assert.Equal(t, tt.want, strings.TrimSpace(got))
 		})
 	}
 }
