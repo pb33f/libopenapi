@@ -259,7 +259,7 @@ func TestCreateDocumentStripe(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/stripe.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	d, err := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
-	assert.Len(t, utils.UnwrapErrors(err), 2)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 
 	assert.Equal(t, "3.0.0", d.Version.Value)
 	assert.Equal(t, "Stripe API", d.Info.Value.Title.Value)
