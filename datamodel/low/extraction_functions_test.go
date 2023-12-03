@@ -18,6 +18,7 @@ import (
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -2062,4 +2063,46 @@ func TestArray_NotRefNotArray(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, err.Error(), "array build failed, input is not an array, line 2, column 3")
 	assert.Len(t, things, 0)
+}
+
+func TestHashExtensions(t *testing.T) {
+	type args struct {
+		ext *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "empty",
+			args: args{
+				ext: orderedmap.New[KeyReference[string], ValueReference[*yaml.Node]](),
+			},
+			want: []string{},
+		},
+		{
+			name: "hashes extensions",
+			args: args{
+				ext: orderedmap.ToOrderedMap(map[KeyReference[string]]ValueReference[*yaml.Node]{
+					{Value: "x-burger"}: {
+						Value: utils.CreateStringNode("yummy"),
+					},
+					{Value: "x-car"}: {
+						Value: utils.CreateStringNode("ford"),
+					},
+				}),
+			},
+			want: []string{
+				"x-burger-2a296977a4572521773eb7e7773cc054fae3e8589511ce9bf90cec7dd93d016a",
+				"x-car-7d3aa6a5c79cdb0c2585daed714fa0936a18e6767b2dcc804992a90f6d0b8f5e",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash := HashExtensions(tt.args.ext)
+			assert.Equal(t, tt.want, hash)
+		})
+	}
 }

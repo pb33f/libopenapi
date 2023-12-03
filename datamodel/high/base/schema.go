@@ -323,10 +323,10 @@ func NewSchema(schema *base.Schema) *Schema {
 	// for every item, build schema async
 	buildSchema := func(sch lowmodel.ValueReference[*base.SchemaProxy], idx int, bChan chan buildResult) {
 		n := &lowmodel.NodeReference[*base.SchemaProxy]{
-			ValueNode: sch.GetValueNode(),
+			ValueNode: sch.ValueNode,
 			Value:     sch.Value,
 		}
-		n.SetReference(sch.GetReference(), sch.GetValueNode())
+		n.SetReference(sch.GetReference(), sch.GetReferenceNode())
 
 		p := NewSchemaProxy(n)
 

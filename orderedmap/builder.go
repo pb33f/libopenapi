@@ -55,16 +55,8 @@ func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 	for pair := First(o); pair != nil; pair = pair.Next() {
 		var k any = pair.Key()
 		if m, ok := k.(marshaler); ok { // TODO marshal inline?
-			k, _ = m.MarshalYAML()
-		}
-
-		var y any
-		y, ok := k.(yaml.Node)
-		if !ok {
-			y, ok = k.(*yaml.Node)
-		}
-		if ok {
-			b, _ := yaml.Marshal(y)
+			mk, _ := m.MarshalYAML()
+			b, _ := yaml.Marshal(mk)
 			k = strings.TrimSpace(string(b))
 		}
 
