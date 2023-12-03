@@ -198,7 +198,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 		}
 
 		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Name),
+			ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Definition),
 			Node:     circRef.LoopPoint.Node,
 			Path:     circRef.GenerateJourneyPath(),
 		})
@@ -354,7 +354,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 					} else {
 						resolver.circularReferences = append(resolver.circularReferences, circRef)
 					}
-
+					r.Seen = true
+					r.Circular = true
 					foundDup.Seen = true
 					foundDup.Circular = true
 				}
@@ -429,30 +430,26 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	}
 
 	// this is a safety check to prevent a stack overflow.
-	if depth > 500 {
+	if depth > 100 {
 		def := "unknown"
 		if ref != nil {
 			def = ref.FullDefinition
 		}
 		if resolver.specIndex != nil && resolver.specIndex.logger != nil {
-			resolver.specIndex.logger.Warn("libopenapi resolver: relative depth exceeded 500 levels, "+
+			resolver.specIndex.logger.Warn("libopenapi resolver: relative depth exceeded 100 levels, "+
 				"check for circular references - resolving may be incomplete",
 				"reference", def)
 		}
 
 		loop := append(journey, ref)
 		circRef := &CircularReferenceResult{
-			Journey:   loop,
-			Start:     ref,
-			LoopIndex: depth,
-			LoopPoint: ref,
+			Journey:        loop,
+			Start:          ref,
+			LoopIndex:      depth,
+			LoopPoint:      ref,
+			IsInfiniteLoop: true,
 		}
 		resolver.circularReferences = append(resolver.circularReferences, circRef)
-		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef: fmt.Errorf("circular reference detected: %s", circRef.GenerateJourneyPath()),
-			Node:     node,
-			Path:     circRef.GenerateJourneyPath(),
-		})
 		ref.Circular = true
 		return nil
 	}
@@ -464,7 +461,13 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				depth++
 
-				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(ref)
+				if foundRef != nil && !foundRef.Circular {
+					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+				}
+				if foundRef == nil {
+					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+				}
 
 			}
 
