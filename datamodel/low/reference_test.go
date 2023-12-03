@@ -50,13 +50,10 @@ func TestNodeReference_Mutate(t *testing.T) {
 
 func TestNodeReference_RefNode(t *testing.T) {
 	nr := new(NodeReference[string])
-	nr.KeyNode = &yaml.Node{
-		Content: []*yaml.Node{{
-			Value: "$ref",
-		}},
-	}
+	nr.KeyNode = utils.CreateRefNode("#/components/schemas/SomeSchema")
 	nr.SetReference("#/components/schemas/SomeSchema", nr.KeyNode)
 	assert.True(t, nr.IsReference())
+	assert.Equal(t, nr.KeyNode, nr.GetReferenceNode())
 }
 
 func TestValueReference_Mutate(t *testing.T) {

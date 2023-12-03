@@ -49,11 +49,12 @@ func (c *Callback) GoLowUntyped() any {
 	return c.low
 }
 
-// Render will return a YAML representation of the Paths object as a byte slice.
+// Render will return a YAML representation of the Callback object as a byte slice.
 func (c *Callback) Render() ([]byte, error) {
 	return yaml.Marshal(c)
 }
 
+// RenderInline will return an YAML representation of the Callback object as a byte slice with references resolved.
 func (c *Callback) RenderInline() ([]byte, error) {
 	d, _ := c.MarshalYAMLInline()
 	return yaml.Marshal(d)
