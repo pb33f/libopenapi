@@ -310,7 +310,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	}
 
 	journey = append(journey, ref)
-	relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, resolve, 0)
+	seenRelatives := make(map[int]bool)
+	relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, seenRelatives, resolve, 0)
 
 	seen = make(map[string]bool)
 
@@ -421,7 +422,7 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 
 func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*Reference, resolve bool, depth int) []*Reference {
+	journey []*Reference, seen map[int]bool, resolve bool, depth int) []*Reference {
 
 	if len(journey) > 100 {
 		return nil
@@ -438,6 +439,21 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				"check for circular references - resolving may be incomplete",
 				"reference", def)
 		}
+
+		loop := append(journey, ref)
+		circRef := &CircularReferenceResult{
+			Journey:   loop,
+			Start:     ref,
+			LoopIndex: depth,
+			LoopPoint: ref,
+		}
+		resolver.circularReferences = append(resolver.circularReferences, circRef)
+		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
+			ErrorRef: fmt.Errorf("circular reference detected: %s", circRef.GenerateJourneyPath()),
+			Node:     node,
+			Path:     circRef.GenerateJourneyPath(),
+		})
+		ref.Circular = true
 		return nil
 	}
 
@@ -447,7 +463,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				depth++
-				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, resolve, depth)...)
+
+				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+
 			}
 
 			if i%2 == 0 && n.Value == "$ref" {
