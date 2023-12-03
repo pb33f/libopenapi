@@ -157,7 +157,7 @@ func ToOrderedMap[K comparable, V any](m map[K]V) *Map[K, V] {
 	for k, v := range m {
 		om.Set(k, v)
 	}
-	return om
+	return SortAlpha(om)
 }
 
 // First returns map's first pair for iteration.
