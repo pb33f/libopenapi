@@ -310,7 +310,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	}
 
 	journey = append(journey, ref)
-	relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, resolve)
+	relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, resolve, 0)
 
 	seen = make(map[string]bool)
 
@@ -421,9 +421,23 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 
 func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*Reference, resolve bool) []*Reference {
+	journey []*Reference, resolve bool, depth int) []*Reference {
 
 	if len(journey) > 100 {
+		return nil
+	}
+
+	// this is a safety check to prevent a stack overflow.
+	if depth > 500 {
+		def := "unknown"
+		if ref != nil {
+			def = ref.FullDefinition
+		}
+		if resolver.specIndex != nil && resolver.specIndex.logger != nil {
+			resolver.specIndex.logger.Warn("libopenapi resolver: relative depth exceeded 500 levels, "+
+				"check for circular references - resolving may be incomplete",
+				"reference", def)
+		}
 		return nil
 	}
 
@@ -432,8 +446,8 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
-
-				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, resolve)...)
+				depth++
+				found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, resolve, depth)...)
 			}
 
 			if i%2 == 0 && n.Value == "$ref" {
