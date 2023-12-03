@@ -311,7 +311,7 @@ func TestDocument_ResolveStripe(t *testing.T) {
 	rolo := model.Index.GetRolodex()
 	rolo.Resolve()
 
-	assert.Equal(t, 2, len(model.Index.GetRolodex().GetCaughtErrors()))
+	assert.Equal(t, 1, len(model.Index.GetRolodex().GetCaughtErrors()))
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Asana(t *testing.T) {

@@ -470,7 +470,7 @@ func TestResolver_DeepDepth(t *testing.T) {
 	found := resolver.extractRelatives(ref, refA, nil, nil, nil, nil, false, 0)
 
 	assert.Nil(t, found)
-	assert.Contains(t, buf.String(), "libopenapi resolver: relative depth exceeded 500 levels")
+	assert.Contains(t, buf.String(), "libopenapi resolver: relative depth exceeded 100 levels")
 }
 
 func TestResolver_ResolveComponents_Stripe_NoRolodex(t *testing.T) {
@@ -492,7 +492,7 @@ func TestResolver_ResolveComponents_Stripe_NoRolodex(t *testing.T) {
 	assert.NotNil(t, resolver)
 
 	circ := resolver.CheckForCircularReferences()
-	assert.Len(t, circ, 2)
+	assert.Len(t, circ, 1)
 
 	_, err := yaml.Marshal(resolver.resolvedRoot)
 	assert.NoError(t, err)
@@ -521,9 +521,10 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	// after resolving, the rolodex will have errors.
 	rolo.Resolve()
 
-	assert.Len(t, rolo.GetCaughtErrors(), 2)
-	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 2)
+	assert.Len(t, rolo.GetCaughtErrors(), 1)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 1)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetPolymorphicCircularErrors(), 0)
+	assert.Len(t, rolo.GetRootIndex().GetResolver().GetSafeCircularReferences(), 25)
 
 }
 
@@ -769,9 +770,13 @@ func ExampleNewResolver() {
 	// The Stripe API has a bunch of circular reference problems, mainly from polymorphism.
 	// So let's print them out.
 	//
-	fmt.Printf("There are %d circular reference errors, %d of them are polymorphic errors, %d are not",
-		len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()))
-	// Output: There are 2 circular reference errors, 0 of them are polymorphic errors, 2 are not
+	fmt.Printf("There is %d circular reference error, %d of them are polymorphic errors, %d are not\n"+
+		"with a total pf %d safe circular references.\n",
+		len(circularErrors), len(resolver.GetPolymorphicCircularErrors()), len(resolver.GetNonPolymorphicCircularErrors()),
+		len(resolver.GetSafeCircularReferences()))
+	// Output: There is 1 circular reference error, 0 of them are polymorphic errors, 1 are not
+	// with a total pf 25 safe circular references.
+
 }
 
 func ExampleResolvingError() {
