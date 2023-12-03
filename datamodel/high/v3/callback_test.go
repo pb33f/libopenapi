@@ -84,3 +84,27 @@ func TestCallback_MarshalYAML(t *testing.T) {
 	rend, _ = r.Render()
 	assert.Equal(t, k, strings.TrimSpace(string(rend)))
 }
+
+func TestCallback_RenderInline(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
+
+	cb := &Callback{
+		Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
+			"https://pb33f.io": {
+				Get: &Operation{
+					OperationId: "oneTwoThree",
+				},
+			},
+			"https://pb33f.io/libopenapi": {
+				Get: &Operation{
+					OperationId: "openaypeeeye",
+				},
+			},
+		}),
+		Extensions: ext,
+	}
+
+	rend, _ := cb.RenderInline()
+	assert.Equal(t, "x-burgers: why not?\nhttps://pb33f.io:\n    get:\n        operationId: oneTwoThree\nhttps://pb33f.io/libopenapi:\n    get:\n        operationId: openaypeeeye\n", string(rend))
+}
