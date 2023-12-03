@@ -434,7 +434,7 @@ func TestResolver_DeepJourney(t *testing.T) {
 	}
 	idx := NewSpecIndexWithConfig(nil, CreateClosedAPIIndexConfig())
 	resolver := NewResolver(idx)
-	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, false, 0))
+	assert.Nil(t, resolver.extractRelatives(nil, nil, nil, nil, journey, nil, false, 0))
 }
 
 func TestResolver_DeepDepth(t *testing.T) {
@@ -467,7 +467,7 @@ func TestResolver_DeepDepth(t *testing.T) {
 	ref := &Reference{
 		FullDefinition: "#/components/schemas/A",
 	}
-	found := resolver.extractRelatives(ref, refA, nil, nil, nil, false, 0)
+	found := resolver.extractRelatives(ref, refA, nil, nil, nil, nil, false, 0)
 
 	assert.Nil(t, found)
 	assert.Contains(t, buf.String(), "libopenapi resolver: relative depth exceeded 500 levels")
