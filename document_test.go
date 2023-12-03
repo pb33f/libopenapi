@@ -147,98 +147,24 @@ info:
 	assert.Equal(t, ymlModified, string(serial))
 }
 
-func TestDocument_RoundTrip(t *testing.T) {
-	orig := `openapi: 3.1.0
-info:
-  title: "The magic API"
-  description: |
-    A multi-line description
-    of the API. That should be retained.
-tags:
-  - name: "Burgers"
-security:
-  - oauth2: []
-paths:
-  "/test":
-    parameters:
-      - $ref: "#/components/parameters/completed_since"
-    post:
-      tags:
-        - "Burgers"
-      operationId: "test"
-      requestBody:
-        description: Callback payload
-        content:
-          'application/json':
-            schema:
-              type: string
-      responses:
-        "200":
-          description: "OK"
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/test"
-                  arr:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/test"
-      callbacks:
-        BurgerCallback:
-          x-break-everything: please
-          "{$request.query.queryUrl}":
-            post:
-              requestBody:
-                description: Callback payload
-                content:
-                  application/json:
-                    schema:
-                      type: string
-              responses:
-                '200':
-                  description: callback successfully processes
-components:
-  schemas:
-    test:
-      type: string
-  parameters:
-    completed_since:
-      in: query
-      name: completed_since
-      required: false
-      explode: false
-      schema:
-        example: 2012-02-22T02:06:58.158Z
-        format: date-time
-        type: string
-  links:
-    LocateBurger:
-      operationId: locateBurger
-      parameters:
-        burgerId: '$response.body#/id'
-      description: Go and get a tasty burger
-  securitySchemes:
-    oauth2:
-      description: |-
-        We require that applications designed to access the Asana API on behalf of multiple users implement OAuth 2.0.
-        Asana supports the Authorization Code Grant flow.
-      flows:
-        authorizationCode:
-          authorizationUrl: https://app.asana.com/-/oauth_authorize
-          refreshUrl: https://app.asana.com/-/oauth_token
-          scopes:
-            default: Provides access to all endpoints documented in our API reference. If no scopes are requested, this scope is assumed by default.
-            email: Provides access to the user’s email through the OpenID Connect user info endpoint.
-            openid: Provides access to OpenID Connect ID tokens and the OpenID Connect user info endpoint.
-            profile: Provides access to the user’s name and profile photo through the OpenID Connect user info endpoint.
-          tokenUrl: https://app.asana.com/-/oauth_token
-      type: oauth2
-`
+func TestDocument_RoundTrip_JSON(t *testing.T) {
+	bs, _ := os.ReadFile("test_specs/roundtrip.json")
 
-	doc, err := NewDocument([]byte(orig))
+	doc, err := NewDocument(bs)
+	require.NoError(t, err)
+
+	m, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	out := m.Model.RenderJSON("  ")
+
+	assert.Equal(t, string(bs), string(out))
+}
+
+func TestDocument_RoundTrip_YAML(t *testing.T) {
+	bs, _ := os.ReadFile("test_specs/roundtrip.yaml")
+
+	doc, err := NewDocument(bs)
 	require.NoError(t, err)
 
 	_, errs := doc.BuildV3Model()
@@ -247,7 +173,23 @@ components:
 	out, err := doc.Render()
 	require.NoError(t, err)
 
-	assert.Equal(t, orig, string(out))
+	assert.Equal(t, string(bs), string(out))
+}
+
+func TestDocument_RoundTrip_YAML_To_JSON(t *testing.T) {
+	y, _ := os.ReadFile("test_specs/roundtrip.yaml")
+	j, _ := os.ReadFile("test_specs/roundtrip.json")
+
+	doc, err := NewDocument(y)
+	require.NoError(t, err)
+
+	m, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	out := m.Model.RenderJSON("  ")
+	require.NoError(t, err)
+
+	assert.Equal(t, string(j), string(out))
 }
 
 func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {

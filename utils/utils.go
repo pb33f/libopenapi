@@ -92,7 +92,6 @@ func FindLastChildNodeWithLevel(node *yaml.Node, level int) *yaml.Node {
 
 // BuildPath will construct a JSONPath from a base and an array of strings.
 func BuildPath(basePath string, segs []string) string {
-
 	path := strings.Join(segs, ".")
 
 	// trim that last period.
@@ -174,7 +173,6 @@ func ConvertInterfaceArrayToStringArray(raw interface{}) []string {
 
 // ExtractValueFromInterfaceMap pulls out an unknown value from a map using a string key
 func ExtractValueFromInterfaceMap(name string, raw interface{}) interface{} {
-
 	if propMap, ok := raw.(map[string]interface{}); ok {
 		if props, okn := propMap[name].([]interface{}); okn {
 			return props
@@ -249,8 +247,7 @@ func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNo
 // FindKeyNode is a non-recursive search of a *yaml.Node Content for a child node with a key.
 // Returns the key and value
 func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode *yaml.Node) {
-
-	//numNodes := len(nodes)
+	// numNodes := len(nodes)
 	for i, v := range nodes {
 		if i%2 == 0 && key == v.Value {
 			if len(nodes) <= i+1 {
@@ -337,15 +334,17 @@ func FindExtensionNodes(nodes []*yaml.Node) []*ExtensionNode {
 	return extensions
 }
 
-var ObjectLabel = "object"
-var IntegerLabel = "integer"
-var NumberLabel = "number"
-var StringLabel = "string"
-var BinaryLabel = "binary"
-var ArrayLabel = "array"
-var BooleanLabel = "boolean"
-var SchemaSource = "https://json-schema.org/draft/2020-12/schema"
-var SchemaId = "https://pb33f.io/openapi-changes/schema"
+var (
+	ObjectLabel  = "object"
+	IntegerLabel = "integer"
+	NumberLabel  = "number"
+	StringLabel  = "string"
+	BinaryLabel  = "binary"
+	ArrayLabel   = "array"
+	BooleanLabel = "boolean"
+	SchemaSource = "https://json-schema.org/draft/2020-12/schema"
+	SchemaId     = "https://pb33f.io/openapi-changes/schema"
+)
 
 func MakeTagReadable(node *yaml.Node) string {
 	switch node.Tag {
@@ -465,7 +464,6 @@ func IsNodeBoolValue(node *yaml.Node) bool {
 }
 
 func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
-
 	if node == nil {
 		return false, nil, ""
 	}
@@ -483,7 +481,7 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 // FixContext will clean up a JSONpath string to be correctly traversable.
 func FixContext(context string) string {
 	tokens := strings.Split(context, ".")
-	var cleaned = []string{}
+	cleaned := []string{}
 
 	for i, t := range tokens {
 		if v, err := strconv.Atoi(t); err == nil {
@@ -543,19 +541,6 @@ func ConvertYAMLtoJSON(yamlData []byte) ([]byte, error) {
 	return jsonData, nil
 }
 
-// ConvertYAMLtoJSONPretty will do exactly what you think it will. It will deserialize YAML into serialized JSON.
-// However, this version will apply prefix/indentation to the JSON.
-func ConvertYAMLtoJSONPretty(yamlData []byte, prefix string, indent string) ([]byte, error) {
-	var decodedYaml map[string]interface{}
-	err := yaml.Unmarshal(yamlData, &decodedYaml)
-	if err != nil {
-		return nil, err
-	}
-	// if the data can be decoded, it can be encoded (that's my view anyway). no need for an error check.
-	jsonData, _ := json.MarshalIndent(decodedYaml, prefix, indent)
-	return jsonData, nil
-}
-
 // IsHttpVerb will check if an operation is valid or not.
 func IsHttpVerb(verb string) bool {
 	verbs := []string{"get", "post", "put", "patch", "delete", "options", "trace", "head"}
@@ -568,8 +553,10 @@ func IsHttpVerb(verb string) bool {
 }
 
 // define bracket name expression
-var bracketNameExp = regexp.MustCompile(`^(\w+)\[(\w+)\]$`)
-var pathCharExp = regexp.MustCompile(`[%=;~.]`)
+var (
+	bracketNameExp = regexp.MustCompile(`^(\w+)\[(\w+)\]$`)
+	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
+)
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
@@ -638,7 +625,6 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 }
 
 func RenderCodeSnippet(startNode *yaml.Node, specData []string, before, after int) string {
-
 	buf := new(strings.Builder)
 
 	startLine := startNode.Line - before
