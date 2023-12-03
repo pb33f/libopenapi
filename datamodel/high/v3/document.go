@@ -16,8 +16,8 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/json"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -172,8 +172,9 @@ func (d *Document) RenderWithIndention(indent int) []byte {
 
 // RenderJSON will return a JSON representation of the Document object as a byte slice.
 func (d *Document) RenderJSON(indention string) []byte {
-	yamlData, _ := yaml.Marshal(d)
-	dat, _ := utils.ConvertYAMLtoJSONPretty(yamlData, "", indention)
+	nb := high.NewNodeBuilder(d, d.low)
+
+	dat, _ := json.YAMLNodeToJSON(nb.Render(), indention)
 	return dat
 }
 
