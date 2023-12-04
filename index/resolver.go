@@ -249,15 +249,15 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 	}
 }
 
+type refMap struct {
+	ref   *Reference
+	nodes []*yaml.Node
+}
+
 func visitIndex(res *Resolver, idx *SpecIndex) {
 	mapped := idx.GetMappedReferencesSequenced()
 	mappedIndex := idx.GetMappedReferences()
 	res.indexesVisited++
-
-	type refMap struct {
-		ref   *Reference
-		nodes []*yaml.Node
-	}
 
 	var refs []refMap
 	for _, ref := range mapped {
@@ -277,6 +277,7 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 			}
 		}
 	}
+	idx.pendingResolve = refs
 
 	schemas := idx.GetAllComponentSchemas()
 	for s, schemaRef := range schemas {
@@ -309,9 +310,9 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	}
 
 	//map everything afterwards
-	for r := range refs {
-		refs[r].ref.Node.Content = refs[r].nodes
-	}
+	//for r := range refs {
+	//refs[r].ref.Node.Content = refs[r].nodes
+	//}
 
 }
 
@@ -391,7 +392,6 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if resolve && !original.Circular {
 				ref.Resolved = true
 				r.Resolved = true
-				//fmt.Sprintf("resolved: %s", resolved)
 				r.Node.Content = resolved // this is where we perform the actual resolving.
 			}
 			r.Seen = true
@@ -592,10 +592,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					IsRemote:       true,
 				}
 
-				if strings.Contains(fullDef, "test-") {
-					fmt.Println("test-")
-
-				}
 				locatedRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
 
 				if locatedRef == nil {
@@ -882,4 +878,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	}
 	resolver.relativesSeen += len(found)
 	return found
+}
+
+func (resolver *Resolver) ResolvePendingNodes() {
+	//map everything afterwards
+	for _, r := range resolver.specIndex.pendingResolve {
+		//r.Node.Content = refs[r].nodes
+		r.ref.Node.Content = r.nodes
+	}
 }
