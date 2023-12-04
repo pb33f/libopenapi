@@ -4,13 +4,14 @@
 package index
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	"golang.org/x/sync/syncmap"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"golang.org/x/sync/syncmap"
 
 	"gopkg.in/yaml.v3"
 )
@@ -235,7 +236,7 @@ type SpecIndex struct {
 	allRefSchemaDefinitions             []*Reference                                  // all schemas found that are references.
 	allInlineSchemaDefinitions          []*Reference                                  // all schemas found in document outside of components (openapi) or definitions (swagger).
 	allInlineSchemaObjectDefinitions    []*Reference                                  // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
-	allComponentSchemaDefinitions       map[string]*Reference                         // all schemas found in components (openapi) or definitions (swagger).
+	allComponentSchemaDefinitions       *syncmap.Map                                  // all schemas found in components (openapi) or definitions (swagger).
 	securitySchemesNode                 *yaml.Node                                    // components/securitySchemes node
 	allSecuritySchemes                  map[string]*Reference                         // all security schemes / definitions.
 	requestBodiesNode                   *yaml.Node                                    // components/requestBodies node

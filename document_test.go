@@ -1191,3 +1191,61 @@ func TestDocument_AdvanceCallbackReferences(t *testing.T) {
 
 	assert.Empty(t, buf.String())
 }
+
+func BenchmarkLoadDocTwice(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+
+		spec, err := os.ReadFile("test_specs/speakeasy-test.yaml")
+		require.NoError(b, err)
+
+		doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+			BasePath:                            "./test_specs",
+			IgnorePolymorphicCircularReferences: true,
+			IgnoreArrayCircularReferences:       true,
+			AllowFileReferences:                 true,
+		})
+		require.NoError(b, err)
+
+		_, errs := doc.BuildV3Model()
+		require.Empty(b, errs)
+
+		doc, err = NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+			BasePath:                            "./test_specs",
+			IgnorePolymorphicCircularReferences: true,
+			IgnoreArrayCircularReferences:       true,
+			AllowFileReferences:                 true,
+		})
+		require.NoError(b, err)
+
+		_, errs = doc.BuildV3Model()
+		require.Empty(b, errs)
+
+	}
+}
+
+func TestDocument_LoadDocTwice(t *testing.T) {
+	spec, err := os.ReadFile("test_specs/speakeasy-test.yaml")
+	require.NoError(t, err)
+
+	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+		BasePath:                            "./test_specs",
+		IgnorePolymorphicCircularReferences: true,
+		IgnoreArrayCircularReferences:       true,
+		AllowFileReferences:                 true,
+	})
+	require.NoError(t, err)
+
+	_, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	doc, err = NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+		BasePath:                            "./test_specs",
+		IgnorePolymorphicCircularReferences: true,
+		IgnoreArrayCircularReferences:       true,
+		AllowFileReferences:                 true,
+	})
+	require.NoError(t, err)
+
+	_, errs = doc.BuildV3Model()
+	require.Empty(t, errs)
+}

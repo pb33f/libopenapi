@@ -14,15 +14,16 @@ package index
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"golang.org/x/sync/syncmap"
-	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 )
 
 // NewSpecIndexWithConfig will create a new index of an OpenAPI or Swagger spec. It uses the same logic as NewSpecIndex
@@ -284,7 +285,7 @@ func (index *SpecIndex) GetAllReferenceSchemas() []*Reference {
 
 // GetAllComponentSchemas will return all schemas defined in the components section of the document.
 func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
-	return index.allComponentSchemaDefinitions
+	return syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
 }
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
