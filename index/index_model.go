@@ -277,6 +277,7 @@ type SpecIndex struct {
 	logger                              *slog.Logger
 	nodeMap                             map[int]map[int]*yaml.Node
 	nodeMapCompleted                    chan bool
+	pendingResolve                      []refMap
 }
 
 // GetResolver returns the resolver for this index.

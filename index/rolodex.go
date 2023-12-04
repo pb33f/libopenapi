@@ -399,6 +399,11 @@ func (r *Rolodex) Resolve() {
 		r.safeCircularReferences = append(r.safeCircularReferences, res.GetSafeCircularReferences()...)
 		r.infiniteCircularReferences = append(r.infiniteCircularReferences, res.GetInfiniteCircularReferences()...)
 	}
+
+	// resolve pending nodes
+	for _, res := range resolvers {
+		res.ResolvePendingNodes()
+	}
 	r.resolved = true
 }
 
