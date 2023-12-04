@@ -157,10 +157,12 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 			pNode := value.pathNode
 			cNode := value.currentNode
 
+			foundContext := ctx
 			if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
-				r, _, err := low.LocateRefNode(pNode, idx)
+				r, _, err, fCtx := low.LocateRefNodeWithContext(ctx, pNode, idx)
 				if r != nil {
 					pNode = r
+					foundContext = fCtx
 					if err != nil {
 						if !idx.AllowCircularReferenceResolving() {
 							return buildResult{}, fmt.Errorf("path item build failed: %s", err.Error())
@@ -174,7 +176,7 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 
 			path := new(PathItem)
 			_ = low.BuildModel(pNode, path)
-			err := path.Build(ctx, cNode, pNode, idx)
+			err := path.Build(foundContext, cNode, pNode, idx)
 			if err != nil {
 				if idx != nil && idx.GetLogger() != nil {
 					idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
