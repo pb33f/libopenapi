@@ -3,6 +3,7 @@
 package libopenapi
 
 import (
+	"bytes"
 	"fmt"
 	"log/slog"
 	"os"
@@ -1169,4 +1170,24 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 			// will lose consistent order.
 		})
 	})
+}
+
+func TestDocument_AdvanceCallbackReferences(t *testing.T) {
+	bs, _ := os.ReadFile("test_specs/advancecallbackreferences/min-openapi.yaml")
+
+	buf := bytes.NewBuffer([]byte{})
+
+	config := datamodel.NewDocumentConfiguration()
+	config.AllowRemoteReferences = true
+	config.AllowFileReferences = true
+	config.BasePath = "test_specs/advancecallbackreferences"
+	config.Logger = slog.New(slog.NewJSONHandler(buf, &slog.HandlerOptions{Level: slog.LevelError}))
+
+	doc, err := NewDocumentWithConfiguration(bs, config)
+	require.NoError(t, err)
+
+	_, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	assert.Empty(t, buf.String())
 }

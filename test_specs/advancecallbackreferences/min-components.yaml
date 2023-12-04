@@ -1,0 +1,9 @@
+components:
+  pathItems:
+    test-callback:
+      $ref: "#/components/pathItems/test-callback-2"
+    test-callback-2:
+      get:
+        responses:
+          "200":
+            description: OK
