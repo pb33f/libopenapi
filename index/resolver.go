@@ -253,15 +253,27 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	mapped := idx.GetMappedReferencesSequenced()
 	mappedIndex := idx.GetMappedReferences()
 	res.indexesVisited++
+
+	type refMap struct {
+		ref   *Reference
+		nodes []*yaml.Node
+	}
+
+	var refs []refMap
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
 		var journey []*Reference
 		res.journeysTaken++
 		if ref != nil && ref.Reference != nil {
 			n := res.VisitReference(ref.Reference, seenReferences, journey, true)
-			ref.Reference.Node.Content = n
 			if !ref.Reference.Circular {
-				ref.OriginalReference.Node.Content = n
+				// make a note of the reference and map the original ref after we're done
+				if ok, _, _ := utils.IsNodeRefValue(ref.OriginalReference.Node); ok {
+					refs = append(refs, refMap{
+						ref:   ref.OriginalReference,
+						nodes: n,
+					})
+				}
 			}
 		}
 	}
@@ -295,6 +307,12 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 			}
 		}
 	}
+
+	//map everything afterwards
+	for r := range refs {
+		refs[r].ref.Node.Content = refs[r].nodes
+	}
+
 }
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
@@ -373,6 +391,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if resolve && !original.Circular {
 				ref.Resolved = true
 				r.Resolved = true
+				//fmt.Sprintf("resolved: %s", resolved)
 				r.Node.Content = resolved // this is where we perform the actual resolving.
 			}
 			r.Seen = true
@@ -463,7 +482,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(ref)
 				if foundRef != nil && !foundRef.Circular {
-					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
 				}
 				if foundRef == nil {
 					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
@@ -573,6 +592,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					IsRemote:       true,
 				}
 
+				if strings.Contains(fullDef, "test-") {
+					fmt.Println("test-")
+
+				}
 				locatedRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
 
 				if locatedRef == nil {
