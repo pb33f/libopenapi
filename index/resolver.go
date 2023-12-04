@@ -308,12 +308,6 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 			}
 		}
 	}
-
-	//map everything afterwards
-	//for r := range refs {
-	//refs[r].ref.Node.Content = refs[r].nodes
-	//}
-
 }
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
