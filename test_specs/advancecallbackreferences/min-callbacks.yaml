@@ -1,0 +1,3 @@
+test-callback:
+  "/test-callback":
+    $ref: "./min-components.yaml#/components/pathItems/test-callback"

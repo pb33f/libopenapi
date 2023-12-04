@@ -1,0 +1,16 @@
+openapi: 3.1.0
+info:
+  title: Test
+  version: 0.0.1
+servers:
+  - url: https://test.com
+paths:
+  /test:
+    get:
+      operationId: test
+      responses:
+        "200":
+          description: OK
+      callbacks:
+        test:
+          $ref: "./min-callbacks.yaml#/test-callback"
