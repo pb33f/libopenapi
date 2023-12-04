@@ -44,6 +44,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	ref := searchRef.FullDefinition
 	refAlt := ref
 	absPath := index.specAbsolutePath
+	if searchRef.RemoteLocation != "" {
+		absPath = searchRef.RemoteLocation
+	}
 	if absPath == "" {
 		absPath = index.config.BasePath
 	}

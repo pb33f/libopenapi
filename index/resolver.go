@@ -249,22 +249,35 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 	}
 }
 
+type refMap struct {
+	ref   *Reference
+	nodes []*yaml.Node
+}
+
 func visitIndex(res *Resolver, idx *SpecIndex) {
 	mapped := idx.GetMappedReferencesSequenced()
 	mappedIndex := idx.GetMappedReferences()
 	res.indexesVisited++
+
+	var refs []refMap
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
 		var journey []*Reference
 		res.journeysTaken++
 		if ref != nil && ref.Reference != nil {
 			n := res.VisitReference(ref.Reference, seenReferences, journey, true)
-			ref.Reference.Node.Content = n
 			if !ref.Reference.Circular {
-				ref.OriginalReference.Node.Content = n
+				// make a note of the reference and map the original ref after we're done
+				if ok, _, _ := utils.IsNodeRefValue(ref.OriginalReference.Node); ok {
+					refs = append(refs, refMap{
+						ref:   ref.OriginalReference,
+						nodes: n,
+					})
+				}
 			}
 		}
 	}
+	idx.pendingResolve = refs
 
 	schemas := idx.GetAllComponentSchemas()
 	for s, schemaRef := range schemas {
@@ -463,7 +476,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(ref)
 				if foundRef != nil && !foundRef.Circular {
-					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
 				}
 				if foundRef == nil {
 					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
@@ -859,4 +872,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	}
 	resolver.relativesSeen += len(found)
 	return found
+}
+
+func (resolver *Resolver) ResolvePendingNodes() {
+	//map everything afterwards
+	for _, r := range resolver.specIndex.pendingResolve {
+		//r.Node.Content = refs[r].nodes
+		r.ref.Node.Content = r.nodes
+	}
 }
