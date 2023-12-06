@@ -6,12 +6,13 @@ package index
 import (
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"path/filepath"
 	"strings"
+
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -188,7 +189,6 @@ func (resolver *Resolver) GetRelativesSeen() int {
 // re-organize the node tree. Make sure you have copied your original tree before running this (if you want to preserve
 // original data)
 func (resolver *Resolver) Resolve() []*ResolvingError {
-
 	visitIndex(resolver, resolver.specIndex)
 
 	for _, circRef := range resolver.circularReferences {
@@ -399,7 +399,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 }
 
 func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDefinitions map[string]bool,
-	initialRef *Reference) (bool, map[string]bool) {
+	initialRef *Reference,
+) (bool, map[string]bool) {
 	if ref == nil {
 		return false, visitedDefinitions
 	}
@@ -436,14 +437,14 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 
 func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*Reference, seen map[int]bool, resolve bool, depth int) []*Reference {
-
+	journey []*Reference, seen map[int]bool, resolve bool, depth int,
+) []*Reference {
 	if len(journey) > 100 {
 		return nil
 	}
 
 	// this is a safety check to prevent a stack overflow.
-	if depth > 100 {
+	if depth > 500 {
 		def := "unknown"
 		if ref != nil {
 			def = ref.FullDefinition
@@ -500,7 +501,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				if len(exp) == 2 {
 					definition = fmt.Sprintf("#/%s", exp[1])
 					if exp[0] != "" {
-
 						if strings.HasPrefix(exp[0], "http") {
 							fullDef = value
 						} else {
@@ -557,7 +557,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					if strings.HasPrefix(value, "http") {
 						fullDef = value
 					} else {
-
 						if filepath.IsAbs(value) {
 							fullDef = value
 						} else {
@@ -625,7 +624,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			}
 
 			if i%2 == 0 && n.Value != "$ref" && n.Value != "" {
-
 				if n.Value == "allOf" ||
 					n.Value == "oneOf" ||
 					n.Value == "anyOf" {
@@ -679,14 +677,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 											}
 										}
 									} else {
-
 										if strings.HasPrefix(l, "http") {
 											def = l
 										} else {
 											if filepath.IsAbs(l) {
 												def = l
 											} else {
-
 												// check if were dealing with a remote file
 												if strings.HasPrefix(ref.FullDefinition, "http") {
 
@@ -755,7 +751,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 										if exp[0] != "" {
 											if !strings.HasPrefix(exp[0], "http") {
 												if !filepath.IsAbs(exp[0]) {
-
 													if strings.HasPrefix(ref.FullDefinition, "http") {
 
 														u, _ := url.Parse(ref.FullDefinition)
@@ -786,7 +781,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 													def = exp[0]
 												}
 											}
-
 										} else {
 											if strings.HasPrefix(ref.FullDefinition, "http") {
 												u, _ := url.Parse(ref.FullDefinition)
@@ -803,14 +797,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 											}
 										}
 									} else {
-
 										if strings.HasPrefix(l, "http") {
 											def = l
 										} else {
 											if filepath.IsAbs(l) {
 												def = l
 											} else {
-
 												// check if were dealing with a remote file
 												if strings.HasPrefix(ref.FullDefinition, "http") {
 
@@ -875,9 +867,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 }
 
 func (resolver *Resolver) ResolvePendingNodes() {
-	//map everything afterwards
+	// map everything afterwards
 	for _, r := range resolver.specIndex.pendingResolve {
-		//r.Node.Content = refs[r].nodes
+		// r.Node.Content = refs[r].nodes
 		r.ref.Node.Content = r.nodes
 	}
 }
