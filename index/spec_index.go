@@ -31,6 +31,7 @@ import (
 // how the index is set up.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
+	boostrapIndexCollections(rootNode, index)
 	index.config = config
 	index.rolodex = config.Rolodex
 	index.uri = config.uri
@@ -45,7 +46,6 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 			Level: slog.LevelError,
 		}))
 	}
-	boostrapIndexCollections(rootNode, index)
 	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }
 
