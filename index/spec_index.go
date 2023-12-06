@@ -31,7 +31,7 @@ import (
 // how the index is set up.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
-	boostrapIndexCollections(rootNode, index)
+	boostrapIndexCollections(index)
 	index.config = config
 	index.rolodex = config.Rolodex
 	index.uri = config.uri
@@ -46,6 +46,8 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 			Level: slog.LevelError,
 		}))
 	}
+
+	index.root = rootNode
 	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }
 
@@ -58,7 +60,8 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
 	index.config = CreateOpenAPIIndexConfig()
-	boostrapIndexCollections(rootNode, index)
+	index.root = rootNode
+	boostrapIndexCollections(index)
 	return createNewIndex(rootNode, index, false)
 }
 
@@ -717,7 +720,7 @@ func (index *SpecIndex) GetRawReferenceCount() int {
 
 // GetComponentSchemaCount will return the number of schemas located in the 'components' or 'definitions' node.
 func (index *SpecIndex) GetComponentSchemaCount() int {
-	if index.root == nil {
+	if index.root == nil || len(index.root.Content) == 0 {
 		return -1
 	}
 

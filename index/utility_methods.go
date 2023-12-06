@@ -533,6 +533,10 @@ func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bo
 }
 
 func syncMapToMap[K comparable, V any](sm *sync.Map) map[K]V {
+	if sm == nil {
+		return nil
+	}
+
 	m := make(map[K]V)
 
 	sm.Range(func(key, value interface{}) bool {
