@@ -52,7 +52,6 @@ func ExtractSpecInfoWithConfig(spec []byte, config *DocumentConfiguration) (*Spe
 }
 
 func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, error) {
-
 	var parsedSpec yaml.Node
 
 	specInfo := &SpecInfo{}
@@ -85,35 +84,17 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) {
 		var jsonSpec map[string]interface{}
-
-		if spec.SpecType == utils.OpenApi3 {
-			switch spec.Version {
-			case "3.1.0", "3.1":
-				spec.VersionNumeric = 3.1
-				spec.APISchema = OpenAPI31SchemaData
-			default:
-				spec.VersionNumeric = 3.0
-				spec.APISchema = OpenAPI3SchemaData
-			}
+		if utils.IsYAML(string(bytes)) {
+			_ = parsedNode.Decode(&jsonSpec)
+			b, _ := json.Marshal(&jsonSpec)
+			spec.SpecJSONBytes = &b
+			spec.SpecJSON = &jsonSpec
+		} else {
+			_ = json.Unmarshal(bytes, &jsonSpec)
+			spec.SpecJSONBytes = &bytes
+			spec.SpecJSON = &jsonSpec
 		}
-		if spec.SpecType == utils.OpenApi2 {
-			spec.VersionNumeric = 2.0
-			spec.APISchema = OpenAPI2SchemaData
-		}
-
-		go func() {
-			if utils.IsYAML(string(bytes)) {
-				_ = parsedNode.Decode(&jsonSpec)
-				b, _ := json.Marshal(&jsonSpec)
-				spec.SpecJSONBytes = &b
-				spec.SpecJSON = &jsonSpec
-			} else {
-				_ = json.Unmarshal(bytes, &jsonSpec)
-				spec.SpecJSONBytes = &bytes
-				spec.SpecJSON = &jsonSpec
-			}
-			close(spec.JsonParsingChannel)
-		}()
+		close(spec.JsonParsingChannel)
 	}
 
 	if !bypass {
@@ -128,8 +109,17 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.Version = version
 			specInfo.SpecFormat = OAS3
 
+			switch specInfo.Version {
+			case "3.1.0", "3.1":
+				specInfo.VersionNumeric = 3.1
+				specInfo.APISchema = OpenAPI31SchemaData
+			default:
+				specInfo.VersionNumeric = 3.0
+				specInfo.APISchema = OpenAPI3SchemaData
+			}
+
 			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+			go parseJSON(spec, specInfo, &parsedSpec)
 
 			// double check for the right version, people mix this up.
 			if majorVersion < 3 {
@@ -147,9 +137,11 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.SpecType = utils.OpenApi2
 			specInfo.Version = version
 			specInfo.SpecFormat = OAS2
+			specInfo.VersionNumeric = 2.0
+			specInfo.APISchema = OpenAPI2SchemaData
 
 			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+			go parseJSON(spec, specInfo, &parsedSpec)
 
 			// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
 			if majorVersion > 2 {
@@ -168,7 +160,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			// TODO: format for AsyncAPI.
 
 			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+			go parseJSON(spec, specInfo, &parsedSpec)
 
 			// so far there is only 2 as a major release of AsyncAPI
 			if majorVersion > 2 {
@@ -184,27 +176,14 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			return specInfo, specInfo.Error
 		}
 	} else {
-		go func() {
-			var jsonSpec map[string]interface{}
-			if utils.IsYAML(string(spec)) {
-				_ = parsedSpec.Decode(&jsonSpec)
-				b, _ := json.Marshal(&jsonSpec)
-				specInfo.SpecJSONBytes = &b
-				specInfo.SpecJSON = &jsonSpec
-			} else {
-				_ = json.Unmarshal(spec, &jsonSpec)
-				specInfo.SpecJSONBytes = &spec
-				specInfo.SpecJSON = &jsonSpec
-			}
-			close(specInfo.JsonParsingChannel) // this needs removing at some point
-		}()
+		// parse JSON
+		go parseJSON(spec, specInfo, &parsedSpec)
 	}
 
 	// detect the original whitespace indentation
 	specInfo.OriginalIndentation = utils.DetermineWhitespaceLength(string(spec))
 
 	return specInfo, nil
-
 }
 
 // ExtractSpecInfo accepts an OpenAPI/Swagger specification that has been read into a byte array

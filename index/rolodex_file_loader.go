@@ -5,9 +5,6 @@ package index
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"golang.org/x/sync/syncmap"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 )
 
 // LocalFS is a file system that indexes local files.
@@ -60,11 +61,12 @@ type waiterLocal struct {
 
 // Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
 func (l *LocalFS) Open(name string) (fs.File, error) {
-
 	if l.indexConfig != nil && !l.indexConfig.AllowFileLookup {
-		return nil, &fs.PathError{Op: "open", Path: name,
+		return nil, &fs.PathError{
+			Op: "open", Path: name,
 			Err: fmt.Errorf("file lookup for '%s' not allowed, set the index configuration "+
-				"to AllowFileLookup to be true", name)}
+				"to AllowFileLookup to be true", name),
+		}
 	}
 
 	if !filepath.IsAbs(name) {
@@ -74,7 +76,6 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 	if f, ok := l.Files.Load(name); ok {
 		return f.(*LocalFile), nil
 	} else {
-
 		if l.fsConfig != nil && l.fsConfig.DirFS == nil {
 
 			// if we're processing, we need to block and wait for the file to be processed
@@ -110,7 +111,6 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 				return nil, extErr
 			}
 			if extractedFile != nil {
-
 				// in this mode, we need the index config to be set.
 				if l.indexConfig != nil {
 					copiedCfg := *l.indexConfig
@@ -187,12 +187,12 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 		return nil, err
 	}
 
+	<-info.GetJSONParsingChannel() // TODO this almost makes the async parsing pointless, is there a later point to do this?
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	index.specAbsolutePath = l.fullPath
 
 	l.index = index
 	return index, nil
-
 }
 
 // GetContent returns the content of the file as a string.
@@ -403,7 +403,6 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 		}
 
 		if config != nil && config.DirFS != nil {
-
 		} else {
 			file, fileError = os.Open(abs)
 		}

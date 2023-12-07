@@ -6,10 +6,6 @@ package index
 import (
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/sync/syncmap"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -18,6 +14,11 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -184,6 +185,7 @@ func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 		return nil, err
 	}
 
+	<-info.GetJSONParsingChannel() // TODO this almost makes the async parsing pointless, is there a later point to do this?
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	index.specAbsolutePath = config.SpecAbsolutePath
 	f.index = index
@@ -277,7 +279,6 @@ type waiterRemote struct {
 
 // Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
 func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
-
 	if i.indexConfig != nil && !i.indexConfig.AllowRemoteLookup {
 		return nil, fmt.Errorf("remote lookup for '%s' is not allowed, please set "+
 			"AllowRemoteLookup to true as part of the index configuration", remoteURL)
