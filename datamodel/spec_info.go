@@ -51,6 +51,15 @@ func ExtractSpecInfoWithConfig(spec []byte, config *DocumentConfiguration) (*Spe
 	return ExtractSpecInfoWithDocumentCheck(spec, config.BypassDocumentCheck)
 }
 
+func ExtractSpecInfoWithDocumentCheckSync(spec []byte, bypass bool) (*SpecInfo, error) {
+	i, err := ExtractSpecInfoWithDocumentCheck(spec, bypass)
+	if err != nil {
+		return nil, err
+	}
+	<-i.GetJSONParsingChannel()
+	return i, nil
+}
+
 func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, error) {
 	var parsedSpec yaml.Node
 
