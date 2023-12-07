@@ -4,10 +4,11 @@
 package index
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
 	"os"
 	"time"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"gopkg.in/yaml.v3"
 )
 
 type rolodexFile struct {
@@ -58,10 +59,10 @@ func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 
 	// create a new index for this file and link it to this rolodex.
 	config.Rolodex = rf.rolodex
+	<-info.GetJSONParsingChannel() // TODO this almost makes the async parsing pointless, is there a later point to do this?
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	rf.index = index
 	return index, nil
-
 }
 
 func (rf *rolodexFile) GetContent() string {
@@ -93,6 +94,7 @@ func (rf *rolodexFile) GetFileExtension() FileExtension {
 	}
 	return UNSUPPORTED
 }
+
 func (rf *rolodexFile) GetFullPath() string {
 	if rf.localFile != nil {
 		return rf.localFile.fullPath
@@ -102,6 +104,7 @@ func (rf *rolodexFile) GetFullPath() string {
 	}
 	return ""
 }
+
 func (rf *rolodexFile) ModTime() time.Time {
 	if rf.localFile != nil {
 		return rf.localFile.lastModified
