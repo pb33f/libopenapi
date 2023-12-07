@@ -52,14 +52,13 @@ func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	}
 
 	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, config.SkipDocumentCheck)
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheckSync(content, config.SkipDocumentCheck)
 	if err != nil {
 		return nil, err
 	}
 
 	// create a new index for this file and link it to this rolodex.
 	config.Rolodex = rf.rolodex
-	<-info.GetJSONParsingChannel() // TODO this almost makes the async parsing pointless, is there a later point to do this?
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	rf.index = index
 	return index, nil

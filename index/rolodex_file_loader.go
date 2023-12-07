@@ -182,12 +182,11 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	content := l.data
 
 	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheckSync(content, true)
 	if err != nil {
 		return nil, err
 	}
 
-	<-info.GetJSONParsingChannel() // TODO this almost makes the async parsing pointless, is there a later point to do this?
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	index.specAbsolutePath = l.fullPath
 
