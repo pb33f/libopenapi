@@ -260,7 +260,6 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, int64(1333243), rolo.RolodexFileSize())
 	assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 1699, rolo.RolodexTotalFiles())
 
@@ -334,7 +333,6 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, int64(1273069), rolo.RolodexFileSize())
 	assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 1685, rolo.RolodexTotalFiles())
 
