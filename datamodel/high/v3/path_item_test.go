@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
+	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -158,4 +159,41 @@ parameters:
       in: query`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+}
+
+func TestPathItem_GetOperations_NoLow(t *testing.T) {
+	pi := &PathItem{
+		Delete: &Operation{},
+		Post:   &Operation{},
+		Get:    &Operation{},
+	}
+	ops := pi.GetOperations()
+
+	expectedOrderOfOps := []string{"get", "post", "delete"}
+	actualOrder := []string{}
+
+	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
+		actualOrder = append(actualOrder, pair.Key())
+	}
+
+	assert.Equal(t, expectedOrderOfOps, actualOrder)
+}
+
+func TestPathItem_GetOperations_LowWithUnsetOperations(t *testing.T) {
+	pi := &PathItem{
+		Delete: &Operation{},
+		Post:   &Operation{},
+		Get:    &Operation{},
+		low:    &lowV3.PathItem{},
+	}
+	ops := pi.GetOperations()
+
+	expectedOrderOfOps := []string{"get", "post", "delete"}
+	actualOrder := []string{}
+
+	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
+		actualOrder = append(actualOrder, pair.Key())
+	}
+
+	assert.Equal(t, expectedOrderOfOps, actualOrder)
 }
