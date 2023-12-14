@@ -13,6 +13,7 @@ import (
 
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -699,4 +700,15 @@ func TestKeyReference_GetKeyNode(t *testing.T) {
 
 	assert.Equal(t, 3, nr.GetKeyNode().Line)
 	assert.Equal(t, "pizza", nr.GetKeyNode().Value)
+}
+
+func TestKeyReference_MarshalYAML(t *testing.T) {
+	kn := utils.CreateStringNode("pizza")
+	kr := KeyReference[string]{
+		KeyNode: kn,
+	}
+
+	on, err := kr.MarshalYAML()
+	require.NoError(t, err)
+	assert.Equal(t, kn, on)
 }
