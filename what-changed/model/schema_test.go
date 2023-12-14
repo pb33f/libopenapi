@@ -5,8 +5,9 @@ package model
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"testing"
+
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -1248,6 +1249,61 @@ components:
 	assert.Len(t, changes.GetAllChanges(), 1)
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, 1, changes.AdditionalPropertiesChanges.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_AdditionalProperties_Boolean(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      additionalProperties: true`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      additionalProperties: false`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.PropertyChanges.TotalChanges())
+}
+
+func TestCompareSchemas_AdditionalProperties_Boolean_To_Schema(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      additionalProperties: true`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      additionalProperties:
+        type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, 1, changes.PropertyChanges.TotalChanges())
 }
 
 func TestCompareSchemas_AdditionalProperties_Added(t *testing.T) {
@@ -2781,4 +2837,14 @@ components:
 	assert.Equal(t, 3, changes.TotalBreakingChanges())
 	assert.Len(t, changes.SchemaPropertyChanges["name"].PropertyChanges.Changes, 2)
 	assert.Len(t, changes.PropertyChanges.Changes, 2)
+}
+
+func TestSchemaChanges_TotalChanges_NoNilPanic(t *testing.T) {
+	var changes *SchemaChanges
+	assert.Equal(t, 0, changes.TotalChanges())
+}
+
+func TestSchemaChanges_TotalBreakingChanges_NoNilPanic(t *testing.T) {
+	var changes *SchemaChanges
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
 }
