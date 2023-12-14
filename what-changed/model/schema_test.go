@@ -2848,3 +2848,7 @@ func TestSchemaChanges_TotalBreakingChanges_NoNilPanic(t *testing.T) {
 	var changes *SchemaChanges
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 }
+
+func TestCompareSchemas_Nil(t *testing.T) {
+	assert.Nil(t, CompareSchemas(nil, nil))
+}

@@ -4,10 +4,11 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestGenerateCleanSpecConfigBaseURL(t *testing.T) {
@@ -28,7 +29,6 @@ func TestGenerateCleanSpecConfigBaseURL_RelativeDeep(t *testing.T) {
 }
 
 func TestGenerateCleanSpecConfigBaseURL_NoBaseURL(t *testing.T) {
-
 	u, _ := url.Parse("/things/stuff/jazz/cakes/winter/oil")
 	path := "../../../../foo/bar/baz/crap.yaml#thang"
 	assert.Equal(t, "/things/stuff/foo/bar/baz",
@@ -39,7 +39,6 @@ func TestGenerateCleanSpecConfigBaseURL_NoBaseURL(t *testing.T) {
 }
 
 func TestGenerateCleanSpecConfigBaseURL_HttpStrip(t *testing.T) {
-
 	u, _ := url.Parse(".")
 	path := "http://thing.com/crap.yaml#thang"
 	assert.Equal(t, "http://thing.com",
@@ -50,7 +49,6 @@ func TestGenerateCleanSpecConfigBaseURL_HttpStrip(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties(t *testing.T) {
-
 	d := `$ref: http://internets/shoes`
 
 	var rootNode yaml.Node
@@ -64,7 +62,6 @@ func Test_extractRequiredReferenceProperties(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_singleFile(t *testing.T) {
-
 	d := `$ref: http://cake.yaml/camel.yaml`
 
 	var rootNode yaml.Node
@@ -78,7 +75,6 @@ func Test_extractRequiredReferenceProperties_singleFile(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_http(t *testing.T) {
-
 	d := `$ref: http://cake.yaml/camel.yaml`
 
 	var rootNode yaml.Node
@@ -92,7 +88,6 @@ func Test_extractRequiredReferenceProperties_http(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_abs(t *testing.T) {
-
 	d := `$ref: http://cake.yaml/camel.yaml`
 
 	var rootNode yaml.Node
@@ -106,7 +101,6 @@ func Test_extractRequiredReferenceProperties_abs(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_abs3(t *testing.T) {
-
 	d := `$ref: oh/pillow.yaml`
 
 	var rootNode yaml.Node
@@ -121,7 +115,6 @@ func Test_extractRequiredReferenceProperties_abs3(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_rel_full(t *testing.T) {
-
 	d := `$ref: "#/a/nice/picture/of/cake"`
 
 	var rootNode yaml.Node
@@ -136,7 +129,6 @@ func Test_extractRequiredReferenceProperties_rel_full(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_rel(t *testing.T) {
-
 	d := `$ref: oh/camel.yaml#/rum/cake`
 
 	var rootNode yaml.Node
@@ -151,7 +143,6 @@ func Test_extractRequiredReferenceProperties_rel(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_abs2(t *testing.T) {
-
 	d := `$ref: /oh/my/camel.yaml#/rum/cake`
 
 	var rootNode yaml.Node
@@ -166,7 +157,6 @@ func Test_extractRequiredReferenceProperties_abs2(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_http_rel(t *testing.T) {
-
 	d := `$ref: my/wet/camel.yaml#/rum/cake`
 
 	var rootNode yaml.Node
@@ -181,7 +171,6 @@ func Test_extractRequiredReferenceProperties_http_rel(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_http_rel_nocomponent(t *testing.T) {
-
 	d := `$ref: my/wet/camel.yaml`
 
 	var rootNode yaml.Node
@@ -196,7 +185,6 @@ func Test_extractRequiredReferenceProperties_http_rel_nocomponent(t *testing.T) 
 }
 
 func Test_extractRequiredReferenceProperties_nocomponent(t *testing.T) {
-
 	d := `$ref: my/wet/camel.yaml`
 
 	var rootNode yaml.Node
@@ -211,7 +199,6 @@ func Test_extractRequiredReferenceProperties_nocomponent(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_component_http(t *testing.T) {
-
 	d := `$ref: go-to-bed.com/no/more/cake.yaml#/lovely/jam`
 
 	var rootNode yaml.Node
@@ -226,7 +213,6 @@ func Test_extractRequiredReferenceProperties_component_http(t *testing.T) {
 }
 
 func Test_extractRequiredReferenceProperties_nocomponent_http(t *testing.T) {
-
 	d := `$ref: go-to-bed.com/no/more/cake.yaml`
 
 	var rootNode yaml.Node
@@ -238,11 +224,9 @@ func Test_extractRequiredReferenceProperties_nocomponent_http(t *testing.T) {
 	assert.Len(t, props, 1)
 	assert.Equal(t, "cakes", props["http://bunny-bun-bun.com/go-to-bed.com/no/more/cake.yaml"][0])
 	assert.NotNil(t, data)
-
 }
 
 func Test_extractRequiredReferenceProperties_nocomponent_http2(t *testing.T) {
-
 	d := `$ref: go-to-bed.com/no/more/cake.yaml`
 
 	var rootNode yaml.Node
@@ -258,4 +242,8 @@ func Test_extractRequiredReferenceProperties_nocomponent_http2(t *testing.T) {
 
 func Test_extractDefinitionRequiredRefProperties_nil(t *testing.T) {
 	assert.Nil(t, extractDefinitionRequiredRefProperties(nil, nil, "", nil))
+}
+
+func TestSyncMapToMap_Nil(t *testing.T) {
+	assert.Nil(t, syncMapToMap[string, string](nil))
 }
