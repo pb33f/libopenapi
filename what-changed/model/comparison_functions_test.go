@@ -6,6 +6,9 @@ package model
 import (
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -90,7 +93,6 @@ func Test_CheckForModification_ArrayMap(t *testing.T) {
 }
 
 func Test_CheckMapsRemoval(t *testing.T) {
-
 	mapA := make(map[string]string)
 	mapB := make(map[string]string)
 
@@ -135,7 +137,6 @@ func Test_CheckMapsRemoval(t *testing.T) {
 }
 
 func Test_CheckMapsAddition(t *testing.T) {
-
 	mapA := make(map[string]string)
 	mapB := make(map[string]string)
 
@@ -185,4 +186,49 @@ func Test_CheckMapsAddition(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestFlattenLowLevelOrderedMap(t *testing.T) {
+	m := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+	m.Set(low.KeyReference[string]{
+		Value: "key",
+	}, low.ValueReference[string]{
+		Value: "value",
+	})
+
+	o := FlattenLowLevelOrderedMap[string](m)
+	assert.Equal(t, map[string]*low.ValueReference[string]{
+		"key": {
+			Value: "value",
+		},
+	}, o)
+}
+
+func TestCheckMapForAdditionRemoval(t *testing.T) {
+	var changes []*Change
+
+	l := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+	l.Set(low.KeyReference[string]{
+		Value: "key",
+	}, low.ValueReference[string]{
+		Value:     "value",
+		ValueNode: utils.CreateStringNode("value"),
+	})
+	l.Set(low.KeyReference[string]{
+		Value: "key2",
+	}, low.ValueReference[string]{
+		Value:     "value2",
+		ValueNode: utils.CreateStringNode("value2"),
+	})
+
+	r := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+	r.Set(low.KeyReference[string]{
+		Value: "key",
+	}, low.ValueReference[string]{
+		Value:     "value",
+		ValueNode: utils.CreateStringNode("value"),
+	})
+
+	CheckMapForAdditionRemoval(l, r, &changes, "label")
+	assert.Len(t, changes, 1)
 }

@@ -110,6 +110,10 @@ func (d *DocumentChanges) GetAllChanges() []*Change {
 
 // TotalBreakingChanges returns a total count of all breaking changes made in the Document
 func (d *DocumentChanges) TotalBreakingChanges() int {
+	if d == nil {
+		return 0
+	}
+
 	c := d.PropertyChanges.TotalBreakingChanges()
 	if d.InfoChanges != nil {
 		c += d.InfoChanges.TotalBreakingChanges()
