@@ -200,8 +200,6 @@ func (n *NodeBuilder) add(key string, i int) {
 				return lines[i] < lines[j]
 			})
 			nodeEntry.Line = lines[0]
-		case reflect.Map:
-			panic("only ordered maps are supported")
 		case reflect.Struct:
 			y := value.Interface()
 			nodeEntry.Line = 9999 + i
@@ -330,11 +328,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 		val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
 		valueNode = utils.CreateFloatNode(val)
 		valueNode.Line = line
-	case reflect.Map:
-		panic("only ordered maps are supported")
-
 	case reflect.Slice:
-
 		var rawNode yaml.Node
 		m := reflect.ValueOf(value)
 		sl := utils.CreateEmptySequenceNode()
