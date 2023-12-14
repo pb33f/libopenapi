@@ -163,3 +163,8 @@ pattern: wow
 	_ = n.FindExtension("x-belly").GetValue().Decode(&xBelly)
 	assert.Equal(t, "large", xBelly)
 }
+
+func TestItems_GetDescription(t *testing.T) {
+	i := Items{}
+	assert.Nil(t, i.GetDescription())
+}

@@ -4,8 +4,9 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCreateBoolNode(t *testing.T) {
@@ -46,4 +47,10 @@ func TestCreateRefNode(t *testing.T) {
 	assert.Equal(t, "$ref", r.Content[0].Value)
 	assert.Equal(t, "!!str", r.Content[1].Tag)
 	assert.Equal(t, "#/components/schemas/MySchema", r.Content[1].Value)
+}
+
+func TestCreateYamlNode(t *testing.T) {
+	y := CreateYamlNode("foo")
+	assert.Equal(t, "!!str", y.Tag)
+	assert.Equal(t, "foo", y.Value)
 }
