@@ -55,10 +55,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 		switch kind {
 		case reflect.Struct, reflect.Slice, reflect.Map, reflect.Pointer:
 			vn = utils.NodeAlias(vn)
-			err := SetField(&field, vn, kn)
-			if err != nil {
-				return err
-			}
+			SetField(&field, vn, kn)
 		default:
 			return fmt.Errorf("unable to parse unsupported type: %v", kind)
 		}
@@ -71,9 +68,9 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 // SetField accepts a field reflection value, a yaml.Node valueNode and a yaml.Node keyNode. Using reflection, the
 // function will attempt to set the value of the field based on the key and value nodes. This method is only useful
 // for low-level models, it has no value to high-level ones.
-func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) error {
+func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 	if valueNode == nil {
-		return nil
+		return
 	}
 
 	switch field.Type() {
@@ -451,7 +448,7 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) er
 		// we want to ignore everything else, each model handles its own complex types.
 		break
 	}
-	return nil
+	return
 }
 
 // BuildModelAsync is a convenience function for calling BuildModel from a goroutine, requires a sync.WaitGroup

@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -406,4 +407,18 @@ func TestBuildModelAsync(t *testing.T) {
 	BuildModelAsync(rootNode.Content[0], ins, &wg, &errors)
 	wg.Wait()
 	assert.Equal(t, 3, orderedmap.Len(ins.Thing.Value))
+}
+
+func TestSetField_NilValueNode(t *testing.T) {
+	assert.NotPanics(t, func() {
+		SetField(nil, nil, nil)
+	})
+}
+
+func TestBuildModelAsync_HandlesError(t *testing.T) {
+	errs := []error{}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	BuildModelAsync(utils.CreateStringNode("cake"), "cake", &wg, &errs)
+	assert.NotEmpty(t, errs)
 }
