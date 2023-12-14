@@ -107,14 +107,14 @@ func (n *NodeBuilder) add(key string, i int) {
 		return
 	}
 
-	var renderZeroFlag, omitemptyFlag bool
+	var renderZeroFlag, omitEmptyFlag bool
 	tagParts := strings.Split(tag, ",")
 	for _, part := range tagParts {
 		if part == renderZero {
 			renderZeroFlag = true
 		}
 		if part == "omitempty" {
-			omitemptyFlag = true
+			omitEmptyFlag = true
 		}
 	}
 
@@ -130,10 +130,7 @@ func (n *NodeBuilder) add(key string, i int) {
 	} else if f == nil || value.IsZero() {
 		isZero = true
 	}
-	if !renderZeroFlag && isZero {
-		return
-	}
-	if omitemptyFlag && isZero && !renderZeroFlag {
+	if !renderZeroFlag && isZero || omitEmptyFlag && isZero {
 		return
 	}
 
@@ -166,10 +163,6 @@ func (n *NodeBuilder) add(key string, i int) {
 		}
 	case reflect.Ptr:
 		if !value.IsNil() {
-			nodeEntry.Value = f
-		}
-	case reflect.Map:
-		if !value.IsNil() && value.Len() > 0 {
 			nodeEntry.Value = f
 		}
 	default:

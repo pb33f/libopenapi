@@ -917,3 +917,58 @@ func TestNewNodeBuilder_ShouldHaveNotDoneTestsLikeThisOhWell(t *testing.T) {
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
+
+type zeroer struct {
+	AlwaysZero string `yaml:"thing"`
+}
+
+func (z zeroer) IsZero() bool {
+	return true
+}
+
+func TestNodeBuilder_IsZeroer(t *testing.T) {
+	type test struct {
+		Thing zeroer `yaml:"thing"`
+	}
+
+	t1 := test{
+		Thing: zeroer{
+			AlwaysZero: "will never render",
+		},
+	}
+
+	nb := NewNodeBuilder(&t1, nil)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	assert.Equal(t, "{}", strings.TrimSpace(string(data)))
+}
+
+func TestNodeBuilder_GetStringLowValue(t *testing.T) {
+	type test struct {
+		Thing string `yaml:"thing"`
+	}
+	type testLow struct {
+		Thing low.ValueReference[string] `yaml:"thing"`
+	}
+
+	t1 := test{
+		Thing: "thing",
+	}
+	lowNode := utils.CreateStringNode("thing")
+	lowNode.Style = yaml.DoubleQuotedStyle
+	t1Low := testLow{
+		Thing: low.ValueReference[string]{
+			Value:     "thing",
+			ValueNode: lowNode,
+		},
+	}
+
+	nb := NewNodeBuilder(&t1, &t1Low)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	assert.Equal(t, `thing: "thing"`, strings.TrimSpace(string(data)))
+}
