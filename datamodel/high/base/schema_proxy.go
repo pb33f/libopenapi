@@ -122,7 +122,7 @@ func (sp *SchemaProxy) GetReference() string {
 
 func (sp *SchemaProxy) GetReferenceNode() *yaml.Node {
 	if sp.refStr != "" {
-		return utils.CreateStringNode(sp.refStr)
+		return utils.CreateRefNode(sp.refStr)
 	}
 	return sp.schema.GetValue().GetReferenceNode()
 }

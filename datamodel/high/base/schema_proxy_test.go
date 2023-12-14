@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -96,4 +97,27 @@ func TestSchemaProxy_IsReference_Nil(t *testing.T) {
 func TestSchemaProxy_NoSchema_GetOrigin(t *testing.T) {
 	sp := &SchemaProxy{}
 	assert.Nil(t, sp.GetReferenceOrigin())
+}
+
+func TestCreateSchemaProxyRef_GetReferenceNode(t *testing.T) {
+	refNode := utils.CreateRefNode("#/components/schemas/MySchema")
+
+	sp := CreateSchemaProxyRef("#/components/schemas/MySchema")
+	assert.Equal(t, refNode, sp.GetReferenceNode())
+}
+
+func TestCreateRefNode_MarshalYAML(t *testing.T) {
+	ref := low.Reference{}
+	ref.SetReference("#/components/schemas/MySchema", nil)
+
+	sp := &SchemaProxy{
+		schema: &low.NodeReference[*lowbase.SchemaProxy]{
+			Value: &lowbase.SchemaProxy{
+				Reference: ref,
+			},
+		},
+	}
+	node, err := sp.MarshalYAML()
+	require.NoError(t, err)
+	assert.Equal(t, node, utils.CreateRefNode("#/components/schemas/MySchema"))
 }
