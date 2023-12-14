@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -100,7 +101,6 @@ func TestNewMockGeneratorWithDictionary(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_NoObject(t *testing.T) {
-
 	mg := NewMockGenerator(JSON)
 
 	var isNil any
@@ -284,4 +284,42 @@ func TestMockGenerator_GenerateJSONMock_Object_RawSchema(t *testing.T) {
 	assert.GreaterOrEqual(t, len(m["coffee"].(string)), 6)
 	assert.GreaterOrEqual(t, m["herbs"].(int), 350)
 	assert.LessOrEqual(t, m["herbs"].(int), 400)
+}
+
+func TestMockGenerator_GenerateMock_YamlNode(t *testing.T) {
+	mg := NewMockGenerator(YAML)
+
+	type mockable struct {
+		Example  *yaml.Node
+		Examples *orderedmap.Map[string, *base.Example]
+	}
+
+	mock, err := mg.GenerateMock(&mockable{
+		Example: utils.CreateStringNode("hello"),
+	}, "")
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", strings.TrimSpace(string(mock)))
+}
+
+func TestMockGenerator_GenerateMock_YamlNode_Nil(t *testing.T) {
+	mg := NewMockGenerator(YAML)
+
+	var example *yaml.Node
+
+	type mockable struct {
+		Example  any
+		Examples *orderedmap.Map[string, *base.Example]
+	}
+
+	examples := orderedmap.New[string, *base.Example]()
+	examples.Set("exampleOne", &base.Example{
+		Value: utils.CreateStringNode("hello"),
+	})
+
+	mock, err := mg.GenerateMock(&mockable{
+		Example:  example,
+		Examples: examples,
+	}, "")
+	assert.NoError(t, err)
+	assert.Equal(t, "hello", strings.TrimSpace(string(mock)))
 }
