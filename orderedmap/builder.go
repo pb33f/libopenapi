@@ -21,10 +21,6 @@ type MapToYamlNoder interface {
 	ToYamlNode(n NodeBuilder, l any) *yaml.Node
 }
 
-type hasKeyNode interface {
-	GetKeyNode() *yaml.Node
-}
-
 type hasValueNode interface {
 	GetValueNode() *yaml.Node
 }
@@ -37,6 +33,7 @@ type findValueUntyped interface {
 	FindValueUntyped(k string) any
 }
 
+// ToYamlNode converts the ordered map to a yaml node ready for marshalling.
 func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 	p := utils.CreateEmptyMapNode()
 
@@ -105,6 +102,7 @@ func findKeyNode(key string, m *yaml.Node) *yaml.Node {
 	return nil
 }
 
+// FindValueUntyped finds a value in the ordered map by key if the stored value for that key implements GetValueUntyped otherwise just returns the value.
 func (o *Map[K, V]) FindValueUntyped(key string) any {
 	for pair := First(o); pair != nil; pair = pair.Next() {
 		var k any = pair.Key()

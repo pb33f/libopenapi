@@ -14,6 +14,7 @@ import (
 	wk8orderedmap "github.com/wk8/go-ordered-map/v2"
 )
 
+// Pair represents a key/value pair in an ordered map returned for iteration.
 type Pair[K comparable, V any] interface {
 	Key() K
 	KeyPtr() *K
@@ -22,6 +23,7 @@ type Pair[K comparable, V any] interface {
 	Next() Pair[K, V]
 }
 
+// Map represents an ordered map where the key must be a comparable type, the ordering is based on insertion order.
 type Map[K comparable, V any] struct {
 	*wk8orderedmap.OrderedMap[K, V]
 }
@@ -37,14 +39,17 @@ func New[K comparable, V any]() *Map[K, V] {
 	}
 }
 
+// GetKeyType returns the reflection type of the key.
 func (o *Map[K, V]) GetKeyType() reflect.Type {
 	return reflect.TypeOf(new(K))
 }
 
+// GetValueType returns the reflection type of the value.
 func (o *Map[K, V]) GetValueType() reflect.Type {
 	return reflect.TypeOf(new(V))
 }
 
+// GetOrZero will return the value for the key if it exists, otherwise it will return the zero value for the value type.
 func (o *Map[K, V]) GetOrZero(k K) V {
 	v, ok := o.OrderedMap.Get(k)
 	if !ok {
@@ -54,6 +59,7 @@ func (o *Map[K, V]) GetOrZero(k K) V {
 	return v
 }
 
+// First returns the first pair in the map useful for iteration.
 func (o *Map[K, V]) First() Pair[K, V] {
 	if o == nil {
 		return nil
@@ -93,6 +99,7 @@ func (o *Map[K, V]) IsZero() bool {
 	return Len(o) == 0
 }
 
+// Next returns the next pair in the map when iterating.
 func (p *wrapPair[K, V]) Next() Pair[K, V] {
 	next := p.Pair.Next()
 	if next == nil {
@@ -103,18 +110,22 @@ func (p *wrapPair[K, V]) Next() Pair[K, V] {
 	}
 }
 
+// Key returns the key of the pair.
 func (p *wrapPair[K, V]) Key() K {
 	return p.Pair.Key
 }
 
+// KeyPtr returns a pointer to the key of the pair.
 func (p *wrapPair[K, V]) KeyPtr() *K {
 	return &p.Pair.Key
 }
 
+// Value returns the value of the pair.
 func (p *wrapPair[K, V]) Value() V {
 	return p.Pair.Value
 }
 
+// ValuePtr returns a pointer to the value of the pair.
 func (p *wrapPair[K, V]) ValuePtr() *V {
 	return &p.Pair.Value
 }
@@ -183,6 +194,7 @@ func Cast[K comparable, V any](v any) *Map[K, V] {
 	return m
 }
 
+// SortAlpha sorts the map by keys in alphabetical order.
 func SortAlpha[K comparable, V any](m *Map[K, V]) *Map[K, V] {
 	if m == nil {
 		return nil
