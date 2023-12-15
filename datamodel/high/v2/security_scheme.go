@@ -6,6 +6,8 @@ package v2
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // SecurityScheme is a high-level representation of a Swagger / OpenAPI 2 SecurityScheme object
@@ -24,7 +26,7 @@ type SecurityScheme struct {
 	AuthorizationUrl string
 	TokenUrl         string
 	Scopes           *Scopes
-	Extensions       map[string]any
+	Extensions       *orderedmap.Map[string, *yaml.Node]
 	low              *low.SecurityScheme
 }
 

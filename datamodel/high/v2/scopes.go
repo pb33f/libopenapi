@@ -5,6 +5,7 @@ package v2
 
 import (
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // Scopes is a high-level representation of a Swagger / OpenAPI 2 OAuth2 Scopes object, that is backed by a low-level one.
@@ -12,7 +13,7 @@ import (
 // Scopes lists the available scopes for an OAuth2 security scheme.
 //   - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
-	Values map[string]string
+	Values *orderedmap.Map[string, string]
 	low    *low.Scopes
 }
 
@@ -20,9 +21,9 @@ type Scopes struct {
 func NewScopes(scopes *low.Scopes) *Scopes {
 	s := new(Scopes)
 	s.low = scopes
-	scopeValues := make(map[string]string)
-	for k := range scopes.Values {
-		scopeValues[k.Value] = scopes.Values[k].Value
+	scopeValues := orderedmap.New[string, string]()
+	for pair := orderedmap.First(scopes.Values); pair != nil; pair = pair.Next() {
+		scopeValues.Set(pair.Key().Value, pair.Value().Value)
 	}
 	s.Values = scopeValues
 	return s

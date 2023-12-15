@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -141,6 +142,10 @@ func (s *SchemaChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns a count of the total number of changes made to this schema and all sub-schemas
 func (s *SchemaChanges) TotalChanges() int {
+	if s == nil {
+		return 0
+	}
+
 	t := s.PropertyChanges.TotalChanges()
 	if s.DiscriminatorChanges != nil {
 		t += s.DiscriminatorChanges.TotalChanges()
@@ -223,6 +228,10 @@ func (s *SchemaChanges) TotalChanges() int {
 
 // TotalBreakingChanges returns the total number of breaking changes made to this schema and all sub-schemas.
 func (s *SchemaChanges) TotalBreakingChanges() int {
+	if s == nil {
+		return 0
+	}
+
 	t := s.PropertyChanges.TotalBreakingChanges()
 	if s.DiscriminatorChanges != nil {
 		t += s.DiscriminatorChanges.TotalBreakingChanges()
@@ -321,33 +330,33 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 	if l != nil && r != nil {
 
 		// if left proxy is a reference and right is a reference (we won't recurse into them)
-		if l.IsSchemaReference() && r.IsSchemaReference() {
+		if l.IsReference() && r.IsReference() {
 			// points to the same schema
-			if l.GetSchemaReference() == r.GetSchemaReference() {
+			if l.GetReference() == r.GetReference() {
 				// there is nothing to be done at this point.
 				return nil
 			} else {
 				// references are different, that's all we care to know.
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode().Content[1], r.GetValueNode().Content[1], true, l.GetSchemaReference(),
-					r.GetSchemaReference())
+					l.GetValueNode().Content[1], r.GetValueNode().Content[1], true, l.GetReference(),
+					r.GetReference())
 				sc.PropertyChanges = NewPropertyChanges(changes)
 				return sc
 			}
 		}
 
 		// changed from inline to ref
-		if !l.IsSchemaReference() && r.IsSchemaReference() {
+		if !l.IsReference() && r.IsReference() {
 			CreateChange(&changes, Modified, v3.RefLabel,
-				l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetSchemaReference())
+				l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetReference())
 			sc.PropertyChanges = NewPropertyChanges(changes)
 			return sc // we're done here
 		}
 
 		// changed from ref to inline
-		if l.IsSchemaReference() && !r.IsSchemaReference() {
+		if l.IsReference() && !r.IsReference() {
 			CreateChange(&changes, Modified, v3.RefLabel,
-				l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetSchemaReference(), r)
+				l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetReference(), r)
 			sc.PropertyChanges = NewPropertyChanges(changes)
 			return sc // done, nothing else to do.
 		}
@@ -434,7 +443,7 @@ func checkSchemaXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chan
 
 func checkMappedSchemaOfASchema(
 	lSchema,
-	rSchema map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy],
+	rSchema *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]],
 	changes *[]*Change,
 	doneChan chan bool,
 ) (map[string]*SchemaChanges, int) {
@@ -447,15 +456,15 @@ func checkMappedSchemaOfASchema(
 	rEntities := make(map[string]*base.SchemaProxy)
 	rKeyNodes := make(map[string]*yaml.Node)
 
-	for w := range lSchema {
-		lProps = append(lProps, w.Value)
-		lEntities[w.Value] = lSchema[w].Value
-		lKeyNodes[w.Value] = w.KeyNode
+	for pair := orderedmap.First(lSchema); pair != nil; pair = pair.Next() {
+		lProps = append(lProps, pair.Key().Value)
+		lEntities[pair.Key().Value] = pair.Value().Value
+		lKeyNodes[pair.Key().Value] = pair.Key().KeyNode
 	}
-	for w := range rSchema {
-		rProps = append(rProps, w.Value)
-		rEntities[w.Value] = rSchema[w].Value
-		rKeyNodes[w.Value] = w.KeyNode
+	for pair := orderedmap.First(rSchema); pair != nil; pair = pair.Next() {
+		rProps = append(rProps, pair.Key().Value)
+		rEntities[pair.Key().Value] = pair.Value().Value
+		rKeyNodes[pair.Key().Value] = pair.Key().KeyNode
 	}
 	sort.Strings(lProps)
 	sort.Strings(rProps)
@@ -908,10 +917,10 @@ func checkSchemaPropertyChanges(
 	j = make(map[string]int)
 	k = make(map[string]int)
 	for i := range lSchema.Enum.Value {
-		j[fmt.Sprint(lSchema.Enum.Value[i].Value)] = i
+		j[toString(lSchema.Enum.Value[i].Value)] = i
 	}
 	for i := range rSchema.Enum.Value {
-		k[fmt.Sprint(rSchema.Enum.Value[i].Value)] = i
+		k[toString(rSchema.Enum.Value[i].Value)] = i
 	}
 	for g := range k {
 		if _, ok := j[g]; !ok {

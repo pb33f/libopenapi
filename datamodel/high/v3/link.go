@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,13 +23,13 @@ import (
 // in an operation and using them as parameters while invoking the linked operation.
 //   - https://spec.openapis.org/oas/v3.1.0#link-object
 type Link struct {
-	OperationRef string            `json:"operationRef,omitempty" yaml:"operationRef,omitempty"`
-	OperationId  string            `json:"operationId,omitempty" yaml:"operationId,omitempty"`
-	Parameters   map[string]string `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	RequestBody  string            `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
-	Description  string            `json:"description,omitempty" yaml:"description,omitempty"`
-	Server       *Server           `json:"server,omitempty" yaml:"server,omitempty"`
-	Extensions   map[string]any    `json:"-" yaml:"-"`
+	OperationRef string                              `json:"operationRef,omitempty" yaml:"operationRef,omitempty"`
+	OperationId  string                              `json:"operationId,omitempty" yaml:"operationId,omitempty"`
+	Parameters   *orderedmap.Map[string, string]     `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	RequestBody  string                              `json:"requestBody,omitempty" yaml:"requestBody,omitempty"`
+	Description  string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Server       *Server                             `json:"server,omitempty" yaml:"server,omitempty"`
+	Extensions   *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low          *low.Link
 }
 
@@ -38,9 +39,9 @@ func NewLink(link *low.Link) *Link {
 	l.low = link
 	l.OperationRef = link.OperationRef.Value
 	l.OperationId = link.OperationId.Value
-	params := make(map[string]string)
-	for k, v := range link.Parameters.Value {
-		params[k.Value] = v.Value
+	params := orderedmap.New[string, string]()
+	for pair := orderedmap.First(link.Parameters.Value); pair != nil; pair = pair.Next() {
+		params.Set(pair.Key().Value, pair.Value().Value)
 	}
 	l.Parameters = params
 	l.RequestBody = link.RequestBody.Value

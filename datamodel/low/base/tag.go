@@ -6,13 +6,13 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Tag represents a low-level Tag instance that is backed by a low-level one.
@@ -25,13 +25,13 @@ type Tag struct {
 	Name         low.NodeReference[string]
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
-	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
-func (t *Tag) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, t.Extensions)
+func (t *Tag) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, t.Extensions)
 }
 
 // Build will extract extensions and external docs for the Tag.
@@ -48,7 +48,7 @@ func (t *Tag) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecInde
 }
 
 // GetExtensions returns all Tag extensions and satisfies the low.HasExtensions interface.
-func (t *Tag) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (t *Tag) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return t.Extensions
 }
 
@@ -64,13 +64,6 @@ func (t *Tag) Hash() [32]byte {
 	if !t.ExternalDocs.IsEmpty() {
 		f = append(f, low.GenerateHashString(t.ExternalDocs.Value))
 	}
-	keys := make([]string, len(t.Extensions))
-	z := 0
-	for k := range t.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(t.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(t.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

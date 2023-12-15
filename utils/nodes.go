@@ -3,7 +3,9 @@
 
 package utils
 
-import "gopkg.in/yaml.v3"
+import (
+	"gopkg.in/yaml.v3"
+)
 
 func CreateRefNode(ref string) *yaml.Node {
 	m := CreateEmptyMapNode()
@@ -21,6 +23,13 @@ func CreateEmptyMapNode() *yaml.Node {
 		Tag:  "!!map",
 	}
 	return n
+}
+
+func CreateYamlNode(a any) *yaml.Node {
+	var n yaml.Node
+	_ = n.Encode(a)
+
+	return &n
 }
 
 func CreateEmptySequenceNode() *yaml.Node {

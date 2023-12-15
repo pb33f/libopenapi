@@ -532,7 +532,7 @@ components:
       not:
         type: string
       items:
-        - $ref: '#/components/schemas/Drink'
+        $ref: '#/components/schemas/Drink'
   x-screaming-baby: loud
 x-something-something: darkside
 externalDocs:

@@ -35,6 +35,10 @@ type DocumentChanges struct {
 
 // TotalChanges returns a total count of all changes made in the Document
 func (d *DocumentChanges) TotalChanges() int {
+	if d == nil {
+		return 0
+	}
+
 	c := d.PropertyChanges.TotalChanges()
 	if d.InfoChanges != nil {
 		c += d.InfoChanges.TotalChanges()
@@ -68,6 +72,10 @@ func (d *DocumentChanges) TotalChanges() int {
 
 // GetAllChanges returns a slice of all changes made between Document objects
 func (d *DocumentChanges) GetAllChanges() []*Change {
+	if d == nil {
+		return nil
+	}
+
 	var changes []*Change
 	changes = append(changes, d.Changes...)
 	if d.InfoChanges != nil {
@@ -102,6 +110,10 @@ func (d *DocumentChanges) GetAllChanges() []*Change {
 
 // TotalBreakingChanges returns a total count of all breaking changes made in the Document
 func (d *DocumentChanges) TotalBreakingChanges() int {
+	if d == nil {
+		return 0
+	}
+
 	c := d.PropertyChanges.TotalBreakingChanges()
 	if d.InfoChanges != nil {
 		c += d.InfoChanges.TotalBreakingChanges()
@@ -133,7 +145,6 @@ func (d *DocumentChanges) TotalBreakingChanges() int {
 // CompareDocuments will compare any two OpenAPI documents (either Swagger or OpenAPI) and return a pointer to
 // DocumentChanges that outlines everything that was found to have changed.
 func CompareDocuments(l, r any) *DocumentChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 

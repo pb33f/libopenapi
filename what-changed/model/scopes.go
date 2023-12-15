@@ -5,8 +5,9 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v2"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // ScopesChanges represents changes between two Swagger Scopes Objects
@@ -46,26 +47,26 @@ func CompareScopes(l, r *v2.Scopes) *ScopesChanges {
 		return nil
 	}
 	var changes []*Change
-	for v := range l.Values {
-		if r != nil && r.FindScope(v.Value) == nil {
+	for pair := orderedmap.First(l.Values); pair != nil; pair = pair.Next() {
+		if r != nil && r.FindScope(pair.Key().Value) == nil {
 			CreateChange(&changes, ObjectRemoved, v3.Scopes,
-				l.Values[v].ValueNode, nil, true,
-				v.Value, nil)
+				pair.Value().ValueNode, nil, true,
+				pair.Key().Value, nil)
 			continue
 		}
-		if r != nil && r.FindScope(v.Value) != nil {
-			if l.Values[v].Value != r.FindScope(v.Value).Value {
+		if r != nil && r.FindScope(pair.Key().Value) != nil {
+			if pair.Value().Value != r.FindScope(pair.Key().Value).Value {
 				CreateChange(&changes, Modified, v3.Scopes,
-					l.Values[v].ValueNode, r.FindScope(v.Value).ValueNode, true,
-					l.Values[v].Value, r.FindScope(v.Value).Value)
+					pair.Value().ValueNode, r.FindScope(pair.Key().Value).ValueNode, true,
+					pair.Value().Value, r.FindScope(pair.Key().Value).Value)
 			}
 		}
 	}
-	for v := range r.Values {
-		if l != nil && l.FindScope(v.Value) == nil {
+	for pair := orderedmap.First(r.Values); pair != nil; pair = pair.Next() {
+		if l != nil && l.FindScope(pair.Key().Value) == nil {
 			CreateChange(&changes, ObjectAdded, v3.Scopes,
-				nil, r.Values[v].ValueNode, false,
-				nil, v.Value)
+				nil, pair.Value().ValueNode, false,
+				nil, pair.Key().Value)
 		}
 	}
 

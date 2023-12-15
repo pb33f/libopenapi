@@ -7,6 +7,8 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Parameter represents a high-level Swagger / OpenAPI 2 Parameter object, backed by a low-level one.
@@ -61,7 +63,7 @@ type Parameter struct {
 	Schema           *base.SchemaProxy
 	Items            *Items
 	CollectionFormat string
-	Default          any
+	Default          *yaml.Node
 	Maximum          *int
 	ExclusiveMaximum *bool
 	Minimum          *int
@@ -72,9 +74,9 @@ type Parameter struct {
 	MaxItems         *int
 	MinItems         *int
 	UniqueItems      *bool
-	Enum             []any
+	Enum             []*yaml.Node
 	MultipleOf       *int
-	Extensions       map[string]any
+	Extensions       *orderedmap.Map[string, *yaml.Node]
 	low              *low.Parameter
 }
 
@@ -147,7 +149,7 @@ func NewParameter(parameter *low.Parameter) *Parameter {
 		p.UniqueItems = &parameter.UniqueItems.Value
 	}
 	if !parameter.Enum.IsEmpty() {
-		var enums []any
+		var enums []*yaml.Node
 		for e := range parameter.Enum.Value {
 			enums = append(enums, parameter.Enum.Value[e].Value)
 		}

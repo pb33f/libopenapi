@@ -5,12 +5,15 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestHeader_Build(t *testing.T) {
@@ -68,22 +71,23 @@ content:
 	assert.Equal(t, "she is my song.", n.Schema.Value.Schema().FindProperty("meddy").Value.Schema().Description.Value)
 	assert.Equal(t, "he is my champion.", n.Schema.Value.Schema().FindProperty("maddy").Value.Schema().Description.Value)
 
-	if v, ok := n.Example.Value.(map[string]interface{}); ok {
-		assert.Equal(t, "my love.", v["michelle"])
-		assert.Equal(t, "my song.", v["meddy"])
-		assert.Equal(t, "my champion.", v["maddy"])
-	} else {
-		assert.Fail(t, "should not fail")
-	}
+	var m map[string]any
+	err = n.Example.Value.Decode(&m)
+	require.NoError(t, err)
+
+	assert.Equal(t, "my love.", m["michelle"])
+	assert.Equal(t, "my song.", m["meddy"])
+	assert.Equal(t, "my champion.", m["maddy"])
 
 	con := n.FindContent("family/love").Value
 	assert.NotNil(t, con)
 	assert.Equal(t, "family love.", con.Schema.Value.Schema().Description.Value)
 	assert.Nil(t, n.FindContent("unknown"))
 
-	ext := n.FindExtension("x-family-love").Value
-	assert.Equal(t, "strong", ext)
-	assert.Len(t, n.GetExtensions(), 1)
+	var xFamilyLove string
+	_ = n.FindExtension("x-family-love").Value.Decode(&xFamilyLove)
+	assert.Equal(t, "strong", xFamilyLove)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestHeader_Build_Success_Examples(t *testing.T) {
@@ -108,13 +112,13 @@ func TestHeader_Build_Success_Examples(t *testing.T) {
 	exp := n.FindExample("family").Value
 	assert.NotNil(t, exp)
 
-	if v, ok := exp.Value.Value.(map[string]interface{}); ok {
-		assert.Equal(t, "my love.", v["michelle"])
-		assert.Equal(t, "my song.", v["meddy"])
-		assert.Equal(t, "my champion.", v["maddy"])
-	} else {
-		assert.Fail(t, "should not fail")
-	}
+	var m map[string]any
+	err = exp.Value.GetValue().Decode(&m)
+	require.NoError(t, err)
+
+	assert.Equal(t, "my love.", m["michelle"])
+	assert.Equal(t, "my song.", m["meddy"])
+	assert.Equal(t, "my champion.", m["maddy"])
 }
 
 func TestHeader_Build_Fail_Examples(t *testing.T) {
@@ -168,7 +172,6 @@ func TestHeader_Build_Fail_Content(t *testing.T) {
 }
 
 func TestEncoding_Hash_n_Grab(t *testing.T) {
-
 	yml := `description: heady
 required: true
 deprecated: true
@@ -240,8 +243,10 @@ schema:
 	assert.True(t, n.GetAllowReserved().Value)
 	sch := n.GetSchema().Value.(*base.SchemaProxy).Schema()
 	assert.Len(t, sch.Type.Value.B, 2) // using multiple types for 3.1 testing.
-	assert.Equal(t, "what a good puppy", n.GetExample().Value)
-	assert.Len(t, n.GetExamples().Value, 1)
-	assert.Len(t, n.GetContent().Value.(map[low.KeyReference[string]]low.ValueReference[*MediaType]), 1)
 
+	var example string
+	_ = n.GetExample().Value.Decode(&example)
+	assert.Equal(t, "what a good puppy", example)
+	assert.Equal(t, 1, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*base.Example]](n.GetExamples().Value).Len())
+	assert.Equal(t, 1, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*MediaType]](n.GetContent().Value).Len())
 }

@@ -3,7 +3,12 @@
 
 package v2
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v2"
+import (
+	"github.com/pb33f/libopenapi/datamodel"
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+)
 
 // ParameterDefinitions is a high-level representation of a Swagger / OpenAPI 2 Parameters Definitions object
 // that is backed by a low-level one.
@@ -12,7 +17,7 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 // referenced to the ones defined here. It does not define global operation parameters
 //   - https://swagger.io/specification/v2/#parametersDefinitionsObject
 type ParameterDefinitions struct {
-	Definitions map[string]*Parameter
+	Definitions *orderedmap.Map[string, *Parameter]
 	low         *low.ParameterDefinitions
 }
 
@@ -21,26 +26,18 @@ type ParameterDefinitions struct {
 func NewParametersDefinitions(parametersDefinitions *low.ParameterDefinitions) *ParameterDefinitions {
 	pd := new(ParameterDefinitions)
 	pd.low = parametersDefinitions
-	params := make(map[string]*Parameter)
-	var buildParam = func(name string, param *low.Parameter, rChan chan<- asyncResult[*Parameter]) {
-		rChan <- asyncResult[*Parameter]{
-			key:    name,
-			result: NewParameter(param),
-		}
+	params := orderedmap.New[string, *Parameter]()
+	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Parameter]]) (asyncResult[*Parameter], error) {
+		return asyncResult[*Parameter]{
+			key:    pair.Key().Value,
+			result: NewParameter(pair.Value().Value),
+		}, nil
 	}
-	resChan := make(chan asyncResult[*Parameter])
-	for k := range parametersDefinitions.Definitions {
-		go buildParam(k.Value, parametersDefinitions.Definitions[k].Value, resChan)
+	resultFunc := func(value asyncResult[*Parameter]) error {
+		params.Set(value.key, value.result)
+		return nil
 	}
-	totalParams := len(parametersDefinitions.Definitions)
-	completedParams := 0
-	for completedParams < totalParams {
-		select {
-		case r := <-resChan:
-			completedParams++
-			params[r.key] = r.result
-		}
-	}
+	_ = datamodel.TranslateMapParallel(parametersDefinitions.Definitions, translateFunc, resultFunc)
 	pd.Definitions = params
 	return pd
 }

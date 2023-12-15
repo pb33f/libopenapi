@@ -5,9 +5,10 @@ package base
 
 import (
 	"crypto/sha256"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // Discriminator is only used by OpenAPI 3+ documents, it represents a polymorphic discriminator used for schemas
@@ -21,14 +22,15 @@ import (
 //	v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
 	PropertyName low.NodeReference[string]
-	Mapping      low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
+	Mapping      low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
 	low.Reference
 }
 
 // FindMappingValue will return a ValueReference containing the string mapping value
 func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string] {
-	for k, v := range d.Mapping.Value {
-		if k.Value == key {
+	for pair := orderedmap.First(d.Mapping.Value); pair != nil; pair = pair.Next() {
+		if pair.Key().Value == key {
+			v := pair.Value()
 			return &v
 		}
 	}
@@ -37,20 +39,15 @@ func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string]
 
 // Hash will return a consistent SHA256 Hash of the Discriminator object
 func (d *Discriminator) Hash() [32]byte {
-
 	// calculate a hash from every property.
 	var f []string
 	if d.PropertyName.Value != "" {
 		f = append(f, d.PropertyName.Value)
 	}
-	propertyKeys := make([]string, 0, len(d.Mapping.Value))
-	for i := range d.Mapping.Value {
-		propertyKeys = append(propertyKeys, i.Value)
+
+	for pair := orderedmap.First(orderedmap.SortAlpha(d.Mapping.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, pair.Value().Value)
 	}
-	sort.Strings(propertyKeys)
-	for k := range propertyKeys {
-		prop := d.FindMappingValue(propertyKeys[k])
-		f = append(f, prop.Value)
-	}
+
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

@@ -34,7 +34,7 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			ParentNode:            schemasNode,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}, fullDef, index),
 		}
-		index.allComponentSchemaDefinitions[def] = ref
+		index.allComponentSchemaDefinitions.Store(def, ref)
 	}
 }
 
@@ -308,7 +308,6 @@ func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPr
 }
 
 func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yaml.Node, pathPrefix string) {
-
 	var name string
 	for i, schema := range securitySchemesNode.Content {
 		if i%2 == 0 {
@@ -398,8 +397,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 				})
 			} else {
 				if paramRef != nil {
-					index.paramOpRefs[pathItemNode.Value][method][paramRefName] =
-						append(index.paramOpRefs[pathItemNode.Value][method][paramRefName], paramRef)
+					index.paramOpRefs[pathItemNode.Value][method][paramRefName] = append(index.paramOpRefs[pathItemNode.Value][method][paramRefName], paramRef)
 				}
 			}
 
@@ -466,13 +464,11 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 							Path: path,
 						})
 					} else {
-						index.paramOpRefs[pathItemNode.Value][method][ref.Name] =
-							append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
+						index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
 					}
 				}
 			} else {
-				index.paramOpRefs[pathItemNode.Value][method][ref.Name] =
-					append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
+				index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
 			}
 			continue
 		}
@@ -489,7 +485,6 @@ func runIndexFunction(funcs []func() int, wg *sync.WaitGroup) {
 }
 
 func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bool) string {
-
 	cleanedPath := baseURL.Path // not cleaned yet!
 
 	// create a slice of path segments from existing path
@@ -533,7 +528,21 @@ func GenerateCleanSpecConfigBaseURL(baseURL *url.URL, dir string, includeFile bo
 		} else {
 			p = cleanedPath
 		}
-
 	}
 	return strings.TrimSuffix(p, "/")
+}
+
+func syncMapToMap[K comparable, V any](sm *sync.Map) map[K]V {
+	if sm == nil {
+		return nil
+	}
+
+	m := make(map[K]V)
+
+	sm.Range(func(key, value interface{}) bool {
+		m[key.(K)] = value.(V)
+		return true
+	})
+
+	return m
 }

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -178,15 +179,15 @@ func TestTranslateMapParallel(t *testing.T) {
 
 	t.Run("Happy path", func(t *testing.T) {
 		var expectedResults []string
-		m := make(map[string]int)
+		m := orderedmap.New[string, int]()
 		for i := 0; i < mapSize; i++ {
-			m[fmt.Sprintf("key%d", i)] = i + 1000
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
 			expectedResults = append(expectedResults, fmt.Sprintf("foobar %d", i+1000))
 		}
 
 		var translateCounter int64
-		translateFunc := func(_ string, value int) (string, error) {
-			result := fmt.Sprintf("foobar %d", value)
+		translateFunc := func(pair orderedmap.Pair[string, int]) (string, error) {
+			result := fmt.Sprintf("foobar %d", pair.Value())
 			atomic.AddInt64(&translateCounter, 1)
 			return result, nil
 		}
@@ -204,9 +205,9 @@ func TestTranslateMapParallel(t *testing.T) {
 	})
 
 	t.Run("nil", func(t *testing.T) {
-		var m map[string]int
+		var m *orderedmap.Map[string, int]
 		var translateCounter int64
-		translateFunc := func(_ string, value int) (string, error) {
+		translateFunc := func(pair orderedmap.Pair[string, int]) (string, error) {
 			atomic.AddInt64(&translateCounter, 1)
 			return "", nil
 		}
@@ -222,13 +223,13 @@ func TestTranslateMapParallel(t *testing.T) {
 	})
 
 	t.Run("Error in translate", func(t *testing.T) {
-		m := make(map[string]int)
+		m := orderedmap.New[string, int]()
 		for i := 0; i < mapSize; i++ {
-			m[fmt.Sprintf("key%d", i)] = i + 1000
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
 		}
 
 		var translateCounter int64
-		translateFunc := func(_ string, _ int) (string, error) {
+		translateFunc := func(_ orderedmap.Pair[string, int]) (string, error) {
 			atomic.AddInt64(&translateCounter, 1)
 			return "", errors.New("Foobar")
 		}
@@ -241,12 +242,12 @@ func TestTranslateMapParallel(t *testing.T) {
 	})
 
 	t.Run("Error in result", func(t *testing.T) {
-		m := make(map[string]int)
+		m := orderedmap.New[string, int]()
 		for i := 0; i < mapSize; i++ {
-			m[fmt.Sprintf("key%d", i)] = i + 1000
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
 		}
 
-		translateFunc := func(_ string, value int) (string, error) {
+		translateFunc := func(_ orderedmap.Pair[string, int]) (string, error) {
 			return "", nil
 		}
 		var resultCounter int
@@ -260,13 +261,13 @@ func TestTranslateMapParallel(t *testing.T) {
 	})
 
 	t.Run("EOF in translate", func(t *testing.T) {
-		m := make(map[string]int)
+		m := orderedmap.New[string, int]()
 		for i := 0; i < mapSize; i++ {
-			m[fmt.Sprintf("key%d", i)] = i + 1000
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
 		}
 
 		var translateCounter int64
-		translateFunc := func(_ string, _ int) (string, error) {
+		translateFunc := func(_ orderedmap.Pair[string, int]) (string, error) {
 			atomic.AddInt64(&translateCounter, 1)
 			return "", io.EOF
 		}
@@ -279,12 +280,12 @@ func TestTranslateMapParallel(t *testing.T) {
 	})
 
 	t.Run("EOF in result", func(t *testing.T) {
-		m := make(map[string]int)
+		m := orderedmap.New[string, int]()
 		for i := 0; i < mapSize; i++ {
-			m[fmt.Sprintf("key%d", i)] = i + 1000
+			m.Set(fmt.Sprintf("key%d", i), i+1000)
 		}
 
-		translateFunc := func(_ string, value int) (string, error) {
+		translateFunc := func(_ orderedmap.Pair[string, int]) (string, error) {
 			return "", nil
 		}
 		var resultCounter int
@@ -295,26 +296,6 @@ func TestTranslateMapParallel(t *testing.T) {
 		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
 		require.NoError(t, err)
 		assert.Less(t, resultCounter, mapSize)
-	})
-
-	t.Run("Continue in translate", func(t *testing.T) {
-		m := make(map[string]int)
-		for i := 0; i < mapSize; i++ {
-			m[fmt.Sprintf("key%d", i)] = i + 1000
-		}
-
-		var translateCounter int64
-		translateFunc := func(_ string, _ int) (string, error) {
-			atomic.AddInt64(&translateCounter, 1)
-			return "", datamodel.Continue
-		}
-		resultFunc := func(_ string) error {
-			t.Fatal("Expected no call to resultFunc()")
-			return nil
-		}
-		err := datamodel.TranslateMapParallel[string, int, string](m, translateFunc, resultFunc)
-		require.NoError(t, err)
-		assert.Equal(t, int64(mapSize), translateCounter)
 	})
 }
 
@@ -331,7 +312,6 @@ func TestTranslatePipeline(t *testing.T) {
 	for _, testCase := range testCases {
 		itemCount := testCase.ItemCount
 		t.Run(fmt.Sprintf("Size %d", itemCount), func(t *testing.T) {
-
 			t.Run("Happy path", func(t *testing.T) {
 				var inputErr error
 				in := make(chan int)

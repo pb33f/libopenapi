@@ -7,13 +7,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Parameter represents a high-level OpenAPI 3+ Parameter object, that is backed by a low-level one.
@@ -31,30 +32,30 @@ type Parameter struct {
 	Explode         low.NodeReference[bool]
 	AllowReserved   low.NodeReference[bool]
 	Schema          low.NodeReference[*base.SchemaProxy]
-	Example         low.NodeReference[any]
-	Examples        low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]
-	Content         low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
-	Extensions      map[low.KeyReference[string]]low.ValueReference[any]
+	Example         low.NodeReference[*yaml.Node]
+	Examples        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
+	Content         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
+	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // FindContent will attempt to locate a MediaType instance using the specified name.
 func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
-	return low.FindItemInMap[*MediaType](cType, p.Content.Value)
+	return low.FindItemInOrderedMap[*MediaType](cType, p.Content.Value)
 }
 
 // FindExample will attempt to locate a base.Example instance using the specified name.
 func (p *Parameter) FindExample(eType string) *low.ValueReference[*base.Example] {
-	return low.FindItemInMap[*base.Example](eType, p.Examples.Value)
+	return low.FindItemInOrderedMap[*base.Example](eType, p.Examples.Value)
 }
 
 // FindExtension attempts to locate an extension using the specified name.
-func (p *Parameter) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, p.Extensions)
+func (p *Parameter) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, p.Extensions)
 }
 
 // GetExtensions returns all extensions for Parameter.
-func (p *Parameter) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (p *Parameter) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return p.Extensions
 }
 
@@ -66,9 +67,9 @@ func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 	p.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
+	_, expLabel, expNode := utils.FindKeyNodeFullTop(base.ExampleLabel, root.Content)
 	if expNode != nil {
-		p.Example = low.ExtractExample(expNode, expLabel)
+		p.Example = low.NodeReference[*yaml.Node]{Value: expNode, KeyNode: expLabel, ValueNode: expNode}
 	}
 
 	// handle schema
@@ -86,7 +87,7 @@ func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 		return eErr
 	}
 	if exps != nil {
-		p.Examples = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*base.Example]]{
+		p.Examples = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
 			KeyNode:   expsL,
 			ValueNode: expsN,
@@ -98,7 +99,7 @@ func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 	if cErr != nil {
 		return cErr
 	}
-	p.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+	p.Content = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
 		Value:     con,
 		KeyNode:   cL,
 		ValueNode: cN,
@@ -129,36 +130,16 @@ func (p *Parameter) Hash() [32]byte {
 	if p.Schema.Value != nil {
 		f = append(f, fmt.Sprintf("%x", p.Schema.Value.Schema().Hash()))
 	}
-	if p.Example.Value != nil {
-		f = append(f, fmt.Sprintf("%x", p.Example.Value))
+	if p.Example.Value != nil && !p.Example.Value.IsZero() {
+		f = append(f, low.GenerateHashString(p.Example.Value))
 	}
-
-	var keys []string
-	keys = make([]string, len(p.Examples.Value))
-	z := 0
-	for k := range p.Examples.Value {
-		keys[z] = low.GenerateHashString(p.Examples.Value[k].Value)
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(p.Examples.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(p.Content.Value))
-	z = 0
-	for k := range p.Content.Value {
-		keys[z] = low.GenerateHashString(p.Content.Value[k].Value)
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(p.Content.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(p.Extensions))
-	z = 0
-	for k := range p.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-
+	f = append(f, low.HashExtensions(p.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
@@ -167,21 +148,27 @@ func (p *Parameter) Hash() [32]byte {
 func (p *Parameter) GetName() *low.NodeReference[string] {
 	return &p.Name
 }
+
 func (p *Parameter) GetIn() *low.NodeReference[string] {
 	return &p.In
 }
+
 func (p *Parameter) GetDescription() *low.NodeReference[string] {
 	return &p.Description
 }
+
 func (p *Parameter) GetRequired() *low.NodeReference[bool] {
 	return &p.Required
 }
+
 func (p *Parameter) GetDeprecated() *low.NodeReference[bool] {
 	return &p.Deprecated
 }
+
 func (p *Parameter) GetAllowEmptyValue() *low.NodeReference[bool] {
 	return &p.AllowEmptyValue
 }
+
 func (p *Parameter) GetSchema() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Schema.KeyNode,
@@ -190,18 +177,23 @@ func (p *Parameter) GetSchema() *low.NodeReference[any] {
 	}
 	return &i
 }
+
 func (p *Parameter) GetStyle() *low.NodeReference[string] {
 	return &p.Style
 }
+
 func (p *Parameter) GetAllowReserved() *low.NodeReference[bool] {
 	return &p.AllowReserved
 }
+
 func (p *Parameter) GetExplode() *low.NodeReference[bool] {
 	return &p.Explode
 }
-func (p *Parameter) GetExample() *low.NodeReference[any] {
+
+func (p *Parameter) GetExample() *low.NodeReference[*yaml.Node] {
 	return &p.Example
 }
+
 func (p *Parameter) GetExamples() *low.NodeReference[any] {
 	i := low.NodeReference[any]{
 		KeyNode:   p.Examples.KeyNode,
@@ -210,6 +202,7 @@ func (p *Parameter) GetExamples() *low.NodeReference[any] {
 	}
 	return &i
 }
+
 func (p *Parameter) GetContent() *low.NodeReference[any] {
 	c := low.NodeReference[any]{
 		KeyNode:   p.Content.KeyNode,

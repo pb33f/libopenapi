@@ -5,15 +5,16 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestScopes_Hash(t *testing.T) {
-
 	yml := `burgers: chips
 pizza: beans
 x-men: needs a reboot or a refresh`
@@ -40,6 +41,5 @@ burgers: chips`
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-	assert.Len(t, n.GetExtensions(), 1)
-
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }

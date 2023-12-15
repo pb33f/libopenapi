@@ -5,16 +5,17 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestParameter_Build(t *testing.T) {
-
 	yml := `$ref: break`
 
 	var idxNode yaml.Node
@@ -28,11 +29,9 @@ func TestParameter_Build(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestParameter_Build_Items(t *testing.T) {
-
 	yml := `items:
   $ref: break`
 
@@ -47,11 +46,9 @@ func TestParameter_Build_Items(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestParameter_DefaultSlice(t *testing.T) {
-
 	yml := `default:
   - things
   - junk
@@ -65,11 +62,14 @@ func TestParameter_DefaultSlice(t *testing.T) {
 	_ = low.BuildModel(&idxNode, &n)
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
-	assert.Len(t, n.Default.Value.([]any), 3)
+
+	var a []any
+	_ = n.Default.Value.Decode(&a)
+
+	assert.Len(t, a, 3)
 }
 
 func TestParameter_DefaultMap(t *testing.T) {
-
 	yml := `default:
   things: junk
   stuff: more junk`
@@ -82,11 +82,14 @@ func TestParameter_DefaultMap(t *testing.T) {
 	_ = low.BuildModel(&idxNode, &n)
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
-	assert.Len(t, n.Default.Value.(map[string]any), 2)
+
+	var m map[string]any
+	_ = n.Default.Value.Decode(&m)
+
+	assert.Len(t, m, 2)
 }
 
 func TestParameter_NoDefaultNoError(t *testing.T) {
-
 	yml := `name: pizza-pie`
 
 	var idxNode yaml.Node
@@ -101,7 +104,6 @@ func TestParameter_NoDefaultNoError(t *testing.T) {
 }
 
 func TestParameter_Hash_n_Grab(t *testing.T) {
-
 	yml := `name: mcmuffin
 in: my-belly
 description: tasty!
@@ -185,7 +187,10 @@ allowEmptyValue: true
 	assert.Equal(t, "left", n.GetFormat().Value)
 	assert.Equal(t, "left", n.GetFormat().Value)
 	assert.Equal(t, "nice", n.GetCollectionFormat().Value)
-	assert.Equal(t, "shut that door!", n.GetDefault().Value)
+
+	var def string
+	_ = n.GetDefault().Value.Decode(&def)
+	assert.Equal(t, "shut that door!", def)
 	assert.Equal(t, 10, n.GetMaximum().Value)
 	assert.Equal(t, 1, n.GetMinimum().Value)
 	assert.True(t, n.GetExclusiveMinimum().Value)
@@ -199,7 +204,10 @@ allowEmptyValue: true
 	assert.Equal(t, "wow", n.GetPattern().Value)
 	assert.Equal(t, "int", n.GetItems().Value.(*Items).Type.Value)
 	assert.Len(t, n.GetEnum().Value, 2)
-	assert.Equal(t, "large", n.FindExtension("x-belly").Value)
+
+	var xBelly string
+	_ = n.FindExtension("x-belly").Value.Decode(&xBelly)
+	assert.Equal(t, "large", xBelly)
 	assert.Equal(t, "tasty!", n.GetDescription().Value)
 	assert.Equal(t, "mcmuffin", n.GetName().Value)
 	assert.Equal(t, "my-belly", n.GetIn().Value)
@@ -208,6 +216,5 @@ allowEmptyValue: true
 	assert.Equal(t, "int", v.Value.A)                          // A is v2
 	assert.True(t, n.GetRequired().Value)
 	assert.True(t, n.GetAllowEmptyValue().Value)
-	assert.Len(t, n.GetExtensions(), 1)
-
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }

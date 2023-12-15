@@ -5,17 +5,17 @@ package base
 
 import (
 	"context"
-	"fmt"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
+
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewExternalDoc(t *testing.T) {
-
 	var cNode yaml.Node
 
 	yml := `description: hack code
@@ -31,22 +31,23 @@ x-hack: code`
 
 	highExt := NewExternalDoc(&lowExt)
 
+	var xHack string
+	_ = highExt.Extensions.GetOrZero("x-hack").Decode(&xHack)
+
 	assert.Equal(t, "hack code", highExt.Description)
 	assert.Equal(t, "https://pb33f.io", highExt.URL)
-	assert.Equal(t, "code", highExt.Extensions["x-hack"])
+	assert.Equal(t, "code", xHack)
 
 	wentLow := highExt.GoLow()
 	assert.Equal(t, 2, wentLow.URL.ValueNode.Line)
-	assert.Len(t, highExt.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(highExt.GetExtensions()))
 
 	// render the high-level object as YAML
 	rendered, _ := highExt.Render()
 	assert.Equal(t, strings.TrimSpace(string(rendered)), yml)
-
 }
 
-func ExampleNewExternalDoc() {
-
+func TestExampleNewExternalDoc(t *testing.T) {
 	// create a new external documentation spec reference
 	// this can be YAML or JSON.
 	yml := `description: hack code docs
@@ -67,7 +68,8 @@ x-hack: code`
 	// create new high-level ExternalDoc
 	highExt := NewExternalDoc(&lowExt)
 
-	// print out a extension
-	fmt.Print(highExt.Extensions["x-hack"])
-	// Output: code
+	var xHack string
+	_ = highExt.Extensions.GetOrZero("x-hack").Decode(&xHack)
+
+	assert.Equal(t, "code", xHack)
 }

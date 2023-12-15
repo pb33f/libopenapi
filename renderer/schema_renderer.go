@@ -15,36 +15,39 @@ import (
 
 	"github.com/lucasjones/reggen"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"golang.org/x/exp/slices"
 )
 
-const rootType = "rootType"
-const stringType = "string"
-const numberType = "number"
-const integerType = "integer"
-const booleanType = "boolean"
-const objectType = "object"
-const arrayType = "array"
-const int32Type = "int32"
-const floatType = "float"
-const doubleType = "double"
-const byteType = "byte"
-const binaryType = "binary"
-const passwordType = "password"
-const dateType = "date"
-const dateTimeType = "date-time"
-const timeType = "time"
-const emailType = "email"
-const hostnameType = "hostname"
-const ipv4Type = "ipv4"
-const ipv6Type = "ipv6"
-const uriType = "uri"
-const uriReferenceType = "uri-reference"
-const uuidType = "uuid"
-const allOfType = "allOf"
-const anyOfType = "anyOf"
-const oneOfType = "oneOf"
-const itemsType = "items"
+const (
+	rootType         = "rootType"
+	stringType       = "string"
+	numberType       = "number"
+	integerType      = "integer"
+	booleanType      = "boolean"
+	objectType       = "object"
+	arrayType        = "array"
+	int32Type        = "int32"
+	floatType        = "float"
+	doubleType       = "double"
+	byteType         = "byte"
+	binaryType       = "binary"
+	passwordType     = "password"
+	dateType         = "date"
+	dateTimeType     = "date-time"
+	timeType         = "time"
+	emailType        = "email"
+	hostnameType     = "hostname"
+	ipv4Type         = "ipv4"
+	ipv6Type         = "ipv6"
+	uriType          = "uri"
+	uriReferenceType = "uri-reference"
+	uuidType         = "uuid"
+	allOfType        = "allOf"
+	anyOfType        = "anyOf"
+	oneOfType        = "oneOf"
+	itemsType        = "items"
+)
 
 // used to generate random words if there is no dictionary applied.
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -96,10 +99,12 @@ func (wr *SchemaRenderer) DisableRequiredCheck() {
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
 // the schema, then the renderer will attempt to generate a value based on the schema type, format and pattern.
 func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, structure map[string]any, depth int) {
-
 	// got an example? use it, we're done here.
 	if schema.Example != nil {
-		structure[key] = schema.Example
+		var example any
+		_ = schema.Example.Decode(&example)
+
+		structure[key] = example
 		return
 	}
 
@@ -113,7 +118,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	if slices.Contains(schema.Type, stringType) {
 		// check for an enum, if there is one, then pick a random value from it.
 		if schema.Enum != nil && len(schema.Enum) > 0 {
-			structure[key] = schema.Enum[rand.Int()%len(schema.Enum)]
+			enum := schema.Enum[rand.Int()%len(schema.Enum)]
+
+			var example any
+			_ = enum.Decode(&example)
+
+			structure[key] = example
 		} else {
 
 			// generate a random value based on the schema format, pattern and length values.
@@ -186,7 +196,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	if slices.Contains(schema.Type, numberType) || slices.Contains(schema.Type, integerType) {
 
 		if schema.Enum != nil && len(schema.Enum) > 0 {
-			structure[key] = schema.Enum[rand.Int()%len(schema.Enum)]
+			enum := schema.Enum[rand.Int()%len(schema.Enum)]
+
+			var example any
+			_ = enum.Decode(&example)
+
+			structure[key] = example
 		} else {
 
 			var minimum int64 = 1
@@ -226,16 +241,17 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		if properties != nil {
 			// check if this schema has required properties, if so, then only render required props, if not
 			// render everything in the schema.
-			checkProps := make(map[string]*base.SchemaProxy)
+			checkProps := orderedmap.New[string, *base.SchemaProxy]()
 			if !wr.disableRequired && len(schema.Required) > 0 {
 				for _, requiredProp := range schema.Required {
-					checkProps[requiredProp] = properties[requiredProp]
+					checkProps.Set(requiredProp, properties.GetOrZero(requiredProp))
 				}
 			} else {
 				checkProps = properties
 			}
-			for propName, propValue := range checkProps {
+			for pair := orderedmap.First(checkProps); pair != nil; pair = pair.Next() {
 				// render property
+				propName, propValue := pair.Key(), pair.Value()
 				propertySchema := propValue.Schema()
 				wr.DiveIntoSchema(propertySchema, propName, propertyMap, depth+1)
 			}
@@ -258,8 +274,9 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		dependentSchemas := schema.DependentSchemas
 		if dependentSchemas != nil {
 			dependentSchemasMap := make(map[string]any)
-			for k, dependentSchema := range dependentSchemas {
+			for pair := orderedmap.First(dependentSchemas); pair != nil; pair = pair.Next() {
 				// only map if the property exists
+				k, dependentSchema := pair.Key(), pair.Value()
 				if propertyMap[k] != nil {
 					dependentSchemaCompiled := dependentSchema.Schema()
 					wr.DiveIntoSchema(dependentSchemaCompiled, k, dependentSchemasMap, depth+1)
@@ -300,7 +317,6 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		// an array needs an items schema
 		itemsSchema := schema.Items
 		if itemsSchema != nil {
-
 			// otherwise the items value is a schema, so we need to dive into it
 			if itemsSchema.IsA() {
 
@@ -323,7 +339,6 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			}
 		}
 	}
-
 }
 
 func readFile(file io.Reader) []string {
@@ -347,7 +362,6 @@ func ReadDictionary(dictionaryLocation string) []string {
 // to prevent a stack overflow, the maximum depth is 100 (anything more than this is probably a bug).
 // set the values to 0 to return the first word returned, essentially ignore the min and max values.
 func (wr *SchemaRenderer) RandomWord(min, max int64, depth int) string {
-
 	// break out if we've gone too deep
 	if depth > 100 {
 		return fmt.Sprintf("no-word-found-%d-%d", min, max)

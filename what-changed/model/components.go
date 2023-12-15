@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // ComponentsChanges represents changes made to both OpenAPI and Swagger documents. This model is based on OpenAPI 3
@@ -45,7 +46,6 @@ type ComponentsChanges struct {
 // CompareComponents will compare OpenAPI components for any changes. Accepts Swagger Definition objects
 // like ParameterDefinitions or Definitions etc.
 func CompareComponents(l, r any) *ComponentsChanges {
-
 	var changes []*Change
 
 	cc := new(ComponentsChanges)
@@ -55,7 +55,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.ParameterDefinitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.ParameterDefinitions)
 		rDef := r.(*v2.ParameterDefinitions)
-		var a, b map[low.KeyReference[string]]low.ValueReference[*v2.Parameter]
+		var a, b *orderedmap.Map[low.KeyReference[string], low.ValueReference[*v2.Parameter]]
 		if lDef != nil {
 			a = lDef.Definitions
 		}
@@ -70,7 +70,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.ResponsesDefinitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.ResponsesDefinitions)
 		rDef := r.(*v2.ResponsesDefinitions)
-		var a, b map[low.KeyReference[string]]low.ValueReference[*v2.Response]
+		var a, b *orderedmap.Map[low.KeyReference[string], low.ValueReference[*v2.Response]]
 		if lDef != nil {
 			a = lDef.Definitions
 		}
@@ -85,7 +85,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.Definitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.Definitions)
 		rDef := r.(*v2.Definitions)
-		var a, b map[low.KeyReference[string]]low.ValueReference[*base.SchemaProxy]
+		var a, b *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]]
 		if lDef != nil {
 			a = lDef.Schemas
 		}
@@ -100,7 +100,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 		reflect.TypeOf(&v2.SecurityDefinitions{}) == reflect.TypeOf(r) {
 		lDef := l.(*v2.SecurityDefinitions)
 		rDef := r.(*v2.SecurityDefinitions)
-		var a, b map[low.KeyReference[string]]low.ValueReference[*v2.SecurityScheme]
+		var a, b *orderedmap.Map[low.KeyReference[string], low.ValueReference[*v2.SecurityScheme]]
 		if lDef != nil {
 			a = lDef.Definitions
 		}
@@ -217,9 +217,9 @@ type componentComparison struct {
 }
 
 // run a generic comparison in a thread which in turn splits checks into further threads.
-func runComparison[T any, R any](l, r map[low.KeyReference[string]]low.ValueReference[T],
-	changes *[]*Change, label string, compareFunc func(l, r T) R, doneChan chan componentComparison) {
-
+func runComparison[T any, R any](l, r *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+	changes *[]*Change, label string, compareFunc func(l, r T) R, doneChan chan componentComparison,
+) {
 	// for schemas
 	if label == v3.SchemasLabel || label == v2.DefinitionsLabel || label == v3.SecuritySchemesLabel {
 		doneChan <- componentComparison{

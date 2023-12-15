@@ -6,8 +6,6 @@ package index
 import (
 	"bytes"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/sync/syncmap"
 	"log"
 	"log/slog"
 	"net/http"
@@ -19,12 +17,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/sync/syncmap"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_GetCache(t *testing.T) {
-
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(petstore, &rootNode)
@@ -55,7 +55,6 @@ func TestSpecIndex_GetCache(t *testing.T) {
 	loaded, ok = extCache.Load("test2")
 	assert.Nil(t, loaded)
 	assert.False(t, ok)
-
 }
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
@@ -188,7 +187,6 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
-
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
@@ -262,7 +260,6 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 1699, rolo.RolodexTotalFiles())
-
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
@@ -335,7 +332,6 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 
 	assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 1685, rolo.RolodexTotalFiles())
-
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
@@ -388,7 +384,6 @@ func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 }
 
 func TestSpecIndex_BaseURLError(t *testing.T) {
-
 	do, _ := os.ReadFile("../test_specs/digitalocean.yaml")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
@@ -431,7 +426,6 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 	fileLen := len(files)
 	assert.Equal(t, 0, fileLen)
 	assert.GreaterOrEqual(t, len(remoteFS.GetErrors()), 200)
-
 }
 
 func TestSpecIndex_k8s(t *testing.T) {
@@ -528,7 +522,6 @@ func TestSpecIndex_PetstoreV3(t *testing.T) {
 
 	index.SetAbsolutePath("/rooty/rootster")
 	assert.Equal(t, "/rooty/rootster", index.GetSpecAbsolutePath())
-
 }
 
 var mappedRefs = 15
@@ -701,17 +694,14 @@ func TestSpecIndex_NoRoot(t *testing.T) {
 }
 
 func test_buildMixedRefServer() *httptest.Server {
-
 	bs, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT")
 		_, _ = rw.Write(bs)
-
 	}))
 }
 
 func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
-
 	// create a test server.
 	server := test_buildMixedRefServer()
 	defer server.Close()
@@ -791,10 +781,9 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	assert.Len(t, index.GetCircularReferences(), 0)
 
 	// get the size of the rolodex.
-	assert.Equal(t, int64(60232), rolo.RolodexFileSize()+int64(len(yml)))
+	assert.Equal(t, int64(60226), rolo.RolodexFileSize()+int64(len(yml)))
 	assert.Equal(t, "50.48 KB", rolo.RolodexFileSizeAsString())
 	assert.Equal(t, 3, rolo.RolodexTotalFiles())
-
 }
 
 func TestCalcSizeAsString(t *testing.T) {
@@ -1044,7 +1033,6 @@ paths:
 }
 
 func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
-
 	embie := []byte("naughty:\n - puppy: dog\n - puppy: naughty\npuppy:\n - naughty: puppy")
 
 	_ = os.WriteFile("embie.yaml", embie, 0o664)
@@ -1091,11 +1079,9 @@ func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 	absoluteRef, _ := filepath.Abs("embie.yaml#/naughty")
 	fRef, _ := index.SearchIndexForReference(absoluteRef)
 	assert.NotNil(t, fRef)
-
 }
 
 func TestSpecIndex_lookupFileReference(t *testing.T) {
-
 	pup := []byte("good:\n - puppy: dog\n - puppy: forever-more")
 
 	var myPuppy yaml.Node
@@ -1136,11 +1122,9 @@ func TestSpecIndex_lookupFileReference(t *testing.T) {
 	assert.NoError(t, fErr)
 	assert.Equal(t, "fox.yaml", fox.Name())
 	assert.Equal(t, "good:\n - puppy: dog\n - puppy: forever-more", string(fox.GetContent()))
-
 }
 
 func TestSpecIndex_parameterReferencesHavePaths(t *testing.T) {
-
 	_ = os.WriteFile("paramour.yaml", []byte(`components:
   parameters:
     param3:

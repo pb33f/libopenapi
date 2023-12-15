@@ -11,17 +11,18 @@ package v3
 
 import (
 	"bytes"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pb33f/libopenapi/json"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
 // Document represents a high-level OpenAPI 3 document (both 3.0 & 3.1). A Document is the root of the specification.
 type Document struct {
-
 	// Version is the version of OpenAPI being used, extracted from the 'openapi: x.x.x' definition.
 	// This is not a standard property of the OpenAPI model, it's a convenience mechanism only.
 	Version string `json:"openapi,omitempty" yaml:"openapi,omitempty"`
@@ -52,7 +53,7 @@ type Document struct {
 	// an empty security requirement ({}) can be included in the array.
 	// - https://spec.openapis.org/oas/v3.1.0#security-requirement-object
 	Security []*base.SecurityRequirement `json:"security,omitempty" yaml:"security,omitempty"`
-	//Security []*base.SecurityRequirement `json:"-" yaml:"-"`
+	// Security []*base.SecurityRequirement `json:"-" yaml:"-"`
 
 	// Tags is a slice of base.Tag instances defined by the specification
 	// A list of tags used by the document with additional metadata. The order of the tags can be used to reflect on
@@ -67,7 +68,7 @@ type Document struct {
 	ExternalDocs *base.ExternalDoc `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
 
 	// Extensions contains all custom extensions defined for the top-level document.
-	Extensions map[string]any `json:"-" yaml:"-"`
+	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 
 	// JsonSchemaDialect is a 3.1+ property that sets the dialect to use for validating *base.Schema definitions
 	// The default value for the $schema keyword within Schema Objects contained within this OAS document.
@@ -81,7 +82,7 @@ type Document struct {
 	// for example by an out-of-band registration. The key name is a unique string to refer to each webhook,
 	// while the (optionally referenced) Path Item Object describes a request that may be initiated by the API provider
 	// and the expected responses. An example is available.
-	Webhooks map[string]*PathItem `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
+	Webhooks *orderedmap.Map[string, *PathItem] `json:"webhooks,omitempty" yaml:"webhooks,omitempty"`
 
 	// Index is a reference to the *index.SpecIndex that was created for the document and used
 	// as a guide when building out the Document. Ideal if further processing is required on the model and
@@ -120,7 +121,7 @@ func NewDocument(document *low.Document) *Document {
 	if !document.ExternalDocs.IsEmpty() {
 		d.ExternalDocs = base.NewExternalDoc(document.ExternalDocs.Value)
 	}
-	if len(document.Extensions) > 0 {
+	if orderedmap.Len(document.Extensions) > 0 {
 		d.Extensions = high.ExtractExtensions(document.Extensions)
 	}
 	if !document.Components.IsEmpty() {
@@ -133,9 +134,9 @@ func NewDocument(document *low.Document) *Document {
 		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
 	}
 	if !document.Webhooks.IsEmpty() {
-		hooks := make(map[string]*PathItem)
-		for h := range document.Webhooks.Value {
-			hooks[h.Value] = NewPathItem(document.Webhooks.Value[h].Value)
+		hooks := orderedmap.New[string, *PathItem]()
+		for pair := orderedmap.First(document.Webhooks.Value); pair != nil; pair = pair.Next() {
+			hooks.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
 		}
 		d.Webhooks = hooks
 	}
@@ -171,8 +172,9 @@ func (d *Document) RenderWithIndention(indent int) []byte {
 
 // RenderJSON will return a JSON representation of the Document object as a byte slice.
 func (d *Document) RenderJSON(indention string) []byte {
-	yamlData, _ := yaml.Marshal(d)
-	dat, _ := utils.ConvertYAMLtoJSONPretty(yamlData, "", indention)
+	nb := high.NewNodeBuilder(d, d.low)
+
+	dat, _ := json.YAMLNodeToJSON(nb.Render(), indention)
 	return dat
 }
 

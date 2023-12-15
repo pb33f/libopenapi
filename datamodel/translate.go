@@ -6,12 +6,17 @@ import (
 	"io"
 	"runtime"
 	"sync"
+
+	"github.com/pb33f/libopenapi/orderedmap"
 )
 
-type ActionFunc[T any] func(T) error
-type TranslateFunc[IN any, OUT any] func(IN) (OUT, error)
-type TranslateSliceFunc[IN any, OUT any] func(int, IN) (OUT, error)
-type TranslateMapFunc[K any, V any, OUT any] func(K, V) (OUT, error)
+type (
+	ActionFunc[T any]                   func(T) error
+	TranslateFunc[IN any, OUT any]      func(IN) (OUT, error)
+	TranslateSliceFunc[IN any, OUT any] func(int, IN) (OUT, error)
+	TranslateMapFunc[IN any, OUT any]   func(IN) (OUT, error)
+	ResultFunc[V any]                   func(V) error
+)
 
 type continueError struct {
 	error
@@ -28,7 +33,6 @@ type jobStatus[OUT any] struct {
 type pipelineJobStatus[IN any, OUT any] struct {
 	done   chan struct{}
 	cont   bool
-	eof    bool
 	input  IN
 	result OUT
 }
@@ -119,67 +123,80 @@ JOBLOOP:
 	return reterr
 }
 
-// TranslateMapParallel iterates a map in parallel and calls translate()
+// TranslateMapParallel iterates a `*orderedmap.Map` in parallel and calls translate()
 // asynchronously.
 // translate() or result() may return `io.EOF` to break iteration.
-// Results are provided sequentially to result().  Result order is
-// nondeterministic.
-func TranslateMapParallel[K comparable, V any, OUT any](m map[K]V, translate TranslateMapFunc[K, V, OUT], result ActionFunc[OUT]) error {
-	if len(m) == 0 {
+// Safely handles nil pointer.
+// Results are provided sequentially to result() in stable order from `*orderedmap.Map`.
+func TranslateMapParallel[K comparable, V any, RV any](m *orderedmap.Map[K, V], translate TranslateFunc[orderedmap.Pair[K, V], RV], result ResultFunc[RV]) error {
+	if m == nil {
 		return nil
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	concurrency := runtime.NumCPU()
-	resultChan := make(chan OUT, concurrency)
+	c := orderedmap.Iterate(ctx, m)
+	jobChan := make(chan *jobStatus[RV], concurrency)
 	var reterr error
-	var mu sync.Mutex
 	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	// Fan out input translation.
+	// Fan out translate jobs.
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		for k, v := range m {
+		defer func() {
+			close(jobChan)
+			wg.Done()
+		}()
+		for pair := range c {
+			j := &jobStatus[RV]{
+				done: make(chan struct{}),
+			}
+			select {
+			case jobChan <- j:
+			case <-ctx.Done():
+				return
+			}
+
 			wg.Add(1)
-			go func(k K, v V) {
-				defer wg.Done()
-				value, err := translate(k, v)
-				if err == Continue {
-					return
-				}
+			go func(pair orderedmap.Pair[K, V]) {
+				value, err := translate(pair)
 				if err != nil {
 					mu.Lock()
+					defer func() {
+						mu.Unlock()
+						wg.Done()
+						cancel()
+					}()
 					if reterr == nil {
 						reterr = err
 					}
-					mu.Unlock()
-					cancel()
 					return
 				}
-				select {
-				case resultChan <- value:
-				case <-ctx.Done():
-				}
-			}(k, v)
+				j.result = value
+				close(j.done)
+				wg.Done()
+			}(pair)
 		}
 	}()
 
-	go func() {
-		// Indicate EOF after all translate goroutines finish.
-		wg.Wait()
-		close(resultChan)
-	}()
-
-	// Iterate results.
-	for value := range resultChan {
-		err := result(value)
-		if err != nil {
-			cancel()
-			wg.Wait()
-			reterr = err
-			break
+	// Iterate jobChan as jobs complete.
+	defer wg.Wait()
+JOBLOOP:
+	for j := range jobChan {
+		select {
+		case <-j.done:
+			err := result(j.result)
+			if err != nil {
+				cancel()
+				if err == io.EOF {
+					return nil
+				}
+				return err
+			}
+		case <-ctx.Done():
+			break JOBLOOP
 		}
 	}
 

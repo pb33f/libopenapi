@@ -6,16 +6,17 @@ package base
 import (
 	"context"
 	"fmt"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
+
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestNewExample(t *testing.T) {
-
 	var cNode yaml.Node
 
 	yml := `summary: an example
@@ -35,18 +36,23 @@ x-hack: code`
 	// build high
 	highExample := NewExample(&lowExample)
 
+	var xHack string
+	_ = highExample.Extensions.GetOrZero("x-hack").Decode(&xHack)
+
+	var example string
+	_ = highExample.Value.Decode(&example)
+
 	assert.Equal(t, "an example", highExample.Summary)
 	assert.Equal(t, "something more", highExample.Description)
 	assert.Equal(t, "https://pb33f.io", highExample.ExternalValue)
-	assert.Equal(t, "code", highExample.Extensions["x-hack"])
-	assert.Equal(t, "a thing", highExample.Value)
+	assert.Equal(t, "code", xHack)
+	assert.Equal(t, "a thing", example)
 	assert.Equal(t, 4, highExample.GoLow().ExternalValue.ValueNode.Line)
 	assert.NotNil(t, highExample.GoLowUntyped())
 
 	// render the example as YAML
 	rendered, _ := highExample.Render()
-	assert.Equal(t, strings.TrimSpace(string(rendered)), yml)
-
+	assert.Equal(t, yml, strings.TrimSpace(string(rendered)))
 }
 
 func TestExtractExamples(t *testing.T) {
@@ -62,19 +68,16 @@ func TestExtractExamples(t *testing.T) {
 
 	_ = lowExample.Build(context.Background(), nil, cNode.Content[0], nil)
 
-	examplesMap := make(map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*lowbase.Example])
-	examplesMap[lowmodel.KeyReference[string]{
-		Value: "green",
-	}] = lowmodel.ValueReference[*lowbase.Example]{
-		Value: &lowExample,
-	}
+	examplesMap := orderedmap.New[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowbase.Example]]()
+	examplesMap.Set(
+		lowmodel.KeyReference[string]{Value: "green"},
+		lowmodel.ValueReference[*lowbase.Example]{Value: &lowExample},
+	)
 
-	assert.Equal(t, "herbs", ExtractExamples(examplesMap)["green"].Summary)
-
+	assert.Equal(t, "herbs", ExtractExamples(examplesMap).GetOrZero("green").Summary)
 }
 
 func ExampleNewExample() {
-
 	// create some example yaml (or can be JSON, it does not matter)
 	yml := `summary: something interesting
 description: something more interesting with detail
@@ -97,5 +100,4 @@ x-hack: code`
 
 	fmt.Print(highExample.ExternalValue)
 	// Output: https://pb33f.io
-
 }

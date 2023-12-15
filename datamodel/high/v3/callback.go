@@ -4,11 +4,13 @@
 package v3
 
 import (
+	"sort"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
 )
 
 // Callback represents a high-level Callback object for OpenAPI 3+.
@@ -19,8 +21,8 @@ import (
 // that identifies a URL to use for the callback operation.
 //   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
-	Expression map[string]*PathItem `json:"-" yaml:"-"`
-	Extensions map[string]any       `json:"-" yaml:"-"`
+	Expression *orderedmap.Map[string, *PathItem]  `json:"-" yaml:"-"`
+	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.Callback
 }
 
@@ -28,14 +30,12 @@ type Callback struct {
 func NewCallback(lowCallback *low.Callback) *Callback {
 	n := new(Callback)
 	n.low = lowCallback
-	n.Expression = make(map[string]*PathItem)
-	for i := range lowCallback.Expression.Value {
-		n.Expression[i.Value] = NewPathItem(lowCallback.Expression.Value[i].Value)
+	n.Expression = orderedmap.New[string, *PathItem]()
+	for pair := orderedmap.First(lowCallback.Expression); pair != nil; pair = pair.Next() {
+		n.Expression.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
 	}
-	n.Extensions = make(map[string]any)
-	for k, v := range lowCallback.Extensions {
-		n.Extensions[k.Value] = v.Value
-	}
+
+	n.Extensions = high.ExtractExtensions(lowCallback.Extensions)
 	return n
 }
 
@@ -54,31 +54,46 @@ func (c *Callback) Render() ([]byte, error) {
 	return yaml.Marshal(c)
 }
 
-// MarshalYAML will create a ready to render YAML representation of the Callback object.
+// RenderInline will return an YAML representation of the Callback object as a byte slice with references resolved.
+func (c *Callback) RenderInline() ([]byte, error) {
+	d, _ := c.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
+// MarshalYAML will create a ready to render YAML representation of the Paths object.
 func (c *Callback) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
-	type cbItem struct {
-		cb   *PathItem
-		exp  string
-		line int
-		ext  *yaml.Node
+	type pathItem struct {
+		pi       *PathItem
+		path     string
+		line     int
+		style    yaml.Style
+		rendered *yaml.Node
 	}
-	var mapped []*cbItem
+	var mapped []*pathItem
 
-	for k, ex := range c.Expression {
-		ln := 999 // default to a high value to weight new content to the bottom.
+	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
+		k := pair.Key()
+		pi := pair.Value()
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
 		if c.low != nil {
-			for lKey := range c.low.Expression.Value {
-				if lKey.Value == k {
-					ln = lKey.KeyNode.Line
+			lpi := c.low.FindExpression(k)
+			if lpi != nil {
+				ln = lpi.ValueNode.Line
+			}
+
+			for pair := orderedmap.First(c.low.Expression); pair != nil; pair = pair.Next() {
+				if pair.Key().Value == k {
+					style = pair.Key().KeyNode.Style
+					break
 				}
 			}
 		}
-		mapped = append(mapped, &cbItem{ex, k, ln, nil})
+		mapped = append(mapped, &pathItem{pi, k, ln, style, nil})
 	}
 
-	// extract extensions
 	nb := high.NewNodeBuilder(c, c.low)
 	extNode := nb.Render()
 	if extNode != nil && extNode.Content != nil {
@@ -88,23 +103,101 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 				label = extNode.Content[u].Value
 				continue
 			}
-			mapped = append(mapped, &cbItem{nil, label,
-				extNode.Content[u].Line, extNode.Content[u]})
+			mapped = append(mapped, &pathItem{
+				nil, label,
+				extNode.Content[u].Line, 0, extNode.Content[u],
+			})
 		}
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
-	for j := range mapped {
-		if mapped[j].cb != nil {
-			rendered, _ := mapped[j].cb.MarshalYAML()
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].exp))
+	for _, mp := range mapped {
+		if mp.pi != nil {
+			rendered, _ := mp.pi.MarshalYAML()
+
+			kn := utils.CreateStringNode(mp.path)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
-		if mapped[j].ext != nil {
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].exp))
-			m.Content = append(m.Content, mapped[j].ext)
+		if mp.rendered != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.path))
+			m.Content = append(m.Content, mp.rendered)
+		}
+	}
+
+	return m, nil
+}
+
+func (c *Callback) MarshalYAMLInline() (interface{}, error) {
+	// map keys correctly.
+	m := utils.CreateEmptyMapNode()
+	type pathItem struct {
+		pi       *PathItem
+		path     string
+		line     int
+		style    yaml.Style
+		rendered *yaml.Node
+	}
+	var mapped []*pathItem
+
+	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
+		k := pair.Key()
+		pi := pair.Value()
+		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
+		if c.low != nil {
+			lpi := c.low.FindExpression(k)
+			if lpi != nil {
+				ln = lpi.ValueNode.Line
+			}
+
+			for pair := orderedmap.First(c.low.Expression); pair != nil; pair = pair.Next() {
+				if pair.Key().Value == k {
+					style = pair.Key().KeyNode.Style
+					break
+				}
+			}
+		}
+		mapped = append(mapped, &pathItem{pi, k, ln, style, nil})
+	}
+
+	nb := high.NewNodeBuilder(c, c.low)
+	nb.Resolve = true
+	extNode := nb.Render()
+	if extNode != nil && extNode.Content != nil {
+		var label string
+		for u := range extNode.Content {
+			if u%2 == 0 {
+				label = extNode.Content[u].Value
+				continue
+			}
+			mapped = append(mapped, &pathItem{
+				nil, label,
+				extNode.Content[u].Line, 0, extNode.Content[u],
+			})
+		}
+	}
+
+	sort.Slice(mapped, func(i, j int) bool {
+		return mapped[i].line < mapped[j].line
+	})
+	for _, mp := range mapped {
+		if mp.pi != nil {
+			rendered, _ := mp.pi.MarshalYAMLInline()
+
+			kn := utils.CreateStringNode(mp.path)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
+			m.Content = append(m.Content, rendered.(*yaml.Node))
+		}
+		if mp.rendered != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.path))
+			m.Content = append(m.Content, mp.rendered)
 		}
 	}
 

@@ -4,11 +4,14 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"reflect"
 	"sync"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // PathsChanges represents changes found between two Swagger or OpenAPI Paths Objects.
@@ -55,7 +58,6 @@ func (p *PathsChanges) TotalBreakingChanges() int {
 // ComparePaths compares a left and right Swagger or OpenAPI Paths Object for changes. If found, returns a pointer
 // to a PathsChanges instance. Returns nil if nothing is found.
 func ComparePaths(l, r any) *PathsChanges {
-
 	var changes []*Change
 
 	pc := new(PathsChanges)
@@ -75,11 +77,11 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v2.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v2.PathItem])
-		for k := range lPath.PathItems {
-			lKeys[k.Value] = lPath.PathItems[k]
+		for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
+			lKeys[pair.Key().Value] = pair.Value()
 		}
-		for k := range rPath.PathItems {
-			rKeys[k.Value] = rPath.PathItems[k]
+		for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
+			rKeys[pair.Key().Value] = pair.Value()
 		}
 
 		// run every comparison in a thread.
@@ -148,13 +150,13 @@ func ComparePaths(l, r any) *PathsChanges {
 		rKeys := make(map[string]low.ValueReference[*v3.PathItem])
 
 		if lPath != nil {
-			for k := range lPath.PathItems {
-				lKeys[k.Value] = lPath.PathItems[k]
+			for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
+				lKeys[pair.Key().Value] = pair.Value()
 			}
 		}
 		if rPath != nil {
-			for k := range rPath.PathItems {
-				rKeys[k.Value] = rPath.PathItems[k]
+			for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
+				rKeys[pair.Key().Value] = pair.Value()
 			}
 		}
 
@@ -204,7 +206,7 @@ func ComparePaths(l, r any) *PathsChanges {
 			pc.PathItemsChanges = pathChanges
 		}
 
-		var lExt, rExt map[low.KeyReference[string]]low.ValueReference[any]
+		var lExt, rExt *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 		if lPath != nil {
 			lExt = lPath.Extensions
 		}

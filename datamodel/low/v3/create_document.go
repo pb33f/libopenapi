@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 )
 
@@ -45,6 +46,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.BasePath = config.BasePath
 	idxConfig.Logger = config.Logger
 	rolodex := index.NewRolodex(idxConfig)
+	<-info.GetJSONParsingChannel() // Need to wait for JSON parsing to complete before we can index.
 	rolodex.SetRootNode(info.RootNode)
 	doc.Rolodex = rolodex
 
@@ -276,7 +278,7 @@ func extractWebhooks(ctx context.Context, info *datamodel.SpecInfo, doc *Documen
 		return eErr
 	}
 	if hooks != nil {
-		doc.Webhooks = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]{
+		doc.Webhooks = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]{
 			Value:     hooks,
 			KeyNode:   hooksL,
 			ValueNode: hooksN,

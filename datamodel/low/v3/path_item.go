@@ -14,6 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -37,7 +38,7 @@ type PathItem struct {
 	Trace       low.NodeReference[*Operation]
 	Servers     low.NodeReference[[]low.ValueReference[*Server]]
 	Parameters  low.NodeReference[[]low.ValueReference[*Parameter]]
-	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
@@ -86,25 +87,17 @@ func (p *PathItem) Hash() [32]byte {
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
-
-	keys = make([]string, len(p.Extensions))
-	z := 0
-	for k := range p.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(p.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
 // FindExtension attempts to find an extension
-func (p *PathItem) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, p.Extensions)
+func (p *PathItem) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, p.Extensions)
 }
 
 // GetExtensions returns all PathItem extensions and satisfies the low.HasExtensions interface.
-func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (p *PathItem) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return p.Extensions
 }
 
@@ -203,6 +196,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		var op Operation
 		opIsRef := false
 		var opRefVal string
+		var opRefNode *yaml.Node
 		if ok, _, ref := utils.IsNodeRefValue(pathNode); ok {
 			// According to OpenAPI spec the only valid $ref for paths is
 			// reference for the whole pathItem. Unfortunately, internet is full of invalid specs
@@ -215,6 +209,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 
 			opIsRef = true
 			opRefVal = ref
+			opRefNode = pathNode
 			r, newIdx, err, nCtx := low.LocateRefNodeWithContext(ctx, pathNode, idx)
 			if r != nil {
 				if r.Kind == yaml.DocumentNode {
@@ -251,8 +246,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 			Context:   foundContext,
 		}
 		if opIsRef {
-			opRef.Reference = opRefVal
-			opRef.ReferenceNode = true
+			opRef.SetReference(opRefVal, opRefNode)
 		}
 
 		ops = append(ops, opRef)
@@ -281,13 +275,15 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 	// now we need to build out the operation, we will do this asynchronously for speed.
 	translateFunc := func(_ int, op low.NodeReference[*Operation]) (any, error) {
 		ref := ""
-		if op.ReferenceNode {
-			ref = op.Reference
+		var refNode *yaml.Node
+		if op.IsReference() {
+			ref = op.GetReference()
+			refNode = op.GetReferenceNode()
 		}
 
 		err := op.Value.Build(op.Context, op.KeyNode, op.ValueNode, op.Context.Value(index.FoundIndexKey).(*index.SpecIndex))
 		if ref != "" {
-			op.Value.Reference.Reference = ref
+			op.Value.Reference.SetReference(ref, refNode)
 		}
 		if err != nil {
 			return nil, err

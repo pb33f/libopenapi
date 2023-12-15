@@ -50,13 +50,13 @@ callbacks:
 
 	assert.Equal(t, "https://pb33f.io", r.ExternalDocs.URL)
 	assert.Equal(t, 1, r.GoLow().ExternalDocs.KeyNode.Line)
-	assert.Contains(t, r.Callbacks, "testCallback")
-	assert.Contains(t, r.Callbacks["testCallback"].Expression, "{$request.body#/callbackUrl}")
+
+	assert.NotNil(t, r.Callbacks.GetOrZero("testCallback"))
+	assert.NotNil(t, r.Callbacks.GetOrZero("testCallback").Expression.GetOrZero("{$request.body#/callbackUrl}"))
 	assert.Equal(t, 3, r.GoLow().Callbacks.KeyNode.Line)
 }
 
 func TestOperation_MarshalYAML(t *testing.T) {
-
 	op := &Operation{
 		Tags:        []string{"test"},
 		Summary:     "nice",
@@ -90,11 +90,9 @@ requestBody:
     description: dice`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }
 
 func TestOperation_MarshalYAMLInline(t *testing.T) {
-
 	op := &Operation{
 		Tags:        []string{"test"},
 		Summary:     "nice",
@@ -128,7 +126,6 @@ requestBody:
     description: dice`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }
 
 func TestOperation_EmptySecurity(t *testing.T) {
@@ -147,7 +144,6 @@ security: []`
 
 	assert.NotNil(t, r.Security)
 	assert.Len(t, r.Security, 0)
-
 }
 
 func TestOperation_NoSecurity(t *testing.T) {
@@ -164,5 +160,4 @@ func TestOperation_NoSecurity(t *testing.T) {
 	r := NewOperation(&n)
 
 	assert.Nil(t, r.Security)
-
 }

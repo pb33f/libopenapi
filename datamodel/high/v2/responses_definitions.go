@@ -3,7 +3,12 @@
 
 package v2
 
-import low "github.com/pb33f/libopenapi/datamodel/low/v2"
+import (
+	"github.com/pb33f/libopenapi/datamodel"
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
+	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+)
 
 // ResponsesDefinitions is a high-level representation of a Swagger / OpenAPI 2 Responses Definitions object.
 // that is backed by a low-level one.
@@ -12,7 +17,7 @@ import low "github.com/pb33f/libopenapi/datamodel/low/v2"
 // referenced to the ones defined here. It does not define global operation responses
 //   - https://swagger.io/specification/v2/#responsesDefinitionsObject
 type ResponsesDefinitions struct {
-	Definitions map[string]*Response
+	Definitions *orderedmap.Map[string, *Response]
 	low         *low.ResponsesDefinitions
 }
 
@@ -20,28 +25,19 @@ type ResponsesDefinitions struct {
 func NewResponsesDefinitions(responsesDefinitions *low.ResponsesDefinitions) *ResponsesDefinitions {
 	rd := new(ResponsesDefinitions)
 	rd.low = responsesDefinitions
+	responses := orderedmap.New[string, *Response]()
+	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Response]]) (asyncResult[*Response], error) {
+		return asyncResult[*Response]{
+			key:    pair.Key().Value,
+			result: NewResponse(pair.Value().Value),
+		}, nil
+	}
+	resultFunc := func(value asyncResult[*Response]) error {
+		responses.Set(value.key, value.result)
+		return nil
+	}
 
-	// build everything async.
-	responses := make(map[string]*Response)
-	var buildResp = func(name string, resp *low.Response, rChan chan<- asyncResult[*Response]) {
-		rChan <- asyncResult[*Response]{
-			key:    name,
-			result: NewResponse(resp),
-		}
-	}
-	resChan := make(chan asyncResult[*Response])
-	for k := range responsesDefinitions.Definitions {
-		go buildResp(k.Value, responsesDefinitions.Definitions[k].Value, resChan)
-	}
-	totalResponses := len(responsesDefinitions.Definitions)
-	completedResponses := 0
-	for completedResponses < totalResponses {
-		select {
-		case r := <-resChan:
-			completedResponses++
-			responses[r.key] = r.result
-		}
-	}
+	_ = datamodel.TranslateMapParallel(responsesDefinitions.Definitions, translateFunc, resultFunc)
 	rd.Definitions = responses
 	return rd
 }

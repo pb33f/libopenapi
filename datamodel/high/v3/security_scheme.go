@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,15 +21,15 @@ import (
 // Recommended for most use case is Authorization Code Grant flow with PKCE.
 //   - https://spec.openapis.org/oas/v3.1.0#security-scheme-object
 type SecurityScheme struct {
-	Type             string         `json:"type,omitempty" yaml:"type,omitempty"`
-	Description      string         `json:"description,omitempty" yaml:"description,omitempty"`
-	Name             string         `json:"name,omitempty" yaml:"name,omitempty"`
-	In               string         `json:"in,omitempty" yaml:"in,omitempty"`
-	Scheme           string         `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	BearerFormat     string         `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
-	Flows            *OAuthFlows    `json:"flows,omitempty" yaml:"flows,omitempty"`
-	OpenIdConnectUrl string         `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
-	Extensions       map[string]any `json:"-" yaml:"-"`
+	Type             string                              `json:"type,omitempty" yaml:"type,omitempty"`
+	Description      string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Name             string                              `json:"name,omitempty" yaml:"name,omitempty"`
+	In               string                              `json:"in,omitempty" yaml:"in,omitempty"`
+	Scheme           string                              `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	BearerFormat     string                              `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
+	Flows            *OAuthFlows                         `json:"flows,omitempty" yaml:"flows,omitempty"`
+	OpenIdConnectUrl string                              `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
+	Extensions       *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low              *low.SecurityScheme
 }
 

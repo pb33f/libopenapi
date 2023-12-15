@@ -9,24 +9,25 @@ import (
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
 // Header represents a high-level OpenAPI 3+ Header object that is backed by a low-level one.
 //   - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
-	Description     string                       `json:"description,omitempty" yaml:"description,omitempty"`
-	Required        bool                         `json:"required,omitempty" yaml:"required,omitempty"`
-	Deprecated      bool                         `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	AllowEmptyValue bool                         `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
-	Style           string                       `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode         bool                         `json:"explode,omitempty" yaml:"explode,omitempty"`
-	AllowReserved   bool                         `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
-	Schema          *highbase.SchemaProxy        `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Example         any                          `json:"example,omitempty" yaml:"example,omitempty"`
-	Examples        map[string]*highbase.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Content         map[string]*MediaType        `json:"content,omitempty" yaml:"content,omitempty"`
-	Extensions      map[string]any               `json:"-" yaml:"-"`
+	Description     string                                     `json:"description,omitempty" yaml:"description,omitempty"`
+	Required        bool                                       `json:"required,omitempty" yaml:"required,omitempty"`
+	Deprecated      bool                                       `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	AllowEmptyValue bool                                       `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Style           string                                     `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode         bool                                       `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowReserved   bool                                       `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	Schema          *highbase.SchemaProxy                      `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example         *yaml.Node                                 `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        *orderedmap.Map[string, *highbase.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Content         *orderedmap.Map[string, *MediaType]        `json:"content,omitempty" yaml:"content,omitempty"`
+	Extensions      *orderedmap.Map[string, *yaml.Node]        `json:"-" yaml:"-"`
 	low             *low.Header
 }
 
@@ -51,6 +52,7 @@ func NewHeader(header *low.Header) *Header {
 	h.Content = ExtractContent(header.Content.Value)
 	h.Example = header.Example.Value
 	h.Examples = highbase.ExtractExamples(header.Examples.Value)
+	h.Extensions = high.ExtractExtensions(header.Extensions)
 	return h
 }
 
@@ -65,10 +67,10 @@ func (h *Header) GoLowUntyped() any {
 }
 
 // ExtractHeaders will extract a hard to navigate low-level Header map, into simple high-level one.
-func ExtractHeaders(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Header]) map[string]*Header {
-	extracted := make(map[string]*Header)
-	for k, v := range elements {
-		extracted[k.Value] = NewHeader(v.Value)
+func ExtractHeaders(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Header]]) *orderedmap.Map[string, *Header] {
+	extracted := orderedmap.New[string, *Header]()
+	for pair := orderedmap.First(elements); pair != nil; pair = pair.Next() {
+		extracted.Set(pair.Key().Value, NewHeader(pair.Value().Value))
 	}
 	return extracted
 }

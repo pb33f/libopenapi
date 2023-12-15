@@ -9,6 +9,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -54,10 +55,11 @@ x-cli-name: pizza cli`
 	assert.Equal(t, "magic", lic.Name.Value)
 	assert.Equal(t, "https://pb33f.io/license", lic.URL.Value)
 
-	cliName := n.FindExtension("x-cli-name")
-	assert.NotNil(t, cliName)
-	assert.Equal(t, "pizza cli", cliName.Value)
-	assert.Len(t, n.GetExtensions(), 1)
+	var xCliName string
+	_ = n.FindExtension("x-cli-name").Value.Decode(&xCliName)
+
+	assert.Equal(t, "pizza cli", xCliName)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestContact_Build(t *testing.T) {

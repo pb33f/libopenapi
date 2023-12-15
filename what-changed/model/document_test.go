@@ -794,7 +794,6 @@ jsonSchemaDialect: https://pb33f.io/schema`
 }
 
 func TestCompareDocuments_OpenAPI_BaseProperties_Modified(t *testing.T) {
-
 	left := `openapi: 3.1
 x-diet: tough
 jsonSchemaDialect: https://pb33f.io/schema`
@@ -823,7 +822,6 @@ jsonSchemaDialect: https://pb33f.io/schema/changed`
 }
 
 func TestCompareDocuments_OpenAPI_AddComponents(t *testing.T) {
-
 	left := `openapi: 3.1`
 
 	right := `openapi: 3.1
@@ -853,7 +851,6 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_Removed(t *testing.T) {
-
 	left := `openapi: 3.1`
 
 	right := `openapi: 3.1
@@ -883,7 +880,6 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyPaths(t *testing.T) {
-
 	left := `openapi: 3.1
 paths:
   /brown/cow:
@@ -922,7 +918,6 @@ paths:
 }
 
 func TestCompareDocuments_OpenAPI_Identical_Security(t *testing.T) {
-
 	left := `openapi: 3.1
 security:
   - cakes:
@@ -958,7 +953,6 @@ security:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyComponents(t *testing.T) {
-
 	left := `openapi: 3.1
 components:
   schemas:
@@ -995,7 +989,6 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyServers(t *testing.T) {
-
 	left := `openapi: 3.1
 servers:
   - url: https://pb33f.io
@@ -1027,7 +1020,6 @@ servers:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyExamples(t *testing.T) {
-
 	left := `openapi: 3.1
 components:
   examples:
@@ -1062,7 +1054,6 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyWebhooks(t *testing.T) {
-
 	left := `openapi: 3.1
 webhooks:
   bHook:
@@ -1182,4 +1173,11 @@ paths:
 	// compare.
 	extChanges := CompareDocuments(lDoc, rDoc)
 	assert.Nil(t, extChanges)
+}
+
+func TestDocumentChanges_Nil(t *testing.T) {
+	var dc *DocumentChanges
+	assert.Equal(t, 0, dc.TotalChanges())
+	assert.Equal(t, 0, dc.TotalBreakingChanges())
+	assert.Nil(t, dc.GetAllChanges())
 }
