@@ -1038,6 +1038,8 @@ components:
 
 	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
 	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 6)
+	assert.Equal(t, int64(1719), rolodex.RolodexFileSize())
+
 }
 
 func TestRolodex_IndexCircularLookup_PolyItemsFileOnly_LocalIncluded(t *testing.T) {

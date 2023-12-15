@@ -152,6 +152,7 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 			}
 		}
 	}
+	l.processingFiles.Delete(name)
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
 }
 
