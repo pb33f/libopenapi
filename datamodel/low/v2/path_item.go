@@ -13,6 +13,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -34,16 +35,16 @@ type PathItem struct {
 	Head       low.NodeReference[*Operation]
 	Patch      low.NodeReference[*Operation]
 	Parameters low.NodeReference[[]low.ValueReference[*Parameter]]
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 }
 
 // FindExtension will attempt to locate an extension given a name.
-func (p *PathItem) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, p.Extensions)
+func (p *PathItem) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, p.Extensions)
 }
 
 // GetExtensions returns all PathItem extensions and satisfies the low.HasExtensions interface.
-func (p *PathItem) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (p *PathItem) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return p.Extensions
 }
 
@@ -153,8 +154,8 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		}
 	}
 
-	//all operations have been superficially built,
-	//now we need to build out the operation, we will do this asynchronously for speed.
+	// all operations have been superficially built,
+	// now we need to build out the operation, we will do this asynchronously for speed.
 	opBuildChan := make(chan bool)
 	opErrorChan := make(chan error)
 
@@ -223,13 +224,6 @@ func (p *PathItem) Hash() [32]byte {
 	}
 	sort.Strings(keys)
 	f = append(f, keys...)
-	keys = make([]string, len(p.Extensions))
-	z := 0
-	for k := range p.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(p.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(p.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

@@ -5,15 +5,16 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestItems_Build(t *testing.T) {
-
 	yml := `items:
   $ref: break`
 
@@ -31,7 +32,6 @@ func TestItems_Build(t *testing.T) {
 }
 
 func TestItems_DefaultAsSlice(t *testing.T) {
-
 	yml := `x-thing: thing
 default:
   - pizza
@@ -45,12 +45,14 @@ default:
 	_ = low.BuildModel(&idxNode, &n)
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
-	assert.Len(t, n.Default.Value, 2)
-	assert.Len(t, n.GetExtensions(), 1)
+	var def []string
+	_ = n.Default.Value.Decode(&def)
+
+	assert.Len(t, def, 2)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 func TestItems_DefaultAsMap(t *testing.T) {
-
 	yml := `default:
   hot: pizza
   tasty: beer`
@@ -63,12 +65,13 @@ func TestItems_DefaultAsMap(t *testing.T) {
 	_ = low.BuildModel(&idxNode, &n)
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
-	assert.Len(t, n.Default.Value, 2)
+	var def map[string]string
+	_ = n.Default.GetValue().Decode(&def)
 
+	assert.Len(t, def, 2)
 }
 
 func TestItems_Hash_n_Grab(t *testing.T) {
-
 	yml := `type: string
 format: left
 collectionFormat: nice
@@ -138,7 +141,10 @@ pattern: wow
 	assert.Equal(t, "left", n.GetFormat().Value)
 	assert.Equal(t, "left", n.GetFormat().Value)
 	assert.Equal(t, "nice", n.GetCollectionFormat().Value)
-	assert.Equal(t, "shut that door!", n.GetDefault().Value)
+
+	var def string
+	_ = n.GetDefault().Value.Decode(&def)
+	assert.Equal(t, "shut that door!", def)
 	assert.Equal(t, 10, n.GetMaximum().Value)
 	assert.Equal(t, 1, n.GetMinimum().Value)
 	assert.True(t, n.GetExclusiveMinimum().Value)
@@ -152,7 +158,13 @@ pattern: wow
 	assert.Equal(t, "wow", n.GetPattern().Value)
 	assert.Equal(t, "int", n.GetItems().Value.(*Items).Type.Value)
 	assert.Len(t, n.GetEnum().Value, 2)
-	assert.Equal(t, "large", n.FindExtension("x-belly").Value)
-	assert.Nil(t, n.GetDescription())
 
+	var xBelly string
+	_ = n.FindExtension("x-belly").GetValue().Decode(&xBelly)
+	assert.Equal(t, "large", xBelly)
+}
+
+func TestItems_GetDescription(t *testing.T) {
+	i := Items{}
+	assert.Nil(t, i.GetDescription())
 }

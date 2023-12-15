@@ -7,6 +7,8 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.
@@ -15,9 +17,9 @@ import (
 type Response struct {
 	Description string
 	Schema      *base.SchemaProxy
-	Headers     map[string]*Header
+	Headers     *orderedmap.Map[string, *Header]
 	Examples    *Example
-	Extensions  map[string]any
+	Extensions  *orderedmap.Map[string, *yaml.Node]
 	low         *low.Response
 }
 
@@ -33,9 +35,9 @@ func NewResponse(response *low.Response) *Response {
 		r.Schema = base.NewSchemaProxy(&response.Schema)
 	}
 	if !response.Headers.IsEmpty() {
-		headers := make(map[string]*Header)
-		for k := range response.Headers.Value {
-			headers[k.Value] = NewHeader(response.Headers.Value[k].Value)
+		headers := orderedmap.New[string, *Header]()
+		for pair := orderedmap.First(response.Headers.Value); pair != nil; pair = pair.Next() {
+			headers.Set(pair.Key().Value, NewHeader(pair.Value().Value))
 		}
 		r.Headers = headers
 	}

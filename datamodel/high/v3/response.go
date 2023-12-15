@@ -6,6 +6,7 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,11 +16,11 @@ import (
 // operations based on the response.
 //   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
-	Description string                `json:"description,omitempty" yaml:"description,omitempty"`
-	Headers     map[string]*Header    `json:"headers,omitempty" yaml:"headers,omitempty"`
-	Content     map[string]*MediaType `json:"content,omitempty" yaml:"content,omitempty"`
-	Links       map[string]*Link      `json:"links,omitempty" yaml:"links,omitempty"`
-	Extensions  map[string]any        `json:"-" yaml:"-"`
+	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Headers     *orderedmap.Map[string, *Header]    `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Content     *orderedmap.Map[string, *MediaType] `json:"content,omitempty" yaml:"content,omitempty"`
+	Links       *orderedmap.Map[string, *Link]      `json:"links,omitempty" yaml:"links,omitempty"`
+	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low         *low.Response
 }
 
@@ -36,9 +37,9 @@ func NewResponse(response *low.Response) *Response {
 		r.Content = ExtractContent(response.Content.Value)
 	}
 	if !response.Links.IsEmpty() {
-		responseLinks := make(map[string]*Link)
-		for k, v := range response.Links.Value {
-			responseLinks[k.Value] = NewLink(v.Value)
+		responseLinks := orderedmap.New[string, *Link]()
+		for pair := orderedmap.First(response.Links.Value); pair != nil; pair = pair.Next() {
+			responseLinks.Set(pair.Key().Value, NewLink(pair.Value().Value))
 		}
 		r.Links = responseLinks
 	}

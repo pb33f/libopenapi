@@ -49,7 +49,7 @@ func TestPaths_MarshalYAML(t *testing.T) {
 
 	// mutate
 	deprecated := true
-	high.PathItems["/beer"].Get.Deprecated = &deprecated
+	high.PathItems.GetOrZero("/beer").Get.Deprecated = &deprecated
 
 	yml = `/foo/bar/bizzle:
     get:
@@ -101,7 +101,7 @@ func TestPaths_MarshalYAMLInline(t *testing.T) {
 
 	// mutate
 	deprecated := true
-	high.PathItems["/beer"].Get.Deprecated = &deprecated
+	high.PathItems.GetOrZero("/beer").Get.Deprecated = &deprecated
 
 	yml = `/foo/bar/bizzle:
     get:

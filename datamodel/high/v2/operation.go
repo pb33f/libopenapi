@@ -7,6 +7,8 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Operation represents a high-level Swagger / OpenAPI 2 Operation object, backed by a low-level one.
@@ -25,7 +27,7 @@ type Operation struct {
 	Schemes      []string
 	Deprecated   bool
 	Security     []*base.SecurityRequirement
-	Extensions   map[string]any
+	Extensions   *orderedmap.Map[string, *yaml.Node]
 	low          *low.Operation
 }
 

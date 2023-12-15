@@ -7,50 +7,53 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"golang.org/x/sync/syncmap"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
+
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestFindItemInMap(t *testing.T) {
-	v := make(map[KeyReference[string]]ValueReference[string])
-	v[KeyReference[string]{
+func TestFindItemInOrderedMap(t *testing.T) {
+	v := orderedmap.New[KeyReference[string], ValueReference[string]]()
+	v.Set(KeyReference[string]{
 		Value: "pizza",
-	}] = ValueReference[string]{
+	}, ValueReference[string]{
 		Value: "pie",
-	}
-	assert.Equal(t, "pie", FindItemInMap("pizza", v).Value)
+	})
+	assert.Equal(t, "pie", FindItemInOrderedMap("pizza", v).Value)
 }
 
-func TestFindItemInMap_WrongCase(t *testing.T) {
-	v := make(map[KeyReference[string]]ValueReference[string])
-	v[KeyReference[string]{
+func TestFindItemInOrderedMap_WrongCase(t *testing.T) {
+	v := orderedmap.New[KeyReference[string], ValueReference[string]]()
+	v.Set(KeyReference[string]{
 		Value: "pizza",
-	}] = ValueReference[string]{
+	}, ValueReference[string]{
 		Value: "pie",
-	}
-	assert.Equal(t, "pie", FindItemInMap("PIZZA", v).Value)
+	})
+	assert.Equal(t, "pie", FindItemInOrderedMap("PIZZA", v).Value)
 }
 
-func TestFindItemInMap_Error(t *testing.T) {
-	v := make(map[KeyReference[string]]ValueReference[string])
-	v[KeyReference[string]{
+func TestFindItemInOrderedMap_Error(t *testing.T) {
+	v := orderedmap.New[KeyReference[string], ValueReference[string]]()
+	v.Set(KeyReference[string]{
 		Value: "pizza",
-	}] = ValueReference[string]{
+	}, ValueReference[string]{
 		Value: "pie",
-	}
-	assert.Nil(t, FindItemInMap("nuggets", v))
+	})
+	assert.Nil(t, FindItemInOrderedMap("nuggets", v))
 }
 
 func TestLocateRefNode(t *testing.T) {
-
 	yml := `components:
   schemas:
     cake:
@@ -68,11 +71,9 @@ func TestLocateRefNode(t *testing.T) {
 
 	located, _, _ := LocateRefNode(cNode.Content[0], idx)
 	assert.NotNil(t, located)
-
 }
 
 func TestLocateRefNode_BadNode(t *testing.T) {
-
 	yml := `components:
   schemas:
     cake:
@@ -93,11 +94,9 @@ func TestLocateRefNode_BadNode(t *testing.T) {
 	// should both be empty.
 	assert.Nil(t, located)
 	assert.Nil(t, err)
-
 }
 
 func TestLocateRefNode_Path(t *testing.T) {
-
 	yml := `paths:
   /burger/time:
     description: hello`
@@ -114,11 +113,9 @@ func TestLocateRefNode_Path(t *testing.T) {
 
 	located, _, _ := LocateRefNode(cNode.Content[0], idx)
 	assert.NotNil(t, located)
-
 }
 
 func TestLocateRefNode_Path_NotFound(t *testing.T) {
-
 	yml := `paths:
   /burger/time:
     description: hello`
@@ -136,7 +133,6 @@ func TestLocateRefNode_Path_NotFound(t *testing.T) {
 	located, _, err := LocateRefNode(cNode.Content[0], idx)
 	assert.Nil(t, located)
 	assert.Error(t, err)
-
 }
 
 type pizza struct {
@@ -148,7 +144,6 @@ func (p *pizza) Build(_ context.Context, _, _ *yaml.Node, _ *index.SpecIndex) er
 }
 
 func TestExtractObject(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -172,7 +167,6 @@ func TestExtractObject(t *testing.T) {
 }
 
 func TestExtractObject_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -196,7 +190,6 @@ func TestExtractObject_Ref(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef(t *testing.T) {
-
 	yml := `components:
   schemas:
     cake:
@@ -281,7 +274,6 @@ func TestExtractObject_DoubleRef_Circular_Fail(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
-
 	yml := `components:
   schemas:
     loopy:
@@ -311,7 +303,6 @@ func TestExtractObject_DoubleRef_Circular_Direct(t *testing.T) {
 }
 
 func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
-
 	yml := `components:
   schemas:
     loopy:
@@ -337,7 +328,6 @@ func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
 
 	_, err := ExtractObject[*pizza](context.Background(), "tags", cNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 type test_borked struct {
@@ -373,7 +363,6 @@ func (t *test_Good) Build(_ context.Context, _, root *yaml.Node, idx *index.Spec
 }
 
 func TestExtractObject_BadLowLevelModel(t *testing.T) {
-
 	yml := `components:
   schemas:
    hey:`
@@ -390,11 +379,9 @@ func TestExtractObject_BadLowLevelModel(t *testing.T) {
 
 	_, err := ExtractObject[*test_noGood](context.Background(), "thing", &cNode, idx)
 	assert.Error(t, err)
-
 }
 
 func TestExtractObject_BadBuild(t *testing.T) {
-
 	yml := `components:
   schemas:
    hey:`
@@ -411,11 +398,9 @@ func TestExtractObject_BadBuild(t *testing.T) {
 
 	_, err := ExtractObject[*test_almostGood](context.Background(), "thing", &cNode, idx)
 	assert.Error(t, err)
-
 }
 
 func TestExtractObject_BadLabel(t *testing.T) {
-
 	yml := `components:
   schemas:
    hey:`
@@ -433,11 +418,9 @@ func TestExtractObject_BadLabel(t *testing.T) {
 	res, err := ExtractObject[*test_almostGood](context.Background(), "ding", &cNode, idx)
 	assert.Nil(t, res.Value)
 	assert.NoError(t, err)
-
 }
 
 func TestExtractObject_PathIsCircular(t *testing.T) {
-
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -466,11 +449,9 @@ func TestExtractObject_PathIsCircular(t *testing.T) {
 	res, err := ExtractObject[*test_Good](context.Background(), "thing", &rootNode, idx)
 	assert.NotNil(t, res.Value)
 	assert.Error(t, err) // circular error would have been thrown.
-
 }
 
 func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
-
 	// first we need an index.
 	yml := `paths:
   '/something/here':
@@ -502,11 +483,9 @@ func TestExtractObject_PathIsCircular_IgnoreErrors(t *testing.T) {
 	res, err := ExtractObject[*test_Good](context.Background(), "thing", &rootNode, idx)
 	assert.NotNil(t, res.Value)
 	assert.NoError(t, err) // circular error would have been thrown, but we're ignoring them.
-
 }
 
 func TestExtractObjectRaw(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -529,7 +508,6 @@ func TestExtractObjectRaw(t *testing.T) {
 }
 
 func TestExtractObjectRaw_With_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -554,7 +532,6 @@ func TestExtractObjectRaw_With_Ref(t *testing.T) {
 }
 
 func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -578,11 +555,9 @@ func TestExtractObjectRaw_Ref_Circular(t *testing.T) {
 	tag, err, _, _ := ExtractObjectRaw[*pizza](context.Background(), nil, cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.NotNil(t, tag)
-
 }
 
 func TestExtractObjectRaw_RefBroken(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -600,11 +575,9 @@ func TestExtractObjectRaw_RefBroken(t *testing.T) {
 	tag, err, _, _ := ExtractObjectRaw[*pizza](context.Background(), nil, cNode.Content[0], idx)
 	assert.Error(t, err)
 	assert.Nil(t, tag)
-
 }
 
 func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -621,11 +594,9 @@ func TestExtractObjectRaw_Ref_NonBuildable(t *testing.T) {
 
 	_, err, _, _ := ExtractObjectRaw[*test_noGood](context.Background(), nil, cNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -642,11 +613,9 @@ func TestExtractObjectRaw_Ref_AlmostBuildable(t *testing.T) {
 
 	_, err, _, _ := ExtractObjectRaw[*test_almostGood](context.Background(), nil, cNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestExtractArray(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -674,7 +643,6 @@ func TestExtractArray(t *testing.T) {
 }
 
 func TestExtractArray_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     things:
@@ -701,7 +669,6 @@ func TestExtractArray_Ref(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Unbuildable(t *testing.T) {
-
 	yml := `components:
   schemas:
     things:
@@ -725,7 +692,6 @@ func TestExtractArray_Ref_Unbuildable(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Circular(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -753,7 +719,6 @@ func TestExtractArray_Ref_Circular(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Bad(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -781,7 +746,6 @@ func TestExtractArray_Ref_Bad(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -798,7 +762,7 @@ func TestExtractArray_Ref_Nested(t *testing.T) {
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
-	yml = `limes: 
+	yml = `limes:
   $ref: '#/components/schemas/let-us-eat-cake'`
 
 	var cNode yaml.Node
@@ -810,7 +774,6 @@ func TestExtractArray_Ref_Nested(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -827,7 +790,7 @@ func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
-	yml = `limes: 
+	yml = `limes:
   - $ref: '#/components/schemas/things'`
 
 	var cNode yaml.Node
@@ -839,7 +802,6 @@ func TestExtractArray_Ref_Nested_Circular(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -854,7 +816,7 @@ func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes: 
+	yml = `limes:
   - $ref: '#/components/schemas/thangs'`
 
 	var cNode yaml.Node
@@ -866,7 +828,6 @@ func TestExtractArray_Ref_Nested_BadRef(t *testing.T) {
 }
 
 func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -883,7 +844,7 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 	errs := resolve.CheckForCircularReferences()
 	assert.Len(t, errs, 1)
 
-	yml = `limes: 
+	yml = `limes:
   $ref: '#/components/schemas/things'`
 
 	var cNode yaml.Node
@@ -895,7 +856,6 @@ func TestExtractArray_Ref_Nested_CircularFlat(t *testing.T) {
 }
 
 func TestExtractArray_BadBuild(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:`
@@ -905,7 +865,7 @@ func TestExtractArray_BadBuild(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes: 
+	yml = `limes:
   - dontWork: 1`
 
 	var cNode yaml.Node
@@ -917,7 +877,6 @@ func TestExtractArray_BadBuild(t *testing.T) {
 }
 
 func TestExtractArray_BadRefPropsTupe(t *testing.T) {
-
 	yml := `components:
   parameters:
     cakes:
@@ -939,45 +898,7 @@ func TestExtractArray_BadRefPropsTupe(t *testing.T) {
 	assert.Len(t, things, 0)
 }
 
-func TestExtractExample_String(t *testing.T) {
-	yml := `hi`
-	var e yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &e)
-
-	exp := ExtractExample(e.Content[0], e.Content[0])
-	assert.NotNil(t, exp.Value)
-	assert.Equal(t, "hi", exp.Value)
-}
-func TestExtractExample_Map(t *testing.T) {
-	yml := `one: two`
-	var e yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &e)
-
-	exp := ExtractExample(e.Content[0], e.Content[0])
-	assert.NotNil(t, exp.Value)
-	if n, ok := exp.Value.(map[string]interface{}); ok {
-		assert.Equal(t, "two", n["one"])
-	} else {
-		panic("example unpacked incorrectly.")
-	}
-}
-
-func TestExtractExample_Array(t *testing.T) {
-	yml := `- hello`
-	var e yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &e)
-
-	exp := ExtractExample(e.Content[0], e.Content[0])
-	assert.NotNil(t, exp.Value)
-	if n, ok := exp.Value.([]interface{}); ok {
-		assert.Equal(t, "hello", n[0])
-	} else {
-		panic("example unpacked incorrectly.")
-	}
-}
-
 func TestExtractMapFlatNoLookup(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -995,12 +916,10 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](context.Background(), cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
-
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMap_NoLookupWithExtensions(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -1018,19 +937,18 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](context.Background(), cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 2)
+	assert.Equal(t, 2, orderedmap.Len(things))
 
-	for k, v := range things {
-		if k.Value == "x-hey" {
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		if pair.Key().Value == "x-hey" {
 			continue
 		}
-		assert.Equal(t, "one", k.Value)
-		assert.Len(t, v.ValueNode.Content, 2)
+		assert.Equal(t, "one", pair.Key().Value)
+		assert.Len(t, pair.Value().ValueNode.Content, 2)
 	}
 }
 
 func TestExtractMap_NoLookupWithExtensions_UsingMerge(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -1051,12 +969,10 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](context.Background(), cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 4)
-
+	assert.Equal(t, 4, orderedmap.Len(things))
 }
 
 func TestExtractMap_NoLookupWithoutExtensions(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -1074,15 +990,14 @@ one:
 
 	things, err := ExtractMapNoLookupExtensions[*test_Good](context.Background(), cNode.Content[0], idx, false)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
-	for k := range things {
-		assert.Equal(t, "one", k.Value)
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		assert.Equal(t, "one", pair.Key().Value)
 	}
 }
 
 func TestExtractMap_WithExtensions(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -1100,11 +1015,10 @@ one:
 
 	things, _, _, err := ExtractMapExtensions[*test_Good](context.Background(), "one", cNode.Content[0], idx, true)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMap_WithoutExtensions(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -1122,11 +1036,10 @@ one:
 
 	things, _, _, err := ExtractMapExtensions[*test_Good](context.Background(), "one", cNode.Content[0], idx, false)
 	assert.NoError(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlatNoLookup_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -1147,12 +1060,10 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](context.Background(), cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
-
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlatNoLookup_Ref_Bad(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -1173,12 +1084,10 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](context.Background(), cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
-
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlatNoLookup_Ref_Circular(t *testing.T) {
-
 	yml := `components:
   schemas:
     thongs:
@@ -1205,12 +1114,10 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_Good](context.Background(), cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
-
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlatNoLookup_Ref_BadBuild(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -1231,12 +1138,10 @@ hello:
 
 	things, err := ExtractMapNoLookup[*test_noGood](context.Background(), cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
-
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlatNoLookup_Ref_AlmostBuild(t *testing.T) {
-
 	yml := `components:
   schemas:
     pizza:
@@ -1257,12 +1162,10 @@ one:
 
 	things, err := ExtractMapNoLookup[*test_almostGood](context.Background(), cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
-
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat(t *testing.T) {
-
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -1280,12 +1183,10 @@ one:
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
-
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref(t *testing.T) {
-
 	yml := `components:
   schemas:
     stank:
@@ -1307,16 +1208,14 @@ one:
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
-	for k := range things {
-		assert.Equal(t, 99, things[k].Value.AlmostWork.Value)
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
 	}
-
 }
 
 func TestExtractMapFlat_DoubleRef(t *testing.T) {
-
 	yml := `components:
   schemas:
     stank:
@@ -1337,15 +1236,14 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 
-	for k := range things {
-		assert.Equal(t, 99, things[k].Value.AlmostWork.Value)
+	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
+		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
 	}
 }
 
 func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
-
 	yml := `components:
   schemas:
     stank:
@@ -1367,12 +1265,10 @@ func TestExtractMapFlat_DoubleRef_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_almostGood](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
-
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
-
 	yml := `components:
   schemas:
     stank:
@@ -1394,12 +1290,10 @@ func TestExtractMapFlat_DoubleRef_Error_NotFound(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_almostGood](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
-
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
-
 	yml := `components:
   schemas:
     stonk:
@@ -1426,12 +1320,10 @@ func TestExtractMapFlat_DoubleRef_Circles(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
-
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Error(t *testing.T) {
-
 	yml := `components:
   schemas:
     stank:
@@ -1453,12 +1345,10 @@ func TestExtractMapFlat_Ref_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_almostGood](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
-
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
-
 	yml := `components:
   schemas:
     stink:
@@ -1483,11 +1373,10 @@ func TestExtractMapFlat_Ref_Circ_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
-
 	yml := `components:
   schemas:
     stink:
@@ -1513,11 +1402,10 @@ func TestExtractMapFlat_Ref_Nested_Circ_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 1)
+	assert.Equal(t, 1, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
-
 	yml := `components:
   schemas:
     stink:
@@ -1539,11 +1427,10 @@ func TestExtractMapFlat_Ref_Nested_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
-
 	yml := `components:
   schemas:
     stink:
@@ -1565,11 +1452,10 @@ func TestExtractMapFlat_BadKey_Ref_Nested_Error(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "not-even-there", cNode.Content[0], idx)
 	assert.NoError(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractMapFlat_Ref_Bad(t *testing.T) {
-
 	yml := `components:
   schemas:
     stink:
@@ -1594,11 +1480,10 @@ func TestExtractMapFlat_Ref_Bad(t *testing.T) {
 
 	things, _, _, err := ExtractMap[*test_Good](context.Background(), "one", cNode.Content[0], idx)
 	assert.Error(t, err)
-	assert.Len(t, things, 0)
+	assert.Zero(t, orderedmap.Len(things))
 }
 
 func TestExtractExtensions(t *testing.T) {
-
 	yml := `x-bing: ding
 x-bong: 1
 x-ling: true
@@ -1611,25 +1496,27 @@ x-tacos: [1,2,3]`
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	r := ExtractExtensions(idxNode.Content[0])
-	assert.Len(t, r, 6)
-	for i := range r {
-		switch i.Value {
+	assert.Equal(t, 6, orderedmap.Len(r))
+	for pair := orderedmap.First(r); pair != nil; pair = pair.Next() {
+		var v any
+		_ = pair.Value().Value.Decode(&v)
+
+		switch pair.Key().Value {
 		case "x-bing":
-			assert.Equal(t, "ding", r[i].Value)
+			assert.Equal(t, "ding", v)
 		case "x-bong":
-			assert.Equal(t, int64(1), r[i].Value)
+			assert.Equal(t, 1, v)
 		case "x-ling":
-			assert.Equal(t, true, r[i].Value)
+			assert.Equal(t, true, v)
 		case "x-long":
-			assert.Equal(t, 0.99, r[i].Value)
+			assert.Equal(t, 0.99, v)
 		case "x-fish":
-			if a, ok := r[i].Value.(map[string]interface{}); ok {
-				assert.Equal(t, "yeah", a["woo"])
-			} else {
-				panic("should not fail casting")
-			}
+			var m map[string]any
+			err := pair.Value().Value.Decode(&m)
+			require.NoError(t, err)
+			assert.Equal(t, "yeah", m["woo"])
 		case "x-tacos":
-			assert.Len(t, r[i].Value, 3)
+			assert.Len(t, v, 3)
 		}
 	}
 }
@@ -1649,8 +1536,8 @@ func (f test_fresh) Hash() [32]byte {
 	}
 	return sha256.Sum256([]byte(strings.Join(data, "|")))
 }
-func TestAreEqual(t *testing.T) {
 
+func TestAreEqual(t *testing.T) {
 	var hey *test_fresh
 
 	assert.True(t, AreEqual(test_fresh{val: "hello"}, test_fresh{val: "hello"}))
@@ -1663,7 +1550,6 @@ func TestAreEqual(t *testing.T) {
 }
 
 func TestGenerateHashString(t *testing.T) {
-
 	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
 		GenerateHashString(test_fresh{val: "hello"}))
 
@@ -1676,45 +1562,40 @@ func TestGenerateHashString(t *testing.T) {
 	assert.Equal(t, "",
 		GenerateHashString(nil))
 
+	assert.Equal(t, "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2", GenerateHashString(utils.CreateStringNode("test")))
 }
 
 func TestGenerateHashString_Pointer(t *testing.T) {
-
 	val := true
 	assert.Equal(t, "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
 		GenerateHashString(test_fresh{thang: &val}))
 
 	assert.Equal(t, "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
 		GenerateHashString(&val))
-
 }
 
 func TestSetReference(t *testing.T) {
-
 	type testObj struct {
 		*Reference
 	}
 
 	n := testObj{Reference: &Reference{}}
-	SetReference(&n, "#/pigeon/street")
+	SetReference(&n, "#/pigeon/street", nil)
 
 	assert.Equal(t, "#/pigeon/street", n.GetReference())
-
 }
 
 func TestSetReference_nil(t *testing.T) {
-
 	type testObj struct {
 		*Reference
 	}
 
 	n := testObj{Reference: &Reference{}}
-	SetReference(nil, "#/pigeon/street")
+	SetReference(nil, "#/pigeon/street", nil)
 	assert.NotEqual(t, "#/pigeon/street", n.GetReference())
 }
 
 func TestLocateRefNode_CurrentPathKey_HttpLink(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1740,7 +1621,6 @@ func TestLocateRefNode_CurrentPathKey_HttpLink(t *testing.T) {
 }
 
 func TestLocateRefNode_CurrentPathKey_HttpLink_Local(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1766,7 +1646,6 @@ func TestLocateRefNode_CurrentPathKey_HttpLink_Local(t *testing.T) {
 }
 
 func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1791,7 +1670,6 @@ func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx(t *testing.T) {
 }
 
 func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx_WithPath(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1816,7 +1694,6 @@ func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx_WithPath(t *testing.T) 
 }
 
 func TestLocateRefNode_CurrentPathKey_Path_Link(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1841,7 +1718,6 @@ func TestLocateRefNode_CurrentPathKey_Path_Link(t *testing.T) {
 }
 
 func TestLocateRefNode_CurrentPathKey_Path_URL(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1868,7 +1744,6 @@ func TestLocateRefNode_CurrentPathKey_Path_URL(t *testing.T) {
 }
 
 func TestLocateRefNode_CurrentPathKey_DeeperPath_URL(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1895,7 +1770,6 @@ func TestLocateRefNode_CurrentPathKey_DeeperPath_URL(t *testing.T) {
 }
 
 func TestLocateRefNode_NoExplode(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1922,7 +1796,6 @@ func TestLocateRefNode_NoExplode(t *testing.T) {
 }
 
 func TestLocateRefNode_NoExplode_HTTP(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1950,7 +1823,6 @@ func TestLocateRefNode_NoExplode_HTTP(t *testing.T) {
 }
 
 func TestLocateRefNode_NoExplode_NoSpecPath(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1978,7 +1850,6 @@ func TestLocateRefNode_NoExplode_NoSpecPath(t *testing.T) {
 }
 
 func TestLocateRefNode_DoARealLookup(t *testing.T) {
-
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -2019,7 +1890,6 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 }
 
 func TestLocateRefEndNoRef_NoName(t *testing.T) {
-
 	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: ""}}}
 	n, i, e, c := LocateRefEnd(nil, r, nil, 0)
 	assert.Nil(t, n)
@@ -2029,7 +1899,6 @@ func TestLocateRefEndNoRef_NoName(t *testing.T) {
 }
 
 func TestLocateRefEndNoRef(t *testing.T) {
-
 	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: "cake"}}}
 	n, i, e, c := LocateRefEnd(context.Background(), r, index.NewSpecIndexWithConfig(r, index.CreateClosedAPIIndexConfig()), 0)
 	assert.Nil(t, n)
@@ -2048,7 +1917,6 @@ func TestLocateRefEnd_TooDeep(t *testing.T) {
 }
 
 func TestLocateRefEnd_Loop(t *testing.T) {
-
 	yml, _ := os.ReadFile("../../test_specs/first.yaml")
 	var bsn yaml.Node
 	_ = yaml.Unmarshal(yml, &bsn)
@@ -2093,7 +1961,6 @@ func TestLocateRefEnd_Loop(t *testing.T) {
 }
 
 func TestLocateRefEnd_Loop_WithResolve(t *testing.T) {
-
 	yml, _ := os.ReadFile("../../test_specs/first.yaml")
 	var bsn yaml.Node
 	_ = yaml.Unmarshal(yml, &bsn)
@@ -2138,7 +2005,6 @@ func TestLocateRefEnd_Loop_WithResolve(t *testing.T) {
 }
 
 func TestLocateRefEnd_Empty(t *testing.T) {
-
 	yml, _ := os.ReadFile("../../test_specs/first.yaml")
 	var bsn yaml.Node
 	_ = yaml.Unmarshal(yml, &bsn)
@@ -2183,7 +2049,6 @@ func TestLocateRefEnd_Empty(t *testing.T) {
 }
 
 func TestArray_NotRefNotArray(t *testing.T) {
-
 	yml := ``
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
@@ -2200,5 +2065,85 @@ func TestArray_NotRefNotArray(t *testing.T) {
 	assert.Error(t, err)
 	assert.Equal(t, err.Error(), "array build failed, input is not an array, line 2, column 3")
 	assert.Len(t, things, 0)
+}
 
+func TestHashExtensions(t *testing.T) {
+	type args struct {
+		ext *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]
+	}
+	tests := []struct {
+		name string
+		args args
+		want []string
+	}{
+		{
+			name: "empty",
+			args: args{
+				ext: orderedmap.New[KeyReference[string], ValueReference[*yaml.Node]](),
+			},
+			want: []string{},
+		},
+		{
+			name: "hashes extensions",
+			args: args{
+				ext: orderedmap.ToOrderedMap(map[KeyReference[string]]ValueReference[*yaml.Node]{
+					{Value: "x-burger"}: {
+						Value: utils.CreateStringNode("yummy"),
+					},
+					{Value: "x-car"}: {
+						Value: utils.CreateStringNode("ford"),
+					},
+				}),
+			},
+			want: []string{
+				"x-burger-2a296977a4572521773eb7e7773cc054fae3e8589511ce9bf90cec7dd93d016a",
+				"x-car-7d3aa6a5c79cdb0c2585daed714fa0936a18e6767b2dcc804992a90f6d0b8f5e",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			hash := HashExtensions(tt.args.ext)
+			assert.Equal(t, tt.want, hash)
+		})
+	}
+}
+
+func TestValueToString(t *testing.T) {
+	type args struct {
+		v any
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{
+			name: "string",
+			args: args{
+				v: "hello",
+			},
+			want: "hello",
+		},
+		{
+			name: "int",
+			args: args{
+				v: 1,
+			},
+			want: "1",
+		},
+		{
+			name: "yaml.Node",
+			args: args{
+				v: utils.CreateStringNode("world"),
+			},
+			want: "world",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ValueToString(tt.args.v)
+			assert.Equal(t, tt.want, strings.TrimSpace(got))
+		})
+	}
 }

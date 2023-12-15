@@ -4,10 +4,11 @@
 package index
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
 	"os"
 	"time"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"gopkg.in/yaml.v3"
 )
 
 type rolodexFile struct {
@@ -51,7 +52,7 @@ func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	}
 
 	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheck(content, config.SkipDocumentCheck)
+	info, err := datamodel.ExtractSpecInfoWithDocumentCheckSync(content, config.SkipDocumentCheck)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,6 @@ func (rf *rolodexFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	index := NewSpecIndexWithConfig(info.RootNode, config)
 	rf.index = index
 	return index, nil
-
 }
 
 func (rf *rolodexFile) GetContent() string {
@@ -93,6 +93,7 @@ func (rf *rolodexFile) GetFileExtension() FileExtension {
 	}
 	return UNSUPPORTED
 }
+
 func (rf *rolodexFile) GetFullPath() string {
 	if rf.localFile != nil {
 		return rf.localFile.fullPath
@@ -102,6 +103,7 @@ func (rf *rolodexFile) GetFullPath() string {
 	}
 	return ""
 }
+
 func (rf *rolodexFile) ModTime() time.Time {
 	if rf.localFile != nil {
 		return rf.localFile.lastModified

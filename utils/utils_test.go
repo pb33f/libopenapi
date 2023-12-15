@@ -13,9 +13,7 @@ type petstore []byte
 
 var once sync.Once
 
-var (
-	psBytes petstore
-)
+var psBytes petstore
 
 func getPetstore() petstore {
 	once.Do(func() {
@@ -101,13 +99,11 @@ func TestFindLastChildNode_TooDeep(t *testing.T) {
 }
 
 func TestBuildPath(t *testing.T) {
-
 	assert.Equal(t, "$.fresh.fish.and.chicken.nuggets",
 		BuildPath("$.fresh.fish", []string{"and", "chicken", "nuggets"}))
 }
 
 func TestBuildPath_WithTrailingPeriod(t *testing.T) {
-
 	assert.Equal(t, "$.fresh.fish.and.chicken.nuggets",
 		BuildPath("$.fresh.fish", []string{"and", "chicken", "nuggets", ""}))
 }
@@ -259,7 +255,6 @@ func TestFindFirstKeyNode_TooDeep(t *testing.T) {
 }
 
 func TestFindFirstKeyNode_ValueIsKey(t *testing.T) {
-
 	a := &yaml.Node{
 		Value: "chicken",
 	}
@@ -299,7 +294,6 @@ func TestFindKeyNodeTopSingleNode(t *testing.T) {
 	c, k := FindKeyNodeTop("chicken", []*yaml.Node{a})
 	assert.Equal(t, "chicken", c.Value)
 	assert.Equal(t, "chicken", k.Value)
-
 }
 
 func TestFindKeyNodeTop_NotFound(t *testing.T) {
@@ -318,7 +312,6 @@ func TestFindKeyNode(t *testing.T) {
 }
 
 func TestFindKeyNodeOffByOne(t *testing.T) {
-
 	k, v := FindKeyNode("key", []*yaml.Node{
 		{
 			Value: "key",
@@ -331,7 +324,6 @@ func TestFindKeyNodeOffByOne(t *testing.T) {
 }
 
 func TestFindKeyNode_ValueIsKey(t *testing.T) {
-
 	a := &yaml.Node{
 		Value: "chicken",
 	}
@@ -363,11 +355,9 @@ func TestFindKeyNode_ValueIsKey(t *testing.T) {
 	c, d = FindKeyNode("pie", []*yaml.Node{b, a})
 	assert.Equal(t, "nuggets", c.Value)
 	assert.Equal(t, "pie", d.Value)
-
 }
 
 func TestFindExtensionNodes(t *testing.T) {
-
 	a := &yaml.Node{
 		Value: "x-coffee",
 	}
@@ -380,11 +370,9 @@ func TestFindExtensionNodes(t *testing.T) {
 	exts := FindExtensionNodes(c.Content)
 	assert.Len(t, exts, 1)
 	assert.Equal(t, "required", exts[0].Value.Value)
-
 }
 
 func TestFindKeyNodeFull(t *testing.T) {
-
 	a := &yaml.Node{
 		Value: "fish",
 	}
@@ -399,7 +387,6 @@ func TestFindKeyNodeFull(t *testing.T) {
 }
 
 func TestFindKeyNodeFull_MapValueIsLastNode(t *testing.T) {
-
 	f := &yaml.Node{
 		Value: "cheese",
 	}
@@ -416,7 +403,6 @@ func TestFindKeyNodeFull_MapValueIsLastNode(t *testing.T) {
 }
 
 func TestFindKeyNodeFull_Map(t *testing.T) {
-
 	f := &yaml.Node{
 		Value: "cheese",
 	}
@@ -433,11 +419,9 @@ func TestFindKeyNodeFull_Map(t *testing.T) {
 	assert.Equal(t, "deserts", c.Value)
 	assert.Equal(t, "cheese", d.Value)
 	assert.Equal(t, "cake", e.Value)
-
 }
 
 func TestFindKeyNodeFull_Array(t *testing.T) {
-
 	f := &yaml.Node{
 		Value: "cheese",
 	}
@@ -454,7 +438,6 @@ func TestFindKeyNodeFull_Array(t *testing.T) {
 	assert.Equal(t, "deserts", c.Value)
 	assert.Equal(t, "cheese", d.Value)
 	assert.Equal(t, "cheese", e.Value)
-
 }
 
 func TestFindKeyNodeFull_Nothing(t *testing.T) {
@@ -659,19 +642,6 @@ func TestConvertYAMLtoJSON(t *testing.T) {
 	assert.Nil(t, str)
 }
 
-func TestConvertYAMLtoJSONPretty(t *testing.T) {
-	str, err := ConvertYAMLtoJSONPretty([]byte("hello: there"), "", "  ")
-	assert.NoError(t, err)
-	assert.NotNil(t, str)
-	assert.Equal(t, "{\n  \"hello\": \"there\"\n}", string(str))
-
-}
-
-func TestConvertYAMLtoJSONPrettyError(t *testing.T) {
-	_, err := ConvertYAMLtoJSONPretty([]byte("BAD"), "", "  ")
-	assert.Error(t, err)
-}
-
 func TestIsHttpVerb(t *testing.T) {
 	assert.True(t, IsHttpVerb("get"))
 	assert.True(t, IsHttpVerb("post"))
@@ -688,7 +658,6 @@ func TestConvertComponentIdIntoFriendlyPathSearch_SuperCrazy(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/paths/~1crazy~1ass~1references/get/responses/404/content/application~1xml;%20charset=utf-8/schema")
 	assert.Equal(t, "$.paths['/crazy/ass/references'].get.responses['404'].content['application/xml; charset=utf-8'].schema", path)
 	assert.Equal(t, "schema", segment)
-
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
@@ -777,7 +746,6 @@ func TestDetectCase(t *testing.T) {
 }
 
 func TestIsNodeRefValue(t *testing.T) {
-
 	f := &yaml.Node{
 		Value: "$ref",
 	}
@@ -794,11 +762,9 @@ func TestIsNodeRefValue(t *testing.T) {
 	assert.True(t, ref)
 	assert.Equal(t, "$ref", node.Value)
 	assert.Equal(t, "'#/somewhere/out-there'", val)
-
 }
 
 func TestIsNodeAlias(t *testing.T) {
-
 	yml := `things:
   &anchorA
   - Stuff
@@ -812,11 +778,9 @@ thangs: *anchorA`
 
 	assert.True(t, a)
 	assert.Len(t, ref.Content, 2)
-
 }
 
 func TestNodeAlias(t *testing.T) {
-
 	yml := `things:
   &anchorA
   - Stuff
@@ -829,7 +793,6 @@ thangs: *anchorA`
 	ref := NodeAlias(node.Content[0].Content[3])
 
 	assert.Len(t, ref.Content, 2)
-
 }
 
 func TestNodeAlias_Nil(t *testing.T) {
@@ -838,14 +801,11 @@ func TestNodeAlias_Nil(t *testing.T) {
 }
 
 func TestNodeAlias_IsNodeAlias_Nil(t *testing.T) {
-
 	_, isAlias := IsNodeAlias(nil)
 	assert.False(t, isAlias)
-
 }
 
 func TestNodeAlias_IsNodeAlias_False(t *testing.T) {
-
 	yml := `things:
   - Stuff
   - Junk
@@ -856,11 +816,9 @@ thangs: none`
 
 	_, isAlias := IsNodeAlias(node.Content[0].Content[3])
 	assert.False(t, isAlias)
-
 }
 
 func TestCheckForMergeNodes(t *testing.T) {
-
 	yml := `x-common-definitions:
   life_cycle_types: &life_cycle_types_def
     type: string
@@ -880,7 +838,6 @@ func TestCheckForMergeNodes(t *testing.T) {
 
 	assert.Equal(t, "The type of life cycle", descriptionVal.Value)
 	assert.Len(t, enumVal.Content, 3)
-
 }
 
 func TestCheckForMergeNodes_Empty_NoPanic(t *testing.T) {
@@ -888,7 +845,6 @@ func TestCheckForMergeNodes_Empty_NoPanic(t *testing.T) {
 }
 
 func TestIsNodeRefValue_False(t *testing.T) {
-
 	f := &yaml.Node{
 		Value: "woof",
 	}
@@ -908,7 +864,6 @@ func TestIsNodeRefValue_False(t *testing.T) {
 }
 
 func TestIsNodeRefValue_Nil(t *testing.T) {
-
 	ref, node, val := IsNodeRefValue(nil)
 
 	assert.False(t, ref)
@@ -921,7 +876,6 @@ func TestCheckEnumForDuplicates_Success(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 0)
-
 }
 
 func TestCheckEnumForDuplicates_Fail(t *testing.T) {
@@ -929,7 +883,6 @@ func TestCheckEnumForDuplicates_Fail(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	assert.Len(t, CheckEnumForDuplicates(rootNode.Content[0].Content), 1)
-
 }
 
 func TestCheckEnumForDuplicates_FailMultiple(t *testing.T) {

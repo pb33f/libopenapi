@@ -4,13 +4,19 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestHeader_MarshalYAML(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
 
 	header := &Header{
 		Description:     "A header",
@@ -20,9 +26,11 @@ func TestHeader_MarshalYAML(t *testing.T) {
 		Style:           "simple",
 		Explode:         true,
 		AllowReserved:   true,
-		Example:         "example",
-		Examples:        map[string]*base.Example{"example": {Value: "example"}},
-		Extensions:      map[string]interface{}{"x-burgers": "why not?"},
+		Example:         utils.CreateStringNode("example"),
+		Examples: orderedmap.ToOrderedMap(map[string]*base.Example{
+			"example": {Value: utils.CreateStringNode("example")},
+		}),
+		Extensions: ext,
 	}
 
 	rend, _ := header.Render()
@@ -41,5 +49,4 @@ examples:
 x-burgers: why not?`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }

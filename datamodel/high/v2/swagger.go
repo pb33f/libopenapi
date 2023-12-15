@@ -15,11 +15,12 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // Swagger represents a high-level Swagger / OpenAPI 2 document. An instance of Swagger is the root of the specification.
 type Swagger struct {
-
 	// Swagger is the version of Swagger / OpenAPI being used, extracted from the 'swagger: 2.x' definition.
 	Swagger string
 
@@ -90,7 +91,7 @@ type Swagger struct {
 	ExternalDocs *base.ExternalDoc
 
 	// Extensions contains all custom extensions defined for the top-level document.
-	Extensions map[string]any
+	Extensions *orderedmap.Map[string, *yaml.Node]
 	low        *low.Swagger
 }
 
@@ -172,10 +173,4 @@ func NewSwaggerDocument(document *low.Swagger) *Swagger {
 // GoLow returns the low-level Swagger instance that was used to create the high-level one.
 func (s *Swagger) GoLow() *low.Swagger {
 	return s.low
-}
-
-// everything is build async, this little gem holds the results.
-type asyncResult[T any] struct {
-	key    string
-	result T
 }

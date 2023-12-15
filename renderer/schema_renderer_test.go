@@ -9,17 +9,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"regexp"
 	"strings"
 	"testing"
 	"time"
+
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRenderSchema(t *testing.T) {
@@ -37,7 +38,6 @@ properties:
 }
 
 func createSchemaRenderer() *SchemaRenderer {
-
 	osDict := "/usr/share/dict/words"
 	if _, err := os.Stat(osDict); err != nil {
 		osDict = ""
@@ -67,7 +67,6 @@ func getSchema(schema []byte) *highbase.Schema {
 }
 
 func TestRenderExample_StringWithExample(t *testing.T) {
-
 	testObject := `type: string
 example: dog`
 
@@ -78,11 +77,9 @@ example: dog`
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
 
 	assert.Equal(t, journeyMap["pb33f"], "dog")
-
 }
 
 func TestRenderExample_StringWithNoExample(t *testing.T) {
-
 	testObject := `type: string`
 
 	compiled := getSchema([]byte(testObject))
@@ -94,11 +91,9 @@ func TestRenderExample_StringWithNoExample(t *testing.T) {
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.GreaterOrEqual(t, len(journeyMap["pb33f"].(string)), 3)
 	assert.LessOrEqual(t, len(journeyMap["pb33f"].(string)), 10)
-
 }
 
 func TestRenderExample_StringWithNoExample_Format_Datetime(t *testing.T) {
-
 	testObject := `type: string
 format: date-time`
 
@@ -114,7 +109,6 @@ format: date-time`
 }
 
 func TestRenderExample_StringWithNoExample_Pattern_Email(t *testing.T) {
-
 	testObject := `type: string
 pattern: "^[a-z]{5,10}@[a-z]{5,10}\\.(com|net|org)$"` // an email address
 
@@ -133,7 +127,6 @@ pattern: "^[a-z]{5,10}@[a-z]{5,10}\\.(com|net|org)$"` // an email address
 }
 
 func TestRenderExample_StringWithNoExample_Pattern_PhoneNumber(t *testing.T) {
-
 	testObject := `type: string
 pattern: "^\\([0-9]{3}\\)-[0-9]{3}-[0-9]{4}$"` // a phone number
 
@@ -151,7 +144,6 @@ pattern: "^\\([0-9]{3}\\)-[0-9]{3}-[0-9]{4}$"` // a phone number
 }
 
 func TestRenderExample_StringWithNoExample_Format_Date(t *testing.T) {
-
 	testObject := `type: string
 format: date`
 
@@ -389,7 +381,6 @@ minLength: 3`
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.LessOrEqual(t, len(journeyMap["pb33f"].(string)), 8)
 	assert.GreaterOrEqual(t, len(journeyMap["pb33f"].(string)), 3)
-
 }
 
 func TestRenderExample_NumberNoExample_Default(t *testing.T) {
@@ -770,7 +761,6 @@ properties:
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["price"].(float64), 19.99)
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["category"].(string), "shirts")
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["image"].(string), "https://pb33f.io/images/t-shirt.png")
-
 }
 
 func TestRenderExample_TestGiftshopProduct_UsingTopLevelExample(t *testing.T) {
@@ -838,7 +828,6 @@ example:
 
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["category"].(string), "not-a-category")
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["image"].(string), "not-an-image")
-
 }
 
 func TestRenderExample_TestGiftshopProduct_UsingNoExamples(t *testing.T) {
@@ -888,7 +877,6 @@ properties:
 	assert.NotEmpty(t, journeyMap["pb33f"].(map[string]interface{})["price"].(float32))
 	assert.NotEmpty(t, journeyMap["pb33f"].(map[string]interface{})["category"].(string))
 	assert.NotEmpty(t, journeyMap["pb33f"].(map[string]interface{})["image"].(string))
-
 }
 
 func TestRenderExample_Test_MultiPolymorphic(t *testing.T) {
@@ -930,7 +918,7 @@ properties:
 	burger := journeyMap["pb33f"].(map[string]interface{})["burger"].(map[string]interface{})
 	assert.NotNil(t, burger)
 	assert.NotEmpty(t, burger["name"].(string))
-	assert.NotZero(t, burger["weight"].(int64))
+	assert.NotZero(t, burger["weight"].(int))
 	assert.NotEmpty(t, burger["patty"].(string))
 	assert.True(t, burger["frozen"].(bool))
 }
@@ -1082,7 +1070,6 @@ func (errReader) Read(p []byte) (n int, err error) {
 }
 
 func TestReadDictionary_BadReader(t *testing.T) {
-
 	words := readFile(errReader(0))
 	assert.LessOrEqual(t, len(words), 0)
 }
@@ -1112,14 +1099,13 @@ func TestWordRenderer_RandomWordMinMaxZero(t *testing.T) {
 }
 
 func TestRenderSchema_NestedDeep(t *testing.T) {
-
 	deepNest := createNestedStructure()
 	journeyMap := make(map[string]any)
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(deepNest.Schema(), "pb33f", journeyMap, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
-	var journeyLevel = 0
+	journeyLevel := 0
 	var dive func(mapNode map[string]any, level int)
 	// count the levels to validate the recursion hard limit.
 	dive = func(mapNode map[string]any, level int) {
@@ -1143,7 +1129,6 @@ func TestCreateRendererUsingDictionary(t *testing.T) {
 }
 
 func createNestedStructure() *highbase.SchemaProxy {
-
 	schema := `type: [object]
 properties:
   name:
@@ -1171,7 +1156,7 @@ properties:
 	loopMe = func(parent *highbase.SchemaProxy, level int) {
 		schemaProxy := buildSchema()
 		if parent != nil {
-			parent.Schema().Properties["child"] = schemaProxy
+			parent.Schema().Properties.Set("child", schemaProxy)
 		}
 		if level < 110 {
 			loopMe(schemaProxy, level+1)

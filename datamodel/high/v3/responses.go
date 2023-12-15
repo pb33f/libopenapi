@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -30,9 +31,9 @@ import (
 // be the response for a successful operation call.
 //   - https://spec.openapis.org/oas/v3.1.0#responses-object
 type Responses struct {
-	Codes      map[string]*Response `json:"-" yaml:"-"`
-	Default    *Response            `json:"default,omitempty" yaml:"default,omitempty"`
-	Extensions map[string]any       `json:"-" yaml:"-"`
+	Codes      *orderedmap.Map[string, *Response]  `json:"-" yaml:"-"`
+	Default    *Response                           `json:"default,omitempty" yaml:"default,omitempty"`
+	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.Responses
 }
 
@@ -45,28 +46,26 @@ func NewResponses(responses *low.Responses) *Responses {
 	if !responses.Default.IsEmpty() {
 		r.Default = NewResponse(responses.Default.Value)
 	}
-	codes := make(map[string]*Response)
+	codes := orderedmap.New[string, *Response]()
 
-	type respRes struct {
-		code string
-		resp *Response
+	translateFunc := func(pair orderedmap.Pair[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response]]) (asyncResult[*Response], error) {
+		return asyncResult[*Response]{
+			key:    pair.Key().Value,
+			result: NewResponse(pair.Value().Value),
+		}, nil
 	}
-
-	translateFunc := func(key lowbase.KeyReference[string], value lowbase.ValueReference[*low.Response]) (respRes, error) {
-		return respRes{code: key.Value, resp: NewResponse(value.Value)}, nil
-	}
-	resultFunc := func(value respRes) error {
-		codes[value.code] = value.resp
+	resultFunc := func(value asyncResult[*Response]) error {
+		codes.Set(value.key, value.result)
 		return nil
 	}
-	_ = datamodel.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response], respRes](responses.Codes, translateFunc, resultFunc)
+	_ = datamodel.TranslateMapParallel[lowbase.KeyReference[string], lowbase.ValueReference[*low.Response]](responses.Codes, translateFunc, resultFunc)
 	r.Codes = codes
 	return r
 }
 
 // FindResponseByCode is a shortcut for looking up code by an integer vs. a string
 func (r *Responses) FindResponseByCode(code int) *Response {
-	return r.Codes[fmt.Sprintf("%d", code)]
+	return r.Codes.GetOrZero(fmt.Sprintf("%d", code))
 }
 
 // GoLow returns the low-level Response object used to create the high-level one.
@@ -94,23 +93,26 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
 	type responseItem struct {
-		resp *Response
-		code string
-		line int
-		ext  *yaml.Node
+		resp  *Response
+		code  string
+		line  int
+		ext   *yaml.Node
+		style yaml.Style
 	}
 	var mapped []*responseItem
 
-	for k, re := range r.Codes {
+	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
 		if r.low != nil {
-			for lKey := range r.low.Codes {
-				if lKey.Value == k {
-					ln = lKey.KeyNode.Line
+			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
+				if lPair.Key().Value == pair.Key() {
+					ln = lPair.Key().KeyNode.Line
+					style = lPair.Key().KeyNode.Style
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{re, k, ln, nil})
+		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil, style})
 	}
 
 	// extract extensions
@@ -123,23 +125,29 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 				label = extNode.Content[u].Value
 				continue
 			}
-			mapped = append(mapped, &responseItem{nil, label,
-				extNode.Content[u].Line, extNode.Content[u]})
+			mapped = append(mapped, &responseItem{
+				nil, label,
+				extNode.Content[u].Line, extNode.Content[u], 0,
+			})
 		}
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
-	for j := range mapped {
-		if mapped[j].resp != nil {
-			rendered, _ := mapped[j].resp.MarshalYAML()
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
+	for _, mp := range mapped {
+		if mp.resp != nil {
+			rendered, _ := mp.resp.MarshalYAML()
+
+			kn := utils.CreateStringNode(mp.code)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 		}
-		if mapped[j].ext != nil {
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
-			m.Content = append(m.Content, mapped[j].ext)
+		if mp.ext != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.code))
+			m.Content = append(m.Content, mp.ext)
 		}
 
 	}
@@ -150,23 +158,26 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
 	type responseItem struct {
-		resp *Response
-		code string
-		line int
-		ext  *yaml.Node
+		resp  *Response
+		code  string
+		line  int
+		ext   *yaml.Node
+		style yaml.Style
 	}
 	var mapped []*responseItem
 
-	for k, re := range r.Codes {
+	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
+		var style yaml.Style
 		if r.low != nil {
-			for lKey := range r.low.Codes {
-				if lKey.Value == k {
-					ln = lKey.KeyNode.Line
+			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
+				if lPair.Key().Value == pair.Key() {
+					ln = lPair.Key().KeyNode.Line
+					style = lPair.Key().KeyNode.Style
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{re, k, ln, nil})
+		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil, style})
 	}
 
 	// extract extensions
@@ -180,24 +191,30 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 				label = extNode.Content[u].Value
 				continue
 			}
-			mapped = append(mapped, &responseItem{nil, label,
-				extNode.Content[u].Line, extNode.Content[u]})
+			mapped = append(mapped, &responseItem{
+				nil, label,
+				extNode.Content[u].Line, extNode.Content[u], 0,
+			})
 		}
 	}
 
 	sort.Slice(mapped, func(i, j int) bool {
 		return mapped[i].line < mapped[j].line
 	})
-	for j := range mapped {
-		if mapped[j].resp != nil {
-			rendered, _ := mapped[j].resp.MarshalYAMLInline()
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
+	for _, mp := range mapped {
+		if mp.resp != nil {
+			rendered, _ := mp.resp.MarshalYAMLInline()
+
+			kn := utils.CreateStringNode(mp.code)
+			kn.Style = mp.style
+
+			m.Content = append(m.Content, kn)
 			m.Content = append(m.Content, rendered.(*yaml.Node))
 
 		}
-		if mapped[j].ext != nil {
-			m.Content = append(m.Content, utils.CreateStringNode(mapped[j].code))
-			m.Content = append(m.Content, mapped[j].ext)
+		if mp.ext != nil {
+			m.Content = append(m.Content, utils.CreateStringNode(mp.code))
+			m.Content = append(m.Content, mp.ext)
 		}
 
 	}

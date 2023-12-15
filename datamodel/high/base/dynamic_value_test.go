@@ -5,13 +5,14 @@ package base
 
 import (
 	"context"
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 func TestDynamicValue_Render_A(t *testing.T) {
@@ -57,7 +58,6 @@ func TestDynamicValue_Render_Float64(t *testing.T) {
 }
 
 func TestDynamicValue_Render_Ptr(t *testing.T) {
-
 	type cake struct {
 		Cake string
 	}
@@ -68,7 +68,6 @@ func TestDynamicValue_Render_Ptr(t *testing.T) {
 }
 
 func TestDynamicValue_Render_PtrRenderable(t *testing.T) {
-
 	tag := &Tag{
 		Name: "cake",
 	}
@@ -79,7 +78,6 @@ func TestDynamicValue_Render_PtrRenderable(t *testing.T) {
 }
 
 func TestDynamicValue_RenderInline(t *testing.T) {
-
 	tag := &Tag{
 		Name: "cake",
 	}
@@ -90,7 +88,6 @@ func TestDynamicValue_RenderInline(t *testing.T) {
 }
 
 func TestDynamicValue_MarshalYAMLInline(t *testing.T) {
-
 	const ymlComponents = `components:
     schemas:
      rice:
@@ -134,7 +131,6 @@ func TestDynamicValue_MarshalYAMLInline(t *testing.T) {
 }
 
 func TestDynamicValue_MarshalYAMLInline_Error(t *testing.T) {
-
 	const ymlComponents = `components:
     schemas:
      rice:

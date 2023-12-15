@@ -10,12 +10,12 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
 
 func TestPaths_Build(t *testing.T) {
-
 	yml := `"/fresh/code":
   $ref: break`
 
@@ -30,11 +30,9 @@ func TestPaths_Build(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestPaths_FindPathAndKey(t *testing.T) {
-
 	yml := `/no/sleep:
   get:
     description: til brooklyn
@@ -57,7 +55,6 @@ func TestPaths_FindPathAndKey(t *testing.T) {
 }
 
 func TestPaths_Hash(t *testing.T) {
-
 	yml := `/data/dog:
   get:
     description: does data kinda, ish.
@@ -99,8 +96,7 @@ x-milk: creamy`
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-	assert.Len(t, n.GetExtensions(), 1)
-
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }
 
 // Test parse failure among many paths.

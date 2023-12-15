@@ -5,16 +5,18 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
+	lowV2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPathItem_GetOperations(t *testing.T) {
-
 	yml := `get:
   description: get
 put:
@@ -41,5 +43,56 @@ options:
 
 	r := NewPathItem(&n)
 
-	assert.Len(t, r.GetOperations(), 7)
+	assert.Equal(t, 7, orderedmap.Len(r.GetOperations()))
+}
+
+func TestPathItem_GetOperations_NoLow(t *testing.T) {
+	pi := &PathItem{
+		Delete: &Operation{},
+		Post:   &Operation{},
+		Get:    &Operation{},
+	}
+	ops := pi.GetOperations()
+
+	expectedOrderOfOps := []string{"get", "post", "delete"}
+	actualOrder := []string{}
+
+	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
+		actualOrder = append(actualOrder, pair.Key())
+	}
+
+	assert.Equal(t, expectedOrderOfOps, actualOrder)
+}
+
+func TestPathItem_GetOperations_LowWithUnsetOperations(t *testing.T) {
+	pi := &PathItem{
+		Delete: &Operation{},
+		Post:   &Operation{},
+		Get:    &Operation{},
+		low:    &lowV2.PathItem{},
+	}
+	ops := pi.GetOperations()
+
+	expectedOrderOfOps := []string{"get", "post", "delete"}
+	actualOrder := []string{}
+
+	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
+		actualOrder = append(actualOrder, pair.Key())
+	}
+
+	assert.Equal(t, expectedOrderOfOps, actualOrder)
+}
+
+func TestPathItem_NewPathItem_WithParameters(t *testing.T) {
+	pi := NewPathItem(&lowV2.PathItem{
+		Parameters: low.NodeReference[[]low.ValueReference[*v2.Parameter]]{
+			Value: []low.ValueReference[*v2.Parameter]{
+				{
+					Value: &v2.Parameter{},
+				},
+			},
+			ValueNode: &yaml.Node{},
+		},
+	})
+	assert.NotNil(t, pi.Parameters)
 }

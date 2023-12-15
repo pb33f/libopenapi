@@ -7,17 +7,18 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
 // Encoding represents an OpenAPI 3+ Encoding object
 //   - https://spec.openapis.org/oas/v3.1.0#encoding-object
 type Encoding struct {
-	ContentType   string             `json:"contentType,omitempty" yaml:"contentType,omitempty"`
-	Headers       map[string]*Header `json:"headers,omitempty" yaml:"headers,omitempty"`
-	Style         string             `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode       *bool              `json:"explode,omitempty" yaml:"explode,omitempty"`
-	AllowReserved bool               `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	ContentType   string                           `json:"contentType,omitempty" yaml:"contentType,omitempty"`
+	Headers       *orderedmap.Map[string, *Header] `json:"headers,omitempty" yaml:"headers,omitempty"`
+	Style         string                           `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode       *bool                            `json:"explode,omitempty" yaml:"explode,omitempty"`
+	AllowReserved bool                             `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
 	low           *low.Encoding
 }
 
@@ -27,7 +28,9 @@ func NewEncoding(encoding *low.Encoding) *Encoding {
 	e.low = encoding
 	e.ContentType = encoding.ContentType.Value
 	e.Style = encoding.Style.Value
-	e.Explode = &encoding.Explode.Value
+	if !encoding.Explode.IsEmpty() {
+		e.Explode = &encoding.Explode.Value
+	}
 	e.AllowReserved = encoding.AllowReserved.Value
 	e.Headers = ExtractHeaders(encoding.Headers.Value)
 	return e
@@ -55,10 +58,10 @@ func (e *Encoding) MarshalYAML() (interface{}, error) {
 }
 
 // ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into a high-level simple map
-func ExtractEncoding(elements map[lowmodel.KeyReference[string]]lowmodel.ValueReference[*low.Encoding]) map[string]*Encoding {
-	extracted := make(map[string]*Encoding)
-	for k, v := range elements {
-		extracted[k.Value] = NewEncoding(v.Value)
+func ExtractEncoding(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Encoding]]) *orderedmap.Map[string, *Encoding] {
+	extracted := orderedmap.New[string, *Encoding]()
+	for pair := orderedmap.First(elements); pair != nil; pair = pair.Next() {
+		extracted.Set(pair.Key().Value, NewEncoding(pair.Value().Value))
 	}
 	return extracted
 }

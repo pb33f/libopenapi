@@ -7,37 +7,38 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // RequestBody represents a low-level OpenAPI 3+ RequestBody object.
 //   - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
 	Description low.NodeReference[string]
-	Content     low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]
+	Content     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Required    low.NodeReference[bool]
-	Extensions  map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // FindExtension attempts to locate an extension using the provided name.
-func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, rb.Extensions)
+func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, rb.Extensions)
 }
 
 // GetExtensions returns all RequestBody extensions and satisfies the low.HasExtensions interface.
-func (rb *RequestBody) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (rb *RequestBody) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return rb.Extensions
 }
 
 // FindContent attempts to find content/MediaType defined using a specified name.
 func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType] {
-	return low.FindItemInMap[*MediaType](cType, rb.Content.Value)
+	return low.FindItemInOrderedMap[*MediaType](cType, rb.Content.Value)
 }
 
 // Build will extract extensions and MediaType objects from the node.
@@ -53,7 +54,7 @@ func (rb *RequestBody) Build(ctx context.Context, _, root *yaml.Node, idx *index
 		return cErr
 	}
 	if con != nil {
-		rb.Content = low.NodeReference[map[low.KeyReference[string]]low.ValueReference[*MediaType]]{
+		rb.Content = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{
 			Value:     con,
 			KeyNode:   cL,
 			ValueNode: cN,
@@ -71,18 +72,9 @@ func (rb *RequestBody) Hash() [32]byte {
 	if !rb.Required.IsEmpty() {
 		f = append(f, fmt.Sprint(rb.Required.Value))
 	}
-	for k := range rb.Content.Value {
-		f = append(f, low.GenerateHashString(rb.Content.Value[k].Value))
+	for pair := orderedmap.First(orderedmap.SortAlpha(rb.Content.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-
-	keys := make([]string, len(rb.Extensions))
-	z := 0
-	for k := range rb.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(rb.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-
+	f = append(f, low.HashExtensions(rb.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

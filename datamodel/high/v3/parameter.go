@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,20 +16,20 @@ import (
 // A unique parameter is defined by a combination of a name and location.
 //   - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
-	Name            string                   `json:"name,omitempty" yaml:"name,omitempty"`
-	In              string                   `json:"in,omitempty" yaml:"in,omitempty"`
-	Description     string                   `json:"description,omitempty" yaml:"description,omitempty"`
-	Required        bool                     `json:"required,omitempty" yaml:"required,omitempty"`
-	Deprecated      bool                     `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
-	AllowEmptyValue bool                     `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
-	Style           string                   `json:"style,omitempty" yaml:"style,omitempty"`
-	Explode         *bool                    `json:"explode,omitempty" yaml:"explode,omitempty"`
-	AllowReserved   bool                     `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
-	Schema          *base.SchemaProxy        `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Example         any                      `json:"example,omitempty" yaml:"example,omitempty"`
-	Examples        map[string]*base.Example `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Content         map[string]*MediaType    `json:"content,omitempty" yaml:"content,omitempty"`
-	Extensions      map[string]any           `json:"-" yaml:"-"`
+	Name            string                                 `json:"name,omitempty" yaml:"name,omitempty"`
+	In              string                                 `json:"in,omitempty" yaml:"in,omitempty"`
+	Description     string                                 `json:"description,omitempty" yaml:"description,omitempty"`
+	Required        *bool                                  `json:"required,renderZero,omitempty" yaml:"required,renderZero,omitempty"`
+	Deprecated      bool                                   `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
+	AllowEmptyValue bool                                   `json:"allowEmptyValue,omitempty" yaml:"allowEmptyValue,omitempty"`
+	Style           string                                 `json:"style,omitempty" yaml:"style,omitempty"`
+	Explode         *bool                                  `json:"explode,renderZero,omitempty" yaml:"explode,renderZero,omitempty"`
+	AllowReserved   bool                                   `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
+	Schema          *base.SchemaProxy                      `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example         *yaml.Node                             `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples        *orderedmap.Map[string, *base.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Content         *orderedmap.Map[string, *MediaType]    `json:"content,omitempty" yaml:"content,omitempty"`
+	Extensions      *orderedmap.Map[string, *yaml.Node]    `json:"-" yaml:"-"`
 	low             *low.Parameter
 }
 
@@ -49,7 +50,9 @@ func NewParameter(param *low.Parameter) *Parameter {
 	if !param.Schema.IsEmpty() {
 		p.Schema = base.NewSchemaProxy(&param.Schema)
 	}
-	p.Required = param.Required.Value
+	if !param.Required.IsEmpty() {
+		p.Required = &param.Required.Value
+	}
 	p.Example = param.Example.Value
 	p.Examples = base.ExtractExamples(param.Examples.Value)
 	p.Content = ExtractContent(param.Content.Value)

@@ -4,18 +4,25 @@
 package v3
 
 import (
-	"github.com/stretchr/testify/assert"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestOAuthFlow_MarshalYAML(t *testing.T) {
+	scopes := orderedmap.New[string, string]()
+	scopes.Set("chicken", "nuggets")
+	scopes.Set("beefy", "soup")
 
 	oflow := &OAuthFlow{
 		AuthorizationUrl: "https://pb33f.io",
 		TokenUrl:         "https://pb33f.io/token",
 		RefreshUrl:       "https://pb33f.io/refresh",
-		Scopes:           map[string]string{"chicken": "nuggets", "beefy": "soup"},
+		Scopes:           scopes,
 	}
 
 	rend, _ := oflow.Render()
@@ -32,7 +39,9 @@ scopes:
 
 	// mutate
 	oflow.Scopes = nil
-	oflow.Extensions = map[string]interface{}{"x-burgers": "why not?"}
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
+	oflow.Extensions = ext
 
 	desired = `authorizationUrl: https://pb33f.io
 tokenUrl: https://pb33f.io/token
@@ -41,5 +50,4 @@ x-burgers: why not?`
 
 	rend, _ = oflow.Render()
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }

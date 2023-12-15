@@ -4,8 +4,13 @@
 package v3
 
 import (
+	"reflect"
+	"slices"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,24 +32,24 @@ const (
 // are available.
 //   - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
-	Description string         `json:"description,omitempty" yaml:"description,omitempty"`
-	Summary     string         `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Get         *Operation     `json:"get,omitempty" yaml:"get,omitempty"`
-	Put         *Operation     `json:"put,omitempty" yaml:"put,omitempty"`
-	Post        *Operation     `json:"post,omitempty" yaml:"post,omitempty"`
-	Delete      *Operation     `json:"delete,omitempty" yaml:"delete,omitempty"`
-	Options     *Operation     `json:"options,omitempty" yaml:"options,omitempty"`
-	Head        *Operation     `json:"head,omitempty" yaml:"head,omitempty"`
-	Patch       *Operation     `json:"patch,omitempty" yaml:"patch,omitempty"`
-	Trace       *Operation     `json:"trace,omitempty" yaml:"trace,omitempty"`
-	Servers     []*Server      `json:"servers,omitempty" yaml:"servers,omitempty"`
-	Parameters  []*Parameter   `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Extensions  map[string]any `json:"-" yaml:"-"`
-	low         *low.PathItem
+	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Summary     string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Get         *Operation                          `json:"get,omitempty" yaml:"get,omitempty"`
+	Put         *Operation                          `json:"put,omitempty" yaml:"put,omitempty"`
+	Post        *Operation                          `json:"post,omitempty" yaml:"post,omitempty"`
+	Delete      *Operation                          `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Options     *Operation                          `json:"options,omitempty" yaml:"options,omitempty"`
+	Head        *Operation                          `json:"head,omitempty" yaml:"head,omitempty"`
+	Patch       *Operation                          `json:"patch,omitempty" yaml:"patch,omitempty"`
+	Trace       *Operation                          `json:"trace,omitempty" yaml:"trace,omitempty"`
+	Servers     []*Server                           `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Parameters  []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
+	low         *lowV3.PathItem
 }
 
 // NewPathItem creates a new high-level PathItem instance from a low-level one.
-func NewPathItem(pathItem *low.PathItem) *PathItem {
+func NewPathItem(pathItem *lowV3.PathItem) *PathItem {
 	pi := new(PathItem)
 	pi.low = pathItem
 	pi.Description = pathItem.Description.Value
@@ -62,7 +67,7 @@ func NewPathItem(pathItem *low.PathItem) *PathItem {
 		op     *Operation
 	}
 	opChan := make(chan opResult)
-	var buildOperation = func(method int, op *low.Operation, c chan opResult) {
+	buildOperation := func(method int, op *lowV3.Operation, c chan opResult) {
 		if op == nil {
 			c <- opResult{method: method, op: nil}
 			return
@@ -120,7 +125,7 @@ func NewPathItem(pathItem *low.PathItem) *PathItem {
 }
 
 // GoLow returns the low level instance of PathItem, used to build the high-level one.
-func (p *PathItem) GoLow() *low.PathItem {
+func (p *PathItem) GoLow() *lowV3.PathItem {
 	return p.low
 }
 
@@ -129,32 +134,65 @@ func (p *PathItem) GoLowUntyped() any {
 	return p.low
 }
 
-func (p *PathItem) GetOperations() map[string]*Operation {
-	o := make(map[string]*Operation)
+func (p *PathItem) GetOperations() *orderedmap.Map[string, *Operation] {
+	o := orderedmap.New[string, *Operation]()
+
+	// TODO: this is a bit of a hack, but it works for now. We might just want to actually pull the data out of the document as a map and split it into the individual operations
+
+	type op struct {
+		name string
+		op   *Operation
+		line int
+	}
+
+	getLine := func(field string, idx int) int {
+		if p.GoLow() == nil {
+			return idx
+		}
+
+		l, ok := reflect.ValueOf(p.GoLow()).Elem().FieldByName(field).Interface().(low.NodeReference[*lowV3.Operation])
+		if !ok || l.GetKeyNode() == nil {
+			return idx
+		}
+
+		return l.GetKeyNode().Line
+	}
+
+	ops := []op{}
+
 	if p.Get != nil {
-		o[low.GetLabel] = p.Get
+		ops = append(ops, op{name: lowV3.GetLabel, op: p.Get, line: getLine("Get", -8)})
 	}
 	if p.Put != nil {
-		o[low.PutLabel] = p.Put
+		ops = append(ops, op{name: lowV3.PutLabel, op: p.Put, line: getLine("Put", -7)})
 	}
 	if p.Post != nil {
-		o[low.PostLabel] = p.Post
+		ops = append(ops, op{name: lowV3.PostLabel, op: p.Post, line: getLine("Post", -6)})
 	}
 	if p.Delete != nil {
-		o[low.DeleteLabel] = p.Delete
+		ops = append(ops, op{name: lowV3.DeleteLabel, op: p.Delete, line: getLine("Delete", -5)})
 	}
 	if p.Options != nil {
-		o[low.OptionsLabel] = p.Options
+		ops = append(ops, op{name: lowV3.OptionsLabel, op: p.Options, line: getLine("Options", -4)})
 	}
 	if p.Head != nil {
-		o[low.HeadLabel] = p.Head
+		ops = append(ops, op{name: lowV3.HeadLabel, op: p.Head, line: getLine("Head", -3)})
 	}
 	if p.Patch != nil {
-		o[low.PatchLabel] = p.Patch
+		ops = append(ops, op{name: lowV3.PatchLabel, op: p.Patch, line: getLine("Patch", -2)})
 	}
 	if p.Trace != nil {
-		o[low.TraceLabel] = p.Trace
+		ops = append(ops, op{name: lowV3.TraceLabel, op: p.Trace, line: getLine("Trace", -1)})
 	}
+
+	slices.SortStableFunc(ops, func(a op, b op) int {
+		return a.line - b.line
+	})
+
+	for _, op := range ops {
+		o.Set(op.name, op.op)
+	}
+
 	return o
 }
 

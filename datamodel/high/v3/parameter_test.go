@@ -8,10 +8,15 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestParameter_MarshalYAML(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
 
 	explode := true
 	param := Parameter{
@@ -22,9 +27,11 @@ func TestParameter_MarshalYAML(t *testing.T) {
 		Style:         "simple",
 		Explode:       &explode,
 		AllowReserved: true,
-		Example:       "example",
-		Examples:      map[string]*base.Example{"example": {Value: "example"}},
-		Extensions:    map[string]interface{}{"x-burgers": "why not?"},
+		Example:       utils.CreateStringNode("example"),
+		Examples: orderedmap.ToOrderedMap(map[string]*base.Example{
+			"example": {Value: utils.CreateStringNode("example")},
+		}),
+		Extensions: ext,
 	}
 
 	rend, _ := param.Render()
@@ -46,6 +53,8 @@ x-burgers: why not?`
 }
 
 func TestParameter_MarshalYAMLInline(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
 
 	explode := true
 	param := Parameter{
@@ -56,9 +65,11 @@ func TestParameter_MarshalYAMLInline(t *testing.T) {
 		Style:         "simple",
 		Explode:       &explode,
 		AllowReserved: true,
-		Example:       "example",
-		Examples:      map[string]*base.Example{"example": {Value: "example"}},
-		Extensions:    map[string]interface{}{"x-burgers": "why not?"},
+		Example:       utils.CreateStringNode("example"),
+		Examples: orderedmap.ToOrderedMap(map[string]*base.Example{
+			"example": {Value: utils.CreateStringNode("example")},
+		}),
+		Extensions: ext,
 	}
 
 	rend, _ := param.RenderInline()
@@ -80,7 +91,6 @@ x-burgers: why not?`
 }
 
 func TestParameter_IsExploded(t *testing.T) {
-
 	explode := true
 	param := Parameter{
 		Explode: &explode,
@@ -101,7 +111,6 @@ func TestParameter_IsExploded(t *testing.T) {
 }
 
 func TestParameter_IsDefaultFormEncoding(t *testing.T) {
-
 	param := Parameter{}
 	assert.True(t, param.IsDefaultFormEncoding())
 
@@ -128,7 +137,6 @@ func TestParameter_IsDefaultFormEncoding(t *testing.T) {
 }
 
 func TestParameter_IsDefaultHeaderEncoding(t *testing.T) {
-
 	param := Parameter{}
 	assert.True(t, param.IsDefaultHeaderEncoding())
 
@@ -158,8 +166,6 @@ func TestParameter_IsDefaultHeaderEncoding(t *testing.T) {
 }
 
 func TestParameter_IsDefaultPathEncoding(t *testing.T) {
-
 	param := Parameter{}
 	assert.True(t, param.IsDefaultPathEncoding())
-
 }

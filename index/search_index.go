@@ -13,8 +13,10 @@ import (
 
 type ContextKey string
 
-const CurrentPathKey ContextKey = "currentPath"
-const FoundIndexKey ContextKey = "foundIndex"
+const (
+	CurrentPathKey ContextKey = "currentPath"
+	FoundIndexKey  ContextKey = "foundIndex"
+)
 
 func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) (*Reference, *SpecIndex) {
 	r, idx, _ := index.SearchIndexForReferenceByReferenceWithContext(context.Background(), fullRef)
@@ -33,7 +35,6 @@ func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, 
 }
 
 func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
-
 	if index.cache != nil {
 		if v, ok := index.cache.Load(searchRef.FullDefinition); ok {
 			return v.(*Reference), v.(*Reference).Index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
@@ -77,12 +78,10 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 			refAlt = fmt.Sprintf("%s#/%s", absPath, uri[1])
 
 		}
-
 	} else {
 		if filepath.IsAbs(uri[0]) {
 			roloLookup = uri[0]
 		} else {
-
 			if strings.HasPrefix(uri[0], "http") {
 				roloLookup = ref
 			} else {
@@ -110,9 +109,11 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
 	}
 
-	if r, ok := index.allComponentSchemaDefinitions[refAlt]; ok {
+	if r, ok := index.allComponentSchemaDefinitions.Load(refAlt); ok {
+		ref := r.(*Reference)
+
 		index.cache.Store(refAlt, r)
-		return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
+		return ref, ref.Index, context.WithValue(ctx, CurrentPathKey, ref.RemoteLocation)
 	}
 
 	// check the rolodex for the reference.
@@ -187,5 +188,4 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		index.logger.Error("unable to locate reference anywhere in the rolodex", "reference", ref)
 	}
 	return nil, index, ctx
-
 }

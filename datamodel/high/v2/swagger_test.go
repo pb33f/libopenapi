@@ -5,12 +5,12 @@ package v2
 
 import (
 	"os"
+	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
-
-	"testing"
 )
 
 var doc *v2.Swagger
@@ -41,8 +41,12 @@ func BenchmarkNewDocument(b *testing.B) {
 func TestNewSwaggerDocument_Base(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
+
+	var xPet bool
+	_ = highDoc.Extensions.GetOrZero("x-pet").Decode(&xPet)
+
 	assert.Equal(t, "2.0", highDoc.Swagger)
-	assert.True(t, highDoc.Extensions["x-pet"].(bool))
+	assert.True(t, xPet)
 	assert.Equal(t, "petstore.swagger.io", highDoc.Host)
 	assert.Equal(t, "/v2", highDoc.BasePath)
 	assert.Len(t, highDoc.Schemes, 2)
@@ -55,7 +59,6 @@ func TestNewSwaggerDocument_Base(t *testing.T) {
 	wentLow := highDoc.GoLow()
 	assert.Equal(t, 16, wentLow.Host.ValueNode.Line)
 	assert.Equal(t, 7, wentLow.Host.ValueNode.Column)
-
 }
 
 func TestNewSwaggerDocument_Info(t *testing.T) {
@@ -81,54 +84,56 @@ func TestNewSwaggerDocument_Parameters(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
 	params := highDoc.Parameters
-	assert.Len(t, params.Definitions, 1)
-	assert.Equal(t, "query", params.Definitions["simpleParam"].In)
-	assert.Equal(t, "simple", params.Definitions["simpleParam"].Name)
-	assert.Equal(t, "string", params.Definitions["simpleParam"].Type)
-	assert.Equal(t, "nuggets", params.Definitions["simpleParam"].Extensions["x-chicken"])
+
+	var xChicken string
+	_ = params.Definitions.GetOrZero("simpleParam").Extensions.GetOrZero("x-chicken").Decode(&xChicken)
+
+	assert.Equal(t, 1, orderedmap.Len(params.Definitions))
+	assert.Equal(t, "query", params.Definitions.GetOrZero("simpleParam").In)
+	assert.Equal(t, "simple", params.Definitions.GetOrZero("simpleParam").Name)
+	assert.Equal(t, "string", params.Definitions.GetOrZero("simpleParam").Type)
+	assert.Equal(t, "nuggets", xChicken)
 
 	wentLow := params.GoLow()
 	assert.Equal(t, 20, wentLow.FindParameter("simpleParam").ValueNode.Line)
 	assert.Equal(t, 5, wentLow.FindParameter("simpleParam").ValueNode.Column)
 
-	wentLower := params.Definitions["simpleParam"].GoLow()
+	wentLower := params.Definitions.GetOrZero("simpleParam").GoLow()
 	assert.Equal(t, 21, wentLower.Name.ValueNode.Line)
 	assert.Equal(t, 11, wentLower.Name.ValueNode.Column)
-
 }
 
 func TestNewSwaggerDocument_Security(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
 	assert.Len(t, highDoc.Security, 1)
-	assert.Len(t, highDoc.Security[0].Requirements["global_auth"], 2)
+	assert.Len(t, highDoc.Security[0].Requirements.GetOrZero("global_auth"), 2)
 
 	wentLow := highDoc.Security[0].GoLow()
 	assert.Equal(t, 25, wentLow.Requirements.ValueNode.Line)
 	assert.Equal(t, 5, wentLow.Requirements.ValueNode.Column)
-
 }
 
 func TestNewSwaggerDocument_Definitions_Security(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
-	assert.Len(t, highDoc.SecurityDefinitions.Definitions, 3)
-	assert.Equal(t, "oauth2", highDoc.SecurityDefinitions.Definitions["petstore_auth"].Type)
+	assert.Equal(t, 3, orderedmap.Len(highDoc.SecurityDefinitions.Definitions))
+	assert.Equal(t, "oauth2", highDoc.SecurityDefinitions.Definitions.GetOrZero("petstore_auth").Type)
 	assert.Equal(t, "https://petstore.swagger.io/oauth/authorize",
-		highDoc.SecurityDefinitions.Definitions["petstore_auth"].AuthorizationUrl)
-	assert.Equal(t, "implicit", highDoc.SecurityDefinitions.Definitions["petstore_auth"].Flow)
-	assert.Len(t, highDoc.SecurityDefinitions.Definitions["petstore_auth"].Scopes.Values, 2)
+		highDoc.SecurityDefinitions.Definitions.GetOrZero("petstore_auth").AuthorizationUrl)
+	assert.Equal(t, "implicit", highDoc.SecurityDefinitions.Definitions.GetOrZero("petstore_auth").Flow)
+	assert.Equal(t, 2, orderedmap.Len(highDoc.SecurityDefinitions.Definitions.GetOrZero("petstore_auth").Scopes.Values))
 
 	goLow := highDoc.SecurityDefinitions.GoLow()
 
 	assert.Equal(t, 661, goLow.FindSecurityDefinition("petstore_auth").ValueNode.Line)
 	assert.Equal(t, 5, goLow.FindSecurityDefinition("petstore_auth").ValueNode.Column)
 
-	goLower := highDoc.SecurityDefinitions.Definitions["petstore_auth"].GoLow()
+	goLower := highDoc.SecurityDefinitions.Definitions.GetOrZero("petstore_auth").GoLow()
 	assert.Equal(t, 664, goLower.Scopes.KeyNode.Line)
 	assert.Equal(t, 5, goLower.Scopes.KeyNode.Column)
 
-	goLowest := highDoc.SecurityDefinitions.Definitions["petstore_auth"].Scopes.GoLow()
+	goLowest := highDoc.SecurityDefinitions.Definitions.GetOrZero("petstore_auth").Scopes.GoLow()
 	assert.Equal(t, 665, goLowest.FindScope("read:pets").ValueNode.Line)
 	assert.Equal(t, 18, goLowest.FindScope("read:pets").ValueNode.Column)
 }
@@ -136,41 +141,54 @@ func TestNewSwaggerDocument_Definitions_Security(t *testing.T) {
 func TestNewSwaggerDocument_Definitions_Responses(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
-	assert.Len(t, highDoc.Responses.Definitions, 2)
+	assert.Equal(t, 2, orderedmap.Len(highDoc.Responses.Definitions))
 
 	defs := highDoc.Responses.Definitions
-	assert.Equal(t, "morning", defs["200"].Extensions["x-coffee"])
-	assert.Equal(t, "OK", defs["200"].Description)
+
+	var xCoffee string
+	_ = defs.GetOrZero("200").Extensions.GetOrZero("x-coffee").Decode(&xCoffee)
+
+	assert.Equal(t, "morning", xCoffee)
+	assert.Equal(t, "OK", defs.GetOrZero("200").Description)
 	assert.Equal(t, "a generic API response object",
-		defs["200"].Schema.Schema().Description)
-	assert.Len(t, defs["200"].Examples.Values, 3)
+		defs.GetOrZero("200").Schema.Schema().Description)
+	assert.Equal(t, 3, orderedmap.Len(defs.GetOrZero("200").Examples.Values))
 
-	exp := defs["200"].Examples.Values["application/json"]
-	assert.Len(t, exp.(map[string]interface{}), 2)
-	assert.Equal(t, "two", exp.(map[string]interface{})["one"])
+	var appJson map[string]interface{}
+	_ = defs.GetOrZero("200").Examples.Values.GetOrZero("application/json").Decode(&appJson)
 
-	exp = defs["200"].Examples.Values["text/xml"]
-	assert.Len(t, exp.([]interface{}), 3)
-	assert.Equal(t, "two", exp.([]interface{})[1])
+	assert.Len(t, appJson, 2)
+	assert.Equal(t, "two", appJson["one"])
 
-	exp = defs["200"].Examples.Values["text/plain"]
-	assert.Equal(t, "something else.", exp)
+	var textXml []interface{}
+	_ = defs.GetOrZero("200").Examples.Values.GetOrZero("text/xml").Decode(&textXml)
 
-	expWentLow := defs["200"].Examples.GoLow()
+	assert.Len(t, textXml, 3)
+	assert.Equal(t, "two", textXml[1])
+
+	var textPlain string
+	_ = defs.GetOrZero("200").Examples.Values.GetOrZero("text/plain").Decode(&textPlain)
+
+	assert.Equal(t, "something else.", textPlain)
+
+	expWentLow := defs.GetOrZero("200").Examples.GoLow()
 	assert.Equal(t, 702, expWentLow.FindExample("application/json").ValueNode.Line)
 	assert.Equal(t, 9, expWentLow.FindExample("application/json").ValueNode.Column)
 
 	wentLow := highDoc.Responses.GoLow()
 	assert.Equal(t, 669, wentLow.FindResponse("200").ValueNode.Line)
 
-	y := defs["500"].Headers["someHeader"]
+	y := defs.GetOrZero("500").Headers.GetOrZero("someHeader")
 	assert.Len(t, y.Enum, 2)
 	x := y.Items
+
+	var def string
+	_ = x.Default.Decode(&def)
 
 	assert.Equal(t, "something", x.Format)
 	assert.Equal(t, "array", x.Type)
 	assert.Equal(t, "csv", x.CollectionFormat)
-	assert.Equal(t, "cake", x.Default)
+	assert.Equal(t, "cake", def)
 	assert.Equal(t, 10, x.Maximum)
 	assert.Equal(t, 1, x.Minimum)
 	assert.True(t, x.ExclusiveMaximum)
@@ -193,20 +211,26 @@ func TestNewSwaggerDocument_Definitions(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
 
-	assert.Len(t, highDoc.Definitions.Definitions, 6)
+	assert.Equal(t, 6, orderedmap.Len(highDoc.Definitions.Definitions))
 
 	wentLow := highDoc.Definitions.GoLow()
 	assert.Equal(t, 848, wentLow.FindSchema("User").ValueNode.Line)
-
 }
 
 func TestNewSwaggerDocument_Paths(t *testing.T) {
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
-	assert.Len(t, highDoc.Paths.PathItems, 15)
+	assert.Equal(t, 15, orderedmap.Len(highDoc.Paths.PathItems))
 
-	upload := highDoc.Paths.PathItems["/pet/{petId}/uploadImage"]
-	assert.Equal(t, "man", upload.Extensions["x-potato"])
+	upload := highDoc.Paths.PathItems.GetOrZero("/pet/{petId}/uploadImage")
+
+	var xPotato string
+	_ = upload.Extensions.GetOrZero("x-potato").Decode(&xPotato)
+
+	var paramEnum0 string
+	_ = upload.Post.Parameters[0].Enum[0].Decode(&paramEnum0)
+
+	assert.Equal(t, "man", xPotato)
 	assert.Nil(t, upload.Get)
 	assert.Nil(t, upload.Put)
 	assert.Nil(t, upload.Patch)
@@ -237,8 +261,11 @@ func TestNewSwaggerDocument_Paths(t *testing.T) {
 	assert.Equal(t, 20, *upload.Post.Parameters[0].MaxItems)
 	assert.True(t, *upload.Post.Parameters[0].UniqueItems)
 	assert.Len(t, upload.Post.Parameters[0].Enum, 2)
-	assert.Equal(t, "hello", upload.Post.Parameters[0].Enum[0])
-	def := upload.Post.Parameters[0].Default.(map[string]interface{})
+	assert.Equal(t, "hello", paramEnum0)
+
+	var def map[string]any
+	_ = upload.Post.Parameters[0].Default.Decode(&def)
+
 	assert.Equal(t, "here", def["something"])
 
 	assert.Equal(t, "https://pb33f.io", upload.Post.ExternalDocs.URL)
@@ -256,18 +283,16 @@ func TestNewSwaggerDocument_Paths(t *testing.T) {
 
 	wentLowest := upload.Post.GoLow()
 	assert.Equal(t, 55, wentLowest.Tags.KeyNode.Line)
-
 }
 
 func TestNewSwaggerDocument_Responses(t *testing.T) {
-
 	initTest()
 	highDoc := NewSwaggerDocument(doc)
-	upload := highDoc.Paths.PathItems["/pet/{petId}/uploadImage"].Post
+	upload := highDoc.Paths.PathItems.GetOrZero("/pet/{petId}/uploadImage").Post
 
-	assert.Len(t, upload.Responses.Codes, 1)
+	assert.Equal(t, 1, orderedmap.Len(upload.Responses.Codes))
 
-	OK := upload.Responses.Codes["200"]
+	OK := upload.Responses.Codes.GetOrZero("200")
 	assert.Equal(t, "successful operation", OK.Description)
 	assert.Equal(t, "a generic API response object", OK.Schema.Schema().Description)
 
@@ -277,5 +302,4 @@ func TestNewSwaggerDocument_Responses(t *testing.T) {
 	wentLower := OK.GoLow()
 	assert.Equal(t, 107, wentLower.Schema.KeyNode.Line)
 	assert.Equal(t, 11, wentLower.Schema.KeyNode.Column)
-
 }

@@ -6,12 +6,14 @@ package low
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/utils"
+
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -49,12 +51,10 @@ func TestNodeReference_Mutate(t *testing.T) {
 
 func TestNodeReference_RefNode(t *testing.T) {
 	nr := new(NodeReference[string])
-	nr.KeyNode = &yaml.Node{
-		Content: []*yaml.Node{{
-			Value: "$ref",
-		}},
-	}
+	nr.KeyNode = utils.CreateRefNode("#/components/schemas/SomeSchema")
+	nr.SetReference("#/components/schemas/SomeSchema", nr.KeyNode)
 	assert.True(t, nr.IsReference())
+	assert.Equal(t, nr.KeyNode, nr.GetReferenceNode())
 }
 
 func TestValueReference_Mutate(t *testing.T) {
@@ -99,7 +99,6 @@ func TestKeyReference_GenerateMapKey(t *testing.T) {
 }
 
 func TestIsCircular_LookupFromJourney(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -136,7 +135,6 @@ func TestIsCircular_LookupFromJourney(t *testing.T) {
 }
 
 func TestIsCircular_LookupFromJourney_Optional(t *testing.T) {
-
 	yml := `components:
   schemas:
     Something:
@@ -237,7 +235,6 @@ func TestIsCircular_LookupFromLoopPoint_Optional(t *testing.T) {
 }
 
 func TestIsCircular_FromRefLookup(t *testing.T) {
-
 	yml := `components:
   schemas:
     NotCircle:
@@ -558,21 +555,17 @@ func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
 func TestHashToString(t *testing.T) {
 	assert.Equal(t, "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
 		HashToString(sha256.Sum256([]byte("12345"))))
-
 }
 
 func TestReference_IsReference(t *testing.T) {
-	ref := Reference{
-		Reference: "#/components/schemas/SomeSchema",
-	}
+	ref := Reference{}
+	ref.SetReference("#/components/schemas/SomeSchema", nil)
 	assert.True(t, ref.IsReference())
-
 }
 
 func TestNodeReference_NodeLineNumber(t *testing.T) {
-
 	n := utils.CreateStringNode("pizza")
-	nr := NodeReference[string]{
+	nr := &NodeReference[string]{
 		Value:     "pizza",
 		ValueNode: n,
 	}
@@ -582,51 +575,36 @@ func TestNodeReference_NodeLineNumber(t *testing.T) {
 }
 
 func TestNodeReference_NodeLineNumberEmpty(t *testing.T) {
-
-	nr := NodeReference[string]{
+	nr := &NodeReference[string]{
 		Value: "pizza",
 	}
 	assert.Equal(t, 0, nr.NodeLineNumber())
 }
 
 func TestNodeReference_GetReference(t *testing.T) {
-
-	nr := NodeReference[string]{
-		Reference: "#/happy/sunday",
-	}
+	nr := &NodeReference[string]{}
+	nr.SetReference("#/happy/sunday", nil)
 	assert.Equal(t, "#/happy/sunday", nr.GetReference())
 }
 
 func TestNodeReference_SetReference(t *testing.T) {
-
-	nr := NodeReference[string]{}
-	nr.SetReference("#/happy/sunday")
-}
-
-func TestNodeReference_IsReference(t *testing.T) {
-
-	nr := NodeReference[string]{
-		ReferenceNode: true,
-	}
-	assert.True(t, nr.IsReference())
+	nr := &NodeReference[string]{}
+	nr.SetReference("#/happy/sunday", nil)
 }
 
 func TestNodeReference_GetKeyNode(t *testing.T) {
-
-	nr := NodeReference[string]{
+	nr := &NodeReference[string]{
 		KeyNode: utils.CreateStringNode("pizza"),
 	}
 	assert.Equal(t, "pizza", nr.GetKeyNode().Value)
-
 }
 
 func TestNodeReference_GetValueUntyped(t *testing.T) {
-
 	type anything struct {
 		thing string
 	}
 
-	nr := NodeReference[any]{
+	nr := &NodeReference[any]{
 		Value: anything{thing: "ding"},
 	}
 
@@ -634,7 +612,6 @@ func TestNodeReference_GetValueUntyped(t *testing.T) {
 }
 
 func TestValueReference_NodeLineNumber(t *testing.T) {
-
 	n := utils.CreateStringNode("pizza")
 	nr := ValueReference[string]{
 		Value:     "pizza",
@@ -646,7 +623,6 @@ func TestValueReference_NodeLineNumber(t *testing.T) {
 }
 
 func TestValueReference_NodeLineNumber_Nil(t *testing.T) {
-
 	nr := ValueReference[string]{
 		Value: "pizza",
 	}
@@ -655,21 +631,12 @@ func TestValueReference_NodeLineNumber_Nil(t *testing.T) {
 }
 
 func TestValueReference_GetReference(t *testing.T) {
-
-	nr := ValueReference[string]{
-		Reference: "#/happy/sunday",
-	}
+	nr := ValueReference[string]{}
+	nr.SetReference("#/happy/sunday", nil)
 	assert.Equal(t, "#/happy/sunday", nr.GetReference())
 }
 
-func TestValueReference_SetReference(t *testing.T) {
-
-	nr := ValueReference[string]{}
-	nr.SetReference("#/happy/sunday")
-}
-
 func TestValueReference_GetValueUntyped(t *testing.T) {
-
 	type anything struct {
 		thing string
 	}
@@ -681,28 +648,15 @@ func TestValueReference_GetValueUntyped(t *testing.T) {
 	assert.Equal(t, "{ding}", fmt.Sprint(nr.GetValueUntyped()))
 }
 
-func TestValueReference_IsReference(t *testing.T) {
-
-	nr := NodeReference[string]{
-		ReferenceNode: true,
-	}
-	assert.True(t, nr.IsReference())
-}
-
 func TestValueReference_MarshalYAML_Ref(t *testing.T) {
-
-	nr := ValueReference[string]{
-		ReferenceNode: true,
-		Reference:     "#/burgers/beer",
-	}
+	nr := ValueReference[string]{}
+	nr.SetReference("#/burgers/beer", nil)
 
 	data, _ := yaml.Marshal(nr)
 	assert.Equal(t, `$ref: '#/burgers/beer'`, strings.TrimSpace(string(data)))
-
 }
 
 func TestValueReference_MarshalYAML(t *testing.T) {
-
 	v := map[string]interface{}{
 		"beer": "burger",
 		"wine": "cheese",
@@ -725,7 +679,6 @@ wine: cheese`
 }
 
 func TestKeyReference_GetValueUntyped(t *testing.T) {
-
 	type anything struct {
 		thing string
 	}
@@ -747,4 +700,15 @@ func TestKeyReference_GetKeyNode(t *testing.T) {
 
 	assert.Equal(t, 3, nr.GetKeyNode().Line)
 	assert.Equal(t, "pizza", nr.GetKeyNode().Value)
+}
+
+func TestKeyReference_MarshalYAML(t *testing.T) {
+	kn := utils.CreateStringNode("pizza")
+	kr := KeyReference[string]{
+		KeyNode: kn,
+	}
+
+	on, err := kr.MarshalYAML()
+	require.NoError(t, err)
+	assert.Equal(t, kn, on)
 }

@@ -6,10 +6,10 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -24,19 +24,19 @@ import (
 // that identifies a URL to use for the callback operation.
 //   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
-	Expression low.ValueReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	Expression *orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // GetExtensions returns all Callback extensions and satisfies the low.HasExtensions interface.
-func (cb *Callback) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (cb *Callback) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return cb.Extensions
 }
 
 // FindExpression will locate a string expression and return a ValueReference containing the located PathItem
 func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
-	return low.FindItemInMap[*PathItem](exp, cb.Expression.Value)
+	return low.FindItemInOrderedMap(exp, cb.Expression)
 }
 
 // Build will extract extensions, expressions and PathItem objects for Callback
@@ -46,61 +46,22 @@ func (cb *Callback) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 	cb.Reference = new(low.Reference)
 	cb.Extensions = low.ExtractExtensions(root)
 
-	// handle callback
-	var currentCB *yaml.Node
-	callbacks := make(map[low.KeyReference[string]]low.ValueReference[*PathItem])
+	expressions, err := extractPathItemsMap(ctx, root, idx)
+	if err != nil {
+		return err
+	}
+	cb.Expression = expressions
 
-	for i, callbackNode := range root.Content {
-		if i%2 == 0 {
-			currentCB = callbackNode
-			continue
-		}
-		if strings.HasPrefix(currentCB.Value, "x-") {
-			continue // ignore extension.
-		}
-		callback, eErr, _, rv := low.ExtractObjectRaw[*PathItem](ctx, currentCB, callbackNode, idx)
-		if eErr != nil {
-			return eErr
-		}
-		callbacks[low.KeyReference[string]{
-			Value:   currentCB.Value,
-			KeyNode: currentCB,
-		}] = low.ValueReference[*PathItem]{
-			Value:     callback,
-			ValueNode: callbackNode,
-			Reference: rv,
-		}
-	}
-	if len(callbacks) > 0 {
-		cb.Expression = low.ValueReference[map[low.KeyReference[string]]low.ValueReference[*PathItem]]{
-			Value:     callbacks,
-			ValueNode: root,
-		}
-	}
 	return nil
 }
 
 // Hash will return a consistent SHA256 Hash of the Callback object
 func (cb *Callback) Hash() [32]byte {
 	var f []string
-	var keys []string
-	keys = make([]string, len(cb.Expression.Value))
-	z := 0
-	for k := range cb.Expression.Value {
-		keys[z] = low.GenerateHashString(cb.Expression.Value[k].Value)
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(cb.Expression)); pair != nil; pair = pair.Next() {
+		f = append(f, low.GenerateHashString(pair.Value().Value))
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
 
-	keys = make([]string, len(cb.Extensions))
-	z = 0
-	for k := range cb.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(cb.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-
+	f = append(f, low.HashExtensions(cb.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

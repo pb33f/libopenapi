@@ -6,10 +6,10 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -31,17 +31,17 @@ type Info struct {
 	Contact        low.NodeReference[*Contact]
 	License        low.NodeReference[*License]
 	Version        low.NodeReference[string]
-	Extensions     map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions     *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // FindExtension attempts to locate an extension with the supplied key
-func (i *Info) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap(ext, i.Extensions)
+func (i *Info) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, i.Extensions)
 }
 
 // GetExtensions returns all extensions for Info
-func (i *Info) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (i *Info) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return i.Extensions
 }
 
@@ -87,13 +87,6 @@ func (i *Info) Hash() [32]byte {
 	if !i.Version.IsEmpty() {
 		f = append(f, i.Version.Value)
 	}
-	keys := make([]string, len(i.Extensions))
-	z := 0
-	for k := range i.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(i.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(i.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

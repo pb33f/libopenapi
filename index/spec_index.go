@@ -14,15 +14,16 @@ package index
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"golang.org/x/sync/syncmap"
-	"gopkg.in/yaml.v3"
 	"log/slog"
 	"os"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"golang.org/x/sync/syncmap"
+	"gopkg.in/yaml.v3"
 )
 
 // NewSpecIndexWithConfig will create a new index of an OpenAPI or Swagger spec. It uses the same logic as NewSpecIndex
@@ -30,6 +31,7 @@ import (
 // how the index is set up.
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
+	boostrapIndexCollections(index)
 	index.config = config
 	index.rolodex = config.Rolodex
 	index.uri = config.uri
@@ -44,7 +46,8 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 			Level: slog.LevelError,
 		}))
 	}
-	boostrapIndexCollections(rootNode, index)
+
+	index.root = rootNode
 	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }
 
@@ -57,7 +60,8 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
 	index.config = CreateOpenAPIIndexConfig()
-	boostrapIndexCollections(rootNode, index)
+	index.root = rootNode
+	boostrapIndexCollections(index)
 	return createNewIndex(rootNode, index, false)
 }
 
@@ -284,7 +288,7 @@ func (index *SpecIndex) GetAllReferenceSchemas() []*Reference {
 
 // GetAllComponentSchemas will return all schemas defined in the components section of the document.
 func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
-	return index.allComponentSchemaDefinitions
+	return syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
 }
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
@@ -716,7 +720,7 @@ func (index *SpecIndex) GetRawReferenceCount() int {
 
 // GetComponentSchemaCount will return the number of schemas located in the 'components' or 'definitions' node.
 func (index *SpecIndex) GetComponentSchemaCount() int {
-	if index.root == nil {
+	if index.root == nil || len(index.root.Content) == 0 {
 		return -1
 	}
 

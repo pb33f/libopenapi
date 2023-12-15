@@ -5,15 +5,16 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestPathItem_Hash(t *testing.T) {
-
 	yml := `description: a path item
 summary: it's another path item
 servers:
@@ -80,5 +81,5 @@ summary: it's another path item`
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }

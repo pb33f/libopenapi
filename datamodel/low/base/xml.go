@@ -3,12 +3,13 @@ package base
 import (
 	"crypto/sha256"
 	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // XML represents a low-level representation of an XML object defined by all versions of OpenAPI.
@@ -26,7 +27,7 @@ type XML struct {
 	Prefix     low.NodeReference[string]
 	Attribute  low.NodeReference[bool]
 	Wrapped    low.NodeReference[bool]
-	Extensions map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
@@ -40,7 +41,7 @@ func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
 }
 
 // GetExtensions returns all Tag extensions and satisfies the low.HasExtensions interface.
-func (x *XML) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (x *XML) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return x.Extensions
 }
 
@@ -62,13 +63,6 @@ func (x *XML) Hash() [32]byte {
 	if !x.Wrapped.IsEmpty() {
 		f = append(f, fmt.Sprint(x.Wrapped.Value))
 	}
-	keys := make([]string, len(x.Extensions))
-	z := 0
-	for k := range x.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(x.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(x.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

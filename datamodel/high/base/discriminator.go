@@ -6,6 +6,7 @@ package base
 import (
 	low2 "github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,8 +20,8 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
-	PropertyName string            `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
-	Mapping      map[string]string `json:"mapping,omitempty" yaml:"mapping,omitempty"`
+	PropertyName string                          `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
+	Mapping      *orderedmap.Map[string, string] `json:"mapping,omitempty" yaml:"mapping,omitempty"`
 	low          *low.Discriminator
 }
 
@@ -29,9 +30,9 @@ func NewDiscriminator(disc *low.Discriminator) *Discriminator {
 	d := new(Discriminator)
 	d.low = disc
 	d.PropertyName = disc.PropertyName.Value
-	mapping := make(map[string]string)
-	for k, v := range disc.Mapping.Value {
-		mapping[k.Value] = v.Value
+	mapping := orderedmap.New[string, string]()
+	for pair := orderedmap.First(disc.Mapping.Value); pair != nil; pair = pair.Next() {
+		mapping.Set(pair.Key().Value, pair.Value().Value)
 	}
 	d.Mapping = mapping
 	return d

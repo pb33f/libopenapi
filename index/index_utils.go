@@ -4,8 +4,8 @@
 package index
 
 import (
-	"gopkg.in/yaml.v3"
 	"strings"
+	"sync"
 )
 
 func isHttpMethod(val string) bool {
@@ -28,8 +28,7 @@ func isHttpMethod(val string) bool {
 	return false
 }
 
-func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
-	index.root = rootNode
+func boostrapIndexCollections(index *SpecIndex) {
 	index.allRefs = make(map[string]*Reference)
 	index.allMappedRefs = make(map[string]*Reference)
 	index.refsByLine = make(map[string]map[int]bool)
@@ -52,7 +51,7 @@ func boostrapIndexCollections(rootNode *yaml.Node, index *SpecIndex) {
 	index.linksRefs = make(map[string]map[string][]*Reference)
 	index.callbackRefs = make(map[string]*Reference)
 	index.externalSpecIndex = make(map[string]*SpecIndex)
-	index.allComponentSchemaDefinitions = make(map[string]*Reference)
+	index.allComponentSchemaDefinitions = &sync.Map{}
 	index.allParameters = make(map[string]*Reference)
 	index.allSecuritySchemes = make(map[string]*Reference)
 	index.allRequestBodies = make(map[string]*Reference)

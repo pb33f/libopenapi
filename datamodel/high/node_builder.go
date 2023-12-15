@@ -5,32 +5,24 @@ package high
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
-)
 
-// NodeEntry represents a single node used by NodeBuilder.
-type NodeEntry struct {
-	Tag         string
-	Key         string
-	Value       any
-	StringValue string
-	Line        int
-	Style       yaml.Style
-	RenderZero  bool
-}
+	"github.com/pb33f/libopenapi/datamodel/high/nodes"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
+)
 
 // NodeBuilder is a structure used by libopenapi high-level objects, to render themselves back to YAML.
 // this allows high-level objects to be 'mutable' because all changes will be rendered out.
 type NodeBuilder struct {
 	Version float32
-	Nodes   []*NodeEntry
+	Nodes   []*nodes.NodeEntry
 	High    any
 	Low     any
 	Resolve bool // If set to true, all references will be rendered inline
@@ -61,7 +53,6 @@ func NewNodeBuilder(high any, low any) *NodeBuilder {
 }
 
 func (n *NodeBuilder) add(key string, i int) {
-
 	// only operate on exported fields.
 	if unicode.IsLower(rune(key[0])) {
 		return
@@ -70,38 +61,38 @@ func (n *NodeBuilder) add(key string, i int) {
 	// if the key is 'Extensions' then we need to extract the keys from the map
 	// and add them to the node builder.
 	if key == "Extensions" {
-		extensions := reflect.ValueOf(n.High).Elem().FieldByName(key)
-		for b, e := range extensions.MapKeys() {
-			v := extensions.MapIndex(e)
+		ev := reflect.ValueOf(n.High).Elem().FieldByName(key).Interface()
+		var extensions *orderedmap.Map[string, *yaml.Node]
+		if ev != nil {
+			extensions = ev.(*orderedmap.Map[string, *yaml.Node])
+		}
 
-			extKey := e.String()
-			extValue := v.Interface()
-			nodeEntry := &NodeEntry{Tag: extKey, Key: extKey, Value: extValue, Line: 9999 + b}
+		var lowExtensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+		if n.Low != nil && !reflect.ValueOf(n.Low).IsZero() {
+			if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
+				lowExtensions = j.GetExtensions()
+			}
+		}
 
-			if n.Low != nil && !reflect.ValueOf(n.Low).IsZero() {
-				fieldValue := reflect.ValueOf(n.Low).Elem().FieldByName("Extensions")
-				f := fieldValue.Interface()
-				value := reflect.ValueOf(f)
-				switch value.Kind() {
-				case reflect.Map:
-					if j, ok := n.Low.(low.HasExtensionsUntyped); ok {
-						originalExtensions := j.GetExtensions()
-						u := 0
-						for k := range originalExtensions {
-							if k.Value == extKey {
-								if originalExtensions[k].ValueNode.Line != 0 {
-									nodeEntry.Style = originalExtensions[k].ValueNode.Style
-									nodeEntry.Line = originalExtensions[k].ValueNode.Line + u
-								} else {
-									nodeEntry.Line = 999999 + b + u
-								}
-							}
-							u++
-						}
-					}
+		j := 0
+		if lowExtensions != nil {
+			// If we have low extensions get the original lowest line number so we end up in the same place
+			for pair := orderedmap.First(lowExtensions); pair != nil; pair = pair.Next() {
+				if j == 0 || pair.Key().KeyNode.Line < j {
+					j = pair.Key().KeyNode.Line
 				}
 			}
+		}
+
+		for pair := orderedmap.First(extensions); pair != nil; pair = pair.Next() {
+			nodeEntry := &nodes.NodeEntry{Tag: pair.Key(), Key: pair.Key(), Value: pair.Value(), Line: j}
+
+			if lowExtensions != nil {
+				lowItem := low.FindItemInOrderedMap(pair.Key(), lowExtensions)
+				nodeEntry.LowValue = lowItem
+			}
 			n.Nodes = append(n.Nodes, nodeEntry)
+			j++
 		}
 		// done, extensions are handled separately.
 		return
@@ -116,23 +107,36 @@ func (n *NodeBuilder) add(key string, i int) {
 		return
 	}
 
-	renderZeroVal := strings.Split(tag, ",")[1]
+	var renderZeroFlag, omitEmptyFlag bool
+	tagParts := strings.Split(tag, ",")
+	for _, part := range tagParts {
+		if part == renderZero {
+			renderZeroFlag = true
+		}
+		if part == "omitempty" {
+			omitEmptyFlag = true
+		}
+	}
 
 	// extract the value of the field
 	fieldValue := reflect.ValueOf(n.High).Elem().FieldByName(key)
 	f := fieldValue.Interface()
 	value := reflect.ValueOf(f)
-
-	if renderZeroVal != renderZero && (f == nil || value.IsZero()) {
+	var isZero bool
+	if (value.Kind() == reflect.Interface || value.Kind() == reflect.Ptr) && value.IsNil() {
+		isZero = true
+	} else if zeroer, ok := f.(yaml.IsZeroer); ok && zeroer.IsZero() {
+		isZero = true
+	} else if f == nil || value.IsZero() {
+		isZero = true
+	}
+	if !renderZeroFlag && isZero || omitEmptyFlag && isZero {
 		return
 	}
 
 	// create a new node entry
-	nodeEntry := &NodeEntry{Tag: tagName, Key: key}
-	if renderZeroVal == renderZero {
-		nodeEntry.RenderZero = true
-	}
-
+	nodeEntry := &nodes.NodeEntry{Tag: tagName, Key: key}
+	nodeEntry.RenderZero = renderZeroFlag
 	switch value.Kind() {
 	case reflect.Float64, reflect.Float32:
 		nodeEntry.Value = value.Float()
@@ -153,16 +157,12 @@ func (n *NodeBuilder) add(key string, i int) {
 				nodeEntry.Value = f
 			}
 		} else {
-			if (renderZeroVal == renderZero) || (!value.IsNil() && !value.IsZero()) {
+			if renderZeroFlag || (!value.IsNil() && !isZero) {
 				nodeEntry.Value = f
 			}
 		}
 	case reflect.Ptr:
 		if !value.IsNil() {
-			nodeEntry.Value = f
-		}
-	case reflect.Map:
-		if !value.IsNil() && value.Len() > 0 {
 			nodeEntry.Value = f
 		}
 	default:
@@ -177,39 +177,22 @@ func (n *NodeBuilder) add(key string, i int) {
 		fLow := lowFieldValue.Interface()
 		value = reflect.ValueOf(fLow)
 
-		type lineStyle struct {
-			line  int
-			style yaml.Style
-		}
-
+		nodeEntry.LowValue = fLow
 		switch value.Kind() {
 
 		case reflect.Slice:
 			l := value.Len()
-			lines := make([]lineStyle, l)
+			lines := make([]int, l)
 			for g := 0; g < l; g++ {
 				qw := value.Index(g).Interface()
 				if we, wok := qw.(low.HasKeyNode); wok {
-					lines[g] = lineStyle{we.GetKeyNode().Line, we.GetKeyNode().Style}
+					lines[g] = we.GetKeyNode().Line
 				}
 			}
 			sort.Slice(lines, func(i, j int) bool {
-				return lines[i].line < lines[j].line
+				return lines[i] < lines[j]
 			})
-			nodeEntry.Line = lines[0].line // pick the lowest line number so this key is sorted in order.
-			nodeEntry.Style = lines[0].style
-			break
-		case reflect.Map:
-			l := value.Len()
-			line := make([]int, l)
-			for q, ky := range value.MapKeys() {
-				if we, wok := ky.Interface().(low.HasKeyNode); wok {
-					line[q] = we.GetKeyNode().Line
-				}
-			}
-			sort.Ints(line)
-			nodeEntry.Line = line[0]
-
+			nodeEntry.Line = lines[0]
 		case reflect.Struct:
 			y := value.Interface()
 			nodeEntry.Line = 9999 + i
@@ -217,13 +200,11 @@ func (n *NodeBuilder) add(key string, i int) {
 				if nb.IsReference() {
 					if jk, kj := y.(low.HasKeyNode); kj {
 						nodeEntry.Line = jk.GetKeyNode().Line
-						nodeEntry.Style = jk.GetKeyNode().Style
 						break
 					}
 				}
 				if nb.GetValueNode() != nil {
 					nodeEntry.Line = nb.GetValueNode().Line
-					nodeEntry.Style = nb.GetValueNode().Style
 				}
 			}
 		default:
@@ -237,12 +218,13 @@ func (n *NodeBuilder) add(key string, i int) {
 	}
 }
 
-func (n *NodeBuilder) renderReference() []*yaml.Node {
-	fg := n.Low.(low.IsReferenced)
-	nodes := make([]*yaml.Node, 2)
-	nodes[0] = utils.CreateStringNode("$ref")
-	nodes[1] = utils.CreateStringNode(fg.GetReference())
-	return nodes
+func (n *NodeBuilder) renderReference(fg low.IsReferenced) *yaml.Node {
+	origNode := fg.GetReferenceNode()
+	if origNode == nil {
+		return utils.CreateRefNode(fg.GetReference())
+	}
+
+	return origNode
 }
 
 // Render will render the NodeBuilder back to a YAML node, iterating over every NodeEntry defined
@@ -257,8 +239,7 @@ func (n *NodeBuilder) Render() *yaml.Node {
 		g := reflect.ValueOf(fg)
 		if !g.IsNil() {
 			if fg.IsReference() && !n.Resolve {
-				m.Content = append(m.Content, n.renderReference()...)
-				return m
+				return n.renderReference(n.Low.(low.IsReferenced))
 			}
 		}
 	}
@@ -280,7 +261,7 @@ func (n *NodeBuilder) Render() *yaml.Node {
 // AddYAMLNode will add a new *yaml.Node to the parent node, using the tag, key and value provided.
 // If the value is nil, then the node will not be added. This method is recursive, so it will dig down
 // into any non-scalar types.
-func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Node {
+func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *yaml.Node {
 	if entry.Value == nil {
 		return parent
 	}
@@ -290,11 +271,11 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 	var l *yaml.Node
 	if entry.Tag != "" {
 		l = utils.CreateStringNode(entry.Tag)
+		l.Style = entry.KeyStyle
 	}
 
 	value := entry.Value
 	line := entry.Line
-	key := entry.Key
 
 	var valueNode *yaml.Node
 	switch t.Kind() {
@@ -303,9 +284,15 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		val := value.(string)
 		valueNode = utils.CreateStringNode(val)
 		valueNode.Line = line
-		valueNode.Style = entry.Style
-		break
 
+		if entry.LowValue != nil {
+			if vnut, ok := entry.LowValue.(low.HasValueNodeUntyped); ok {
+				vn := vnut.GetValueNode()
+				if vn != nil {
+					valueNode.Style = vn.Style
+				}
+			}
+		}
 	case reflect.Bool:
 		val := value.(bool)
 		if !val {
@@ -314,26 +301,18 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 			valueNode = utils.CreateBoolNode("true")
 		}
 		valueNode.Line = line
-		break
-
 	case reflect.Int:
 		val := strconv.Itoa(value.(int))
 		valueNode = utils.CreateIntNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Int64:
 		val := strconv.FormatInt(value.(int64), 10)
 		valueNode = utils.CreateIntNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Float32:
 		val := strconv.FormatFloat(float64(value.(float32)), 'f', 2, 64)
 		valueNode = utils.CreateFloatNode(val)
 		valueNode.Line = line
-		break
-
 	case reflect.Float64:
 		precision := -1
 		if entry.StringValue != "" && strings.Contains(entry.StringValue, ".") {
@@ -342,90 +321,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
 		valueNode = utils.CreateFloatNode(val)
 		valueNode.Line = line
-		break
-
-	case reflect.Map:
-
-		// the keys will be rendered randomly, if we don't find out the original line
-		// number of the tag.
-
-		var orderedCollection []*NodeEntry
-		m := reflect.ValueOf(value)
-		for g, k := range m.MapKeys() {
-			var x string
-			// extract key
-			yu := k.Interface()
-			if o, ok := yu.(low.HasKeyNode); ok {
-				x = o.GetKeyNode().Value
-			} else {
-				x = k.String()
-			}
-
-			// go low and pull out the line number.
-			lowProps := reflect.ValueOf(n.Low)
-			if n.Low != nil && !lowProps.IsZero() && !lowProps.IsNil() {
-				gu := lowProps.Elem()
-				gi := gu.FieldByName(key)
-				jl := reflect.ValueOf(gi)
-				if !jl.IsZero() && gi.Interface() != nil {
-					gh := gi.Interface()
-					// extract low level key line number
-					if pr, ok := gh.(low.HasValueUnTyped); ok {
-						fg := reflect.ValueOf(pr.GetValueUntyped())
-						found := false
-						found, orderedCollection = n.extractLowMapKeys(fg, x, found, orderedCollection, m, k)
-						if found != true {
-							// this is something new, add it.
-							orderedCollection = append(orderedCollection, &NodeEntry{
-								Tag:   x,
-								Key:   x,
-								Line:  9999 + g,
-								Value: m.MapIndex(k).Interface(),
-							})
-						}
-					} else {
-						// this is a map, but it may be wrapped still.
-						bj := reflect.ValueOf(gh)
-						orderedCollection = n.extractLowMapKeysWrapped(bj, x, orderedCollection, g)
-					}
-				} else {
-					// this is a map, without any low level details available (probably an extension map).
-					orderedCollection = append(orderedCollection, &NodeEntry{
-						Tag:   x,
-						Key:   x,
-						Line:  9999 + g,
-						Value: m.MapIndex(k).Interface(),
-					})
-				}
-			} else {
-				// this is a map, without any low level details available (probably an extension map).
-				orderedCollection = append(orderedCollection, &NodeEntry{
-					Tag:   x,
-					Key:   x,
-					Line:  9999 + g,
-					Value: m.MapIndex(k).Interface(),
-				})
-			}
-		}
-
-		// sort the slice by line number to ensure everything is rendered in order.
-		sort.Slice(orderedCollection, func(i, j int) bool {
-			return orderedCollection[i].Line < orderedCollection[j].Line
-		})
-
-		// create an empty map.
-		p := utils.CreateEmptyMapNode()
-
-		// build out each map node in original order.
-		for _, cv := range orderedCollection {
-			n.AddYAMLNode(p, cv)
-		}
-		if len(p.Content) > 0 {
-			valueNode = p
-		}
-
 	case reflect.Slice:
-
 		var rawNode yaml.Node
 		m := reflect.ValueOf(value)
 		sl := utils.CreateEmptySequenceNode()
@@ -441,8 +337,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 						if ut != nil && r.GetReference() != "" &&
 							ut.(low.IsReferenced).IsReference() {
 							if !n.Resolve {
-								refNode := utils.CreateRefNode(glu.GoLowUntyped().(low.IsReferenced).GetReference())
-								sl.Content = append(sl.Content, refNode)
+								sl.Content = append(sl.Content, n.renderReference(glu.GoLowUntyped().(low.IsReferenced)))
 								skip = true
 							} else {
 								skip = false
@@ -457,13 +352,13 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 				if er, ko := sqi.(Renderable); ko {
 					var rend interface{}
 					if !n.Resolve {
-						rend, _ = er.(Renderable).MarshalYAML()
+						rend, _ = er.MarshalYAML()
 					} else {
 						// try and render inline, if we can, otherwise treat as normal.
 						if _, ko := er.(RenderableInline); ko {
 							rend, _ = er.(RenderableInline).MarshalYAMLInline()
 						} else {
-							rend, _ = er.(Renderable).MarshalYAML()
+							rend, _ = er.MarshalYAML()
 						}
 					}
 					// check if this is a pointer or not.
@@ -490,6 +385,17 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		if err != nil {
 			return parent
 		} else {
+			if entry.LowValue != nil {
+				if vnut, ok := entry.LowValue.(low.HasValueNodeUntyped); ok {
+					vn := vnut.GetValueNode()
+					if vn.Kind == yaml.SequenceNode {
+						for i := range vn.Content {
+							rawNode.Content[i].Style = vn.Content[i].Style
+						}
+					}
+				}
+			}
+
 			valueNode = &rawNode
 		}
 
@@ -509,18 +415,29 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 		return parent
 
 	case reflect.Ptr:
-		if r, ok := value.(Renderable); ok {
+		if m, ok := value.(orderedmap.MapToYamlNoder); ok {
+			l := entry.LowValue
+
+			if l == nil {
+				if gl, ok := value.(GoesLowUntyped); ok && gl.GoLowUntyped() != nil {
+					l = gl.GoLowUntyped()
+				}
+			}
+
+			p := m.ToYamlNode(n, l)
+			if len(p.Content) > 0 {
+				valueNode = p
+			}
+		} else if r, ok := value.(Renderable); ok {
 			if gl, lg := value.(GoesLowUntyped); lg {
-				if gl.GoLowUntyped() != nil {
-					ut := reflect.ValueOf(gl.GoLowUntyped())
+				lut := gl.GoLowUntyped()
+				if lut != nil {
+					lr := lut.(low.IsReferenced)
+					ut := reflect.ValueOf(lr)
 					if !ut.IsNil() {
-						if gl.GoLowUntyped().(low.IsReferenced).IsReference() {
+						if lut.(low.IsReferenced).IsReference() {
 							if !n.Resolve {
-								// TODO: use renderReference here.
-								rvn := utils.CreateEmptyMapNode()
-								rvn.Content = append(rvn.Content, utils.CreateStringNode("$ref"))
-								rvn.Content = append(rvn.Content, utils.CreateStringNode(gl.GoLowUntyped().(low.IsReferenced).GetReference()))
-								valueNode = rvn
+								valueNode = n.renderReference(lut.(low.IsReferenced))
 								break
 							}
 						}
@@ -606,70 +523,12 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *NodeEntry) *yaml.Nod
 	return parent
 }
 
-func (n *NodeBuilder) extractLowMapKeysWrapped(iu reflect.Value, x string, orderedCollection []*NodeEntry, g int) []*NodeEntry {
-	for _, ky := range iu.MapKeys() {
-		ty := ky.Interface()
-		if ere, eok := ty.(low.HasKeyNode); eok {
-			er := ere.GetKeyNode().Value
-			if er == x {
-				orderedCollection = append(orderedCollection, &NodeEntry{
-					Tag:   x,
-					Key:   x,
-					Line:  ky.Interface().(low.HasKeyNode).GetKeyNode().Line,
-					Value: iu.MapIndex(ky).Interface(),
-				})
-			}
-		} else {
-			orderedCollection = append(orderedCollection, &NodeEntry{
-				Tag:   x,
-				Key:   x,
-				Line:  9999 + g,
-				Value: iu.MapIndex(ky).Interface(),
-			})
-		}
-	}
-	return orderedCollection
-}
-
-func (n *NodeBuilder) extractLowMapKeys(fg reflect.Value, x string, found bool, orderedCollection []*NodeEntry, m reflect.Value, k reflect.Value) (bool, []*NodeEntry) {
-	if fg.IsValid() && !fg.IsZero() {
-		for j, ky := range fg.MapKeys() {
-			hu := ky.Interface()
-			if we, wok := hu.(low.HasKeyNode); wok {
-				er := we.GetKeyNode().Value
-				if er == x {
-					found = true
-					orderedCollection = append(orderedCollection, &NodeEntry{
-						Tag:   x,
-						Key:   x,
-						Line:  we.GetKeyNode().Line,
-						Value: m.MapIndex(k).Interface(),
-					})
-				}
-			} else {
-				uu := ky.Interface()
-				if uu == x {
-					// this is a map, without any low level details available
-					found = true
-					orderedCollection = append(orderedCollection, &NodeEntry{
-						Tag:   uu.(string),
-						Key:   uu.(string),
-						Line:  9999 + j,
-						Value: m.MapIndex(k).Interface(),
-					})
-				}
-			}
-		}
-	}
-	return found, orderedCollection
-}
-
-// Renderable is an interface that can be implemented by types that provide a custom MarshaYAML method.
+// Renderable is an interface that can be implemented by types that provide a custom MarshalYAML method.
 type Renderable interface {
 	MarshalYAML() (interface{}, error)
 }
 
-// RenderableInline is an interface that can be implemented by types that provide a custom MarshaYAML method.
+// RenderableInline is an interface that can be implemented by types that provide a custom MarshalYAML method.
 type RenderableInline interface {
 	MarshalYAMLInline() (interface{}, error)
 }

@@ -6,13 +6,13 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 // Link represents a low-level OpenAPI 3+ Link object.
@@ -30,27 +30,27 @@ import (
 type Link struct {
 	OperationRef low.NodeReference[string]
 	OperationId  low.NodeReference[string]
-	Parameters   low.NodeReference[map[low.KeyReference[string]]low.ValueReference[string]]
+	Parameters   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
 	RequestBody  low.NodeReference[string]
 	Description  low.NodeReference[string]
 	Server       low.NodeReference[*Server]
-	Extensions   map[low.KeyReference[string]]low.ValueReference[any]
+	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
 }
 
 // GetExtensions returns all Link extensions and satisfies the low.HasExtensions interface.
-func (l *Link) GetExtensions() map[low.KeyReference[string]]low.ValueReference[any] {
+func (l *Link) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return l.Extensions
 }
 
 // FindParameter will attempt to locate a parameter string value, using a parameter name input.
 func (l *Link) FindParameter(pName string) *low.ValueReference[string] {
-	return low.FindItemInMap[string](pName, l.Parameters.Value)
+	return low.FindItemInOrderedMap[string](pName, l.Parameters.Value)
 }
 
 // FindExtension will attempt to locate an extension with a specific key
-func (l *Link) FindExtension(ext string) *low.ValueReference[any] {
-	return low.FindItemInMap[any](ext, l.Extensions)
+func (l *Link) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
+	return low.FindItemInOrderedMap(ext, l.Extensions)
 }
 
 // Build will extract extensions and servers from the node.
@@ -86,23 +86,9 @@ func (l *Link) Hash() [32]byte {
 	if l.Server.Value != nil {
 		f = append(f, low.GenerateHashString(l.Server.Value))
 	}
-	// todo: needs ordering.
-
-	keys := make([]string, len(l.Parameters.Value))
-	z := 0
-	for k := range l.Parameters.Value {
-		keys[z] = l.Parameters.Value[k].Value
-		z++
+	for pair := orderedmap.First(orderedmap.SortAlpha(l.Parameters.Value)); pair != nil; pair = pair.Next() {
+		f = append(f, pair.Value().Value)
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(l.Extensions))
-	z = 0
-	for k := range l.Extensions {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(l.Extensions[k].Value))))
-		z++
-	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	f = append(f, low.HashExtensions(l.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

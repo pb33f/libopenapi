@@ -6,16 +6,17 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
 // RequestBody represents a high-level OpenAPI 3+ RequestBody object, backed by a low-level one.
 //   - https://spec.openapis.org/oas/v3.1.0#request-body-object
 type RequestBody struct {
-	Description string                `json:"description,omitempty" yaml:"description,omitempty"`
-	Content     map[string]*MediaType `json:"content,omitempty" yaml:"content,omitempty"`
-	Required    *bool                 `json:"required,omitempty" yaml:"required,renderZero,omitempty"`
-	Extensions  map[string]any        `json:"-" yaml:"-"`
+	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Content     *orderedmap.Map[string, *MediaType] `json:"content,omitempty" yaml:"content,omitempty"`
+	Required    *bool                               `json:"required,omitempty" yaml:"required,renderZero,omitempty"`
+	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low         *low.RequestBody
 }
 
@@ -24,7 +25,7 @@ func NewRequestBody(rb *low.RequestBody) *RequestBody {
 	r := new(RequestBody)
 	r.low = rb
 	r.Description = rb.Description.Value
-	if rb.Required.ValueNode != nil {
+	if !rb.Required.IsEmpty() {
 		r.Required = &rb.Required.Value
 	}
 	r.Extensions = high.ExtractExtensions(rb.Extensions)

@@ -5,15 +5,16 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestResponse_Build_Schema(t *testing.T) {
-
 	yml := `schema:
   $ref: break`
 
@@ -28,11 +29,9 @@ func TestResponse_Build_Schema(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestResponse_Build_Examples(t *testing.T) {
-
 	yml := `examples:
   $ref: break`
 
@@ -47,11 +46,9 @@ func TestResponse_Build_Examples(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestResponse_Build_Headers(t *testing.T) {
-
 	yml := `headers:
   $ref: break`
 
@@ -66,11 +63,9 @@ func TestResponse_Build_Headers(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestResponse_Hash(t *testing.T) {
-
 	yml := `description: your thing, sir.
 schema:
   type: string
@@ -111,5 +106,5 @@ headers:
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-	assert.Len(t, n.GetExtensions(), 1)
+	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 }

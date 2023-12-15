@@ -3,6 +3,11 @@
 
 package low
 
+import (
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
+)
+
 type SharedParameters interface {
 	HasDescription
 	Hash() [32]byte
@@ -30,7 +35,7 @@ type SwaggerParameter interface {
 	GetType() *NodeReference[string]
 	GetFormat() *NodeReference[string]
 	GetCollectionFormat() *NodeReference[string]
-	GetDefault() *NodeReference[any]
+	GetDefault() *NodeReference[*yaml.Node]
 	GetMaximum() *NodeReference[int]
 	GetExclusiveMaximum() *NodeReference[bool]
 	GetMinimum() *NodeReference[int]
@@ -41,7 +46,7 @@ type SwaggerParameter interface {
 	GetMaxItems() *NodeReference[int]
 	GetMinItems() *NodeReference[int]
 	GetUniqueItems() *NodeReference[bool]
-	GetEnum() *NodeReference[[]ValueReference[any]]
+	GetEnum() *NodeReference[[]ValueReference[*yaml.Node]]
 	GetMultipleOf() *NodeReference[int]
 }
 
@@ -51,7 +56,7 @@ type SwaggerHeader interface {
 	GetType() *NodeReference[string]
 	GetFormat() *NodeReference[string]
 	GetCollectionFormat() *NodeReference[string]
-	GetDefault() *NodeReference[any]
+	GetDefault() *NodeReference[*yaml.Node]
 	GetMaximum() *NodeReference[int]
 	GetExclusiveMaximum() *NodeReference[bool]
 	GetMinimum() *NodeReference[int]
@@ -62,7 +67,7 @@ type SwaggerHeader interface {
 	GetMaxItems() *NodeReference[int]
 	GetMinItems() *NodeReference[int]
 	GetUniqueItems() *NodeReference[bool]
-	GetEnum() *NodeReference[[]ValueReference[any]]
+	GetEnum() *NodeReference[[]ValueReference[*yaml.Node]]
 	GetMultipleOf() *NodeReference[int]
 	GetItems() *NodeReference[any] // requires cast.
 }
@@ -74,7 +79,7 @@ type OpenAPIHeader interface {
 	GetStyle() *NodeReference[string]
 	GetAllowReserved() *NodeReference[bool]
 	GetExplode() *NodeReference[bool]
-	GetExample() *NodeReference[any]
+	GetExample() *NodeReference[*yaml.Node]
 	GetRequired() *NodeReference[bool]
 	GetAllowEmptyValue() *NodeReference[bool]
 	GetSchema() *NodeReference[any]   // requires cast.
@@ -88,13 +93,12 @@ type OpenAPIParameter interface {
 	GetStyle() *NodeReference[string]
 	GetAllowReserved() *NodeReference[bool]
 	GetExplode() *NodeReference[bool]
-	GetExample() *NodeReference[any]
+	GetExample() *NodeReference[*yaml.Node]
 	GetExamples() *NodeReference[any] // requires cast.
 	GetContent() *NodeReference[any]  // requires cast.
 }
 
-//TODO: this needs to be fixed, move returns to pointers.
-
+// TODO: this needs to be fixed, move returns to pointers.
 type SharedOperations interface {
 	GetOperationId() NodeReference[string]
 	GetExternalDocs() NodeReference[any]
@@ -102,7 +106,7 @@ type SharedOperations interface {
 	GetTags() NodeReference[[]ValueReference[string]]
 	GetSummary() NodeReference[string]
 	GetDeprecated() NodeReference[bool]
-	GetExtensions() map[KeyReference[string]]ValueReference[any]
+	GetExtensions() *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]
 	GetResponses() NodeReference[any]  // requires cast.
 	GetParameters() NodeReference[any] // requires cast.
 	GetSecurity() NodeReference[any]   // requires cast.
@@ -117,6 +121,6 @@ type SwaggerOperations interface {
 
 type OpenAPIOperations interface {
 	SharedOperations
-	GetCallbacks() NodeReference[map[KeyReference[string]]ValueReference[any]] // requires cast
-	GetServers() NodeReference[any]                                            // requires cast.
+	GetCallbacks() NodeReference[*orderedmap.Map[KeyReference[string], ValueReference[any]]] // requires cast
+	GetServers() NodeReference[any]                                                          // requires cast.
 }

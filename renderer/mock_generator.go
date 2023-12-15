@@ -6,14 +6,18 @@ package renderer
 import (
 	"encoding/json"
 	"fmt"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"gopkg.in/yaml.v3"
 	"reflect"
+
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
-const Example = "Example"
-const Examples = "Examples"
-const Schema = "Schema"
+const (
+	Example  = "Example"
+	Examples = "Examples"
+	Schema   = "Schema"
+)
 
 type MockType int
 
@@ -25,7 +29,7 @@ const (
 // MockGenerator is used to generate mocks for high-level mockable structs or *base.Schema pointers.
 // The mock generator will attempt to generate a mock from a struct using the following fields:
 //   - Example: any type, this is the default example to use if no examples are present.
-//   - Examples: map[string]*base.Example, this is a map of examples keyed by name.
+//   - Examples: *orderedmap.Map[string, *base.Example], this is a map of examples keyed by name.
 //   - Schema: *base.SchemaProxy, this is the schema to use if no examples are present.
 //
 // The mock generator will attempt to generate a mock from a *base.Schema pointer.
@@ -59,7 +63,7 @@ func (mg *MockGenerator) SetPretty() {
 
 // GenerateMock generates a mock for a given high-level mockable struct. The mockable struct must contain the following fields:
 // Example: any type, this is the default example to use if no examples are present.
-// Examples: map[string]*base.Example, this is a map of examples keyed by name.
+// Examples: *orderedmap.Map[string, *base.Example], this is a map of examples keyed by name.
 // Schema: *base.SchemaProxy, this is the schema to use if no examples are present.
 // The name parameter is optional, if provided, the mock generator will attempt to find an example with the given name.
 // If no name is provided, the first example will be used.
@@ -90,10 +94,21 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	}
 
 	// if the value has an example, try and render it out as is.
-	exampleValue := v.FieldByName(Example).Interface()
-	if exampleValue != nil {
-		// try and serialize the example value
-		return mg.renderMock(exampleValue), nil
+	f := v.FieldByName(Example)
+	if !f.IsNil() {
+		// Pointer/Interface Shenanigans
+		ex := f.Interface()
+		if y, ok := ex.(*yaml.Node); ok {
+			if y != nil {
+				ex = y
+			} else {
+				ex = nil
+			}
+		}
+		if ex != nil {
+			// try and serialize the example value
+			return mg.renderMock(ex), nil
+		}
 	}
 
 	// if there is no example, but there are multi-examples.
@@ -101,18 +116,20 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	examplesValue := examples.Interface()
 	if examplesValue != nil && !examples.IsNil() {
 
-		// cast examples to map[string]interface{}
-		examplesMap := examplesValue.(map[string]*highbase.Example)
+		// cast examples to *orderedmap.Map[string, *highbase.Example]
+		examplesMap := examplesValue.(*orderedmap.Map[string, *highbase.Example])
 
 		// if the name is not empty, try and find the example by name
-		for k, exp := range examplesMap {
+		for pair := orderedmap.First(examplesMap); pair != nil; pair = pair.Next() {
+			k, exp := pair.Key(), pair.Value()
 			if k == name {
 				return mg.renderMock(exp.Value), nil
 			}
 		}
 
 		// if the name is empty, just return the first example
-		for _, exp := range examplesMap {
+		for pair := orderedmap.First(examplesMap); pair != nil; pair = pair.Next() {
+			exp := pair.Value()
 			return mg.renderMock(exp.Value), nil
 		}
 	}
@@ -156,6 +173,11 @@ func (mg *MockGenerator) renderMock(v any) []byte {
 
 func (mg *MockGenerator) renderMockJSON(v any) []byte {
 	var data []byte
+
+	if y, ok := v.(*yaml.Node); ok {
+		_ = y.Decode(&v)
+	}
+
 	// determine the type, render properly.
 	switch reflect.ValueOf(v).Kind() {
 	case reflect.Map, reflect.Slice, reflect.Array, reflect.Struct, reflect.Ptr:

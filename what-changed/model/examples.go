@@ -6,6 +6,8 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // ExamplesChanges represents changes made between Swagger Examples objects (Not OpenAPI 3).
@@ -31,20 +33,19 @@ func (a *ExamplesChanges) TotalBreakingChanges() int {
 // CompareExamplesV2 compares two Swagger Examples objects, returning a pointer to
 // ExamplesChanges if anything was found.
 func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
-
 	lHashes := make(map[string]string)
 	rHashes := make(map[string]string)
-	lValues := make(map[string]low.ValueReference[any])
-	rValues := make(map[string]low.ValueReference[any])
+	lValues := make(map[string]low.ValueReference[*yaml.Node])
+	rValues := make(map[string]low.ValueReference[*yaml.Node])
 
-	for k := range l.Values {
-		lHashes[k.Value] = low.GenerateHashString(l.Values[k].Value)
-		lValues[k.Value] = l.Values[k]
+	for pair := orderedmap.First(l.Values); pair != nil; pair = pair.Next() {
+		lHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
+		lValues[pair.Key().Value] = pair.Value()
 	}
 
-	for k := range r.Values {
-		rHashes[k.Value] = low.GenerateHashString(r.Values[k].Value)
-		rValues[k.Value] = r.Values[k]
+	for pair := orderedmap.First(r.Values); pair != nil; pair = pair.Next() {
+		rHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
+		rValues[pair.Key().Value] = pair.Value()
 	}
 	var changes []*Change
 
@@ -66,7 +67,7 @@ func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
 
 	}
 
-	//check right example hashes
+	// check right example hashes
 	for k := range rHashes {
 		lhash := lHashes[k]
 		if lhash == "" {

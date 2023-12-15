@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/slices"
 )
@@ -37,40 +38,48 @@ func Test_Speakeasy_Document_Iteration(t *testing.T) {
 	m, errs := doc.BuildV3Model()
 	require.Empty(t, errs)
 
-	for path, item := range m.Model.Paths.PathItems {
+	for pair := orderedmap.First(m.Model.Paths.PathItems); pair != nil; pair = pair.Next() {
+		path := pair.Key()
 		t.Log(path)
 
-		iterateOperations(t, item.GetOperations())
+		iterateOperations(t, pair.Value().GetOperations())
 	}
 
-	for webhook, item := range m.Model.Webhooks {
-		t.Log(webhook)
+	for pair := orderedmap.First(m.Model.Webhooks); pair != nil; pair = pair.Next() {
+		t.Log(pair.Key())
 
-		iterateOperations(t, item.GetOperations())
+		iterateOperations(t, pair.Value().GetOperations())
 	}
 
-	for name, s := range m.Model.Components.Schemas {
-		t.Log(name)
+	for pair := orderedmap.First(m.Model.Components.Schemas); pair != nil; pair = pair.Next() {
+		t.Log(pair.Key())
 
-		handleSchema(t, s, context{})
+		handleSchema(t, pair.Value(), context{})
 	}
 }
 
-func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
-	t.Helper()
+func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation]) {
+	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
+		method := pair.Key()
+		op := pair.Value()
 
-	for method, op := range ops {
 		t.Log(method)
 
-		for _, param := range op.Parameters {
+		for i, param := range op.Parameters {
+			t.Log("param", i, param.Name)
+
 			if param.Schema != nil {
 				handleSchema(t, param.Schema, context{})
 			}
 		}
 
 		if op.RequestBody != nil {
-			for contentType, mediaType := range op.RequestBody.Content {
-				t.Log(contentType)
+			t.Log("request body")
+
+			for pair := orderedmap.First(op.RequestBody.Content); pair != nil; pair = pair.Next() {
+				t.Log(pair.Key())
+
+				mediaType := pair.Value()
 
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
@@ -78,11 +87,17 @@ func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
 			}
 		}
 
-		for code, res := range op.Responses.Codes {
-			t.Log(code)
+		if orderedmap.Len(op.Responses.Codes) > 0 {
+			t.Log("responses")
+		}
 
-			for contentType, mediaType := range res.Content {
-				t.Log(contentType)
+		for codePair := orderedmap.First(op.Responses.Codes); codePair != nil; codePair = codePair.Next() {
+			t.Log(codePair.Key())
+
+			for contentPair := orderedmap.First(codePair.Value().Content); contentPair != nil; contentPair = contentPair.Next() {
+				t.Log(contentPair.Key())
+
+				mediaType := contentPair.Value()
 
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
@@ -90,21 +105,23 @@ func iterateOperations(t *testing.T, ops map[string]*v3.Operation) {
 			}
 		}
 
-		for name, callback := range op.Callbacks {
-			t.Log(name)
+		if orderedmap.Len(op.Responses.Codes) > 0 {
+			t.Log("callbacks")
+		}
 
-			for exName, expression := range callback.Expression {
-				t.Log(exName)
+		for callacksPair := orderedmap.First(op.Callbacks); callacksPair != nil; callacksPair = callacksPair.Next() {
+			t.Log(callacksPair.Key())
 
-				iterateOperations(t, expression.GetOperations())
+			for expressionPair := orderedmap.First(callacksPair.Value().Expression); expressionPair != nil; expressionPair = expressionPair.Next() {
+				t.Log(expressionPair.Key())
+
+				iterateOperations(t, expressionPair.Value().GetOperations())
 			}
 		}
 	}
 }
 
 func handleSchema(t *testing.T, schProxy *base.SchemaProxy, ctx context) {
-	t.Helper()
-
 	if checkCircularReference(t, &ctx, schProxy) {
 		return
 	}
@@ -113,6 +130,8 @@ func handleSchema(t *testing.T, schProxy *base.SchemaProxy, ctx context) {
 	require.NoError(t, err)
 
 	typ, subTypes := getResolvedType(sch)
+
+	t.Log("schema", typ, subTypes)
 
 	if len(sch.Enum) > 0 {
 		switch typ {
@@ -173,7 +192,7 @@ func getResolvedType(sch *base.Schema) (string, []string) {
 			return "string", nil
 		}
 
-		if len(sch.Properties) > 0 {
+		if orderedmap.Len(sch.Properties) > 0 {
 			return "object", nil
 		}
 
@@ -196,8 +215,6 @@ func getResolvedType(sch *base.Schema) (string, []string) {
 }
 
 func handleAllOfAnyOfOneOf(t *testing.T, sch *base.Schema, ctx context) {
-	t.Helper()
-
 	var schemas []*base.SchemaProxy
 
 	switch {
@@ -217,8 +234,6 @@ func handleAllOfAnyOfOneOf(t *testing.T, sch *base.Schema, ctx context) {
 }
 
 func handleArray(t *testing.T, sch *base.Schema, ctx context) {
-	t.Helper()
-
 	ctx.stack = append(ctx.stack, loopFrame{Type: "array", Restricted: sch.MinItems != nil && *sch.MinItems > 0})
 
 	if sch.Items != nil && sch.Items.IsA() {
@@ -237,11 +252,9 @@ func handleArray(t *testing.T, sch *base.Schema, ctx context) {
 }
 
 func handleObject(t *testing.T, sch *base.Schema, ctx context) {
-	t.Helper()
-
-	for propName, s := range sch.Properties {
-		ctx.stack = append(ctx.stack, loopFrame{Type: "object", Restricted: slices.Contains(sch.Required, propName)})
-		handleSchema(t, s, ctx)
+	for pair := orderedmap.First(sch.Properties); pair != nil; pair = pair.Next() {
+		ctx.stack = append(ctx.stack, loopFrame{Type: "object", Restricted: slices.Contains(sch.Required, pair.Key())})
+		handleSchema(t, pair.Value(), ctx)
 	}
 
 	if sch.AdditionalProperties != nil && sch.AdditionalProperties.IsA() {
