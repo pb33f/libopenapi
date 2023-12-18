@@ -463,9 +463,12 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	s.Reference = new(low.Reference)
 	s.Index = idx
 	if h, _, _ := utils.IsNodeRefValue(root); h {
-		ref, _, err := low.LocateRefNode(root, idx)
+		ref, _, err, fctx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			root = ref
+			if fctx != nil {
+				ctx = fctx
+			}
 			if err != nil {
 				if !idx.AllowCircularReferenceResolving() {
 					return fmt.Errorf("build schema failed: %s", err.Error())
