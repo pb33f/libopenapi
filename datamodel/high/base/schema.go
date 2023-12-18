@@ -113,6 +113,9 @@ func NewSchema(schema *base.Schema) *Schema {
 	s := new(Schema)
 	s.low = schema
 	s.Title = schema.Title.Value
+	if !schema.SchemaTypeRef.IsEmpty() {
+		s.SchemaTypeRef = schema.SchemaTypeRef.Value
+	}
 	if !schema.MultipleOf.IsEmpty() {
 		s.MultipleOf = &schema.MultipleOf.Value
 	}
