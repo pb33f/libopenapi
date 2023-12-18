@@ -1282,3 +1282,29 @@ components:
         t.Errorf("high model: expected $schema to be 'https://example.com/custom-json-schema-dialect', but got '%v'", v)
     }
 }
+
+func TestMissingExtensions_Issue214(t *testing.T) {
+    docBytes := []byte(`openapi: 3.1.0
+x-time: 2020-12-24T12:00:00Z
+x-string: test`)
+
+    doc, err := NewDocument(docBytes)
+    if err != nil {
+        panic(err)
+    }
+
+    model, errs := doc.BuildV3Model()
+    if len(errs) > 0 {
+        panic(errs)
+    }
+
+    // x-string works as expected
+    if extVal := model.Model.Extensions.GetOrZero("x-string"); extVal.Value != "test" {
+        t.Errorf("expected x-string to be 'test', but got %v", extVal)
+    }
+
+    // expected x-time to be '2020-12-24T12:00:00Z', but got <nil>
+    if extVal := model.Model.Extensions.GetOrZero("x-time"); extVal.Value != "2020-12-24T12:00:00Z" {
+        t.Errorf("expected x-time to be '2020-12-24T12:00:00Z', but got %v", extVal)
+    }
+}
