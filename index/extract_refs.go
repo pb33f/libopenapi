@@ -182,8 +182,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			if i%2 == 0 && n.Value == "$ref" {
 
 				// only look at scalar values, not maps (looking at you k8s)
-				if !utils.IsNodeStringValue(node.Content[i+1]) {
-					continue
+				if len(node.Content) > i+1 {
+					if !utils.IsNodeStringValue(node.Content[i+1]) {
+						continue
+					}
 				}
 
 				index.linesWithRefs[n.Line] = true
@@ -191,192 +193,195 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				fp := make([]string, len(seenPath))
 				copy(fp, seenPath)
 
-				value := node.Content[i+1].Value
-				segs := strings.Split(value, "/")
-				name := segs[len(segs)-1]
-				uri := strings.Split(value, "#/")
+				if len(node.Content) > i+1 {
 
-				// determine absolute path to this definition
-				var defRoot string
-				if strings.HasPrefix(index.specAbsolutePath, "http") {
-					defRoot = index.specAbsolutePath
-				} else {
-					defRoot = filepath.Dir(index.specAbsolutePath)
-				}
+					value := node.Content[i+1].Value
+					segs := strings.Split(value, "/")
+					name := segs[len(segs)-1]
+					uri := strings.Split(value, "#/")
 
-				var componentName string
-				var fullDefinitionPath string
-				if len(uri) == 2 {
-					if uri[0] == "" {
-						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
-						componentName = value
+					// determine absolute path to this definition
+					var defRoot string
+					if strings.HasPrefix(index.specAbsolutePath, "http") {
+						defRoot = index.specAbsolutePath
 					} else {
+						defRoot = filepath.Dir(index.specAbsolutePath)
+					}
 
-						if strings.HasPrefix(uri[0], "http") {
-							fullDefinitionPath = value
-							componentName = fmt.Sprintf("#/%s", uri[1])
+					var componentName string
+					var fullDefinitionPath string
+					if len(uri) == 2 {
+						if uri[0] == "" {
+							fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
+							componentName = value
 						} else {
-							if filepath.IsAbs(uri[0]) {
+
+							if strings.HasPrefix(uri[0], "http") {
 								fullDefinitionPath = value
 								componentName = fmt.Sprintf("#/%s", uri[1])
 							} else {
-
-								// if the index has a base path, use that to resolve the path
-								if index.config.BasePath != "" && index.config.BaseURL == nil {
-									abs, _ := filepath.Abs(filepath.Join(index.config.BasePath, uri[0]))
-									if abs != defRoot {
-										abs, _ = filepath.Abs(filepath.Join(defRoot, uri[0]))
-									}
-									fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+								if filepath.IsAbs(uri[0]) {
+									fullDefinitionPath = value
 									componentName = fmt.Sprintf("#/%s", uri[1])
 								} else {
-									// if the index has a base URL, use that to resolve the path.
-									if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
-										u := *index.config.BaseURL
-										abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
-										u.Path = abs
-										fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
-										componentName = fmt.Sprintf("#/%s", uri[1])
 
-									} else {
-
-										abs, _ := filepath.Abs(filepath.Join(defRoot, uri[0]))
-										fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
-										componentName = fmt.Sprintf("#/%s", uri[1])
-									}
-								}
-							}
-						}
-					}
-
-				} else {
-					if strings.HasPrefix(uri[0], "http") {
-						fullDefinitionPath = value
-					} else {
-						// is it a relative file include?
-						if !strings.Contains(uri[0], "#") {
-
-							if strings.HasPrefix(defRoot, "http") {
-								if !filepath.IsAbs(uri[0]) {
-									u, _ := url.Parse(defRoot)
-									pathDir := filepath.Dir(u.Path)
-									pathAbs, _ := filepath.Abs(filepath.Join(pathDir, uri[0]))
-									u.Path = pathAbs
-									fullDefinitionPath = u.String()
-								}
-							} else {
-								if !filepath.IsAbs(uri[0]) {
 									// if the index has a base path, use that to resolve the path
-									if index.config.BasePath != "" {
+									if index.config.BasePath != "" && index.config.BaseURL == nil {
 										abs, _ := filepath.Abs(filepath.Join(index.config.BasePath, uri[0]))
 										if abs != defRoot {
 											abs, _ = filepath.Abs(filepath.Join(defRoot, uri[0]))
 										}
-										fullDefinitionPath = abs
-										componentName = uri[0]
+										fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+										componentName = fmt.Sprintf("#/%s", uri[1])
 									} else {
 										// if the index has a base URL, use that to resolve the path.
-										if index.config.BaseURL != nil {
-
+										if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
 											u := *index.config.BaseURL
-											abs := filepath.Join(u.Path, uri[0])
+											abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
 											u.Path = abs
-											fullDefinitionPath = u.String()
-											componentName = uri[0]
+											fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
+											componentName = fmt.Sprintf("#/%s", uri[1])
+
 										} else {
+
 											abs, _ := filepath.Abs(filepath.Join(defRoot, uri[0]))
+											fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
+											componentName = fmt.Sprintf("#/%s", uri[1])
+										}
+									}
+								}
+							}
+						}
+
+					} else {
+						if strings.HasPrefix(uri[0], "http") {
+							fullDefinitionPath = value
+						} else {
+							// is it a relative file include?
+							if !strings.Contains(uri[0], "#") {
+
+								if strings.HasPrefix(defRoot, "http") {
+									if !filepath.IsAbs(uri[0]) {
+										u, _ := url.Parse(defRoot)
+										pathDir := filepath.Dir(u.Path)
+										pathAbs, _ := filepath.Abs(filepath.Join(pathDir, uri[0]))
+										u.Path = pathAbs
+										fullDefinitionPath = u.String()
+									}
+								} else {
+									if !filepath.IsAbs(uri[0]) {
+										// if the index has a base path, use that to resolve the path
+										if index.config.BasePath != "" {
+											abs, _ := filepath.Abs(filepath.Join(index.config.BasePath, uri[0]))
+											if abs != defRoot {
+												abs, _ = filepath.Abs(filepath.Join(defRoot, uri[0]))
+											}
 											fullDefinitionPath = abs
 											componentName = uri[0]
+										} else {
+											// if the index has a base URL, use that to resolve the path.
+											if index.config.BaseURL != nil {
+
+												u := *index.config.BaseURL
+												abs := filepath.Join(u.Path, uri[0])
+												u.Path = abs
+												fullDefinitionPath = u.String()
+												componentName = uri[0]
+											} else {
+												abs, _ := filepath.Abs(filepath.Join(defRoot, uri[0]))
+												fullDefinitionPath = abs
+												componentName = uri[0]
+											}
 										}
 									}
 								}
 							}
 						}
 					}
-				}
 
-				_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
+					_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
-				ref := &Reference{
-					FullDefinition: fullDefinitionPath,
-					Definition:     componentName,
-					Name:           name,
-					Node:           node,
-					Path:           p,
-					Index:          index,
-				}
-
-				// add to raw sequenced refs
-				index.rawSequencedRefs = append(index.rawSequencedRefs, ref)
-
-				// add ref by line number
-				refNameIndex := strings.LastIndex(value, "/")
-				refName := value[refNameIndex+1:]
-				if len(index.refsByLine[refName]) > 0 {
-					index.refsByLine[refName][n.Line] = true
-				} else {
-					v := make(map[int]bool)
-					v[n.Line] = true
-					index.refsByLine[refName] = v
-				}
-
-				// if this ref value has any siblings (node.Content is larger than two elements)
-				// then add to refs with siblings
-				if len(node.Content) > 2 {
-					copiedNode := *node
-					copied := Reference{
+					ref := &Reference{
 						FullDefinition: fullDefinitionPath,
-						Definition:     ref.Definition,
-						Name:           ref.Name,
-						Node:           &copiedNode,
+						Definition:     componentName,
+						Name:           name,
+						Node:           node,
 						Path:           p,
 						Index:          index,
 					}
-					// protect this data using a copy, prevent the resolver from destroying things.
-					index.refsWithSiblings[value] = copied
-				}
 
-				// if this is a polymorphic reference, we're going to leave it out
-				// allRefs. We don't ever want these resolved, so instead of polluting
-				// the timeline, we will keep each poly ref in its own collection for later
-				// analysis.
-				if poly {
-					index.polymorphicRefs[value] = ref
+					// add to raw sequenced refs
+					index.rawSequencedRefs = append(index.rawSequencedRefs, ref)
 
-					// index each type
-					switch pName {
-					case "anyOf":
-						index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)
-					case "allOf":
-						index.polymorphicAllOfRefs = append(index.polymorphicAllOfRefs, ref)
-					case "oneOf":
-						index.polymorphicOneOfRefs = append(index.polymorphicOneOfRefs, ref)
-					}
-					continue
-				}
-
-				// check if this is a dupe, if so, skip it, we don't care now.
-				if index.allRefs[value] != nil { // seen before, skip.
-					continue
-				}
-
-				if value == "" {
-
-					completedPath := fmt.Sprintf("$.%s", strings.Join(fp, "."))
-
-					indexError := &IndexingError{
-						Err:  errors.New("schema reference is empty and cannot be processed"),
-						Node: node.Content[i+1],
-						Path: completedPath,
+					// add ref by line number
+					refNameIndex := strings.LastIndex(value, "/")
+					refName := value[refNameIndex+1:]
+					if len(index.refsByLine[refName]) > 0 {
+						index.refsByLine[refName][n.Line] = true
+					} else {
+						v := make(map[int]bool)
+						v[n.Line] = true
+						index.refsByLine[refName] = v
 					}
 
-					index.refErrors = append(index.refErrors, indexError)
+					// if this ref value has any siblings (node.Content is larger than two elements)
+					// then add to refs with siblings
+					if len(node.Content) > 2 {
+						copiedNode := *node
+						copied := Reference{
+							FullDefinition: fullDefinitionPath,
+							Definition:     ref.Definition,
+							Name:           ref.Name,
+							Node:           &copiedNode,
+							Path:           p,
+							Index:          index,
+						}
+						// protect this data using a copy, prevent the resolver from destroying things.
+						index.refsWithSiblings[value] = copied
+					}
 
-					continue
+					// if this is a polymorphic reference, we're going to leave it out
+					// allRefs. We don't ever want these resolved, so instead of polluting
+					// the timeline, we will keep each poly ref in its own collection for later
+					// analysis.
+					if poly {
+						index.polymorphicRefs[value] = ref
+
+						// index each type
+						switch pName {
+						case "anyOf":
+							index.polymorphicAnyOfRefs = append(index.polymorphicAnyOfRefs, ref)
+						case "allOf":
+							index.polymorphicAllOfRefs = append(index.polymorphicAllOfRefs, ref)
+						case "oneOf":
+							index.polymorphicOneOfRefs = append(index.polymorphicOneOfRefs, ref)
+						}
+						continue
+					}
+
+					// check if this is a dupe, if so, skip it, we don't care now.
+					if index.allRefs[value] != nil { // seen before, skip.
+						continue
+					}
+
+					if value == "" {
+
+						completedPath := fmt.Sprintf("$.%s", strings.Join(fp, "."))
+
+						indexError := &IndexingError{
+							Err:  errors.New("schema reference is empty and cannot be processed"),
+							Node: node.Content[i+1],
+							Path: completedPath,
+						}
+
+						index.refErrors = append(index.refErrors, indexError)
+
+						continue
+					}
+
+					index.allRefs[fullDefinitionPath] = ref
+					found = append(found, ref)
 				}
-
-				index.allRefs[fullDefinitionPath] = ref
-				found = append(found, ref)
 			}
 
 			if i%2 == 0 && n.Value != "$ref" && n.Value != "" {
