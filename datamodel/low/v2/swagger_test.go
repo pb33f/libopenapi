@@ -29,13 +29,6 @@ func initTest() {
 	info, _ := datamodel.ExtractSpecInfo(data)
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	if err != nil {
 		fmt.Print(err)
 		panic(err)
@@ -210,13 +203,6 @@ func TestCreateDocument_ExternalDocsBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 2)
 }
 
@@ -227,13 +213,6 @@ func TestCreateDocument_TagsBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 2)
 }
 
@@ -248,13 +227,6 @@ func TestCreateDocument_PathsBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 2)
 }
 
@@ -265,13 +237,6 @@ func TestCreateDocument_SecurityBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
@@ -282,13 +247,6 @@ func TestCreateDocument_SecurityDefinitionsBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
@@ -299,13 +257,6 @@ func TestCreateDocument_ResponsesBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
@@ -316,13 +267,6 @@ func TestCreateDocument_ParametersBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
@@ -333,13 +277,6 @@ func TestCreateDocument_DefinitionsBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
@@ -350,13 +287,6 @@ func TestCreateDocument_InfoBad(t *testing.T) {
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	doc, err = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
-	wait := true
-	for wait {
-		select {
-		case <-info.JsonParsingChannel:
-			wait = false
-		}
-	}
 	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 

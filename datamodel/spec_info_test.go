@@ -23,13 +23,6 @@ const (
 	AsyncApi = "asyncapi"
 )
 
-func TestSpecInfo_GetJSONParsingChannel(t *testing.T) {
-	// dumb, but we need to ensure coverage is as high as we can make it.
-	bchan := make(chan bool)
-	si := &SpecInfo{JsonParsingChannel: bchan}
-	assert.Equal(t, si.GetJSONParsingChannel(), bchan)
-}
-
 var (
 	goodJSON = `{"name":"kitty", "noises":["meow","purrrr","gggrrraaaaaooooww"]}`
 	badJSON  = `{"name":"kitty, "noises":[{"meow","purrrr","gggrrraaaaaooooww"]}}`
@@ -116,7 +109,6 @@ info:
 
 func TestExtractSpecInfo_ValidJSON(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(goodJSON))
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
@@ -133,7 +125,6 @@ func TestExtractSpecInfo_Nothing(t *testing.T) {
 
 func TestExtractSpecInfo_ValidYAML(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(goodYAML))
-	<-r.JsonParsingChannel
 	assert.Greater(t, len(*r.SpecJSONBytes), 0)
 	assert.Error(t, e)
 }
@@ -150,7 +141,6 @@ func TestExtractSpecInfo_InvalidOpenAPIVersion(t *testing.T) {
 
 func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(OpenApi3Spec))
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.Equal(t, utils.OpenApi3, r.SpecType)
 	assert.Equal(t, "3.0.1", r.Version)
@@ -160,7 +150,6 @@ func TestExtractSpecInfo_OpenAPI3(t *testing.T) {
 
 func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(OpenApiWat))
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.2", r.Version)
@@ -168,7 +157,6 @@ func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
 
 func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(OpenApi31))
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.1", r.Version)
@@ -184,7 +172,6 @@ why:
   yes: no`
 
 	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.NotNil(t, r.RootNode)
 	assert.Equal(t, "something", r.RootNode.Content[0].Content[0].Value)
@@ -210,7 +197,6 @@ func TestExtractSpecInfo_AnyDocument_JSON(t *testing.T) {
 	random := `{ "something" : "yeah"}`
 
 	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.NotNil(t, r.RootNode)
 	assert.Equal(t, "something", r.RootNode.Content[0].Content[0].Value)
@@ -228,7 +214,6 @@ why:
 	r, e := ExtractSpecInfoWithConfig([]byte(random), &DocumentConfiguration{
 		BypassDocumentCheck: true,
 	})
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.NotNil(t, r.RootNode)
 	assert.Equal(t, "something", r.RootNode.Content[0].Content[0].Value)
@@ -243,7 +228,6 @@ func TestExtractSpecInfo_OpenAPIFalse(t *testing.T) {
 
 func TestExtractSpecInfo_OpenAPI2(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(OpenApi2Spec))
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi2, r.SpecType)
 	assert.Equal(t, "2.0.1", r.Version)
@@ -260,7 +244,6 @@ func TestExtractSpecInfo_OpenAPI2_OddVersion(t *testing.T) {
 
 func TestExtractSpecInfo_AsyncAPI(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(AsyncAPISpec))
-	<-r.JsonParsingChannel
 	assert.Nil(t, e)
 	assert.Equal(t, AsyncApi, r.SpecType)
 	assert.Equal(t, "2.0.0", r.Version)
