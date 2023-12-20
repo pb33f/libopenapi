@@ -330,7 +330,7 @@ func TestTranslatePipeline(t *testing.T) {
 						select {
 						case in <- i:
 						case <-done:
-							inputErr = errors.New("Exited unexpectedly")
+							inputErr = errors.New("exited unexpectedly")
 							return
 						}
 					}

@@ -46,7 +46,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.BasePath = config.BasePath
 	idxConfig.Logger = config.Logger
 	rolodex := index.NewRolodex(idxConfig)
-	<-info.GetJSONParsingChannel() // Need to wait for JSON parsing to complete before we can index.
+	//<-info.GetJSONParsingChannel() // Need to wait for JSON parsing to complete before we can index.
 	rolodex.SetRootNode(info.RootNode)
 	doc.Rolodex = rolodex
 
