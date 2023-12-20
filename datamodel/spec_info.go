@@ -34,37 +34,31 @@ type SpecInfo struct {
 	Error               error                   `json:"-"`     // something go wrong?
 	APISchema           string                  `json:"-"`     // API Schema for supplied spec type (2 or 3)
 	Generated           time.Time               `json:"-"`
-	JsonParsingChannel  chan bool               `json:"-"`
 	OriginalIndentation int                     `json:"-"` // the original whitespace
-}
-
-// GetJSONParsingChannel returns a channel that will close once async JSON parsing is completed.
-// This is really useful if your application wants to analyze the JSON via SpecJSON. the library will
-// return *SpecInfo BEFORE the JSON is done parsing, so things are as fast as possible.
-//
-// If you want to know when parsing is done, listen on the channel for a bool.
-func (si SpecInfo) GetJSONParsingChannel() chan bool {
-	return si.JsonParsingChannel
 }
 
 func ExtractSpecInfoWithConfig(spec []byte, config *DocumentConfiguration) (*SpecInfo, error) {
 	return ExtractSpecInfoWithDocumentCheck(spec, config.BypassDocumentCheck)
 }
 
+// ExtractSpecInfoWithDocumentCheckSync accepts an OpenAPI/Swagger specification that has been read into a byte array
+// and will return a SpecInfo pointer, which contains details on the version and an un-marshaled
+// deprecated: use ExtractSpecInfoWithDocumentCheck instead, this function will be removed in a later version.
 func ExtractSpecInfoWithDocumentCheckSync(spec []byte, bypass bool) (*SpecInfo, error) {
 	i, err := ExtractSpecInfoWithDocumentCheck(spec, bypass)
 	if err != nil {
 		return nil, err
 	}
-	<-i.GetJSONParsingChannel()
 	return i, nil
 }
 
+// ExtractSpecInfoWithDocumentCheck accepts an OpenAPI/Swagger specification that has been read into a byte array
+// and will return a SpecInfo pointer, which contains details on the version and an un-marshaled
+// ensures the document is an OpenAPI document.
 func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, error) {
 	var parsedSpec yaml.Node
 
 	specInfo := &SpecInfo{}
-	specInfo.JsonParsingChannel = make(chan bool)
 
 	// set original bytes
 	specInfo.SpecBytes = &spec
@@ -103,7 +97,6 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			spec.SpecJSONBytes = &bytes
 			spec.SpecJSON = &jsonSpec
 		}
-		close(spec.JsonParsingChannel)
 	}
 
 	if !bypass {
@@ -128,7 +121,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			}
 
 			// parse JSON
-			go parseJSON(spec, specInfo, &parsedSpec)
+			parseJSON(spec, specInfo, &parsedSpec)
 
 			// double check for the right version, people mix this up.
 			if majorVersion < 3 {
@@ -150,7 +143,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.APISchema = OpenAPI2SchemaData
 
 			// parse JSON
-			go parseJSON(spec, specInfo, &parsedSpec)
+			parseJSON(spec, specInfo, &parsedSpec)
 
 			// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
 			if majorVersion > 2 {
@@ -169,7 +162,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			// TODO: format for AsyncAPI.
 
 			// parse JSON
-			go parseJSON(spec, specInfo, &parsedSpec)
+			parseJSON(spec, specInfo, &parsedSpec)
 
 			// so far there is only 2 as a major release of AsyncAPI
 			if majorVersion > 2 {
@@ -180,13 +173,13 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 		if specInfo.SpecType == "" {
 			// parse JSON
-			go parseJSON(spec, specInfo, &parsedSpec)
+			parseJSON(spec, specInfo, &parsedSpec)
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
 			return specInfo, specInfo.Error
 		}
 	} else {
 		// parse JSON
-		go parseJSON(spec, specInfo, &parsedSpec)
+		parseJSON(spec, specInfo, &parsedSpec)
 	}
 
 	// detect the original whitespace indentation
