@@ -385,7 +385,7 @@ parameters:
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 2, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 2)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[1].ChangeType)
 }
@@ -980,7 +980,84 @@ parameters:
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
+func TestCompareOperations_V3_ModifyTag(t *testing.T) {
 
+	left := `tags:
+  - one
+  - two
+summary: hello
+description: hello there my pal
+operationId: mintyFresh
+`
+
+	right := `tags:
+  - one
+  - twenty
+summary: hello
+description: hello there my pal
+operationId: mintyFresh
+`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[1].ChangeType)
+}
+
+func TestCompareOperations_V3_AddTag(t *testing.T) {
+
+	left := `tags:
+  - one
+  - two
+summary: hello
+description: hello there my pal
+operationId: mintyFresh
+`
+
+	right := `tags:
+  - one
+  - two
+  - three
+summary: hello
+description: hello there my pal
+operationId: mintyFresh
+`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Operation
+	var rDoc v3.Operation
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareOperations(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, v3.TagsLabel, extChanges.Changes[0].Property)
+}
 func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 
 	left := `servers:

@@ -126,7 +126,7 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 	// tags
 	if len(left.GetTags().Value) > 0 || len(right.GetTags().Value) > 0 {
 		ExtractStringValueSliceChanges(left.GetTags().Value, right.GetTags().Value,
-			changes, v3.TagsLabel, false)
+			changes, v3.TagsLabel, true)
 	}
 
 	// summary
