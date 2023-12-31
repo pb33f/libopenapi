@@ -25,6 +25,7 @@ type Encoding struct {
 	Explode       low.NodeReference[bool]
 	AllowReserved low.NodeReference[bool]
 	KeyNode       *yaml.Node
+	RootNode      *yaml.Node
 	*low.Reference
 }
 
@@ -54,6 +55,7 @@ func (en *Encoding) Hash() [32]byte {
 func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	en.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	en.RootNode = root
 	utils.CheckForMergeNodes(root)
 	en.Reference = new(low.Reference)
 	headers, hL, hN, err := low.ExtractMap[*Header](ctx, HeadersLabel, root, idx)

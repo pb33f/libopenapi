@@ -23,6 +23,7 @@ type Server struct {
 	Variables   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
+	RootNode    *yaml.Node
 	*low.Reference
 }
 
@@ -40,6 +41,7 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 func (s *Server) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	s.RootNode = root
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	s.Extensions = low.ExtractExtensions(root)

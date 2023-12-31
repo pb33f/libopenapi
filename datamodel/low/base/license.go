@@ -23,6 +23,7 @@ type License struct {
 	URL        low.NodeReference[string]
 	Identifier low.NodeReference[string]
 	KeyNode    *yaml.Node
+	RootNode   *yaml.Node
 	*low.Reference
 }
 
@@ -30,6 +31,7 @@ type License struct {
 func (l *License) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	l.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	l.RootNode = root
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
 	if l.URL.Value != "" && l.Identifier.Value != "" {

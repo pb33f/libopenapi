@@ -17,16 +17,18 @@ import (
 //	v2 - https://swagger.io/specification/v2/#contactObject
 //	v3 - https://spec.openapis.org/oas/v3.1.0#contact-object
 type Contact struct {
-	Name    low.NodeReference[string]
-	URL     low.NodeReference[string]
-	Email   low.NodeReference[string]
-	KeyNode *yaml.Node
+	Name     low.NodeReference[string]
+	URL      low.NodeReference[string]
+	Email    low.NodeReference[string]
+	KeyNode  *yaml.Node
+	RootNode *yaml.Node
 	*low.Reference
 }
 
 // Build is not implemented for Contact (there is nothing to build).
-func (c *Contact) Build(_ context.Context, keyNode, _ *yaml.Node, _ *index.SpecIndex) error {
+func (c *Contact) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	c.KeyNode = keyNode
+	c.RootNode = root
 	c.Reference = new(low.Reference)
 	// not implemented.
 	return nil

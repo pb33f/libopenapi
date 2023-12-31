@@ -33,6 +33,7 @@ type Header struct {
 	Content         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode         *yaml.Node
+	RootNode        *yaml.Node
 	*low.Reference
 }
 
@@ -90,6 +91,7 @@ func (h *Header) Hash() [32]byte {
 func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	h.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	h.RootNode = root
 	utils.CheckForMergeNodes(root)
 	h.Reference = new(low.Reference)
 	h.Extensions = low.ExtractExtensions(root)
