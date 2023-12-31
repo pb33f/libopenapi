@@ -12,6 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
+	"time"
 )
 
 // CreateDocument will create a new Document instance from the provided SpecInfo.
@@ -95,13 +96,27 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	var errs []error
 
 	// index all the things.
+	if config.Logger != nil {
+		config.Logger.Debug("indexing rolodex")
+	}
+	now := time.Now()
 	_ = rolodex.IndexTheRolodex()
-
+	done := time.Duration(time.Since(now).Milliseconds())
+	if config.Logger != nil {
+		config.Logger.Debug("rolodex indexed", "ms", done)
+	}
 	// check for circular references
+	if config.Logger != nil {
+		config.Logger.Debug("indexing rolodex")
+	}
+	now = time.Now()
 	if !config.SkipCircularReferenceCheck {
 		rolodex.CheckForCircularReferences()
 	}
-
+	done = time.Duration(time.Since(now).Milliseconds())
+	if config.Logger != nil {
+		config.Logger.Debug("circular check completed", "ms", done)
+	}
 	// extract errors
 	roloErrs := rolodex.GetCaughtErrors()
 	if roloErrs != nil {
@@ -146,10 +161,19 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	ctx := context.Background()
 
 	wg.Add(len(extractionFuncs))
+	if config.Logger != nil {
+		config.Logger.Debug("running extractions")
+	}
+	now = time.Now()
 	for _, f := range extractionFuncs {
-		go runExtraction(ctx, info, &doc, rolodex.GetRootIndex(), f, &errs, &wg)
+		runExtraction(ctx, info, &doc, rolodex.GetRootIndex(), f, &errs, &wg)
 	}
 	wg.Wait()
+	done = time.Duration(time.Since(now).Milliseconds())
+	if config.Logger != nil {
+		config.Logger.Debug("extractions complete", "time", done)
+
+	}
 	return &doc, errors.Join(errs...)
 }
 
