@@ -1188,7 +1188,8 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 				}
 			}
 		} else {
-			errors <- fmt.Errorf("build schema failed: unexpected node type: %s, line %d, col %d", valueNode.Tag, valueNode.Line, valueNode.Column)
+			errors <- fmt.Errorf("build schema failed: unexpected data type: '%s', line %d, col %d",
+				utils.MakeTagReadable(valueNode), valueNode.Line, valueNode.Column)
 		}
 	}
 }

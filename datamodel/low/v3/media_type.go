@@ -26,6 +26,7 @@ type MediaType struct {
 	Examples   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
 	Encoding   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode    *yaml.Node
 	*low.Reference
 }
 
@@ -55,7 +56,8 @@ func (mt *MediaType) GetAllExamples() *orderedmap.Map[low.KeyReference[string], 
 }
 
 // Build will extract examples, extensions, schema and encoding from node.
-func (mt *MediaType) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	mt.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	mt.Reference = new(low.Reference)

@@ -23,6 +23,7 @@ type RequestBody struct {
 	Content     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Required    low.NodeReference[bool]
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode     *yaml.Node
 	*low.Reference
 }
 
@@ -42,7 +43,8 @@ func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType]
 }
 
 // Build will extract extensions and MediaType objects from the node.
-func (rb *RequestBody) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	rb.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	rb.Reference = new(low.Reference)

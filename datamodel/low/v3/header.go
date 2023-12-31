@@ -32,6 +32,7 @@ type Header struct {
 	Examples        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
 	Content         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode         *yaml.Node
 	*low.Reference
 }
 
@@ -86,7 +87,8 @@ func (h *Header) Hash() [32]byte {
 }
 
 // Build will extract extensions, examples, schema and content/media types from node.
-func (h *Header) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	h.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	h.Reference = new(low.Reference)

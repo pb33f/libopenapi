@@ -27,11 +27,13 @@ import (
 //   - https://swagger.io/specification/#security-requirement-object
 type SecurityRequirement struct {
 	Requirements low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
+	KeyNode      *yaml.Node
 	*low.Reference
 }
 
 // Build will extract security requirements from the node (the structure is odd, to be honest)
-func (s *SecurityRequirement) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex) error {
+func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
