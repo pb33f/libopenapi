@@ -22,11 +22,13 @@ type License struct {
 	Name       low.NodeReference[string]
 	URL        low.NodeReference[string]
 	Identifier low.NodeReference[string]
+	KeyNode    *yaml.Node
 	*low.Reference
 }
 
 // Build out a license, complain if both a URL and identifier are present as they are mutually exclusive
-func (l *License) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (l *License) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	l.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)

@@ -22,6 +22,7 @@ import (
 // A unique parameter is defined by a combination of a name and location.
 //   - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
+	KeyNode         *yaml.Node
 	Name            low.NodeReference[string]
 	In              low.NodeReference[string]
 	Description     low.NodeReference[string]
@@ -60,8 +61,9 @@ func (p *Parameter) GetExtensions() *orderedmap.Map[low.KeyReference[string], lo
 }
 
 // Build will extract examples, extensions and content/media types.
-func (p *Parameter) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
+	p.KeyNode = keyNode
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)

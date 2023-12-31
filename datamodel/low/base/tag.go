@@ -26,6 +26,7 @@ type Tag struct {
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode      *yaml.Node
 	*low.Reference
 }
 
@@ -35,7 +36,8 @@ func (t *Tag) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 }
 
 // Build will extract extensions and external docs for the Tag.
-func (t *Tag) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (t *Tag) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	t.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	t.Reference = new(low.Reference)
