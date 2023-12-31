@@ -28,6 +28,7 @@ import (
 type SecurityRequirement struct {
 	Requirements low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
 	KeyNode      *yaml.Node
+	RootNode     *yaml.Node
 	*low.Reference
 }
 
@@ -35,6 +36,7 @@ type SecurityRequirement struct {
 func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	s.RootNode = root
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	var labelNode *yaml.Node

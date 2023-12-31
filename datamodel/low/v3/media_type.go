@@ -27,6 +27,7 @@ type MediaType struct {
 	Encoding   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
+	RootNode   *yaml.Node
 	*low.Reference
 }
 
@@ -59,6 +60,7 @@ func (mt *MediaType) GetAllExamples() *orderedmap.Map[low.KeyReference[string], 
 func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	mt.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	mt.RootNode = root
 	utils.CheckForMergeNodes(root)
 	mt.Reference = new(low.Reference)
 	mt.Extensions = low.ExtractExtensions(root)

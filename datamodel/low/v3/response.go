@@ -28,6 +28,7 @@ type Response struct {
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	Links       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
 	KeyNode     *yaml.Node
+	RootNode    *yaml.Node
 	*low.Reference
 }
 
@@ -60,6 +61,7 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	r.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	r.RootNode = root
 	utils.CheckForMergeNodes(root)
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)

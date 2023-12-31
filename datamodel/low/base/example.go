@@ -26,6 +26,7 @@ type Example struct {
 	ExternalValue low.NodeReference[string]
 	Extensions    *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode       *yaml.Node
+	RootNode      *yaml.Node
 	*low.Reference
 }
 
@@ -59,6 +60,7 @@ func (ex *Example) Hash() [32]byte {
 func (ex *Example) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	ex.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	ex.RootNode = root
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)
 	ex.Extensions = low.ExtractExtensions(root)

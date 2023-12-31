@@ -33,6 +33,7 @@ type Info struct {
 	Version        low.NodeReference[string]
 	Extensions     *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode        *yaml.Node
+	RootNode       *yaml.Node
 	*low.Reference
 }
 
@@ -50,6 +51,7 @@ func (i *Info) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Val
 func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	i.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	i.RootNode = root
 	utils.CheckForMergeNodes(root)
 	i.Reference = new(low.Reference)
 	i.Extensions = low.ExtractExtensions(root)
