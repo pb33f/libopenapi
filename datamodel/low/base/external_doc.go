@@ -25,6 +25,7 @@ type ExternalDoc struct {
 	Description low.NodeReference[string]
 	URL         low.NodeReference[string]
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode     *yaml.Node
 	*low.Reference
 }
 
@@ -34,7 +35,8 @@ func (ex *ExternalDoc) FindExtension(ext string) *low.ValueReference[*yaml.Node]
 }
 
 // Build will extract extensions from the ExternalDoc instance.
-func (ex *ExternalDoc) Build(_ context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (ex *ExternalDoc) Build(_ context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	ex.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)

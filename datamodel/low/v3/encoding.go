@@ -24,6 +24,7 @@ type Encoding struct {
 	Style         low.NodeReference[string]
 	Explode       low.NodeReference[bool]
 	AllowReserved low.NodeReference[bool]
+	KeyNode       *yaml.Node
 	*low.Reference
 }
 
@@ -50,7 +51,8 @@ func (en *Encoding) Hash() [32]byte {
 }
 
 // Build will extract all Header objects from supplied node.
-func (en *Encoding) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	en.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	en.Reference = new(low.Reference)

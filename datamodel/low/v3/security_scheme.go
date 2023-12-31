@@ -35,6 +35,7 @@ type SecurityScheme struct {
 	Flows            low.NodeReference[*OAuthFlows]
 	OpenIdConnectUrl low.NodeReference[string]
 	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode          *yaml.Node
 	*low.Reference
 }
 
@@ -49,7 +50,8 @@ func (ss *SecurityScheme) GetExtensions() *orderedmap.Map[low.KeyReference[strin
 }
 
 // Build will extract OAuthFlows and extensions from the node.
-func (ss *SecurityScheme) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (ss *SecurityScheme) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	ss.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	ss.Reference = new(low.Reference)

@@ -27,6 +27,7 @@ type Response struct {
 	Content     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	Links       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
+	KeyNode     *yaml.Node
 	*low.Reference
 }
 
@@ -56,7 +57,8 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 }
 
 // Build will extract headers, extensions, content and links from node.
-func (r *Response) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	r.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	r.Reference = new(low.Reference)

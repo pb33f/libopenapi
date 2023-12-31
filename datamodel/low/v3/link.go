@@ -35,6 +35,7 @@ type Link struct {
 	Description  low.NodeReference[string]
 	Server       low.NodeReference[*Server]
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode      *yaml.Node
 	*low.Reference
 }
 
@@ -54,7 +55,8 @@ func (l *Link) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 }
 
 // Build will extract extensions and servers from the node.
-func (l *Link) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	l.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)

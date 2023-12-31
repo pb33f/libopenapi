@@ -38,6 +38,7 @@ type Responses struct {
 	Codes      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*Response]]
 	Default    low.NodeReference[*Response]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode    *yaml.Node
 	*low.Reference
 }
 
@@ -47,7 +48,8 @@ func (r *Responses) GetExtensions() *orderedmap.Map[low.KeyReference[string], lo
 }
 
 // Build will extract default response and all Response objects for each code
-func (r *Responses) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	r.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)

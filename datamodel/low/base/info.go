@@ -32,6 +32,7 @@ type Info struct {
 	License        low.NodeReference[*License]
 	Version        low.NodeReference[string]
 	Extensions     *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode        *yaml.Node
 	*low.Reference
 }
 
@@ -46,7 +47,8 @@ func (i *Info) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Val
 }
 
 // Build will extract out the Contact and Info objects from the supplied root node.
-func (i *Info) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	i.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	i.Reference = new(low.Reference)
