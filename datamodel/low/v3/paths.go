@@ -28,6 +28,7 @@ type Paths struct {
 	PathItems  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
+	RootNode   *yaml.Node
 	*low.Reference
 }
 
@@ -66,8 +67,9 @@ func (p *Paths) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Va
 
 // Build will extract extensions and all PathItems. This happens asynchronously for speed.
 func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
-	p.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	p.KeyNode = keyNode
+	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)

@@ -24,6 +24,7 @@ type RequestBody struct {
 	Required    low.NodeReference[bool]
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
+	RootNode    *yaml.Node
 	*low.Reference
 }
 
@@ -46,6 +47,7 @@ func (rb *RequestBody) FindContent(cType string) *low.ValueReference[*MediaType]
 func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	rb.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	rb.RootNode = root
 	utils.CheckForMergeNodes(root)
 	rb.Reference = new(low.Reference)
 	rb.Extensions = low.ExtractExtensions(root)

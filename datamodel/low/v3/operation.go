@@ -38,6 +38,7 @@ type Operation struct {
 	Servers      low.NodeReference[[]low.ValueReference[*Server]]
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode      *yaml.Node
+	RootNode     *yaml.Node
 	*low.Reference
 }
 
@@ -62,6 +63,7 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
 func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	o.KeyNode = keyNode
+	o.RootNode = root
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)

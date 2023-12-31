@@ -25,6 +25,7 @@ type OAuthFlows struct {
 	AuthorizationCode low.NodeReference[*OAuthFlow]
 	Extensions        *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode           *yaml.Node
+	RootNode          *yaml.Node
 	*low.Reference
 }
 
@@ -42,6 +43,7 @@ func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	o.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	o.RootNode = root
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)

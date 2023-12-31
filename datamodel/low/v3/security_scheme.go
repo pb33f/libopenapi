@@ -36,6 +36,7 @@ type SecurityScheme struct {
 	OpenIdConnectUrl low.NodeReference[string]
 	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode          *yaml.Node
+	RootNode         *yaml.Node
 	*low.Reference
 }
 
@@ -53,6 +54,7 @@ func (ss *SecurityScheme) GetExtensions() *orderedmap.Map[low.KeyReference[strin
 func (ss *SecurityScheme) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	ss.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	ss.RootNode = root
 	utils.CheckForMergeNodes(root)
 	ss.Reference = new(low.Reference)
 	ss.Extensions = low.ExtractExtensions(root)

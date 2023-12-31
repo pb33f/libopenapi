@@ -39,6 +39,7 @@ type Responses struct {
 	Default    low.NodeReference[*Response]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
+	RootNode   *yaml.Node
 	*low.Reference
 }
 
@@ -51,6 +52,7 @@ func (r *Responses) GetExtensions() *orderedmap.Map[low.KeyReference[string], lo
 func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	r.KeyNode = keyNode
 	root = utils.NodeAlias(root)
+	r.RootNode = root
 	r.Reference = new(low.Reference)
 	r.Extensions = low.ExtractExtensions(root)
 	utils.CheckForMergeNodes(root)

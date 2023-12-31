@@ -23,6 +23,7 @@ import (
 //   - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
 	KeyNode         *yaml.Node
+	RootNode        *yaml.Node
 	Name            low.NodeReference[string]
 	In              low.NodeReference[string]
 	Description     low.NodeReference[string]
@@ -64,6 +65,7 @@ func (p *Parameter) GetExtensions() *orderedmap.Map[low.KeyReference[string], lo
 func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	p.KeyNode = keyNode
+	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
 	p.Extensions = low.ExtractExtensions(root)
