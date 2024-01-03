@@ -206,6 +206,19 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 	var s *Schema
 	var err error
 	s, err = sp.BuildSchema()
+
+	if s != nil && s.GoLow() != nil && s.GoLow().Index != nil {
+		circ := s.GoLow().Index.GetCircularReferences()
+		for _, c := range circ {
+			if sp.IsReference() {
+				// we cannot proceed.
+				if sp.GetReference() == c.LoopPoint.Definition {
+					return sp.GetReferenceNode(), nil
+				}
+			}
+		}
+	}
+
 	if err != nil {
 		return nil, err
 	}
