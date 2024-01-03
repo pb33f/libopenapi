@@ -1,17 +1,18 @@
 package utils
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 	"net/http"
 	"net/url"
 	"regexp"
 	"sort"
 	"strconv"
 	"strings"
-
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
+	"time"
 )
 
 type Case int8
@@ -106,11 +107,34 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 	jsonPath = FixContext(jsonPath)
 
 	path, err := yamlpath.NewPath(jsonPath)
+
 	if err != nil {
 		return nil, err
 	}
-	results, _ := path.Find(node)
-	return results, nil
+
+	// this can spin out, to lets gatekeep it.
+	done := make(chan bool)
+	eChan := make(chan error)
+	var results []*yaml.Node
+	timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	go func(d chan bool, e chan error) {
+		var er error
+		results, er = path.Find(node)
+		if er != nil {
+			e <- er
+		}
+		done <- true
+	}(done, eChan)
+
+	select {
+	case <-done:
+		return results, nil
+	case er := <-eChan:
+		return nil, er
+	case <-timeout.Done():
+		return nil, fmt.Errorf("node lookup timeout exceeded")
+	}
 }
 
 // ConvertInterfaceIntoStringMap will convert an unknown input into a string map.

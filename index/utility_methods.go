@@ -30,7 +30,7 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			Definition:            def,
 			Name:                  name,
 			Node:                  schema,
-			Path:                  fmt.Sprintf("$.components.schemas.%s", name),
+			Path:                  fmt.Sprintf("$.components.schemas['%s']", name),
 			ParentNode:            schemasNode,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(schemasNode, map[string][]string{}, fullDef, index),
 		}
@@ -384,9 +384,9 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 
 			// if this is a duplicate, add an error and ignore it
 			if index.paramOpRefs[pathItemNode.Value][method][paramRefName] != nil {
-				path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
+				path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
 				if method == "top" {
-					path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
+					path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
 				}
 
 				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
@@ -408,9 +408,9 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 			// param is inline.
 			_, vn := utils.FindKeyNode("name", param.Content)
 
-			path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
+			path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
 			if method == "top" {
-				path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
+				path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
 			}
 
 			if vn == nil {
@@ -452,9 +452,9 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 
 					if currentIn != nil && checkIn != nil && currentIn.Value == checkIn.Value {
 
-						path := fmt.Sprintf("$.paths.%s.%s.parameters[%d]", pathItemNode.Value, method, i)
+						path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
 						if method == "top" {
-							path = fmt.Sprintf("$.paths.%s.parameters[%d]", pathItemNode.Value, i)
+							path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
 						}
 
 						index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
