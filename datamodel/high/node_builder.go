@@ -450,6 +450,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			} else {
 				// try an inline render if we can, otherwise there is no option but to default to the
 				// full render.
+
 				if _, ko := r.(RenderableInline); ko {
 					rawRender, _ = r.(RenderableInline).MarshalYAMLInline()
 				} else {

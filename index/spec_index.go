@@ -971,7 +971,7 @@ func (index *SpecIndex) GetOperationCount() int {
 							Definition: m.Value,
 							Name:       m.Value,
 							Node:       method.Content[y+1],
-							Path:       fmt.Sprintf("$.paths.%s.%s", p.Value, m.Value),
+							Path:       fmt.Sprintf("$.paths['%s'].%s", p.Value, m.Value),
 							ParentNode: m,
 						}
 						if locatedPathRefs[p.Value] == nil {
@@ -1039,7 +1039,7 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 								Name:       serverRef.Value,
 								Node:       serverRef,
 								ParentNode: prop,
-								Path:       fmt.Sprintf("$.paths.%s.servers[%d]", pathItemNode.Value, i),
+								Path:       fmt.Sprintf("$.paths['%s'].servers[%d]", pathItemNode.Value, i),
 							}
 							serverRefs = append(serverRefs, ref)
 						}
@@ -1123,7 +1123,7 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 											Name:       "servers",
 											Node:       serverRef,
 											ParentNode: httpMethodProp,
-											Path:       fmt.Sprintf("$.paths.%s.%s.servers[%d]", pathItemNode.Value, prop.Value, i),
+											Path:       fmt.Sprintf("$.paths['%s'].%s.servers[%d]", pathItemNode.Value, prop.Value, i),
 										}
 										serverRefs = append(serverRefs, ref)
 									}

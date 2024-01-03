@@ -529,8 +529,8 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 				}
 
-				seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
-				//seenPath = append(seenPath, n.Value)
+				//seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
+				seenPath = append(seenPath, n.Value)
 				prev = n.Value
 			}
 

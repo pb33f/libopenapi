@@ -840,7 +840,7 @@ func TestCreateDocument_YamlAnchor(t *testing.T) {
 	assert.NotNil(t, postParams)
 	assert.Equal(t, 1, len(getParams))
 	assert.Equal(t, 1, len(postParams))
-	assert.Equal(t, getParams, postParams)
+	assert.Equal(t, getParams[0].ValueNode, postParams[0].ValueNode)
 
 	// check post request body
 	responses := examplePath.GetValue().Get.GetValue().GetResponses().Value.(*Responses)
