@@ -1214,7 +1214,7 @@ components:
 				assert.Equal(t, "$.components.parameters.param2", params["/"]["get"]["#/components/parameters/param2"][0].Path)
 			}
 			if assert.Contains(t, params["/"]["get"], "test") {
-				assert.Equal(t, "$.paths./.get.parameters[2]", params["/"]["get"]["test"][0].Path)
+				assert.Equal(t, "$.paths['/'].get.parameters[2]", params["/"]["get"]["test"][0].Path)
 			}
 		}
 	}
@@ -1255,7 +1255,7 @@ paths:
 					opPath = ""
 				}
 
-				assert.Equal(t, fmt.Sprintf("$.paths.%s%s.servers[%d]", path, opPath, i), server.Path)
+				assert.Equal(t, fmt.Sprintf("$.paths['%s']%s.servers[%d]", path, opPath, i), server.Path)
 			}
 		}
 	}
@@ -1278,7 +1278,7 @@ func TestSpecIndex_schemaComponentsHaveParentsAndPaths(t *testing.T) {
 
 	for _, schema := range schemas {
 		assert.NotNil(t, schema.ParentNode)
-		assert.Equal(t, fmt.Sprintf("$.components.schemas.%s", schema.Name), schema.Path)
+		assert.Equal(t, fmt.Sprintf("$.components.schemas['%s']", schema.Name), schema.Path)
 	}
 }
 
@@ -1497,12 +1497,12 @@ paths:
 
 	paths := idx.GetAllPaths()
 
-	assert.Equal(t, "$.paths./test.get", paths["/test"]["get"].Path)
+	assert.Equal(t, "$.paths['/test'].get", paths["/test"]["get"].Path)
 	assert.Equal(t, 9, paths["/test"]["get"].ParentNode.Line)
-	assert.Equal(t, "$.paths./test.post", paths["/test"]["post"].Path)
+	assert.Equal(t, "$.paths['/test'].post", paths["/test"]["post"].Path)
 	assert.Equal(t, 13, paths["/test"]["post"].ParentNode.Line)
-	assert.Equal(t, "$.paths./test2.delete", paths["/test2"]["delete"].Path)
+	assert.Equal(t, "$.paths['/test2'].delete", paths["/test2"]["delete"].Path)
 	assert.Equal(t, 18, paths["/test2"]["delete"].ParentNode.Line)
-	assert.Equal(t, "$.paths./test2.put", paths["/test2"]["put"].Path)
+	assert.Equal(t, "$.paths['/test2'].put", paths["/test2"]["put"].Path)
 	assert.Equal(t, 22, paths["/test2"]["put"].ParentNode.Line)
 }
