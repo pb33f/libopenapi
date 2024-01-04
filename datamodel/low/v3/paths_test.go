@@ -222,7 +222,7 @@ func TestPaths_Build_BadParams(t *testing.T) {
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	er := buf.String()
-	assert.Contains(t, er, "array build failed, input is not an array, line 3, column 5'")
+	assert.Contains(t, er, "array build failed, input is not an array, line 3, column 5")
 }
 
 func TestPaths_Build_BadRef(t *testing.T) {
@@ -259,7 +259,7 @@ func TestPaths_Build_BadRef(t *testing.T) {
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Contains(t, buf.String(), "unable to locate reference anywhere in the rolodex\" reference=#/no-where")
-	assert.Contains(t, buf.String(), "error building path item 'path item build failed: cannot find reference: #/no-where at line 4, col 10'")
+	assert.Contains(t, buf.String(), "error building path item: path item build failed: cannot find reference: #/no-where at line 4, col 10")
 }
 
 func TestPathItem_Build_GoodRef(t *testing.T) {
@@ -327,7 +327,7 @@ func TestPathItem_Build_BadRef(t *testing.T) {
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Contains(t, buf.String(), "unable to locate reference anywhere in the rolodex\" reference=#/~1cakes/NotFound")
-	assert.Contains(t, buf.String(), "error building path item 'path item build failed: cannot find reference: #/~1another~1path/get at line 4, col 10")
+	assert.Contains(t, buf.String(), "error building path item: path item build failed: cannot find reference: #/~1another~1path/get at line 4, col 10")
 }
 
 func TestPathNoOps(t *testing.T) {
@@ -459,7 +459,7 @@ func TestPath_Build_Using_CircularRefWithOp(t *testing.T) {
 	assert.NoError(t, err)
 
 	_ = n.Build(context.Background(), nil, rootNode.Content[0], idx)
-	assert.Contains(t, buf.String(), "error building path item 'build schema failed: circular reference 'post -> post -> post' found during lookup at line 4, column 7, It cannot be resolved'")
+	assert.Contains(t, buf.String(), "error building path item: build schema failed: circular reference 'post -> post -> post' found during lookup at line 4, column 7, It cannot be resolved")
 }
 
 func TestPaths_Build_BrokenOp(t *testing.T) {
@@ -486,7 +486,7 @@ func TestPaths_Build_BrokenOp(t *testing.T) {
 	assert.NoError(t, err)
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
-	assert.Contains(t, buf.String(), "error building path item 'object extraction failed: reference at line 4, column 7 is empty, it cannot be resolved'")
+	assert.Contains(t, buf.String(), "error building path item: object extraction failed: reference at line 4, column 7 is empty, it cannot be resolved")
 }
 
 func TestPaths_Hash(t *testing.T) {
