@@ -768,7 +768,7 @@ paths:
 	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
 	assert.Equal(t,
-		"path item build failed: cannot find reference:  at line 4, col 10", err.Error())
+		"path item build failed: cannot find reference: '' at line 4, col 10", err.Error())
 }
 
 func TestCreateDocument_Tags_Errors(t *testing.T) {
