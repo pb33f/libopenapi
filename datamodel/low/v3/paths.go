@@ -173,7 +173,7 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 						}
 					}
 				} else {
-					return buildResult{}, fmt.Errorf("path item build failed: cannot find reference: %s at line %d, col %d",
+					return buildResult{}, fmt.Errorf("path item build failed: cannot find reference: '%s' at line %d, col %d",
 						pNode.Content[1].Value, pNode.Content[1].Line, pNode.Content[1].Column)
 				}
 			}
@@ -183,7 +183,7 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 			err := path.Build(foundContext, cNode, pNode, idx)
 			if err != nil {
 				if idx != nil && idx.GetLogger() != nil {
-					idx.GetLogger().Error(fmt.Sprintf("error building path item '%s'", err.Error()))
+					idx.GetLogger().Error(fmt.Sprintf("error building path item: %s", err.Error()))
 				}
 				// return buildResult{}, err
 			}
