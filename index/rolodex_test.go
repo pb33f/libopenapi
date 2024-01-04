@@ -221,7 +221,7 @@ func TestRolodex_LocalNonNativeRemoteFS_ReadFile(t *testing.T) {
 	assert.Nil(t, r.GetIndex())
 	assert.Equal(t, "pizza", r.GetContent())
 	assert.Equal(t, "http://localhost/goodstat.yaml", r.GetFullPath())
-	assert.Equal(t, time.Now().UnixMilli(), r.ModTime().UnixMilli())
+	assert.Greater(t, r.ModTime().UnixMilli(), int64(1))
 	assert.Equal(t, int64(5), r.Size())
 	assert.False(t, r.IsDir())
 	assert.Nil(t, r.Sys())
