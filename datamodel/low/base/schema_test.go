@@ -1861,3 +1861,30 @@ components:
 	assert.Nil(t, res)
 	assert.Equal(t, "schema build failed: reference '[empty]' cannot be found at line 1, col 7", e.Error())
 }
+
+func TestBuildSchema_BadNodeTypes(t *testing.T) {
+
+	n := &yaml.Node{
+		Tag:    "!!burgers",
+		Line:   1,
+		Column: 2,
+	}
+
+	eChan := make(chan error, 1)
+	doneChan := make(chan bool, 1)
+	bChan := make(chan schemaProxyBuildResult, 1)
+	var err error
+	go func() {
+		for {
+			select {
+			case e := <-eChan:
+				err = e
+				doneChan <- true
+			}
+		}
+	}()
+
+	buildSchema(context.Background(), bChan, n, n, eChan, nil)
+	<-doneChan
+	assert.Equal(t, "build schema failed: unexpected data type: 'unknown', line 1, col 2", err.Error())
+}
