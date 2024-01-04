@@ -114,24 +114,17 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 
 	// this can spin out, to lets gatekeep it.
 	done := make(chan bool)
-	eChan := make(chan error)
 	var results []*yaml.Node
 	timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
-	go func(d chan bool, e chan error) {
-		var er error
-		results, er = path.Find(node)
-		if er != nil {
-			e <- er
-		}
+	go func(d chan bool) {
+		results, _ = path.Find(node)
 		done <- true
-	}(done, eChan)
+	}(done)
 
 	select {
 	case <-done:
 		return results, nil
-	case er := <-eChan:
-		return nil, er
 	case <-timeout.Done():
 		return nil, fmt.Errorf("node lookup timeout exceeded")
 	}

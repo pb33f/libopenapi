@@ -913,3 +913,20 @@ func TestDetermineJSONWhitespaceLength_None(t *testing.T) {
 	someBytes := []byte(`{"hello": "world"}`)
 	assert.Equal(t, 0, DetermineWhitespaceLength(string(someBytes)))
 }
+
+func TestTimeoutFind(t *testing.T) {
+	a := &yaml.Node{
+		Value: "chicken",
+	}
+	b := &yaml.Node{
+		Value: "nuggets",
+	}
+
+	// loopy loop.
+	a.Content = append(a.Content, b)
+	b.Content = append(b.Content, a)
+
+	nodes, err := FindNodesWithoutDeserializing(a, "$..nuggets")
+	assert.Error(t, err)
+	assert.Nil(t, nodes)
+}
