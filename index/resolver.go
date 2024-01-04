@@ -743,7 +743,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-
 									// create full definition lookup based on ref.
 									def := l
 									exp := strings.Split(l, "#/")
@@ -853,6 +852,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 											}
 										}
 									}
+								} else {
+									depth++
+									found = append(found, resolver.extractRelatives(ref, v, n,
+										foundRelatives, journey, seen, resolve, depth)...)
 								}
 							}
 						}
