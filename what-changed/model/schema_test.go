@@ -460,6 +460,8 @@ components:
 	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
 	assert.Equal(t, "d", changes.Changes[0].New)
 	assert.Equal(t, v3.EnumLabel, changes.Changes[0].Property)
+	assert.Equal(t, 5, *changes.GetAllChanges()[0].Context.NewLine)
+	assert.Equal(t, 20, *changes.GetAllChanges()[0].Context.NewColumn)
 }
 
 func TestCompareSchemas_EnumRemoved(t *testing.T) {
@@ -488,6 +490,8 @@ components:
 	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
 	assert.Equal(t, "d", changes.Changes[0].Original)
 	assert.Equal(t, v3.EnumLabel, changes.Changes[0].Property)
+	assert.Equal(t, 5, *changes.GetAllChanges()[0].Context.OriginalLine)
+	assert.Equal(t, 20, *changes.GetAllChanges()[0].Context.OriginalColumn)
 }
 
 func TestCompareSchemas_PropertyAdded(t *testing.T) {
@@ -2711,7 +2715,7 @@ components:
         - type: array
           items:
             type: string
-          example: 
+          example:
             oh: my`
 	right := `openapi: 3.0
 components:
