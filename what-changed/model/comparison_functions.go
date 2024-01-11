@@ -405,7 +405,9 @@ func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
 
 func toString(v any) string {
 	if y, ok := v.(*yaml.Node); ok {
-		_ = y.Encode(&v)
+		copy := *y
+		_ = copy.Encode(&copy)
+		return fmt.Sprint(copy)
 	}
 
 	return fmt.Sprint(v)
