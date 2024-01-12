@@ -6,7 +6,6 @@ package index
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // CanBeIndexed is an interface that allows a file to be indexed.
@@ -437,7 +438,7 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	fileLookup := location
 	isUrl := false
 	u, _ := url.Parse(location)
-	if u != nil && u.Scheme != "" {
+	if u != nil && u.Path != "" {
 		isUrl = true
 	}
 

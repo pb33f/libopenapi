@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -283,7 +284,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 											if index.config.BaseURL != nil {
 
 												u := *index.config.BaseURL
-												abs := filepath.Join(u.Path, uri[0])
+												abs := path.Join(u.Path, uri[0])
 												u.Path = abs
 												fullDefinitionPath = u.String()
 												componentName = uri[0]
@@ -613,8 +614,8 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 	for r := range refsToCheck {
 		// expand our index of all mapped refs
-		go locate(refsToCheck[r], r, mappedRefsInSequence)
-		//locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
+		//go locate(refsToCheck[r], r, mappedRefsInSequence)
+		locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
 	}
 
 	completedRefs := 0
