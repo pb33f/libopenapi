@@ -614,8 +614,8 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 	for r := range refsToCheck {
 		// expand our index of all mapped refs
-		//go locate(refsToCheck[r], r, mappedRefsInSequence)
-		locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
+		go locate(refsToCheck[r], r, mappedRefsInSequence)
+		// locate(refsToCheck[r], r, mappedRefsInSequence) // used for sync testing.
 	}
 
 	completedRefs := 0
