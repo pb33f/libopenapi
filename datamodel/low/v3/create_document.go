@@ -115,7 +115,9 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	}
 	done = time.Duration(time.Since(now).Milliseconds())
 	if config.Logger != nil {
-		config.Logger.Debug("circular check completed", "ms", done)
+		if !config.SkipCircularReferenceCheck {
+			config.Logger.Debug("circular check completed", "ms", done)
+		}
 	}
 	// extract errors
 	roloErrs := rolodex.GetCaughtErrors()
