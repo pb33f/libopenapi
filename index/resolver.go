@@ -66,6 +66,7 @@ type Resolver struct {
 	relativesSeen          int
 	IgnorePoly             bool
 	IgnoreArray            bool
+	circChecked            bool
 }
 
 // NewResolver will create a new resolver from a *index.SpecIndex
@@ -197,11 +198,13 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 			continue
 		}
 
-		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Definition),
-			Node:     circRef.LoopPoint.Node,
-			Path:     circRef.GenerateJourneyPath(),
-		})
+		if !resolver.circChecked {
+			resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
+				ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Definition),
+				Node:     circRef.LoopPoint.Node,
+				Path:     circRef.GenerateJourneyPath(),
+			})
+		}
 	}
 
 	return resolver.resolvingErrors
@@ -215,16 +218,18 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 		if !circRef.IsInfiniteLoop {
 			continue
 		}
-
-		resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-			ErrorRef:          fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Name),
-			Node:              circRef.LoopPoint.Node,
-			Path:              circRef.GenerateJourneyPath(),
-			CircularReference: circRef,
-		})
+		if !resolver.circChecked {
+			resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
+				ErrorRef:          fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Name),
+				Node:              circRef.LoopPoint.Node,
+				Path:              circRef.GenerateJourneyPath(),
+				CircularReference: circRef,
+			})
+		}
 	}
 	// update our index with any circular refs we found.
 	resolver.specIndex.SetCircularReferences(resolver.circularReferences)
+	resolver.circChecked = true
 	return resolver.resolvingErrors
 }
 
@@ -365,7 +370,9 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 					if resolver.IgnoreArray && isArray {
 						resolver.ignoredArrayReferences = append(resolver.ignoredArrayReferences, circRef)
 					} else {
-						resolver.circularReferences = append(resolver.circularReferences, circRef)
+						if !resolver.circChecked {
+							resolver.circularReferences = append(resolver.circularReferences, circRef)
+						}
 					}
 					r.Seen = true
 					r.Circular = true
@@ -463,8 +470,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			LoopPoint:      ref,
 			IsInfiniteLoop: true,
 		}
-		resolver.circularReferences = append(resolver.circularReferences, circRef)
-		ref.Circular = true
+		if !resolver.circChecked {
+			resolver.circularReferences = append(resolver.circularReferences, circRef)
+			ref.Circular = true
+		}
 		return nil
 	}
 
@@ -728,7 +737,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 											if resolver.IgnorePoly {
 												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
 											} else {
-												resolver.circularReferences = append(resolver.circularReferences, circRef)
+												if !resolver.circChecked {
+													resolver.circularReferences = append(resolver.circularReferences, circRef)
+												}
 											}
 										}
 									}
@@ -848,7 +859,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 											if resolver.IgnorePoly {
 												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
 											} else {
-												resolver.circularReferences = append(resolver.circularReferences, circRef)
+												if !resolver.circChecked {
+													resolver.circularReferences = append(resolver.circularReferences, circRef)
+												}
 											}
 										}
 									}
