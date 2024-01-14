@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -57,7 +58,9 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	origin := rolo.FindNodeOrigin(results[0])
 
 	assert.NotNil(t, origin)
-	assert.True(t, strings.HasSuffix(origin.AbsoluteLocation, "index/rolodex_test_data/dir2/utils/utils.yaml"))
+	sep := string(filepath.Separator)
+	assert.True(t, strings.HasSuffix(origin.AbsoluteLocation, "index"+sep+
+		"rolodex_test_data"+sep+"dir2"+sep+"utils"+sep+"utils.yaml"))
 
 	// should be identical to the original node
 	assert.Equal(t, results[0], origin.Node)

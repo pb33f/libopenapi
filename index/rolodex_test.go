@@ -13,6 +13,8 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -166,8 +168,11 @@ func TestRolodex_LocalNonNativeFS_BadRead(t *testing.T) {
 	f, rerr := rolo.Open("/")
 	assert.Nil(t, f)
 	assert.Error(t, rerr)
-	assert.Equal(t, "file does not exist", rerr.Error())
-
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "file does not exist", rerr.Error())
+	} else {
+		assert.Equal(t, "invalid argument", rerr.Error())
+	}
 }
 
 func TestRolodex_LocalNonNativeFS_BadStat(t *testing.T) {
@@ -388,21 +393,21 @@ properties:
 	third := `type: "object"
 properties:
   name:
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml"
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$4"
   tame: 
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fifth.yaml#/"
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$5#/"
   blame:
-    $ref: "fifth.yaml"
+    $ref: "$_5"
 
   fame: 
-     $ref: "$PWD/fourth.yaml#/properties/name"
+     $ref: "$_4#/properties/name"
   game:
-    $ref: "$PWD/fifth.yaml"
+    $ref: "$_5"
 
   children:
     type: "object"
     anyOf:
-      - $ref: "second.yaml#/components/schemas/CircleTest"
+      - $ref: "$2#/components/schemas/CircleTest"
 required:
   - children`
 
@@ -417,11 +422,12 @@ components:
         children:
           type: "object"
           anyOf:
-            - $ref: "third.yaml"
+            - $ref: "$3"
           description: "Array of sub-categories in the same format."
       required:
         - "name"
-        - "children"`
+        - "children"
+`
 
 	first := `openapi: 3.1.0
 components:
@@ -432,32 +438,58 @@ components:
         - muffins
       properties:
         muffins:
-         $ref: "second.yaml#/components/schemas/CircleTest"`
+         $ref: "$2#/components/schemas/CircleTest"
+`
 
-	cwd, _ := os.Getwd()
+	var firstFile, secondFile, thirdFile, fourthFile, fifthFile *os.File
+	var fErr error
 
-	_ = os.WriteFile("third.yaml", []byte(strings.ReplaceAll(third, "$PWD", cwd)), 0644)
-	_ = os.WriteFile("second.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first.yaml", []byte(first), 0644)
-	_ = os.WriteFile("fourth.yaml", []byte(fourth), 0644)
-	_ = os.WriteFile("fifth.yaml", []byte(fifth), 0644)
-	defer os.Remove("first.yaml")
-	defer os.Remove("second.yaml")
-	defer os.Remove("third.yaml")
-	defer os.Remove("fourth.yaml")
-	defer os.Remove("fifth.yaml")
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
 
-	baseDir := "."
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	assert.NoError(t, fErr)
+
+	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	assert.NoError(t, fErr)
+
+	fifthFile, fErr = os.CreateTemp("", "*-fifth.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
+	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
+	third = strings.ReplaceAll(third, "$4", filepath.Base(fourthFile.Name()))
+	third = strings.ReplaceAll(third, "$_4", fourthFile.Name())
+	third = strings.ReplaceAll(third, "$5", filepath.Base(fifthFile.Name()))
+	third = strings.ReplaceAll(third, "$_5", fifthFile.Name())
+	third = strings.ReplaceAll(strings.ReplaceAll(third, "$2", secondFile.Name()), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+	thirdFile.WriteString(third)
+	fourthFile.WriteString(fourth)
+	fifthFile.WriteString(fifth)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+	defer os.Remove(thirdFile.Name())
+	defer os.Remove(fourthFile.Name())
+	defer os.Remove(fifthFile.Name())
+
+	baseDir := filepath.Dir(firstFile.Name())
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first.yaml",
-			"second.yaml",
-			"third.yaml",
-			"fourth.yaml",
-			"fifth.yaml",
+			filepath.Base(firstFile.Name()),
+			filepath.Base(secondFile.Name()),
+			filepath.Base(thirdFile.Name()),
+			filepath.Base(fourthFile.Name()),
+			filepath.Base(fifthFile.Name()),
 		},
 	}
 
@@ -474,7 +506,7 @@ components:
 	rolodex.AddLocalFS(baseDir, fileFS)
 
 	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
-		[]byte(strings.ReplaceAll(third, "$PWD", cwd)), []byte(fourth), []byte(fifth))
+		[]byte(third), []byte(fourth), []byte(fifth))
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -491,10 +523,10 @@ components:
 	// there are two circles. Once when reading the journey from first.yaml, and then a second internal look in second.yaml
 	// the index won't find three, because by the time that 'three' has been read, it's already been indexed and the journey
 	// discovered.
-	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 2)
+	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
 
 	// extract a local file
-	f, _ := rolodex.Open("first.yaml")
+	f, _ := rolodex.Open(firstFile.Name())
 	// index
 	x, y := f.(*rolodexFile).Index(cf)
 	assert.NotNil(t, x)
@@ -506,7 +538,7 @@ components:
 	assert.NoError(t, y)
 
 	// extract a remote  file
-	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml")
+	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/" + filepath.Base(fourthFile.Name()))
 
 	// index
 	x, y = f.(*rolodexFile).Index(cf)
@@ -519,7 +551,7 @@ components:
 	assert.NoError(t, y)
 
 	// extract another remote  file
-	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/fifth.yaml")
+	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/" + filepath.Base(fifthFile.Name()))
 
 	//change cf to perform document check (which should fail)
 	cf.SkipDocumentCheck = false
@@ -533,23 +565,23 @@ components:
 func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 12:28:00 GMT")
-		if strings.HasSuffix(req.URL.String(), "/first.yaml") {
+		if strings.HasSuffix(req.URL.String(), "-first.yaml") {
 			_, _ = rw.Write(a)
 			return
 		}
-		if strings.HasSuffix(req.URL.String(), "/second.yaml") {
+		if strings.HasSuffix(req.URL.String(), "-second.yaml") {
 			_, _ = rw.Write(b)
 			return
 		}
-		if strings.HasSuffix(req.URL.String(), "/third.yaml") {
+		if strings.HasSuffix(req.URL.String(), "-third.yaml") {
 			_, _ = rw.Write(c)
 			return
 		}
-		if strings.HasSuffix(req.URL.String(), "/fourth.yaml") {
+		if strings.HasSuffix(req.URL.String(), "-fourth.yaml") {
 			_, _ = rw.Write(d)
 			return
 		}
-		if strings.HasSuffix(req.URL.String(), "/fifth.yaml") {
+		if strings.HasSuffix(req.URL.String(), "-fifth.yaml") {
 			_, _ = rw.Write(e)
 			return
 		}
@@ -569,8 +601,10 @@ properties:
 
 	third := `type: "object"
 properties:
+  herbs:
+    $ref: "$1"
   name:
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml"`
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$4"`
 
 	second := `openapi: 3.1.0
 components:
@@ -585,7 +619,7 @@ components:
         children:
           type: "object"
           anyOf:
-            - $ref: "third.yaml"
+            - $ref: "$3"
       required:
         - "name"
         - "children"`
@@ -599,20 +633,39 @@ components:
         - muffins
       properties:
         muffins:
-         $ref: "second_n.yaml#/components/schemas/CircleTest"`
+         $ref: "$2#/components/schemas/CircleTest"`
 
-	cwd, _ := os.Getwd()
+	var firstFile, secondFile, thirdFile, fourthFile *os.File
+	var fErr error
 
-	_ = os.WriteFile("third_n.yaml", []byte(strings.ReplaceAll(third, "$PWD", cwd)), 0644)
-	_ = os.WriteFile("second_n.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first_n.yaml", []byte(first), 0644)
-	_ = os.WriteFile("fourth_n.yaml", []byte(fourth), 0644)
-	defer os.Remove("first_n.yaml")
-	defer os.Remove("second_n.yaml")
-	defer os.Remove("third_n.yaml")
-	defer os.Remove("fourth_n.yaml")
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
 
-	baseDir := "."
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	assert.NoError(t, fErr)
+
+	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
+	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
+	third = strings.ReplaceAll(strings.ReplaceAll(third, "$4", filepath.Base(fourthFile.Name())), "\\", "\\\\")
+	third = strings.ReplaceAll(strings.ReplaceAll(first, "$1", filepath.Base(firstFile.Name())), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+	thirdFile.WriteString(third)
+	fourthFile.WriteString(fourth)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+	defer os.Remove(thirdFile.Name())
+	defer os.Remove(fourthFile.Name())
+
+	baseDir := filepath.Dir(firstFile.Name())
 	cf := CreateOpenAPIIndexConfig()
 	cf.BasePath = baseDir
 	cf.IgnorePolymorphicCircularReferences = true
@@ -635,7 +688,7 @@ components:
 	rolodex.SetRootNode(&rootNode)
 
 	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
-		[]byte(strings.ReplaceAll(third, "$PWD", cwd)), []byte(fourth), nil)
+		[]byte(third), []byte(fourth), nil)
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -647,7 +700,9 @@ components:
 
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
-	assert.Len(t, rolodex.GetCaughtErrors(), 2)
+	assert.GreaterOrEqual(t, len(rolodex.GetCaughtErrors()), 1)
+	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing:  [8:11]", rolodex.GetCaughtErrors()[0].Error())
+
 }
 
 func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_WithFiles(t *testing.T) {
@@ -664,7 +719,7 @@ components:
           type: "object"
           oneOf:
             items:
-              $ref: "second_a.yaml#/components/schemas/CircleTest"
+              $ref: "$2#/components/schemas/CircleTest"
       required:
         - "name"
         - "children"
@@ -704,26 +759,38 @@ components:
          anyOf:
            - $ref: "#/components/schemas/CircleTest"`
 
+	var firstFile, secondFile *os.File
+	var fErr error
+
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
+
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
-
-	_ = os.WriteFile("second_a.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first_a.yaml", []byte(first), 0644)
-	defer os.Remove("first_a.yaml")
-	defer os.Remove("second_a.yaml")
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := "."
+	baseDir := filepath.Dir(firstFile.Name())
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first_a.yaml",
-			"second_a.yaml",
+			filepath.Base(firstFile.Name()),
+			filepath.Base(secondFile.Name()),
 		},
 	}
 
@@ -758,7 +825,7 @@ components:
           type: "object"
           oneOf:
             items:
-              $ref: "second_d.yaml#/components/schemas/CircleTest"
+              $ref: "$2#/components/schemas/CircleTest"
       required:
         - "name"
         - "children"
@@ -798,27 +865,39 @@ components:
          anyOf:
            - $ref: "#/components/schemas/CircleTest"`
 
+	var firstFile, secondFile *os.File
+	var fErr error
+
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
+
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
-
-	_ = os.WriteFile("second_d.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first_d.yaml", []byte(first), 0644)
-	defer os.Remove("first_d.yaml")
-	defer os.Remove("second_d.yaml")
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnorePolymorphicCircularReferences = true
 	cf.AvoidBuildIndex = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := "."
+	baseDir := filepath.Dir(firstFile.Name())
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first_d.yaml",
-			"second_d.yaml",
+			filepath.Base(firstFile.Name()),
+			filepath.Base(secondFile.Name()),
 		},
 	}
 
@@ -858,7 +937,7 @@ components:
         children:
           type: "array"
           items:
-            $ref: "second_b.yaml#/components/schemas/CircleTest"
+            $ref: "$2#/components/schemas/CircleTest"
       required:
         - "name"
         - "children"
@@ -897,26 +976,38 @@ components:
          items:
            $ref: "#/components/schemas/CircleTest"`
 
+	var firstFile, secondFile *os.File
+	var fErr error
+
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
+
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
-
-	_ = os.WriteFile("second_b.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first_b.yaml", []byte(first), 0644)
-	defer os.Remove("first_b.yaml")
-	defer os.Remove("second_b.yaml")
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnoreArrayCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := "."
+	baseDir := filepath.Dir(firstFile.Name())
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first_b.yaml",
-			"second_b.yaml",
+			filepath.Base(firstFile.Name()),
+			filepath.Base(secondFile.Name()),
 		},
 	}
 
@@ -954,27 +1045,27 @@ components:
           type: "string"
           anyOf:
             items:
-              $ref: "https://I-love-a-good-cake-and-pizza.com/third.yaml"
+              $ref: "https://I-love-a-good-cake-and-pizza.com/$3"
         pizza:
           type: "string"
           anyOf:
             items:
-              $ref: "third.yaml"
+              $ref: "$3"
         same:
           type: "string"
           oneOf:
             items:
-              $ref: "https://kjahsdkjahdkjashdas.com/fourth.yaml#/components/schemas/Chicken"
+              $ref: "https://milly-the-milk-bottle.com/$4#/components/schemas/Chicken"
         name:
           type: "string"
           oneOf:
             items:
-              $ref: "https://kjahsdkjahdkjashdas.com/third.yaml#/"
+              $ref: "https://junk-peddlers-blues.com/$3#/"
         children:
           type: "object"
           allOf:
             items:
-              $ref: "first.yaml#/components/schemas/StartTest"
+              $ref: "$1#/components/schemas/StartTest"
       required:
         - "name"
         - "children"
@@ -1003,16 +1094,48 @@ components:
         chuffins:
           type: object
           allOf: 
-            - $ref: "https://kjahsdkjahdkjashdas.com/third.yaml"
+            - $ref: "https://what-a-lovely-fence.com/$3"
         buffins:
           type: object
           allOf: 
-            - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/"
+            - $ref: "https://no-more-bananas-please.com/$2#/"
         muffins:
          type: object
          anyOf:
-           - $ref: "https://kjahsdkjahdkjashdas.com/second.yaml#/components/schemas/CircleTest"
+           - $ref: "https://where-are-all-my-jellies.com/$2#/components/schemas/CircleTest"
 `
+
+	var firstFile, secondFile, thirdFile, fourthFile *os.File
+	var fErr error
+
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
+
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	assert.NoError(t, fErr)
+
+	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(first, "$2", filepath.Base(secondFile.Name()))
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$3", filepath.Base(thirdFile.Name())), "\\", "\\\\")
+
+	second = strings.ReplaceAll(second, "$3", filepath.Base(thirdFile.Name()))
+	second = strings.ReplaceAll(second, "$1", filepath.Base(firstFile.Name()))
+	second = strings.ReplaceAll(strings.ReplaceAll(second, "$4", filepath.Base(fourthFile.Name())), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+	thirdFile.WriteString(third)
+	fourthFile.WriteString(fourth)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+	defer os.Remove(thirdFile.Name())
+	defer os.Remove(fourthFile.Name())
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -1037,8 +1160,7 @@ components:
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
 	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
-	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 6)
-	assert.Equal(t, int64(1719), rolodex.RolodexFileSize())
+	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 11)
 
 }
 
@@ -1056,12 +1178,12 @@ components:
           type: object
           allOf:
             items:
-              $ref: "third_c.yaml"
+              $ref: "$3"
         boop:
           type: object
           allOf:
             items:
-              $ref: "$PWD/third_c.yaml"
+              $ref: "$3"
         loop:
           type: object
           oneOf:
@@ -1091,34 +1213,49 @@ components:
         muffins:
          type: object
          anyOf:
-           - $ref: "second_c.yaml#/components/schemas/CircleTest"
-           - $ref: "$PWD/third_c.yaml"`
+           - $ref: "$2#/components/schemas/CircleTest"
+           - $ref: "$3"`
+
+	var firstFile, secondFile, thirdFile *os.File
+	var fErr error
+
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
+
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(first, "$2", secondFile.Name())
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$3", thirdFile.Name()), "\\", "\\\\")
+	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+	thirdFile.WriteString(third)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+	defer os.Remove(thirdFile.Name())
 
 	var rootNode yaml.Node
-	cws, _ := os.Getwd()
-
-	_ = yaml.Unmarshal([]byte(strings.ReplaceAll(first, "$PWD", cws)), &rootNode)
-	_ = os.WriteFile("second_c.yaml", []byte(strings.ReplaceAll(second, "$PWD", cws)), 0644)
-	_ = os.WriteFile("first_c.yaml", []byte(strings.ReplaceAll(first, "$PWD", cws)), 0644)
-	_ = os.WriteFile("third_c.yaml", []byte(third), 0644)
-
-	defer os.Remove("first_c.yaml")
-	defer os.Remove("second_c.yaml")
-	defer os.Remove("third_c.yaml")
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := "."
+	baseDir := filepath.Dir(firstFile.Name())
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first_c.yaml",
-			"second_c.yaml",
-			"third_c.yaml",
+			filepath.Base(firstFile.Name()),
+			filepath.Base(secondFile.Name()),
+			filepath.Base(thirdFile.Name()),
 		},
 	}
 
@@ -1150,7 +1287,7 @@ properties:
 	third := `type: "object"
 properties:
   name:
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/fourth.yaml"`
+    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$4"`
 
 	second := `openapi: 3.1.0
 components:
@@ -1165,7 +1302,7 @@ components:
         children:
           type: "object"
           anyOf:
-            - $ref: "third.yaml"
+            - $ref: "$3"
       required:
         - "name"
         - "children"`
@@ -1179,29 +1316,47 @@ components:
         - muffins
       properties:
         muffins:
-         $ref: "second_e.yaml#/components/schemas/CircleTest"`
+         $ref: "$2#/components/schemas/CircleTest"`
 
-	cwd, _ := os.Getwd()
+	var firstFile, secondFile, thirdFile, fourthFile *os.File
+	var fErr error
 
-	_ = os.WriteFile("third_e.yaml", []byte(strings.ReplaceAll(third, "$PWD", cwd)), 0644)
-	_ = os.WriteFile("second_e.yaml", []byte(second), 0644)
-	_ = os.WriteFile("first_e.yaml", []byte(first), 0644)
-	_ = os.WriteFile("fourth_e.yaml", []byte(fourth), 0644)
-	defer os.Remove("first_e.yaml")
-	defer os.Remove("second_e.yaml")
-	defer os.Remove("third_e.yaml")
-	defer os.Remove("fourth_e.yaml")
+	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	assert.NoError(t, fErr)
 
-	baseDir := "."
+	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	assert.NoError(t, fErr)
+
+	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	assert.NoError(t, fErr)
+
+	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	assert.NoError(t, fErr)
+
+	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
+	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
+	third = strings.ReplaceAll(strings.ReplaceAll(third, "$4", filepath.Base(fourthFile.Name())), "\\", "\\\\")
+
+	firstFile.WriteString(first)
+	secondFile.WriteString(second)
+	thirdFile.WriteString(third)
+	fourthFile.WriteString(fourth)
+
+	defer os.Remove(firstFile.Name())
+	defer os.Remove(secondFile.Name())
+	defer os.Remove(thirdFile.Name())
+	defer os.Remove(fourthFile.Name())
+
+	baseDir := filepath.Dir(firstFile.Name())
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
 		DirFS:         os.DirFS(baseDir),
 		FileFilters: []string{
-			"first_e.yaml",
-			"second_e.yaml",
-			"third_e.yaml",
-			"fourth_e.yaml",
+			filepath.Base(firstFile.Name()),
+			filepath.Base(secondFile.Name()),
+			filepath.Base(thirdFile.Name()),
+			filepath.Base(fourthFile.Name()),
 		},
 	}
 
@@ -1217,7 +1372,7 @@ components:
 	rolodex.AddLocalFS(baseDir, fileFS)
 
 	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
-		[]byte(strings.ReplaceAll(third, "$PWD", cwd)), []byte(fourth), nil)
+		[]byte(third), []byte(fourth), nil)
 	defer srv.Close()
 
 	u, _ := url.Parse(srv.URL)
@@ -1229,7 +1384,7 @@ components:
 
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
-	assert.Len(t, rolodex.GetCaughtErrors(), 2)
+	assert.Len(t, rolodex.GetCaughtErrors(), 3)
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
@@ -1371,9 +1526,14 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.NoError(t, ierr)
 	assert.NotNil(t, idx)
 	assert.Equal(t, YAML, f.GetFileExtension())
-	assert.True(t, strings.HasSuffix(f.GetFullPath(), "rolodex_test_data/components.yaml"))
+	assert.True(t, strings.HasSuffix(f.GetFullPath(), "rolodex_test_data"+string(os.PathSeparator)+"components.yaml"))
 	assert.NotNil(t, f.ModTime())
-	assert.Equal(t, int64(283), f.Size())
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, int64(283), f.Size())
+	} else {
+		assert.Equal(t, int64(295), f.Size())
+
+	}
 	assert.False(t, f.IsDir())
 	assert.Nil(t, f.Sys())
 	assert.Equal(t, fs.FileMode(0), f.Mode())

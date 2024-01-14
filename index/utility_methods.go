@@ -134,11 +134,11 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 							abs, _ = filepath.Abs(filepath.Join(filepath.Dir(u.Path), r[0]))
 						}
 
-						u.Path = abs
+						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 						u.Fragment = ""
 						defPath = fmt.Sprintf("%s#/%s", u.String(), r[1])
 					} else {
-						u.Path = filepath.Join(filepath.Dir(u.Path), r[0])
+						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(filepath.Dir(u.Path), r[0]))
 						u.Fragment = ""
 						defPath = u.String()
 					}
@@ -166,11 +166,11 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 				r := strings.Split(refName, "#/")
 				if len(r) == 2 {
 					abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), r[0]))
-					u.Path = abs
+					u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 					u.Fragment = ""
 					defPath = fmt.Sprintf("%s#/%s", u.String(), r[1])
 				} else {
-					u.Path = filepath.Join(filepath.Dir(u.Path), r[0])
+					u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(filepath.Dir(u.Path), r[0]))
 					u.Fragment = ""
 					defPath = u.String()
 				}
