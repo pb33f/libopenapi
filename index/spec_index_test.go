@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -258,7 +259,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "1.27 MB", rolo.RolodexFileSizeAsString())
+	} else {
+		assert.Equal(t, "1.32 MB", rolo.RolodexFileSizeAsString())
+	}
 	assert.Equal(t, 1699, rolo.RolodexTotalFiles())
 }
 
@@ -330,7 +335,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
-	assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "1.21 MB", rolo.RolodexFileSizeAsString())
+	} else {
+		assert.Equal(t, "1.26 MB", rolo.RolodexFileSizeAsString())
+	}
 	assert.Equal(t, 1685, rolo.RolodexTotalFiles())
 }
 
@@ -413,6 +422,20 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 
 	// create a new remote fs and set the config for indexing.
 	remoteFS, _ := NewRemoteFSWithConfig(cf)
+
+	// create a handler that uses an env variable to capture any GH_PAT in the OS ENV
+	// and inject it into the request header, so this does not fail when running lots of local tests.
+	if os.Getenv("GH_PAT") != "" {
+		fmt.Println("GH_PAT found, setting remote handler func")
+		client := &http.Client{
+			Timeout: time.Second * 120,
+		}
+		remoteFS.SetRemoteHandlerFunc(func(url string) (*http.Response, error) {
+			request, _ := http.NewRequest(http.MethodGet, url, nil)
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GH_PAT")))
+			return client.Do(request)
+		})
+	}
 
 	// add remote filesystem
 	rolo.AddRemoteFS(location, remoteFS)
@@ -781,8 +804,14 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	assert.Len(t, index.GetCircularReferences(), 0)
 
 	// get the size of the rolodex.
-	assert.Equal(t, int64(60226), rolo.RolodexFileSize()+int64(len(yml)))
-	assert.Equal(t, "50.48 KB", rolo.RolodexFileSizeAsString())
+
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, int64(60226), rolo.RolodexFileSize()+int64(len(yml)))
+		assert.Equal(t, "50.48 KB", rolo.RolodexFileSizeAsString())
+	} else {
+		assert.Equal(t, int64(62128), rolo.RolodexFileSize()+int64(len(yml)))
+		assert.Equal(t, "52.09 KB", rolo.RolodexFileSizeAsString())
+	}
 	assert.Equal(t, 3, rolo.RolodexTotalFiles())
 }
 

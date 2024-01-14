@@ -501,6 +501,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				}
 
 				value := node.Content[i+1].Value
+				value = strings.ReplaceAll(value, "\\\\", "\\")
 				var locatedRef *Reference
 				var fullDef string
 				var definition string
@@ -523,7 +524,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 									u, _ := url.Parse(httpExp[0])
 									abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
-									u.Path = abs
+									u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 									u.Fragment = ""
 									fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
@@ -534,6 +535,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 									// extract the location of the ref and build a full def path.
 									abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+									//abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 									fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
 
 								}
@@ -577,7 +579,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							if strings.HasPrefix(fileDef[0], "http") {
 								u, _ := url.Parse(fileDef[0])
 								path, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
-								u.Path = path
+								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(path)
 								fullDef = u.String()
 
 							} else {
@@ -654,7 +656,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 													if strings.HasPrefix(ref.FullDefinition, "http") {
 														u, _ := url.Parse(ref.FullDefinition)
 														p, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
-														u.Path = p
+														u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
 														u.Fragment = ""
 														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 													} else {
@@ -698,7 +700,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 													// split the url.
 													u, _ := url.Parse(ref.FullDefinition)
 													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
-													u.Path = abs
+													u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 													u.Fragment = ""
 													def = u.String()
 												} else {
@@ -765,7 +767,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 														u, _ := url.Parse(ref.FullDefinition)
 														p, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
-														u.Path = p
+														u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
 														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
 													} else {
@@ -819,7 +821,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 													// split the url.
 													u, _ := url.Parse(ref.FullDefinition)
 													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
-													u.Path = abs
+													u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 													u.Fragment = ""
 													def = u.String()
 												} else {

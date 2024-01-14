@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -334,8 +335,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if i.rootURLParsed != nil {
 		remoteParsedURL.Host = i.rootURLParsed.Host
 		remoteParsedURL.Scheme = i.rootURLParsed.Scheme
-		if !filepath.IsAbs(remoteParsedURL.Path) {
+		if !strings.HasPrefix(remoteParsedURL.Path, "/") {
 			remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
+			remoteParsedURL.Path = strings.ReplaceAll(remoteParsedURL.Path, "\\", "/")
 		}
 	}
 
@@ -385,7 +387,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
 	}
 
-	absolutePath, _ := filepath.Abs(remoteParsedURL.Path)
+	absolutePath := remoteParsedURL.Path
 
 	// extract last modified from response
 	lastModified := response.Header.Get("Last-Modified")

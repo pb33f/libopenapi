@@ -11,11 +11,11 @@ import (
 	"io/fs"
 	"log/slog"
 	"math"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -423,6 +423,7 @@ func (r *Rolodex) BuildIndexes() {
 
 // Open opens a file in the rolodex, and returns a RolodexFile.
 func (r *Rolodex) Open(location string) (RolodexFile, error) {
+
 	if r == nil {
 		return nil, fmt.Errorf("rolodex has not been initialized, cannot open file '%s'", location)
 	}
@@ -436,8 +437,7 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 	var remoteFile *RemoteFile
 	fileLookup := location
 	isUrl := false
-	u, _ := url.Parse(location)
-	if u != nil && u.Scheme != "" {
+	if strings.HasPrefix(location, "http") {
 		isUrl = true
 	}
 
@@ -515,10 +515,14 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 			return nil, fmt.Errorf("remote lookup for '%s' not allowed, please set the index configuration to "+
 				"AllowRemoteLookup to true", fileLookup)
 		}
-
+		
 		for _, v := range r.remoteFS {
+
 			f, err := v.Open(fileLookup)
-			if err == nil {
+			if err != nil {
+				r.logger.Warn("[rolodex] errors opening remote file", "location", fileLookup, "error", err)
+			}
+			if f != nil {
 
 				if rf, ok := interface{}(f).(*RemoteFile); ok {
 					remoteFile = rf

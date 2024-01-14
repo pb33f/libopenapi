@@ -8,12 +8,15 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
+
+var windowsDriveDetector = regexp.MustCompile(`^([a-zA-Z]:)`)
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
@@ -236,9 +239,16 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 									} else {
 										// if the index has a base URL, use that to resolve the path.
 										if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
-											u := *index.config.BaseURL
+											var u url.URL
+											if strings.HasPrefix(defRoot, "http") {
+												up, _ := url.Parse(defRoot)
+												up.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Dir(up.Path))
+												u = *up
+											} else {
+												u = *index.config.BaseURL
+											}
 											abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
-											u.Path = abs
+											u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 											fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
 											componentName = fmt.Sprintf("#/%s", uri[1])
 
@@ -265,6 +275,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 										u, _ := url.Parse(defRoot)
 										pathDir := filepath.Dir(u.Path)
 										pathAbs, _ := filepath.Abs(filepath.Join(pathDir, uri[0]))
+										pathAbs = utils.ReplaceWindowsDriveWithLinuxPath(pathAbs)
 										u.Path = pathAbs
 										fullDefinitionPath = u.String()
 									}
@@ -284,6 +295,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 												u := *index.config.BaseURL
 												abs := filepath.Join(u.Path, uri[0])
+												abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 												u.Path = abs
 												fullDefinitionPath = u.String()
 												componentName = uri[0]
