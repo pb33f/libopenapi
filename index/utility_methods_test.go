@@ -5,6 +5,9 @@ package index
 
 import (
 	"net/url"
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -110,7 +113,11 @@ func Test_extractRequiredReferenceProperties_abs3(t *testing.T) {
 	data := extractRequiredReferenceProperties("/big/fat/camel.yaml#/milk", nil,
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
-	assert.Equal(t, "cakes", props["/big/fat/oh/pillow.yaml"][0])
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "cakes", props["/big/fat/oh/pillow.yaml"][0])
+	} else {
+		assert.Equal(t, "cakes", props["C:\\big\\fat\\oh\\pillow.yaml"][0])
+	}
 	assert.NotNil(t, data)
 }
 
@@ -124,7 +131,11 @@ func Test_extractRequiredReferenceProperties_rel_full(t *testing.T) {
 	data := extractRequiredReferenceProperties("/chalky/milky/camel.yaml#/milk", nil,
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
-	assert.Equal(t, "cakes", props["/chalky/milky/camel.yaml#/a/nice/picture/of/cake"][0])
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "cakes", props["/chalky/milky/camel.yaml#/a/nice/picture/of/cake"][0])
+	} else {
+		assert.Equal(t, "cakes", props["C:\\chalky\\milky\\camel.yaml#/a/nice/picture/of/cake"][0])
+	}
 	assert.NotNil(t, data)
 }
 
@@ -138,7 +149,11 @@ func Test_extractRequiredReferenceProperties_rel(t *testing.T) {
 	data := extractRequiredReferenceProperties("/camel.yaml#/milk", nil,
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
-	assert.Equal(t, "cakes", props["/oh/camel.yaml#/rum/cake"][0])
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "cakes", props["/oh/camel.yaml#/rum/cake"][0])
+	} else {
+		assert.Equal(t, "cakes", props["C:\\oh\\camel.yaml#/rum/cake"][0])
+	}
 	assert.NotNil(t, data)
 }
 
@@ -152,7 +167,12 @@ func Test_extractRequiredReferenceProperties_abs2(t *testing.T) {
 	data := extractRequiredReferenceProperties("../flannel.yaml#/milk", nil,
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
-	assert.Equal(t, "cakes", props["/oh/my/camel.yaml#/rum/cake"][0])
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "cakes", props["/oh/my/camel.yaml#/rum/cake"][0])
+	} else {
+		cwd, _ := os.Getwd()
+		assert.Equal(t, "cakes", props[filepath.Dir(cwd)+"\\oh\\my\\camel.yaml#/rum/cake"][0])
+	}
 	assert.NotNil(t, data)
 }
 
@@ -236,7 +256,11 @@ func Test_extractRequiredReferenceProperties_nocomponent_http2(t *testing.T) {
 	data := extractRequiredReferenceProperties("/why.yaml", nil,
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
-	assert.Equal(t, "cakes", props["/go-to-bed.com/no/more/cake.yaml"][0])
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, "cakes", props["/go-to-bed.com/no/more/cake.yaml"][0])
+	} else {
+		assert.Equal(t, "cakes", props["C:\\go-to-bed.com\\no\\more\\cake.yaml"][0])
+	}
 	assert.NotNil(t, data)
 }
 
