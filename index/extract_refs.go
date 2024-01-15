@@ -609,19 +609,6 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 	var refsToCheck []*Reference
 	for _, ref := range refs {
-
-		// check reference for backslashes (hah yeah seen this too!)
-		if strings.Contains(ref.Definition, "\\\\") {
-			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
-			indexError := &IndexingError{
-				Err:  fmt.Errorf("component '%s' contains a backslash '\\'. It's not valid", ref.Definition),
-				Node: ref.Node,
-				Path: path,
-			}
-			index.refErrors = append(index.refErrors, indexError)
-			continue
-
-		}
 		refsToCheck = append(refsToCheck, ref)
 	}
 	mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))
