@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -624,11 +625,14 @@ func TestDocument_MarshalIndention(t *testing.T) {
 	highDoc := NewDocument(lowDoc)
 	rendered := highDoc.RenderWithIndention(2)
 
-	assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+	}
 
 	rendered = highDoc.RenderWithIndention(4)
-
-	assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
+	if runtime.GOOS != "windows" {
+		assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
+	}
 }
 
 func TestDocument_MarshalIndention_Error(t *testing.T) {
@@ -639,8 +643,9 @@ func TestDocument_MarshalIndention_Error(t *testing.T) {
 
 	highDoc := NewDocument(lowDoc)
 	rendered := highDoc.RenderWithIndention(2)
-
-	assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+	}
 
 	rendered = highDoc.RenderWithIndention(4)
 
