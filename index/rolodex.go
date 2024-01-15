@@ -515,7 +515,7 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 			return nil, fmt.Errorf("remote lookup for '%s' not allowed, please set the index configuration to "+
 				"AllowRemoteLookup to true", fileLookup)
 		}
-		
+
 		for _, v := range r.remoteFS {
 
 			f, err := v.Open(fileLookup)

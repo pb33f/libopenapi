@@ -9,7 +9,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -644,20 +643,10 @@ func ExampleNewDocument_modifyAndReRender() {
 	// capture new number of paths after re-rendering
 	newPaths := orderedmap.Len(newModel.Model.Paths.PathItems)
 
-	if runtime.GOOS != "windows" {
+	// print the number of paths and schemas in the document
+	fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
+	fmt.Printf("The new spec has %d bytes\n", len(rawBytes))
+	// Output: There were 13 original paths. There are now 14 paths in the document
+	// The new spec has 31213 bytes
 
-		// print the number of paths and schemas in the document
-		fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
-		fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
-		// Output: There were 13 original paths. There are now 14 paths in the document
-		// The original spec had 31143 bytes, the new one has 31213
-
-	} else {
-
-		// print the number of paths and schemas in the document
-		fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
-		fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
-		// Output: There were 13 original paths. There are now 14 paths in the document
-		// The original spec had 32367 bytes, the new one has 31213
-	}
 }
