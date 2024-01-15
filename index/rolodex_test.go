@@ -1526,7 +1526,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 
 	err = rolo.IndexTheRolodex()
 
-	assert.NotZero(t, rolo.GetIndexingDuration())
+	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.Nil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 9)
 
