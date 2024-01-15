@@ -17,3 +17,33 @@ func TestReplaceWindowsDriveWithLinuxPath(t *testing.T) {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}
 }
+
+func TestCheckPathOverlap(t *testing.T) {
+	pathA := `C:\Users\pb33f`
+	pathB := `pb33f\files\thing.yaml`
+	expected := `C:\Users\pb33f\files\thing.yaml`
+	result := CheckPathOverlap(pathA, pathB, `\`)
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+func TestCheckPathOverlap_VariationA(t *testing.T) {
+	pathA := `/Users/pb33f`
+	pathB := `pb33f/files/thing.yaml`
+	expected := `/Users/pb33f/files/thing.yaml`
+	result := CheckPathOverlap(pathA, pathB, `/`)
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
+
+func TestCheckPathOverlap_VariationB(t *testing.T) {
+	pathA := `somewhere/pb33f`
+	pathB := `pb33f/files/thing.yaml`
+	expected := `somewhere/pb33f/files/thing.yaml`
+	result := CheckPathOverlap(pathA, pathB, `/`)
+	if result != expected {
+		t.Errorf("Expected %s, got %s", expected, result)
+	}
+}
