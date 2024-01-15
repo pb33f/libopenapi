@@ -478,6 +478,8 @@ components:
 	fourthFile.WriteString(fourth)
 	fifthFile.WriteString(fifth)
 
+	defer os.RemoveAll(tmp)
+
 	baseDir := "tmp-a"
 
 	fsCfg := &LocalFSConfig{
