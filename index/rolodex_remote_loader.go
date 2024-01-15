@@ -346,7 +346,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
 	}
 
-	i.logger.Debug("loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+	i.logger.Debug("[rolodex remote loader] loading remote file", "file", remoteURL, "remoteURL", remoteParsedURL.String())
 
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
@@ -424,7 +424,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
 
 	if len(remoteFile.data) > 0 {
-		i.logger.Debug("successfully loaded file", "file", absolutePath)
+		i.logger.Debug("[rolodex remote loaded] successfully loaded file", "file", absolutePath)
 	}
 
 	processingWaiter.file = remoteFile

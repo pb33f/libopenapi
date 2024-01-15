@@ -444,20 +444,25 @@ components:
 	var firstFile, secondFile, thirdFile, fourthFile, fifthFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-a"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
-	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	thirdFile, fErr = os.CreateTemp(tmp, "*-third.yaml")
 	assert.NoError(t, fErr)
 
-	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	fourthFile, fErr = os.CreateTemp(tmp, "*-fourth.yaml")
 	assert.NoError(t, fErr)
 
-	fifthFile, fErr = os.CreateTemp("", "*-fifth.yaml")
+	fifthFile, fErr = os.CreateTemp(tmp, "*-fifth.yaml")
 	assert.NoError(t, fErr)
+
+	defer os.RemoveAll(tmp)
 
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
 	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
@@ -473,13 +478,7 @@ components:
 	fourthFile.WriteString(fourth)
 	fifthFile.WriteString(fifth)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
-	defer os.Remove(thirdFile.Name())
-	defer os.Remove(fourthFile.Name())
-	defer os.Remove(fifthFile.Name())
-
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := "tmp-a"
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
@@ -502,6 +501,12 @@ components:
 	cf.BasePath = baseDir
 	cf.IgnorePolymorphicCircularReferences = true
 	cf.SkipDocumentCheck = true
+
+	// add logger to config
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
 
@@ -526,7 +531,8 @@ components:
 	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
 
 	// extract a local file
-	f, _ := rolodex.Open(firstFile.Name())
+	n, _ := filepath.Abs(firstFile.Name())
+	f, _ := rolodex.Open(n)
 	// index
 	x, y := f.(*rolodexFile).Index(cf)
 	assert.NotNil(t, x)
@@ -638,16 +644,19 @@ components:
 	var firstFile, secondFile, thirdFile, fourthFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-b"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
-	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	thirdFile, fErr = os.CreateTemp(tmp, "*-third.yaml")
 	assert.NoError(t, fErr)
 
-	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	fourthFile, fErr = os.CreateTemp(tmp, "*-fourth.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
@@ -660,12 +669,9 @@ components:
 	thirdFile.WriteString(third)
 	fourthFile.WriteString(fourth)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
-	defer os.Remove(thirdFile.Name())
-	defer os.Remove(fourthFile.Name())
+	defer os.RemoveAll(tmp)
 
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := tmp
 	cf := CreateOpenAPIIndexConfig()
 	cf.BasePath = baseDir
 	cf.IgnorePolymorphicCircularReferences = true
@@ -762,10 +768,13 @@ components:
 	var firstFile, secondFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-f"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
@@ -773,8 +782,7 @@ components:
 	firstFile.WriteString(first)
 	secondFile.WriteString(second)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
+	defer os.RemoveAll(tmp)
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -783,7 +791,7 @@ components:
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := tmp
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
@@ -868,10 +876,13 @@ components:
 	var firstFile, secondFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-c"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
@@ -879,8 +890,7 @@ components:
 	firstFile.WriteString(first)
 	secondFile.WriteString(second)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
+	defer os.RemoveAll(tmp)
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -890,7 +900,7 @@ components:
 	cf.AvoidBuildIndex = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := tmp
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
@@ -979,10 +989,13 @@ components:
 	var firstFile, secondFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-d"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
@@ -990,8 +1003,7 @@ components:
 	firstFile.WriteString(first)
 	secondFile.WriteString(second)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
+	defer os.RemoveAll(tmp)
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -1000,7 +1012,7 @@ components:
 	cf.IgnoreArrayCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := tmp
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
@@ -1108,16 +1120,19 @@ components:
 	var firstFile, secondFile, thirdFile, fourthFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-e"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
-	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	thirdFile, fErr = os.CreateTemp(tmp, "*-third.yaml")
 	assert.NoError(t, fErr)
 
-	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	fourthFile, fErr = os.CreateTemp(tmp, "*-fourth.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(first, "$2", filepath.Base(secondFile.Name()))
@@ -1132,10 +1147,7 @@ components:
 	thirdFile.WriteString(third)
 	fourthFile.WriteString(fourth)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
-	defer os.Remove(thirdFile.Name())
-	defer os.Remove(fourthFile.Name())
+	defer os.RemoveAll(tmp)
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -1219,13 +1231,16 @@ components:
 	var firstFile, secondFile, thirdFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-g"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
-	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	thirdFile, fErr = os.CreateTemp(tmp, "*-third.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(first, "$2", secondFile.Name())
@@ -1236,9 +1251,7 @@ components:
 	secondFile.WriteString(second)
 	thirdFile.WriteString(third)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
-	defer os.Remove(thirdFile.Name())
+	defer os.RemoveAll(tmp)
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
@@ -1247,7 +1260,7 @@ components:
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := tmp
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
@@ -1321,16 +1334,19 @@ components:
 	var firstFile, secondFile, thirdFile, fourthFile *os.File
 	var fErr error
 
-	firstFile, fErr = os.CreateTemp("", "*-first.yaml")
+	tmp := "tmp-h"
+	_ = os.Mkdir(tmp, 0755)
+
+	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp("", "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
 	assert.NoError(t, fErr)
 
-	thirdFile, fErr = os.CreateTemp("", "*-third.yaml")
+	thirdFile, fErr = os.CreateTemp(tmp, "*-third.yaml")
 	assert.NoError(t, fErr)
 
-	fourthFile, fErr = os.CreateTemp("", "*-fourth.yaml")
+	fourthFile, fErr = os.CreateTemp(tmp, "*-fourth.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
@@ -1342,12 +1358,9 @@ components:
 	thirdFile.WriteString(third)
 	fourthFile.WriteString(fourth)
 
-	defer os.Remove(firstFile.Name())
-	defer os.Remove(secondFile.Name())
-	defer os.Remove(thirdFile.Name())
-	defer os.Remove(fourthFile.Name())
+	defer os.RemoveAll(tmp)
 
-	baseDir := filepath.Dir(firstFile.Name())
+	baseDir := tmp
 
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
@@ -1384,7 +1397,8 @@ components:
 
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
-	assert.Len(t, rolodex.GetCaughtErrors(), 3)
+	assert.Len(t, rolodex.GetCaughtErrors(), 2)
+	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing:  [8:11]", rolodex.GetCaughtErrors()[0].Error())
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
