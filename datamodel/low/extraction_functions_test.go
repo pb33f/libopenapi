@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -1850,6 +1851,12 @@ func TestLocateRefNode_NoExplode_NoSpecPath(t *testing.T) {
 }
 
 func TestLocateRefNode_DoARealLookup(t *testing.T) {
+
+	lookup := "/root.yaml#/components/schemas/Burger"
+	if runtime.GOOS == "windows" {
+		lookup = "C:\\root.yaml#/components/schemas/Burger"
+	}
+
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -1859,7 +1866,7 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 			},
 			{
 				Kind:  yaml.ScalarNode,
-				Value: "/root.yaml#/components/schemas/Burger",
+				Value: lookup,
 			},
 		},
 	}
@@ -1878,10 +1885,10 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 
 	// fake cache to a lookup for a file that does not exist will work.
 	fakeCache := new(syncmap.Map)
-	fakeCache.Store("/root.yaml#/components/schemas/Burger", &index.Reference{Node: &no, Index: idx})
+	fakeCache.Store(lookup, &index.Reference{Node: &no, Index: idx})
 	idx.SetCache(fakeCache)
 
-	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "/root.yaml#/components/schemas/Burger")
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, lookup)
 	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
 	assert.NotNil(t, n)
 	assert.NotNil(t, i)
