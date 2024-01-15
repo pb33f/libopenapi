@@ -350,7 +350,9 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 
 			// we don't care about directories, or errors, just read everything we can.
 			if d.IsDir() {
-				return nil
+				if d.Name() != config.BaseDirectory {
+					return nil
+				}
 			}
 			if len(ext) > 2 && p != file {
 				return nil

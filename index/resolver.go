@@ -523,7 +523,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 									httpExp := strings.Split(ref.FullDefinition, "#/")
 
 									u, _ := url.Parse(httpExp[0])
-									abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+									abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
 									u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 									u.Fragment = ""
 									fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
@@ -534,7 +534,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 									fileDef := strings.Split(ref.FullDefinition, "#/")
 
 									// extract the location of the ref and build a full def path.
-									abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+									abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
 									//abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 									fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
 
@@ -578,12 +578,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							// is the file def a http link?
 							if strings.HasPrefix(fileDef[0], "http") {
 								u, _ := url.Parse(fileDef[0])
-								path, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+								path, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
 								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(path)
 								fullDef = u.String()
 
 							} else {
-								fullDef, _ = filepath.Abs(filepath.Join(filepath.Dir(fileDef[0]), exp[0]))
+								fullDef, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
 							}
 						}
 					}
@@ -766,7 +766,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 													if strings.HasPrefix(ref.FullDefinition, "http") {
 
 														u, _ := url.Parse(ref.FullDefinition)
-														p, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
+														p, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
 														u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
 														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
@@ -774,14 +774,16 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 														z := strings.Split(ref.FullDefinition, "#/")
 														if len(z) == 2 {
 															if len(z[0]) > 0 {
-																abs, _ := filepath.Abs(filepath.Join(filepath.Dir(z[0]), exp[0]))
+																abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(z[0]),
+																	exp[0], string(filepath.Separator)))
 																def = fmt.Sprintf("%s#/%s", abs, exp[1])
 															} else {
 																abs, _ := filepath.Abs(exp[0])
 																def = fmt.Sprintf("%s#/%s", abs, exp[1])
 															}
 														} else {
-															abs, _ := filepath.Abs(filepath.Join(filepath.Dir(ref.FullDefinition), exp[0]))
+															abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(ref.FullDefinition),
+																exp[0], string(filepath.Separator)))
 															def = fmt.Sprintf("%s#/%s", abs, exp[1])
 														}
 													}
@@ -820,13 +822,13 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 													// split the url.
 													u, _ := url.Parse(ref.FullDefinition)
-													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
+													abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), l, string(filepath.Separator)))
 													u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 													u.Fragment = ""
 													def = u.String()
 												} else {
 													lookupRef := strings.Split(ref.FullDefinition, "#/")
-													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(lookupRef[0]), l))
+													abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(lookupRef[0]), l, string(filepath.Separator)))
 													def = abs
 												}
 											}
