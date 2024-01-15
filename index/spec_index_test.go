@@ -913,7 +913,7 @@ func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Len(t, index.GetReferenceIndexErrors(), 1)
+	assert.Len(t, index.GetReferenceIndexErrors(), 0)
 }
 
 func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {

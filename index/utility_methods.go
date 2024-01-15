@@ -6,6 +6,7 @@ package index
 import (
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -131,14 +132,16 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 						if r[0] == "" {
 							abs = u.Path
 						} else {
-							abs, _ = filepath.Abs(filepath.Join(filepath.Dir(u.Path), r[0]))
+							abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), r[0],
+								string(os.PathSeparator)))
 						}
 
 						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 						u.Fragment = ""
 						defPath = fmt.Sprintf("%s#/%s", u.String(), r[1])
 					} else {
-						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(filepath.Dir(u.Path), r[0]))
+						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(utils.CheckPathOverlap(filepath.Dir(u.Path),
+							r[0], string(os.PathSeparator)))
 						u.Fragment = ""
 						defPath = u.String()
 					}
@@ -149,12 +152,17 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 						if r[0] == "" {
 							abs, _ = filepath.Abs(exp[0])
 						} else {
-							abs, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0]))
+							abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(exp[0]), r[0],
+								string(os.PathSeparator)))
+
+							//abs, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0],
+							//	string('J')))
 						}
 
 						defPath = fmt.Sprintf("%s#/%s", abs, r[1])
 					} else {
-						defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0]))
+						defPath, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(exp[0]),
+							r[0], string(os.PathSeparator)))
 					}
 				}
 			} else {
@@ -165,17 +173,18 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 				u, _ := url.Parse(exp[0])
 				r := strings.Split(refName, "#/")
 				if len(r) == 2 {
-					abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), r[0]))
+					abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), r[0], string(os.PathSeparator)))
 					u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 					u.Fragment = ""
 					defPath = fmt.Sprintf("%s#/%s", u.String(), r[1])
 				} else {
-					u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(filepath.Dir(u.Path), r[0]))
+					u.Path = utils.ReplaceWindowsDriveWithLinuxPath(utils.CheckPathOverlap(filepath.Dir(u.Path),
+						r[0], string(os.PathSeparator)))
 					u.Fragment = ""
 					defPath = u.String()
 				}
 			} else {
-				defPath, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), refName))
+				defPath, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(exp[0]), refName, string(os.PathSeparator)))
 			}
 		}
 	}

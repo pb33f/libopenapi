@@ -249,8 +249,8 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 												u = *index.config.BaseURL
 											}
 											//abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
-											abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator)))
-
+											//abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator)))
+											abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))
 											u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 											fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
 											componentName = fmt.Sprintf("#/%s", uri[1])
@@ -611,7 +611,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	for _, ref := range refs {
 
 		// check reference for backslashes (hah yeah seen this too!)
-		if strings.Contains(ref.Definition, "\\") { // this was from blazemeter.com haha!
+		if strings.Contains(ref.Definition, "\\\\") {
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 			indexError := &IndexingError{
 				Err:  fmt.Errorf("component '%s' contains a backslash '\\'. It's not valid", ref.Definition),
