@@ -334,7 +334,9 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if i.rootURLParsed != nil {
 		remoteParsedURL.Host = i.rootURLParsed.Host
 		remoteParsedURL.Scheme = i.rootURLParsed.Scheme
-
+		if !filepath.IsAbs(remoteParsedURL.Path) {
+			remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
+		}
 	}
 
 	if remoteParsedURL.Scheme == "" {
