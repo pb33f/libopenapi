@@ -118,7 +118,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							p = filepath.Dir(u.Path)
 						}
 						if p != "" && explodedRefValue[0] != "" {
-							u.Path = filepath.Join(p, explodedRefValue[0])
+							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(p, explodedRefValue[0]))
 						}
 						u.Fragment = ""
 						rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
@@ -129,7 +129,9 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							if explodedRefValue[0] == "" {
 								abs = specPath
 							} else {
-								abs, _ = filepath.Abs(filepath.Join(filepath.Dir(specPath), explodedRefValue[0]))
+								// break off any fragments from the spec path
+								sp := strings.Split(specPath, "#")
+								abs, _ = filepath.Abs(filepath.Join(filepath.Dir(sp[0]), explodedRefValue[0]))
 							}
 							rv = fmt.Sprintf("%s#%s", abs, explodedRefValue[1])
 						} else {
@@ -155,7 +157,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 						u, _ := url.Parse(specPath)
 						p := filepath.Dir(u.Path)
 						abs, _ := filepath.Abs(filepath.Join(p, rv))
-						u.Path = abs
+						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 						rv = u.String()
 
 					} else {
@@ -169,7 +171,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 							if idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
 								abs, _ := filepath.Abs(filepath.Join(u.Path, rv))
-								u.Path = abs
+								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 								rv = u.String()
 							}
 						}

@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -104,8 +105,6 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 }
 
 func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
-	// This example shows how to create a document that prevents the loading of external references/
-	// from files or the network
 
 	// load in the Digital Ocean OpenAPI specification
 	digitalOcean, _ := os.ReadFile("test_specs/digitalocean.yaml")
@@ -129,7 +128,6 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
 
-	// only errors will be thrown, so just capture them and print the number of errors.
 	_, errors := doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
@@ -646,9 +644,20 @@ func ExampleNewDocument_modifyAndReRender() {
 	// capture new number of paths after re-rendering
 	newPaths := orderedmap.Len(newModel.Model.Paths.PathItems)
 
-	// print the number of paths and schemas in the document
-	fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
-	fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
-	// Output: There were 13 original paths. There are now 14 paths in the document
-	// The original spec had 31143 bytes, the new one has 31213
+	if runtime.GOOS != "windows" {
+
+		// print the number of paths and schemas in the document
+		fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
+		fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
+		// Output: There were 13 original paths. There are now 14 paths in the document
+		// The original spec had 31143 bytes, the new one has 31213
+
+	} else {
+
+		// print the number of paths and schemas in the document
+		fmt.Printf("There were %d original paths. There are now %d paths in the document\n", originalPaths, newPaths)
+		fmt.Printf("The original spec had %d bytes, the new one has %d\n", len(petstore), len(rawBytes))
+		// Output: There were 13 original paths. There are now 14 paths in the document
+		// The original spec had 32367 bytes, the new one has 31213
+	}
 }
