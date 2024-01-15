@@ -45,10 +45,19 @@ func TestCheckPathOverlap(t *testing.T) {
 func TestCheckPathOverlap_CheckSlash(t *testing.T) {
     pathA := `/Users/pb33f`
     pathB := `Users/pb33f\files\thing.yaml`
-    expected := `/Users/pb33f/files\thing.yaml`
-    result := CheckPathOverlap(pathA, pathB, `\`)
-    if result != expected {
-        t.Errorf("Expected %s, got %s", expected, result)
+
+    if runtime.GOOS != "windows" {
+        expected := `/Users/pb33f/files\thing.yaml`
+        result := CheckPathOverlap(pathA, pathB, `\`)
+        if result != expected {
+            t.Errorf("Expected %s, got %s", expected, result)
+        }
+    } else {
+        expected := `\Users\pb33f\files\thing.yaml`
+        result := CheckPathOverlap(pathA, pathB, `\`)
+        if result != expected {
+            t.Errorf("Expected %s, got %s", expected, result)
+        }
     }
 }
 
