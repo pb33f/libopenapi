@@ -514,32 +514,30 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						if strings.HasPrefix(exp[0], "http") {
 							fullDef = value
 						} else {
-							if filepath.IsAbs(exp[0]) {
-								fullDef = value
+
+							if strings.HasPrefix(ref.FullDefinition, "http") {
+
+								// split the http URI into parts
+								httpExp := strings.Split(ref.FullDefinition, "#/")
+
+								u, _ := url.Parse(httpExp[0])
+								abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
+								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+								u.Fragment = ""
+								fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
 							} else {
-								if strings.HasPrefix(ref.FullDefinition, "http") {
 
-									// split the http URI into parts
-									httpExp := strings.Split(ref.FullDefinition, "#/")
+								// split the referring ref full def into parts
+								fileDef := strings.Split(ref.FullDefinition, "#/")
 
-									u, _ := url.Parse(httpExp[0])
-									abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
-									u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-									u.Fragment = ""
-									fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+								// extract the location of the ref and build a full def path.
+								abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
+								//abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+								fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
 
-								} else {
-
-									// split the referring ref full def into parts
-									fileDef := strings.Split(ref.FullDefinition, "#/")
-
-									// extract the location of the ref and build a full def path.
-									abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
-									//abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-									fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
-
-								}
 							}
+
 						}
 					} else {
 						// local component, full def is based on passed in ref
@@ -568,24 +566,21 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					if strings.HasPrefix(value, "http") {
 						fullDef = value
 					} else {
-						if filepath.IsAbs(value) {
-							fullDef = value
+
+						// split the full def into parts
+						fileDef := strings.Split(ref.FullDefinition, "#/")
+
+						// is the file def a http link?
+						if strings.HasPrefix(fileDef[0], "http") {
+							u, _ := url.Parse(fileDef[0])
+							path, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
+							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(path)
+							fullDef = u.String()
+
 						} else {
-
-							// split the full def into parts
-							fileDef := strings.Split(ref.FullDefinition, "#/")
-
-							// is the file def a http link?
-							if strings.HasPrefix(fileDef[0], "http") {
-								u, _ := url.Parse(fileDef[0])
-								path, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
-								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(path)
-								fullDef = u.String()
-
-							} else {
-								fullDef, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
-							}
+							fullDef, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
 						}
+
 					}
 				}
 
@@ -691,24 +686,22 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 										if strings.HasPrefix(l, "http") {
 											def = l
 										} else {
-											if filepath.IsAbs(l) {
-												def = l
-											} else {
-												// check if were dealing with a remote file
-												if strings.HasPrefix(ref.FullDefinition, "http") {
 
-													// split the url.
-													u, _ := url.Parse(ref.FullDefinition)
-													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
-													u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-													u.Fragment = ""
-													def = u.String()
-												} else {
-													lookupRef := strings.Split(ref.FullDefinition, "#/")
-													abs, _ := filepath.Abs(filepath.Join(filepath.Dir(lookupRef[0]), l))
-													def = abs
-												}
+											// check if were dealing with a remote file
+											if strings.HasPrefix(ref.FullDefinition, "http") {
+
+												// split the url.
+												u, _ := url.Parse(ref.FullDefinition)
+												abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
+												u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+												u.Fragment = ""
+												def = u.String()
+											} else {
+												lookupRef := strings.Split(ref.FullDefinition, "#/")
+												abs, _ := filepath.Abs(filepath.Join(filepath.Dir(lookupRef[0]), l))
+												def = abs
 											}
+
 										}
 									}
 
@@ -814,24 +807,22 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 										if strings.HasPrefix(l, "http") {
 											def = l
 										} else {
-											if filepath.IsAbs(l) {
-												def = l
-											} else {
-												// check if were dealing with a remote file
-												if strings.HasPrefix(ref.FullDefinition, "http") {
 
-													// split the url.
-													u, _ := url.Parse(ref.FullDefinition)
-													abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), l, string(filepath.Separator)))
-													u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-													u.Fragment = ""
-													def = u.String()
-												} else {
-													lookupRef := strings.Split(ref.FullDefinition, "#/")
-													abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(lookupRef[0]), l, string(filepath.Separator)))
-													def = abs
-												}
+											// check if were dealing with a remote file
+											if strings.HasPrefix(ref.FullDefinition, "http") {
+
+												// split the url.
+												u, _ := url.Parse(ref.FullDefinition)
+												abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), l, string(filepath.Separator)))
+												u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+												u.Fragment = ""
+												def = u.String()
+											} else {
+												lookupRef := strings.Split(ref.FullDefinition, "#/")
+												abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(lookupRef[0]), l, string(filepath.Separator)))
+												def = abs
 											}
+
 										}
 									}
 
