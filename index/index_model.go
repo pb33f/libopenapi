@@ -148,6 +148,12 @@ type SpecIndexConfig struct {
 	// the file is a JSON Schema. To allow JSON Schema files to be included set this to true.
 	SkipDocumentCheck bool
 
+	// ExtractRefsSequentially will extract all references sequentially, which means the index will look up references
+	// as it finds them, vs looking up everything asynchronously.
+	// This is a more thorough way of building the index, but it's slower. It's required building a document
+	// to be bundled.
+	ExtractRefsSequentially bool
+
 	// private fields
 	uri []string
 }
