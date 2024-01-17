@@ -332,6 +332,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	}
 
 	highDoc := v3high.NewDocument(lowDoc)
+	highDoc.Rolodex = lowDoc.Index.GetRolodex()
 
 	d.highOpenAPI3Model = &DocumentModel[v3high.Document]{
 		Model: *highDoc,
