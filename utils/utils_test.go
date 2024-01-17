@@ -386,6 +386,17 @@ func TestFindKeyNodeFull(t *testing.T) {
 	assert.Equal(t, "paste", e.Value)
 }
 
+func TestFindKeyNodeFull_NoValue(t *testing.T) {
+	a := &yaml.Node{
+		Value: "openapi",
+	}
+
+	c, d, e := FindKeyNodeFull("openapi", []*yaml.Node{a})
+	assert.Equal(t, "openapi", c.Value)
+	assert.Equal(t, "openapi", d.Value)
+	assert.Equal(t, "openapi", e.Value)
+}
+
 func TestFindKeyNodeFull_MapValueIsLastNode(t *testing.T) {
 	f := &yaml.Node{
 		Value: "cheese",
