@@ -230,6 +230,12 @@ func (index *SpecIndex) GetMappedReferences() map[string]*Reference {
 	return index.allMappedRefs
 }
 
+// GetRawReferencesSequenced returns a slice of every single reference found in the document, extracted raw from the doc
+// returned in the exact order they were found in the document.
+func (index *SpecIndex) GetRawReferencesSequenced() []*Reference {
+	return index.rawSequencedRefs
+}
+
 // GetMappedReferencesSequenced will return all references that were mapped successfully to nodes, performed in sequence
 // as they were read in from the document.
 func (index *SpecIndex) GetMappedReferencesSequenced() []*ReferenceMapped {

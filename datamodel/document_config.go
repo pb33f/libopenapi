@@ -101,6 +101,12 @@ type DocumentConfiguration struct {
 	// Logger is a structured logger that will be used for logging errors and warnings. If not set, a default logger
 	// will be used, set to the Error level.
 	Logger *slog.Logger
+
+	// ExtractRefsSequentially will extract all references sequentially, which means the index will look up references
+	// as it finds them, vs looking up everything asynchronously.
+	// This is a more thorough way of building the index, but it's slower. It's required building a document
+	// to be bundled.
+	ExtractRefsSequentially bool
 }
 
 func NewDocumentConfiguration() *DocumentConfiguration {
