@@ -36,6 +36,19 @@ paths:
 	assert.Equal(t, 2, idx.descriptionCount)
 }
 
+func TestSpecIndex_ExtractRefs_CheckSummarySummary(t *testing.T) {
+	yml := `things:
+  summary:
+    summary:
+      - summary`
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Len(t, idx.allSummaries, 3)
+	assert.Equal(t, 3, idx.summaryCount)
+}
+
 func TestSpecIndex_ExtractRefs_CheckPropertiesForInlineSchema(t *testing.T) {
 	yml := `openapi: 3.1.0
 servers:
