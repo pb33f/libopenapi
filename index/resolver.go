@@ -229,6 +229,8 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 	}
 	// update our index with any circular refs we found.
 	resolver.specIndex.SetCircularReferences(resolver.circularReferences)
+	resolver.specIndex.SetIgnoredArrayCircularReferences(resolver.ignoredArrayReferences)
+	resolver.specIndex.SetIgnoredPolymorphicCircularReferences(resolver.ignoredPolyReferences)
 	resolver.circChecked = true
 	return resolver.resolvingErrors
 }

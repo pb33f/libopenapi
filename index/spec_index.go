@@ -170,6 +170,28 @@ func (index *SpecIndex) GetCircularReferences() []*CircularReferenceResult {
 	return index.circularReferences
 }
 
+// SetIgnoredPolymorphicCircularReferences passes on any ignored poly circular refs captured using
+// `IgnorePolymorphicCircularReferences`
+func (index *SpecIndex) SetIgnoredPolymorphicCircularReferences(refs []*CircularReferenceResult) {
+	index.polyCircularReferences = refs
+}
+
+func (index *SpecIndex) SetIgnoredArrayCircularReferences(refs []*CircularReferenceResult) {
+	index.arrayCircularReferences = refs
+}
+
+// GetIgnoredPolymorphicCircularReferences will return any polymorphic circular references that were 'ignored' by
+// using the `IgnorePolymorphicCircularReferences` configuration option.
+func (index *SpecIndex) GetIgnoredPolymorphicCircularReferences() []*CircularReferenceResult {
+	return index.polyCircularReferences
+}
+
+// GetIgnoredArrayCircularReferences will return any array based circular references that were 'ignored' by
+// using the `IgnoreArrayCircularReferences` configuration option.
+func (index *SpecIndex) GetIgnoredArrayCircularReferences() []*CircularReferenceResult {
+	return index.arrayCircularReferences
+}
+
 // GetPathsNode returns document root node.
 func (index *SpecIndex) GetPathsNode() *yaml.Node {
 	return index.pathsNode

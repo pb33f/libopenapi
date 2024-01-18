@@ -56,6 +56,11 @@ func TestSpecIndex_GetCache(t *testing.T) {
 	loaded, ok = extCache.Load("test2")
 	assert.Nil(t, loaded)
 	assert.False(t, ok)
+
+	assert.Len(t, index.GetIgnoredPolymorphicCircularReferences(), 0)
+	assert.Len(t, index.GetIgnoredArrayCircularReferences(), 0)
+	assert.Equal(t, len(index.GetRawReferencesSequenced()), 42)
+	assert.Equal(t, len(index.GetNodeMap()), 824)
 }
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
@@ -1534,4 +1539,78 @@ paths:
 	assert.Equal(t, 18, paths["/test2"]["delete"].ParentNode.Line)
 	assert.Equal(t, "$.paths['/test2'].put", paths["/test2"]["put"].Path)
 	assert.Equal(t, 22, paths["/test2"]["put"].ParentNode.Line)
+}
+
+func TestSpecIndex_TestInlineSchemaPaths(t *testing.T) {
+
+	yml := `openapi: 3.1.0
+info:
+  title: Test
+  version: 0.0.1
+servers:
+  - url: http://localhost:35123
+paths:
+  /test:
+    get:
+      operationId: TestSomething
+      parameters:
+        - name: test
+          in: query
+          description: test param for duplicate inline schema
+          required: false
+          schema:
+            type: object
+            required:
+              - code
+              - message
+            properties:
+              code:
+                type: integer
+                format: int32
+              message:
+                type: string
+      responses:
+        '200':
+          description: OK
+        '5XX':
+          description: test response for slightly different inline schema
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - messages
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  messages:
+                    type: string
+        default:
+          description: test response for duplicate inline schema
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - code
+                  - message
+                properties:
+                  code:
+                    type: integer
+                    format: int32
+                  message:
+                    type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	schemas := idx.GetAllInlineSchemas()
+	assert.Equal(t, "$.paths['/test'].get.parameters.schema", schemas[0].Path)
+	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.code", schemas[1].Path)
+	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.message", schemas[2].Path)
+
 }

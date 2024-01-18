@@ -107,6 +107,10 @@ type DocumentConfiguration struct {
 	// This is a more thorough way of building the index, but it's slower. It's required building a document
 	// to be bundled.
 	ExtractRefsSequentially bool
+
+	// BundleInlineRefs is used by the bundler module. If set to true, all references will be inlined, including
+	// local references (to the root document) as well as all external references. This is false by default.
+	BundleInlineRefs bool
 }
 
 func NewDocumentConfiguration() *DocumentConfiguration {

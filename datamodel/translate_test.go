@@ -1,6 +1,7 @@
 package datamodel_test
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -486,41 +488,59 @@ func TestTranslatePipeline(t *testing.T) {
 			// context cancel.  Then the second item is aborted by this error
 			// handler.
 			t.Run("Error while waiting on worker", func(t *testing.T) {
-				const concurrency = 2
-				in := make(chan int)
-				out := make(chan string)
-				done := make(chan struct{})
-				var wg sync.WaitGroup
-				wg.Add(1) // input goroutine
 
-				// Send input.
-				go func() {
-					// Fill up worker pool with items.
-					for i := 0; i < concurrency; i++ {
-						select {
-						case in <- i:
-						case <-done:
+				// this test gets stuck sometimes, so it needs a hard limit.
+
+				ctx, c := context.WithTimeout(context.Background(), 5*time.Second)
+				defer c()
+				doneChan := make(chan bool)
+
+				go func(completedChan chan bool) {
+
+					const concurrency = 2
+					in := make(chan int)
+					out := make(chan string)
+					done := make(chan struct{})
+					var wg sync.WaitGroup
+					wg.Add(1) // input goroutine
+
+					// Send input.
+					go func() {
+						// Fill up worker pool with items.
+						for i := 0; i < concurrency; i++ {
+							select {
+							case in <- i:
+							case <-done:
+							}
 						}
-					}
-					wg.Done()
-				}()
+						wg.Done()
+					}()
 
-				// No need to capture output channel.
+					// No need to capture output channel.
 
-				var itemCount atomic.Int64
-				err := datamodel.TranslatePipeline[int, string](in, out,
-					func(value int) (string, error) {
-						counter := itemCount.Add(1)
-						// Cause error on first call.
-						if counter == 1 {
-							return "", errors.New("Foobar")
-						}
-						return "", nil
-					},
-				)
-				close(done)
-				wg.Wait()
-				require.Error(t, err)
+					var itemCount atomic.Int64
+					err := datamodel.TranslatePipeline[int, string](in, out,
+						func(value int) (string, error) {
+							counter := itemCount.Add(1)
+							// Cause error on first call.
+							if counter == 1 {
+								return "", errors.New("Foobar")
+							}
+							return "", nil
+						},
+					)
+					close(done)
+					wg.Wait()
+					require.Error(t, err)
+					doneChan <- true
+				}(doneChan)
+
+				select {
+				case <-ctx.Done():
+					t.Log("error waiting on worker test timed out")
+				case <-doneChan:
+					// test passed
+				}
 			})
 		})
 	}

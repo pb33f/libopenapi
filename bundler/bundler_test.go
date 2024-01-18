@@ -5,7 +5,6 @@ package bundler
 
 import (
 	"bytes"
-	"encoding/json"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
@@ -81,19 +80,15 @@ func TestBundleDocument_Circular(t *testing.T) {
 
 	bytes, e := BundleDocument(&v3Doc.Model)
 	assert.NoError(t, e)
-	assert.Len(t, bytes, 3069)
+	assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1563)
+	assert.Len(t, bytes, 2016)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
-
-	assert.Len(t, logEntries, 5)
-	for _, entry := range logEntries {
-		items := make(map[string]any)
-		if entry != "" {
-			_ = json.Unmarshal([]byte(entry), &items)
-			assert.Equal(t, "[bundler] skipping circular reference", items["msg"])
-		}
+	if len(logEntries) == 1 && logEntries[0] == "" {
+		logEntries = []string{}
 	}
-	assert.NoError(t, e)
+
+	assert.Len(t, logEntries, 0)
 }
 
 func TestBundleBytes(t *testing.T) {
@@ -112,18 +107,102 @@ func TestBundleBytes(t *testing.T) {
 
 	bytes, e := BundleBytes(digi, config)
 	assert.Error(t, e)
-	assert.Len(t, bytes, 3069)
+	assert.Len(t, bytes, 2016)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
-
-	assert.Len(t, logEntries, 5)
-	for _, entry := range logEntries {
-		items := make(map[string]any)
-		if entry != "" {
-			_ = json.Unmarshal([]byte(entry), &items)
-			assert.Equal(t, "[bundler] skipping circular reference", items["msg"])
-		}
+	if len(logEntries) == 1 && logEntries[0] == "" {
+		logEntries = []string{}
 	}
+
+	assert.Len(t, logEntries, 0)
+}
+
+func TestBundleBytes_CircularArray(t *testing.T) {
+
+	digi := []byte(`openapi: 3.1.0
+info:
+  title: FailureCases
+  version: 0.1.0
+servers:
+  - url: http://localhost:35123
+    description: The default server.
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Obj:
+      type: object
+      properties:
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Obj'
+      required:
+        - children`)
+
+	var logs []byte
+	byteBuf := bytes.NewBuffer(logs)
+
+	config := &datamodel.DocumentConfiguration{
+		ExtractRefsSequentially:       true,
+		IgnoreArrayCircularReferences: true,
+		Logger: slog.New(slog.NewJSONHandler(byteBuf, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+	}
+
+	bytes, e := BundleBytes(digi, config)
+	assert.NoError(t, e)
+	assert.Len(t, bytes, 537)
+
+	logEntries := strings.Split(byteBuf.String(), "\n")
+	assert.Len(t, logEntries, 10)
+}
+
+func TestBundleBytes_CircularFile(t *testing.T) {
+
+	digi := []byte(`openapi: 3.1.0
+info:
+  title: FailureCases
+  version: 0.1.0
+servers:
+  - url: http://localhost:35123
+    description: The default server.
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Obj:
+      type: object
+      properties:
+        children:
+          $ref: '../test_specs/circular-tests.yaml#/components/schemas/One'`)
+
+	var logs []byte
+	byteBuf := bytes.NewBuffer(logs)
+
+	config := &datamodel.DocumentConfiguration{
+		BasePath:                ".",
+		ExtractRefsSequentially: true,
+		Logger: slog.New(slog.NewJSONHandler(byteBuf, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+	}
+
+	bytes, e := BundleBytes(digi, config)
+	assert.Error(t, e)
+	assert.Len(t, bytes, 458)
+
+	logEntries := strings.Split(byteBuf.String(), "\n")
+	assert.Len(t, logEntries, 13)
 }
 
 func TestBundleBytes_Bad(t *testing.T) {
