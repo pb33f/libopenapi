@@ -216,6 +216,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	// create a new config that allows local and remote to be mixed up.
 	cf := CreateOpenAPIIndexConfig()
+	cf.ExtractRefsSequentially = true
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.BasePath = basePath
