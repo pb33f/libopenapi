@@ -2856,3 +2856,89 @@ func TestSchemaChanges_TotalBreakingChanges_NoNilPanic(t *testing.T) {
 func TestCompareSchemas_Nil(t *testing.T) {
 	assert.Nil(t, CompareSchemas(nil, nil))
 }
+
+// Test for issue https://github.com/pb33f/libopenapi/issues/218
+func TestCompareSchemas_PropertyRefChange_Identical(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int 
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int 
+    OK:
+      type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+
+}
+
+func TestCompareSchemas_PropertyRefChange_IdenticalReverse(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int 
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int 
+    OK:
+      type: int`
+
+	leftDoc, rightDoc := test_BuildDoc(right, left)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+
+}
+
+func TestCompareSchemas_PropertyRefChange_Fail(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int 
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int 
+    OK:
+      type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+
+}
