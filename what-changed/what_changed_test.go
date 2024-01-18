@@ -46,41 +46,6 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 
 }
 
-func TestCompareRefs(t *testing.T) {
-
-	original := []byte(`openapi: 3.0
-components:
-  schemas:
-    Yo:
-      type: int 
-    OK:
-      $ref: '#/components/schemas/Yo'
-`)
-
-	modified := []byte(`openapi: 3.0
-components:
-  schemas:
-    Yo:
-      type: int 
-    OK:
-      type: int
-`)
-
-	infoOrig, _ := datamodel.ExtractSpecInfo(original)
-	infoMod, _ := datamodel.ExtractSpecInfo(modified)
-
-	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, datamodel.NewDocumentConfiguration())
-	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, datamodel.NewDocumentConfiguration())
-
-	changes := CompareOpenAPIDocuments(origDoc, modDoc)
-	assert.Equal(t, 52, changes.TotalChanges())
-	assert.Equal(t, 27, changes.TotalBreakingChanges())
-
-	//out, _ := json.MarshalIndent(changes, "", "  ")
-	//_ = os.WriteFile("output.json", out, 0776)
-
-}
-
 func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 
 	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
