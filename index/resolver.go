@@ -637,7 +637,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					n.Value == "anyOf" {
 
 					// if this is a polymorphic link, we want to follow it and see if it becomes circular
-					if utils.IsNodeMap(node.Content[i+1]) { // check for nested items
+					if len(node.Content) < i+1 && utils.IsNodeMap(node.Content[i+1]) { // check for nested items
 						// check if items is present, to indicate an array
 						if _, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
 							if utils.IsNodeMap(v) {
