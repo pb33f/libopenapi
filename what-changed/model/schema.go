@@ -347,18 +347,30 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// changed from inline to ref
 		if !l.IsReference() && r.IsReference() {
-			CreateChange(&changes, Modified, v3.RefLabel,
-				l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetReference())
-			sc.PropertyChanges = NewPropertyChanges(changes)
-			return sc // we're done here
+			// check if the referenced schema matches or not
+			// https://github.com/pb33f/libopenapi/issues/218
+			lHash := l.Schema().Hash()
+			rHash := r.Schema().Hash()
+			if lHash != rHash {
+				CreateChange(&changes, Modified, v3.RefLabel,
+					l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetReference())
+				sc.PropertyChanges = NewPropertyChanges(changes)
+				return sc // we're done here
+			}
 		}
 
 		// changed from ref to inline
 		if l.IsReference() && !r.IsReference() {
-			CreateChange(&changes, Modified, v3.RefLabel,
-				l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetReference(), r)
-			sc.PropertyChanges = NewPropertyChanges(changes)
-			return sc // done, nothing else to do.
+			// check if the referenced schema matches or not
+			// https://github.com/pb33f/libopenapi/issues/218
+			lHash := l.Schema().Hash()
+			rHash := r.Schema().Hash()
+			if lHash != rHash {
+				CreateChange(&changes, Modified, v3.RefLabel,
+					l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetReference(), r)
+				sc.PropertyChanges = NewPropertyChanges(changes)
+				return sc // done, nothing else to do.
+			}
 		}
 
 		lSchema := l.Schema()
