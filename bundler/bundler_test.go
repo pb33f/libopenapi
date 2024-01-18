@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -80,7 +81,11 @@ func TestBundleDocument_Circular(t *testing.T) {
 
 	bytes, e := BundleDocument(&v3Doc.Model)
 	assert.NoError(t, e)
-	assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1563)
+	if runtime.GOOS != "windows" {
+		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1563)
+	} else {
+		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1637)
+	}
 	assert.Len(t, bytes, 2016)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
