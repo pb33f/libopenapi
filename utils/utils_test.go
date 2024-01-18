@@ -132,6 +132,42 @@ func TestConvertInterfaceIntoStringMap(t *testing.T) {
 	assert.Equal(t, "baby girl", parsed["melody"])
 }
 
+func TestConvertInterfaceIntoStringMap_Float64(t *testing.T) {
+	var d interface{}
+	n := make(map[string]interface{})
+	n["melody"] = 5.9
+	d = n
+	parsed := ConvertInterfaceIntoStringMap(d)
+	assert.Equal(t, "5.9", parsed["melody"])
+}
+
+func TestConvertInterfaceIntoStringMap_Bool(t *testing.T) {
+	var d interface{}
+	n := make(map[string]interface{})
+	n["melody"] = true
+	d = n
+	parsed := ConvertInterfaceIntoStringMap(d)
+	assert.Equal(t, "true", parsed["melody"])
+}
+
+func TestConvertInterfaceIntoStringMap_int64(t *testing.T) {
+	var d interface{}
+	n := make(map[string]interface{})
+	n["melody"] = int64(12345)
+	d = n
+	parsed := ConvertInterfaceIntoStringMap(d)
+	assert.Equal(t, "12345", parsed["melody"])
+}
+
+func TestConvertInterfaceIntoStringMap_int(t *testing.T) {
+	var d interface{}
+	n := make(map[string]interface{})
+	n["melody"] = 12345
+	d = n
+	parsed := ConvertInterfaceIntoStringMap(d)
+	assert.Equal(t, "12345", parsed["melody"])
+}
+
 func TestConvertInterfaceIntoStringMap_NoType(t *testing.T) {
 	var d interface{}
 	n := make(map[string]interface{})

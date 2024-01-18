@@ -401,7 +401,9 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 			if i%2 == 0 && n.Value != "$ref" && n.Value != "" {
 
-				nodePath := fmt.Sprintf("$.%s", strings.Join(seenPath, "."))
+				loc := append(seenPath, n.Value)
+				definitionPath := fmt.Sprintf("#/%s", strings.Join(loc, "/"))
+				_, jsonPath := utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 
 				// capture descriptions and summaries
 				if n.Value == "description" {
@@ -413,7 +415,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 					ref := &DescriptionReference{
 						Content:   node.Content[i+1].Value,
-						Path:      nodePath,
+						Path:      jsonPath,
 						Node:      node.Content[i+1],
 						IsSummary: false,
 					}
@@ -434,7 +436,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 					ref := &DescriptionReference{
 						Content:   b.Value,
-						Path:      nodePath,
+						Path:      jsonPath,
 						Node:      b,
 						IsSummary: true,
 					}
@@ -477,7 +479,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 											refs = append(refs, &Reference{
 												Definition: b.Content[k].Content[g].Content[r].Value,
-												Path:       fmt.Sprintf("%s.security[%d].%s[%d]", nodePath, k, secKey, r),
+												Path:       fmt.Sprintf("%s.security[%d].%s[%d]", jsonPath, k, secKey, r),
 												Node:       b.Content[k].Content[g].Content[r],
 											})
 
@@ -506,7 +508,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 					if enumKeyValueNode != nil {
 						ref := &EnumReference{
-							Path:       nodePath,
+							Path:       jsonPath,
 							Node:       node.Content[i+1],
 							Type:       enumKeyValueNode,
 							SchemaNode: node,
@@ -536,7 +538,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 						if isObject {
 							index.allObjectsWithProperties = append(index.allObjectsWithProperties, &ObjectReference{
-								Path:       nodePath,
+								Path:       jsonPath,
 								Node:       node,
 								ParentNode: parent,
 							})
@@ -544,8 +546,8 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 				}
 
-				//seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
-				seenPath = append(seenPath, n.Value)
+				seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
+				//seenPath = append(seenPath, n.Value)
 				prev = n.Value
 			}
 

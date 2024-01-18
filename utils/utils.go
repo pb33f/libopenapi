@@ -139,6 +139,18 @@ func ConvertInterfaceIntoStringMap(context interface{}) map[string]string {
 				if s, okB := n.(string); okB {
 					converted[k] = s
 				}
+				if s, okB := n.(float64); okB {
+					converted[k] = fmt.Sprint(s)
+				}
+				if s, okB := n.(bool); okB {
+					converted[k] = fmt.Sprint(s)
+				}
+				if s, okB := n.(int); okB {
+					converted[k] = fmt.Sprint(s)
+				}
+				if s, okB := n.(int64); okB {
+					converted[k] = fmt.Sprint(s)
+				}
 			}
 		}
 		if v, ok := context.(map[string]string); ok {

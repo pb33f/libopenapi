@@ -16,13 +16,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Constants used to determine if resolving is local, file based or remote file based.
-const (
-	LocalResolve = iota
-	HttpResolve
-	FileResolve
-)
-
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing
 // algorithms on data models. the *yaml.Node def is just a bit too low level for tracking state.
 type Reference struct {
@@ -272,6 +265,8 @@ type SpecIndex struct {
 	componentLock                       sync.RWMutex
 	errorLock                           sync.RWMutex
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
+	polyCircularReferences              []*CircularReferenceResult // only available when the resolver has been used.
+	arrayCircularReferences             []*CircularReferenceResult // only available when the resolver has been used.
 	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
 	config                              *SpecIndexConfig           // configuration for the index
 	componentIndexChan                  chan bool
@@ -298,6 +293,10 @@ func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 
 func (index *SpecIndex) SetCache(sync *syncmap.Map) {
 	index.cache = sync
+}
+
+func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
+	return index.nodeMap
 }
 
 func (index *SpecIndex) GetCache() *syncmap.Map {
