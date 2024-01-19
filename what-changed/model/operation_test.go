@@ -155,7 +155,7 @@ parameters:
 	extChanges := CompareOperations(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "parameters", extChanges.Changes[0].Property)
 
@@ -977,7 +977,7 @@ parameters:
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
 func TestCompareOperations_V3_ModifyTag(t *testing.T) {
