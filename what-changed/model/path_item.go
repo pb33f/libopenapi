@@ -335,8 +335,16 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 			nil)
 	}
 	if lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {
+		breaking := false
+		for i := range rPath.Parameters.Value {
+			param := rPath.Parameters.Value[i].Value
+			if param.Required.Value {
+				breaking = true
+				break
+			}
+		}
 		CreateChange(changes, PropertyAdded, v3.ParametersLabel,
-			nil, rPath.Parameters.ValueNode, true, nil,
+			nil, rPath.Parameters.ValueNode, breaking, nil,
 			rPath.Parameters.Value)
 	}
 
@@ -589,8 +597,16 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			nil)
 	}
 	if lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {
+		breaking := false
+		for i := range rPath.Parameters.Value {
+			param := rPath.Parameters.Value[i].Value
+			if param.Required.Value {
+				breaking = true
+				break
+			}
+		}
 		CreateChange(changes, PropertyAdded, v3.ParametersLabel,
-			nil, rPath.Parameters.ValueNode, true, nil,
+			nil, rPath.Parameters.ValueNode, breaking, nil,
 			rPath.Parameters.Value)
 	}
 

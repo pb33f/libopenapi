@@ -635,19 +635,14 @@ trace:
 	assert.Equal(t, 8, extChanges.TotalBreakingChanges())
 }
 
-func TestComparePathItem_V3_ChangeParam(t *testing.T) {
+func TestComparePathItem_V3_AddParam(t *testing.T) {
 
-	left := `get:
-  operationId: listBurgerDressings
-  parameters:
-    - in: query
-      name: burgerId`
+	left := `summary: hello`
 
-	right := `get:
-  operationId: listBurgerDressings
-  parameters:
-    - in: head
-      name: burgerId`
+	right := `summary: hello
+parameters:
+  - in: head
+    name: burgerId`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -656,6 +651,92 @@ func TestComparePathItem_V3_ChangeParam(t *testing.T) {
 	// create low level objects
 	var lDoc v3.PathItem
 	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V2_AddParamOptional(t *testing.T) {
+
+	left := `summary: hello`
+
+	right := `summary: hello
+parameters:
+  - in: head
+    name: burgerId`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v2.PathItem
+	var rDoc v2.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V3_AddParamRequired(t *testing.T) {
+
+	left := `summary: hello`
+
+	right := `summary: hello
+parameters:
+  - in: head
+    name: burgerId
+    required: true`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V2_AddParamRequired(t *testing.T) {
+
+	left := `summary: hello`
+
+	right := `summary: hello
+parameters:
+  - in: head
+    name: burgerId
+    required: true`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v2.PathItem
+	var rDoc v2.PathItem
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
 	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)

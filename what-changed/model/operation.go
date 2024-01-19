@@ -262,8 +262,15 @@ func CompareOperations(l, r any) *OperationChanges {
 				nil)
 		}
 		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
+			rParams := rParamsUntyped.Value.([]low.ValueReference[*v2.Parameter])
+			breaking := false
+			for i := range rParams {
+				if rParams[i].Value.Required.Value {
+					breaking = true
+				}
+			}
 			CreateChange(&changes, PropertyAdded, v3.ParametersLabel,
-				nil, rParamsUntyped.ValueNode, true, nil,
+				nil, rParamsUntyped.ValueNode, breaking, nil,
 				rParamsUntyped.Value)
 		}
 
@@ -358,8 +365,15 @@ func CompareOperations(l, r any) *OperationChanges {
 				nil)
 		}
 		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
+			rParams := rParamsUntyped.Value.([]low.ValueReference[*v3.Parameter])
+			breaking := false
+			for i := range rParams {
+				if rParams[i].Value.Required.Value {
+					breaking = true
+				}
+			}
 			CreateChange(&changes, PropertyAdded, v3.ParametersLabel,
-				nil, rParamsUntyped.ValueNode, true, nil,
+				nil, rParamsUntyped.ValueNode, breaking, nil,
 				rParamsUntyped.Value)
 		}
 
