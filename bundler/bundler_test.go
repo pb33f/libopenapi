@@ -5,6 +5,7 @@ package bundler
 
 import (
 	"bytes"
+	"errors"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
@@ -214,4 +215,30 @@ func TestBundleBytes_Bad(t *testing.T) {
 	bytes, e := BundleBytes(nil, nil)
 	assert.Error(t, e)
 	assert.Nil(t, bytes)
+}
+
+func TestBundleBytes_RootDocumentRefs(t *testing.T) {
+	spec, err := os.ReadFile("../test_specs/ref-followed.yaml")
+	assert.NoError(t, err)
+
+	{ // Making sure indentation is identical
+		doc, err := libopenapi.NewDocument(spec)
+		assert.NoError(t, err)
+
+		v3Doc, errs := doc.BuildV3Model()
+		assert.NoError(t, errors.Join(errs...))
+
+		spec, err = v3Doc.Model.Render()
+		assert.NoError(t, err)
+	}
+
+	config := &datamodel.DocumentConfiguration{
+		BasePath:                ".",
+		ExtractRefsSequentially: true,
+	}
+
+	bundledSpec, err := BundleBytes(spec, config)
+	assert.NoError(t, err)
+
+	assert.Equal(t, string(spec), string(bundledSpec))
 }

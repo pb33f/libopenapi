@@ -58,7 +58,7 @@ func bundle(model *v3.Document, inline bool) ([]byte, error) {
 			//if we're in the root document, don't bundle anything.
 			refExp := strings.Split(sequenced.FullDefinition, "#/")
 			if len(refExp) == 2 {
-				if refExp[0] == "" {
+				if refExp[0] == sequenced.Index.GetSpecAbsolutePath() {
 					if root && !inline {
 						idx.GetLogger().Debug("[bundler] skipping local root reference",
 							"ref", sequenced.Definition)
