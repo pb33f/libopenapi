@@ -369,7 +369,9 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 						IsInfiniteLoop: isInfiniteLoop,
 					}
 
-					if resolver.IgnoreArray && isArray {
+					if resolver.IgnorePoly && !isArray {
+						resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
+					} else if resolver.IgnoreArray && isArray {
 						resolver.ignoredArrayReferences = append(resolver.ignoredArrayReferences, circRef)
 					} else {
 						if !resolver.circChecked {
