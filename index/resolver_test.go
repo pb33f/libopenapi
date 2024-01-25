@@ -217,22 +217,36 @@ components:
 }
 
 func TestResolver_CheckForCircularReferences_IgnorePoly_Any(t *testing.T) {
-	circular := []byte(`openapi: 3.0.0
+	circular := []byte(`openapi: 3.1.0
+paths:
+  /one:
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/One'
 components:
   schemas:
-    ProductCategory:
-      type: "object"
+    One:
       properties:
-        name:
-          type: "string"
-        children:
-          type: "object"
-          anyOf:
-            - $ref: "#/components/schemas/ProductCategory"
-          description: "Array of sub-categories in the same format."
+        thing:
+          oneOf:
+            - "$ref": "#/components/schemas/Two"
+            - "$ref": "#/components/schemas/Three"
       required:
-        - "name"
-        - "children"`)
+        - thing
+    Two:
+      description: "test two"
+      properties:
+        testThing:
+          "$ref": "#/components/schemas/One"
+    Three:
+      description: "test three"
+      properties:
+        testThing:
+          "$ref": "#/components/schemas/One"`)
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(circular, &rootNode)
 

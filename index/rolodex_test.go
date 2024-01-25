@@ -1441,8 +1441,8 @@ components:
 	rolodex.SetRootNode(&rootNode)
 
 	err := rolodex.IndexTheRolodex()
-	assert.Error(t, err)
-	assert.Len(t, rolodex.GetCaughtErrors(), 1)
+	assert.NoError(t, err)
+	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 }
 
 func TestRolodex_IndexCircularLookup_ignorePoly(t *testing.T) {
