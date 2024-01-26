@@ -26,9 +26,10 @@ import (
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 //   - https://swagger.io/specification/#security-requirement-object
 type SecurityRequirement struct {
-	Requirements low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
-	KeyNode      *yaml.Node
-	RootNode     *yaml.Node
+	Requirements             low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]
+	KeyNode                  *yaml.Node
+	RootNode                 *yaml.Node
+	ContainsEmptyRequirement bool // if a requirement is empty (this means it's optional)
 	*low.Reference
 }
 
@@ -49,6 +50,9 @@ func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node,
 			continue
 		}
 		for j := range root.Content[i].Content {
+			if root.Content[i].Content[j].Value == "" {
+				s.ContainsEmptyRequirement = true
+			}
 			arr = append(arr, low.ValueReference[string]{
 				Value:     root.Content[i].Content[j].Value,
 				ValueNode: root.Content[i].Content[j],
@@ -64,6 +68,9 @@ func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node,
 				ValueNode: root.Content[i],
 			},
 		)
+	}
+	if len(root.Content) == 0 {
+		s.ContainsEmptyRequirement = true
 	}
 	s.Requirements = low.ValueReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]]{
 		Value:     valueMap,
