@@ -22,6 +22,7 @@ import (
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
 	Requirements *orderedmap.Map[string, []string] `json:"-" yaml:"-"`
+	ContainsEmptyRequirement bool // if a requirement is empty (this means it's optional)
 	low          *base.SecurityRequirement
 }
 
@@ -39,6 +40,7 @@ func NewSecurityRequirement(req *base.SecurityRequirement) *SecurityRequirement 
 		values.Set(pair.Key().Value, vals)
 	}
 	r.Requirements = values
+	r.ContainsEmptyRequirement = req.ContainsEmptyRequirement
 	return r
 }
 
