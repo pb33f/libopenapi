@@ -45,3 +45,21 @@ one:
 	assert.Equal(t, sr.Hash(), sr2.Hash())
 	assert.Nil(t, sr.FindRequirement("i-do-not-exist"))
 }
+
+func TestSecurityRequirement_TestEmptyReq(t *testing.T) {
+
+	yml := `one:
+  - two
+  - {}`
+
+	var sr SecurityRequirement
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	_ = sr.Build(context.Background(), nil, idxNode.Content[0], nil)
+
+	assert.Equal(t, 1, orderedmap.Len(sr.Requirements.Value))
+	assert.Len(t, sr.GetKeys(), 1)
+	assert.True(t, sr.ContainsEmptyRequirement)
+
+}
