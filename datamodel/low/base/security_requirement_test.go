@@ -63,3 +63,10 @@ func TestSecurityRequirement_TestEmptyReq(t *testing.T) {
 	assert.True(t, sr.ContainsEmptyRequirement)
 
 }
+
+func TestSecurityRequirement_TestEmptyContent(t *testing.T) {
+	var sr SecurityRequirement
+	_ = sr.Build(context.Background(), nil, &yaml.Node{}, nil)
+	assert.True(t, sr.ContainsEmptyRequirement)
+
+}
