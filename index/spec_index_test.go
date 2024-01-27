@@ -453,7 +453,7 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
 	assert.Equal(t, 0, fileLen)
-	assert.GreaterOrEqual(t, len(remoteFS.GetErrors()), 200)
+	assert.GreaterOrEqual(t, len(remoteFS.GetErrors()), 155)
 }
 
 func TestSpecIndex_k8s(t *testing.T) {

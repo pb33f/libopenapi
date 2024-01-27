@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -154,6 +155,27 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 	}
 
 	if schemaValue != nil {
+
+		// now lets check the schema for `Examples` and `Example` fields.
+		if schemaValue.Examples != nil {
+			if name != "" {
+				// try and convert the example to an integer
+				if i, err := strconv.Atoi(name); err == nil {
+					if i < len(schemaValue.Examples) {
+						return mg.renderMock(schemaValue.Examples[i]), nil
+					}
+				}
+			}
+			// if the name is empty, just return the first example
+			return mg.renderMock(schemaValue.Examples[0]), nil
+		}
+
+		// check the example field
+		if schemaValue.Example != nil {
+			return mg.renderMock(schemaValue.Example), nil
+		}
+
+		// render the schema as our last hope.
 		renderMap := mg.renderer.RenderSchema(schemaValue)
 		if renderMap != nil {
 			return mg.renderMock(renderMap), nil
