@@ -1005,6 +1005,128 @@ components:
 
 }
 
+func TestResolver_CatchInvalidMapPolyCircle(t *testing.T) {
+
+	d := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    ObjectWithOneOf:
+      type: object
+      properties:
+        child:
+          oneOf:
+            $ref: '#/components/schemas/ObjectWithOneOf'
+      required:
+        - child
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	cf := CreateClosedAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, cf)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
+	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 0)
+
+}
+
+func TestResolver_CatchInvalidMapPolyCircle_Ignored(t *testing.T) {
+
+	d := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    ObjectWithOneOf:
+      type: object
+      properties:
+        child:
+          oneOf:
+            $ref: '#/components/schemas/ObjectWithOneOf'
+      required:
+        - child
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	cf := CreateClosedAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+
+	idx := NewSpecIndexWithConfig(&rootNode, cf)
+
+	resolver := NewResolver(idx)
+	resolver.IgnorePolymorphicCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
+	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
+
+}
+
+func TestResolver_CatchInvalidMapPoly(t *testing.T) {
+
+	d := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+components:
+  schemas:
+    Anything:
+      type: object
+    ObjectWithOneOf:
+      type: object
+      properties:
+        child:
+          oneOf:
+            $ref: '#/components/schemas/Anything'
+      required:
+        - child
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	cf := CreateClosedAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+
+	idx := NewSpecIndexWithConfig(&rootNode, cf)
+
+	resolver := NewResolver(idx)
+	resolver.IgnorePolymorphicCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
+	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 0)
+
+}
+
 func TestResolver_NotAllowedDeepCircle(t *testing.T) {
 
 	d := `openapi: 3.0

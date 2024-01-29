@@ -646,68 +646,51 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								if d, _, l := utils.IsNodeRefValue(v); d {
 
 									// create full definition lookup based on ref.
-									def := l
-									exp := strings.Split(l, "#/")
-									if len(exp) == 2 {
-										if exp[0] != "" {
-											if !strings.HasPrefix(exp[0], "http") {
-												if !filepath.IsAbs(exp[0]) {
-													if strings.HasPrefix(ref.FullDefinition, "http") {
-														u, _ := url.Parse(ref.FullDefinition)
-														p, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), exp[0]))
-														u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
-														u.Fragment = ""
-														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
-													} else {
-														fd := strings.Split(ref.FullDefinition, "#/")
-														abs, _ := filepath.Abs(filepath.Join(filepath.Dir(fd[0]), exp[0]))
-														def = fmt.Sprintf("%s#/%s", abs, exp[1])
-													}
-												}
-											} else {
-												if len(exp[1]) > 0 {
-													def = l
-												} else {
-													def = exp[0]
-												}
-											}
-										} else {
-											if strings.HasPrefix(ref.FullDefinition, "http") {
-												u, _ := url.Parse(ref.FullDefinition)
-												u.Fragment = ""
-												def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+									def := resolver.buildDefPath(ref, l)
 
-											} else {
-												if strings.HasPrefix(ref.FullDefinition, "#/") {
-													def = fmt.Sprintf("#/%s", exp[1])
-												} else {
-													fdexp := strings.Split(ref.FullDefinition, "#/")
-													def = fmt.Sprintf("%s#/%s", fdexp[0], exp[1])
-												}
+									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
+									if mappedRefs != nil && !mappedRefs.Circular {
+										circ := false
+										for f := range journey {
+											if journey[f].FullDefinition == mappedRefs.FullDefinition {
+												circ = true
+												break
 											}
 										}
-									} else {
-										if strings.HasPrefix(l, "http") {
-											def = l
+										if !circ {
+											resolver.VisitReference(mappedRefs, foundRelatives, journey, resolve)
 										} else {
-
-											// check if were dealing with a remote file
-											if strings.HasPrefix(ref.FullDefinition, "http") {
-
-												// split the url.
-												u, _ := url.Parse(ref.FullDefinition)
-												abs, _ := filepath.Abs(filepath.Join(filepath.Dir(u.Path), l))
-												u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-												u.Fragment = ""
-												def = u.String()
-											} else {
-												lookupRef := strings.Split(ref.FullDefinition, "#/")
-												abs, _ := filepath.Abs(filepath.Join(filepath.Dir(lookupRef[0]), l))
-												def = abs
+											loop := append(journey, mappedRefs)
+											circRef := &CircularReferenceResult{
+												Journey:             loop,
+												Start:               mappedRefs,
+												LoopIndex:           i,
+												LoopPoint:           mappedRefs,
+												PolymorphicType:     n.Value,
+												IsPolymorphicResult: true,
 											}
 
+											mappedRefs.Seen = true
+											mappedRefs.Circular = true
+											if resolver.IgnorePoly {
+												resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
+											} else {
+												if !resolver.circChecked {
+													resolver.circularReferences = append(resolver.circularReferences, circRef)
+												}
+											}
 										}
 									}
+								}
+							}
+						} else {
+							// no items discovered, continue on and investigate anyway.
+							v := node.Content[i+1]
+							if utils.IsNodeMap(v) {
+								if d, _, l := utils.IsNodeRefValue(v); d {
+
+									// create full definition lookup based on ref.
+									def := resolver.buildDefPath(ref, l)
 
 									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
 									if mappedRefs != nil && !mappedRefs.Circular {
@@ -748,88 +731,11 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					}
 					// for array based polymorphic items
 					if i+1 <= len(node.Content) && utils.IsNodeArray(node.Content[i+1]) { // check for nested items
-						// check if items is present, to indicate an array
 						for q := range node.Content[i+1].Content {
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
-									// create full definition lookup based on ref.
-									def := l
-									exp := strings.Split(l, "#/")
-									if len(exp) == 2 {
-										if exp[0] != "" {
-											if !strings.HasPrefix(exp[0], "http") {
-												if !filepath.IsAbs(exp[0]) {
-													if strings.HasPrefix(ref.FullDefinition, "http") {
-
-														u, _ := url.Parse(ref.FullDefinition)
-														p, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
-														u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
-														def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
-
-													} else {
-														z := strings.Split(ref.FullDefinition, "#/")
-														if len(z) == 2 {
-															if len(z[0]) > 0 {
-																abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(z[0]),
-																	exp[0], string(filepath.Separator)))
-																def = fmt.Sprintf("%s#/%s", abs, exp[1])
-															} else {
-																abs, _ := filepath.Abs(exp[0])
-																def = fmt.Sprintf("%s#/%s", abs, exp[1])
-															}
-														} else {
-															abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(ref.FullDefinition),
-																exp[0], string(filepath.Separator)))
-															def = fmt.Sprintf("%s#/%s", abs, exp[1])
-														}
-													}
-												}
-											} else {
-												if len(exp[1]) > 0 {
-													def = l
-												} else {
-													def = exp[0]
-												}
-											}
-										} else {
-											if strings.HasPrefix(ref.FullDefinition, "http") {
-												u, _ := url.Parse(ref.FullDefinition)
-												u.Fragment = ""
-												def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
-
-											} else {
-												if strings.HasPrefix(ref.FullDefinition, "#/") {
-													def = fmt.Sprintf("#/%s", exp[1])
-												} else {
-													fdexp := strings.Split(ref.FullDefinition, "#/")
-													def = fmt.Sprintf("%s#/%s", fdexp[0], exp[1])
-												}
-											}
-										}
-									} else {
-										if strings.HasPrefix(l, "http") {
-											def = l
-										} else {
-
-											// check if were dealing with a remote file
-											if strings.HasPrefix(ref.FullDefinition, "http") {
-
-												// split the url.
-												u, _ := url.Parse(ref.FullDefinition)
-												abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), l, string(filepath.Separator)))
-												u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
-												u.Fragment = ""
-												def = u.String()
-											} else {
-												lookupRef := strings.Split(ref.FullDefinition, "#/")
-												abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(lookupRef[0]), l, string(filepath.Separator)))
-												def = abs
-											}
-
-										}
-									}
-
+									def := resolver.buildDefPath(ref, l)
 									mappedRefs, _ := resolver.specIndex.SearchIndexForReference(def)
 									if mappedRefs != nil && !mappedRefs.Circular {
 										circ := false
@@ -879,6 +785,86 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	}
 	resolver.relativesSeen += len(found)
 	return found
+}
+
+func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
+	def := ""
+	exp := strings.Split(l, "#/")
+	if len(exp) == 2 {
+		if exp[0] != "" {
+			if !strings.HasPrefix(exp[0], "http") {
+				if !filepath.IsAbs(exp[0]) {
+					if strings.HasPrefix(ref.FullDefinition, "http") {
+
+						u, _ := url.Parse(ref.FullDefinition)
+						p, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
+						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
+						def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+					} else {
+						z := strings.Split(ref.FullDefinition, "#/")
+						if len(z) == 2 {
+							if len(z[0]) > 0 {
+								abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(z[0]),
+									exp[0], string(filepath.Separator)))
+								def = fmt.Sprintf("%s#/%s", abs, exp[1])
+							} else {
+								abs, _ := filepath.Abs(exp[0])
+								def = fmt.Sprintf("%s#/%s", abs, exp[1])
+							}
+						} else {
+							abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(ref.FullDefinition),
+								exp[0], string(filepath.Separator)))
+							def = fmt.Sprintf("%s#/%s", abs, exp[1])
+						}
+					}
+				}
+			} else {
+				if len(exp[1]) > 0 {
+					def = l
+				} else {
+					def = exp[0]
+				}
+			}
+		} else {
+			if strings.HasPrefix(ref.FullDefinition, "http") {
+				u, _ := url.Parse(ref.FullDefinition)
+				u.Fragment = ""
+				def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
+
+			} else {
+				if strings.HasPrefix(ref.FullDefinition, "#/") {
+					def = fmt.Sprintf("#/%s", exp[1])
+				} else {
+					fdexp := strings.Split(ref.FullDefinition, "#/")
+					def = fmt.Sprintf("%s#/%s", fdexp[0], exp[1])
+				}
+			}
+		}
+	} else {
+		if strings.HasPrefix(l, "http") {
+			def = l
+		} else {
+
+			// check if were dealing with a remote file
+			if strings.HasPrefix(ref.FullDefinition, "http") {
+
+				// split the url.
+				u, _ := url.Parse(ref.FullDefinition)
+				abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), l, string(filepath.Separator)))
+				u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+				u.Fragment = ""
+				def = u.String()
+			} else {
+				lookupRef := strings.Split(ref.FullDefinition, "#/")
+				abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(lookupRef[0]), l, string(filepath.Separator)))
+				def = abs
+			}
+
+		}
+	}
+
+	return def
 }
 
 func (resolver *Resolver) ResolvePendingNodes() {
