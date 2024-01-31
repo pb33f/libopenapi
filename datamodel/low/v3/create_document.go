@@ -108,7 +108,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	}
 	// check for circular references
 	if config.Logger != nil {
-		config.Logger.Debug("indexing rolodex")
+		config.Logger.Debug("checking for circular references")
 	}
 	now = time.Now()
 	if !config.SkipCircularReferenceCheck {
