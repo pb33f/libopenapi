@@ -284,6 +284,11 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 			"AllowRemoteLookup to true as part of the index configuration", remoteURL)
 	}
 
+	if !strings.HasPrefix(remoteURL, "http") {
+		i.logger.Debug("[rolodex remote loader] not a remote file, ignoring", "file", remoteURL)
+		return nil, nil
+	}
+
 	remoteParsedURL, err := url.Parse(remoteURL)
 	if err != nil {
 		return nil, err
@@ -306,6 +311,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 			"remoteURL", remoteParsedURL.String())
 
 		for !wait.done {
+			i.logger.Debug("[rolodex remote loader] sleeping, waiting for file to return", "file", remoteURL)
 			time.Sleep(500 * time.Nanosecond) // breathe for a few nanoseconds.
 		}
 

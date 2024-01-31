@@ -58,7 +58,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 		friendlySearch = "$"
 	}
 	path, err := yamlpath.NewPath(friendlySearch)
-	if path == nil || err != nil {
+	if path == nil || err != nil || root == nil {
 		return nil // no component found
 	}
 	res, _ := path.Find(root)

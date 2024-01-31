@@ -108,6 +108,7 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 			extractedFile, extErr = l.extractFile(name)
 			if extErr != nil {
 				l.processingFiles.Delete(name)
+				processingWaiter.done = true
 				return nil, extErr
 			}
 			if extractedFile != nil {
@@ -151,6 +152,10 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 				}
 			}
 		}
+	}
+	waiter, _ := l.processingFiles.Load(name)
+	if waiter != nil {
+		waiter.(*waiterLocal).done = true
 	}
 	l.processingFiles.Delete(name)
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
