@@ -343,10 +343,11 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if i.rootURLParsed != nil {
 		remoteParsedURL.Host = i.rootURLParsed.Host
 		remoteParsedURL.Scheme = i.rootURLParsed.Scheme
-		if !strings.HasPrefix(remoteParsedURL.Path, "/") {
-			remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
-			remoteParsedURL.Path = strings.ReplaceAll(remoteParsedURL.Path, "\\", "/")
-		}
+		// this has been disabled, because I don't think it has value, it causes more problems than it solves currently.
+		//if !strings.HasPrefix(remoteParsedURL.Path, "/") {
+		//	remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
+		//	remoteParsedURL.Path = strings.ReplaceAll(remoteParsedURL.Path, "\\", "/")
+		//}
 	}
 
 	if remoteParsedURL.Scheme == "" {
