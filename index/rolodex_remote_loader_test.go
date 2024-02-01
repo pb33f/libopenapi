@@ -394,3 +394,12 @@ func TestNewRemoteFS_Unsupported(t *testing.T) {
 	assert.Error(t, y)
 	assert.Equal(t, "open http://pb33f.io/woof.png: invalid argument", y.Error())
 }
+
+func TestNewRemoteFS_BadURL(t *testing.T) {
+	cf := CreateOpenAPIIndexConfig()
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("httpp://\r\nb33f.io/bingo.yaml")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+}
