@@ -124,6 +124,15 @@ func TestRolodexLocalFS_BadAbsFile(t *testing.T) {
 	assert.Error(t, e)
 }
 
+func TestRolodexLocalFS_ErrorOutWaiter(t *testing.T) {
+
+	lfs := &LocalFS{indexConfig: nil}
+	lfs.processingFiles.Store("/test.yaml", &waiterLocal{})
+	f, e := lfs.Open("/test.yaml")
+	assert.Nil(t, f)
+	assert.Error(t, e)
+}
+
 func TestRolodexLocalFile_BadParse(t *testing.T) {
 
 	lf := &LocalFile{}
