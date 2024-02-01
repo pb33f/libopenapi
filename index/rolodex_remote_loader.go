@@ -285,8 +285,10 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	}
 
 	if !strings.HasPrefix(remoteURL, "http") {
-		i.logger.Debug("[rolodex remote loader] not a remote file, ignoring", "file", remoteURL)
-		return nil, nil
+		if i.logger != nil {
+			i.logger.Debug("[rolodex remote loader] not a remote file, ignoring", "file", remoteURL)
+		}
+		return nil, fmt.Errorf("not a remote file: %s", remoteURL)
 	}
 
 	remoteParsedURL, err := url.Parse(remoteURL)
