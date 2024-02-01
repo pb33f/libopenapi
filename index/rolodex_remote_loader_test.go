@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -20,7 +21,7 @@ var test_httpClient = &http.Client{Timeout: time.Duration(60) * time.Second}
 
 func test_buildServer() *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if req.URL.String() == "/file1.yaml" {
+		if strings.HasSuffix(req.URL.Path, "/file1.yaml") {
 			rw.Header().Set("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT")
 			_, _ = rw.Write([]byte(`"$ref": "./deeper/file2.yaml#/components/schemas/Pet"`))
 			return
@@ -84,7 +85,7 @@ func test_buildServer() *httptest.Server {
 	}))
 }
 
-func TestNewRemoteFS_BasicCheck(t *testing.T) {
+func TestNewRemoteFS_BasicCheck_Fail(t *testing.T) {
 	server := test_buildServer()
 	defer server.Close()
 
@@ -94,6 +95,20 @@ func TestNewRemoteFS_BasicCheck(t *testing.T) {
 
 	file, err := remoteFS.Open("/file1.yaml")
 
+	assert.Error(t, err)
+	assert.Nil(t, file)
+}
+
+func TestNewRemoteFS_BasicCheck_Valid(t *testing.T) {
+	server := test_buildServer()
+	defer server.Close()
+
+	// remoteFS := NewRemoteFS("https://raw.githubusercontent.com/digitalocean/openapi/main/specification/")
+	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
+	remoteFS.RemoteHandlerFunc = test_httpClient.Get
+
+	file, err := remoteFS.Open("https://raw.githubusercontent.com/digitalocean/openapi/main/specification/file1.yaml")
+
 	assert.NoError(t, err)
 
 	bytes, rErr := io.ReadAll(file)
@@ -101,7 +116,7 @@ func TestNewRemoteFS_BasicCheck(t *testing.T) {
 
 	stat, _ := file.Stat()
 
-	assert.Equal(t, "/file1.yaml", stat.Name())
+	assert.Equal(t, "/digitalocean/openapi/main/specification/file1.yaml", stat.Name())
 	assert.Equal(t, int64(53), stat.Size())
 	assert.Len(t, bytes, 53)
 
@@ -116,7 +131,7 @@ func TestNewRemoteFS_BasicCheck_NoScheme(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithRootURL("")
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("/file1.yaml")
+	file, err := remoteFS.Open("https://ding-dong-bing-bong.com/file1.yaml")
 
 	assert.NoError(t, err)
 	assert.Nil(t, file)
@@ -129,7 +144,7 @@ func TestNewRemoteFS_BasicCheck_Relative(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("/deeper/file2.yaml")
+	file, err := remoteFS.Open("http://where-is-my-feet.com/deeper/file2.yaml")
 
 	assert.NoError(t, err)
 
@@ -158,7 +173,7 @@ func TestNewRemoteFS_BasicCheck_Relative_Deeper(t *testing.T) {
 	remoteFS, _ := NewRemoteFSWithConfig(cf)
 	remoteFS.RemoteHandlerFunc = test_httpClient.Get
 
-	file, err := remoteFS.Open("/deeper/even_deeper/file3.yaml")
+	file, err := remoteFS.Open("http://stop-being-a-dick-to-nature.com/deeper/even_deeper/file3.yaml")
 
 	assert.NoError(t, err)
 
@@ -295,10 +310,10 @@ func TestNewRemoteFS_RemoteBaseURL_RelativeRequest(t *testing.T) {
 	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("gib/gab/jib/jab.yaml")
+	x, y := rfs.Open("https://pb33f.io/gib/gab/jib/jab.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "nope, not having it https://pb33f.io/the/love/machine/gib/gab/jib/jab.yaml", y.Error())
+	assert.Equal(t, "nope, not having it https://pb33f.io/gib/gab/jib/jab.yaml", y.Error())
 }
 
 func TestNewRemoteFS_RemoteBaseURL_BadRequestButContainsBody(t *testing.T) {
@@ -311,7 +326,7 @@ func TestNewRemoteFS_RemoteBaseURL_BadRequestButContainsBody(t *testing.T) {
 	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("/woof.yaml")
+	x, y := rfs.Open("http://pb33f.io/woof.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
 	assert.Equal(t, "it's bad, but who cares https://pb33f.io/woof.yaml", y.Error())
@@ -327,7 +342,7 @@ func TestNewRemoteFS_RemoteBaseURL_NoErrorNoResponse(t *testing.T) {
 	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("/woof.yaml")
+	x, y := rfs.Open("https://pb33f.io/woof.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
 	assert.Equal(t, "empty response from remote URL: https://pb33f.io/woof.yaml", y.Error())
@@ -345,7 +360,7 @@ func TestNewRemoteFS_RemoteBaseURL_ReadBodyFail(t *testing.T) {
 	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("/woof.yaml")
+	x, y := rfs.Open("https://pb33f.io/woof.yaml")
 	assert.Nil(t, x)
 	assert.Error(t, y)
 	assert.Equal(t, "error reading bytes from remote file 'https://pb33f.io/woof.yaml': "+
@@ -364,7 +379,7 @@ func TestNewRemoteFS_RemoteBaseURL_EmptySpecFailIndex(t *testing.T) {
 	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("/woof.yaml")
+	x, y := rfs.Open("http://pb33f.io/woof.yaml")
 	assert.NotNil(t, x)
 	assert.Error(t, y)
 	assert.Equal(t, "there is nothing in the spec, it's empty - so there is nothing to be done", y.Error())
@@ -374,8 +389,8 @@ func TestNewRemoteFS_Unsupported(t *testing.T) {
 	cf := CreateOpenAPIIndexConfig()
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("/woof.png")
+	x, y := rfs.Open("http://pb33f.io/woof.png")
 	assert.Nil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "open /woof.png: invalid argument", y.Error())
+	assert.Equal(t, "open http://pb33f.io/woof.png: invalid argument", y.Error())
 }

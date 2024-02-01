@@ -569,8 +569,8 @@ components:
 	assert.Nil(t, x)
 	assert.Error(t, y)
 
-	// file file that is not local, but is remote
-	f, _ = rolodex.Open("/bingo/jingo.yaml")
+	// file that is not local, but is remote
+	f, _ = rolodex.Open("https://pb33f.io/bingo/jingo.yaml")
 	assert.NotNil(t, f)
 
 }
