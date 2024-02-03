@@ -155,8 +155,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		if len(uri) < 2 {
 			wholeFile = true
 		} else {
-			query = fmt.Sprintf("#/%s", strings.Replace(uri[1], "~1", "./", 1))
-			query = strings.ReplaceAll(query, "~1", "/")
+			query = fmt.Sprintf("#/%s", uri[1])
 		}
 
 		// check if there is a component we want to suck in, or if the
