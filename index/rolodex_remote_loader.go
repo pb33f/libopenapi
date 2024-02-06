@@ -351,6 +351,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	}
 
 	if remoteParsedURL.Scheme == "" {
+		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
 	}
@@ -362,6 +363,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 		i.remoteErrors = append(i.remoteErrors, clientErr)
 		// remove from processing
+		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		if response != nil {
 			i.logger.Error("client error", "error", clientErr, "status", response.StatusCode)
@@ -372,14 +374,15 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	}
 	if response == nil {
 		// remove from processing
+		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-
 		return nil, fmt.Errorf("empty response from remote URL: %s", remoteParsedURL.String())
 	}
 	responseBytes, readError := io.ReadAll(response.Body)
 	if readError != nil {
 
 		// remove from processing
+		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 
 		return nil, fmt.Errorf("error reading bytes from remote file '%s': [%s]",
@@ -389,6 +392,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if response.StatusCode >= 400 {
 
 		// remove from processing
+		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 
 		i.logger.Error("unable to fetch remote document",
