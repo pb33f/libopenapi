@@ -1614,3 +1614,39 @@ paths:
 	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.message", schemas[2].Path)
 
 }
+
+func TestSpecIndex_TestPathsAsRef(t *testing.T) {
+	yml := `paths:
+  /test:
+    $ref: '#/paths/~1test-2'
+  /test-2:
+    parameters:
+      - $ref: '#/components/parameters/test-2'
+    get:
+      parameters:
+        - $ref: '#/components/parameters/test-3'
+components:
+  parameters:
+    test-2:
+      name: test-2
+      in: query
+      description: bing bong
+      schema:
+        type: string
+    test-3:
+      name: test-3
+      in: query
+      description: ding a ling
+      schema:
+        type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetOperationParameterReferences()
+	assert.Equal(t, "$.components.parameters.test-2", params["/test"]["top"]["#/components/parameters/test-2"][0].Path)
+	assert.Equal(t, "$.components.parameters.test-3", params["/test-2"]["get"]["#/components/parameters/test-3"][0].Path)
+	assert.Equal(t, "bing bong", params["/test"]["top"]["#/components/parameters/test-2"][0].Node.Content[5].Value)
+	assert.Equal(t, "ding a ling", params["/test"]["get"]["#/components/parameters/test-3"][0].Node.Content[5].Value)
+}

@@ -1050,6 +1050,14 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 				pathPropertyNode = index.pathsNode.Content[x+1]
 			}
 
+			// is the path a ref?
+			if isRef, _, ref := utils.IsNodeRefValue(pathPropertyNode); isRef {
+				pNode := seekRefEnd(index, ref)
+				if pNode != nil {
+					pathPropertyNode = pNode.Node
+				}
+			}
+
 			// extract methods for later use.
 			for y, prop := range pathPropertyNode.Content {
 				if y%2 == 0 {
