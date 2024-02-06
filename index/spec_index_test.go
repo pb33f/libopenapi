@@ -1650,3 +1650,54 @@ components:
 	assert.Equal(t, "bing bong", params["/test"]["top"]["#/components/parameters/test-2"][0].Node.Content[5].Value)
 	assert.Equal(t, "ding a ling", params["/test"]["get"]["#/components/parameters/test-3"][0].Node.Content[5].Value)
 }
+
+func TestSpecIndex_CheckPropertiesFromExamplesIgnored(t *testing.T) {
+	yml := `paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+          x-properties:
+            properties:
+              name: not a schema
+          x-example:
+            properties:
+              name: not a schema
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Object"
+              examples:
+                Example1:
+                  value:
+                    properties:
+                      name: not a schema
+                Example2:
+                  value:
+                    properties:
+                      name: another one
+components:
+  schemas:
+    Object:
+      type: object
+      x-properties:
+        properties:
+          name: not a schema
+      properties:
+        properties:
+          type: object
+          properties:
+            name:
+              type: string
+      example:
+        properties:
+          name: not a schema`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	schemas := index.GetAllSchemas()
+	assert.Equal(t, 6, len(schemas))
+}

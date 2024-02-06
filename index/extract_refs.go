@@ -96,6 +96,29 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			// https://github.com/pb33f/libopenapi/issues/76
 			mapOfSchemaContainingNodes := []string{"properties", "patternProperties"}
 			if i%2 == 0 && slices.Contains(mapOfSchemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
+
+				// if 'examples' or 'example' exists in the seenPath, skip this 'properties' node.
+				// https://github.com/pb33f/libopenapi/issues/160
+				if len(seenPath) > 0 {
+					skip := false
+
+					// iterate through the path and look for an item named 'examples' or 'example'
+					for _, p := range seenPath {
+						if p == "examples" || p == "example" {
+							skip = true
+							break
+						}
+						// look for any extension in the path that begins with 'x-'
+						if strings.HasPrefix(p, "x-") {
+							skip = true
+							break
+						}
+					}
+					if skip {
+						continue
+					}
+				}
+
 				// for each property add it to our schema definitions
 				label := ""
 				for h, prop := range node.Content[i+1].Content {
