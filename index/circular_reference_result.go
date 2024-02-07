@@ -1,10 +1,14 @@
 package index
 
-import "strings"
+import (
+	"gopkg.in/yaml.v3"
+	"strings"
+)
 
 // CircularReferenceResult contains a circular reference found when traversing the graph.
 type CircularReferenceResult struct {
 	Journey             []*Reference
+	ParentNode          *yaml.Node
 	Start               *Reference
 	LoopIndex           int
 	LoopPoint           *Reference
