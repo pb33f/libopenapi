@@ -599,6 +599,11 @@ type mappingResult[T any] struct {
 	v ValueReference[T]
 }
 
+type buildInput struct {
+	label *yaml.Node
+	value *yaml.Node
+}
+
 // ExtractMapExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
 // used to locate the node to be extracted from the root node supplied. Supply a bit to decide if extensions should
 // be included or not. required in some use cases.
@@ -655,10 +660,6 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	if valueNode != nil {
 		valueMap := orderedmap.New[KeyReference[string], ValueReference[PT]]()
 
-		type buildInput struct {
-			label *yaml.Node
-			value *yaml.Node
-		}
 		in := make(chan buildInput)
 		out := make(chan mappingResult[PT])
 		done := make(chan struct{})

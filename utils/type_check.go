@@ -17,10 +17,10 @@ func AreValuesCorrectlyTyped(valType string, values interface{}) map[string]stri
 
 	results := make(map[string]string)
 	for _, v := range arr {
-		switch v.(type) {
+		switch v := v.(type) {
 		case string:
 			if valType != "string" {
-				results[v.(string)] = fmt.Sprintf("enum value '%v' is a "+
+				results[v] = fmt.Sprintf("enum value '%v' is a "+
 					"string, but it's defined as a '%v'", v, valType)
 			}
 		case int64:

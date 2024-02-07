@@ -175,7 +175,7 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 
 	var err error
 	var leftDoc, rightDoc *v2.Swagger
-	leftDoc, err = v2.CreateDocumentFromConfig(leftInfo, datamodel.NewDocumentConfiguration())
+	leftDoc, _ = v2.CreateDocumentFromConfig(leftInfo, datamodel.NewDocumentConfiguration())
 	rightDoc, err = v2.CreateDocumentFromConfig(rightInfo, datamodel.NewDocumentConfiguration())
 
 	uErr := utils.UnwrapErrors(err)

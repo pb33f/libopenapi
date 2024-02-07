@@ -177,21 +177,13 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 		// the only thing we now care about is handling operations, filter out anything that's not a verb.
 		switch currentNode.Value {
 		case GetLabel:
-			break
 		case PostLabel:
-			break
 		case PutLabel:
-			break
 		case PatchLabel:
-			break
 		case DeleteLabel:
-			break
 		case HeadLabel:
-			break
 		case OptionsLabel:
-			break
 		case TraceLabel:
-			break
 		default:
 			continue // ignore everything else.
 		}

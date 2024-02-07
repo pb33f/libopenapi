@@ -129,8 +129,7 @@ func buildComponent[IN any, OUT any](inMap *orderedmap.Map[lowmodel.KeyReference
 func buildSchema(inMap *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*base.SchemaProxy]], outMap *orderedmap.Map[string, *highbase.SchemaProxy]) {
 	translateFunc := func(pair orderedmap.Pair[lowmodel.KeyReference[string], lowmodel.ValueReference[*base.SchemaProxy]]) (componentResult[*highbase.SchemaProxy], error) {
 		value := pair.Value()
-		var sch *highbase.SchemaProxy
-		sch = highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+		sch := highbase.NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
 			Value:     value.Value,
 			ValueNode: value.ValueNode,
 		})

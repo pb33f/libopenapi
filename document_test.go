@@ -957,11 +957,6 @@ func BenchmarkReferenceOrigin(b *testing.B) {
 		items := mediaType.A.Schema()
 
 		origin := items.ParentProxy.GetReferenceOrigin()
-		if origin == nil {
-			// fmt.Println("nil origin")
-		} else {
-			// fmt.Println(origin.AbsoluteLocation)
-		}
 		assert.NotNil(b, origin)
 		assert.True(b, strings.HasSuffix(origin.AbsoluteLocation, "test_specs/burgershop.openapi.yaml"))
 	}

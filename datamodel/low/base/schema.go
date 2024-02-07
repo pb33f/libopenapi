@@ -1134,15 +1134,13 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
 			go build(foundCtx, labelNode, valueNode, refNode, -1, syncChan, isRef, refLocation)
-			select {
-			case r := <-syncChan:
-				schemas <- schemaProxyBuildResult{
-					k: low.KeyReference[string]{
-						KeyNode: labelNode,
-						Value:   labelNode.Value,
-					},
-					v: *r.res,
-				}
+			r := <-syncChan
+			schemas <- schemaProxyBuildResult{
+				k: low.KeyReference[string]{
+					KeyNode: labelNode,
+					Value:   labelNode.Value,
+				},
+				v: *r.res,
 			}
 		} else if utils.IsNodeArray(valueNode) {
 			refBuilds := 0
@@ -1171,11 +1169,9 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 
 			completedBuilds := 0
 			for completedBuilds < refBuilds {
-				select {
-				case res := <-syncChan:
-					completedBuilds++
-					results[res.idx] = res.res
-				}
+				res := <-syncChan
+				completedBuilds++
+				results[res.idx] = res.res
 			}
 
 			for _, r := range results {
@@ -1225,14 +1221,14 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 		if schNode != nil {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
-				ref, foundIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
+				ref, _, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
 				if ref != nil {
 					refNode = schNode
 					schNode = ref
-					if foundIdx != nil {
-						// TODO: check on this
-						// idx = foundIdx
-					}
+					//if foundIdx != nil {
+					// TODO: check on this
+					// idx = foundIdx
+					//}
 					ctx = nCtx
 				} else {
 					v := schNode.Content[1].Value

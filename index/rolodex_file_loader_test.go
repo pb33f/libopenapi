@@ -313,8 +313,6 @@ func TestRecursiveLocalFile_MultipleRequests(t *testing.T) {
 	run := func(i int) {
 		fox, fErr := rolo.Open("fox.yaml")
 		assert.NoError(t, fErr)
-		if fox == nil {
-		}
 		assert.NotNil(t, fox)
 		c <- fox
 	}
@@ -325,9 +323,7 @@ func TestRecursiveLocalFile_MultipleRequests(t *testing.T) {
 
 	completed := 0
 	for completed < 10 {
-		select {
-		case <-c:
-			completed++
-		}
+		<-c
+		completed++
 	}
 }

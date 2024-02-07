@@ -331,14 +331,6 @@ func TestExtractObject_DoubleRef_Circular_Direct_Fail(t *testing.T) {
 	assert.Error(t, err)
 }
 
-type test_borked struct {
-	DontWork int
-}
-
-func (t test_borked) Build(_ context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
-	return fmt.Errorf("I am always going to fail, every thing")
-}
-
 type test_noGood struct {
 	DontWork int
 }
@@ -1898,11 +1890,11 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 
 func TestLocateRefEndNoRef_NoName(t *testing.T) {
 	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: ""}}}
-	n, i, e, c := LocateRefEnd(nil, r, nil, 0)
+	n, i, e, c := LocateRefEnd(context.TODO(), r, nil, 0)
 	assert.Nil(t, n)
 	assert.Nil(t, i)
 	assert.Error(t, e)
-	assert.Nil(t, c)
+	assert.NotNil(t, c)
 }
 
 func TestLocateRefEndNoRef(t *testing.T) {
@@ -1916,11 +1908,11 @@ func TestLocateRefEndNoRef(t *testing.T) {
 
 func TestLocateRefEnd_TooDeep(t *testing.T) {
 	r := &yaml.Node{Content: []*yaml.Node{{Kind: yaml.ScalarNode, Value: "$ref"}, {Kind: yaml.ScalarNode, Value: ""}}}
-	n, i, e, c := LocateRefEnd(nil, r, nil, 100)
+	n, i, e, c := LocateRefEnd(context.TODO(), r, nil, 100)
 	assert.Nil(t, n)
 	assert.Nil(t, i)
 	assert.Error(t, e)
-	assert.Nil(t, c)
+	assert.NotNil(t, c)
 }
 
 func TestLocateRefEnd_Loop(t *testing.T) {
