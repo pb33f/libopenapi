@@ -67,6 +67,16 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 		resNode := res[0]
 		fullDef := fmt.Sprintf("%s%s", absoluteFilePath, componentId)
 		// extract properties
+
+		// check if we have already seen this reference and there is a parent, use it
+		var parentNode *yaml.Node
+		if index.allRefs[componentId] != nil {
+			parentNode = index.allRefs[componentId].ParentNode
+		}
+		if index.allRefs[fullDef] != nil {
+			parentNode = index.allRefs[fullDef].ParentNode
+		}
+
 		ref := &Reference{
 			FullDefinition:        fullDef,
 			Definition:            componentId,
@@ -74,6 +84,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 			Node:                  resNode,
 			Path:                  friendlySearch,
 			RemoteLocation:        absoluteFilePath,
+			ParentNode:            parentNode,
 			Index:                 index,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(resNode, map[string][]string{}, fullDef, index),
 		}
@@ -166,7 +177,13 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 				parsedDocument = parsedDocument.Content[0]
 			}
 
+			var parentNode *yaml.Node
+			if index.allRefs[absoluteFileLocation] != nil {
+				parentNode = index.allRefs[absoluteFileLocation].ParentNode
+			}
+
 			foundRef = &Reference{
+				ParentNode:            parentNode,
 				FullDefinition:        absoluteFileLocation,
 				Definition:            fileName,
 				Name:                  fileName,

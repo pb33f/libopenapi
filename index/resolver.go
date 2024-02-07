@@ -201,7 +201,7 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 		if !resolver.circChecked {
 			resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
 				ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Definition),
-				Node:     circRef.LoopPoint.Node,
+				Node:     circRef.ParentNode,
 				Path:     circRef.GenerateJourneyPath(),
 			})
 		}
@@ -221,7 +221,7 @@ func (resolver *Resolver) CheckForCircularReferences() []*ResolvingError {
 		if !resolver.circChecked {
 			resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
 				ErrorRef:          fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Name),
-				Node:              circRef.LoopPoint.Node,
+				Node:              circRef.ParentNode,
 				Path:              circRef.GenerateJourneyPath(),
 				CircularReference: circRef,
 			})
@@ -361,6 +361,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 						isArray = true
 					}
 					circRef = &CircularReferenceResult{
+						ParentNode:     foundDup.ParentNode,
 						Journey:        loop,
 						Start:          foundDup,
 						LoopIndex:      i,
@@ -641,7 +642,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					// if this is a polymorphic link, we want to follow it and see if it becomes circular
 					if i+1 <= len(node.Content) && utils.IsNodeMap(node.Content[i+1]) { // check for nested items
 						// check if items is present, to indicate an array
-						if _, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
+						if k, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
 							if utils.IsNodeMap(v) {
 								if d, _, l := utils.IsNodeRefValue(v); d {
 
@@ -662,6 +663,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 										} else {
 											loop := append(journey, mappedRefs)
 											circRef := &CircularReferenceResult{
+												ParentNode:          k,
 												Journey:             loop,
 												Start:               mappedRefs,
 												LoopIndex:           i,
@@ -706,6 +708,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 										} else {
 											loop := append(journey, mappedRefs)
 											circRef := &CircularReferenceResult{
+												ParentNode:          node.Content[i],
 												Journey:             loop,
 												Start:               mappedRefs,
 												LoopIndex:           i,
@@ -751,6 +754,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 											loop := append(journey, mappedRefs)
 
 											circRef := &CircularReferenceResult{
+												ParentNode:          node.Content[i],
 												Journey:             loop,
 												Start:               mappedRefs,
 												LoopIndex:           i,
