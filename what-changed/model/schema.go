@@ -415,10 +415,8 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		totalChecks := totalProperties + depsTotal + patternsTotal + 3
 		completedChecks := 0
 		for completedChecks < totalChecks {
-			select {
-			case <-doneChan:
-				completedChecks++
-			}
+			<-doneChan
+			completedChecks++
 		}
 	}
 	// done

@@ -351,33 +351,25 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 	// collect up operations changes.
 	completedOperations := 0
 	for completedOperations < totalOps {
-		select {
-		case n := <-opChan:
-			switch n.label {
-			case v3.GetLabel:
-				pc.GetChanges = n.changes
-				break
-			case v3.PutLabel:
-				pc.PutChanges = n.changes
-				break
-			case v3.PostLabel:
-				pc.PostChanges = n.changes
-				break
-			case v3.DeleteLabel:
-				pc.DeleteChanges = n.changes
-				break
-			case v3.OptionsLabel:
-				pc.OptionsChanges = n.changes
-				break
-			case v2.HeadLabel:
-				pc.HeadChanges = n.changes
-				break
-			case v2.PatchLabel:
-				pc.PatchChanges = n.changes
-				break
-			}
-			completedOperations++
+		n := <-opChan
+		switch n.label {
+		case v3.GetLabel:
+			pc.GetChanges = n.changes
+		case v3.PutLabel:
+			pc.PutChanges = n.changes
+		case v3.PostLabel:
+			pc.PostChanges = n.changes
+		case v3.DeleteLabel:
+			pc.DeleteChanges = n.changes
+		case v3.OptionsLabel:
+			pc.OptionsChanges = n.changes
+		case v2.HeadLabel:
+			pc.HeadChanges = n.changes
+		case v2.PatchLabel:
+			pc.PatchChanges = n.changes
 		}
+		completedOperations++
+
 	}
 	pc.ExtensionChanges = CompareExtensions(lPath.Extensions, rPath.Extensions)
 	return props
@@ -613,36 +605,26 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	// collect up operations changes.
 	completedOperations := 0
 	for completedOperations < totalOps {
-		select {
-		case n := <-opChan:
-			switch n.label {
-			case v3.GetLabel:
-				pc.GetChanges = n.changes
-				break
-			case v3.PutLabel:
-				pc.PutChanges = n.changes
-				break
-			case v3.PostLabel:
-				pc.PostChanges = n.changes
-				break
-			case v3.DeleteLabel:
-				pc.DeleteChanges = n.changes
-				break
-			case v3.OptionsLabel:
-				pc.OptionsChanges = n.changes
-				break
-			case v3.HeadLabel:
-				pc.HeadChanges = n.changes
-				break
-			case v3.PatchLabel:
-				pc.PatchChanges = n.changes
-				break
-			case v3.TraceLabel:
-				pc.TraceChanges = n.changes
-				break
-			}
-			completedOperations++
+		n := <-opChan
+		switch n.label {
+		case v3.GetLabel:
+			pc.GetChanges = n.changes
+		case v3.PutLabel:
+			pc.PutChanges = n.changes
+		case v3.PostLabel:
+			pc.PostChanges = n.changes
+		case v3.DeleteLabel:
+			pc.DeleteChanges = n.changes
+		case v3.OptionsLabel:
+			pc.OptionsChanges = n.changes
+		case v3.HeadLabel:
+			pc.HeadChanges = n.changes
+		case v3.PatchLabel:
+			pc.PatchChanges = n.changes
+		case v3.TraceLabel:
+			pc.TraceChanges = n.changes
 		}
+		completedOperations++
 	}
 	pc.ExtensionChanges = CompareExtensions(lPath.Extensions, rPath.Extensions)
 }

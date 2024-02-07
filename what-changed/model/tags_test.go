@@ -33,8 +33,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -78,8 +78,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -112,8 +112,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -149,8 +149,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -183,8 +183,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -216,9 +216,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
-
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
 
@@ -257,8 +256,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -284,8 +283,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -313,8 +312,8 @@ tags:
 	// create document (which will create our correct tags low level structures)
 	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
 	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
-	lDoc, _ := lowv3.CreateDocument(lInfo)
-	rDoc, _ := lowv3.CreateDocument(rInfo)
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
 
 	// compare.
 	changes := CompareTags(rDoc.Tags.Value, lDoc.Tags.Value)

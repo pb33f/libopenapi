@@ -95,27 +95,26 @@ func NewPathItem(pathItem *lowV3.PathItem) *PathItem {
 	complete := false
 	opCount := 0
 	for !complete {
-		select {
-		case opRes := <-opChan:
-			switch opRes.method {
-			case get:
-				pi.Get = opRes.op
-			case put:
-				pi.Put = opRes.op
-			case post:
-				pi.Post = opRes.op
-			case del:
-				pi.Delete = opRes.op
-			case options:
-				pi.Options = opRes.op
-			case head:
-				pi.Head = opRes.op
-			case patch:
-				pi.Patch = opRes.op
-			case trace:
-				pi.Trace = opRes.op
-			}
+		opRes := <-opChan
+		switch opRes.method {
+		case get:
+			pi.Get = opRes.op
+		case put:
+			pi.Put = opRes.op
+		case post:
+			pi.Post = opRes.op
+		case del:
+			pi.Delete = opRes.op
+		case options:
+			pi.Options = opRes.op
+		case head:
+			pi.Head = opRes.op
+		case patch:
+			pi.Patch = opRes.op
+		case trace:
+			pi.Trace = opRes.op
 		}
+
 		opCount++
 		if opCount == 8 {
 			complete = true

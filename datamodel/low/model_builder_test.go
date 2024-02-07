@@ -365,7 +365,6 @@ func TestHandleSlicesOfBools(t *testing.T) {
 
 func TestSetField_Ignore(t *testing.T) {
 	type Complex struct {
-		name string
 	}
 	type internal struct {
 		Thing *Complex

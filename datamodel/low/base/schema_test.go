@@ -1876,11 +1876,9 @@ func TestBuildSchema_BadNodeTypes(t *testing.T) {
 	var err error
 	go func() {
 		for {
-			select {
-			case e := <-eChan:
-				err = e
-				doneChan <- true
-			}
+			e := <-eChan
+			err = e
+			doneChan <- true
 		}
 	}()
 

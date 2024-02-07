@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -29,11 +28,9 @@ type LocalFS struct {
 	Files               syncmap.Map
 	extractedFiles      map[string]RolodexFile
 	logger              *slog.Logger
-	fileLock            sync.Mutex
 	readingErrors       []error
 	rolodex             *Rolodex
 	processingFiles     syncmap.Map
-	fileListeners       int
 }
 
 // GetFiles returns the files that have been indexed. A map of RolodexFile objects keyed by the full path of the file.
@@ -416,7 +413,6 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 
 		// if reading without a directory FS, error out on any error, do not continue.
 		if fileError != nil {
-			readingErrors = append(readingErrors, fileError)
 			return nil, fileError
 		}
 

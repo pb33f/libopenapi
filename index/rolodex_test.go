@@ -673,7 +673,7 @@ components:
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
 	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
 	third = strings.ReplaceAll(strings.ReplaceAll(third, "$4", filepath.Base(fourthFile.Name())), "\\", "\\\\")
-	third = strings.ReplaceAll(strings.ReplaceAll(first, "$1", filepath.Base(firstFile.Name())), "\\", "\\\\")
+	fourth = strings.ReplaceAll(strings.ReplaceAll(first, "$1", filepath.Base(firstFile.Name())), "\\", "\\\\")
 
 	firstFile.WriteString(first)
 	secondFile.WriteString(second)

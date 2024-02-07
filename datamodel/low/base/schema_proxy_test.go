@@ -150,6 +150,7 @@ properties:
 
 	// do it again, but with no index
 	err = schC.Build(context.Background(), nil, idxNodeA.Content[0], nil)
+	assert.NoError(t, err)
 	origin = schC.GetSchemaReferenceLocation()
 	assert.Nil(t, origin)
 }

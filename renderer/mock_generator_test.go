@@ -6,29 +6,27 @@ package renderer
 import (
 	"context"
 	"encoding/json"
-	"strings"
-	"testing"
-
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"strings"
+	"testing"
 )
 
 type fakeMockable struct {
-	Schema   *highbase.SchemaProxy
+	Schema   *base.SchemaProxy
 	Example  any
-	Examples *orderedmap.Map[string, *highbase.Example]
+	Examples *orderedmap.Map[string, *base.Example]
 }
 
 type fakeMockableButWithASchemaNotAProxy struct {
-	Schema   *highbase.Schema
+	Schema   *base.Schema
 	Example  any
-	Examples *orderedmap.Map[string, *highbase.Example]
+	Examples *orderedmap.Map[string, *base.Example]
 }
 
 var simpleFakeMockSchema = `type: string
@@ -52,11 +50,11 @@ func createFakeMock(mock string, values map[string]any, example any) *fakeMockab
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
 		Value: &lowProxy,
 	}
-	highSchema := highbase.NewSchemaProxy(&lowRef)
-	examples := orderedmap.New[string, *highbase.Example]()
+	highSchema := base.NewSchemaProxy(&lowRef)
+	examples := orderedmap.New[string, *base.Example]()
 
 	for k, v := range values {
-		examples.Set(k, &highbase.Example{
+		examples.Set(k, &base.Example{
 			Value: utils.CreateYamlNode(v),
 		})
 	}
@@ -75,11 +73,11 @@ func createFakeMockWithoutProxy(mock string, values map[string]any, example any)
 	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
 		Value: &lowProxy,
 	}
-	highSchema := highbase.NewSchemaProxy(&lowRef)
-	examples := orderedmap.New[string, *highbase.Example]()
+	highSchema := base.NewSchemaProxy(&lowRef)
+	examples := orderedmap.New[string, *base.Example]()
 
 	for k, v := range values {
-		examples.Set(k, &highbase.Example{
+		examples.Set(k, &base.Example{
 			Value: utils.CreateYamlNode(v),
 		})
 	}
@@ -104,7 +102,6 @@ func TestMockGenerator_GenerateJSONMock_NoObject(t *testing.T) {
 	mg := NewMockGenerator(JSON)
 
 	var isNil any
-	isNil = nil
 
 	mock, err := mg.GenerateMock(isNil, "")
 	assert.NoError(t, err)
@@ -113,7 +110,6 @@ func TestMockGenerator_GenerateJSONMock_NoObject(t *testing.T) {
 
 func TestMockGenerator_GenerateJSONMock_BadObject(t *testing.T) {
 	type NotMockable struct {
-		pizza string
 	}
 
 	mg := NewMockGenerator(JSON)
