@@ -330,10 +330,11 @@ func (i *IndexingError) Error() string {
 
 // DescriptionReference holds data about a description that was found and where it was found.
 type DescriptionReference struct {
-	Content   string
-	Path      string
-	Node      *yaml.Node
-	IsSummary bool
+	Content    string
+	Path       string
+	Node       *yaml.Node
+	ParentNode *yaml.Node
+	IsSummary  bool
 }
 
 type EnumReference struct {

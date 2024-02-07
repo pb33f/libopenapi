@@ -57,6 +57,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 				}
 				ref := &Reference{
+					ParentNode:     parent,
 					FullDefinition: fullDefinitionPath,
 					Definition:     definitionPath,
 					Node:           node.Content[i+1],
@@ -132,6 +133,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
 					ref := &Reference{
+						ParentNode:     parent,
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
 						Node:           prop,
@@ -178,6 +180,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 
 					ref := &Reference{
+						ParentNode:     parent,
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
 						Node:           element,
@@ -337,6 +340,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
 					ref := &Reference{
+						ParentNode:     parent,
 						FullDefinition: fullDefinitionPath,
 						Definition:     componentName,
 						Name:           name,
@@ -364,6 +368,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if len(node.Content) > 2 {
 						copiedNode := *node
 						copied := Reference{
+							ParentNode:     parent,
 							FullDefinition: fullDefinitionPath,
 							Definition:     ref.Definition,
 							Name:           ref.Name,
@@ -434,10 +439,11 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					}
 
 					ref := &DescriptionReference{
-						Content:   node.Content[i+1].Value,
-						Path:      jsonPath,
-						Node:      node.Content[i+1],
-						IsSummary: false,
+						ParentNode: parent,
+						Content:    node.Content[i+1].Value,
+						Path:       jsonPath,
+						Node:       node.Content[i+1],
+						IsSummary:  false,
 					}
 
 					if !utils.IsNodeMap(ref.Node) {
@@ -455,10 +461,11 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						b = node.Content[i+1]
 					}
 					ref := &DescriptionReference{
-						Content:   b.Value,
-						Path:      jsonPath,
-						Node:      b,
-						IsSummary: true,
+						ParentNode: parent,
+						Content:    b.Value,
+						Path:       jsonPath,
+						Node:       b,
+						IsSummary:  true,
 					}
 
 					index.allSummaries = append(index.allSummaries, ref)
@@ -528,11 +535,11 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 					if enumKeyValueNode != nil {
 						ref := &EnumReference{
+							ParentNode: parent,
 							Path:       jsonPath,
 							Node:       node.Content[i+1],
 							Type:       enumKeyValueNode,
 							SchemaNode: node,
-							ParentNode: parent,
 						}
 
 						index.allEnums = append(index.allEnums, ref)
