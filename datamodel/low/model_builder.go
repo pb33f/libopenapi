@@ -448,7 +448,6 @@ func SetField(field *reflect.Value, valueNode *yaml.Node, keyNode *yaml.Node) {
 		// we want to ignore everything else, each model handles its own complex types.
 		break
 	}
-	return
 }
 
 // BuildModelAsync is a convenience function for calling BuildModel from a goroutine, requires a sync.WaitGroup

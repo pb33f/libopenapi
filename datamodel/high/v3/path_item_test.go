@@ -10,7 +10,6 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +28,7 @@ func TestPathItem(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 	idx := index.NewSpecIndex(&idxNode)
 
-	var n v3.PathItem
+	var n lowV3.PathItem
 	_ = low.BuildModel(&idxNode, &n)
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
@@ -63,7 +62,7 @@ trace:
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 	idx := index.NewSpecIndex(&idxNode)
 
-	var n v3.PathItem
+	var n lowV3.PathItem
 	_ = low.BuildModel(&idxNode, &n)
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 

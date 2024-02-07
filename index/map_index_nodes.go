@@ -49,18 +49,18 @@ func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
 	cruising := make(chan bool)
 	nodeChan := make(chan *nodeMap)
 	go func(nodeChan chan *nodeMap) {
-		for {
-			select {
-			case node, ok := <-nodeChan:
-				if !ok {
-					cruising <- true
-					return
-				}
-				if index.nodeMap[node.line] == nil {
-					index.nodeMap[node.line] = make(map[int]*yaml.Node)
-				}
-				index.nodeMap[node.line][node.column] = node.node
+		done := false
+		for !done {
+			node, ok := <-nodeChan
+			if !ok {
+				done = true
+				cruising <- true
+				return
 			}
+			if index.nodeMap[node.line] == nil {
+				index.nodeMap[node.line] = make(map[int]*yaml.Node)
+			}
+			index.nodeMap[node.line][node.column] = node.node
 		}
 	}(nodeChan)
 	go enjoyALuxuryCruise(rootNode, nodeChan, true)

@@ -177,9 +177,7 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 
 		// render the schema as our last hope.
 		renderMap := mg.renderer.RenderSchema(schemaValue)
-		if renderMap != nil {
-			return mg.renderMock(renderMap), nil
-		}
+		return mg.renderMock(renderMap), nil
 	}
 	return nil, nil
 }

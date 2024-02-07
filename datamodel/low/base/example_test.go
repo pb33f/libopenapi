@@ -62,6 +62,7 @@ x-cake: hot`
 
 	var example string
 	err = n.Value.Value.Decode(&example)
+	require.NoError(t, err)
 	assert.Equal(t, "a string example", example)
 
 	var xCake string

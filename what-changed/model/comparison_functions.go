@@ -340,10 +340,9 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 	// wait for all done signals.
 	completed := 0
 	for completed < count {
-		select {
-		case <-doneChan:
-			completed++
-		}
+		<-doneChan
+		completed++
+
 	}
 	return expChanges
 }

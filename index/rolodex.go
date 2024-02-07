@@ -72,7 +72,6 @@ type Rolodex struct {
 	infiniteCircularReferences []*CircularReferenceResult
 	ignoredCircularReferences  []*CircularReferenceResult
 	logger                     *slog.Logger
-	rolodex                    *Rolodex
 }
 
 // NewRolodex creates a new rolodex with the provided index configuration.

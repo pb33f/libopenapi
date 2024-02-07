@@ -86,7 +86,7 @@ func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 	// dive into the schema and render it
 	structure := make(map[string]any)
 	wr.DiveIntoSchema(schema, rootType, structure, 0)
-	return structure[rootType].(any)
+	return structure[rootType]
 }
 
 // DisableRequiredCheck will disable the required check when rendering a schema. This means that all properties
@@ -171,12 +171,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			case uuidType:
 				structure[key] = wr.PseudoUUID()
 			case byteType:
-				structure[key] = fmt.Sprintf("%x", wr.RandomWord(minLength, maxLength, 0))
+				structure[key] = wr.RandomWord(minLength, maxLength, 0)
 			case passwordType:
-				structure[key] = fmt.Sprintf("%s", wr.RandomWord(minLength, maxLength, 0))
+				structure[key] = wr.RandomWord(minLength, maxLength, 0)
 			case binaryType:
-				structure[key] = fmt.Sprintf("%s",
-					base64.StdEncoding.EncodeToString([]byte(wr.RandomWord(minLength, maxLength, 0))))
+				structure[key] = base64.StdEncoding.EncodeToString([]byte(wr.RandomWord(minLength, maxLength, 0)))
 			default:
 				// if there is a pattern supplied, then try and generate a string from it.
 				if schema.Pattern != "" {

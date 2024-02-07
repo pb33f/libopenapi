@@ -20,7 +20,7 @@ func (r *Rolodex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
 		}
 		d <- true
 	}
-	for i, _ := range r.indexes {
+	for i := range r.indexes {
 		go findNode(i, node)
 	}
 	searched := 0

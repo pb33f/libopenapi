@@ -96,6 +96,7 @@ x-shoes: old`
 	assert.NoError(t, err)
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
 
 	// check hash
 	assert.Equal(t, "3da5051dcd82a06f8e4c7698cdec03550ae1988ee54d96d4c4a90a5c8f9d7b2b",

@@ -9,15 +9,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
 	"golang.org/x/exp/slices"
 	"gopkg.in/yaml.v3"
 )
-
-var windowsDriveDetector = regexp.MustCompile(`^([a-zA-Z]:)`)
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
@@ -108,7 +105,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							skip = true
 							break
 						}
-						// look for any extension in the path that begins with 'x-'
+						// look for any extension in the path and ignore it
 						if strings.HasPrefix(p, "x-") {
 							skip = true
 							break
@@ -638,9 +635,8 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	}
 
 	var refsToCheck []*Reference
-	for _, ref := range refs {
-		refsToCheck = append(refsToCheck, ref)
-	}
+	refsToCheck = append(refsToCheck, refs...)
+
 	mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))
 
 	for r := range refsToCheck {

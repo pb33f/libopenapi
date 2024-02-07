@@ -26,6 +26,7 @@ func TestOAuthFlow_MarshalYAML(t *testing.T) {
 	}
 
 	rend, _ := oflow.Render()
+	assert.NotNil(t, rend)
 
 	desired := `authorizationUrl: https://pb33f.io
 tokenUrl: https://pb33f.io/token

@@ -41,6 +41,7 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	rolo.SetRootNode(node)
 
 	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
 	rolo.Resolve()
 
 	assert.Len(t, rolo.indexes, 4)
@@ -109,6 +110,7 @@ func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 	rolo.SetRootNode(node)
 
 	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
 	rolo.Resolve()
 
 	assert.Len(t, rolo.indexes, 4)

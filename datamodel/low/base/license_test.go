@@ -70,6 +70,7 @@ description: the ranch`
 	// create low level objects
 	var lDoc License
 	err := low.BuildModel(lNode.Content[0], &lDoc)
+	assert.NoError(t, err)
 
 	err = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
 

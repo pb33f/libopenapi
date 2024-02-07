@@ -9,7 +9,6 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +36,7 @@ options:
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 	idx := index.NewSpecIndex(&idxNode)
 
-	var n v2.PathItem
+	var n lowV2.PathItem
 	_ = low.BuildModel(&idxNode, &n)
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 
@@ -85,10 +84,10 @@ func TestPathItem_GetOperations_LowWithUnsetOperations(t *testing.T) {
 
 func TestPathItem_NewPathItem_WithParameters(t *testing.T) {
 	pi := NewPathItem(&lowV2.PathItem{
-		Parameters: low.NodeReference[[]low.ValueReference[*v2.Parameter]]{
-			Value: []low.ValueReference[*v2.Parameter]{
+		Parameters: low.NodeReference[[]low.ValueReference[*lowV2.Parameter]]{
+			Value: []low.ValueReference[*lowV2.Parameter]{
 				{
-					Value: &v2.Parameter{},
+					Value: &lowV2.Parameter{},
 				},
 			},
 			ValueNode: &yaml.Node{},

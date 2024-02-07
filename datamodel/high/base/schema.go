@@ -347,11 +347,9 @@ func NewSchema(schema *base.Schema) *Schema {
 		}
 		j := 0
 		for j < totalSchemas {
-			select {
-			case r := <-bChan:
-				j++
-				(*items)[r.idx] = r.s
-			}
+			r := <-bChan
+			j++
+			(*items)[r.idx] = r.s
 		}
 		doneChan <- true
 	}
@@ -440,12 +438,10 @@ func NewSchema(schema *base.Schema) *Schema {
 	if children > 0 {
 	allDone:
 		for {
-			select {
-			case <-polyCompletedChan:
-				completeChildren++
-				if children == completeChildren {
-					break allDone
-				}
+			<-polyCompletedChan
+			completeChildren++
+			if children == completeChildren {
+				break allDone
 			}
 		}
 	}

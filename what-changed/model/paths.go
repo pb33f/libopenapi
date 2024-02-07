@@ -122,10 +122,8 @@ func ComparePaths(l, r any) *PathsChanges {
 		// wait for the things to be done.
 		completedChecks := 0
 		for completedChecks < pathsChecked {
-			select {
-			case <-doneChan:
-				completedChecks++
-			}
+			<-doneChan
+			completedChecks++
 		}
 		if len(pathChanges) > 0 {
 			pc.PathItemsChanges = pathChanges
@@ -197,10 +195,8 @@ func ComparePaths(l, r any) *PathsChanges {
 		// wait for the things to be done.
 		completedChecks := 0
 		for completedChecks < pathsChecked {
-			select {
-			case <-doneChan:
-				completedChecks++
-			}
+			<-doneChan
+			completedChecks++
 		}
 		if len(pathChanges) > 0 {
 			pc.PathItemsChanges = pathChanges
