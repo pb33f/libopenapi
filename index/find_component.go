@@ -111,24 +111,8 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		file := strings.ReplaceAll(uri[0], "file:", "")
 
 		var absoluteFileLocation, fileName string
-
-		// is this a local or a remote file?
 		fileName = filepath.Base(file)
-		if filepath.IsAbs(file) || strings.HasPrefix(file, "http") {
-			absoluteFileLocation = file
-		} else {
-			if index.specAbsolutePath != "" {
-				if index.config.BaseURL == nil {
-
-					// consider the file local
-					dir := filepath.Dir(index.config.SpecAbsolutePath)
-					if !strings.HasPrefix(file, ".") {
-						file = fmt.Sprintf("./%s", file)
-					}
-					absoluteFileLocation, _ = filepath.Abs(filepath.Join(dir, file))
-				}
-			}
-		}
+		absoluteFileLocation = file
 
 		// if the absolute file location has no file ext, then get the rolodex root.
 		ext := filepath.Ext(absoluteFileLocation)
