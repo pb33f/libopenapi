@@ -122,6 +122,9 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 
 					// consider the file local
 					dir := filepath.Dir(index.config.SpecAbsolutePath)
+					if !strings.HasPrefix(file, ".") {
+						file = fmt.Sprintf("./%s", file)
+					}
 					absoluteFileLocation, _ = filepath.Abs(filepath.Join(dir, file))
 				}
 			}

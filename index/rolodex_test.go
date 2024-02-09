@@ -1537,10 +1537,10 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 
 	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.Nil(t, rolo.GetRootIndex())
-	assert.Len(t, rolo.GetIndexes(), 9)
+	assert.Len(t, rolo.GetIndexes(), 10)
 
 	assert.NoError(t, err)
-	assert.Len(t, rolo.indexes, 9)
+	assert.Len(t, rolo.indexes, 10)
 
 	// open components.yaml
 	f, rerr := rolo.Open("components.yaml")
