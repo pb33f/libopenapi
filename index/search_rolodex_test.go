@@ -127,3 +127,43 @@ func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 	origin := rolo.FindNodeOrigin(&o)
 	assert.Nil(t, origin)
 }
+
+func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
+
+	yml := `paths:
+  /test:
+    $ref: 'rolodex_test_data/paths/paths.yaml'
+  /test-2:
+    $ref: './rolodex_test_data/paths/paths.yaml'
+`
+
+	baseDir := "."
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	rolo.SetRootNode(&rootNode)
+
+	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
+	rolo.Resolve()
+
+	assert.Len(t, rolo.indexes, 2)
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+
+}

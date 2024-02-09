@@ -132,6 +132,32 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 		// extract the index from the rolodex file.
 		if rFile != nil {
+
+			n := rFile.GetFullPath()
+			refParsed := ref
+
+			// do we have a relative reference and an exact match on the suffix?
+			if strings.HasPrefix(ref, "./") {
+				refParsed = strings.ReplaceAll(ref, "./", "")
+			}
+
+			if strings.HasSuffix(n, refParsed) {
+				node, _ := rFile.GetContentAsYAMLNode()
+				if node != nil {
+					return &Reference{
+						FullDefinition: n,
+						Definition:     n,
+						IsRemote:       true,
+						RemoteLocation: n,
+						Index:          index,
+						Node:           node.Content[0],
+						ParentNode:     node,
+					}, index, ctx
+				} else {
+					return nil, index, ctx
+				}
+			}
+
 			idx := rFile.GetIndex()
 			if index.resolver != nil {
 				index.resolver.indexesVisited++

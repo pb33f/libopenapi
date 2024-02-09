@@ -1,0 +1,9 @@
+/some/path:
+  get:
+    responses:
+      '200':
+        description: OK
+        content:
+          application/json:
+            schema:
+              $ref: '../components.yaml#/components/schemas/Ding'
