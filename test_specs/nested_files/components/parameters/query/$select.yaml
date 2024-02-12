@@ -1,0 +1,8 @@
+name: $select
+description: Selects the columns or properties in the result set. This cannot be combined with any other query params!
+# https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/query-data-web-api#select-columns
+in: query
+required: false
+schema:
+  type: string
+example: RowId,Description

@@ -1,0 +1,42 @@
+get:
+  summary: TODO
+  description: TODO
+  security:
+  - BearerAuth: []
+  tags:
+    - Account
+  operationId: getAccounts
+  parameters:
+    - $ref: ../components/parameters/query/$select.yaml
+    - $ref: ../components/parameters/header/page-size.yaml
+  responses:
+    "200":
+      $ref: ../components/responses/Unspecified200.yaml
+
+post:
+  summary: TODO
+  description: TODO
+  security:
+  - BearerAuth: []
+  tags:
+    - Account
+  operationId: createAccounts
+  requestBody:
+    $ref: ../components/requestBodies/AccountModel.yaml
+  responses:
+    "200":
+      $ref: ../components/responses/Unspecified200.yaml
+
+put:
+  summary: TODO
+  description: TODO
+  security:
+  - BearerAuth: []
+  tags:
+    - Account
+  operationId: updateAccounts
+  requestBody:
+    $ref: ../components/requestBodies/AccountModel.yaml
+  responses:
+    "200":
+      $ref: ../components/responses/Unspecified200.yaml
