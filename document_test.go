@@ -1310,3 +1310,19 @@ x-string: test`)
 		t.Errorf("expected x-time to be '2020-12-24T12:00:00Z', but got %v", extVal)
 	}
 }
+
+func TestDocument_TestNestedFiles(t *testing.T) {
+	spec, err := os.ReadFile("test_specs/nested_files/openapi.yaml")
+	require.NoError(t, err)
+
+	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+		BasePath:                            "./test_specs/nested_files",
+		IgnorePolymorphicCircularReferences: true,
+		IgnoreArrayCircularReferences:       true,
+		AllowFileReferences:                 true,
+	})
+	require.NoError(t, err)
+
+	_, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+}

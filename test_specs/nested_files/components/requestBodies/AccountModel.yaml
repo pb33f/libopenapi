@@ -1,0 +1,6 @@
+name: AccountModel
+description: TODO
+content:
+  application/json:
+    schema:
+      $ref: ../schemas/AccountModel.yaml

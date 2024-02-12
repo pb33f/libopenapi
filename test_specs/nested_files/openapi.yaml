@@ -1,0 +1,21 @@
+---
+openapi: 3.0.0
+info:
+  description: Example API spec
+  version: v1
+  title: Example
+  contact:
+    name: Example
+    email: example@example.com
+    url: www.example.com
+  license:
+    name: Example
+    url: www.example.com
+tags:
+  - name: Account
+    description: Account
+servers:
+  - url: https://<hidden>
+paths:
+  /api/v1/Accounts:
+    $ref: "paths/v1_Accounts.yaml"

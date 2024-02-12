@@ -1,0 +1,73 @@
+type: object
+properties:
+  AccountId:
+    type: string
+    description: TODO
+  Name:
+    type: string
+    description: TODO
+  DepartmentId:
+    type: string
+    description: TODO
+  ForCustomerOperators:
+    type: boolean
+    description: TODO
+  ForPartIssues:
+    type: boolean
+    description: TODO
+  ForPurchaseOrders:
+    type: boolean
+    description: TODO
+  IsActive:
+    type: boolean
+    description: TODO
+  ExternalIdentifier:
+    type: string
+    description: TODO
+  Invalidated:
+    type: boolean
+    description: TODO
+  ExternalEntity:
+    type: string
+    description: TODO
+  ExternalFund:
+    type: string
+    description: TODO
+  ExternalOrganization:
+    type: string
+    description: TODO
+  ExternalAccount:
+    type: string
+    description: TODO
+  ExternalProject:
+    type: string
+    description: TODO
+  ExternalProgram:
+    type: string
+    description: TODO
+  ExternalSource:
+    type: string
+    description: TODO
+  ExternalOther1:
+    type: string
+    description: TODO
+  ExternalOther2:
+    type: string
+    description: TODO
+  SupportsAllTasks:
+    type: boolean
+    description: TODO
+  EnforceTasks:
+    type: boolean
+    description: TODO
+  MobileUniqueId:
+    format: int32
+    type: integer
+    description: TODO
+  TypeName:
+    type: string
+    description: TODO
+    readOnly: true
+  UID:
+    type: string
+    description: TODO
