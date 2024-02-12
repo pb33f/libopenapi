@@ -149,10 +149,10 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 						Definition:     n,
 						IsRemote:       true,
 						RemoteLocation: n,
-						Index:          index,
+						Index:          rFile.GetIndex(),
 						Node:           node.Content[0],
 						ParentNode:     node,
-					}, index, ctx
+					}, rFile.GetIndex(), ctx
 				} else {
 					return nil, index, ctx
 				}
