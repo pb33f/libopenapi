@@ -1886,3 +1886,35 @@ func TestBuildSchema_BadNodeTypes(t *testing.T) {
 	<-doneChan
 	assert.Equal(t, "build schema failed: unexpected data type: 'unknown', line 1, col 2", err.Error())
 }
+
+func TestExtractSchema_CheckPathAndSpec(t *testing.T) {
+
+	yml := `openapi: 3.0.3
+components:
+  schemas:
+    Something:
+      $ref: ''`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+
+	yml = `schema:
+  $ref: "#/"`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "test")
+	idx.SetAbsolutePath("/not/there")
+	res, e := ExtractSchema(ctx, idxNode.Content[0], idx)
+	assert.Nil(t, res)
+	assert.Equal(t, "schema build failed: reference '#/' cannot be found at line 2, col 9", e.Error())
+
+}
