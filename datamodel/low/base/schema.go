@@ -1221,6 +1221,15 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 		if schNode != nil {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
+				var specPath string
+				if ctx != nil && ctx.Value(index.CurrentPathKey) != nil {
+					specPath = ctx.Value(index.CurrentPathKey).(string)
+				}
+				if idx.GetSpecAbsolutePath() != specPath && (!strings.HasPrefix(refLocation, "http") &&
+					!strings.HasPrefix(idx.GetSpecAbsolutePath(), "http")) {
+					ctx = context.WithValue(ctx, index.CurrentPathKey, idx.GetSpecAbsolutePath())
+				}
+
 				ref, _, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
 				if ref != nil {
 					refNode = schNode
