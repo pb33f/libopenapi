@@ -1,0 +1,5 @@
+name: page-size
+description: Specify the number of results to return per page.
+in: header
+schema:
+  type: integer

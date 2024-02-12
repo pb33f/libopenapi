@@ -1,0 +1,5 @@
+description: Unspecified 200 success object response
+content:
+  application/json:
+    schema:
+      type: object
