@@ -1316,10 +1316,8 @@ func TestDocument_TestNestedFiles(t *testing.T) {
 	require.NoError(t, err)
 
 	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
-		BasePath:                            "./test_specs/nested_files",
-		IgnorePolymorphicCircularReferences: true,
-		IgnoreArrayCircularReferences:       true,
-		AllowFileReferences:                 true,
+		BasePath:            "./test_specs/nested_files",
+		AllowFileReferences: true,
 	})
 	require.NoError(t, err)
 
