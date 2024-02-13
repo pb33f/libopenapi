@@ -152,7 +152,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 						Index:          rFile.GetIndex(),
 						Node:           node.Content[0],
 						ParentNode:     node,
-					}, rFile.GetIndex(), ctx
+					}, rFile.GetIndex(), context.WithValue(ctx, CurrentPathKey, rFile.GetFullPath())
 				} else {
 					return nil, index, ctx
 				}

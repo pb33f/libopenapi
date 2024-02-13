@@ -6,14 +6,13 @@ package index
 import (
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -606,38 +605,54 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	}
 
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
-		located := index.FindComponent(ref.FullDefinition)
-		if located != nil {
-
-			// have we already mapped this?
-			index.refLock.Lock()
-			if index.allMappedRefs[ref.FullDefinition] == nil {
-				found = append(found, located)
-				index.allMappedRefs[located.FullDefinition] = located
-			}
+		index.refLock.Lock()
+		if index.allMappedRefs[ref.FullDefinition] != nil {
 			rm := &ReferenceMapped{
 				OriginalReference: ref,
-				Reference:         located,
-				Definition:        located.Definition,
-				FullDefinition:    located.FullDefinition,
+				Reference:         index.allMappedRefs[ref.FullDefinition],
+				Definition:        index.allMappedRefs[ref.FullDefinition].Definition,
+				FullDefinition:    index.allMappedRefs[ref.FullDefinition].FullDefinition,
 			}
 			sequence[refIndex] = rm
-			index.refLock.Unlock()
-
-		} else {
-
-			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
-			indexError := &IndexingError{
-				Err:  fmt.Errorf("component '%s' does not exist in the specification", ref.Definition),
-				Node: ref.Node,
-				Path: path,
+			if !index.config.ExtractRefsSequentially {
+				c <- true
 			}
-			index.errorLock.Lock()
-			index.refErrors = append(index.refErrors, indexError)
-			index.errorLock.Unlock()
-		}
-		if !index.config.ExtractRefsSequentially {
-			c <- true
+			index.refLock.Unlock()
+		} else {
+			index.refLock.Unlock()
+			located := index.FindComponent(ref.FullDefinition)
+			if located != nil {
+
+				// have we already mapped this?
+				index.refLock.Lock()
+				if index.allMappedRefs[ref.FullDefinition] == nil {
+					found = append(found, located)
+					index.allMappedRefs[located.FullDefinition] = located
+				}
+				rm := &ReferenceMapped{
+					OriginalReference: ref,
+					Reference:         located,
+					Definition:        located.Definition,
+					FullDefinition:    located.FullDefinition,
+				}
+				sequence[refIndex] = rm
+				index.refLock.Unlock()
+
+			} else {
+
+				_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
+				indexError := &IndexingError{
+					Err:  fmt.Errorf("component '%s' does not exist in the specification", ref.Definition),
+					Node: ref.Node,
+					Path: path,
+				}
+				index.errorLock.Lock()
+				index.refErrors = append(index.refErrors, indexError)
+				index.errorLock.Unlock()
+			}
+			if !index.config.ExtractRefsSequentially {
+				c <- true
+			}
 		}
 	}
 
@@ -653,7 +668,6 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		} else {
 			locate(refsToCheck[r], r, mappedRefsInSequence) // run synchronously
 		}
-
 	}
 
 	if !index.config.ExtractRefsSequentially {
