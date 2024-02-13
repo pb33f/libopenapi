@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"gopkg.in/yaml.v3"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -13,6 +11,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"gopkg.in/yaml.v3"
 )
 
 type Case int8
@@ -107,7 +108,6 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 	jsonPath = FixContext(jsonPath)
 
 	path, err := yamlpath.NewPath(jsonPath)
-
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 	// this can spin out, to lets gatekeep it.
 	done := make(chan bool)
 	var results []*yaml.Node
-	timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	timeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	go func(d chan bool) {
 		results, _ = path.Find(node)
