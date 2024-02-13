@@ -1015,23 +1015,25 @@ func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex
 			}
 
 			foundCtx := ctx
+			foundIdx := idx
 			// check our prop isn't reference
 			refString := ""
 			var refNode *yaml.Node
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
+				ref, fIdx, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
 				if ref != nil {
 					refNode = prop
 					prop = ref
 					refString = l
 					foundCtx = fctx
+					foundIdx = fIdx
 				} else {
 					return nil, fmt.Errorf("schema properties build failed: cannot find reference %s, line %d, col %d",
 						prop.Content[1].Value, prop.Content[1].Line, prop.Content[1].Column)
 				}
 			}
 
-			sp := &SchemaProxy{ctx: foundCtx, kn: currentProp, vn: prop, idx: idx}
+			sp := &SchemaProxy{ctx: foundCtx, kn: currentProp, vn: prop, idx: foundIdx}
 			sp.SetReference(refString, refNode)
 
 			propertyMap.Set(low.KeyReference[string]{
@@ -1200,14 +1202,16 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 	refLocation := ""
 	var refNode *yaml.Node
 
+	foundIndex := idx
+	foundCtx := ctx
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			schNode = ref
 			schLabel = rl
-			ctx = nCtx
-			idx = fIdx
+			foundCtx = nCtx
+			foundIndex = fIdx
 		} else {
 			v := root.Content[1].Value
 			if root.Content[1].Value == "" {
@@ -1227,18 +1231,19 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 				}
 				if idx.GetSpecAbsolutePath() != specPath && (!strings.HasPrefix(refLocation, "http") &&
 					!strings.HasPrefix(idx.GetSpecAbsolutePath(), "http")) {
-					ctx = context.WithValue(ctx, index.CurrentPathKey, idx.GetSpecAbsolutePath())
+					if !strings.HasSuffix(idx.GetSpecAbsolutePath(), "root.yaml") {
+						ctx = context.WithValue(ctx, index.CurrentPathKey, idx.GetSpecAbsolutePath())
+					}
 				}
 
-				ref, _, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
+				ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
 				if ref != nil {
 					refNode = schNode
 					schNode = ref
-					//if foundIdx != nil {
-					// TODO: check on this
-					// idx = foundIdx
-					//}
-					ctx = nCtx
+					if fIdx != nil {
+						foundIndex = fIdx
+					}
+					foundCtx = nCtx
 				} else {
 					v := schNode.Content[1].Value
 					if schNode.Content[1].Value == "" {
@@ -1253,7 +1258,7 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 
 	if schNode != nil {
 		// check if schema has already been built.
-		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: idx, ctx: ctx}
+		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: foundIndex, ctx: foundCtx}
 		schema.SetReference(refLocation, refNode)
 
 		n := &low.NodeReference[*SchemaProxy]{
