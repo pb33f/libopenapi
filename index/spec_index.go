@@ -1087,7 +1087,7 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 
 						// let's look at params, check if they are refs or inline.
 						params := pathPropertyNode.Content[y+1].Content
-						index.scanOperationParams(params, pathItemNode, "top")
+						index.scanOperationParams(params, pathPropertyNode.Content[y], pathItemNode, "top")
 					}
 
 					// method level params.
@@ -1096,7 +1096,7 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 							if z%2 == 0 {
 								if httpMethodProp.Value == "parameters" {
 									params := pathPropertyNode.Content[y+1].Content[z+1].Content
-									index.scanOperationParams(params, pathItemNode, prop.Value)
+									index.scanOperationParams(params, pathPropertyNode.Content[y+1].Content[z], pathItemNode, prop.Value)
 								}
 
 								// extract operation tags if set.
