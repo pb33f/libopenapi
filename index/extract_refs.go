@@ -60,6 +60,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					FullDefinition: fullDefinitionPath,
 					Definition:     definitionPath,
 					Node:           node.Content[i+1],
+					KeyNode:        node.Content[i],
 					Path:           jsonPath,
 					Index:          index,
 				}
@@ -136,6 +137,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
 						Node:           prop,
+						KeyNode:        node.Content[i],
 						Path:           jsonPath,
 						Index:          index,
 					}
@@ -183,6 +185,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
 						Node:           element,
+						KeyNode:        node.Content[i],
 						Path:           jsonPath,
 						Index:          index,
 					}
@@ -344,6 +347,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Definition:     componentName,
 						Name:           name,
 						Node:           node,
+						KeyNode:        node.Content[i+1],
 						Path:           p,
 						Index:          index,
 					}
@@ -442,6 +446,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Content:    node.Content[i+1].Value,
 						Path:       jsonPath,
 						Node:       node.Content[i+1],
+						KeyNode:    node.Content[i],
 						IsSummary:  false,
 					}
 
@@ -464,6 +469,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						Content:    b.Value,
 						Path:       jsonPath,
 						Node:       b,
+						KeyNode:    n,
 						IsSummary:  true,
 					}
 
@@ -507,6 +513,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 												Definition: b.Content[k].Content[g].Content[r].Value,
 												Path:       fmt.Sprintf("%s.security[%d].%s[%d]", jsonPath, k, secKey, r),
 												Node:       b.Content[k].Content[g].Content[r],
+												KeyNode:    b.Content[k].Content[g],
 											})
 
 											index.securityRequirementRefs[secKey][b.Content[k].Content[g].Content[r].Value] = refs
@@ -537,6 +544,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							ParentNode: parent,
 							Path:       jsonPath,
 							Node:       node.Content[i+1],
+							KeyNode:    node.Content[i],
 							Type:       enumKeyValueNode,
 							SchemaNode: node,
 						}
@@ -566,6 +574,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							index.allObjectsWithProperties = append(index.allObjectsWithProperties, &ObjectReference{
 								Path:       jsonPath,
 								Node:       node,
+								KeyNode:    n,
 								ParentNode: parent,
 							})
 						}
@@ -642,9 +651,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 				_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 				indexError := &IndexingError{
-					Err:  fmt.Errorf("component '%s' does not exist in the specification", ref.Definition),
-					Node: ref.Node,
-					Path: path,
+					Err:     fmt.Errorf("component '%s' does not exist in the specification", ref.Definition),
+					Node:    ref.Node,
+					Path:    path,
+					KeyNode: ref.KeyNode,
 				}
 				index.errorLock.Lock()
 				index.refErrors = append(index.refErrors, indexError)

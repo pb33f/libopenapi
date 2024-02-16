@@ -23,6 +23,7 @@ type Reference struct {
 	Definition            string
 	Name                  string
 	Node                  *yaml.Node
+	KeyNode               *yaml.Node
 	ParentNode            *yaml.Node
 	ParentNodeSchemaType  string   // used to determine if the parent node is an array or not.
 	ParentNodeTypes       []string // used to capture deep journeys, if any item is an array, we need to know.
@@ -319,9 +320,10 @@ type ExternalLookupFunction func(id string) (foundNode *yaml.Node, rootNode *yam
 
 // IndexingError holds data about something that went wrong during indexing.
 type IndexingError struct {
-	Err  error
-	Node *yaml.Node
-	Path string
+	Err     error
+	Node    *yaml.Node
+	KeyNode *yaml.Node
+	Path    string
 }
 
 func (i *IndexingError) Error() string {
@@ -332,6 +334,7 @@ func (i *IndexingError) Error() string {
 type DescriptionReference struct {
 	Content    string
 	Path       string
+	KeyNode    *yaml.Node
 	Node       *yaml.Node
 	ParentNode *yaml.Node
 	IsSummary  bool
@@ -339,6 +342,7 @@ type DescriptionReference struct {
 
 type EnumReference struct {
 	Node       *yaml.Node
+	KeyNode    *yaml.Node
 	Type       *yaml.Node
 	Path       string
 	SchemaNode *yaml.Node
@@ -347,6 +351,7 @@ type EnumReference struct {
 
 type ObjectReference struct {
 	Node       *yaml.Node
+	KeyNode    *yaml.Node
 	Path       string
 	ParentNode *yaml.Node
 }

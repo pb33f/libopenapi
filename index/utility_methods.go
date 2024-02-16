@@ -30,6 +30,7 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			FullDefinition:        fullDef,
 			Definition:            def,
 			Name:                  name,
+			KeyNode:               schemasNode,
 			Node:                  schema,
 			Path:                  fmt.Sprintf("$.components.schemas['%s']", name),
 			ParentNode:            schemasNode,
@@ -199,9 +200,11 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 
 func (index *SpecIndex) extractComponentParameters(paramsNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, param := range paramsNode.Content {
 		if i%2 == 0 {
 			name = param.Value
+			keyNode = param
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -209,6 +212,7 @@ func (index *SpecIndex) extractComponentParameters(paramsNode *yaml.Node, pathPr
 			Definition: def,
 			Name:       name,
 			Node:       param,
+			KeyNode:    keyNode,
 		}
 		index.allParameters[def] = ref
 	}
@@ -216,9 +220,11 @@ func (index *SpecIndex) extractComponentParameters(paramsNode *yaml.Node, pathPr
 
 func (index *SpecIndex) extractComponentRequestBodies(requestBodiesNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, reqBod := range requestBodiesNode.Content {
 		if i%2 == 0 {
 			name = reqBod.Value
+			keyNode = reqBod
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -226,6 +232,7 @@ func (index *SpecIndex) extractComponentRequestBodies(requestBodiesNode *yaml.No
 			Definition: def,
 			Name:       name,
 			Node:       reqBod,
+			KeyNode:    keyNode,
 		}
 		index.allRequestBodies[def] = ref
 	}
@@ -233,9 +240,11 @@ func (index *SpecIndex) extractComponentRequestBodies(requestBodiesNode *yaml.No
 
 func (index *SpecIndex) extractComponentResponses(responsesNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, response := range responsesNode.Content {
 		if i%2 == 0 {
 			name = response.Value
+			keyNode = response
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -243,6 +252,7 @@ func (index *SpecIndex) extractComponentResponses(responsesNode *yaml.Node, path
 			Definition: def,
 			Name:       name,
 			Node:       response,
+			KeyNode:    keyNode,
 		}
 		index.allResponses[def] = ref
 	}
@@ -250,9 +260,11 @@ func (index *SpecIndex) extractComponentResponses(responsesNode *yaml.Node, path
 
 func (index *SpecIndex) extractComponentHeaders(headersNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, header := range headersNode.Content {
 		if i%2 == 0 {
 			name = header.Value
+			keyNode = header
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -260,6 +272,7 @@ func (index *SpecIndex) extractComponentHeaders(headersNode *yaml.Node, pathPref
 			Definition: def,
 			Name:       name,
 			Node:       header,
+			KeyNode:    keyNode,
 		}
 		index.allHeaders[def] = ref
 	}
@@ -267,9 +280,11 @@ func (index *SpecIndex) extractComponentHeaders(headersNode *yaml.Node, pathPref
 
 func (index *SpecIndex) extractComponentCallbacks(callbacksNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, callback := range callbacksNode.Content {
 		if i%2 == 0 {
 			name = callback.Value
+			keyNode = callback
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -277,6 +292,7 @@ func (index *SpecIndex) extractComponentCallbacks(callbacksNode *yaml.Node, path
 			Definition: def,
 			Name:       name,
 			Node:       callback,
+			KeyNode:    keyNode,
 		}
 		index.allCallbacks[def] = ref
 	}
@@ -284,9 +300,11 @@ func (index *SpecIndex) extractComponentCallbacks(callbacksNode *yaml.Node, path
 
 func (index *SpecIndex) extractComponentLinks(linksNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, link := range linksNode.Content {
 		if i%2 == 0 {
 			name = link.Value
+			keyNode = link
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -294,6 +312,7 @@ func (index *SpecIndex) extractComponentLinks(linksNode *yaml.Node, pathPrefix s
 			Definition: def,
 			Name:       name,
 			Node:       link,
+			KeyNode:    keyNode,
 		}
 		index.allLinks[def] = ref
 	}
@@ -301,9 +320,11 @@ func (index *SpecIndex) extractComponentLinks(linksNode *yaml.Node, pathPrefix s
 
 func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, example := range examplesNode.Content {
 		if i%2 == 0 {
 			name = example.Value
+			keyNode = example
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -311,6 +332,7 @@ func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPr
 			Definition: def,
 			Name:       name,
 			Node:       example,
+			KeyNode:    keyNode,
 		}
 		index.allExamples[def] = ref
 	}
@@ -318,9 +340,11 @@ func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPr
 
 func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, schema := range securitySchemesNode.Content {
 		if i%2 == 0 {
 			name = schema.Value
+			keyNode = schema
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
@@ -331,6 +355,7 @@ func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yam
 			Definition:            def,
 			Name:                  name,
 			Node:                  schema,
+			KeyNode:               keyNode,
 			Path:                  fmt.Sprintf("$.components.securitySchemes.%s", name),
 			ParentNode:            securitySchemesNode,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(securitySchemesNode, map[string][]string{}, fullDef, index),
@@ -363,7 +388,7 @@ func seekRefEnd(index *SpecIndex, refName string) *Reference {
 	return ref
 }
 
-func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *yaml.Node, method string) {
+func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathItemNode *yaml.Node, method string) {
 	for i, param := range params {
 		// param is ref
 		if len(param.Content) > 0 && param.Content[0].Value == "$ref" {
@@ -436,6 +461,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, pathItemNode *y
 				Definition: vn.Value,
 				Name:       vn.Value,
 				Node:       param,
+				KeyNode:    keyNode,
 				Path:       path,
 			}
 			if index.paramOpRefs[pathItemNode.Value] == nil {

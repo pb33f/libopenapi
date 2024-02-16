@@ -25,16 +25,22 @@ import (
 // Every KeyReference will have its value checked against the string key and if there is a match, it will be
 // returned.
 func FindItemInOrderedMap[T any](item string, collection *orderedmap.Map[KeyReference[string], ValueReference[T]]) *ValueReference[T] {
+	_, v := FindItemInOrderedMapWithKey(item, collection)
+	return v
+}
+
+// FindItemInOrderedMapWithKey is the same as FindItemInOrderedMap, except this code returns the key as well as the value.
+func FindItemInOrderedMapWithKey[T any](item string, collection *orderedmap.Map[KeyReference[string], ValueReference[T]]) (*KeyReference[string], *ValueReference[T]) {
 	for pair := orderedmap.First(collection); pair != nil; pair = pair.Next() {
 		n := pair.Key()
 		if n.Value == item {
-			return pair.ValuePtr()
+			return &n, pair.ValuePtr()
 		}
 		if strings.EqualFold(item, n.Value) {
-			return pair.ValuePtr()
+			return &n, pair.ValuePtr()
 		}
 	}
-	return nil
+	return nil, nil
 }
 
 // HashExtensions will generate a hash from the low representation of extensions.
