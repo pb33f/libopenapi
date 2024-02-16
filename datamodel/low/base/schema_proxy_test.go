@@ -22,8 +22,11 @@ description: something`
 	var idxNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
-	err := sch.Build(context.Background(), &idxNode, idxNode.Content[0], nil)
+	ctx := context.WithValue(context.Background(), "key", "value")
+
+	err := sch.Build(ctx, &idxNode, idxNode.Content[0], nil)
 	assert.NoError(t, err)
+	assert.Equal(t, "value", sch.GetContext().Value("key"))
 
 	assert.Equal(t, "e20c009d370944d177c0b46e8fa29e15fadc3a6f9cca6bb251ff9e120265fc96",
 		low.GenerateHashString(&sch))
