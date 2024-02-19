@@ -1020,8 +1020,9 @@ func buildPropertyMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex
 			refString := ""
 			var refNode *yaml.Node
 			if h, _, l := utils.IsNodeRefValue(prop); h {
-				ref, fIdx, _, fctx := low.LocateRefNodeWithContext(ctx, prop, idx)
+				ref, fIdx, _, fctx := low.LocateRefNodeWithContext(foundCtx, prop, foundIdx)
 				if ref != nil {
+
 					refNode = prop
 					prop = ref
 					refString = l
@@ -1087,9 +1088,9 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 		syncChan := make(chan buildResult)
 
 		// build out a SchemaProxy for every sub-schema.
-		build := func(pctx context.Context, kn, vn *yaml.Node, rf *yaml.Node, schemaIdx int, c chan buildResult,
+		build := func(pctx context.Context, fIdx *index.SpecIndex, kn, vn *yaml.Node, rf *yaml.Node, schemaIdx int, c chan buildResult,
 			isRef bool, refLocation string,
-		) {
+		) buildResult {
 			// a proxy design works best here. polymorphism, pretty much guarantees that a sub-schema can
 			// take on circular references through polymorphism. Like the resolver, if we try and follow these
 			// journey's through hyperspace, we will end up creating endless amounts of threads, spinning off
@@ -1099,7 +1100,7 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			sp := new(SchemaProxy)
 			sp.kn = kn
 			sp.vn = vn
-			sp.idx = idx
+			sp.idx = fIdx
 			sp.ctx = pctx
 			if isRef {
 				sp.SetReference(refLocation, rf)
@@ -1108,25 +1109,28 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 				Value:     sp,
 				ValueNode: vn,
 			}
-			c <- buildResult{
+			return buildResult{
 				res: res,
 				idx: schemaIdx,
 			}
+
 		}
 
 		isRef := false
 		refLocation := ""
 		var refNode *yaml.Node
 		foundCtx := ctx
+		foundIdx := idx
 		if utils.IsNodeMap(valueNode) {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(valueNode); h {
 				isRef = true
-				ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, valueNode, idx)
+				ref, fIdx, _, fctx := low.LocateRefNodeWithContext(foundCtx, valueNode, foundIdx)
 				if ref != nil {
 					refNode = valueNode
 					valueNode = ref
 					foundCtx = fctx
+					foundIdx = fIdx
 				} else {
 					errors <- fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 						valueNode.Content[1].Value, valueNode.Content[1].Line, valueNode.Content[1].Column)
@@ -1135,8 +1139,7 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
-			go build(foundCtx, labelNode, valueNode, refNode, -1, syncChan, isRef, refLocation)
-			r := <-syncChan
+			r := build(foundCtx, foundIdx, labelNode, valueNode, refNode, -1, syncChan, isRef, refLocation)
 			schemas <- schemaProxyBuildResult{
 				k: low.KeyReference[string]{
 					KeyNode: labelNode,
@@ -1151,13 +1154,16 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			for i, vn := range valueNode.Content {
 				isRef = false
 				h := false
+				foundIdx = idx
+				foundCtx = ctx
 				if h, _, refLocation = utils.IsNodeRefValue(vn); h {
 					isRef = true
-					ref, _, _, fctx := low.LocateRefNodeWithContext(ctx, vn, idx)
+					ref, fIdx, _, fctx := low.LocateRefNodeWithContext(foundCtx, vn, foundIdx)
 					if ref != nil {
 						refNode = vn
 						vn = ref
 						foundCtx = fctx
+						foundIdx = fIdx
 					} else {
 						err := fmt.Errorf("build schema failed: reference cannot be found: %s, line %d, col %d",
 							vn.Content[1].Value, vn.Content[1].Line, vn.Content[1].Column)
@@ -1166,14 +1172,8 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 					}
 				}
 				refBuilds++
-				go build(foundCtx, vn, vn, refNode, i, syncChan, isRef, refLocation)
-			}
-
-			completedBuilds := 0
-			for completedBuilds < refBuilds {
-				res := <-syncChan
-				completedBuilds++
-				results[res.idx] = res.res
+				r := build(foundCtx, foundIdx, vn, vn, refNode, i, syncChan, isRef, refLocation)
+				results[r.idx] = r.res
 			}
 
 			for _, r := range results {
@@ -1225,18 +1225,7 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 		if schNode != nil {
 			h := false
 			if h, _, refLocation = utils.IsNodeRefValue(schNode); h {
-				var specPath string
-				if ctx != nil && ctx.Value(index.CurrentPathKey) != nil {
-					specPath = ctx.Value(index.CurrentPathKey).(string)
-				}
-				if idx.GetSpecAbsolutePath() != specPath && (!strings.HasPrefix(refLocation, "http") &&
-					!strings.HasPrefix(idx.GetSpecAbsolutePath(), "http")) {
-					if !strings.HasSuffix(idx.GetSpecAbsolutePath(), "root.yaml") {
-						ctx = context.WithValue(ctx, index.CurrentPathKey, idx.GetSpecAbsolutePath())
-					}
-				}
-
-				ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(ctx, schNode, idx)
+				ref, fIdx, _, nCtx := low.LocateRefNodeWithContext(foundCtx, schNode, foundIndex)
 				if ref != nil {
 					refNode = schNode
 					schNode = ref

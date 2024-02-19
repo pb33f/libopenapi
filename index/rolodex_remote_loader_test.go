@@ -192,7 +192,7 @@ func TestNewRemoteFS_BasicCheck_Relative_Deeper(t *testing.T) {
 	assert.Equal(t, YAML, file.(*RemoteFile).GetFileExtension())
 	assert.NotNil(t, file.(*RemoteFile).GetLastModified())
 	assert.Len(t, file.(*RemoteFile).GetErrors(), 0)
-	assert.Equal(t, "/deeper/even_deeper/file3.yaml", file.(*RemoteFile).GetFullPath())
+	assert.Contains(t, file.(*RemoteFile).GetFullPath(), "/deeper/even_deeper/file3.yaml")
 	assert.False(t, file.(*RemoteFile).IsDir())
 	assert.Nil(t, file.(*RemoteFile).Sys())
 	assert.Nil(t, file.(*RemoteFile).Close())

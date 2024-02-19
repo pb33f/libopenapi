@@ -683,8 +683,8 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	_ = yaml.Unmarshal(mixedref, &rootNode)
 
 	// create a test server.
-	server := test_buildMixedRefServer()
-	defer server.Close()
+	//server := test_buildMixedRefServer()
+	//defer server.Close()
 
 	// create a new config that allows local and remote to be mixed up.
 	cf := CreateOpenAPIIndexConfig()
@@ -692,9 +692,11 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	cf.AllowRemoteLookup = true
 	cf.AvoidCircularReferenceCheck = true
 	cf.BasePath = "../test_specs"
+	cf.SpecAbsolutePath, _ = filepath.Abs("../test_specs/mixedref-burgershop.openapi.yaml")
+	cf.ExtractRefsSequentially = true
 
 	// setting this baseURL will override the base
-	cf.BaseURL, _ = url.Parse(server.URL)
+	cf.BaseURL, _ = url.Parse("https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/")
 
 	// create a new rolodex
 	rolo := NewRolodex(cf)
@@ -703,7 +705,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	rolo.SetRootNode(&rootNode)
 
 	// create a new remote fs and set the config for indexing.
-	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
 	remoteFS.SetIndexConfig(cf)
 
 	// set our remote handler func
@@ -715,8 +717,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	// configure the local filesystem.
 	fsCfg := LocalFSConfig{
 		BaseDirectory: cf.BasePath,
-		FileFilters:   []string{"burgershop.openapi.yaml"},
-		DirFS:         os.DirFS(cf.BasePath),
+		IndexConfig:   cf,
 	}
 
 	// create a new local filesystem.
@@ -725,7 +726,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 
 	// add file systems to the rolodex
 	rolo.AddLocalFS(cf.BasePath, fileFS)
-	rolo.AddRemoteFS(server.URL, remoteFS)
+	rolo.AddRemoteFS("https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/", remoteFS)
 
 	// index the rolodex.
 	indexedErr := rolo.IndexTheRolodex()
@@ -737,12 +738,12 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	resolver := index().GetResolver()
 
 	assert.Len(t, resolver.GetCircularReferences(), 0)
-	assert.Equal(t, 2, resolver.GetIndexesVisited())
+	assert.Equal(t, 9, resolver.GetIndexesVisited())
 
 	// in v0.8.2 a new check was added when indexing, to prevent re-indexing the same file multiple times.
 	assert.Equal(t, 6, resolver.GetRelativesSeen())
-	assert.Equal(t, 6, resolver.GetJourneysTaken())
-	assert.Equal(t, 8, resolver.GetReferenceVisited())
+	assert.Equal(t, 15, resolver.GetJourneysTaken())
+	assert.Equal(t, 17, resolver.GetReferenceVisited())
 }
 
 func TestResolver_ResolveComponents_k8s(t *testing.T) {

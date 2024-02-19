@@ -200,13 +200,17 @@ func (resolver *Resolver) Resolve() []*ResolvingError {
 
 		if !resolver.circChecked {
 			resolver.resolvingErrors = append(resolver.resolvingErrors, &ResolvingError{
-				ErrorRef: fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Definition),
-				Node:     circRef.ParentNode,
-				Path:     circRef.GenerateJourneyPath(),
+				ErrorRef:          fmt.Errorf("infinite circular reference detected: %s", circRef.Start.Definition),
+				Node:              circRef.ParentNode,
+				Path:              circRef.GenerateJourneyPath(),
+				CircularReference: circRef,
 			})
 		}
 	}
-
+	resolver.specIndex.SetCircularReferences(resolver.circularReferences)
+	resolver.specIndex.SetIgnoredArrayCircularReferences(resolver.ignoredArrayReferences)
+	resolver.specIndex.SetIgnoredPolymorphicCircularReferences(resolver.ignoredPolyReferences)
+	resolver.circChecked = true
 	return resolver.resolvingErrors
 }
 
@@ -394,6 +398,9 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if foundRef != nil {
 				original = foundRef
 			}
+			if original == nil {
+				panic("help")
+			}
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve && !original.Circular {
 				ref.Resolved = true
@@ -489,10 +496,14 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				depth++
 
-				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(ref)
+				//refIsRef, _, _ := utils.IsNodeRefValue(ref.Node)
+				var foundRef *Reference
+				//if refIsRef {
+				foundRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(ref)
 				if foundRef != nil && !foundRef.Circular {
 					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
 				}
+				//	}
 				if foundRef == nil {
 					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
 				}

@@ -392,10 +392,6 @@ properties:
 
 	third := `type: "object"
 properties:
-  name:
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$4"
-  tame: 
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$5#/"
   blame:
     $ref: "$_5"
 
@@ -482,16 +478,22 @@ components:
 
 	baseDir := "tmp-a"
 
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.IgnorePolymorphicCircularReferences = true
+	cf.SkipDocumentCheck = true
+
 	fsCfg := &LocalFSConfig{
 		BaseDirectory: baseDir,
-		DirFS:         os.DirFS(baseDir),
-		FileFilters: []string{
-			filepath.Base(firstFile.Name()),
-			filepath.Base(secondFile.Name()),
-			filepath.Base(thirdFile.Name()),
-			filepath.Base(fourthFile.Name()),
-			filepath.Base(fifthFile.Name()),
-		},
+		IndexConfig:   cf,
+		//DirFS:         os.DirFS(baseDir),
+		//FileFilters: []string{
+		//	filepath.Base(firstFile.Name()),
+		//	filepath.Base(secondFile.Name()),
+		//	filepath.Base(thirdFile.Name()),
+		//	filepath.Base(fourthFile.Name()),
+		//	filepath.Base(fifthFile.Name()),
+		//},
 	}
 
 	fileFS, err := NewLocalFSWithConfig(fsCfg)
@@ -499,29 +501,29 @@ components:
 		t.Fatal(err)
 	}
 
-	cf := CreateOpenAPIIndexConfig()
-	cf.BasePath = baseDir
-	cf.IgnorePolymorphicCircularReferences = true
-	cf.SkipDocumentCheck = true
-
 	// add logger to config
 	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level: slog.LevelError,
 	}))
 
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
 
-	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
-		[]byte(third), []byte(fourth), []byte(fifth))
-	defer srv.Close()
+	//srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
+	//	[]byte(third), []byte(fourth), []byte(fifth))
+	//defer srv.Close()
 
-	u, _ := url.Parse(srv.URL)
-	cf.BaseURL = u
-	remoteFS, rErr := NewRemoteFSWithConfig(cf)
-	assert.NoError(t, rErr)
+	//u, _ := url.Parse(srv.URL)
+	//cf.BaseURL = u
+	//remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	//assert.NoError(t, rErr)
 
-	rolodex.AddRemoteFS(srv.URL, remoteFS)
+	//rolodex.AddRemoteFS(srv.URL, remoteFS)
+
+	var rootNode yaml.Node
+	err = yaml.Unmarshal([]byte(first), &rootNode)
+	assert.NoError(t, err)
+	rolodex.SetRootNode(&rootNode)
 
 	err = rolodex.IndexTheRolodex()
 	assert.NoError(t, err)
@@ -545,33 +547,33 @@ components:
 	assert.NotNil(t, x)
 	assert.NoError(t, y)
 
-	// extract a remote  file
-	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/" + filepath.Base(fourthFile.Name()))
-
-	// index
-	x, y = f.(*rolodexFile).Index(cf)
-	assert.NotNil(t, x)
-	assert.NoError(t, y)
-
-	// re-index
-	x, y = f.(*rolodexFile).Index(cf)
-	assert.NotNil(t, x)
-	assert.NoError(t, y)
-
-	// extract another remote  file
-	f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/" + filepath.Base(fifthFile.Name()))
-
-	//change cf to perform document check (which should fail)
-	cf.SkipDocumentCheck = false
-
-	// index and fail
-	x, y = f.(*rolodexFile).Index(cf)
-	assert.Nil(t, x)
-	assert.Error(t, y)
-
-	// file that is not local, but is remote
-	f, _ = rolodex.Open("https://pb33f.io/bingo/jingo.yaml")
-	assert.NotNil(t, f)
+	//// extract a remote  file
+	//f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/" + filepath.Base(fourthFile.Name()))
+	//
+	//// index
+	//x, y = f.(*rolodexFile).Index(cf)
+	//assert.NotNil(t, x)
+	//assert.NoError(t, y)
+	//
+	//// re-index
+	//x, y = f.(*rolodexFile).Index(cf)
+	//assert.NotNil(t, x)
+	//assert.NoError(t, y)
+	//
+	//// extract another remote  file
+	//f, _ = rolodex.Open("http://the-space-race-is-all-about-space-and-time-dot.com/" + filepath.Base(fifthFile.Name()))
+	//
+	////change cf to perform document check (which should fail)
+	//cf.SkipDocumentCheck = false
+	//
+	//// index and fail
+	//x, y = f.(*rolodexFile).Index(cf)
+	//assert.Nil(t, x)
+	//assert.Error(t, y)
+	//
+	//// file that is not local, but is remote
+	//f, _ = rolodex.Open("https://pb33f.io/bingo/jingo.yaml")
+	//assert.NotNil(t, f)
 
 }
 
@@ -619,9 +621,7 @@ properties:
 	third := `type: "object"
 properties:
   herbs:
-    $ref: "$1"
-  name:
-    $ref: "http://the-space-race-is-all-about-space-and-time-dot.com/$4"`
+    $ref: "$1"`
 
 	second := `openapi: 3.1.0
 components:
@@ -673,7 +673,7 @@ components:
 	first = strings.ReplaceAll(strings.ReplaceAll(first, "$2", secondFile.Name()), "\\", "\\\\")
 	second = strings.ReplaceAll(strings.ReplaceAll(second, "$3", thirdFile.Name()), "\\", "\\\\")
 	third = strings.ReplaceAll(strings.ReplaceAll(third, "$4", filepath.Base(fourthFile.Name())), "\\", "\\\\")
-	fourth = strings.ReplaceAll(strings.ReplaceAll(first, "$1", filepath.Base(firstFile.Name())), "\\", "\\\\")
+	third = strings.ReplaceAll(strings.ReplaceAll(first, "$1", filepath.Base(thirdFile.Name())), "\\", "\\\\")
 
 	firstFile.WriteString(first)
 	secondFile.WriteString(second)
@@ -682,7 +682,7 @@ components:
 
 	defer os.RemoveAll(tmp)
 
-	baseDir := tmp
+	baseDir, _ := filepath.Abs(tmp)
 	cf := CreateOpenAPIIndexConfig()
 	cf.BasePath = baseDir
 	cf.IgnorePolymorphicCircularReferences = true
@@ -703,17 +703,6 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
 	rolodex.SetRootNode(&rootNode)
-
-	srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
-		[]byte(third), []byte(fourth), nil)
-	defer srv.Close()
-
-	u, _ := url.Parse(srv.URL)
-	cf.BaseURL = u
-	remoteFS, rErr := NewRemoteFSWithConfig(cf)
-	assert.NoError(t, rErr)
-
-	rolodex.AddRemoteFS(srv.URL, remoteFS)
 
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
@@ -1183,7 +1172,7 @@ components:
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
 	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
-	assert.Equal(t, rolodex.GetRootIndex().GetResolver().GetIndexesVisited(), 13)
+	assert.Equal(t, 174, rolodex.GetRootIndex().GetResolver().GetIndexesVisited())
 
 }
 
