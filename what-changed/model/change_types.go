@@ -4,6 +4,7 @@
 package model
 
 import (
+	"encoding/json"
 	"gopkg.in/yaml.v3"
 )
 
@@ -90,6 +91,33 @@ type Change struct {
 
 	// NewObject represents the new object that has been modified.
 	NewObject any `json:"-" yaml:"-"`
+}
+
+// MarshalJSON is a custom JSON marshaller for the Change object.
+func (c *Change) MarshalJSON() ([]byte, error) {
+	changeType := ""
+	switch c.ChangeType {
+	case Modified:
+		changeType = "modified"
+	case PropertyAdded:
+		changeType = "property_added"
+	case ObjectAdded:
+		changeType = "object_added"
+	case ObjectRemoved:
+		changeType = "object_removed"
+	case PropertyRemoved:
+		changeType = "property_removed"
+	}
+	data := map[string]interface{}{
+		"change":     c.ChangeType,
+		"changeText": changeType,
+		"context":    c.Context,
+		"property":   c.Property,
+		"original":   c.Original,
+		"new":        c.New,
+		"breaking":   c.Breaking,
+	}
+	return json.Marshal(data)
 }
 
 // PropertyChanges holds a slice of Change pointers
