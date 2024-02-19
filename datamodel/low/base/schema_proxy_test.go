@@ -157,3 +157,10 @@ properties:
 	origin = schC.GetSchemaReferenceLocation()
 	assert.Nil(t, origin)
 }
+
+func TestSchemaProxy_Build_HashFail(t *testing.T) {
+
+	sp := new(SchemaProxy)
+	v := sp.Hash()
+	assert.Equal(t, [32]byte{}, v)
+}

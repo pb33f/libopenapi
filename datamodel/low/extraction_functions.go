@@ -608,8 +608,6 @@ type mappingResult[T any] struct {
 type buildInput struct {
 	label *yaml.Node
 	value *yaml.Node
-	ctx   context.Context
-	idx   *index.SpecIndex
 }
 
 // ExtractMapExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
@@ -826,6 +824,9 @@ func ExtractMap[PT Buildable[N], N any](
 //	int64, float64, bool, string
 func ExtractExtensions(root *yaml.Node) *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]] {
 	root = utils.NodeAlias(root)
+	if root == nil {
+		return nil
+	}
 	extensions := utils.FindExtensionNodes(root.Content)
 	extensionMap := orderedmap.New[KeyReference[string], ValueReference[*yaml.Node]]()
 	for _, ext := range extensions {

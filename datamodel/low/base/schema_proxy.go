@@ -6,6 +6,7 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"log/slog"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -144,7 +145,10 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			if sch != nil {
 				return sch.Hash()
 			}
-			logger := sp.idx.GetLogger()
+			var logger *slog.Logger
+			if sp.idx != nil {
+				logger = sp.idx.GetLogger()
+			}
 			if logger != nil {
 				logger.Warn("SchemaProxy.Hash() failed to resolve schema, returning empty hash", "error", sp.GetBuildError().Error())
 			}
