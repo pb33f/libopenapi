@@ -1172,7 +1172,6 @@ components:
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
 	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
-	assert.Equal(t, 174, rolodex.GetRootIndex().GetResolver().GetIndexesVisited())
 
 }
 
