@@ -141,7 +141,14 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			// only resolve this proxy if it's not a ref.
 			sch := sp.Schema()
 			sp.rendered = sch
-			return sch.Hash()
+			if sch != nil {
+				return sch.Hash()
+			}
+			logger := sp.idx.GetLogger()
+			if logger != nil {
+				logger.Warn("SchemaProxy.Hash() failed to resolve schema, returning empty hash", "error", sp.GetBuildError().Error())
+			}
+			return [32]byte{}
 		}
 	}
 	// hash reference value only, do not resolve!

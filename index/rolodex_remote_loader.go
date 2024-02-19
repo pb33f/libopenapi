@@ -420,7 +420,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		name:         remoteParsedURL.Path,
 		extension:    fileExt,
 		data:         responseBytes,
-		fullPath:     absolutePath,
+		fullPath:     remoteParsedURL.String(),
 		URL:          remoteParsedURL,
 		lastModified: lastModifiedTime,
 	}

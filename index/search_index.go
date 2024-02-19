@@ -37,7 +37,8 @@ func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, 
 func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
 	if index.cache != nil {
 		if v, ok := index.cache.Load(searchRef.FullDefinition); ok {
-			return v.(*Reference), v.(*Reference).Index, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
+			idx := index.extractIndex(v.(*Reference))
+			return v.(*Reference), idx, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
 		}
 	}
 
@@ -100,20 +101,22 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	}
 
 	if r, ok := index.allMappedRefs[ref]; ok {
+		idx := index.extractIndex(r)
 		index.cache.Store(ref, r)
-		return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
+		return r, idx, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
 	}
 
 	if r, ok := index.allMappedRefs[refAlt]; ok {
-		index.cache.Store(refAlt, r)
-		return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
+		idx := index.extractIndex(r)
+		idx.cache.Store(refAlt, r)
+		return r, idx, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
 	}
 
 	if r, ok := index.allComponentSchemaDefinitions.Load(refAlt); ok {
-		ref := r.(*Reference)
-
+		rf := r.(*Reference)
+		idx := index.extractIndex(rf)
 		index.cache.Store(refAlt, r)
-		return ref, ref.Index, context.WithValue(ctx, CurrentPathKey, ref.RemoteLocation)
+		return rf, idx, context.WithValue(ctx, CurrentPathKey, rf.RemoteLocation)
 	}
 
 	// check the rolodex for the reference.
@@ -141,10 +144,10 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				refParsed = strings.ReplaceAll(ref, "./", "")
 			}
 
-			if strings.HasSuffix(n, refParsed) {
+			if strings.HasSuffix(refParsed, n) {
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {
-					return &Reference{
+					r := &Reference{
 						FullDefinition: n,
 						Definition:     n,
 						IsRemote:       true,
@@ -152,7 +155,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 						Index:          rFile.GetIndex(),
 						Node:           node.Content[0],
 						ParentNode:     node,
-					}, rFile.GetIndex(), context.WithValue(ctx, CurrentPathKey, rFile.GetFullPath())
+					}
+					index.cache.Store(ref, r)
+					return r, rFile.GetIndex(), context.WithValue(ctx, CurrentPathKey, rFile.GetFullPath())
 				} else {
 					return nil, index, ctx
 				}
@@ -166,9 +171,8 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 				// check mapped refs.
 				if r, ok := idx.allMappedRefs[ref]; ok {
-					index.cache.Store(ref, r)
-					idx.cache.Store(ref, r)
-					return r, r.Index, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
+					i := index.extractIndex(r)
+					return r, i, context.WithValue(ctx, CurrentPathKey, r.RemoteLocation)
 				}
 
 				// build a collection of all the inline schemas and search them
@@ -179,9 +183,10 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				d = append(d, idx.allInlineSchemaObjectDefinitions...)
 				for _, s := range d {
 					if s.FullDefinition == ref {
+						i := index.extractIndex(s)
 						idx.cache.Store(ref, s)
 						index.cache.Store(ref, s)
-						return s, s.Index, context.WithValue(ctx, CurrentPathKey, s.RemoteLocation)
+						return s, i, context.WithValue(ctx, CurrentPathKey, s.RemoteLocation)
 					}
 				}
 
@@ -201,9 +206,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 					}
 
 					if found != nil {
-						idx.cache.Store(ref, found)
-						index.cache.Store(ref, found)
-						return found, found.Index, context.WithValue(ctx, CurrentPathKey, found.RemoteLocation)
+						i := index.extractIndex(found)
+						i.cache.Store(ref, found)
+						return found, i, context.WithValue(ctx, CurrentPathKey, found.RemoteLocation)
 					}
 				}
 			}
@@ -214,4 +219,17 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		index.logger.Error("unable to locate reference anywhere in the rolodex", "reference", ref)
 	}
 	return nil, index, ctx
+}
+
+func (index *SpecIndex) extractIndex(r *Reference) *SpecIndex {
+	idx := r.Index
+	if idx != nil && r.Index.GetSpecAbsolutePath() != r.RemoteLocation {
+		for i := range r.Index.rolodex.indexes {
+			if r.Index.rolodex.indexes[i].GetSpecAbsolutePath() == r.RemoteLocation {
+				idx = r.Index.rolodex.indexes[i]
+				break
+			}
+		}
+	}
+	return idx
 }
