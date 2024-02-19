@@ -398,9 +398,6 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 			if foundRef != nil {
 				original = foundRef
 			}
-			if original == nil {
-				panic("help")
-			}
 			resolved := resolver.VisitReference(original, seen, journey, resolve)
 			if resolve && !original.Circular {
 				ref.Resolved = true
