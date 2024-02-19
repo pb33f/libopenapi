@@ -533,7 +533,7 @@ func ExtractMapNoLookupExtensions[PT Buildable[N], N any](
 			var refNode *yaml.Node
 			// if value is a reference, we have to look it up in the index!
 			if h, _, rv := utils.IsNodeRefValue(node); h {
-				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, node, idx)
+				ref, fIdx, err, nCtx := LocateRefNodeWithContext(foundContext, node, foundIndex)
 				if ref != nil {
 					refNode = node
 					node = ref
@@ -608,6 +608,8 @@ type mappingResult[T any] struct {
 type buildInput struct {
 	label *yaml.Node
 	value *yaml.Node
+	ctx   context.Context
+	idx   *index.SpecIndex
 }
 
 // ExtractMapExtensions will extract a map of KeyReference and ValueReference from a root yaml.Node. The 'label' is
@@ -626,14 +628,16 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 	var labelNode, valueNode *yaml.Node
 	var circError error
 	root = utils.NodeAlias(root)
+	foundIndex := idx
+	foundContext := ctx
 	if rf, rl, _ := utils.IsNodeRefValue(root); rf {
 		// locate reference in index.
 		ref, fIdx, err, fCtx := LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {
 			valueNode = ref
 			labelNode = rl
-			ctx = fCtx
-			idx = fIdx
+			foundContext = fCtx
+			foundIndex = fIdx
 			if err != nil {
 				circError = err
 			}
@@ -649,8 +653,8 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, valueNode, idx)
 				if ref != nil {
 					valueNode = ref
-					idx = fIdx
-					ctx = nCtx
+					foundIndex = fIdx
+					foundContext = nCtx
 					if err != nil {
 						circError = err
 					}
@@ -719,25 +723,29 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 			wg.Done()
 		}()
 
+		startIdx := foundIndex
+		startCtx := foundContext
+
 		translateFunc := func(input buildInput) (mappingResult[PT], error) {
-			foundIndex := idx
-			foundContext := ctx
 
 			en := input.value
+
+			sCtx := startCtx
+			sIdx := startIdx
 
 			var refNode *yaml.Node
 			var referenceValue string
 			// check our valueNode isn't a reference still.
 			if h, _, refVal := utils.IsNodeRefValue(en); h {
-				ref, fIdx, err, nCtx := LocateRefNodeWithContext(ctx, en, idx)
+				ref, fIdx, err, nCtx := LocateRefNodeWithContext(sCtx, en, sIdx)
 				if ref != nil {
 					refNode = en
 					en = ref
 					referenceValue = refVal
 					if fIdx != nil {
-						foundIndex = fIdx
+						sIdx = fIdx
 					}
-					foundContext = nCtx
+					sCtx = nCtx
 					if err != nil {
 						circError = err
 					}
@@ -752,7 +760,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 			var n PT = new(N)
 			en = utils.NodeAlias(en)
 			_ = BuildModel(en, n)
-			err := n.Build(foundContext, input.label, en, foundIndex)
+			err := n.Build(sCtx, input.label, en, sIdx)
 			if err != nil {
 				return mappingResult[PT]{}, err
 			}
@@ -775,6 +783,7 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 				v: v,
 			}, nil
 		}
+
 		err := datamodel.TranslatePipeline[buildInput, mappingResult[PT]](in, out, translateFunc)
 		wg.Wait()
 		if err != nil {

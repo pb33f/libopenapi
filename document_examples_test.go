@@ -6,6 +6,7 @@ package libopenapi
 import (
 	"bytes"
 	"fmt"
+	what_changed "github.com/pb33f/libopenapi/what-changed"
 	"log/slog"
 	"net/url"
 	"os"
@@ -127,7 +128,7 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
 
-	_, errors := doc.BuildV3Model()
+	m, errors := doc.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
 	if len(errors) > 0 {
@@ -135,6 +136,10 @@ func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
 	} else {
 		fmt.Println("Digital Ocean spec built successfully")
 	}
+
+	// running this through a change detection, will render out the entire model and
+	// any stage two rendering for the model will be caught.
+	what_changed.CompareOpenAPIDocuments(m.Model.GoLow(), m.Model.GoLow())
 	// Output: Digital Ocean spec built successfully
 }
 

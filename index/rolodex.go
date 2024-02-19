@@ -320,7 +320,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 		if r.indexConfig.IgnorePolymorphicCircularReferences {
 			resolver.IgnorePolymorphicCircularReferences()
 		}
-
+		r.rootIndex = index
 		r.logger.Debug("[rolodex] starting root index build")
 		index.BuildIndex()
 		r.logger.Debug("[rolodex] root index build completed")
@@ -338,7 +338,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 				r.ignoredCircularReferences = append(r.ignoredCircularReferences, resolver.GetIgnoredCircularArrayReferences()...)
 			}
 		}
-		r.rootIndex = index
+
 		if len(index.refErrors) > 0 {
 			caughtErrors = append(caughtErrors, index.refErrors...)
 		}
