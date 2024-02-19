@@ -458,6 +458,9 @@ func (s *Schema) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.V
 //   - UnevaluatedProperties
 //   - Anchor
 func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) error {
+	if root == nil {
+		return fmt.Errorf("cannot build schema from a nil node")
+	}
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
