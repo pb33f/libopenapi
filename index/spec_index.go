@@ -36,9 +36,6 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 	index.rolodex = config.Rolodex
 	index.uri = config.uri
 	index.specAbsolutePath = config.SpecAbsolutePath
-	if rootNode == nil || len(rootNode.Content) <= 0 {
-		return index
-	}
 	if config.Logger != nil {
 		index.logger = config.Logger
 	} else {
@@ -46,7 +43,9 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 			Level: slog.LevelError,
 		}))
 	}
-
+	if rootNode == nil || len(rootNode.Content) <= 0 {
+		return index
+	}
 	index.root = rootNode
 	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
 }

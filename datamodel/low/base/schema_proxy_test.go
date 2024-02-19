@@ -5,6 +5,8 @@ package base
 
 import (
 	"context"
+	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -161,6 +163,9 @@ properties:
 func TestSchemaProxy_Build_HashFail(t *testing.T) {
 
 	sp := new(SchemaProxy)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	idx := index.NewSpecIndexWithConfig(nil, &index.SpecIndexConfig{Logger: logger})
+	sp.idx = idx
 	v := sp.Hash()
 	assert.Equal(t, [32]byte{}, v)
 }
