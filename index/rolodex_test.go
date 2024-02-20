@@ -1233,13 +1233,13 @@ components:
 	tmp := "tmp-g"
 	_ = os.Mkdir(tmp, 0755)
 
-	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
+	firstFile, fErr = os.CreateTemp(tmp, "first-*.yaml")
 	assert.NoError(t, fErr)
 
-	secondFile, fErr = os.CreateTemp(tmp, "*-second.yaml")
+	secondFile, fErr = os.CreateTemp(tmp, "second-*.yaml")
 	assert.NoError(t, fErr)
 
-	thirdFile, fErr = os.CreateTemp(tmp, "*-third.yaml")
+	thirdFile, fErr = os.CreateTemp(tmp, "third-*.yaml")
 	assert.NoError(t, fErr)
 
 	first = strings.ReplaceAll(first, "$2", secondFile.Name())
@@ -1257,6 +1257,7 @@ components:
 
 	cf := CreateOpenAPIIndexConfig()
 	cf.IgnorePolymorphicCircularReferences = true
+	cf.ExtractRefsSequentially = true
 	rolodex := NewRolodex(cf)
 
 	baseDir := tmp
