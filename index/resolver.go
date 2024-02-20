@@ -489,7 +489,12 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	var found []*Reference
 
 	if len(node.Content) > 0 {
+		skip := false
 		for i, n := range node.Content {
+			if skip {
+				skip = false
+				continue
+			}
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				depth++
 
@@ -790,7 +795,8 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 							}
 						}
 					}
-					break
+					skip = true
+					continue
 				}
 			}
 		}

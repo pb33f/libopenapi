@@ -98,7 +98,7 @@ func Benchmark_ResolveDocumentStripe(b *testing.B) {
 		rolo.SetRootNode(&rootNode)
 
 		indexedErr := rolo.IndexTheRolodex()
-		assert.Len(b, utils.UnwrapErrors(indexedErr), 3)
+		assert.Len(b, utils.UnwrapErrors(indexedErr), 1)
 
 	}
 }
@@ -1268,5 +1268,108 @@ paths:
 	nodes, _ = path.Find(&rootNode)
 	assert.Equal(t, nodes[0].Content[0].Value, "code")
 	assert.Equal(t, nodes[0].Content[1].Value, "message")
+
+}
+
+func TestDocument_LoopThroughAnArray(t *testing.T) {
+
+	var d = `openapi: "3.0.1"
+components:
+  schemas:
+    B:
+      type: object
+      properties:
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/B'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	config := CreateClosedAPIIndexConfig()
+	config.IgnoreArrayCircularReferences = true
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	resolver.IgnoreArrayCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
+
+}
+
+func TestDocument_ObjectWithPolyAndArray(t *testing.T) {
+
+	var d = `openapi: "3.0.1"
+components:
+  schemas:
+    A:
+      type: object
+      properties: {}
+    B:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/A' 
+      properties:
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/B'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	config := CreateClosedAPIIndexConfig()
+	config.IgnoreArrayCircularReferences = true
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	resolver.IgnoreArrayCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
+
+}
+
+func TestDocument_ObjectWithMultiPolyAndArray(t *testing.T) {
+
+	var d = `openapi: "3.0.1"
+components:
+  schemas:
+    A:
+      type: object
+      properties: {}
+    B:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/A'
+      oneOf:
+        - $ref: '#/components/schemas/B'
+      properties:
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/B'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	config := CreateClosedAPIIndexConfig()
+	config.IgnoreArrayCircularReferences = true
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	resolver.IgnoreArrayCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
+	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 0)
 
 }
