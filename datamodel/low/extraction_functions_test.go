@@ -1613,6 +1613,31 @@ func TestLocateRefNode_CurrentPathKey_HttpLink(t *testing.T) {
 	assert.NotNil(t, c)
 }
 
+func TestLocateRefNode_CurrentPathKey_RootLookup(t *testing.T) {
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "#/components/pizza/cake",
+			},
+		},
+	}
+
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "files/cakes.yaml")
+
+	idx := index.NewSpecIndexWithConfig(&no, index.CreateClosedAPIIndexConfig())
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+}
+
 func TestLocateRefNode_CurrentPathKey_HttpLink_Local(t *testing.T) {
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
