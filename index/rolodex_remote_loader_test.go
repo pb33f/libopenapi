@@ -4,6 +4,7 @@
 package index
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -346,6 +347,44 @@ func TestNewRemoteFS_RemoteBaseURL_NoErrorNoResponse(t *testing.T) {
 	assert.Nil(t, x)
 	assert.Error(t, y)
 	assert.Equal(t, "empty response from remote URL: https://pb33f.io/woof.yaml", y.Error())
+}
+
+func TestNewRemoteFS_RemoteBaseURL_200_NotOpenAPI(t *testing.T) {
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		b := io.NopCloser(bytes.NewBuffer([]byte("not openapi")))
+		return &http.Response{StatusCode: 200, Body: b}, nil
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	rolo := NewRolodex(cf)
+	rolo.AddRemoteFS("https://pb33f.io/the/love/machine", rfs)
+	f, e := rolo.Open("https://pb33f.io/woof.yaml")
+	assert.NoError(t, e)
+	c, err := f.(*rolodexFile).Index(cf)
+	assert.Nil(t, c)
+	assert.Error(t, err)
+
+}
+
+func TestNewRemoteFS_RemoteBaseURL_Error400(t *testing.T) {
+	cf := CreateOpenAPIIndexConfig()
+	h := func(url string) (*http.Response, error) {
+		b := io.NopCloser(bytes.NewBuffer([]byte{}))
+		return &http.Response{StatusCode: 400, Body: b}, nil
+	}
+	cf.RemoteURLHandler = h
+
+	cf.BaseURL, _ = url.Parse("https://pb33f.io/the/love/machine")
+	rfs, _ := NewRemoteFSWithConfig(cf)
+
+	x, y := rfs.Open("https://pb33f.io/woof.yaml")
+	assert.Nil(t, x)
+	assert.Error(t, y)
+	assert.Equal(t, "unable to fetch remote document 'https://pb33f.io/woof.yaml' (error 400)", y.Error())
 }
 
 func TestNewRemoteFS_RemoteBaseURL_ReadBodyFail(t *testing.T) {

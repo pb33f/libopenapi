@@ -397,7 +397,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 		i.logger.Error("unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
-		return nil, fmt.Errorf("unable to fetch remote document: %s", string(responseBytes))
+		return nil, fmt.Errorf("unable to fetch remote document '%s' (error %d)", remoteParsedURL.String(),
+			response.StatusCode)
 	}
 
 	absolutePath := remoteParsedURL.Path
