@@ -80,6 +80,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [The Resolver](https://pb33f.io/libopenapi/resolver/)
 - [The Rolodex](https://pb33f.io/libopenapi/rolodex/)
 - [Circular References](https://pb33f.io/libopenapi/circular-references/)
+- [Bundling Specs](https://pb33f.io/libopenapi/bundling/)
 - [What Changed / Diff Engine](https://pb33f.io/libopenapi/what-changed/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
