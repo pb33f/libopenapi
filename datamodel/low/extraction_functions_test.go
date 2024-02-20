@@ -2171,3 +2171,8 @@ func TestValueToString(t *testing.T) {
 		})
 	}
 }
+
+func TestExtractExtensions_Nill(t *testing.T) {
+	err := ExtractExtensions(nil)
+	assert.Nil(t, err)
+}
