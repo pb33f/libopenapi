@@ -498,16 +498,15 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				depth++
 
-				//refIsRef, _, _ := utils.IsNodeRefValue(ref.Node)
 				var foundRef *Reference
-				//if refIsRef {
 				foundRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(ref)
 				if foundRef != nil && !foundRef.Circular {
 					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
+					depth--
 				}
-				//	}
 				if foundRef == nil {
 					found = append(found, resolver.extractRelatives(ref, n, node, foundRelatives, journey, seen, resolve, depth)...)
+					depth--
 				}
 
 			}
