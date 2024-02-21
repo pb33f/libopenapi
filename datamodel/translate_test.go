@@ -541,6 +541,7 @@ func TestTranslatePipeline(t *testing.T) {
 				case <-doneChan:
 					// test passed
 				}
+				time.Sleep(1 * time.Second)
 			})
 		})
 	}
