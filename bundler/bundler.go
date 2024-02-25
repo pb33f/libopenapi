@@ -6,11 +6,12 @@ package bundler
 
 import (
 	"errors"
+	"strings"
+
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
-	"strings"
 )
 
 // BundleBytes will take a byte slice of an OpenAPI specification and return a bundled version of it.
@@ -28,7 +29,9 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 	}
 
 	v3Doc, errs := doc.BuildV3Model()
-	err = errors.Join(errs...)
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
+	}
 
 	bundledBytes, e := bundle(&v3Doc.Model, configuration.BundleInlineRefs)
 	return bundledBytes, errors.Join(err, e)
@@ -55,7 +58,7 @@ func bundle(model *v3.Document, inline bool) ([]byte, error) {
 		for _, sequenced := range sequencedReferences {
 			mappedReference := mappedReferences[sequenced.FullDefinition]
 
-			//if we're in the root document, don't bundle anything.
+			// if we're in the root document, don't bundle anything.
 			refExp := strings.Split(sequenced.FullDefinition, "#/")
 			if len(refExp) == 2 {
 				if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
