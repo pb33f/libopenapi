@@ -133,6 +133,42 @@ func TestBundleBytes(t *testing.T) {
 	assert.Len(t, logEntries, 0)
 }
 
+func TestBundleBytes_Invalid(t *testing.T) {
+	digi := []byte(`openapi: 3.1.0
+components:
+  schemas:
+    toto:
+      $ref: bork`)
+
+	var logs []byte
+	byteBuf := bytes.NewBuffer(logs)
+
+	config := &datamodel.DocumentConfiguration{
+		ExtractRefsSequentially: true,
+		Logger: slog.New(slog.NewJSONHandler(byteBuf, &slog.HandlerOptions{
+			Level: slog.LevelWarn,
+		})),
+	}
+
+	_, e := BundleBytes(digi, config)
+	require.Error(t, e)
+	i, ok := e.(interface{ Unwrap() []error })
+	if !ok {
+		t.Fatal("expect join error")
+	}
+	unwrap := i.Unwrap()
+	require.Len(t, unwrap, 2)
+	assert.Equal(t, "component 'bork' does not exist in the specification", unwrap[0].Error())
+	assert.Equal(t, "cannot resolve reference `bork`, it's missing: $bork [5:7]", unwrap[1].Error())
+
+	logEntries := strings.Split(byteBuf.String(), "\n")
+	if len(logEntries) == 1 && logEntries[0] == "" {
+		logEntries = []string{}
+	}
+
+	assert.Len(t, logEntries, 0)
+}
+
 func TestBundleBytes_CircularArray(t *testing.T) {
 
 	digi := []byte(`openapi: 3.1.0
