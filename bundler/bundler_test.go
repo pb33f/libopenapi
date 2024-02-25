@@ -6,9 +6,6 @@ package bundler
 import (
 	"bytes"
 	"errors"
-	"github.com/pb33f/libopenapi"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"log/slog"
 	"os"
@@ -17,6 +14,11 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
@@ -111,9 +113,17 @@ func TestBundleBytes(t *testing.T) {
 		})),
 	}
 
-	bytes, e := BundleBytes(digi, config)
-	assert.Error(t, e)
-	assert.Len(t, bytes, 2016)
+	_, e := BundleBytes(digi, config)
+	require.Error(t, e)
+	i, ok := e.(interface{ Unwrap() []error })
+	if !ok {
+		t.Fatal("expect join error")
+	}
+	unwrap := i.Unwrap()
+	require.Len(t, unwrap, 3)
+	assert.Equal(t, "infinite circular reference detected: Two: Two -> One -> Two [15:9]", unwrap[0].Error())
+	assert.Equal(t, "infinite circular reference detected: Seven: Seven -> Three -> Seven [32:9]", unwrap[1].Error())
+	assert.Equal(t, "infinite circular reference detected: Ten: Ten -> Ten [71:9]", unwrap[2].Error())
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {
@@ -203,12 +213,18 @@ components:
 		})),
 	}
 
-	bytes, e := BundleBytes(digi, config)
-	assert.Error(t, e)
-	assert.Len(t, bytes, 458)
+	_, e := BundleBytes(digi, config)
+	require.Error(t, e)
+	i, ok := e.(interface{ Unwrap() []error })
+	if !ok {
+		t.Fatal("expect join error")
+	}
+	unwrap := i.Unwrap()
+	require.Len(t, unwrap, 1)
+	assert.Equal(t, "infinite circular reference detected: One: One -> Two -> One [19:9]", unwrap[0].Error())
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
-	assert.Len(t, logEntries, 13)
+	assert.Len(t, logEntries, 12)
 }
 
 func TestBundleBytes_Bad(t *testing.T) {
