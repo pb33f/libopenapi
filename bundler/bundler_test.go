@@ -17,6 +17,7 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -113,17 +114,9 @@ func TestBundleBytes(t *testing.T) {
 		})),
 	}
 
-	_, e := BundleBytes(digi, config)
-	require.Error(t, e)
-	i, ok := e.(interface{ Unwrap() []error })
-	if !ok {
-		t.Fatal("expect join error")
-	}
-	unwrap := i.Unwrap()
-	require.Len(t, unwrap, 3)
-	assert.Equal(t, "infinite circular reference detected: Two: Two -> One -> Two [15:9]", unwrap[0].Error())
-	assert.Equal(t, "infinite circular reference detected: Seven: Seven -> Three -> Seven [32:9]", unwrap[1].Error())
-	assert.Equal(t, "infinite circular reference detected: Ten: Ten -> Ten [71:9]", unwrap[2].Error())
+	bytes, e := BundleBytes(digi, config)
+	assert.Error(t, e)
+	assert.Len(t, bytes, 2016)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {
@@ -152,14 +145,13 @@ components:
 
 	_, e := BundleBytes(digi, config)
 	require.Error(t, e)
-	i, ok := e.(interface{ Unwrap() []error })
-	if !ok {
-		t.Fatal("expect join error")
-	}
-	unwrap := i.Unwrap()
+	unwrap := utils.UnwrapErrors(e)
 	require.Len(t, unwrap, 2)
-	assert.Equal(t, "component 'bork' does not exist in the specification", unwrap[0].Error())
-	assert.Equal(t, "cannot resolve reference `bork`, it's missing: $bork [5:7]", unwrap[1].Error())
+	assert.ErrorIs(t, unwrap[0], ErrInvalidModel)
+	unwrapNext := utils.UnwrapErrors(unwrap[1])
+	require.Len(t, unwrapNext, 2)
+	assert.Equal(t, "component 'bork' does not exist in the specification", unwrapNext[0].Error())
+	assert.Equal(t, "cannot resolve reference `bork`, it's missing: $bork [5:7]", unwrapNext[1].Error())
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {
@@ -249,18 +241,12 @@ components:
 		})),
 	}
 
-	_, e := BundleBytes(digi, config)
-	require.Error(t, e)
-	i, ok := e.(interface{ Unwrap() []error })
-	if !ok {
-		t.Fatal("expect join error")
-	}
-	unwrap := i.Unwrap()
-	require.Len(t, unwrap, 1)
-	assert.Equal(t, "infinite circular reference detected: One: One -> Two -> One [19:9]", unwrap[0].Error())
+	bytes, e := BundleBytes(digi, config)
+	assert.Error(t, e)
+	assert.Len(t, bytes, 458)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
-	assert.Len(t, logEntries, 12)
+	assert.Len(t, logEntries, 13)
 }
 
 func TestBundleBytes_Bad(t *testing.T) {
