@@ -14,6 +14,9 @@ import (
 	"github.com/pb33f/libopenapi/index"
 )
 
+// ErrInvalidModel is returned when the model is not usable.
+var ErrInvalidModel = errors.New("invalid model")
+
 // BundleBytes will take a byte slice of an OpenAPI specification and return a bundled version of it.
 // This is useful for when you want to take a specification with external references, and you want to bundle it
 // into a single document.
@@ -29,8 +32,9 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 	}
 
 	v3Doc, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		return nil, errors.Join(errs...)
+	err = errors.Join(errs...)
+	if v3Doc == nil {
+		return nil, errors.Join(ErrInvalidModel, err)
 	}
 
 	bundledBytes, e := bundle(&v3Doc.Model, configuration.BundleInlineRefs)
