@@ -203,6 +203,24 @@ x-pizza: time`
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
+func TestNewNodeBuilder_float_noprecision(t *testing.T) {
+	var throo float64 = 3
+	t1 := test1{
+		Throo: &throo,
+		Thung: 3,
+	}
+
+	nb := NewNodeBuilder(&t1, nil)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `thung: 3
+throo: 3`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
 func TestNewNodeBuilder_Type(t *testing.T) {
 	t1 := test1{
 		Type: []string{"chicken", "soup"},
