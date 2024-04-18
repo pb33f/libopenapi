@@ -158,6 +158,8 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 					}
 					index.cache.Store(ref, r)
 					return r, rFile.GetIndex(), context.WithValue(ctx, CurrentPathKey, rFile.GetFullPath())
+				} else {
+					return nil, index, ctx
 				}
 			}
 
