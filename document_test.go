@@ -59,6 +59,13 @@ definitions:
 	assert.Nil(t, v2Doc)
 }
 
+func TestLoadDocument_WrongDoc(t *testing.T) {
+	yml := `IAmNotAnOpenAPI: 3.1.0`
+	doc, err := NewDocument([]byte(yml))
+	assert.Error(t, err)
+	assert.Nil(t, doc)
+}
+
 func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 	yml := `openapi: 3.0.1`
 	doc, err := NewDocument([]byte(yml))
