@@ -76,6 +76,9 @@ func CreateSchemaProxyRef(ref string) *SchemaProxy {
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
 func (sp *SchemaProxy) Schema() *Schema {
+	if sp == nil {
+		return nil
+	}
 	sp.lock.Lock()
 	if sp.rendered == nil {
 
