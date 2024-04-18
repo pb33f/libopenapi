@@ -528,7 +528,9 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				if len(exp) == 2 {
 					definition = fmt.Sprintf("#/%s", exp[1])
 					if exp[0] != "" {
-						if !strings.HasPrefix(exp[0], "http") {
+						if strings.HasPrefix(exp[0], "http") {
+							fullDef = value
+						} else {
 
 							if strings.HasPrefix(ref.FullDefinition, "http") {
 
