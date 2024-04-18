@@ -660,7 +660,8 @@ func TestDocument_MarshalJSON(t *testing.T) {
 
 	highDoc := NewDocument(lowDoc)
 
-	rendered := highDoc.RenderJSON("  ")
+	rendered, err := highDoc.RenderJSON("  ")
+	assert.NoError(t, err)
 
 	// now read back in the JSON
 	info, _ = datamodel.ExtractSpecInfo(rendered)
