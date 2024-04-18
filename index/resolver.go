@@ -511,7 +511,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 			}
 
-			if i%2 == 0 && n.Value == "$ref" {
+			if i%2 == 0 && n.Value == "$ref" && len(node.Content) > i%2+1 {
 
 				if !utils.IsNodeStringValue(node.Content[i+1]) {
 					continue
