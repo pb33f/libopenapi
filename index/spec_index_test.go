@@ -186,7 +186,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	// get all the files!
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
-	assert.Equal(t, 1650, fileLen)
+	assert.Equal(t, 1651, fileLen)
 	assert.Len(t, remoteFS.GetErrors(), 0)
 
 	// check circular references
@@ -244,7 +244,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1712, fileLen)
+	assert.Equal(t, 1713, fileLen)
 
 	rolo.AddLocalFS(basePath, fileFS)
 
@@ -266,11 +266,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 
 	if runtime.GOOS != "windows" {
-		assert.Equal(t, "1.29 MB", rolo.RolodexFileSizeAsString())
+		assert.Equal(t, "1.3 MB", rolo.RolodexFileSizeAsString())
 	} else {
 		assert.Equal(t, "1.34 MB", rolo.RolodexFileSizeAsString())
 	}
-	assert.Equal(t, 1712, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1713, rolo.RolodexTotalFiles())
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
@@ -324,7 +324,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1698, fileLen)
+	assert.Equal(t, 1699, fileLen)
 
 	assert.NoError(t, rErr)
 
@@ -345,7 +345,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	} else {
 		assert.Equal(t, "1.24 MB", rolo.RolodexFileSizeAsString())
 	}
-	assert.Equal(t, 1698, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1699, rolo.RolodexTotalFiles())
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
