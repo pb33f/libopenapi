@@ -60,6 +60,11 @@ func TestSchemaProxy_MarshalYAML(t *testing.T) {
 	assert.Equal(t, "$ref: '#/components/schemas/nice'", strings.TrimSpace(string(rend)))
 }
 
+func TestCreateSchemaProxy_Fail(t *testing.T) {
+	proxy := &SchemaProxy{}
+	assert.Nil(t, proxy.Schema())
+}
+
 func TestCreateSchemaProxy(t *testing.T) {
 	sp := CreateSchemaProxy(&Schema{Description: "iAmASchema"})
 	assert.Equal(t, "iAmASchema", sp.rendered.Description)
