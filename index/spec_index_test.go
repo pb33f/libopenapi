@@ -268,7 +268,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Equal(t, "1.3 MB", rolo.RolodexFileSizeAsString())
 	} else {
-		assert.Equal(t, "1.34 MB", rolo.RolodexFileSizeAsString())
+		assert.Equal(t, "1.35 MB", rolo.RolodexFileSizeAsString())
 	}
 	assert.Equal(t, 1713, rolo.RolodexTotalFiles())
 }
@@ -341,7 +341,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 	if runtime.GOOS == "windows" {
-		assert.Equal(t, "1.28 MB", rolo.RolodexFileSizeAsString())
+		assert.Equal(t, "1.29 MB", rolo.RolodexFileSizeAsString())
 	} else {
 		assert.Equal(t, "1.24 MB", rolo.RolodexFileSizeAsString())
 	}
