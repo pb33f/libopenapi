@@ -208,9 +208,7 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
 	errs = append(errs, err)
-	if newDoc == nil {
-		return newBytes, nil, nil, errs
-	}
+
 	// build the model.
 	m, buildErrs := newDoc.BuildV3Model()
 	if buildErrs != nil {
