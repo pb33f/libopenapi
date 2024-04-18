@@ -1373,3 +1373,41 @@ components:
 	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 0)
 
 }
+
+func TestIssue_259(t *testing.T) {
+
+	var d = `openapi: 3.0.3
+info:
+  description: test
+  title: test
+  version: test
+paths: {}
+components:
+  schemas:
+    test:
+      type: object
+      properties:
+        Reference:
+          $ref: '#/components/schemas/ReferenceType'
+    ReferenceType:
+      type: object
+      required: [$ref]
+      properties: 
+        $ref:
+          type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	config := CreateClosedAPIIndexConfig()
+	config.IgnoreArrayCircularReferences = true
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	resolver.IgnoreArrayCircularReferences()
+	assert.NotNil(t, resolver)
+
+	errs := resolver.Resolve()
+	assert.Len(t, errs, 0)
+
+}
