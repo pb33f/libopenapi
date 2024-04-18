@@ -208,7 +208,9 @@ func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Do
 
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
 	errs = append(errs, err)
-
+	if newDoc == nil {
+		return newBytes, nil, nil, errs
+	}
 	// build the model.
 	m, buildErrs := newDoc.BuildV3Model()
 	if buildErrs != nil {
@@ -224,7 +226,7 @@ func (d *document) Render() ([]byte, error) {
 	}
 
 	var newBytes []byte
-
+	var jsonErr error
 	if d.info.SpecFileType == datamodel.JSONFileType {
 		jsonIndent := "  "
 		i := d.info.OriginalIndentation
@@ -233,13 +235,12 @@ func (d *document) Render() ([]byte, error) {
 				jsonIndent += " "
 			}
 		}
-		newBytes = d.highOpenAPI3Model.Model.RenderJSON(jsonIndent)
+		newBytes, jsonErr = d.highOpenAPI3Model.Model.RenderJSON(jsonIndent)
 	}
 	if d.info.SpecFileType == datamodel.YAMLFileType {
 		newBytes = d.highOpenAPI3Model.Model.RenderWithIndention(d.info.OriginalIndentation)
 	}
-
-	return newBytes, nil
+	return newBytes, jsonErr
 }
 
 func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {

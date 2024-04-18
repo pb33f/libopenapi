@@ -158,7 +158,7 @@ func TestDocument_RoundTrip_JSON(t *testing.T) {
 	m, errs := doc.BuildV3Model()
 	require.Empty(t, errs)
 
-	out := m.Model.RenderJSON("  ")
+	out, _ := m.Model.RenderJSON("  ")
 
 	// windows has to be different, it does not add carriage returns.
 	if runtime.GOOS != "windows" {
@@ -192,7 +192,7 @@ func TestDocument_RoundTrip_YAML_To_JSON(t *testing.T) {
 	m, errs := doc.BuildV3Model()
 	require.Empty(t, errs)
 
-	out := m.Model.RenderJSON("  ")
+	out, _ := m.Model.RenderJSON("  ")
 	require.NoError(t, err)
 	if runtime.GOOS != "windows" {
 		assert.Equal(t, string(j), string(out))
@@ -1323,4 +1323,17 @@ func TestDocument_TestNestedFiles(t *testing.T) {
 
 	_, errs := doc.BuildV3Model()
 	require.Empty(t, errs)
+}
+
+func TestDocument_Issue264(t *testing.T) {
+
+	openAPISpec := `{"openapi":"3.0.0","info":{"title":"dummy","version":"1.0.0"},"paths":{"/dummy":{"post":{"requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{"value":{"type":"number","format":"decimal","multipleOf":0.01,"minimum":-999.99}}}}}},"responses":{"200":{"description":"OK"}}}}}}`
+
+	d, _ := NewDocument([]byte(openAPISpec))
+
+	_, _ = d.BuildV3Model()
+
+	_, _, _, errs := d.RenderAndReload() // code panics here
+	assert.Len(t, errs, 1)
+	assert.Equal(t, "yaml: cannot decode !!float `-999.99` as a !!int", errs[0].Error())
 }

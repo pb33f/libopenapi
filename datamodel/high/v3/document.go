@@ -171,11 +171,14 @@ func (d *Document) RenderWithIndention(indent int) []byte {
 }
 
 // RenderJSON will return a JSON representation of the Document object as a byte slice.
-func (d *Document) RenderJSON(indention string) []byte {
+func (d *Document) RenderJSON(indention string) ([]byte, error) {
 	nb := high.NewNodeBuilder(d, d.low)
 
-	dat, _ := json.YAMLNodeToJSON(nb.Render(), indention)
-	return dat
+	dat, err := json.YAMLNodeToJSON(nb.Render(), indention)
+	if err != nil {
+		return dat, err
+	}
+	return dat, nil
 }
 
 func (d *Document) RenderInline() ([]byte, error) {
