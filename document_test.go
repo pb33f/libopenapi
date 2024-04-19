@@ -4,6 +4,7 @@ package libopenapi
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -1343,4 +1344,31 @@ func TestDocument_Issue264(t *testing.T) {
 	_, _, _, errs := d.RenderAndReload() // code panics here
 	assert.Len(t, errs, 1)
 	assert.Equal(t, "yaml: cannot decode !!float `-999.99` as a !!int", errs[0].Error())
+}
+
+func TestDocument_Issue269(t *testing.T) {
+
+	spec := `openapi: "3.0.0"
+info:
+  title: test
+  version: "3"
+paths: { }
+components:
+  schemas:
+    Container:
+      properties:
+        pet:
+          $ref: https://petstore3.swagger.io/api/v3/openapi.json#/components/schemas/Pet`
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), &datamodel.DocumentConfiguration{
+		AllowRemoteReferences: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	_, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		fmt.Println(errors.Join(errs...))
+	}
+
 }
