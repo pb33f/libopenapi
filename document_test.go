@@ -4,7 +4,6 @@ package libopenapi
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -1367,8 +1366,6 @@ components:
 		panic(err)
 	}
 	_, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		fmt.Println(errors.Join(errs...))
-	}
+	assert.Len(t, errs, 0)
 
 }
