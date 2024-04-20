@@ -516,6 +516,11 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				if !utils.IsNodeStringValue(node.Content[i+1]) {
 					continue
 				}
+				// issue #481 cannot look at an array value, the next not is not the value!
+				if utils.IsNodeArray(node) {
+					continue
+				}
+
 
 				value := node.Content[i+1].Value
 				value = strings.ReplaceAll(value, "\\\\", "\\")

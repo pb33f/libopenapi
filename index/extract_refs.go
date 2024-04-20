@@ -215,6 +215,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if !utils.IsNodeStringValue(node.Content[i+1]) {
 						continue
 					}
+					// issue #481, don't look at refs in arrays, the next node isn't the value.
+					if utils.IsNodeArray(node)  {
+						continue
+					}
 				}
 
 				index.linesWithRefs[n.Line] = true
