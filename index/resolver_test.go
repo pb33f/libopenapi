@@ -1411,3 +1411,35 @@ components:
 	assert.Len(t, errs, 0)
 
 }
+
+func TestIssue_481(t *testing.T) {
+
+	var d = `openapi: 3.0.1
+components:
+  schemas:
+    PetPot:
+      type: object
+      properties:
+        value:
+          oneOf:
+            - type: array
+              items:
+                type: object
+                required:
+                  - $ref
+                  - value`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	config := CreateClosedAPIIndexConfig()
+	config.IgnoreArrayCircularReferences = true
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	errs := resolver.Resolve()
+	assert.Len(t, errs, 0)
+
+}
