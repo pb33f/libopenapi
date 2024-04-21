@@ -1701,3 +1701,18 @@ components:
 	schemas := index.GetAllSchemas()
 	assert.Equal(t, 6, len(schemas))
 }
+
+func TestSpecIndex_CheckIgnoreDescriptionsInExamples(t *testing.T) {
+	yml := `openapi: 3.1.0
+components:
+  examples:
+    example1:
+      description: this should be ignored`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	schemas := index.GetAllDescriptions()
+	assert.Equal(t, 0, len(schemas))
+}

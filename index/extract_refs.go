@@ -216,7 +216,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						continue
 					}
 					// issue #481, don't look at refs in arrays, the next node isn't the value.
-					if utils.IsNodeArray(node)  {
+					if utils.IsNodeArray(node) {
 						continue
 					}
 				}
@@ -444,6 +444,9 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if utils.IsNodeArray(node) {
 						continue
 					}
+					if slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples") {
+						continue
+					}
 
 					ref := &DescriptionReference{
 						ParentNode: parent,
@@ -461,6 +464,10 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 
 				if n.Value == "summary" {
+
+					if slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples") {
+						continue
+					}
 
 					var b *yaml.Node
 					if len(node.Content) == i+1 {
