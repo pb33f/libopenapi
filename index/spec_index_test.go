@@ -1716,3 +1716,27 @@ components:
 	schemas := index.GetAllDescriptions()
 	assert.Equal(t, 0, len(schemas))
 }
+
+func TestSpecIndex_Issue481(t *testing.T) {
+	yml := `openapi: 3.0.1
+components:
+  schemas:
+    PetPot:
+      type: object
+      properties:
+        value:
+          oneOf:
+            - type: array
+              items:
+                type: object
+                required:
+                  - $ref
+                  - value`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	schemas := index.GetAllReferences()
+	assert.Equal(t, 0, len(schemas))
+}
