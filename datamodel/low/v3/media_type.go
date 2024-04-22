@@ -66,7 +66,7 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	mt.Extensions = low.ExtractExtensions(root)
 
 	// handle example if set.
-	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
+	_, expLabel, expNode := utils.FindKeyNodeFullTop(base.ExampleLabel, root.Content)
 	if expNode != nil {
 		mt.Example = low.NodeReference[*yaml.Node]{Value: expNode, KeyNode: expLabel, ValueNode: expNode}
 	}

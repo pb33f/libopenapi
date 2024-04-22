@@ -104,3 +104,48 @@ x-toast: nice`
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
 }
+
+func TestRequestBody_TopLevelExampleExtraction(t *testing.T) {
+	getExample := func(yml string) string {
+		var idxNode yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		idx := index.NewSpecIndex(&idxNode)
+
+		var n RequestBody
+		err := low.BuildModel(idxNode.Content[0], &n)
+		assert.NoError(t, err)
+
+		err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+		assert.NoError(t, err)
+
+		var example string
+
+		content := n.FindContent("fresh/fish")
+		if content == nil || content.Value == nil {
+			return ""
+		}
+
+		if content.Value.Example.Value == nil {
+			return ""
+		}
+
+		err = content.Value.Example.Value.Decode(&example)
+		assert.NoError(t, err)
+
+		return example
+	}
+
+	topLevelYml := `content:
+  fresh/fish:
+    example: nice.`
+	topLevelExample := getExample(topLevelYml)
+	assert.Equal(t, "nice.", topLevelExample)
+
+	schemaLevelYml := `content:
+  fresh/fish:
+    schema:
+      type: string
+      example: nice.`
+	schemaLevelExample := getExample(schemaLevelYml)
+	assert.Equal(t, "", schemaLevelExample)
+}
