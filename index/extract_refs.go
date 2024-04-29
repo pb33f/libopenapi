@@ -6,13 +6,14 @@ package index
 import (
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/exp/slices"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pb33f/libopenapi/utils"
+	"golang.org/x/exp/slices"
+	"gopkg.in/yaml.v3"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -248,7 +249,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
 							componentName = value
 						} else {
-
 							if strings.HasPrefix(uri[0], "http") {
 								fullDefinitionPath = value
 								componentName = fmt.Sprintf("#/%s", uri[1])
@@ -257,7 +257,6 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 									fullDefinitionPath = value
 									componentName = fmt.Sprintf("#/%s", uri[1])
 								} else {
-
 									// if the index has a base path, use that to resolve the path
 									if index.config.BasePath != "" && index.config.BaseURL == nil {
 										abs, _ := filepath.Abs(utils.CheckPathOverlap(index.config.BasePath, uri[0], string(os.PathSeparator)))
@@ -277,8 +276,8 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 											} else {
 												u = *index.config.BaseURL
 											}
-											//abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
-											//abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator)))
+											// abs, _ := filepath.Abs(filepath.Join(u.Path, uri[0]))
+											// abs, _ := filepath.Abs(utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator)))
 											abs := utils.CheckPathOverlap(u.Path, uri[0], string(os.PathSeparator))
 											u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 											fullDefinitionPath = fmt.Sprintf("%s#/%s", u.String(), uri[1])
@@ -293,19 +292,17 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 								}
 							}
 						}
-
 					} else {
 						if strings.HasPrefix(uri[0], "http") {
 							fullDefinitionPath = value
 						} else {
 							// is it a relative file include?
 							if !strings.Contains(uri[0], "#") {
-
 								if strings.HasPrefix(defRoot, "http") {
 									if !filepath.IsAbs(uri[0]) {
 										u, _ := url.Parse(defRoot)
 										pathDir := filepath.Dir(u.Path)
-										//pathAbs, _ := filepath.Abs(filepath.Join(pathDir, uri[0]))
+										// pathAbs, _ := filepath.Abs(filepath.Join(pathDir, uri[0]))
 										pathAbs, _ := filepath.Abs(utils.CheckPathOverlap(pathDir, uri[0], string(os.PathSeparator)))
 										pathAbs = utils.ReplaceWindowsDriveWithLinuxPath(pathAbs)
 										u.Path = pathAbs
@@ -444,22 +441,20 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if utils.IsNodeArray(node) {
 						continue
 					}
-					if slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples") {
-						continue
-					}
+					if !slices.Contains(seenPath, "example") && !slices.Contains(seenPath, "examples") {
+						ref := &DescriptionReference{
+							ParentNode: parent,
+							Content:    node.Content[i+1].Value,
+							Path:       jsonPath,
+							Node:       node.Content[i+1],
+							KeyNode:    node.Content[i],
+							IsSummary:  false,
+						}
 
-					ref := &DescriptionReference{
-						ParentNode: parent,
-						Content:    node.Content[i+1].Value,
-						Path:       jsonPath,
-						Node:       node.Content[i+1],
-						KeyNode:    node.Content[i],
-						IsSummary:  false,
-					}
-
-					if !utils.IsNodeMap(ref.Node) {
-						index.allDescriptions = append(index.allDescriptions, ref)
-						index.descriptionCount++
+						if !utils.IsNodeMap(ref.Node) {
+							index.allDescriptions = append(index.allDescriptions, ref)
+							index.descriptionCount++
+						}
 					}
 				}
 
@@ -593,7 +588,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 				}
 
 				seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
-				//seenPath = append(seenPath, n.Value)
+				// seenPath = append(seenPath, n.Value)
 				prev = n.Value
 			}
 
