@@ -503,7 +503,9 @@ func IsNodeRefValue(node *yaml.Node) (bool, *yaml.Node, string) {
 	for i, r := range n.Content {
 		if i%2 == 0 {
 			if r.Value == "$ref" {
-				return true, r, n.Content[i+1].Value
+				if i+1 < len(n.Content) {
+					return true, r, n.Content[i+1].Value
+				}
 			}
 		}
 	}
