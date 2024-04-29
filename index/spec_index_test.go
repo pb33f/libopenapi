@@ -1109,7 +1109,7 @@ func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 	assert.NotNil(t, embieRoloFile)
 
 	index := rolo.GetRootIndex()
-	//index.seenRemoteSources = make(map[string]*yaml.Node)
+	// index.seenRemoteSources = make(map[string]*yaml.Node)
 	absoluteRef, _ := filepath.Abs("embie.yaml#/naughty")
 	fRef, _ := index.SearchIndexForReference(absoluteRef)
 	assert.NotNil(t, fRef)
@@ -1542,7 +1542,6 @@ paths:
 }
 
 func TestSpecIndex_TestInlineSchemaPaths(t *testing.T) {
-
 	yml := `openapi: 3.1.0
 info:
   title: Test
@@ -1612,7 +1611,6 @@ paths:
 	assert.Equal(t, "$.paths['/test'].get.parameters.schema", schemas[0].Path)
 	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.code", schemas[1].Path)
 	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.message", schemas[2].Path)
-
 }
 
 func TestSpecIndex_TestPathsAsRef(t *testing.T) {
@@ -1715,6 +1713,58 @@ components:
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	schemas := index.GetAllDescriptions()
 	assert.Equal(t, 0, len(schemas))
+}
+
+func TestSpecIndex_CheckIgnoreSchemaLikeObjectsInExamples(t *testing.T) {
+	yml := `openapi: 3.1.0
+paths:
+  '/test':
+    get:
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+              examples:
+                test example:
+                  value:
+                    type: Object
+                    description: test
+                    properties:
+                      lineItems:
+                        type: Array
+                        description: test
+                        properties:
+                          description:
+                            required: false
+                          taxRateRef:
+                            type: Object
+                            description: test
+                            properties:
+                              effectiveTaxRate:
+                                type: Number
+                                description: test
+                                required: false
+                            required: true
+                      paymentAllocations:
+                        type: Array
+                        description: test
+                        properties:
+                          payment:
+                            type: Object
+                            description: test
+                            properties:
+                              accountRef:
+                                type: Object`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	schemas := index.GetAllSchemas()
+
+	assert.Equal(t, 1, len(schemas))
 }
 
 func TestSpecIndex_Issue481(t *testing.T) {
