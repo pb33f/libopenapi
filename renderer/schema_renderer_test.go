@@ -1034,6 +1034,54 @@ properties:
 	assert.Equal(t, `{"count":9934}`, string(rendered))
 }
 
+func TestRenderSchema_Items_WithExample(t *testing.T) {
+	testObject := `type: object
+properties:
+  args:
+    type: object
+    properties:
+      arrParam:
+        type: string
+        example: test,test2
+      arrParamExploded:
+        type: array
+        items:
+          type: string
+          example: "1"`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"args":{"arrParam":"test,test2","arrParamExploded":["1"]}}`, string(rendered))
+}
+
+func TestRenderSchema_Items_WithExamples(t *testing.T) {
+	testObject := `type: object
+properties:
+  args:
+    type: object
+    properties:
+      arrParam:
+        type: string
+        example: test,test2
+      arrParamExploded:
+        type: array
+        items:
+          type: string
+          examples:
+            - 1
+            - 2`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"args":{"arrParam":"test,test2","arrParamExploded":["1","2"]}}`, string(rendered))
+}
+
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
 }
