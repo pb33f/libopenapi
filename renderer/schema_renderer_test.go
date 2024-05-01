@@ -1082,6 +1082,35 @@ properties:
 	assert.Equal(t, `{"args":{"arrParam":"test,test2","arrParamExploded":["1","2"]}}`, string(rendered))
 }
 
+// https://github.com/pb33f/wiretap/issues/93
+func TestRenderSchema_NonStandard_Format(t *testing.T) {
+	testObject := `type: object
+properties:
+  bigint:
+    type: integer
+    format: bigint
+    example: 8821239038968084
+  bigintStr:
+    type: string
+    format: bigint
+    example: "9223372036854775808"
+  decimal:
+    type: number
+    format: decimal
+    example: 3.141592653589793
+  decimalStr:
+    type: string
+    format: decimal
+    example: "3.14159265358979344719667586"`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"bigint":8821239038968084,"bigintStr":"9223372036854775808","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586"}`, string(rendered))
+}
+
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
 }
