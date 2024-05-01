@@ -1143,6 +1143,33 @@ properties:
 	assert.Equal(t, `{"bigint":8821239038968084,"bigintStr":"9223372036854775808","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586"}`, string(rendered))
 }
 
+func TestRenderSchema_NonStandard_Format_NoExamples(t *testing.T) {
+	testObject := `type: object
+properties:
+  bigint:
+    type: integer
+    format: bigint
+  bigintStr:
+    type: string
+    format: bigint
+  decimal:
+    type: number
+    format: decimal
+  decimalStr:
+    type: string
+    format: decimal
+`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["bigint"])
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["bigintStr"])
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["decimal"])
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["decimalStr"])
+}
+
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
 }

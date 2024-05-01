@@ -207,6 +207,10 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				structure[key] = wr.RandomWord(minLength, maxLength, 0)
 			case binaryType:
 				structure[key] = base64.StdEncoding.EncodeToString([]byte(wr.RandomWord(minLength, maxLength, 0)))
+			case bigIntType:
+				structure[key] = fmt.Sprint(wr.RandomInt(minLength, maxLength))
+			case decimalType:
+				structure[key] = fmt.Sprint(wr.RandomFloat64())
 			default:
 				// if there is a pattern supplied, then try and generate a string from it.
 				if schema.Pattern != "" {
