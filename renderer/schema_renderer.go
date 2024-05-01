@@ -139,16 +139,33 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				maxLength = *schema.MaxLength
 			}
 
+			// if there are examples, use them.
 			if schema.Examples != nil && len(schema.Examples) > 0 {
 				var renderedExample any
-				exmp := schema.Examples[0]
-				if exmp != nil {
-					var ex any
-					_ = exmp.Decode(&ex)
-					renderedExample = fmt.Sprint(ex)
+
+				// multi examples and the type is an array? then render all examples.
+				if len(schema.Examples) > 1 && key == itemsType {
+					renderedExamples := make([]any, len(schema.Examples))
+					for i, exmp := range schema.Examples {
+						if exmp != nil {
+							var ex any
+							_ = exmp.Decode(&ex)
+							renderedExamples[i] = fmt.Sprint(ex)
+						}
+					}
+					structure[key] = renderedExamples
+					return
+				} else {
+					// render the first example
+					exmp := schema.Examples[0]
+					if exmp != nil {
+						var ex any
+						_ = exmp.Decode(&ex)
+						renderedExample = fmt.Sprint(ex)
+					}
+					structure[key] = renderedExample
+					return
 				}
-				structure[key] = renderedExample
-				return
 			}
 
 			switch schema.Format {
@@ -198,30 +215,6 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						structure[key] = str
 					}
 				} else {
-					if key == itemsType {
-						// check if the schema contains an example
-						if schema.Example != nil {
-							var example any
-							_ = schema.Example.Decode(&example)
-							structure[key] = fmt.Sprint(example)
-							return
-						}
-						// if the schema contains examples, then render them.
-						if schema.Examples != nil {
-							if len(schema.Examples) > 0 {
-								renderedExamples := make([]any, len(schema.Examples))
-								for i, exmp := range schema.Examples {
-									if exmp != nil {
-										var ex any
-										_ = exmp.Decode(&ex)
-										renderedExamples[i] = fmt.Sprint(ex)
-									}
-								}
-								structure[key] = renderedExamples
-								return
-							}
-						}
-					}
 					// last resort, generate a random value
 					structure[key] = wr.RandomWord(minLength, maxLength, 0)
 				}
