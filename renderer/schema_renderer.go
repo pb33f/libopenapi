@@ -139,6 +139,18 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				maxLength = *schema.MaxLength
 			}
 
+			if schema.Examples != nil && len(schema.Examples) > 0 {
+				var renderedExample any
+				exmp := schema.Examples[0]
+				if exmp != nil {
+					var ex any
+					_ = exmp.Decode(&ex)
+					renderedExample = fmt.Sprint(ex)
+				}
+				structure[key] = renderedExample
+				return
+			}
+
 			switch schema.Format {
 			case dateTimeType:
 				structure[key] = time.Now().Format(time.RFC3339)
@@ -243,23 +255,16 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				maximum = int64(*schema.Maximum)
 			}
 
-			if schema.Example != nil {
-				var example any
-				_ = schema.Example.Decode(&example)
-				structure[key] = example
-				return
-			}
 			if schema.Examples != nil {
 				if len(schema.Examples) > 0 {
-					renderedExamples := make([]any, len(schema.Examples))
-					for i, exmp := range schema.Examples {
-						if exmp != nil {
-							var ex any
-							_ = exmp.Decode(&ex)
-							renderedExamples[i] = fmt.Sprint(ex)
-						}
+					var renderedExample any
+					exmp := schema.Examples[0]
+					if exmp != nil {
+						var ex any
+						_ = exmp.Decode(&ex)
+						renderedExample = ex
 					}
-					structure[key] = renderedExamples
+					structure[key] = renderedExample
 					return
 				}
 			}
