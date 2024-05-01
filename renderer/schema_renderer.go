@@ -24,6 +24,8 @@ const (
 	stringType       = "string"
 	numberType       = "number"
 	integerType      = "integer"
+	bigIntType       = "bigint"
+	decimalType      = "decimal"
 	booleanType      = "boolean"
 	objectType       = "object"
 	arrayType        = "array"
@@ -217,7 +219,10 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	}
 
 	// handle numbers
-	if slices.Contains(schema.Type, numberType) || slices.Contains(schema.Type, integerType) {
+	if slices.Contains(schema.Type, numberType) ||
+		slices.Contains(schema.Type, integerType) ||
+		slices.Contains(schema.Type, bigIntType) ||
+		slices.Contains(schema.Type, decimalType) {
 
 		if schema.Enum != nil && len(schema.Enum) > 0 {
 			enum := schema.Enum[rand.Int()%len(schema.Enum)]
@@ -238,6 +243,27 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				maximum = int64(*schema.Maximum)
 			}
 
+			if schema.Example != nil {
+				var example any
+				_ = schema.Example.Decode(&example)
+				structure[key] = example
+				return
+			}
+			if schema.Examples != nil {
+				if len(schema.Examples) > 0 {
+					renderedExamples := make([]any, len(schema.Examples))
+					for i, exmp := range schema.Examples {
+						if exmp != nil {
+							var ex any
+							_ = exmp.Decode(&ex)
+							renderedExamples[i] = fmt.Sprint(ex)
+						}
+					}
+					structure[key] = renderedExamples
+					return
+				}
+			}
+
 			switch schema.Format {
 			case floatType:
 				structure[key] = rand.Float32()
@@ -245,6 +271,10 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				structure[key] = rand.Float64()
 			case int32Type:
 				structure[key] = int(wr.RandomInt(minimum, maximum))
+			case bigIntType:
+				structure[key] = wr.RandomInt(minimum, maximum)
+			case decimalType:
+				structure[key] = wr.RandomFloat64()
 			default:
 				structure[key] = wr.RandomInt(minimum, maximum)
 			}
