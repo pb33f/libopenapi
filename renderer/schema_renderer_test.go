@@ -1111,6 +1111,38 @@ properties:
 	assert.Equal(t, `{"bigint":8821239038968084,"bigintStr":"9223372036854775808","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586"}`, string(rendered))
 }
 
+func TestRenderSchema_NonStandard_Format_MultiExample(t *testing.T) {
+	testObject := `type: object
+properties:
+  bigint:
+    type: integer
+    format: bigint
+    examples: 
+      - 8821239038968084
+  bigintStr:
+    type: string
+    format: bigint
+    examples: 
+      - "9223372036854775808"
+  decimal:
+    type: number
+    format: decimal
+    examples: 
+      - 3.141592653589793
+  decimalStr:
+    type: string
+    format: decimal
+    examples: 
+      - "3.14159265358979344719667586"`
+
+	compiled := getSchema([]byte(testObject))
+	schema := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"bigint":8821239038968084,"bigintStr":"9223372036854775808","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586"}`, string(rendered))
+}
+
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
 }
