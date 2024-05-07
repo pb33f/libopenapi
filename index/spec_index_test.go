@@ -25,6 +25,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	digitalOceanCommitID = "d8d390155b515cdd94555478bbcdf5682460c52e"
+)
+
 func TestSpecIndex_GetCache(t *testing.T) {
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
@@ -186,7 +190,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	// get all the files!
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
-	assert.Equal(t, 1651, fileLen)
+	assert.Equal(t, 1654, fileLen)
 	assert.Len(t, remoteFS.GetErrors(), 0)
 
 	// check circular references
@@ -203,7 +207,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	err := cmd.Run()
 	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+		log.Fatalf("git clone failed with %s\n", err)
+	}
+
+	if err := exec.Command("git", "-C", tmp, "reset", "--hard", digitalOceanCommitID).Run(); err != nil {
+		log.Fatalf("git reset failed with %s\n", err)
 	}
 
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
@@ -244,7 +252,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1713, fileLen)
+	assert.Equal(t, 1716, fileLen)
 
 	rolo.AddLocalFS(basePath, fileFS)
 
@@ -270,7 +278,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	} else {
 		assert.Equal(t, "1.35 MB", rolo.RolodexFileSizeAsString())
 	}
-	assert.Equal(t, 1713, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1716, rolo.RolodexTotalFiles())
 }
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
@@ -281,7 +289,11 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 
 	err := cmd.Run()
 	if err != nil {
-		log.Fatalf("cmd.Run() failed with %s\n", err)
+		log.Fatalf("git clone failed with %s\n", err)
+	}
+
+	if err := exec.Command("git", "-C", tmp, "reset", "--hard", digitalOceanCommitID).Run(); err != nil {
+		log.Fatalf("git reset failed with %s\n", err)
 	}
 
 	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
@@ -324,7 +336,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
-	assert.Equal(t, 1699, fileLen)
+	assert.Equal(t, 1702, fileLen)
 
 	assert.NoError(t, rErr)
 
@@ -345,7 +357,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 	} else {
 		assert.Equal(t, "1.24 MB", rolo.RolodexFileSizeAsString())
 	}
-	assert.Equal(t, 1699, rolo.RolodexTotalFiles())
+	assert.Equal(t, 1702, rolo.RolodexTotalFiles())
 }
 
 func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
@@ -353,7 +365,7 @@ func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
 
-	location := "https://raw.githubusercontent.com/digitalocean/openapi/main/specification"
+	location := "https://raw.githubusercontent.com/digitalocean/openapi/tree/" + digitalOceanCommitID + "/specification"
 	baseURL, _ := url.Parse(location)
 
 	// create a new config that does not allow remote lookups.
