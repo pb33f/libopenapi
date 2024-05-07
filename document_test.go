@@ -345,6 +345,29 @@ func TestDocument_RenderAndReload(t *testing.T) {
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
 }
 
+func TestDocument_RenderAndReload_WithErrors(t *testing.T) {
+	// load an OpenAPI 3 specification from bytes
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
+
+	// create a new document from specification bytes
+	doc, err := NewDocument(petstore)
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// because we know this is a v3 spec, we can build a ready to go model from it.
+	m, _ := doc.BuildV3Model()
+
+	// Remove a schema to make the model invalid
+	_, present := m.Model.Components.Schemas.Delete("Pet")
+	assert.True(t, present, "expected schema Pet to exist")
+
+	_, _, _, errors := doc.RenderAndReload()
+	assert.Len(t, errors, 2)
+	assert.Equal(t, errors[0].Error(), "component '#/components/schemas/Pet' does not exist in the specification")
+}
+
 func TestDocument_Render(t *testing.T) {
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
