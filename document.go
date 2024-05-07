@@ -198,21 +198,20 @@ func (d *document) Serialize() ([]byte, error) {
 }
 
 func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error) {
-
 	newBytes, rerr := d.Render()
 	if rerr != nil {
 		return nil, nil, nil, []error{rerr}
 	}
 
-	var errs []error
-
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
-	errs = append(errs, err)
+	if err != nil {
+		return nil, nil, nil, []error{err}
+	}
 
 	// build the model.
 	m, buildErrs := newDoc.BuildV3Model()
-	if buildErrs != nil {
-		return newBytes, newDoc, m, errs
+	if len(buildErrs) > 0 {
+		return newBytes, newDoc, m, buildErrs
 	}
 	// this document is now dead, long live the new document!
 	return newBytes, newDoc, m, nil
