@@ -429,7 +429,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			}
 
 			p := m.ToYamlNode(n, l)
-			if len(p.Content) > 0 {
+			if p.Content != nil {
 				valueNode = p
 			}
 		} else if r, ok := value.(Renderable); ok {

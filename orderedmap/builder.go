@@ -36,6 +36,9 @@ type findValueUntyped interface {
 // ToYamlNode converts the ordered map to a yaml node ready for marshalling.
 func (o *Map[K, V]) ToYamlNode(n NodeBuilder, l any) *yaml.Node {
 	p := utils.CreateEmptyMapNode()
+	if o != nil {
+		p.Content = make([]*yaml.Node, 0)
+	}
 
 	var vn *yaml.Node
 
