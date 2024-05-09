@@ -16,7 +16,7 @@ type OAuthFlow struct {
 	AuthorizationUrl string                              `json:"authorizationUrl,omitempty" yaml:"authorizationUrl,omitempty"`
 	TokenUrl         string                              `json:"tokenUrl,omitempty" yaml:"tokenUrl,omitempty"`
 	RefreshUrl       string                              `json:"refreshUrl,omitempty" yaml:"refreshUrl,omitempty"`
-	Scopes           *orderedmap.Map[string, string]     `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	Scopes           *orderedmap.Map[string, string]     `json:"scopes,renderZero" yaml:"scopes,renderZero"`
 	Extensions       *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low              *low.OAuthFlow
 }
