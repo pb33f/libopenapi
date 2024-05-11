@@ -180,7 +180,7 @@ func (sp *SchemaProxy) Render() ([]byte, error) {
 	return yaml.Marshal(sp)
 }
 
-// MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
+// MarshalYAML will create a ready to render YAML representation of the SchemaProxy object.
 func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 	var s *Schema
 	var err error
@@ -203,7 +203,7 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 	}
 }
 
-// MarshalYAMLInline will create a ready to render YAML representation of the ExternalDoc object. The
+// MarshalYAMLInline will create a ready to render YAML representation of the SchemaProxy object. The
 // $ref values will be inlined instead of kept as is.
 func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 	var s *Schema
