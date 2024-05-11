@@ -4,6 +4,7 @@
 package base
 
 import (
+	"encoding/json"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -492,6 +493,29 @@ func (s *Schema) MarshalYAML() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalJSON will create a ready to render JSON representation of the Schema object.
+func (s *Schema) MarshalJSON() ([]byte, error) {
+	nb := high.NewNodeBuilder(s, s.low)
+
+	// determine index version
+	idx := s.GoLow().Index
+	if idx != nil {
+		if idx.GetConfig().SpecInfo != nil {
+			nb.Version = idx.GetConfig().SpecInfo.VersionNumeric
+		}
+	}
+	// render node
+	node := nb.Render()
+	var renderedJSON map[string]interface{}
+
+	// marshal into struct
+	_ = node.Decode(&renderedJSON)
+
+	// return JSON bytes
+	return json.Marshal(renderedJSON)
+}
+
+// MarshalYAMLInline will render out the Schema pointer as YAML, and all refs will be inlined fully
 func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 	nb := high.NewNodeBuilder(s, s.low)
 	nb.Resolve = true
@@ -503,4 +527,26 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 		}
 	}
 	return nb.Render(), nil
+}
+
+// MarshalJSONInline will render out the Schema pointer as JSON, and all refs will be inlined fully
+func (s *Schema) MarshalJSONInline() ([]byte, error) {
+	nb := high.NewNodeBuilder(s, s.low)
+	nb.Resolve = true
+	// determine index version
+	idx := s.GoLow().Index
+	if idx != nil {
+		if idx.GetConfig().SpecInfo != nil {
+			nb.Version = idx.GetConfig().SpecInfo.VersionNumeric
+		}
+	}
+	// render node
+	node := nb.Render()
+	var renderedJSON map[string]interface{}
+
+	// marshal into struct
+	_ = node.Decode(&renderedJSON)
+
+	// return JSON bytes
+	return json.Marshal(renderedJSON)
 }

@@ -844,6 +844,82 @@ allOf:
 	assert.Equal(t, testSpec, string(schemaBytes))
 }
 
+func TestNewSchemaProxy_RenderSchema_JSON(t *testing.T) {
+	testSpec := `type: object
+description: something object
+`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+
+	// add a config
+	idxConfig := index.CreateOpenAPIIndexConfig()
+	idxConfig.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3,
+	}
+	idx := index.NewSpecIndexWithConfig(nil, idxConfig)
+
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
+
+	// now render it out, it should be identical, but in JSON
+	schemaBytes, _ := compiled.MarshalJSON()
+	assert.Equal(t, `{"description":"something object","type":"object"}`, string(schemaBytes))
+}
+
+func TestNewSchemaProxy_RenderSchema_JSONInline(t *testing.T) {
+	testSpec := `type: object
+description: something object
+`
+
+	var compNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+
+	sp := new(lowbase.SchemaProxy)
+
+	// add a config
+	idxConfig := index.CreateOpenAPIIndexConfig()
+	idxConfig.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3,
+	}
+	idx := index.NewSpecIndexWithConfig(nil, idxConfig)
+
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	assert.Equal(t, schemaProxy, compiled.ParentProxy)
+
+	assert.NotNil(t, compiled)
+	assert.Nil(t, schemaProxy.GetBuildError())
+
+	// now render it out, it should be identical, but in JSON
+	schemaBytes, _ := compiled.MarshalJSONInline()
+	assert.Equal(t, `{"description":"something object","type":"object"}`, string(schemaBytes))
+}
+
 func TestNewSchemaProxy_RenderSchemaWithMultipleObjectTypes(t *testing.T) {
 	testSpec := `type: object
 description: something object
