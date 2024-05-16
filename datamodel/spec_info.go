@@ -114,6 +114,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			case "3.1.0", "3.1":
 				specInfo.VersionNumeric = 3.1
 				specInfo.APISchema = OpenAPI31SchemaData
+				specInfo.SpecFormat = OAS31
 			default:
 				specInfo.VersionNumeric = 3.0
 				specInfo.APISchema = OpenAPI3SchemaData

@@ -296,7 +296,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		errs = append(errs, fmt.Errorf("unable to build document, no specification has been loaded"))
 		return nil, errs
 	}
-	if d.info.SpecFormat != datamodel.OAS3 {
+	if d.info.SpecFormat != datamodel.OAS3 && d.info.SpecFormat != datamodel.OAS31 {
 		errs = append(errs, fmt.Errorf("unable to build openapi document, "+
 			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat))
 		return nil, errs
