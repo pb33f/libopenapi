@@ -394,7 +394,9 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 					vn := vnut.GetValueNode()
 					if vn.Kind == yaml.SequenceNode {
 						for i := range vn.Content {
-							rawNode.Content[i].Style = vn.Content[i].Style
+							if len(rawNode.Content) > i {
+								rawNode.Content[i].Style = vn.Content[i].Style
+							}
 						}
 					}
 				}
