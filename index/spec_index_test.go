@@ -190,7 +190,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	// get all the files!
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
-	assert.Equal(t, 1654, fileLen)
+	assert.Equal(t, 1658, fileLen)
 	assert.Len(t, remoteFS.GetErrors(), 0)
 
 	// check circular references
