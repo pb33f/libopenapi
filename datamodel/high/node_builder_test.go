@@ -49,6 +49,12 @@ func (r valueReferenceStruct) GoLowUntyped() any {
 	return &r
 }
 
+func (r valueReferenceStruct) GetValueNode() *yaml.Node {
+	n := utils.CreateEmptySequenceNode()
+	n.Content = append(n.Content, utils.CreateEmptySequenceNode())
+	return n
+}
+
 type plug struct {
 	Name []string `yaml:"name,omitempty"`
 }
@@ -117,9 +123,101 @@ func (te *test1) GetKeyNode() *yaml.Node {
 	return kn
 }
 
+func (te *test1) GetValueNode() *yaml.Node {
+	kn := utils.CreateStringNode("meddy")
+	kn.Line = 20
+	return kn
+}
+
 func (te *test1) GoesLowUntyped() any {
 	panic("GoesLowUntyped")
 	return te
+}
+
+type test2 struct {
+	Thrat      *valueReferenceStruct                             `yaml:"throg,omitempty"`
+	Thrig      *orderedmap.Map[string, *plug]                    `yaml:"thrig,omitempty"`
+	Thing      string                                            `yaml:"thing,omitempty"`
+	Thong      int                                               `yaml:"thong,omitempty"`
+	Thrum      int64                                             `yaml:"thrum,omitempty"`
+	Thang      float32                                           `yaml:"thang,omitempty"`
+	Thung      float64                                           `yaml:"thung,omitempty"`
+	Thyme      bool                                              `yaml:"thyme,omitempty"`
+	Thurm      any                                               `yaml:"thurm,omitempty"`
+	Thugg      *bool                                             `yaml:"thugg,renderZero"`
+	Thurr      *int64                                            `yaml:"thurr,omitempty"`
+	Thral      *float64                                          `yaml:"thral,omitempty"`
+	Throo      *float64                                          `yaml:"throo,renderZero,omitempty"`
+	Tharg      []string                                          `yaml:"tharg,omitempty"`
+	Type       []string                                          `yaml:"type,omitempty"`
+	Throg      []*valueReferenceStruct                           `yaml:"throg,omitempty"`
+	Throj      *valueReferenceStruct                             `yaml:"throg,omitempty"`
+	Thrag      []*orderedmap.Map[string, []string]               `yaml:"thrag,omitempty"`
+	Thrug      *orderedmap.Map[string, string]                   `yaml:"thrug,omitempty"`
+	Thoom      []*orderedmap.Map[string, string]                 `yaml:"thoom,omitempty"`
+	Thomp      *orderedmap.Map[low.KeyReference[string], string] `yaml:"thomp,omitempty"`
+	Thump      valueReferenceStruct                              `yaml:"thump,omitempty"`
+	Thane      valueReferenceStruct                              `yaml:"thane,omitempty"`
+	Thunk      valueReferenceStruct                              `yaml:"thunk,omitempty"`
+	Thrim      *valueReferenceStruct                             `yaml:"thrim,omitempty"`
+	Thril      *orderedmap.Map[string, *valueReferenceStruct]    `yaml:"thril,omitempty"`
+	Extensions *orderedmap.Map[string, *yaml.Node]               `yaml:"-"`
+	ignoreMe   string                                            `yaml:"-"`
+	IgnoreMe   string                                            `yaml:"-"`
+}
+
+func (t test2) IsReference() bool {
+	return true
+}
+
+func (t test2) GetReference() string {
+	return "aggghhh"
+}
+
+func (t test2) SetReference(ref string, _ *yaml.Node) {
+
+}
+
+func (t test2) GetReferenceNode() *yaml.Node {
+	return nil
+}
+
+func (t test2) MarshalYAML() (interface{}, error) {
+	return utils.CreateStringNode("pizza"), nil
+}
+
+func (t test2) MarshalYAMLInline() (interface{}, error) {
+	return utils.CreateStringNode("pizza-inline!"), nil
+}
+
+func (t test2) GoLowUntyped() any {
+	return &t
+}
+
+func (t test2) GetValue() *yaml.Node {
+	return nil
+}
+
+func TestNewNodeBuilder_SliceRef_Inline_HasValue(t *testing.T) {
+	ty := []interface{}{utils.CreateEmptySequenceNode()}
+	t1 := test1{
+		Thrat: ty,
+	}
+
+	t2 := test2{
+		Thrat: &valueReferenceStruct{Value: renderZero},
+	}
+
+	nb := NewNodeBuilder(&t1, &t2)
+	nb.Resolve = true
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `thrat:
+    - []`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
 
 func TestNewNodeBuilder(t *testing.T) {
@@ -602,6 +700,27 @@ func TestNewNodeBuilder_SliceRef_Inline(t *testing.T) {
 
 	desired := `throg:
     - pizza-inline!`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_SliceRef_InlineNull(t *testing.T) {
+	c := valueReferenceStruct{Value: "milky"}
+	ty := []*valueReferenceStruct{&c}
+	t1 := test1{
+		Throg: ty,
+	}
+
+	t2 := test1{
+		Throg: []*valueReferenceStruct{},
+	}
+
+	nb := NewNodeBuilder(&t1, &t2)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `throg:`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }

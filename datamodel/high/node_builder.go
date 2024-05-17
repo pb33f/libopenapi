@@ -193,7 +193,9 @@ func (n *NodeBuilder) add(key string, i int) {
 			sort.Slice(lines, func(i, j int) bool {
 				return lines[i] < lines[j]
 			})
-			nodeEntry.Line = lines[0]
+			if len(lines) > 0 {
+				nodeEntry.Line = lines[0]
+			}
 		case reflect.Struct:
 			y := value.Interface()
 			nodeEntry.Line = 9999 + i
