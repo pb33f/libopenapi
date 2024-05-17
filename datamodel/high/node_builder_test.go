@@ -720,7 +720,7 @@ func TestNewNodeBuilder_SliceRef_InlineNull(t *testing.T) {
 
 	data, _ := yaml.Marshal(node)
 
-	desired := `throg:`
+	desired := "throg:\n    - pizza"
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
