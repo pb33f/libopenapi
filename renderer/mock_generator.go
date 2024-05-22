@@ -62,6 +62,13 @@ func (mg *MockGenerator) SetPretty() {
 	mg.pretty = true
 }
 
+// DisableRequiredCheck disables renderer required property check when rendering
+// a schema for mocks. This means that all properties will be rendered, not just
+// the required ones.
+func (mg *MockGenerator) DisableRequiredCheck() {
+	mg.renderer.DisableRequiredCheck()
+}
+
 // GenerateMock generates a mock for a given high-level mockable struct. The mockable struct must contain the following fields:
 // Example: any type, this is the default example to use if no examples are present.
 // Examples: *orderedmap.Map[string, *base.Example], this is a map of examples keyed by name.
