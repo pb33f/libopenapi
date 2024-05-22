@@ -12,6 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	"strings"
 	"testing"
@@ -409,4 +410,42 @@ properties:
 	assert.Len(t, m, 2)
 	assert.Equal(t, "robocop", m["name"].(string))
 	assert.Equal(t, "perhaps the best cyberpunk movie ever made.", m["description"].(string))
+}
+
+// Test schema rendering for property examples, regardless of whether the property
+// is marked as required or not.
+func TestMockGenerator_GenerateExamplesForAllProperties(t *testing.T) {
+
+	yml := `type: object
+required:
+  - id
+  - name
+properties:
+  id:
+    type: integer
+    example: 123
+  name:
+    type: string
+    example: "John Doe"
+  active:
+    type: boolean
+    example: true
+  balance:
+    type: number
+    format: float
+    example: 99.99
+  tags:
+    type: array
+    items:
+      type: string
+    example: ["tag1", "tag2", "tag3"]
+`
+
+	fake := createFakeMock(yml, nil, nil)
+	mg := NewMockGenerator(JSON)
+
+	mock, err := mg.GenerateMock(fake, "")
+	require.NoError(t, err)
+
+	assert.Equal(t, `{"active":true,"balance":99.99,"id":123,"name":"John Doe","tags":["tag1","tag2","tag3"]}`, string(mock))
 }
