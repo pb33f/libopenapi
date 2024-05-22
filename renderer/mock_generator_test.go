@@ -412,11 +412,8 @@ properties:
 	assert.Equal(t, "perhaps the best cyberpunk movie ever made.", m["description"].(string))
 }
 
-// Test schema rendering for property examples, regardless of whether the property
-// is marked as required or not.
-func TestMockGenerator_GenerateExamplesForAllProperties(t *testing.T) {
-
-	yml := `type: object
+func TestMockGenerator_GeneratePropertyExamples(t *testing.T) {
+	fake := createFakeMock(`type: object
 required:
   - id
   - name
@@ -439,13 +436,40 @@ properties:
     items:
       type: string
     example: ["tag1", "tag2", "tag3"]
-`
+`, nil, nil)
 
-	fake := createFakeMock(yml, nil, nil)
-	mg := NewMockGenerator(JSON)
+	for name, tc := range map[string]struct {
+		mockGen      func() *MockGenerator
+		expectedMock string
+	}{
+		"OnlyRequired": {
+			mockGen: func() *MockGenerator {
+				mg := NewMockGenerator(JSON)
+				return mg
+			},
+			expectedMock: `{"id":123,"name":"John Doe"}`,
+		},
+		"All": {
+			mockGen: func() *MockGenerator {
+				mg := NewMockGenerator(JSON)
 
-	mock, err := mg.GenerateMock(fake, "")
-	require.NoError(t, err)
+				// Test schema rendering for property examples, regardless of
+				// whether the property is marked as required or not.
+				mg.DisableRequiredCheck()
 
-	assert.Equal(t, `{"active":true,"balance":99.99,"id":123,"name":"John Doe","tags":["tag1","tag2","tag3"]}`, string(mock))
+				return mg
+			},
+			expectedMock: `{"active":true,"balance":99.99,"id":123,"name":"John Doe","tags":["tag1","tag2","tag3"]}`,
+		},
+	} {
+		tc := tc
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			mock, err := tc.mockGen().GenerateMock(fake, "")
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.expectedMock, string(mock))
+		})
+	}
 }
