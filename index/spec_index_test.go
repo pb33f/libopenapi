@@ -142,7 +142,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(do, &rootNode)
 
-	location := "https://raw.githubusercontent.com/digitalocean/openapi/main/specification"
+	location := "https://raw.githubusercontent.com/digitalocean/openapi/8ce96ef186fe938bdce26fb2f5d63ac53ca9d06f/specification"
 	baseURL, _ := url.Parse(location)
 
 	// create a new config that allows remote lookups.
@@ -190,7 +190,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	// get all the files!
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
-	assert.Equal(t, 1658, fileLen)
+	assert.Equal(t, 1660, fileLen)
 	assert.Len(t, remoteFS.GetErrors(), 0)
 
 	// check circular references
