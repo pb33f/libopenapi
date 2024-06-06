@@ -44,6 +44,8 @@ one:
 	assert.Len(t, sr.FindRequirement("one"), 2)
 	assert.Equal(t, sr.Hash(), sr2.Hash())
 	assert.Nil(t, sr.FindRequirement("i-do-not-exist"))
+	assert.NotNil(t, sr.GetRootNode())
+	assert.Nil(t, sr.GetKeyNode())
 }
 
 func TestSecurityRequirement_TestEmptyReq(t *testing.T) {
