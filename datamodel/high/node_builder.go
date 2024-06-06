@@ -515,12 +515,14 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			}
 			if !encodeSkip {
 				var rawNode yaml.Node
-				err := rawNode.Encode(value)
-				if err != nil {
-					return parent
-				} else {
-					valueNode = &rawNode
-					valueNode.Line = line
+				if value != nil {
+					err := rawNode.Encode(value)
+					if err != nil {
+						return parent
+					} else {
+						valueNode = &rawNode
+						valueNode.Line = line
+					}
 				}
 			}
 		}
