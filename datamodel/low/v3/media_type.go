@@ -56,6 +56,16 @@ func (mt *MediaType) GetAllExamples() *orderedmap.Map[low.KeyReference[string], 
 	return mt.Examples.Value
 }
 
+// GetRootNode returns the root yaml node of the MediaType object.
+func (mt *MediaType) GetRootNode() *yaml.Node {
+	return mt.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the MediaType object.
+func (mt *MediaType) GetKeyNode() *yaml.Node {
+	return mt.KeyNode
+}
+
 // Build will extract examples, extensions, schema and encoding from node.
 func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	mt.KeyNode = keyNode

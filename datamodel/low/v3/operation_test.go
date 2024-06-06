@@ -54,6 +54,8 @@ servers:
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 
 	assert.Len(t, n.Tags.Value, 2)
 	assert.Equal(t, "building a business", n.Summary.Value)

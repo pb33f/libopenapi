@@ -43,6 +43,8 @@ explode: true`
 	assert.Equal(t, "this is a header", header.Value.Description.Value)
 	assert.Equal(t, true, header.Value.Required.Value)
 	assert.Equal(t, true, header.Value.AllowEmptyValue.Value)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
 
 func TestEncoding_Build_Error(t *testing.T) {

@@ -28,6 +28,16 @@ type RequestBody struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the RequestBody object.
+func (rb *RequestBody) GetRootNode() *yaml.Node {
+	return rb.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the RequestBody object.
+func (rb *RequestBody) GetKeyNode() *yaml.Node {
+	return rb.KeyNode
+}
+
 // FindExtension attempts to locate an extension using the provided name.
 func (rb *RequestBody) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, rb.Extensions)

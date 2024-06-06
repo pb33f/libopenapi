@@ -38,6 +38,8 @@ x-cake: hot`
 	var xCake string
 	_ = n.FindExtension("x-cake").Value.Decode(&xCake)
 	assert.Equal(t, "hot", xCake)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
 
 func TestExample_Build_Success_Simple(t *testing.T) {

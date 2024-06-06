@@ -147,6 +147,11 @@ func (c *Components) GoLow() *low.Components {
 	return c.low
 }
 
+// GoLowUntyped returns the low-level Components instance used to create the high-level one as an interface{}.
+func (c *Components) GoLowUntyped() any {
+	return c.low
+}
+
 // Render will return a YAML representation of the Components object as a byte slice.
 func (c *Components) Render() ([]byte, error) {
 	return yaml.Marshal(c)

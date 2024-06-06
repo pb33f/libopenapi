@@ -60,6 +60,8 @@ x-milk: please`
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 
 	assert.Equal(t, "306c5ee231d9854f21f03e909517c1fa8a8cb9431f11e8429a501eafaca31652",
 		low.GenerateHashString(&n))
