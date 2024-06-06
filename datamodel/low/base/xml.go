@@ -28,6 +28,7 @@ type XML struct {
 	Attribute  low.NodeReference[bool]
 	Wrapped    low.NodeReference[bool]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	RootNode   *yaml.Node
 	*low.Reference
 }
 
@@ -35,6 +36,7 @@ type XML struct {
 func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
+	x.RootNode = root
 	x.Reference = new(low.Reference)
 	x.Extensions = low.ExtractExtensions(root)
 	return nil

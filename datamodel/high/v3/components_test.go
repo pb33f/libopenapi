@@ -68,4 +68,5 @@ requestBodies:
 
 	dat, _ = r.Render()
 	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
+	assert.NotNil(t, r.GoLowUntyped())
 }

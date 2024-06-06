@@ -52,6 +52,16 @@ func (h *Header) FindContent(ext string) *low.ValueReference[*MediaType] {
 	return low.FindItemInOrderedMap[*MediaType](ext, h.Content.Value)
 }
 
+// GetRootNode returns the root yaml node of the Header object
+func (h *Header) GetRootNode() *yaml.Node {
+	return h.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Header object
+func (h *Header) GetKeyNode() *yaml.Node {
+	return h.KeyNode
+}
+
 // GetExtensions returns all Header extensions and satisfies the low.HasExtensions interface.
 func (h *Header) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return h.Extensions

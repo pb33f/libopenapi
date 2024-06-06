@@ -41,6 +41,16 @@ type Parameter struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the Parameter object.
+func (p *Parameter) GetRootNode() *yaml.Node {
+	return p.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Parameter object.
+func (p *Parameter) GetKeyNode() *yaml.Node {
+	return p.KeyNode
+}
+
 // FindContent will attempt to locate a MediaType instance using the specified name.
 func (p *Parameter) FindContent(cType string) *low.ValueReference[*MediaType] {
 	return low.FindItemInOrderedMap[*MediaType](cType, p.Content.Value)

@@ -31,6 +31,9 @@ x-requesto: presto`
 	assert.NoError(t, err)
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 	assert.NoError(t, err)
 	assert.Equal(t, "a nice request", n.Description.Value)
 	assert.True(t, n.Required.Value)

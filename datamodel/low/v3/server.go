@@ -27,6 +27,11 @@ type Server struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the Server object.
+func (s *Server) GetRootNode() *yaml.Node {
+	return s.RootNode
+}
+
 // GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
 func (s *Server) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return s.Extensions

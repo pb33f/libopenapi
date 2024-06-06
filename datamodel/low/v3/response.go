@@ -32,6 +32,16 @@ type Response struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the Response object.
+func (r *Response) GetRootNode() *yaml.Node {
+	return r.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Response object.
+func (r *Response) GetKeyNode() *yaml.Node {
+	return r.KeyNode
+}
+
 // FindExtension will attempt to locate an extension using the supplied key
 func (r *Response) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, r.Extensions)

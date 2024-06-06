@@ -39,6 +39,8 @@ func TestCallback_Build_Success(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, 1, orderedmap.Len(n.Expression))
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
 
 func TestCallback_Build_Error(t *testing.T) {

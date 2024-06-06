@@ -36,6 +36,16 @@ func (t *Tag) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, t.Extensions)
 }
 
+// GetRootNode returns the root yaml node of the Tag object
+func (t *Tag) GetRootNode() *yaml.Node {
+	return t.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Tag object
+func (t *Tag) GetKeyNode() *yaml.Node {
+	return t.KeyNode
+}
+
 // Build will extract extensions and external docs for the Tag.
 func (t *Tag) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	t.KeyNode = keyNode

@@ -60,6 +60,16 @@ func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[st
 	return nil
 }
 
+// GetRootNode returns the root yaml node of the Operation object
+func (o *Operation) GetRootNode() *yaml.Node {
+	return o.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Operation object
+func (o *Operation) GetKeyNode() *yaml.Node {
+	return o.KeyNode
+}
+
 // Build will extract external docs, parameters, request body, responses, callbacks, security and servers.
 func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	o.KeyNode = keyNode

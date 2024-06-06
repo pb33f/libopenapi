@@ -79,6 +79,16 @@ func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node,
 	return nil
 }
 
+// GetRootNode will return the root yaml node of the SecurityRequirement object
+func (s *SecurityRequirement) GetRootNode() *yaml.Node {
+	return s.RootNode
+}
+
+// GetKeyNode will return the key yaml node of the SecurityRequirement object
+func (s *SecurityRequirement) GetKeyNode() *yaml.Node {
+	return s.KeyNode
+}
+
 // FindRequirement will attempt to locate a security requirement string from a supplied name.
 func (s *SecurityRequirement) FindRequirement(name string) []low.ValueReference[string] {
 	for pair := orderedmap.First(s.Requirements.Value); pair != nil; pair = pair.Next() {

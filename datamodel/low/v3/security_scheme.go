@@ -40,6 +40,16 @@ type SecurityScheme struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the SecurityScheme object.
+func (ss *SecurityScheme) GetRootNode() *yaml.Node {
+	return ss.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the SecurityScheme object.
+func (ss *SecurityScheme) GetKeyNode() *yaml.Node {
+	return ss.KeyNode
+}
+
 // FindExtension attempts to locate an extension using the supplied key.
 func (ss *SecurityScheme) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, ss.Extensions)

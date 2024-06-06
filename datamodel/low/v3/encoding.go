@@ -34,6 +34,16 @@ func (en *Encoding) FindHeader(hType string) *low.ValueReference[*Header] {
 	return low.FindItemInOrderedMap[*Header](hType, en.Headers.Value)
 }
 
+// GetRootNode returns the root yaml node of the Encoding object
+func (en *Encoding) GetRootNode() *yaml.Node {
+	return en.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Encoding object
+func (en *Encoding) GetKeyNode() *yaml.Node {
+	return en.KeyNode
+}
+
 // Hash will return a consistent SHA256 Hash of the Encoding object
 func (en *Encoding) Hash() [32]byte {
 	var f []string

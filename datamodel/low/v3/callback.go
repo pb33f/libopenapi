@@ -36,6 +36,16 @@ func (cb *Callback) GetExtensions() *orderedmap.Map[low.KeyReference[string], lo
 	return cb.Extensions
 }
 
+// GetRootNode returns the root yaml node of the Callback object
+func (cb *Callback) GetRootNode() *yaml.Node {
+	return cb.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Callback object
+func (cb *Callback) GetKeyNode() *yaml.Node {
+	return cb.KeyNode
+}
+
 // FindExpression will locate a string expression and return a ValueReference containing the located PathItem
 func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
 	return low.FindItemInOrderedMap(exp, cb.Expression)
