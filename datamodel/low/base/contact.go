@@ -34,6 +34,16 @@ func (c *Contact) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.Sp
 	return nil
 }
 
+// GetRootNode will return the root yaml node of the Contact object
+func (c *Contact) GetRootNode() *yaml.Node {
+	return c.RootNode
+}
+
+// GetKeyNode will return the key yaml node of the Contact object
+func (c *Contact) GetKeyNode() *yaml.Node {
+	return c.KeyNode
+}
+
 // Hash will return a consistent SHA256 Hash of the Contact object
 func (c *Contact) Hash() [32]byte {
 	var f []string

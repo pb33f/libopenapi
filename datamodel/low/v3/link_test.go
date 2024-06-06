@@ -37,7 +37,8 @@ x-linky: slinky
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 	assert.Equal(t, "#/someref", n.OperationRef.Value)
 	assert.Equal(t, "someId", n.OperationId.Value)
 	assert.Equal(t, "this is a link object.", n.Description.Value)

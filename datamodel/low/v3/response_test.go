@@ -42,6 +42,10 @@ default:
 	assert.NoError(t, err)
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
+
 	assert.NoError(t, err)
 	assert.Equal(t, "default response", n.Default.Value.Description.Value)
 
@@ -227,6 +231,7 @@ func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
 
 	assert.Equal(t, "string",
 		n.FindResponseByCode("200").Value.FindHeader("x-header1").Value.Schema.Value.Schema().Type.Value.A)
+	assert.NotNil(t, n.FindResponseByCode("200").GetValue().GetRootNode())
 
 }
 

@@ -141,7 +141,8 @@ type Schema struct {
 	ParentProxy *SchemaProxy
 
 	// Index is a reference to the SpecIndex that was used to build this schema.
-	Index *index.SpecIndex
+	Index    *index.SpecIndex
+	RootNode *yaml.Node
 	*low.Reference
 }
 
@@ -433,6 +434,11 @@ func (s *Schema) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.V
 	return s.Extensions
 }
 
+// GetRootNode will return the root yaml node of the Schema object
+func (s *Schema) GetRootNode() *yaml.Node {
+	return s.RootNode
+}
+
 // Build will perform a number of operations.
 // Extraction of the following happens in this method:
 //   - Extensions
@@ -465,6 +471,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	s.Index = idx
+	s.RootNode = root
 	if h, _, _ := utils.IsNodeRefValue(root); h {
 		ref, _, err, fctx := low.LocateRefNodeWithContext(ctx, root, idx)
 		if ref != nil {

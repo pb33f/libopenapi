@@ -31,6 +31,11 @@ description: the ranch`
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 
+	l := License{}
+	l.Build(nil, &lNode, &rNode, nil)
+	assert.NotNil(t, l.GetRootNode())
+	assert.NotNil(t, l.GetKeyNode())
+
 }
 
 func TestLicense_WithIdentifier_Hash(t *testing.T) {

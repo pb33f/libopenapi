@@ -43,6 +43,16 @@ type Responses struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the Responses object.
+func (r *Responses) GetRootNode() *yaml.Node {
+	return r.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Responses object.
+func (r *Responses) GetKeyNode() *yaml.Node {
+	return r.KeyNode
+}
+
 // GetExtensions returns all Responses extensions and satisfies the low.HasExtensions interface.
 func (r *Responses) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return r.Extensions

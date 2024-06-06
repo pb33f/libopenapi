@@ -32,6 +32,8 @@ func TestExternalDoc_FindExtension(t *testing.T) {
 	_ = n.FindExtension("x-fish").Value.Decode(&xFish)
 
 	assert.Equal(t, "cake", xFish)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
 
 func TestExternalDoc_Build(t *testing.T) {

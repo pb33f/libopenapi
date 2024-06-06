@@ -172,6 +172,7 @@ func Test_Schema(t *testing.T) {
 	assert.NoError(t, schErr)
 	assert.Equal(t, "something object", sch.Description.Value)
 	assert.True(t, sch.AdditionalProperties.Value.B)
+	assert.NotNil(t, sch.GetRootNode())
 
 	assert.Equal(t, 2, orderedmap.Len(sch.Properties.Value))
 	v := sch.FindProperty("somethingB")

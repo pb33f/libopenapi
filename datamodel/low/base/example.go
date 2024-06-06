@@ -35,6 +35,16 @@ func (ex *Example) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap[*yaml.Node](ext, ex.Extensions)
 }
 
+// GetRootNode will return the root yaml node of the Example object
+func (ex *Example) GetRootNode() *yaml.Node {
+	return ex.RootNode
+}
+
+// GetKeyNode will return the key yaml node of the Example object
+func (ex *Example) GetKeyNode() *yaml.Node {
+	return ex.KeyNode
+}
+
 // Hash will return a consistent SHA256 Hash of the Discriminator object
 func (ex *Example) Hash() [32]byte {
 	var f []string

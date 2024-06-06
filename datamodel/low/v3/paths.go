@@ -32,6 +32,16 @@ type Paths struct {
 	*low.Reference
 }
 
+// GetRootNode returns the root yaml node of the Paths object.
+func (p *Paths) GetRootNode() *yaml.Node {
+	return p.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Paths object.
+func (p *Paths) GetKeyNode() *yaml.Node {
+	return p.KeyNode
+}
+
 // FindPath will attempt to locate a PathItem using the provided path string.
 func (p *Paths) FindPath(path string) (result *low.ValueReference[*PathItem]) {
 	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {

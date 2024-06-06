@@ -121,7 +121,7 @@ func (sp *SchemaProxy) GetKeyNode() *yaml.Node {
 	return sp.kn
 }
 
-// GetKeyNode will return the yaml.Node pointer that is a key for value node.
+// GetContext will return the context.Context object that was passed to the SchemaProxy during build.
 func (sp *SchemaProxy) GetContext() context.Context {
 	return sp.ctx
 }

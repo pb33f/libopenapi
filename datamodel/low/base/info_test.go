@@ -60,6 +60,8 @@ x-cli-name: pizza cli`
 
 	assert.Equal(t, "pizza cli", xCliName)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
 
 func TestContact_Build(t *testing.T) {

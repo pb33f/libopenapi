@@ -82,4 +82,6 @@ summary: it's another path item`
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
