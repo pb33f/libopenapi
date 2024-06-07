@@ -52,6 +52,7 @@ default:
 	ok := n.FindResponseByCode("200")
 	assert.NotNil(t, ok.Value)
 	assert.Equal(t, "some response", ok.Value.Description.Value)
+	assert.NotNil(t, ok.Value.GetKeyNode())
 
 	var xGut string
 	_ = ok.Value.FindExtension("x-gut").Value.Decode(&xGut)
