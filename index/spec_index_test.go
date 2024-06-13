@@ -1249,15 +1249,15 @@ components:
 	if assert.Contains(t, params, "/") {
 		if assert.Contains(t, params["/"], "top") {
 			if assert.Contains(t, params["/"]["top"], "#/components/parameters/param1") {
-				assert.Equal(t, "$.components.parameters.param1", params["/"]["top"]["#/components/parameters/param1"][0].Path)
+				assert.Equal(t, "$.components.parameters['param1']", params["/"]["top"]["#/components/parameters/param1"][0].Path)
 			}
 			if assert.Contains(t, params["/"]["top"], "paramour.yaml#/components/parameters/param3") {
-				assert.Equal(t, "$.components.parameters.param3", params["/"]["top"]["paramour.yaml#/components/parameters/param3"][0].Path)
+				assert.Equal(t, "$.components.parameters['param3']", params["/"]["top"]["paramour.yaml#/components/parameters/param3"][0].Path)
 			}
 		}
 		if assert.Contains(t, params["/"], "get") {
 			if assert.Contains(t, params["/"]["get"], "#/components/parameters/param2") {
-				assert.Equal(t, "$.components.parameters.param2", params["/"]["get"]["#/components/parameters/param2"][0].Path)
+				assert.Equal(t, "$.components.parameters['param2']", params["/"]["get"]["#/components/parameters/param2"][0].Path)
 			}
 			if assert.Contains(t, params["/"]["get"], "test") {
 				assert.Equal(t, "$.paths['/'].get.parameters[2]", params["/"]["get"]["test"][0].Path)
@@ -1620,9 +1620,9 @@ paths:
 	idx := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 
 	schemas := idx.GetAllInlineSchemas()
-	assert.Equal(t, "$.paths['/test'].get.parameters.schema", schemas[0].Path)
-	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.code", schemas[1].Path)
-	assert.Equal(t, "$.paths['/test'].get.parameters.schema.properties.message", schemas[2].Path)
+	assert.Equal(t, "$.paths['/test'].get.parameters['schema']", schemas[0].Path)
+	assert.Equal(t, "$.paths['/test'].get.parameters['schema'].properties['code']", schemas[1].Path)
+	assert.Equal(t, "$.paths['/test'].get.parameters['schema'].properties['message']", schemas[2].Path)
 }
 
 func TestSpecIndex_TestPathsAsRef(t *testing.T) {
@@ -1655,8 +1655,8 @@ components:
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
 	params := index.GetOperationParameterReferences()
-	assert.Equal(t, "$.components.parameters.test-2", params["/test"]["top"]["#/components/parameters/test-2"][0].Path)
-	assert.Equal(t, "$.components.parameters.test-3", params["/test-2"]["get"]["#/components/parameters/test-3"][0].Path)
+	assert.Equal(t, "$.components.parameters['test-2']", params["/test"]["top"]["#/components/parameters/test-2"][0].Path)
+	assert.Equal(t, "$.components.parameters['test-3']", params["/test-2"]["get"]["#/components/parameters/test-3"][0].Path)
 	assert.Equal(t, "bing bong", params["/test"]["top"]["#/components/parameters/test-2"][0].Node.Content[5].Value)
 	assert.Equal(t, "ding a ling", params["/test"]["get"]["#/components/parameters/test-3"][0].Node.Content[5].Value)
 }
