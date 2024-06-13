@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -602,7 +603,8 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		if pathCharExp.Match([]byte(segs[i])) {
 
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
-			if strings.Contains(id, "#") && strings.Contains(segs[i], `\`) {
+			// strip out any backslashes, but only on non-windows systems.
+			if runtime.GOOS != "windows" && strings.Contains(id, "#") && strings.Contains(segs[i], `\`) {
 				segs[i] = strings.ReplaceAll(segs[i], `\`, "")
 				cleaned = append(cleaned, segs[i])
 				continue
