@@ -67,6 +67,15 @@ func CreateIntNode(str string) *yaml.Node {
 	return n
 }
 
+func CreateEmptyScalarNode() *yaml.Node {
+	n := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Tag:   "!!null",
+		Value: "",
+	}
+	return n
+}
+
 func CreateFloatNode(str string) *yaml.Node {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,

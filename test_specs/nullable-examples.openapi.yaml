@@ -1,0 +1,14 @@
+openapi: 3.1.0
+components:
+  schemas:
+    Thing:
+      type: object
+      description: A nullable example.
+      properties:
+        target:
+          nullable: true
+          type: string
+          enum:
+            - staging
+            - production
+          example:
