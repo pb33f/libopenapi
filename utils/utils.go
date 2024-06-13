@@ -702,11 +702,6 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 	}
 	replaced := strings.ReplaceAll(strings.Join(cleaned, "/"), "$", "#")
 
-	if len(replaced) > 0 {
-		if replaced[0] != '#' {
-			replaced = fmt.Sprintf("#%s", replaced)
-		}
-	}
 	return name, replaced
 }
 
