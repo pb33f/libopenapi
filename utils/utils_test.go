@@ -697,7 +697,7 @@ func TestIsHttpVerb(t *testing.T) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/chicken/chips/pizza/cake")
-	assert.Equal(t, "$.chicken.chips.pizza.cake", path)
+	assert.Equal(t, "$.chicken.chips['pizza'].cake", path)
 	assert.Equal(t, "cake", segment)
 }
 
@@ -708,15 +708,23 @@ func TestConvertComponentIdIntoFriendlyPathSearch_SuperCrazy(t *testing.T) {
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
-	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/example/0/expires_at")
-	assert.Equal(t, "$.components.schemas.gpg-key.properties.subkeys.example[0].expires_at", path)
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/examples/0/expires_at")
+	assert.Equal(t, "$.components.schemas['gpg-key'].properties['subkeys'].examples[0].expires_at", path)
 	assert.Equal(t, "expires_at", segment)
 }
 
 func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.B) {
 	for n := 0; n < t.N; n++ {
-		segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/example/0/expires_at")
-		assert.Equal(t, "$.components.schemas.gpg-key.properties.subkeys.example[0].expires_at", path)
+		segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/examples/0/expires_at")
+		assert.Equal(t, "$.components.schemas.gpg-key.properties['subkeys'].examples[0].expires_at", path)
+		assert.Equal(t, "expires_at", segment)
+	}
+}
+
+func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Plural(t *testing.B) {
+	for n := 0; n < t.N; n++ {
+		segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/examples/0/expires_at")
+		assert.Equal(t, "$.components.schemas['gpg-key'].properties['subkeys'].examples[0].expires_at", path)
 		assert.Equal(t, "expires_at", segment)
 	}
 }
@@ -725,6 +733,12 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Simple(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/~1fresh~1pizza/get")
 	assert.Equal(t, "$['/fresh/pizza'].get", path)
 	assert.Equal(t, "get", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Plural(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/FreshMan/properties/subkeys/examples/0/expires_at")
+	assert.Equal(t, "$.components.schemas['FreshMan'].properties['subkeys'].examples[0].expires_at", path)
+	assert.Equal(t, "expires_at", segment)
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Params(t *testing.T) {
@@ -776,9 +790,20 @@ func TestConvertComponentIdIntoFriendlyPathSearch_HTTPCode(t *testing.T) {
 }
 
 func TestConvertComponentIdIntoPath(t *testing.T) {
-	segment, path := ConvertComponentIdIntoPath("#/chicken/chips/pizza/cake")
-	assert.Equal(t, "$.chicken.chips.pizza.cake", path)
+	segment, path := ConvertComponentIdIntoPath("$.chicken.chips.pizza.cake")
+	assert.Equal(t, "#/chicken/chips/pizza/cake", path)
 	assert.Equal(t, "cake", segment)
+}
+
+func TestConvertComponentIdIntoPath_Alt1(t *testing.T) {
+	segment, path := ConvertComponentIdIntoPath("$.chicken.chips['pizza'].cakes[0].burgers[2]")
+	assert.Equal(t, "#/chicken/chips/pizza/cakes/0/burgers/2", path)
+	assert.Equal(t, "burgers[2]", segment)
+}
+
+func TestConvertComponentIdIntoPath_Alt2(t *testing.T) {
+	_, path := ConvertComponentIdIntoPath("chicken.chips['pizza'].cakes[0].burgers[2]")
+	assert.Equal(t, "#/chicken/chips/pizza/cakes/0/burgers/2", path)
 }
 
 func TestDetectCase(t *testing.T) {
