@@ -513,12 +513,10 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 					valueNode.Line = line
 				}
 			}
-			if b, bok := value.(*yaml.Node); bok {
-				if b.Kind == yaml.ScalarNode && b.Tag == "!!null" {
-					encodeSkip = true
-					valueNode = utils.CreateEmptyScalarNode()
-					valueNode.Line = line
-				}
+			if b, bok := value.(*yaml.Node); bok && b.Kind == yaml.ScalarNode && b.Tag == "!!null" {
+				encodeSkip = true
+				valueNode = utils.CreateEmptyScalarNode()
+				valueNode.Line = line
 			}
 			if !encodeSkip {
 				var rawNode yaml.Node
