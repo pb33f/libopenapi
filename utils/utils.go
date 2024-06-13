@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
-	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -589,8 +588,8 @@ func IsHttpVerb(verb string) bool {
 
 // define bracket name expression
 var (
-	bracketNameExp = regexp.MustCompile(`^(\w+)\['?(\w+)\'?]$`)
-	pathCharExp    = regexp.MustCompile(`[\\%=;~.]`)
+	bracketNameExp = regexp.MustCompile(`^(\w+)\['?(\w+)'?]$`)
+	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
 )
 
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
@@ -601,20 +600,20 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
 		if pathCharExp.Match([]byte(segs[i])) {
-
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
-			// strip out any backslashes, but only on non-windows systems.
-			if runtime.GOOS != "windows" && strings.Contains(id, "#") && strings.Contains(segs[i], `\`) {
-				segs[i] = strings.ReplaceAll(segs[i], `\`, "")
-				cleaned = append(cleaned, segs[i])
-				continue
-			}
 			segs[i] = fmt.Sprintf("['%s']", segs[i])
 			if len(cleaned) > 0 {
 				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
 				continue
 			}
 		} else {
+
+			// strip out any backslashes
+			if strings.Contains(id, "#") && strings.Contains(segs[i], `\`) {
+				segs[i] = strings.ReplaceAll(segs[i], `\`, "")
+				cleaned = append(cleaned, segs[i])
+				continue
+			}
 
 			// check for brackets in the name, and if found, rewire the path to encapsulate them
 			// correctly. https://github.com/pb33f/libopenapi/issues/112
