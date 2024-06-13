@@ -635,6 +635,25 @@ func TestDocument_MarshalIndention(t *testing.T) {
 	}
 }
 
+func TestDocument_Nullable_Example(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/nullable-examples.openapi.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+
+	lowDoc, _ = lowv3.CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
+
+	highDoc := NewDocument(lowDoc)
+	rendered := highDoc.RenderWithIndention(2)
+
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, string(data), strings.TrimSpace(string(rendered)))
+	}
+
+	rendered = highDoc.RenderWithIndention(4)
+	if runtime.GOOS != "windows" {
+		assert.NotEqual(t, string(data), strings.TrimSpace(string(rendered)))
+	}
+}
+
 func TestDocument_MarshalIndention_Error(t *testing.T) {
 	data, _ := os.ReadFile("../../../test_specs/single-definition.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
