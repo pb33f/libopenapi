@@ -27,6 +27,12 @@ func TestCreateEmptySequenceNode(t *testing.T) {
 	assert.Len(t, s.Content, 0)
 }
 
+func TestCreateEmptyScalarNode(t *testing.T) {
+	s := CreateEmptyScalarNode()
+	assert.Equal(t, "!!null", s.Tag)
+	assert.Equal(t, "", s.Value)
+}
+
 func TestCreateFloatNode(t *testing.T) {
 	f := CreateFloatNode("3.14")
 	assert.Equal(t, "!!float", f.Tag)
