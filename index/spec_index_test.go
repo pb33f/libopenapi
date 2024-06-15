@@ -19,10 +19,9 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/sync/syncmap"
-
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
+	"sync"
 )
 
 const (
@@ -44,7 +43,7 @@ func TestSpecIndex_GetCache(t *testing.T) {
 	assert.True(t, ok)
 
 	// create a new cache
-	newCache := new(syncmap.Map)
+	newCache := new(sync.Map)
 	index.SetCache(newCache)
 
 	// check that the cache has been set.

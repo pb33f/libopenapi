@@ -22,7 +22,6 @@ import (
 
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
-	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -73,7 +72,7 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	index.nodeMap = make(map[int]map[int]*yaml.Node)
 	go index.MapNodes(rootNode) // this can run async.
 
-	index.cache = new(syncmap.Map)
+	index.cache = new(sync.Map)
 
 	// boot index.
 	results := index.ExtractRefs(index.root.Content[0], index.root, []string{}, 0, false, "")

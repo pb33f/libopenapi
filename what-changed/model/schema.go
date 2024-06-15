@@ -8,7 +8,7 @@ import (
 	"sort"
 	"sync"
 
-	"golang.org/x/exp/slices"
+	"slices"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"

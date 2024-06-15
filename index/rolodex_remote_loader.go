@@ -18,8 +18,8 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
+	"sync"
 )
 
 const (
@@ -38,8 +38,8 @@ type RemoteFS struct {
 	rootURL           string
 	rootURLParsed     *url.URL
 	RemoteHandlerFunc utils.RemoteURLHandler
-	Files             syncmap.Map
-	ProcessingFiles   syncmap.Map
+	Files             sync.Map
+	ProcessingFiles   sync.Map
 	FetchTime         int64
 	FetchChannel      chan *RemoteFile
 	remoteErrors      []error
@@ -344,10 +344,10 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		remoteParsedURL.Host = i.rootURLParsed.Host
 		remoteParsedURL.Scheme = i.rootURLParsed.Scheme
 		// this has been disabled, because I don't think it has value, it causes more problems than it solves currently.
-		//if !strings.HasPrefix(remoteParsedURL.Path, "/") {
+		// if !strings.HasPrefix(remoteParsedURL.Path, "/") {
 		//	remoteParsedURL.Path = filepath.Join(i.rootURLParsed.Path, remoteParsedURL.Path)
 		//	remoteParsedURL.Path = strings.ReplaceAll(remoteParsedURL.Path, "\\", "/")
-		//}
+		// }
 	}
 
 	if remoteParsedURL.Scheme == "" {
