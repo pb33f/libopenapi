@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
-	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
+	"sync"
 )
 
 // LocalFS is a file system that indexes local files.
@@ -25,12 +25,12 @@ type LocalFS struct {
 	indexConfig         *SpecIndexConfig
 	entryPointDirectory string
 	baseDirectory       string
-	Files               syncmap.Map
+	Files               sync.Map
 	extractedFiles      map[string]RolodexFile
 	logger              *slog.Logger
 	readingErrors       []error
 	rolodex             *Rolodex
-	processingFiles     syncmap.Map
+	processingFiles     sync.Map
 }
 
 // GetFiles returns the files that have been indexed. A map of RolodexFile objects keyed by the full path of the file.

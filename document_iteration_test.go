@@ -10,7 +10,7 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 type loopFrame struct {

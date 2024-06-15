@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
-	"golang.org/x/exp/slices"
+	"slices"
 	"gopkg.in/yaml.v3"
 )
 
