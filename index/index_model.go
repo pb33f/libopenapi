@@ -11,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel"
-	"golang.org/x/sync/syncmap"
 
 	"gopkg.in/yaml.v3"
 )
@@ -236,7 +235,7 @@ type SpecIndex struct {
 	allRefSchemaDefinitions             []*Reference                                  // all schemas found that are references.
 	allInlineSchemaDefinitions          []*Reference                                  // all schemas found in document outside of components (openapi) or definitions (swagger).
 	allInlineSchemaObjectDefinitions    []*Reference                                  // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
-	allComponentSchemaDefinitions       *syncmap.Map                                  // all schemas found in components (openapi) or definitions (swagger).
+	allComponentSchemaDefinitions       *sync.Map                                     // all schemas found in components (openapi) or definitions (swagger).
 	securitySchemesNode                 *yaml.Node                                    // components/securitySchemes node
 	allSecuritySchemes                  map[string]*Reference                         // all security schemes / definitions.
 	requestBodiesNode                   *yaml.Node                                    // components/requestBodies node
@@ -273,7 +272,7 @@ type SpecIndex struct {
 	componentIndexChan                  chan bool
 	polyComponentIndexChan              chan bool
 	resolver                            *Resolver
-	cache                               *syncmap.Map
+	cache                               *sync.Map
 	built                               bool
 	uri                                 []string
 	logger                              *slog.Logger
@@ -292,7 +291,7 @@ func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 	return index.config
 }
 
-func (index *SpecIndex) SetCache(sync *syncmap.Map) {
+func (index *SpecIndex) SetCache(sync *sync.Map) {
 	index.cache = sync
 }
 
@@ -300,7 +299,7 @@ func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
 	return index.nodeMap
 }
 
-func (index *SpecIndex) GetCache() *syncmap.Map {
+func (index *SpecIndex) GetCache() *sync.Map {
 	return index.cache
 }
 

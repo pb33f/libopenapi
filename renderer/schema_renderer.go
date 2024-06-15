@@ -16,7 +16,7 @@ import (
 	"github.com/lucasjones/reggen"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"golang.org/x/exp/slices"
+	"slices"
 )
 
 const (

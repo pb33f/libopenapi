@@ -14,7 +14,6 @@ import (
 	"strings"
 	"testing"
 
-	"golang.org/x/sync/syncmap"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pb33f/libopenapi/index"
@@ -22,6 +21,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"sync"
 )
 
 func TestFindItemInOrderedMap(t *testing.T) {
@@ -1901,7 +1901,7 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(&rootNode, cf)
 
 	// fake cache to a lookup for a file that does not exist will work.
-	fakeCache := new(syncmap.Map)
+	fakeCache := new(sync.Map)
 	fakeCache.Store(lookup, &index.Reference{Node: &no, Index: idx})
 	idx.SetCache(fakeCache)
 
