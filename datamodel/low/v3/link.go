@@ -55,11 +55,21 @@ func (l *Link) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, l.Extensions)
 }
 
+// GetRootNode returns the root yaml node of the Link object
+func (l *Link) GetRootNode() *yaml.Node {
+	return l.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Link object
+func (l *Link) GetKeyNode() *yaml.Node {
+	return l.KeyNode
+}
+
 // Build will extract extensions and servers from the node.
 func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	l.KeyNode = keyNode
 	root = utils.NodeAlias(root)
-
+	l.RootNode = root
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
 	l.Extensions = low.ExtractExtensions(root)

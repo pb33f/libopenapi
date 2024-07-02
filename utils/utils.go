@@ -588,7 +588,7 @@ func IsHttpVerb(verb string) bool {
 
 // define bracket name expression
 var (
-	bracketNameExp = regexp.MustCompile(`^(\w+)\[(\w+)\]$`)
+	bracketNameExp = regexp.MustCompile(`^(\w+)\['?([\w/]+)'?]$`)
 	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
 )
 
@@ -607,6 +607,13 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				continue
 			}
 		} else {
+
+			// strip out any backslashes
+			if strings.Contains(id, "#") && strings.Contains(segs[i], `\`) {
+				segs[i] = strings.ReplaceAll(segs[i], `\`, "")
+				cleaned = append(cleaned, segs[i])
+				continue
+			}
 
 			// check for brackets in the name, and if found, rewire the path to encapsulate them
 			// correctly. https://github.com/pb33f/libopenapi/issues/112
@@ -631,6 +638,18 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
 				continue
 			}
+
+			// if we have a plural parent, wrap it in quotes.
+			if i > 0 && segs[i-1] != "" && segs[i-1][len(segs[i-1])-1] == 's' {
+				if i == 2 { // ignore first segment.
+					cleaned = append(cleaned, segs[i])
+					continue
+				}
+				segs[i] = fmt.Sprintf("['%s']", segs[i])
+				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
+				continue
+			}
+
 			cleaned = append(cleaned, segs[i])
 		}
 	}
@@ -650,12 +669,44 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	return name, replaced
 }
 
+// ConvertComponentIdIntoPath will convert a JSON Path into a component ID
+// TODO: This function is named incorrectly and should be changed to reflect the correct function
 func ConvertComponentIdIntoPath(id string) (string, string) {
-	segs := strings.Split(id, "/")
-	name := segs[len(segs)-1]
 
-	return name, strings.ReplaceAll(fmt.Sprintf("%s.%s",
-		strings.Join(segs[:len(segs)-1], "."), name), "#", "$")
+	segs := strings.Split(id, ".")
+	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
+	var cleaned []string
+
+	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
+	for i := range segs {
+		brackets := bracketNameExp.FindStringSubmatch(segs[i])
+		if i == 0 {
+			if segs[i] == "$" {
+				cleaned = append(cleaned, "#")
+				continue
+			}
+		}
+
+		// if there are brackets, shift the path to encapsulate them correctly.
+		if len(brackets) > 0 {
+
+			//bracketNameExp/.
+			key := bracketNameExp.ReplaceAllString(segs[i], "$1")
+			val := strings.ReplaceAll(bracketNameExp.ReplaceAllString(segs[i], "$2"), "/", "~1")
+			cleaned = append(cleaned[:i],
+				append([]string{fmt.Sprintf("%s/%s", key, val)}, cleaned[i:]...)...)
+			continue
+		}
+		cleaned = append(cleaned, segs[i])
+	}
+
+	if cleaned[0] != "#" {
+		cleaned = append(cleaned[:0], append([]string{"#"}, cleaned[0:]...)...)
+
+	}
+	replaced := strings.ReplaceAll(strings.Join(cleaned, "/"), "$", "#")
+
+	return name, replaced
 }
 
 func RenderCodeSnippet(startNode *yaml.Node, specData []string, before, after int) string {

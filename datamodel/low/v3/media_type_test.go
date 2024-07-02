@@ -39,6 +39,9 @@ x-rock: and roll`
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
+
 	var xRock string
 	_ = n.FindExtension("x-rock").Value.Decode(&xRock)
 	assert.Equal(t, "and roll", xRock)

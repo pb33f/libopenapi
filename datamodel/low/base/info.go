@@ -42,6 +42,16 @@ func (i *Info) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, i.Extensions)
 }
 
+// GetRootNode will return the root yaml node of the Info object
+func (i *Info) GetRootNode() *yaml.Node {
+	return i.RootNode
+}
+
+// GetKeyNode will return the key yaml node of the Info object
+func (i *Info) GetKeyNode() *yaml.Node {
+	return i.KeyNode
+}
+
 // GetExtensions returns all extensions for Info
 func (i *Info) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return i.Extensions

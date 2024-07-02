@@ -93,6 +93,16 @@ func (p *PathItem) Hash() [32]byte {
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
 
+// GetRootNode returns the root yaml node of the PathItem object
+func (p *PathItem) GetRootNode() *yaml.Node {
+	return p.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the PathItem object
+func (p *PathItem) GetKeyNode() *yaml.Node {
+	return p.KeyNode
+}
+
 // FindExtension attempts to find an extension
 func (p *PathItem) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, p.Extensions)

@@ -35,6 +35,8 @@ type Components struct {
 	Links           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
 	Callbacks       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode         *yaml.Node
+	RootNode        *yaml.Node
 	*low.Reference
 }
 
@@ -51,6 +53,16 @@ type componentInput struct {
 // GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
 func (co *Components) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return co.Extensions
+}
+
+// GetRootNode returns the root yaml node of the Components object
+func (co *Components) GetRootNode() *yaml.Node {
+	return co.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the Components object
+func (co *Components) GetKeyNode() *yaml.Node {
+	return co.KeyNode
 }
 
 // Hash will return a consistent SHA256 Hash of the Encoding object
@@ -128,7 +140,8 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 	utils.CheckForMergeNodes(root)
 	co.Reference = new(low.Reference)
 	co.Extensions = low.ExtractExtensions(root)
-
+	co.RootNode = root
+	co.KeyNode = root
 	var reterr error
 	var ceMutex sync.Mutex
 	var wg sync.WaitGroup
@@ -271,8 +284,9 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 		var err error
 		nCtx := ctx
 		fIdx := idx
-		if h, _, _ := utils.IsNodeRefValue(node); h && label != SchemasLabel {
+		if h, rv, _ := utils.IsNodeRefValue(node); h && label != SchemasLabel {
 			node, fIdx, err, nCtx = low.LocateRefNodeWithContext(ctx, node, idx)
+			nCtx = context.WithValue(nCtx, "reference", rv)
 		}
 		if err != nil {
 			return componentBuildResult[T]{}, err

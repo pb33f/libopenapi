@@ -53,6 +53,8 @@ x-milk: cold`
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 
 	path := n.FindPath("/some/path").Value
 	assert.NotNil(t, path)

@@ -31,4 +31,9 @@ email: buckaroo@pb33f.io`
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+
+	c := Contact{}
+	c.Build(nil, &lNode, &rNode, nil)
+	assert.NotNil(t, c.GetRootNode())
+	assert.NotNil(t, c.GetKeyNode())
 }

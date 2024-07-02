@@ -31,10 +31,11 @@ variables:
 	var n Server
 	err := low.BuildModel(idxNode.Content[0], &n)
 	assert.NoError(t, err)
+	assert.Nil(t, n.GetRootNode())
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-
+	assert.NotNil(t, n.GetRootNode())
 	assert.Equal(t, "25535d0a6dd30c609aeae6e08f9eaa82fef49df540fc048fe4adffbce7841c0b",
 		low.GenerateHashString(&n))
 

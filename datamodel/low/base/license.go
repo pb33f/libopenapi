@@ -40,6 +40,16 @@ func (l *License) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 	return nil
 }
 
+// GetRootNode will return the root yaml node of the License object
+func (l *License) GetRootNode() *yaml.Node {
+	return l.RootNode
+}
+
+// GetKeyNode will return the key yaml node of the License object
+func (l *License) GetKeyNode() *yaml.Node {
+	return l.KeyNode
+}
+
 // Hash will return a consistent SHA256 Hash of the License object
 func (l *License) Hash() [32]byte {
 	var f []string

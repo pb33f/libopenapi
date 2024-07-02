@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2004 Princess B33f Heavy Industries / Dave Shanley / Quobix
 // SPDX-License-Identifier: MIT
 
 // Package low contains a set of low-level models that represent OpenAPI 2 and 3 documents.
@@ -12,3 +12,11 @@
 // Navigating maps that use a KeyReference as a key is tricky, because there is no easy way to provide a lookup.
 // Convenience methods for lookup up properties in a low-level model have therefore been provided.
 package low
+
+import "gopkg.in/yaml.v3"
+
+// HasRootNode is an interface that is used to extract the root yaml.Node from a low-level model. The root node is
+// the top-level node that represents the entire object as represented in the original source file.
+type HasRootNode interface {
+	GetRootNode() *yaml.Node
+}

@@ -39,6 +39,16 @@ func (o *OAuthFlows) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, o.Extensions)
 }
 
+// GetRootNode returns the root yaml node of the OAuthFlows object.
+func (o *OAuthFlows) GetRootNode() *yaml.Node {
+	return o.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the OAuthFlows object.
+func (o *OAuthFlows) GetKeyNode() *yaml.Node {
+	return o.KeyNode
+}
+
 // Build will extract extensions and all OAuthFlow types from the supplied node.
 func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	o.KeyNode = keyNode
@@ -101,6 +111,7 @@ type OAuthFlow struct {
 	RefreshUrl       low.NodeReference[string]
 	Scopes           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
 	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	RootNode         *yaml.Node
 	*low.Reference
 }
 
@@ -119,10 +130,16 @@ func (o *OAuthFlow) FindExtension(ext string) *low.ValueReference[*yaml.Node] {
 	return low.FindItemInOrderedMap(ext, o.Extensions)
 }
 
+// GetRootNode returns the root yaml node of the OAuthFlow object.
+func (o *OAuthFlow) GetRootNode() *yaml.Node {
+	return o.RootNode
+}
+
 // Build will extract extensions from the node.
 func (o *OAuthFlow) Build(_ context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	o.Reference = new(low.Reference)
 	o.Extensions = low.ExtractExtensions(root)
+	o.RootNode = root
 	return nil
 }
 

@@ -40,6 +40,8 @@ x-coffee: tasty`
 
 	assert.Equal(t, "tasty", xCoffee)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 }
 
 func TestTag_Build_Error(t *testing.T) {

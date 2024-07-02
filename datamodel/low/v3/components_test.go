@@ -79,7 +79,8 @@ func TestComponents_Build_Success(t *testing.T) {
 
 	err = n.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
-
+	assert.NotNil(t, n.GetRootNode())
+	assert.NotNil(t, n.GetKeyNode())
 	assert.Equal(t, "one of many", n.FindSchema("one").Value.Schema().Description.Value)
 	assert.Equal(t, "two of many", n.FindSchema("two").Value.Schema().Description.Value)
 	assert.Equal(t, "three of many", n.FindResponse("three").Value.Description.Value)

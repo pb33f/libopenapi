@@ -35,6 +35,8 @@ x-tasty: herbs
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
+	assert.NotNil(t, n.GetRootNode())
+
 	var xTasty string
 	_ = n.FindExtension("x-tasty").Value.Decode(&xTasty)
 	assert.Equal(t, "herbs", xTasty)
@@ -60,6 +62,9 @@ x-tasty: herbs`
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
+
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 
 	var xTasty string
 	_ = n.FindExtension("x-tasty").GetValue().Decode(&xTasty)

@@ -61,6 +61,8 @@ content:
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
+	assert.NotNil(t, n.GetRootNode())
+	assert.Nil(t, n.GetKeyNode())
 	assert.Equal(t, "michelle, meddy and maddy", n.Description.Value)
 	assert.True(t, n.AllowReserved.Value)
 	assert.True(t, n.Explode.Value)
