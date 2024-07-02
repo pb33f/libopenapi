@@ -394,7 +394,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			if entry.LowValue != nil {
 				if vnut, ok := entry.LowValue.(low.HasValueNodeUntyped); ok {
 					vn := vnut.GetValueNode()
-					if vn.Kind == yaml.SequenceNode {
+					if vn != nil && vn.Kind == yaml.SequenceNode {
 						for i := range vn.Content {
 							if len(rawNode.Content) > i {
 								rawNode.Content[i].Style = vn.Content[i].Style
@@ -516,6 +516,13 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			if !encodeSkip {
 				var rawNode yaml.Node
 				if value != nil {
+					// check if is a node and it's null
+					if v, ko := value.(*yaml.Node); ko {
+						if v.Tag == "!!null" {
+							return parent
+						}
+					}
+
 					err := rawNode.Encode(value)
 					if err != nil {
 						return parent
