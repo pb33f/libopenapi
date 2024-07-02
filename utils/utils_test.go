@@ -817,6 +817,11 @@ func TestConvertComponentIdIntoPath_Alt2(t *testing.T) {
 	assert.Equal(t, "#/chicken/chips/pizza/cakes/0/burgers/2", path)
 }
 
+func TestConvertComponentIdIntoPath_Alt3(t *testing.T) {
+	_, path := ConvertComponentIdIntoPath("chicken.chips['/one/two/pizza'].cakes[0].burgers[2]")
+	assert.Equal(t, "#/chicken/chips/~1one~1two~1pizza/cakes/0/burgers/2", path)
+}
+
 func TestDetectCase(t *testing.T) {
 	assert.Equal(t, PascalCase, DetectCase("PizzaPie"))
 	assert.Equal(t, CamelCase, DetectCase("anyoneForTennis"))
