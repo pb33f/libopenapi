@@ -425,7 +425,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 
 				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
 					Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
-						"index %d has a duplicate ref `%s`", method, pathItemNode.Value, i, paramRefName),
+						"index %d has a duplicate ref `%s`", strings.ToUpper(method), pathItemNode.Value, i, paramRefName),
 					Node: param,
 					Path: path,
 				})
@@ -449,8 +449,8 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 
 			if vn == nil {
 				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
-					Err: fmt.Errorf("the '%s' operation parameter at path '%s', index %d has no 'name' value",
-						method, pathItemNode.Value, i),
+					Err: fmt.Errorf("the `%s` operation parameter at path `%s`, index %d has no `name` value",
+						strings.ToUpper(method), pathItemNode.Value, i),
 					Node: param,
 					Path: path,
 				})
@@ -494,7 +494,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 
 						index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
 							Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
-								"index %d has a duplicate name `%s` and `in` type", method, pathItemNode.Value, i, vn.Value),
+								"index %d has a duplicate name `%s` and `in` type", strings.ToUpper(method), pathItemNode.Value, i, vn.Value),
 							Node: param,
 							Path: path,
 						})
