@@ -4,6 +4,7 @@
 package base
 
 import (
+	"encoding/json"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -54,6 +55,13 @@ func (e *Example) Render() ([]byte, error) {
 func (e *Example) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(e, e.low)
 	return nb.Render(), nil
+}
+
+// MarshalJSON will marshal this into a JSON byte slice
+func (e *Example) MarshalJSON() ([]byte, error) {
+	var g map[string]any
+	e.Value.Decode(&g)
+	return json.Marshal(g)
 }
 
 // ExtractExamples will convert a low-level example map, into a high level one that is simple to navigate.
