@@ -141,7 +141,7 @@ func (p *Parameter) Hash() [32]byte {
 	}
 	f = append(f, fmt.Sprint(p.Explode.Value))
 	f = append(f, fmt.Sprint(p.AllowReserved.Value))
-	if p.Schema.Value != nil {
+	if p.Schema.Value != nil && p.Schema.Value.Schema() != nil {
 		f = append(f, fmt.Sprintf("%x", p.Schema.Value.Schema().Hash()))
 	}
 	if p.Example.Value != nil && !p.Example.Value.IsZero() {
