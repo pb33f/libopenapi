@@ -588,7 +588,7 @@ func IsHttpVerb(verb string) bool {
 
 // define bracket name expression
 var (
-	bracketNameExp = regexp.MustCompile(`^(\w+)\['?(\w+)'?]$`)
+	bracketNameExp = regexp.MustCompile(`^(\w+)\['?([\w/]+)'?]$`)
 	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
 )
 
@@ -689,8 +689,12 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 
 		// if there are brackets, shift the path to encapsulate them correctly.
 		if len(brackets) > 0 {
+
+			//bracketNameExp/.
+			key := bracketNameExp.ReplaceAllString(segs[i], "$1")
+			val := strings.ReplaceAll(bracketNameExp.ReplaceAllString(segs[i], "$2"), "/", "~1")
 			cleaned = append(cleaned[:i],
-				append([]string{bracketNameExp.ReplaceAllString(segs[i], "$1/$2")}, cleaned[i:]...)...)
+				append([]string{fmt.Sprintf("%s/%s", key, val)}, cleaned[i:]...)...)
 			continue
 		}
 		cleaned = append(cleaned, segs[i])
