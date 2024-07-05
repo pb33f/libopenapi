@@ -1002,19 +1002,143 @@ func TestDetermineJSONWhitespaceLength_None(t *testing.T) {
 	assert.Equal(t, 0, DetermineWhitespaceLength(string(someBytes)))
 }
 
-func TestTimeoutFind(t *testing.T) {
-	a := &yaml.Node{
-		Value: "chicken",
-	}
-	b := &yaml.Node{
-		Value: "nuggets",
-	}
+func TestFindFirstKeyNode_DoubleMerge(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
 
-	// loopy loop.
-	a.Content = append(a.Content, b)
-	b.Content = append(b.Content, a)
+t-k: &anchorB
+  important-field: a nice string
+x-a: &anchorA
+  <<: *anchorB
+x-b:
+  <<: *anchorA
+`)
 
-	nodes, err := FindNodesWithoutDeserializing(a, "$..nuggets")
-	assert.Error(t, err)
-	assert.Nil(t, nodes)
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(yml, &rootNode)
+
+	k, v := FindFirstKeyNode("important-field", rootNode.Content[0].Content[7].Content, 0)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, "a nice string", v.Value)
+
+}
+
+func TestFindKeyNodeTop_DoubleMerge(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+
+t-k: &anchorB
+  important-field: a nice string
+x-a: &anchorA
+  <<: *anchorB
+x-b:
+  <<: *anchorA
+`)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(yml, &rootNode)
+
+	k, v := FindKeyNodeTop("important-field", rootNode.Content[0].Content[7].Content)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, "a nice string", v.Value)
+
+}
+
+func TestFindKeyNode_DoubleMerge(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+
+t-k: &anchorB
+  important-field: a nice string
+x-a: &anchorA
+  <<: *anchorB
+x-b:
+  <<: *anchorA
+`)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(yml, &rootNode)
+
+	k, v := FindKeyNode("important-field", rootNode.Content[0].Content[7].Content)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, "a nice string", v.Value)
+
+}
+
+func TestFindKeyNodeFull_DoubleMerge(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+any-thing: &anchorH
+  important-field: a nice string
+t-k: &anchorB
+  panda:
+    <<: *anchorH
+x-a: &anchorA
+  <<: *anchorB
+x-b:
+  <<: *anchorA
+
+`)
+
+	var rootNode yaml.Node
+	ee := yaml.Unmarshal(yml, &rootNode)
+	assert.NoError(t, ee)
+
+	k, l, v := FindKeyNodeFull("important-field", rootNode.Content[0].Content[9].Content)
+	assert.NotNil(t, l)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, "a nice string", v.Value)
+
+}
+
+func TestFindKeyNodeFullTop_DoubleMerge(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+any-thing: &anchorH
+  important-field: a nice string
+t-k: &anchorB
+  <<: *anchorH
+x-a: &anchorA
+  <<: *anchorB
+x-b:
+  <<: *anchorA
+
+`)
+
+	var rootNode yaml.Node
+	ee := yaml.Unmarshal(yml, &rootNode)
+	assert.NoError(t, ee)
+
+	k, l, v := FindKeyNodeFullTop("important-field", rootNode.Content[0].Content[9].Content)
+	assert.NotNil(t, l)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, "a nice string", v.Value)
+
+}
+
+func TestNodeMerge(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+any-thing: &anchorH
+  important-field: a nice string
+t-k: &anchorB
+  <<: *anchorH
+x-a: &anchorA
+  <<: *anchorB
+x-b:
+  <<: *anchorA
+
+`)
+
+	var rootNode yaml.Node
+	ee := yaml.Unmarshal(yml, &rootNode)
+	assert.NoError(t, ee)
+
+	n := NodeMerge(rootNode.Content[0].Content[9].Content)
+	assert.NotNil(t, n)
+	assert.Equal(t, "a nice string", n.Content[1].Value)
+}
+
+func TestNodeMerge_NoNodes(t *testing.T) {
+	n := NodeMerge(nil)
+	assert.Nil(t, n)
 }
