@@ -5,6 +5,7 @@ package base
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
@@ -53,6 +54,21 @@ x-hack: code`
 	// render the example as YAML
 	rendered, _ := highExample.Render()
 	assert.Equal(t, yml, strings.TrimSpace(string(rendered)))
+
+	// render the example as JSON
+	var err error
+	rendered, err = json.Marshal(highExample)
+	assert.NoError(t, err)
+
+	var j map[string]any
+	_ = json.Unmarshal(rendered, &j)
+
+	assert.Equal(t, "an example", j["summary"])
+	assert.Equal(t, "something more", j["description"])
+	assert.Equal(t, "https://pb33f.io", j["externalValue"])
+	assert.Equal(t, "code", j["x-hack"])
+	assert.Equal(t, "a thing", j["value"])
+
 }
 
 func TestExtractExamples(t *testing.T) {
