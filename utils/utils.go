@@ -221,18 +221,21 @@ func FindFirstKeyNode(key string, nodes []*yaml.Node, depth int) (keyNode *yaml.
 	if depth > 40 {
 		return nil, nil
 	}
+	if nodes != nil && len(nodes) > 0 && nodes[0].Tag == "!!merge" {
+		nodes = NodeAlias(nodes[1]).Content
+	}
 	for i, v := range nodes {
 		if key != "" && key == v.Value {
 			if i+1 >= len(nodes) {
 				return v, NodeAlias(nodes[i]) // this is the node we need.
 			}
-			return v, NodeAlias(nodes[i+1]) // next node is what we need.
+			return NodeAlias(v), NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 		if len(v.Content) > 0 {
 			depth++
 			x, y := FindFirstKeyNode(key, v.Content, depth)
 			if x != nil && y != nil {
-				return x, y
+				return NodeAlias(x), NodeAlias(y)
 			}
 		}
 	}
@@ -258,16 +261,19 @@ type KeyNodeSearch struct {
 // FindKeyNodeTop is a non-recursive search of top level nodes for a key, will not look at content.
 // Returns the key and value
 func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode *yaml.Node) {
-	for i, v := range nodes {
+	if nodes != nil && len(nodes) > 0 && nodes[0].Tag == "!!merge" {
+		nodes = NodeAlias(nodes[1]).Content
+	}
+	for i := 0; i < len(nodes); i++ {
+		v := nodes[i]
 		if i%2 != 0 {
 			continue
 		}
-
 		if strings.EqualFold(key, v.Value) {
 			if i+1 >= len(nodes) {
-				return v, nodes[i]
+				return NodeAlias(v), NodeAlias(nodes[i])
 			}
-			return v, nodes[i+1] // next node is what we need.
+			return NodeAlias(v), NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 	}
 	return nil, nil
@@ -276,25 +282,27 @@ func FindKeyNodeTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNo
 // FindKeyNode is a non-recursive search of a *yaml.Node Content for a child node with a key.
 // Returns the key and value
 func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode *yaml.Node) {
-	// numNodes := len(nodes)
+	if nodes != nil && len(nodes) > 0 && nodes[0].Tag == "!!merge" {
+		nodes = NodeAlias(nodes[1]).Content
+	}
 	for i, v := range nodes {
 		if i%2 == 0 && key == v.Value {
 			if len(nodes) <= i+1 {
-				return v, nodes[i]
+				return NodeAlias(v), NodeAlias(nodes[i])
 			}
-			return v, nodes[i+1] // next node is what we need.
+			return NodeAlias(v), NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 		for x, j := range v.Content {
 			if key == j.Value {
 				if IsNodeMap(v) {
 					if x+1 == len(v.Content) {
-						return v, v.Content[x]
+						return NodeAlias(v), NodeAlias(v.Content[x])
 					}
-					return v, v.Content[x+1] // next node is what we need.
+					return NodeAlias(v), NodeAlias(v.Content[x+1]) // next node is what we need.
 
 				}
 				if IsNodeArray(v) {
-					return v, v.Content[x]
+					return NodeAlias(v), NodeAlias(v.Content[x])
 				}
 			}
 		}
@@ -306,25 +314,37 @@ func FindKeyNode(key string, nodes []*yaml.Node) (keyNode *yaml.Node, valueNode 
 // generally different things are required from different node trees, so depending on what this function is looking at
 // it will return different things.
 func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
-	for i := range nodes {
+	if nodes != nil && len(nodes) > 0 && nodes[0].Tag == "!!merge" {
+		nodes = NodeAlias(nodes[1]).Content
+	}
+	for i := 0; i < len(nodes); i++ {
 		if i%2 == 0 && key == nodes[i].Value {
 			if i+1 >= len(nodes) {
-				return nodes[i], nodes[i], nodes[i]
+				return NodeAlias(nodes[i]), NodeAlias(nodes[i]), NodeAlias(nodes[i])
 			}
-			return nodes[i], nodes[i], nodes[i+1] // next node is what we need.
+			return NodeAlias(nodes[i]), NodeAlias(nodes[i]), NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 	}
 	for _, v := range nodes {
-		for x := range v.Content {
+		for x := 0; x < len(v.Content); x++ {
+			r := v.Content[x]
+			if x%2 == 0 {
+				if r.Tag == "!!merge" {
+					if len(nodes) > x+1 {
+						v = NodeAlias(nodes[x+1])
+					}
+				}
+			}
+
 			if key == v.Content[x].Value {
 				if IsNodeMap(v) {
 					if x+1 == len(v.Content) {
 						return v, v.Content[x], NodeAlias(v.Content[x])
 					}
-					return v, v.Content[x], NodeAlias(v.Content[x+1])
+					return NodeAlias(v), NodeAlias(v.Content[x]), NodeAlias(v.Content[x+1])
 				}
 				if IsNodeArray(v) {
-					return v, v.Content[x], NodeAlias(v.Content[x])
+					return NodeAlias(v), NodeAlias(v.Content[x]), NodeAlias(v.Content[x])
 				}
 			}
 		}
@@ -335,12 +355,26 @@ func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelN
 // FindKeyNodeFullTop is an overloaded version of FindKeyNodeFull. This version only looks at the top
 // level of the node and not the children.
 func FindKeyNodeFullTop(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelNode *yaml.Node, valueNode *yaml.Node) {
-	for i := range nodes {
+	if nodes != nil && len(nodes) >= 0 && nodes[0].Tag == "!!merge" {
+		nodes = NodeAlias(nodes[1]).Content
+	}
+	for i := 0; i < len(nodes); i++ {
+		v := nodes[i]
+		if i%2 == 0 {
+			if v.Tag == "!!merge" {
+				if len(nodes) > i+1 {
+					v = NodeAlias(nodes[i+1])
+					if len(v.Content) > 0 {
+						nodes = append(nodes, v.Content...)
+					}
+				}
+			}
+		}
 		if i%2 != 0 {
 			continue
 		}
 		if i%2 == 0 && key == nodes[i].Value {
-			return nodes[i], nodes[i], NodeAlias(nodes[i+1]) // next node is what we need.
+			return NodeAlias(nodes[i]), NodeAlias(nodes[i]), NodeAlias(nodes[i+1]) // next node is what we need.
 		}
 	}
 	return nil, nil, nil
@@ -417,11 +451,43 @@ func IsNodeAlias(node *yaml.Node) (*yaml.Node, bool) {
 	return node, false
 }
 
+func NodeMerge(nodes []*yaml.Node) *yaml.Node {
+	for i, v := range nodes {
+		if v.Tag == "!!merge" {
+			if i+1 < len(nodes) {
+				return NodeAlias(nodes[i+1])
+			}
+		}
+	}
+	if len(nodes) > 0 {
+		return NodeAlias(nodes[0])
+	}
+	return nil
+}
+
 // NodeAlias checks if the node is an alias, and lifts out the anchor
 func NodeAlias(node *yaml.Node) *yaml.Node {
+
 	if node == nil {
 		return nil
 	}
+
+	content := node.Content
+	if node.Kind == yaml.AliasNode {
+		content = node.Alias.Content
+	}
+
+	for i, n := range content {
+		if i%2 == 0 {
+			if n.Tag == "!!merge" {
+				g := NodeMerge(content[i+1:])
+				if g != nil {
+					node = g
+				}
+			}
+		}
+	}
+
 	if node.Kind == yaml.AliasNode {
 		node = node.Alias
 		return node
