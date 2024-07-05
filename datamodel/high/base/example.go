@@ -60,7 +60,9 @@ func (e *Example) MarshalYAML() (interface{}, error) {
 // MarshalJSON will marshal this into a JSON byte slice
 func (e *Example) MarshalJSON() ([]byte, error) {
 	var g map[string]any
-	e.Value.Decode(&g)
+	nb := high.NewNodeBuilder(e, e.low)
+	r := nb.Render()
+	r.Decode(&g)
 	return json.Marshal(g)
 }
 
