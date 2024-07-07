@@ -320,8 +320,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			for _, allOfSchema := range allOf {
 				allOfCompiled := allOfSchema.Schema()
 				wr.DiveIntoSchema(allOfCompiled, allOfType, allOfMap, depth+1)
-				for k, v := range allOfMap[allOfType].(map[string]any) {
-					propertyMap[k] = v
+				if m, ok := allOfMap[allOfType].(map[string]any); ok {
+					for k, v := range m {
+						propertyMap[k] = v
+					}
+				}
+				if m, ok := allOfMap[allOfType].(string); ok {
+					propertyMap[allOfType] = m
 				}
 			}
 		}
@@ -349,8 +354,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			oneOfMap := make(map[string]any)
 			oneOfCompiled := oneOf[0].Schema()
 			wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
-			for k, v := range oneOfMap[oneOfType].(map[string]any) {
-				propertyMap[k] = v
+			if m, ok := oneOfMap[oneOfType].(map[string]any); ok {
+				for k, v := range m {
+					propertyMap[k] = v
+				}
+			}
+			if m, ok := oneOfMap[oneOfType].(string); ok {
+				propertyMap[oneOfType] = m
 			}
 		}
 
@@ -360,8 +370,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			anyOfMap := make(map[string]any)
 			anyOfCompiled := anyOf[0].Schema()
 			wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
-			for k, v := range anyOfMap[anyOfType].(map[string]any) {
-				propertyMap[k] = v
+			if m, ok := anyOfMap[anyOfType].(map[string]any); ok {
+				for k, v := range m {
+					propertyMap[k] = v
+				}
+			}
+			if m, ok := anyOfMap[anyOfType].(string); ok {
+				propertyMap[anyOfType] = m
 			}
 		}
 		structure[key] = propertyMap
