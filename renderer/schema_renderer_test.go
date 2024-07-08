@@ -659,6 +659,22 @@ dependentSchemas:
 	assert.True(t, journeyMap["pb33f"].(map[string]interface{})["fishCake"].(map[string]interface{})["bones"].(bool))
 }
 
+func TestRenderExample_String_AllOf(t *testing.T) {
+	testObject := `type: object
+allOf:
+  - type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	assert.Len(t, journeyMap["pb33f"], 1)
+	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["allOf"].(string)), 0)
+}
+
 func TestRenderExample_Object_OneOf(t *testing.T) {
 	testObject := `type: object
 oneOf:
@@ -683,6 +699,22 @@ oneOf:
 	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["bones"].(string)), 0)
 }
 
+func TestRenderExample_String_OneOf(t *testing.T) {
+	testObject := `type: object
+oneOf:
+  - type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	assert.Len(t, journeyMap["pb33f"], 1)
+	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["oneOf"].(string)), 0)
+}
+
 func TestRenderExample_Object_AnyOf(t *testing.T) {
 	testObject := `type: object
 anyOf:
@@ -705,6 +737,22 @@ anyOf:
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
 	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["bones"].(string)), 0)
+}
+
+func TestRenderExample_String_AnyOf(t *testing.T) {
+	testObject := `type: object
+anyOf:
+  - type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	assert.Len(t, journeyMap["pb33f"], 1)
+	assert.Greater(t, len(journeyMap["pb33f"].(map[string]interface{})["anyOf"].(string)), 0)
 }
 
 func TestRenderExample_TestGiftshopProduct_UsingExamples(t *testing.T) {
