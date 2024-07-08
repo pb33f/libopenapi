@@ -127,12 +127,11 @@ type DocumentModel[T v2high.Swagger | v3high.Document] struct {
 // After creating a Document, the option to build a model becomes available, in either V2 or V3 flavors. The models
 // are about 70% different between Swagger and OpenAPI 3, which is why two different models are available.
 //
-// This function will automatically follow (meaning load) any file or remote references that are found anywhere.
-// Which means recursively also, like a spider, it will follow every reference found, local or remote.
+// This function will NOT automatically follow (meaning load) any file or remote references that are found.
 //
-// If this isn't the behavior you want, or that you feel this is a potential security risk,
-// then you can use the NewDocumentWithConfiguration() function instead, which allows you to set a configuration that
-// will allow you to control if file or remote references are allowed.
+// If this isn't the behavior you want, then you can use the NewDocumentWithConfiguration() function instead, which allows you to set a configuration that
+// will allow you to control if file or remote references are allowed. In particular the `AllowFileReferences` and `FollowRemoteReferences`
+// properties.
 func NewDocument(specByteArray []byte) (Document, error) {
 	return NewDocumentWithTypeCheck(specByteArray, false)
 }
