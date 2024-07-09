@@ -336,7 +336,7 @@ func FindKeyNodeFull(key string, nodes []*yaml.Node) (keyNode *yaml.Node, labelN
 				}
 			}
 
-			if key == v.Content[x].Value {
+			if len(v.Content) > 0 && key == v.Content[x].Value {
 				if IsNodeMap(v) {
 					if x+1 == len(v.Content) {
 						return v, v.Content[x], NodeAlias(v.Content[x])
