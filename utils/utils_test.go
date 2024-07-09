@@ -1036,10 +1036,9 @@ x-b:
 	_ = yaml.Unmarshal(yml, &rootNode)
 
 	k, l, v := FindKeyNodeFull("servers", rootNode.Content[0].Content)
-	assert.NotNil(t, k)
-	assert.NotNil(t, v)
-	assert.NotNil(t, l)
-	assert.Equal(t, "true", v.Value)
+	assert.Nil(t, k)
+	assert.Nil(t, v)
+	assert.Nil(t, l)
 
 }
 
