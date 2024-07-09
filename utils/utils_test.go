@@ -1002,6 +1002,47 @@ func TestDetermineJSONWhitespaceLength_None(t *testing.T) {
 	assert.Equal(t, 0, DetermineWhitespaceLength(string(someBytes)))
 }
 
+func TestFindFirstKeyNode_MergeTest(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+
+x-a: &anchor
+  important-field: true
+
+x-b:
+  <<: *anchor
+`)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(yml, &rootNode)
+
+	k, v := FindFirstKeyNode("important-field", rootNode.Content[0].Content[5].Content, 0)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.Equal(t, "true", v.Value)
+
+}
+
+func TestFindKeyNodeFull_MergeTest(t *testing.T) {
+	yml := []byte(`openapi: 3.0.3
+
+x-a: &anchor
+  important-field: true
+
+x-b:
+  <<: *anchor
+`)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(yml, &rootNode)
+
+	k, l, v := FindKeyNodeFull("servers", rootNode.Content[0].Content)
+	assert.NotNil(t, k)
+	assert.NotNil(t, v)
+	assert.NotNil(t, l)
+	assert.Equal(t, "true", v.Value)
+
+}
+
 func TestFindFirstKeyNode_DoubleMerge(t *testing.T) {
 	yml := []byte(`openapi: 3.0.3
 
