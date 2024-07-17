@@ -84,8 +84,6 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [What Changed / Diff Engine](https://pb33f.io/libopenapi/what-changed/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
-
-> **Read the go docs at [https://pkg.go.dev/github.com/pb33f/libopenapi](https://pkg.go.dev/github.com/pb33f/libopenapi)**
 ---
 
 ### Quick-start tutorial
@@ -93,7 +91,65 @@ See all the documentation at https://pb33f.io/libopenapi/
 👀 **Get rolling fast using `libopenapi` with the 
 [Parsing OpenAPI files using go](https://quobix.com/articles/parsing-openapi-using-go/)** guide 👀
 
-> Read the full docs at [https://pkg.go.dev](https://pkg.go.dev/github.com/pb33f/libopenapi)
+Or, follow these steps and see something in a few seconds.
+
+#### Step 1: Grab the petstore
+
+```bash
+curl https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml > petstorev3.json
+```
+
+#### Step 2: Grab libopenapi
+
+```bash
+go get github.com/pb33f/libopenapi
+```
+
+#### Step 3: Parse the petstore using libopenapi
+
+Copy and paste this code into a `main.go` file.
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"github.com/pb33f/libopenapi"
+)
+
+func main() {
+	petstore, _ := os.ReadFile("petstorev3.json")
+	document, err := libopenapi.NewDocument(petstore)
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+	docModel, errors := document.BuildV3Model()
+	if len(errors) > 0 {
+		for i := range errors {
+			fmt.Printf("error: %e\n", errors[i])
+		}
+		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	}
+
+	// The following fails after the first iteration
+	for schemaPairs := docModel.Model.Components.Schemas.First(); schemaPairs != nil; schemaPairs = schemaPairs.Next() {
+		schemaName := schemaPairs.Key()
+		schema := schemaPairs.Value()
+		fmt.Printf("Schema '%s' has %d properties\n", schemaName, schema.Schema().Properties.Len())
+	}
+}
+```
+
+Run it, which should print out:
+
+```bash
+Schema 'Pet' has 3 properties
+Schema 'Error' has 2 properties
+```
+
+
+> Read the full docs at [https://pb33f.io/libopenapi/](https://pb33f.io/libopenapi/)
 
 ---
 
