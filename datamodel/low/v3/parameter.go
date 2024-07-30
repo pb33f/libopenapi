@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -100,7 +101,8 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	if eErr != nil {
 		return eErr
 	}
-	if exps != nil {
+	// Only consider examples if they are defined in the root node.
+	if exps != nil && slices.Contains(root.Content, expsL) {
 		p.Examples = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
 			KeyNode:   expsL,
