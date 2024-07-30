@@ -13,6 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -162,6 +163,29 @@ func TestMediaType_Examples(t *testing.T) {
 
 	r := NewMediaType(&n)
 
+	assert.Equal(t, 2, orderedmap.Len(r.Examples))
+
 	rend, _ := r.Render()
 	assert.Len(t, rend, 290)
+}
+
+func TestMediaType_Examples_NotFromSchema(t *testing.T) {
+	yml := `schema:
+  type: string
+  examples:
+    - example 1
+    - example 2
+    - example 3`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.MediaType
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewMediaType(&n)
+
+	assert.Equal(t, 0, orderedmap.Len(r.Examples))
 }

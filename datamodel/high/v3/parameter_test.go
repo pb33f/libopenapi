@@ -4,10 +4,14 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -168,4 +172,51 @@ func TestParameter_IsDefaultHeaderEncoding(t *testing.T) {
 func TestParameter_IsDefaultPathEncoding(t *testing.T) {
 	param := Parameter{}
 	assert.True(t, param.IsDefaultPathEncoding())
+}
+
+func TestParameter_Examples(t *testing.T) {
+	yml := `examples:
+    pbjBurger:
+        summary: A horrible, nutty, sticky mess.
+        value:
+            name: Peanut And Jelly
+            numPatties: 3
+    cakeBurger:
+        summary: A sickly, sweet, atrocity
+        value:
+            name: Chocolate Cake Burger
+            numPatties: 5`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.Parameter
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewParameter(&n)
+
+	assert.Equal(t, 2, orderedmap.Len(r.Examples))
+}
+
+func TestParameter_Examples_NotFromSchema(t *testing.T) {
+	yml := `schema:
+  type: string
+  examples:
+    - example 1
+    - example 2
+    - example 3`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.Parameter
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewParameter(&n)
+
+	assert.Equal(t, 0, orderedmap.Len(r.Examples))
 }
