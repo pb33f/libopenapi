@@ -288,3 +288,46 @@ content:
 	assert.Equal(t, 2, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*base.Example]](n.GetExamples().Value).Len())
 	assert.Equal(t, 1, orderedmap.Cast[low.KeyReference[string], low.ValueReference[*MediaType]](n.GetContent().Value).Len())
 }
+
+func TestParameter_Examples(t *testing.T) {
+	yml := `examples:
+    pbjBurger:
+        summary: A horrible, nutty, sticky mess.
+        value:
+            name: Peanut And Jelly
+            numPatties: 3
+    cakeBurger:
+        summary: A sickly, sweet, atrocity
+        value:
+            name: Chocolate Cake Burger
+            numPatties: 5`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Parameter
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Equal(t, 2, orderedmap.Len(n.Examples.Value))
+}
+
+func TestParameter_Examples_NotFromSchema(t *testing.T) {
+	yml := `schema:
+  type: string
+  examples:
+    - example 1
+    - example 2
+    - example 3`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Parameter
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Equal(t, 0, orderedmap.Len(n.Examples.Value))
+}

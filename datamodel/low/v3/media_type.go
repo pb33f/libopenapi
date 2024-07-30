@@ -6,6 +6,7 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
+	"slices"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -95,7 +96,7 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	if eErr != nil {
 		return eErr
 	}
-	if exps != nil {
+	if exps != nil && slices.Contains(root.Content, expsL) {
 		mt.Examples = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
 			KeyNode:   expsL,
