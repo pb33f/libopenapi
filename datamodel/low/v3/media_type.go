@@ -30,6 +30,7 @@ type MediaType struct {
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetExtensions returns all MediaType extensions and satisfies the low.HasExtensions interface.
@@ -74,12 +75,20 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	mt.RootNode = root
 	utils.CheckForMergeNodes(root)
 	mt.Reference = new(low.Reference)
+	mt.Nodes = low.ExtractNodes(ctx, root)
 	mt.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, mt.Extensions, mt.Nodes)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFullTop(base.ExampleLabel, root.Content)
 	if expNode != nil {
 		mt.Example = low.NodeReference[*yaml.Node]{Value: expNode, KeyNode: expLabel, ValueNode: expNode}
+		mt.Nodes.Store(expLabel.Line, expLabel)
+		m := low.ExtractNodesRecursive(ctx, expNode)
+		m.Range(func(key, value any) bool {
+			mt.Nodes.Store(key, value)
+			return true
+		})
 	}
 
 	// handle schema
@@ -97,11 +106,16 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 		return eErr
 	}
 	if exps != nil && slices.Contains(root.Content, expsL) {
+		mt.Nodes.Store(expsL.Line, expsL)
+		for xj := exps.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		}
 		mt.Examples = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
 			KeyNode:   expsL,
 			ValueNode: expsN,
 		}
+
 	}
 
 	// handle encoding
@@ -114,6 +128,10 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 			Value:     encs,
 			KeyNode:   encsL,
 			ValueNode: encsN,
+		}
+		mt.Nodes.Store(encsL.Line, encsL)
+		for xj := encs.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
 		}
 	}
 	return nil

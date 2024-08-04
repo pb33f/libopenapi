@@ -40,6 +40,7 @@ type Operation struct {
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // FindCallback will attempt to locate a Callback instance by the supplied name.
@@ -77,7 +78,9 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
+	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, o.Extensions, o.Nodes)
 
 	// extract externalDocs
 	extDocs, dErr := low.ExtractObject[*base.ExternalDoc](ctx, base.ExternalDocsLabel, root, idx)
@@ -97,6 +100,7 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			KeyNode:   ln,
 			ValueNode: vn,
 		}
+		o.Nodes.Store(ln.Line, ln)
 	}
 
 	// extract request body
@@ -105,6 +109,17 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 		return rErr
 	}
 	o.RequestBody = rBody
+
+	// extract tags, but only extract nodes, the model has already been built
+	k, v := utils.FindKeyNode(TagsLabel, root.Content)
+	if k != nil && v != nil {
+		o.Nodes.Store(k.Line, k)
+		nm := low.ExtractNodesRecursive(ctx, v)
+		nm.Range(func(key, value interface{}) bool {
+			o.Nodes.Store(key, value)
+			return true
+		})
+	}
 
 	// extract responses
 	respBody, respErr := low.ExtractObject[*Responses](ctx, ResponsesLabel, root, idx)
@@ -124,6 +139,10 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			KeyNode:   cbL,
 			ValueNode: cbN,
 		}
+		o.Nodes.Store(cbL.Line, cbL)
+		for xj := callbacks.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		}
 	}
 
 	// extract security
@@ -139,6 +158,7 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			KeyNode:   sln,
 			ValueNode: svn,
 		}
+		o.Nodes.Store(sln.Line, sln)
 	}
 
 	// if security is set, but no requirements are defined.
@@ -149,6 +169,7 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			KeyNode:   sln,
 			ValueNode: svn,
 		}
+		o.Nodes.Store(sln.Line, svn)
 	}
 
 	// extract servers
@@ -162,6 +183,7 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			KeyNode:   sl,
 			ValueNode: sn,
 		}
+		o.Nodes.Store(sl.Line, sl)
 	}
 	return nil
 }

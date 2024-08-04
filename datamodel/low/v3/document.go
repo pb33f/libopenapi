@@ -86,6 +86,8 @@ type Document struct {
 
 	// Rolodex is a reference to the rolodex used when creating this document.
 	Rolodex *index.Rolodex
+
+	low.NodeMap
 }
 
 // FindSecurityRequirement will attempt to locate a security requirement string from a supplied name.

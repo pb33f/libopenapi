@@ -31,15 +31,18 @@ type SecurityRequirement struct {
 	RootNode                 *yaml.Node
 	ContainsEmptyRequirement bool // if a requirement is empty (this means it's optional)
 	*low.Reference
+	low.NodeMap
 }
 
 // Build will extract security requirements from the node (the structure is odd, to be honest)
-func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (s *SecurityRequirement) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+
 	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	s.RootNode = root
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
+	s.Nodes = low.ExtractNodes(ctx, root)
 	var labelNode *yaml.Node
 	valueMap := orderedmap.New[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]()
 	var arr []low.ValueReference[string]
@@ -57,6 +60,7 @@ func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node,
 				Value:     root.Content[i].Content[j].Value,
 				ValueNode: root.Content[i].Content[j],
 			})
+			s.Nodes.Store(root.Content[i].Content[j].Line, root.Content[i].Content[j])
 		}
 		valueMap.Set(
 			low.KeyReference[string]{
@@ -76,6 +80,7 @@ func (s *SecurityRequirement) Build(_ context.Context, keyNode, root *yaml.Node,
 		Value:     valueMap,
 		ValueNode: root,
 	}
+
 	return nil
 }
 

@@ -40,6 +40,7 @@ type Parameter struct {
 	Content         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	*low.Reference
+	low.NodeMap
 }
 
 // GetRootNode returns the root yaml node of the Parameter object.
@@ -79,12 +80,15 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
+	p.Nodes = low.ExtractNodes(ctx, root)
 	p.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, p.Extensions, p.Nodes)
 
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFullTop(base.ExampleLabel, root.Content)
 	if expNode != nil {
 		p.Example = low.NodeReference[*yaml.Node]{Value: expNode, KeyNode: expLabel, ValueNode: expNode}
+		p.Nodes.Store(expLabel.Line, expLabel)
 	}
 
 	// handle schema
@@ -108,6 +112,10 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			KeyNode:   expsL,
 			ValueNode: expsN,
 		}
+		p.Nodes.Store(expsL.Line, expsL)
+		for xj := exps.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		}
 	}
 
 	// handle content, if set.
@@ -120,6 +128,13 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 		KeyNode:   cL,
 		ValueNode: cN,
 	}
+	if cL != nil {
+		p.Nodes.Store(cL.Line, cL)
+		for xj := con.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		}
+	}
+
 	return nil
 }
 

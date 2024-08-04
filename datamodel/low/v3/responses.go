@@ -41,6 +41,7 @@ type Responses struct {
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetRootNode returns the root yaml node of the Responses object.
@@ -64,7 +65,9 @@ func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	root = utils.NodeAlias(root)
 	r.RootNode = root
 	r.Reference = new(low.Reference)
+	r.Nodes = low.ExtractNodes(ctx, root)
 	r.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, r.Extensions, r.Nodes)
 	utils.CheckForMergeNodes(root)
 	if utils.IsNodeMap(root) {
 		codes, err := low.ExtractMapNoLookup[*Response](ctx, root, idx)
@@ -73,12 +76,17 @@ func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 		}
 		if codes != nil {
 			r.Codes = codes
+			for codePairs := codes.First(); codePairs != nil; codePairs = codePairs.Next() {
+				code := codePairs.Key()
+				r.Nodes.Store(code.KeyNode.Line, code.KeyNode)
+			}
 		}
 
 		def := r.getDefault()
 		if def != nil {
 			// default is bundled into codes, pull it out
 			r.Default = *def
+			r.Nodes.Store(def.KeyNode.Line, def.KeyNode)
 			// remove default from codes
 			r.deleteCode(DefaultLabel)
 		}
