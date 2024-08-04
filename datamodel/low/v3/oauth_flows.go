@@ -27,6 +27,7 @@ type OAuthFlows struct {
 	KeyNode           *yaml.Node
 	RootNode          *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetExtensions returns all OAuthFlows extensions and satisfies the low.HasExtensions interface.
@@ -56,6 +57,7 @@ func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	o.RootNode = root
 	utils.CheckForMergeNodes(root)
 	o.Reference = new(low.Reference)
+	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)
 
 	v, vErr := low.ExtractObject[*OAuthFlow](ctx, ImplicitLabel, root, idx)
@@ -113,6 +115,7 @@ type OAuthFlow struct {
 	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	RootNode         *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
@@ -136,9 +139,18 @@ func (o *OAuthFlow) GetRootNode() *yaml.Node {
 }
 
 // Build will extract extensions from the node.
-func (o *OAuthFlow) Build(_ context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
+func (o *OAuthFlow) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIndex) error {
 	o.Reference = new(low.Reference)
+	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, o.Extensions, o.Nodes)
+
+	if o.Scopes.Value != nil && o.Scopes.Value.Len() > 0 {
+		for fk := o.Scopes.Value.First(); fk != nil; fk = fk.Next() {
+			o.Nodes.Store(fk.Key().KeyNode.Line, fk.Key().KeyNode)
+		}
+	}
+
 	o.RootNode = root
 	return nil
 }

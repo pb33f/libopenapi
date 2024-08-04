@@ -28,6 +28,7 @@ type Example struct {
 	KeyNode       *yaml.Node
 	RootNode      *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
@@ -67,12 +68,13 @@ func (ex *Example) Hash() [32]byte {
 }
 
 // Build extracts extensions and example value
-func (ex *Example) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	ex.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	ex.RootNode = root
 	utils.CheckForMergeNodes(root)
 	ex.Reference = new(low.Reference)
+	ex.Nodes = low.ExtractNodes(ctx, root)
 	ex.Extensions = low.ExtractExtensions(root)
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
 
@@ -82,6 +84,23 @@ func (ex *Example) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.S
 			KeyNode:   ln,
 			ValueNode: vn,
 		}
+
+		// extract nodes for all value nodes down the tree.
+		expChildNodes := low.ExtractNodesRecursive(ctx, vn)
+		expChildNodes.Range(func(k, v interface{}) bool {
+			if arr, ko := v.([]*yaml.Node); ko {
+				if ext, ok := ex.Nodes.Load(k); ok {
+					if extArr, kk := ext.([]*yaml.Node); kk {
+						ex.Nodes.Store(k, append(extArr, arr...))
+					} else {
+						ex.Nodes.Store(k, arr)
+					}
+				} else {
+					ex.Nodes.Store(k, arr)
+				}
+			}
+			return true
+		})
 		return nil
 	}
 	return nil

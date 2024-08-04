@@ -29,6 +29,7 @@ type Callback struct {
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetExtensions returns all Callback extensions and satisfies the low.HasExtensions interface.
@@ -58,14 +59,18 @@ func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	cb.RootNode = root
 	utils.CheckForMergeNodes(root)
 	cb.Reference = new(low.Reference)
+	cb.Nodes = low.ExtractNodes(ctx, root)
 	cb.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, cb.Extensions, cb.Nodes)
 
 	expressions, err := extractPathItemsMap(ctx, root, idx)
 	if err != nil {
 		return err
 	}
 	cb.Expression = expressions
-
+	for xp := expressions.First(); xp != nil; xp = xp.Next() {
+		cb.Nodes.Store(xp.Key().KeyNode.Line, xp.Key().KeyNode)
+	}
 	return nil
 }
 

@@ -38,6 +38,7 @@ type Link struct {
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetExtensions returns all Link extensions and satisfies the low.HasExtensions interface.
@@ -72,7 +73,17 @@ func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	l.RootNode = root
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
+	l.Nodes = low.ExtractNodes(ctx, root)
 	l.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, l.Extensions, l.Nodes)
+
+	// extract parameter nodes.
+	if l.Parameters.Value != nil && l.Parameters.Value.Len() > 0 {
+		for fk := l.Parameters.Value.First(); fk != nil; fk = fk.Next() {
+			l.Nodes.Store(fk.Key().KeyNode.Line, fk.Key().KeyNode)
+		}
+	}
+
 	// extract server.
 	ser, sErr := low.ExtractObject[*Server](ctx, ServerLabel, root, idx)
 	if sErr != nil {

@@ -613,6 +613,12 @@ func IsJSON(testString string) bool {
 }
 
 // IsYAML will tell you if a string is YAML or not.
+var (
+	yamlKeyValuePattern = regexp.MustCompile(`(?m)^\s*[a-zA-Z0-9_-]+\s*:\s*.+$`)
+	yamlListPattern     = regexp.MustCompile(`(?m)^\s*-\s+.+$`)
+	yamlHeaderPattern   = regexp.MustCompile(`(?m)^---\s*$`)
+)
+
 func IsYAML(testString string) bool {
 	if testString == "" {
 		return false
@@ -620,13 +626,21 @@ func IsYAML(testString string) bool {
 	if IsJSON(testString) {
 		return false
 	}
-	var n interface{}
-	err := yaml.Unmarshal([]byte(testString), &n)
-	if err != nil {
-		return false
+
+	// Trim leading and trailing whitespace
+	s := strings.TrimSpace(testString)
+
+	// Fast checks for common YAML features
+	if strings.Contains(s, ": ") || strings.Contains(s, "- ") || strings.Contains(s, "\n- ") {
+		return true
 	}
-	_, err = yaml.Marshal(n)
-	return err == nil
+
+	// Regular expressions for more robust detection
+	if yamlKeyValuePattern.MatchString(s) || yamlListPattern.MatchString(s) || yamlHeaderPattern.MatchString(s) {
+		return true
+	}
+
+	return false
 }
 
 // ConvertYAMLtoJSON will do exactly what you think it will. It will deserialize YAML into serialized JSON.

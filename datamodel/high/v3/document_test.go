@@ -87,6 +87,7 @@ func TestNewDocument_Info(t *testing.T) {
 	assert.Equal(t, "1.2", highDoc.Info.Version)
 	assert.Equal(t, "https://pb33f.io/schema", highDoc.JsonSchemaDialect)
 
+	assert.NotNil(t, highDoc.GoLowUntyped())
 	wentLow := highDoc.GoLow()
 	assert.Equal(t, 1, wentLow.Version.ValueNode.Line)
 	assert.Equal(t, 3, wentLow.Info.Value.Title.KeyNode.Line)
