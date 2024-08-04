@@ -85,7 +85,7 @@ func (nm *NodeMap) ExtractNodes(node *yaml.Node, recurse bool) {
 }
 
 // ContainsLine will return true if the NodeMap contains a node with the supplied line number
-func (nm *NodeMap) ContainsLine(line int, recurse bool) bool {
+func (nm *NodeMap) ContainsLine(line int) bool {
 	if _, ok := nm.Nodes.Load(line); ok {
 		return true
 	}
@@ -138,11 +138,9 @@ func ExtractExtensionNodes(_ context.Context,
 			nodeMap.Store(k.KeyNode.Line, results)
 		} else {
 			nodeMap.Store(k.KeyNode.Line, results[0])
-			gingo := results[1:]
-			for _, y := range gingo {
+			for _, y := range results[1:] {
 				nodeMap.Store(y.Line, []*yaml.Node{y})
 			}
-			//nodeMap.Store(v.ValueNode.Line, gingo)
 		}
 	}
 }
