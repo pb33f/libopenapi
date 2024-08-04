@@ -31,6 +31,7 @@ func TestRolodex_NewRolodex(t *testing.T) {
 	assert.Nil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 0)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
+	assert.NotNil(t, rolo.GetConfig())
 }
 
 func TestRolodex_NoFS(t *testing.T) {

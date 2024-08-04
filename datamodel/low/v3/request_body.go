@@ -26,6 +26,7 @@ type RequestBody struct {
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetRootNode returns the root yaml node of the RequestBody object.
@@ -60,7 +61,9 @@ func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 	rb.RootNode = root
 	utils.CheckForMergeNodes(root)
 	rb.Reference = new(low.Reference)
+	rb.Nodes = low.ExtractNodes(ctx, root)
 	rb.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, rb.Extensions, rb.Nodes)
 
 	// handle content, if set.
 	con, cL, cN, cErr := low.ExtractMap[*MediaType](ctx, ContentLabel, root, idx)
@@ -72,6 +75,10 @@ func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 			Value:     con,
 			KeyNode:   cL,
 			ValueNode: cN,
+		}
+		rb.Nodes.Store(cL.Line, cL)
+		for xj := con.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
 		}
 	}
 	return nil

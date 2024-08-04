@@ -274,7 +274,7 @@ paths:
 
 	index := NewSpecIndexWithConfig(&rootNode, c)
 	assert.Len(t, index.GetReferenceIndexErrors(), 1)
-	assert.Equal(t, "component '#/paths/~1pet~1%$petId%7D/get/parameters' does not exist in the specification", index.GetReferenceIndexErrors()[0].Error())
+	assert.Equal(t, "component `#/paths/~1pet~1%$petId%7D/get/parameters` does not exist in the specification", index.GetReferenceIndexErrors()[0].Error())
 }
 
 func TestSpecIndex_LocateRemoteDocsWithEscapedCharacters(t *testing.T) {

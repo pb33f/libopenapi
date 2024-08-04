@@ -42,6 +42,7 @@ type PathItem struct {
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // Hash will return a consistent SHA256 Hash of the PathItem object
@@ -121,13 +122,14 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
+	p.Nodes = low.ExtractNodes(ctx, root)
 	p.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, p.Extensions, p.Nodes)
 	skip := false
 	var currentNode *yaml.Node
 
 	var wg sync.WaitGroup
 	var errors []error
-
 	var ops []low.NodeReference[*Operation]
 
 	// extract parameters
@@ -141,6 +143,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			KeyNode:   ln,
 			ValueNode: vn,
 		}
+		p.Nodes.Store(ln.Line, ln)
 	}
 
 	_, ln, vn = utils.FindKeyNodeFullTop(ServersLabel, root.Content)
@@ -163,6 +166,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 				KeyNode:   ln,
 				ValueNode: vn,
 			}
+			p.Nodes.Store(ln.Line, ln)
 		}
 	}
 

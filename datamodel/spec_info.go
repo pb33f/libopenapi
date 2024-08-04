@@ -22,6 +22,7 @@ const (
 // used by the library, this contains the top of the document tree that every single low model is based off.
 type SpecInfo struct {
 	SpecType            string                  `json:"type"`
+	NumLines            int                     `json:"numLines"`
 	Version             string                  `json:"version"`
 	VersionNumeric      float32                 `json:"versionNumeric"`
 	SpecFormat          string                  `json:"format"`
@@ -62,7 +63,8 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	// set original bytes
 	specInfo.SpecBytes = &spec
 
-	runes := []rune(strings.TrimSpace(string(spec)))
+	stringSpec := string(spec)
+	runes := []rune(strings.TrimSpace(stringSpec))
 	if len(runes) <= 0 {
 		return specInfo, errors.New("there is nothing in the spec, it's empty - so there is nothing to be done")
 	}
@@ -72,6 +74,8 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	} else {
 		specInfo.SpecFileType = YAMLFileType
 	}
+
+	specInfo.NumLines = strings.Count(stringSpec, "\n") + 1
 
 	err := yaml.Unmarshal(spec, &parsedSpec)
 	if err != nil {

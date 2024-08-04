@@ -35,6 +35,7 @@ type Header struct {
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // FindExtension will attempt to locate an extension with the supplied name
@@ -104,8 +105,9 @@ func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 	h.RootNode = root
 	utils.CheckForMergeNodes(root)
 	h.Reference = new(low.Reference)
+	h.Nodes = low.ExtractNodes(ctx, root)
 	h.Extensions = low.ExtractExtensions(root)
-
+	low.ExtractExtensionNodes(ctx, h.Extensions, h.Nodes)
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)
 	if expNode != nil {
@@ -114,6 +116,12 @@ func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 			ValueNode: expNode,
 			KeyNode:   expLabel,
 		}
+		h.Nodes.Store(expLabel.Line, expLabel)
+		m := low.ExtractNodes(ctx, expNode)
+		m.Range(func(key, value any) bool {
+			h.Nodes.Store(key, value)
+			return true
+		})
 	}
 
 	// handle examples if set.
@@ -127,6 +135,7 @@ func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 			KeyNode:   expsL,
 			ValueNode: expsN,
 		}
+		h.Nodes.Store(expsL.Line, expsL)
 	}
 
 	// handle schema
@@ -147,6 +156,9 @@ func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 		Value:     con,
 		KeyNode:   cL,
 		ValueNode: cN,
+	}
+	if cL != nil {
+		h.Nodes.Store(cL.Line, cL)
 	}
 	return nil
 }

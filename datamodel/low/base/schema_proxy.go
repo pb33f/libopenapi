@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"log/slog"
+	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -54,6 +55,7 @@ type SchemaProxy struct {
 	rendered   *Schema
 	buildError error
 	ctx        context.Context
+	*low.NodeMap
 }
 
 // Build will prepare the SchemaProxy for rendering, it does not build the Schema, only sets up internal state.
@@ -66,6 +68,8 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	if rf, _, r := utils.IsNodeRefValue(value); rf {
 		sp.SetReference(r, value)
 	}
+	var m sync.Map
+	sp.NodeMap = &low.NodeMap{Nodes: &m}
 	return nil
 }
 
@@ -93,6 +97,14 @@ func (sp *SchemaProxy) Schema() *Schema {
 	}
 	schema.ParentProxy = sp // https://github.com/pb33f/libopenapi/issues/29
 	sp.rendered = schema
+
+	// for all the nodes added, copy them over to the schema
+	if sp.NodeMap != nil {
+		sp.NodeMap.Nodes.Range(func(key, value any) bool {
+			schema.AddNode(key.(int), value.(*yaml.Node))
+			return true
+		})
+	}
 	return schema
 }
 
@@ -157,4 +169,13 @@ func (sp *SchemaProxy) Hash() [32]byte {
 	}
 	// hash reference value only, do not resolve!
 	return sha256.Sum256([]byte(sp.GetReference()))
+}
+
+// AddNode stores nodes in the underlying schema if rendered, otherwise holds in the proxy until build.
+func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
+	if sp.rendered != nil {
+		sp.rendered.AddNode(key, node)
+	} else {
+		sp.Nodes.Store(key, node)
+	}
 }

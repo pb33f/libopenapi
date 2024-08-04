@@ -30,6 +30,7 @@ type Response struct {
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetRootNode returns the root yaml node of the Response object.
@@ -74,7 +75,9 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	r.RootNode = root
 	utils.CheckForMergeNodes(root)
 	r.Reference = new(low.Reference)
+	r.Nodes = low.ExtractNodes(ctx, root)
 	r.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, r.Extensions, r.Nodes)
 
 	// extract headers
 	headers, lN, kN, err := low.ExtractMapExtensions[*Header](ctx, HeadersLabel, root, idx, true)
@@ -86,6 +89,10 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			Value:     headers,
 			KeyNode:   lN,
 			ValueNode: kN,
+		}
+		r.Nodes.Store(lN.Line, lN)
+		for xj := headers.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
 		}
 	}
 
@@ -99,6 +106,10 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			KeyNode:   clN,
 			ValueNode: cN,
 		}
+		r.Nodes.Store(clN.Line, clN)
+		for xj := con.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		}
 	}
 
 	// handle links if set
@@ -111,6 +122,10 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			Value:     links,
 			KeyNode:   linkLabel,
 			ValueNode: linkValue,
+		}
+		r.Nodes.Store(linkLabel.Line, linkLabel)
+		for xj := links.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
 		}
 	}
 	return nil

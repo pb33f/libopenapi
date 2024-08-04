@@ -27,6 +27,7 @@ type Encoding struct {
 	KeyNode       *yaml.Node
 	RootNode      *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // FindHeader attempts to locate a Header with the supplied name
@@ -67,6 +68,7 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	root = utils.NodeAlias(root)
 	en.RootNode = root
 	utils.CheckForMergeNodes(root)
+	en.Nodes = low.ExtractNodes(ctx, root)
 	en.Reference = new(low.Reference)
 	headers, hL, hN, err := low.ExtractMap[*Header](ctx, HeadersLabel, root, idx)
 	if err != nil {
@@ -77,6 +79,10 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			Value:     headers,
 			KeyNode:   hL,
 			ValueNode: hN,
+		}
+		en.Nodes.Store(hL.Line, hL)
+		for xj := headers.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
 		}
 	}
 	return nil

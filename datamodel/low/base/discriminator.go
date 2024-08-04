@@ -5,6 +5,7 @@ package base
 
 import (
 	"crypto/sha256"
+	"gopkg.in/yaml.v3"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -23,7 +24,20 @@ import (
 type Discriminator struct {
 	PropertyName low.NodeReference[string]
 	Mapping      low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
+	KeyNode      *yaml.Node
+	RootNode     *yaml.Node
 	low.Reference
+	low.NodeMap
+}
+
+// GetRootNode will return the root yaml node of the Discriminator object
+func (d *Discriminator) GetRootNode() *yaml.Node {
+	return d.RootNode
+}
+
+// GetKeyNode will return the key yaml node of the Discriminator object
+func (d *Discriminator) GetKeyNode() *yaml.Node {
+	return d.KeyNode
 }
 
 // FindMappingValue will return a ValueReference containing the string mapping value

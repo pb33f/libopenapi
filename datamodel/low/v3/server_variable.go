@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
 )
@@ -19,7 +20,20 @@ type ServerVariable struct {
 	Enum        []low.NodeReference[string]
 	Default     low.NodeReference[string]
 	Description low.NodeReference[string]
+	KeyNode     *yaml.Node
+	RootNode    *yaml.Node
 	*low.Reference
+	low.NodeMap
+}
+
+// GetRootNode returns the root yaml node of the ServerVariable object.
+func (s *ServerVariable) GetRootNode() *yaml.Node {
+	return s.RootNode
+}
+
+// GetKeyNode returns the key yaml node of the ServerVariable object.
+func (s *ServerVariable) GetKeyNode() *yaml.Node {
+	return s.RootNode
 }
 
 // Hash will return a consistent SHA256 Hash of the ServerVariable object

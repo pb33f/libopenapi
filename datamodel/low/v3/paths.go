@@ -30,6 +30,7 @@ type Paths struct {
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetRootNode returns the root yaml node of the Paths object.
@@ -82,7 +83,9 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
+	p.Nodes = low.ExtractNodes(ctx, root)
 	p.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, p.Extensions, p.Nodes)
 
 	pathsMap, err := extractPathItemsMap(ctx, root, idx)
 	if err != nil {

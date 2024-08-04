@@ -365,7 +365,7 @@ func TestDocument_RenderAndReload_WithErrors(t *testing.T) {
 
 	_, _, _, errors := doc.RenderAndReload()
 	assert.Len(t, errors, 2)
-	assert.Equal(t, errors[0].Error(), "component '#/components/schemas/Pet' does not exist in the specification")
+	assert.Equal(t, errors[0].Error(), "component `#/components/schemas/Pet` does not exist in the specification")
 }
 
 func TestDocument_Render(t *testing.T) {

@@ -155,6 +155,11 @@ func (d *Document) GoLow() *low.Document {
 	return d.low
 }
 
+// GoLowUntyped returns the low-level Document that was used to create the high level one, however, it's untyped.
+func (d *Document) GoLowUntyped() any {
+	return d.low
+}
+
 // Render will return a YAML representation of the Document object as a byte slice.
 func (d *Document) Render() ([]byte, error) {
 	return yaml.Marshal(d)

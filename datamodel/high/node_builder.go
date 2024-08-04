@@ -443,7 +443,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 					lr := lut.(low.IsReferenced)
 					ut := reflect.ValueOf(lr)
 					if !ut.IsNil() {
-						if lut.(low.IsReferenced).IsReference() {
+						if lr != nil && lr.IsReference() {
 							if !n.Resolve {
 								valueNode = n.renderReference(lut.(low.IsReferenced))
 								break
