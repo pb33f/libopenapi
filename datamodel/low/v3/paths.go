@@ -83,7 +83,7 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
-	p.Nodes = low.ExtractNodes(ctx, root)
+	p.Nodes = low.ExtractNodes(ctx, nil) // don't extract anything.
 	p.Extensions = low.ExtractExtensions(root)
 	low.ExtractExtensionNodes(ctx, p.Extensions, p.Nodes)
 
@@ -93,6 +93,12 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	}
 
 	p.PathItems = pathsMap
+
+	for pm := pathsMap.First(); pm != nil; pm = pm.Next() {
+		// add path as node to path item, not this path object.
+		pm.Value().Value.Nodes.Store(pm.Key().KeyNode.Line, pm.Key().KeyNode)
+	}
+
 	return nil
 }
 
