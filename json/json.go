@@ -3,14 +3,13 @@ package json
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
 // YAMLNodeToJSON converts yaml/json stored in a yaml.Node to json ordered matching the original yaml/json
-//
-// NOTE: The limitation is this won't work with YAML that is not compatible with JSON, ie yaml with anchors or complex map keys
 func YAMLNodeToJSON(node *yaml.Node, indentation string) ([]byte, error) {
 	v, err := handleYAMLNode(node)
 	if err != nil {
@@ -31,28 +30,38 @@ func handleYAMLNode(node *yaml.Node) (any, error) {
 	case yaml.ScalarNode:
 		return handleScalarNode(node)
 	case yaml.AliasNode:
-		panic("currently unsupported")
+		return handleYAMLNode(node.Alias)
 	default:
 		return nil, fmt.Errorf("unknown node kind: %v", node.Kind)
 	}
 }
 
 func handleMappingNode(node *yaml.Node) (any, error) {
-	m := orderedmap.New[string, yaml.Node]()
-
-	if err := node.Decode(m); err != nil {
-		return nil, err
-	}
-
 	v := orderedmap.New[string, any]()
-	for pair := orderedmap.First(m); pair != nil; pair = pair.Next() {
-		n := pair.Value()
-		vv, err := handleYAMLNode(&n)
+	for i, n := range node.Content {
+		if i%2 == 0 {
+			continue
+		}
+		keyNode := node.Content[i-1]
+		kv, err := handleYAMLNode(keyNode)
 		if err != nil {
 			return nil, err
 		}
 
-		v.Set(pair.Key(), vv)
+		if reflect.TypeOf(kv).Kind() != reflect.String {
+			keyData, err := json.Marshal(kv)
+			if err != nil {
+				return nil, err
+			}
+			kv = string(keyData)
+		}
+
+		vv, err := handleYAMLNode(n)
+		if err != nil {
+			return nil, err
+		}
+
+		v.Set(fmt.Sprintf("%v", kv), vv)
 	}
 
 	return v, nil

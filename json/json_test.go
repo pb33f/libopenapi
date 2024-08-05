@@ -85,3 +85,54 @@ func TestYAMLNodeToJSON_FromJSON(t *testing.T) {
 
 	assert.Equal(t, j, string(o))
 }
+
+func TestYAMLNodeWithAnchorsToJSON(t *testing.T) {
+	y := `examples:
+  someExample: &someExample
+    key1: scalar1
+    key2: scalar2
+someValue: *someExample`
+
+	var v yaml.Node
+
+	err := yaml.Unmarshal([]byte(y), &v)
+	require.NoError(t, err)
+
+	j, err := json.YAMLNodeToJSON(&v, "  ")
+	require.NoError(t, err)
+
+	assert.Equal(t, `{
+  "examples": {
+    "someExample": {
+      "key1": "scalar1",
+      "key2": "scalar2"
+    }
+  },
+  "someValue": {
+    "key1": "scalar1",
+    "key2": "scalar2"
+  }
+}`, string(j))
+}
+
+func TestYAMLNodeWithComplexKeysToJSON(t *testing.T) {
+	y := `someMapWithComplexKeys:
+  {key1: scalar1, key2: scalar2}: {key1: scalar1, key2: scalar2}`
+
+	var v yaml.Node
+
+	err := yaml.Unmarshal([]byte(y), &v)
+	require.NoError(t, err)
+
+	j, err := json.YAMLNodeToJSON(&v, "  ")
+	require.NoError(t, err)
+
+	assert.Equal(t, `{
+  "someMapWithComplexKeys": {
+    "{\"key1\":\"scalar1\",\"key2\":\"scalar2\"}": {
+      "key1": "scalar1",
+      "key2": "scalar2"
+    }
+  }
+}`, string(j))
+}
