@@ -676,6 +676,7 @@ func TestIsYAML(t *testing.T) {
 	assert.False(t, IsYAML("{'hello':'there'}"))
 	assert.False(t, IsYAML(""))
 	assert.True(t, IsYAML("8908: hello: yeah: \n12309812: :123"))
+	assert.True(t, IsYAML("---"))
 }
 
 func TestConvertYAMLtoJSON(t *testing.T) {
