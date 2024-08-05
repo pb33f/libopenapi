@@ -46,6 +46,8 @@ propertyName: freshCakes`
 	var rDoc Discriminator
 	_ = low.BuildModel(lNode.Content[0], &lDoc)
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	lDoc.RootNode = &lNode
+	lDoc.KeyNode = &rNode
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 	assert.NotNil(t, lDoc.GetRootNode())
