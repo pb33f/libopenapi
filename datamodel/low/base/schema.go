@@ -727,9 +727,6 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 					discriminator.AddNode(key.(int), g)
 				}
 			}
-			if n, ok := val.(*yaml.Node); ok {
-				discriminator.AddNode(key.(int), n)
-			}
 			return true
 		})
 	}

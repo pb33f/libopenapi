@@ -50,6 +50,12 @@ variables:
 		low.GenerateHashString(s.Value))
 
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+
+	// check nodes on variables
+	for k := n.Variables.Value.First(); k != nil; k = k.Next() {
+		assert.NotNil(t, k.Value().Value.GetKeyNode())
+		assert.NotNil(t, k.Value().Value.GetRootNode())
+	}
 }
 
 func TestServer_Build_NoVars(t *testing.T) {
