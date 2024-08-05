@@ -48,4 +48,7 @@ propertyName: freshCakes`
 	_ = low.BuildModel(rNode.Content[0], &rDoc)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
+	assert.NotNil(t, lDoc.GetRootNode())
+	assert.NotNil(t, lDoc.GetKeyNode())
+
 }
