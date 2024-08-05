@@ -136,3 +136,11 @@ func TestYAMLNodeWithComplexKeysToJSON(t *testing.T) {
   }
 }`, string(j))
 }
+
+func TestYAMLNodeToJSONInvalidNode(t *testing.T) {
+	var v yaml.Node
+
+	j, err := json.YAMLNodeToJSON(&v, "  ")
+	assert.Nil(t, j)
+	assert.Error(t, err)
+}
