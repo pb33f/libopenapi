@@ -1930,7 +1930,8 @@ func TestExtractSchema_CheckExampleNodesExtracted(t *testing.T) {
       jong: jang
   examples:
    - tang: bang
-   - bom: jog`
+   - bom: jog
+     ding: dong`
 
 	var iNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(yml), &iNode)
