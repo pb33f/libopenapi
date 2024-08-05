@@ -35,6 +35,7 @@ type Info struct {
 	KeyNode        *yaml.Node
 	RootNode       *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // FindExtension attempts to locate an extension with the supplied key
@@ -64,6 +65,7 @@ func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	i.RootNode = root
 	utils.CheckForMergeNodes(root)
 	i.Reference = new(low.Reference)
+	i.Nodes = low.ExtractNodes(ctx, root)
 	i.Extensions = low.ExtractExtensions(root)
 
 	// extract contact

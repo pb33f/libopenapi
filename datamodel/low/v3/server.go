@@ -25,6 +25,7 @@ type Server struct {
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // GetRootNode returns the root yaml node of the Server object.
@@ -43,13 +44,16 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 }
 
 // Build will extract server variables from the supplied node.
-func (s *Server) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	s.RootNode = root
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
+	s.Nodes = low.ExtractNodes(ctx, root)
 	s.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, s.Extensions, s.Nodes)
+
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)
 	if vars == nil {
 		return nil
@@ -57,20 +61,26 @@ func (s *Server) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.Spe
 	variablesMap := orderedmap.New[low.KeyReference[string], low.ValueReference[*ServerVariable]]()
 	if utils.IsNodeMap(vars) {
 		var currentNode string
-		var keyNode *yaml.Node
+		var localKeyNode *yaml.Node
 		for i, varNode := range vars.Content {
 			if i%2 == 0 {
 				currentNode = varNode.Value
-				keyNode = varNode
+				localKeyNode = varNode
 				continue
 			}
 			variable := ServerVariable{}
 			variable.Reference = new(low.Reference)
 			_ = low.BuildModel(varNode, &variable)
+			variable.Nodes = low.ExtractNodesRecursive(ctx, varNode)
+			if localKeyNode != nil {
+				variable.Nodes.Store(localKeyNode.Line, localKeyNode)
+			}
+			variable.RootNode = varNode
+			variable.KeyNode = localKeyNode
 			variablesMap.Set(
 				low.KeyReference[string]{
 					Value:   currentNode,
-					KeyNode: keyNode,
+					KeyNode: localKeyNode,
 				},
 				low.ValueReference[*ServerVariable]{
 					ValueNode: varNode,

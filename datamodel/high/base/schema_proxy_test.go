@@ -69,6 +69,20 @@ func TestCreateSchemaProxy(t *testing.T) {
 	sp := CreateSchemaProxy(&Schema{Description: "iAmASchema"})
 	assert.Equal(t, "iAmASchema", sp.rendered.Description)
 	assert.False(t, sp.IsReference())
+	assert.Nil(t, sp.GetValueNode())
+}
+
+func TestCreateSchemaProxy_NoNilValue(t *testing.T) {
+	sp := CreateSchemaProxy(&Schema{Description: "iAmASchema"})
+	sp.Schema()
+
+	// jerry rig the test.
+	nodeRef := low.NodeReference[*lowbase.SchemaProxy]{}
+	nodeRef.ValueNode = &yaml.Node{}
+	sp.schema = &nodeRef
+
+	assert.Equal(t, "iAmASchema", sp.rendered.Description)
+	assert.NotNil(t, sp.GetValueNode())
 }
 
 func TestCreateSchemaProxyRef(t *testing.T) {

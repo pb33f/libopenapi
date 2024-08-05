@@ -36,7 +36,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	}
 	version = low.NodeReference[string]{Value: versionNode.Value, KeyNode: labelNode, ValueNode: versionNode}
 	doc := Document{Version: version}
-
+	doc.Nodes = low.ExtractNodes(nil, info.RootNode.Content[0])
 	// create an index config and shadow the document configuration.
 	idxConfig := index.CreateClosedAPIIndexConfig()
 	idxConfig.SpecInfo = info
@@ -130,7 +130,12 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	doc.Index = rolodex.GetRootIndex()
 	var wg sync.WaitGroup
 
+	var cacheMap sync.Map
+	modelContext := base.ModelContext{SchemaCache: &cacheMap}
+	ctx := context.WithValue(context.Background(), "modelCtx", &modelContext)
+
 	doc.Extensions = low.ExtractExtensions(info.RootNode.Content[0])
+	low.ExtractExtensionNodes(ctx, doc.Extensions, doc.Nodes)
 
 	// if set, extract jsonSchemaDialect (3.1)
 	_, dialectLabel, dialectNode := utils.FindKeyNodeFull(JSONSchemaDialectLabel, info.RootNode.Content)
@@ -160,8 +165,6 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		extractPaths,
 		extractWebhooks,
 	}
-
-	ctx := context.Background()
 
 	wg.Add(len(extractionFuncs))
 	if config.Logger != nil {
@@ -309,6 +312,9 @@ func extractWebhooks(ctx context.Context, info *datamodel.SpecInfo, doc *Documen
 			Value:     hooks,
 			KeyNode:   hooksL,
 			ValueNode: hooksN,
+		}
+		for xj := hooks.First(); xj != nil; xj = xj.Next() {
+			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
 		}
 	}
 	return nil

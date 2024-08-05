@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
-	"slices"
 	"gopkg.in/yaml.v3"
+	"slices"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -662,7 +662,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 
 				_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
 				indexError := &IndexingError{
-					Err:     fmt.Errorf("component '%s' does not exist in the specification", ref.Definition),
+					Err:     fmt.Errorf("component `%s` does not exist in the specification", ref.Definition),
 					Node:    ref.Node,
 					Path:    path,
 					KeyNode: ref.KeyNode,

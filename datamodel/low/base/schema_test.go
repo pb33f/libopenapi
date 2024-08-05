@@ -1919,3 +1919,50 @@ components:
 	assert.Equal(t, "schema build failed: reference '#/' cannot be found at line 2, col 9", e.Error())
 
 }
+
+func TestExtractSchema_CheckExampleNodesExtracted(t *testing.T) {
+
+	yml := `schema:
+  type: object
+  example:
+    ping: pong
+    jing:
+      jong: jang
+  examples:
+   - tang: bang
+   - bom: jog
+     ding: dong`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "test")
+
+	res, e := ExtractSchema(ctx, idxNode.Content[0], idx)
+	if res != nil {
+		sch := res.Value.Schema()
+		assert.NotNil(t, sch.Nodes)
+		assert.NoError(t, e)
+
+		n, _ := sch.Nodes.Load(4)
+		assert.NotNil(t, n.([]*yaml.Node)[1])
+		assert.Equal(t, "ping", n.([]*yaml.Node)[0].Value)
+		assert.Equal(t, "pong", n.([]*yaml.Node)[1].Value)
+
+		n, _ = sch.Nodes.Load(8)
+		assert.NotNil(t, n.([]*yaml.Node)[0])
+		assert.Equal(t, "tang", n.([]*yaml.Node)[1].Value)
+		assert.Equal(t, "bang", n.([]*yaml.Node)[2].Value)
+
+	} else {
+		t.Fail()
+	}
+}

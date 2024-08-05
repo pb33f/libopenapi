@@ -29,6 +29,7 @@ type Tag struct {
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
@@ -53,7 +54,9 @@ func (t *Tag) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.Sp
 	t.RootNode = root
 	utils.CheckForMergeNodes(root)
 	t.Reference = new(low.Reference)
+	t.Nodes = low.ExtractNodes(ctx, root)
 	t.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, t.Extensions, t.Nodes)
 
 	// extract externalDocs
 	extDocs, err := low.ExtractObject[*ExternalDoc](ctx, ExternalDocsLabel, root, idx)

@@ -23,14 +23,14 @@ type Contact struct {
 	KeyNode  *yaml.Node
 	RootNode *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
-// Build is not implemented for Contact (there is nothing to build).
-func (c *Contact) Build(_ context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (c *Contact) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
 	c.KeyNode = keyNode
 	c.RootNode = root
 	c.Reference = new(low.Reference)
-	// not implemented.
+	c.Nodes = low.ExtractNodes(ctx, root)
 	return nil
 }
 

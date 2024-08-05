@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"reflect"
 	"strings"
 	"sync"
 
@@ -38,6 +39,7 @@ type Components struct {
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
 	*low.Reference
+	low.NodeMap
 }
 
 type componentBuildResult[T any] struct {
@@ -139,7 +141,9 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	co.Reference = new(low.Reference)
+	co.Nodes = low.ExtractNodes(ctx, root)
 	co.Extensions = low.ExtractExtensions(root)
+	low.ExtractExtensionNodes(ctx, co.Extensions, co.Nodes)
 	co.RootNode = root
 	co.KeyNode = root
 	var reterr error
@@ -156,55 +160,55 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 	}
 
 	go func() {
-		schemas, err := extractComponentValues[*base.SchemaProxy](ctx, SchemasLabel, root, idx)
+		schemas, err := extractComponentValues[*base.SchemaProxy](ctx, SchemasLabel, root, idx, co)
 		captureError(err)
 		co.Schemas = schemas
 		wg.Done()
 	}()
 	go func() {
-		parameters, err := extractComponentValues[*Parameter](ctx, ParametersLabel, root, idx)
+		parameters, err := extractComponentValues[*Parameter](ctx, ParametersLabel, root, idx, co)
 		captureError(err)
 		co.Parameters = parameters
 		wg.Done()
 	}()
 	go func() {
-		responses, err := extractComponentValues[*Response](ctx, ResponsesLabel, root, idx)
+		responses, err := extractComponentValues[*Response](ctx, ResponsesLabel, root, idx, co)
 		captureError(err)
 		co.Responses = responses
 		wg.Done()
 	}()
 	go func() {
-		examples, err := extractComponentValues[*base.Example](ctx, base.ExamplesLabel, root, idx)
+		examples, err := extractComponentValues[*base.Example](ctx, base.ExamplesLabel, root, idx, co)
 		captureError(err)
 		co.Examples = examples
 		wg.Done()
 	}()
 	go func() {
-		requestBodies, err := extractComponentValues[*RequestBody](ctx, RequestBodiesLabel, root, idx)
+		requestBodies, err := extractComponentValues[*RequestBody](ctx, RequestBodiesLabel, root, idx, co)
 		captureError(err)
 		co.RequestBodies = requestBodies
 		wg.Done()
 	}()
 	go func() {
-		headers, err := extractComponentValues[*Header](ctx, HeadersLabel, root, idx)
+		headers, err := extractComponentValues[*Header](ctx, HeadersLabel, root, idx, co)
 		captureError(err)
 		co.Headers = headers
 		wg.Done()
 	}()
 	go func() {
-		securitySchemes, err := extractComponentValues[*SecurityScheme](ctx, SecuritySchemesLabel, root, idx)
+		securitySchemes, err := extractComponentValues[*SecurityScheme](ctx, SecuritySchemesLabel, root, idx, co)
 		captureError(err)
 		co.SecuritySchemes = securitySchemes
 		wg.Done()
 	}()
 	go func() {
-		links, err := extractComponentValues[*Link](ctx, LinksLabel, root, idx)
+		links, err := extractComponentValues[*Link](ctx, LinksLabel, root, idx, co)
 		captureError(err)
 		co.Links = links
 		wg.Done()
 	}()
 	go func() {
-		callbacks, err := extractComponentValues[*Callback](ctx, CallbacksLabel, root, idx)
+		callbacks, err := extractComponentValues[*Callback](ctx, CallbacksLabel, root, idx, co)
 		captureError(err)
 		co.Callbacks = callbacks
 		wg.Done()
@@ -217,12 +221,13 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 // extractComponentValues converts all the YAML nodes of a component type to
 // low level model.
 // Process each node in parallel.
-func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, label string, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]], error) {
+func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, label string, root *yaml.Node, idx *index.SpecIndex, co *Components) (low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]], error) {
 	var emptyResult low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]
 	_, nodeLabel, nodeValue := utils.FindKeyNodeFullTop(label, root.Content)
 	if nodeValue == nil {
 		return emptyResult, nil
 	}
+	co.Nodes.Store(nodeLabel.Line, nodeLabel)
 	componentValues := orderedmap.New[low.KeyReference[string], low.ValueReference[T]]()
 	if utils.IsNodeArray(nodeValue) {
 		return emptyResult, fmt.Errorf("node is array, cannot be used in components: line %d, column %d", nodeValue.Line, nodeValue.Column)
@@ -298,6 +303,21 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 		if err != nil {
 			return componentBuildResult[T]{}, err
 		}
+
+		nType := reflect.TypeOf(n)
+		nValue := reflect.ValueOf(n)
+
+		// Check if the type implements low.HasKeyNode
+		hasKeyNodeType := reflect.TypeOf((*low.HasKeyNode)(nil)).Elem()
+		if nType.Implements(hasKeyNodeType) {
+			r := nValue.Interface()
+			if h, ok := r.(low.HasKeyNode); ok {
+				if k, ko := r.(low.AddNodes); ko {
+					k.AddNode(h.GetKeyNode().Line, h.GetKeyNode())
+				}
+			}
+
+		}
 		return componentBuildResult[T]{
 			key: low.KeyReference[string]{
 				KeyNode: currentLabel,
@@ -314,6 +334,10 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 	if err != nil {
 		return emptyResult, err
 	}
+
+	//for rt := componentValues.First(); rt != nil; rt = rt.Next() {
+	//
+	//}
 
 	results := low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]{
 		KeyNode:   nodeLabel,
