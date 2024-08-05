@@ -169,3 +169,27 @@ func TestSchemaProxy_Build_HashFail(t *testing.T) {
 	v := sp.Hash()
 	assert.Equal(t, [32]byte{}, v)
 }
+
+func TestSchemaProxy_AddNodePassthrough(t *testing.T) {
+	yml := `type: int
+description: cakes`
+
+	sch := SchemaProxy{}
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	n, f := sch.Nodes.Load(3)
+	assert.False(t, f)
+	assert.Nil(t, n)
+
+	sch.Nodes.Store(3, &yaml.Node{Value: "cake"})
+	s := sch.Schema()
+
+	n, f = s.Nodes.Load(3)
+	assert.True(t, f)
+	assert.NotNil(t, n)
+
+}
