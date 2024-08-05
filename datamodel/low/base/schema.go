@@ -654,13 +654,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		// map to the local schema
 		expChildNodes.Range(func(k, v interface{}) bool {
 			if arr, ko := v.([]*yaml.Node); ko {
-				if ext, ok := s.Nodes.Load(k); ok {
-					if extArr, kk := ext.([]*yaml.Node); kk {
-						s.Nodes.Store(k, append(extArr, arr...))
-					} else {
-						s.Nodes.Store(k, arr)
-					}
-				} else {
+				if _, ok := s.Nodes.Load(k); !ok {
 					s.Nodes.Store(k, arr)
 				}
 			}
@@ -686,13 +680,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 			// map to the local schema
 			expChildNodes.Range(func(k, v interface{}) bool {
 				if arr, ko := v.([]*yaml.Node); ko {
-					if ext, ok := s.Nodes.Load(k); ok {
-						if extArr, kk := ext.([]*yaml.Node); kk {
-							s.Nodes.Store(k, append(extArr, arr...))
-						} else {
-							s.Nodes.Store(k, arr)
-						}
-					} else {
+					if _, ok := s.Nodes.Load(k); !ok {
 						s.Nodes.Store(k, arr)
 					}
 				}
