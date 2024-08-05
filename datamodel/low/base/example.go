@@ -89,15 +89,7 @@ func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index
 		expChildNodes := low.ExtractNodesRecursive(ctx, vn)
 		expChildNodes.Range(func(k, v interface{}) bool {
 			if arr, ko := v.([]*yaml.Node); ko {
-				if ext, ok := ex.Nodes.Load(k); ok {
-					if extArr, kk := ext.([]*yaml.Node); kk {
-						ex.Nodes.Store(k, append(extArr, arr...))
-					} else {
-						ex.Nodes.Store(k, arr)
-					}
-				} else {
-					ex.Nodes.Store(k, arr)
-				}
+				ex.Nodes.Store(k, arr)
 			}
 			return true
 		})
