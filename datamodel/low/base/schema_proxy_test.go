@@ -185,10 +185,15 @@ description: cakes`
 	assert.False(t, f)
 	assert.Nil(t, n)
 
-	sch.Nodes.Store(3, &yaml.Node{Value: "cake"})
+	sch.AddNode(3, &yaml.Node{Value: "3"})
 	s := sch.Schema()
+	sch.AddNode(4, &yaml.Node{Value: "4"})
 
 	n, f = s.Nodes.Load(3)
+	assert.True(t, f)
+	assert.NotNil(t, n)
+
+	n, f = s.Nodes.Load(4)
 	assert.True(t, f)
 	assert.NotNil(t, n)
 
