@@ -19,6 +19,7 @@ const (
 	CallbacksLabel             = "callbacks"
 	ContentLabel               = "content"
 	PathsLabel                 = "paths"
+	PathItemsLabel             = "pathItems"
 	PathLabel                  = "path"
 	WebhooksLabel              = "webhooks"
 	JSONSchemaDialectLabel     = "jsonSchemaDialect"

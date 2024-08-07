@@ -39,6 +39,13 @@ func TestComponents_MarshalYAML(t *testing.T) {
 				}),
 			},
 		}),
+		PathItems: orderedmap.ToOrderedMap(map[string]*PathItem{
+			"/ding/dong/{bing}/{bong}/go": {
+				Get: &Operation{
+					Description: "get",
+				},
+			},
+		}),
 	}
 
 	dat, _ := comp.Render()
@@ -64,7 +71,11 @@ requestBodies:
     body:
         content:
             application/json:
-                example: why?`
+                example: why?
+pathItems:
+    /ding/dong/{bing}/{bong}/go:
+        get:
+            description: get`
 
 	dat, _ = r.Render()
 	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
