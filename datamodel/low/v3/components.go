@@ -35,6 +35,7 @@ type Components struct {
 	SecuritySchemes low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SecurityScheme]]]
 	Links           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
 	Callbacks       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
+	PathItems       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
@@ -79,6 +80,7 @@ func (co *Components) Hash() [32]byte {
 	generateHashForObjectMap(co.SecuritySchemes.Value, &f)
 	generateHashForObjectMap(co.Links.Value, &f)
 	generateHashForObjectMap(co.Callbacks.Value, &f)
+	generateHashForObjectMap(co.PathItems.Value, &f)
 	f = append(f, low.HashExtensions(co.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
@@ -149,7 +151,7 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 	var reterr error
 	var ceMutex sync.Mutex
 	var wg sync.WaitGroup
-	wg.Add(9)
+	wg.Add(10)
 
 	captureError := func(err error) {
 		ceMutex.Lock()
@@ -211,6 +213,12 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 		callbacks, err := extractComponentValues[*Callback](ctx, CallbacksLabel, root, idx, co)
 		captureError(err)
 		co.Callbacks = callbacks
+		wg.Done()
+	}()
+	go func() {
+		pathItems, err := extractComponentValues[*PathItem](ctx, PathItemsLabel, root, idx, co)
+		captureError(err)
+		co.PathItems = pathItems
 		wg.Done()
 	}()
 
