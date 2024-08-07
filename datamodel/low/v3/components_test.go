@@ -65,7 +65,11 @@ var testComponentsYaml = `
     eighteen:
       '{raference}':
         post:
-          description: eighteen of many`
+          description: eighteen of many
+  pathItems:
+    /nineteen:
+      get:
+        description: nineteen of many`
 
 func TestComponents_Build_Success(t *testing.T) {
 	var idxNode yaml.Node
@@ -96,13 +100,13 @@ func TestComponents_Build_Success(t *testing.T) {
 	assert.Equal(t, "thirteen of many", n.FindSecurityScheme("thirteen").Value.Description.Value)
 	assert.Equal(t, "fourteen of many", n.FindSecurityScheme("fourteen").Value.Description.Value)
 	assert.Equal(t, "fifteen of many", n.FindLink("fifteen").Value.Description.Value)
-	assert.Equal(t, "sixteen of many", n.FindLink("sixteen").Value.Description.Value)
 	assert.Equal(t, "seventeen of many",
 		n.FindCallback("seventeen").Value.FindExpression("{reference}").Value.Post.Value.Description.Value)
 	assert.Equal(t, "eighteen of many",
 		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Post.Value.Description.Value)
+	assert.Equal(t, "nineteen of many", n.FindPathItem("/nineteen").Value.Get.Value.Description.Value)
 
-	assert.Equal(t, "76328a0e32a9989471d335734af04a37bdfad333cf8cd8aa8065998c3a1489a2",
+	assert.Equal(t, "c3f868ba89e4c5260831e1fc99dfcacc6e7e63299430bbb88dcfffd06d633e1c",
 		low.GenerateHashString(&n))
 }
 
