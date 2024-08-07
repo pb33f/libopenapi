@@ -31,6 +31,7 @@ type Components struct {
 	SecuritySchemes *orderedmap.Map[string, *SecurityScheme]       `json:"securitySchemes,omitempty" yaml:"securitySchemes,omitempty"`
 	Links           *orderedmap.Map[string, *Link]                 `json:"links,omitempty" yaml:"links,omitempty"`
 	Callbacks       *orderedmap.Map[string, *Callback]             `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
+	PathItems       *orderedmap.Map[string, *PathItem]             `json:"pathItems,omitempty" yaml:"pathItems,omitempty"`
 	Extensions      *orderedmap.Map[string, *yaml.Node]            `json:"-" yaml:"-"`
 	low             *low.Components
 }
@@ -51,12 +52,13 @@ func NewComponents(comp *low.Components) *Components {
 	exampleMap := orderedmap.New[string, *highbase.Example]()
 	requestBodyMap := orderedmap.New[string, *RequestBody]()
 	headerMap := orderedmap.New[string, *Header]()
+	pathItemMap := orderedmap.New[string, *PathItem]()
 	securitySchemeMap := orderedmap.New[string, *SecurityScheme]()
 	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
 
 	// build all components asynchronously.
 	var wg sync.WaitGroup
-	wg.Add(9)
+	wg.Add(10)
 	go func() {
 		buildComponent[*low.Callback, *Callback](comp.Callbacks.Value, cbMap, NewCallback)
 		wg.Done()
@@ -86,6 +88,10 @@ func NewComponents(comp *low.Components) *Components {
 		wg.Done()
 	}()
 	go func() {
+		buildComponent[*low.PathItem, *PathItem](comp.PathItems.Value, pathItemMap, NewPathItem)
+		wg.Done()
+	}()
+	go func() {
 		buildComponent[*low.SecurityScheme, *SecurityScheme](comp.SecuritySchemes.Value, securitySchemeMap, NewSecurityScheme)
 		wg.Done()
 	}()
@@ -104,6 +110,7 @@ func NewComponents(comp *low.Components) *Components {
 	c.RequestBodies = requestBodyMap
 	c.Examples = exampleMap
 	c.SecuritySchemes = securitySchemeMap
+	c.PathItems = pathItemMap
 	return c
 }
 
