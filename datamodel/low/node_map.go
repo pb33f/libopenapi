@@ -47,16 +47,18 @@ func (nm *NodeMap) AddNode(key int, node *yaml.Node) {
 // GetNodes will return the map of nodes
 func (nm *NodeMap) GetNodes() map[int][]*yaml.Node {
 	composed := make(map[int][]*yaml.Node)
-	nm.Nodes.Range(func(key, value interface{}) bool {
-		if v, ok := value.([]*yaml.Node); ok {
-			composed[key.(int)] = v
-		}
-		if v, ok := value.(*yaml.Node); ok {
-			composed[key.(int)] = []*yaml.Node{v}
-		}
+	if nm.Nodes != nil {
+		nm.Nodes.Range(func(key, value interface{}) bool {
+			if v, ok := value.([]*yaml.Node); ok {
+				composed[key.(int)] = v
+			}
+			if v, ok := value.(*yaml.Node); ok {
+				composed[key.(int)] = []*yaml.Node{v}
+			}
 
-		return true
-	})
+			return true
+		})
+	}
 	if len(composed) <= 0 {
 		composed[0] = []*yaml.Node{} // return an empty slice if there are no nodes
 	}
@@ -134,12 +136,14 @@ func ExtractExtensionNodes(_ context.Context,
 		} else {
 			results = append(results, v.ValueNode)
 		}
-		if k.KeyNode.Line == v.ValueNode.Line {
-			nodeMap.Store(k.KeyNode.Line, results)
-		} else {
-			nodeMap.Store(k.KeyNode.Line, results[0])
-			for _, y := range results[1:] {
-				nodeMap.Store(y.Line, []*yaml.Node{y})
+		if nodeMap != nil {
+			if k.KeyNode.Line == v.ValueNode.Line {
+				nodeMap.Store(k.KeyNode.Line, results)
+			} else {
+				nodeMap.Store(k.KeyNode.Line, results[0])
+				for _, y := range results[1:] {
+					nodeMap.Store(y.Line, []*yaml.Node{y})
+				}
 			}
 		}
 	}
