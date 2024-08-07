@@ -133,6 +133,10 @@ func (co *Components) FindLink(link string) *low.ValueReference[*Link] {
 	return low.FindItemInOrderedMap[*Link](link, co.Links.Value)
 }
 
+func (co *Components) FindPathItem(path string) *low.ValueReference[*PathItem] {
+	return low.FindItemInOrderedMap[*PathItem](path, co.PathItems.Value)
+}
+
 func (co *Components) FindCallback(callback string) *low.ValueReference[*Callback] {
 	return low.FindItemInOrderedMap[*Callback](callback, co.Callbacks.Value)
 }
