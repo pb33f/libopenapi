@@ -75,9 +75,7 @@ func FlattenLowLevelOrderedMap[T any](
 ) map[string]*low.ValueReference[T] {
 	flat := make(map[string]*low.ValueReference[T])
 
-	for pair := orderedmap.First(lowMap); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		l := pair.Value()
+	for k, l := range lowMap.FromOldest() {
 		flat[k.Value] = &l
 	}
 	return flat
@@ -276,16 +274,14 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 	lValues := make(map[string]low.ValueReference[T])
 	rValues := make(map[string]low.ValueReference[T])
 
-	for pair := orderedmap.First(expLeft); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		lHashes[k.Value] = low.GenerateHashString(pair.Value().Value)
-		lValues[k.Value] = pair.Value()
+	for k, v := range expLeft.FromOldest() {
+		lHashes[k.Value] = low.GenerateHashString(v.Value)
+		lValues[k.Value] = v
 	}
 
-	for pair := orderedmap.First(expRight); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		rHashes[k.Value] = low.GenerateHashString(pair.Value().Value)
-		rValues[k.Value] = pair.Value()
+	for k, v := range expRight.FromOldest() {
+		rHashes[k.Value] = low.GenerateHashString(v.Value)
+		rValues[k.Value] = v
 	}
 
 	expChanges := make(map[string]R)

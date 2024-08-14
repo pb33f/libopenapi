@@ -113,8 +113,8 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			ValueNode: expsN,
 		}
 		p.Nodes.Store(expsL.Line, expsL)
-		for xj := exps.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range exps.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -130,8 +130,8 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	}
 	if cL != nil {
 		p.Nodes.Store(cL.Line, cL)
-		for xj := con.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range con.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -164,11 +164,11 @@ func (p *Parameter) Hash() [32]byte {
 	if p.Example.Value != nil && !p.Example.Value.IsZero() {
 		f = append(f, low.GenerateHashString(p.Example.Value))
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(p.Examples.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(p.Examples.Value).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(p.Content.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(p.Content.Value).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 	f = append(f, low.HashExtensions(p.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

@@ -157,8 +157,8 @@ func (p *Paths) Build(ctx context.Context, _, root *yaml.Node, idx *index.SpecIn
 // Hash will return a consistent SHA256 Hash of the PathItem object
 func (p *Paths) Hash() [32]byte {
 	var f []string
-	for pair := orderedmap.First(orderedmap.SortAlpha(p.PathItems)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(p.PathItems).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 	f = append(f, low.HashExtensions(p.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

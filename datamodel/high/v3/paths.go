@@ -86,9 +86,7 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		pi := pair.Value()
+	for k, pi := range p.PathItems.FromOldest() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if p.low != nil {
@@ -97,9 +95,9 @@ func (p *Paths) MarshalYAML() (interface{}, error) {
 				ln = lpi.ValueNode.Line
 			}
 
-			for pair := orderedmap.First(p.low.PathItems); pair != nil; pair = pair.Next() {
-				if pair.Key().Value == k {
-					style = pair.Key().KeyNode.Style
+			for lk := range p.low.PathItems.KeysFromOldest() {
+				if lk.Value == k {
+					style = lk.KeyNode.Style
 					break
 				}
 			}
@@ -157,9 +155,7 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	for pair := orderedmap.First(p.PathItems); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		pi := pair.Value()
+	for k, pi := range p.PathItems.FromOldest() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if p.low != nil {
@@ -168,9 +164,9 @@ func (p *Paths) MarshalYAMLInline() (interface{}, error) {
 				ln = lpi.ValueNode.Line
 			}
 
-			for pair := orderedmap.First(p.low.PathItems); pair != nil; pair = pair.Next() {
-				if pair.Key().Value == k {
-					style = pair.Key().KeyNode.Style
+			for lk := range p.low.PathItems.KeysFromOldest() {
+				if lk.Value == k {
+					style = lk.KeyNode.Style
 					break
 				}
 			}

@@ -1021,9 +1021,9 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 			require.Equal(t, itemCount, orderedmap.Len(pathItems))
 
 			var i int
-			for pair := orderedmap.First(model.Model.Paths.PathItems); pair != nil; pair = pair.Next() {
+			for path := range model.Model.Paths.PathItems.KeysFromOldest() {
 				pathName := fmt.Sprintf("/foobar/%d", i)
-				assert.Equal(t, pathName, pair.Key())
+				assert.Equal(t, pathName, path)
 				i++
 			}
 			assert.Equal(t, itemCount, i)
@@ -1085,9 +1085,9 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 				responses := pathItem.Get.Responses
 
 				var i int
-				for pair := orderedmap.First(responses.Codes); pair != nil; pair = pair.Next() {
+				for code := range responses.Codes.KeysFromOldest() {
 					expectedCode := strconv.Itoa(200 + i)
-					assert.Equal(t, expectedCode, pair.Key())
+					assert.Equal(t, expectedCode, code)
 					i++
 				}
 				assert.Equal(t, itemCount, i)
@@ -1180,9 +1180,8 @@ func TestDocument_Render_PreserveOrder(t *testing.T) {
 				mediaTypeResp := respCode.Content.GetOrZero(mediaType)
 
 				var i int
-				for pair := orderedmap.First(mediaTypeResp.Examples); pair != nil; pair = pair.Next() {
-					assert.Equal(t, fmt.Sprintf("FoobarExample%d", i), pair.Key())
-					example := pair.Value()
+				for exampleName, example := range mediaTypeResp.Examples.FromOldest() {
+					assert.Equal(t, fmt.Sprintf("FoobarExample%d", i), exampleName)
 					assert.Equal(t, fmt.Sprintf("Summary example %d", i), example.Summary)
 					i++
 				}
@@ -1356,7 +1355,6 @@ func TestDocument_TestNestedFiles(t *testing.T) {
 }
 
 func TestDocument_Issue264(t *testing.T) {
-
 	openAPISpec := `{"openapi":"3.0.0","info":{"title":"dummy","version":"1.0.0"},"paths":{"/dummy":{"post":{"requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{"value":{"type":"number","format":"decimal","multipleOf":0.01,"minimum":-999.99}}}}}},"responses":{"200":{"description":"OK"}}}}}}`
 
 	d, _ := NewDocument([]byte(openAPISpec))
@@ -1369,7 +1367,6 @@ func TestDocument_Issue264(t *testing.T) {
 }
 
 func TestDocument_Issue269(t *testing.T) {
-
 	spec := `openapi: "3.0.0"
 info:
   title: test
@@ -1390,5 +1387,4 @@ components:
 	}
 	_, errs := doc.BuildV3Model()
 	assert.Len(t, errs, 0)
-
 }

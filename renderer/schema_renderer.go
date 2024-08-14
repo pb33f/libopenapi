@@ -10,13 +10,13 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/lucasjones/reggen"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"slices"
 )
 
 const (
@@ -305,9 +305,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			} else {
 				checkProps = properties
 			}
-			for pair := orderedmap.First(checkProps); pair != nil; pair = pair.Next() {
+			for propName, propValue := range checkProps.FromOldest() {
 				// render property
-				propName, propValue := pair.Key(), pair.Value()
 				propertySchema := propValue.Schema()
 				wr.DiveIntoSchema(propertySchema, propName, propertyMap, depth+1)
 			}
@@ -335,9 +334,8 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		dependentSchemas := schema.DependentSchemas
 		if dependentSchemas != nil {
 			dependentSchemasMap := make(map[string]any)
-			for pair := orderedmap.First(dependentSchemas); pair != nil; pair = pair.Next() {
+			for k, dependentSchema := range dependentSchemas.FromOldest() {
 				// only map if the property exists
-				k, dependentSchema := pair.Key(), pair.Value()
 				if propertyMap[k] != nil {
 					dependentSchemaCompiled := dependentSchema.Schema()
 					wr.DiveIntoSchema(dependentSchemaCompiled, k, dependentSchemasMap, depth+1)

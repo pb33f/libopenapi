@@ -57,8 +57,8 @@ func (e *Examples) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecInd
 // Hash will return a consistent SHA256 Hash of the Examples object
 func (e *Examples) Hash() [32]byte {
 	var f []string
-	for pair := orderedmap.First(orderedmap.SortAlpha(e.Values)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(e.Values).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

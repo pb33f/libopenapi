@@ -76,8 +76,7 @@ func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 		}
 		if codes != nil {
 			r.Codes = codes
-			for codePairs := codes.First(); codePairs != nil; codePairs = codePairs.Next() {
-				code := codePairs.Key()
+			for code := range codes.KeysFromOldest() {
 				r.Nodes.Store(code.KeyNode.Line, code.KeyNode)
 			}
 		}
@@ -98,12 +97,12 @@ func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 }
 
 func (r *Responses) getDefault() *low.NodeReference[*Response] {
-	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
-		if strings.ToLower(pair.Key().Value) == DefaultLabel {
+	for code, resp := range r.Codes.FromOldest() {
+		if strings.ToLower(code.Value) == DefaultLabel {
 			return &low.NodeReference[*Response]{
-				ValueNode: pair.Value().ValueNode,
-				KeyNode:   pair.Key().KeyNode,
-				Value:     pair.Value().Value,
+				ValueNode: resp.ValueNode,
+				KeyNode:   code.KeyNode,
+				Value:     resp.Value,
 			}
 		}
 	}
@@ -133,9 +132,7 @@ func (r *Responses) FindResponseByCode(code string) *low.ValueReference[*Respons
 // Hash will return a consistent SHA256 Hash of the Examples object
 func (r *Responses) Hash() [32]byte {
 	var f []string
-	for pair := orderedmap.First(orderedmap.SortAlpha(r.Codes)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
+	f = low.AppendMapHashes(f, r.Codes)
 	if !r.Default.IsEmpty() {
 		f = append(f, low.GenerateHashString(r.Default.Value))
 	}

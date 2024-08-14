@@ -5,10 +5,9 @@ package model
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 	"sync"
-
-	"slices"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -466,15 +465,15 @@ func checkMappedSchemaOfASchema(
 	rEntities := make(map[string]*base.SchemaProxy)
 	rKeyNodes := make(map[string]*yaml.Node)
 
-	for pair := orderedmap.First(lSchema); pair != nil; pair = pair.Next() {
-		lProps = append(lProps, pair.Key().Value)
-		lEntities[pair.Key().Value] = pair.Value().Value
-		lKeyNodes[pair.Key().Value] = pair.Key().KeyNode
+	for k, v := range lSchema.FromOldest() {
+		lProps = append(lProps, k.Value)
+		lEntities[k.Value] = v.Value
+		lKeyNodes[k.Value] = k.KeyNode
 	}
-	for pair := orderedmap.First(rSchema); pair != nil; pair = pair.Next() {
-		rProps = append(rProps, pair.Key().Value)
-		rEntities[pair.Key().Value] = pair.Value().Value
-		rKeyNodes[pair.Key().Value] = pair.Key().KeyNode
+	for k, v := range rSchema.FromOldest() {
+		rProps = append(rProps, k.Value)
+		rEntities[k.Value] = v.Value
+		rKeyNodes[k.Value] = k.KeyNode
 	}
 	sort.Strings(lProps)
 	sort.Strings(rProps)

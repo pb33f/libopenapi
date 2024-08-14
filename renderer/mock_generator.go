@@ -128,16 +128,14 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 		examplesMap := examplesValue.(*orderedmap.Map[string, *highbase.Example])
 
 		// if the name is not empty, try and find the example by name
-		for pair := orderedmap.First(examplesMap); pair != nil; pair = pair.Next() {
-			k, exp := pair.Key(), pair.Value()
+		for k, exp := range examplesMap.FromOldest() {
 			if k == name {
 				return mg.renderMock(exp.Value), nil
 			}
 		}
 
 		// if the name is empty, just return the first example
-		for pair := orderedmap.First(examplesMap); pair != nil; pair = pair.Next() {
-			exp := pair.Value()
+		for exp := range examplesMap.ValuesFromOldest() {
 			return mg.renderMock(exp.Value), nil
 		}
 	}

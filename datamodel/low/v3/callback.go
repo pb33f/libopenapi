@@ -68,8 +68,8 @@ func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 		return err
 	}
 	cb.Expression = expressions
-	for xp := expressions.First(); xp != nil; xp = xp.Next() {
-		cb.Nodes.Store(xp.Key().KeyNode.Line, xp.Key().KeyNode)
+	for k := range expressions.KeysFromOldest() {
+		cb.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 	}
 	return nil
 }
@@ -77,8 +77,8 @@ func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 // Hash will return a consistent SHA256 Hash of the Callback object
 func (cb *Callback) Hash() [32]byte {
 	var f []string
-	for pair := orderedmap.First(orderedmap.SortAlpha(cb.Expression)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(cb.Expression).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 
 	f = append(f, low.HashExtensions(cb.Extensions)...)

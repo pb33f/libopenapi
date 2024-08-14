@@ -6,7 +6,8 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -30,11 +31,11 @@ type Operation struct {
 	Security     []*base.SecurityRequirement         `json:"security,omitempty" yaml:"security,omitempty"`
 	Servers      []*Server                           `json:"servers,omitempty" yaml:"servers,omitempty"`
 	Extensions   *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low          *low.Operation
+	low          *lowv3.Operation
 }
 
 // NewOperation will create a new Operation instance from a low-level one.
-func NewOperation(operation *low.Operation) *Operation {
+func NewOperation(operation *lowv3.Operation) *Operation {
 	o := new(Operation)
 	o.low = operation
 	var tags []string
@@ -84,17 +85,13 @@ func NewOperation(operation *low.Operation) *Operation {
 	o.Servers = servers
 	o.Extensions = high.ExtractExtensions(operation.Extensions)
 	if !operation.Callbacks.IsEmpty() {
-		cbs := orderedmap.New[string, *Callback]()
-		for pair := orderedmap.First(operation.Callbacks.Value); pair != nil; pair = pair.Next() {
-			cbs.Set(pair.Key().Value, NewCallback(pair.Value().Value))
-		}
-		o.Callbacks = cbs
+		o.Callbacks = low.FromReferenceMapWithFunc(operation.Callbacks.Value, NewCallback)
 	}
 	return o
 }
 
 // GoLow will return the low-level Operation instance that was used to create the high-level one.
-func (o *Operation) GoLow() *low.Operation {
+func (o *Operation) GoLow() *lowv3.Operation {
 	return o.low
 }
 

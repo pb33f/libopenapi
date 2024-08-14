@@ -311,10 +311,10 @@ func TestCreateDocument_Info(t *testing.T) {
 func TestCreateDocument_WebHooks(t *testing.T) {
 	initTest()
 	assert.Equal(t, 1, orderedmap.Len(doc.Webhooks.Value))
-	for pair := orderedmap.First(doc.Webhooks.Value); pair != nil; pair = pair.Next() {
+	for v := range doc.Webhooks.Value.ValuesFromOldest() {
 		// a nice deep model should be available for us.
 		assert.Equal(t, "Information about a new burger",
-			pair.Value().Value.Post.Value.RequestBody.Value.Description.Value)
+			v.Value.Post.Value.RequestBody.Value.Description.Value)
 	}
 }
 
@@ -366,10 +366,7 @@ func TestCreateDocument_Tags(t *testing.T) {
 	assert.NotEmpty(t, doc.Tags.Value[0].Value.ExternalDocs.Value.URL.Value)
 	assert.Equal(t, 7, orderedmap.Len(doc.Tags.Value[0].Value.Extensions))
 
-	for pair := orderedmap.First(doc.Tags.Value[0].Value.Extensions); pair != nil; pair = pair.Next() {
-		key := pair.Key()
-		extension := pair.Value()
-
+	for key, extension := range doc.Tags.Value[0].Value.Extensions.FromOldest() {
 		var val any
 		_ = extension.Value.Decode(&val)
 		switch key.Value {

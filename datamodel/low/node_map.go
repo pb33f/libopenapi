@@ -6,9 +6,10 @@ package low
 
 import (
 	"context"
+	"sync"
+
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
-	"sync"
 )
 
 // HasNodes is an interface that defines a method to get a map of nodes
@@ -23,7 +24,6 @@ type AddNodes interface {
 
 // NodeMap represents a map of yaml nodes
 type NodeMap struct {
-
 	// Nodes is a sync map of nodes for this object, and the key is the line number of the node
 	// a line can contain many nodes (in JSON), so the value is a slice of *yaml.Node
 	Nodes *sync.Map `yaml:"-" json:"-"`
@@ -115,13 +115,10 @@ func ExtractNodesRecursive(_ context.Context, root *yaml.Node) *sync.Map {
 // ExtractExtensionNodes will extract all extension nodes from a map of extensions, recursively.
 func ExtractExtensionNodes(_ context.Context,
 	extensionMap *orderedmap.Map[KeyReference[string],
-		ValueReference[*yaml.Node]], nodeMap *sync.Map) {
-
+		ValueReference[*yaml.Node]], nodeMap *sync.Map,
+) {
 	// range over the extension map and extract all nodes
-	for extPairs := extensionMap.First(); extPairs != nil; extPairs = extPairs.Next() {
-		k := extPairs.Key()
-		v := extPairs.Value()
-
+	for k, v := range extensionMap.FromOldest() {
 		results := []*yaml.Node{k.KeyNode}
 		var newNodeMap sync.Map
 		nm := &NodeMap{Nodes: &newNodeMap}

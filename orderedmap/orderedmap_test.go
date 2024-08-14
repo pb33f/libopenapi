@@ -364,6 +364,120 @@ func TestFromPairs(t *testing.T) {
 	})
 }
 
+func TestIterators(t *testing.T) {
+	om := orderedmap.New[int, any]()
+	om.Set(1, "bar")
+	om.Set(2, 28)
+	om.Set(3, 100)
+	om.Set(4, "baz")
+	om.Set(5, "28")
+	om.Set(6, "100")
+	om.Set(7, "baz")
+	om.Set(8, "baz")
+
+	expectedKeys := []int{1, 2, 3, 4, 5, 6, 7, 8}
+	expectedKeysFromNewest := []int{8, 7, 6, 5, 4, 3, 2, 1}
+	expectedValues := []any{"bar", 28, 100, "baz", "28", "100", "baz", "baz"}
+	expectedValuesFromNewest := []any{"baz", "baz", "100", "28", "baz", 100, 28, "bar"}
+
+	var keys []int
+	var values []any
+
+	for k, v := range om.FromOldest() {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+
+	assert.Equal(t, expectedKeys, keys)
+	assert.Equal(t, expectedValues, values)
+
+	keys, values = []int{}, []any{}
+
+	for k, v := range om.FromNewest() {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+
+	assert.Equal(t, expectedKeysFromNewest, keys)
+	assert.Equal(t, expectedValuesFromNewest, values)
+
+	keys = []int{}
+
+	for k := range om.KeysFromOldest() {
+		keys = append(keys, k)
+	}
+
+	assert.Equal(t, expectedKeys, keys)
+
+	keys = []int{}
+
+	for k := range om.KeysFromNewest() {
+		keys = append(keys, k)
+	}
+
+	assert.Equal(t, expectedKeysFromNewest, keys)
+
+	values = []any{}
+
+	for v := range om.ValuesFromOldest() {
+		values = append(values, v)
+	}
+
+	assert.Equal(t, expectedValues, values)
+
+	values = []any{}
+
+	for v := range om.ValuesFromNewest() {
+		values = append(values, v)
+	}
+
+	assert.Equal(t, expectedValuesFromNewest, values)
+}
+
+func TestIteratorsFrom(t *testing.T) {
+	om := orderedmap.New[int, any]()
+	om.Set(1, "bar")
+	om.Set(2, 28)
+	om.Set(3, 100)
+	om.Set(4, "baz")
+	om.Set(5, "28")
+	om.Set(6, "100")
+	om.Set(7, "baz")
+	om.Set(8, "baz")
+
+	om2 := orderedmap.From(om.FromOldest())
+
+	expectedKeys := []int{1, 2, 3, 4, 5, 6, 7, 8}
+	expectedValues := []any{"bar", 28, 100, "baz", "28", "100", "baz", "baz"}
+
+	var keys []int
+	var values []any
+
+	for k, v := range om2.FromOldest() {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+
+	assert.Equal(t, expectedKeys, keys)
+	assert.Equal(t, expectedValues, values)
+
+	expectedKeysFromNewest := []int{8, 7, 6, 5, 4, 3, 2, 1}
+	expectedValuesFromNewest := []any{"baz", "baz", "100", "28", "baz", 100, 28, "bar"}
+
+	om2 = orderedmap.From(om.FromNewest())
+
+	keys = []int{}
+	values = []any{}
+
+	for k, v := range om2.FromOldest() {
+		keys = append(keys, k)
+		values = append(values, v)
+	}
+
+	assert.Equal(t, expectedKeysFromNewest, keys)
+	assert.Equal(t, expectedValuesFromNewest, values)
+}
+
 func requireClosed[K comparable, V any](t *testing.T, c <-chan orderedmap.Pair[K, V]) {
 	select {
 	case pair := <-c:

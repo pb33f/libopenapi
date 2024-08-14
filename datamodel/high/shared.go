@@ -38,11 +38,7 @@ type GoesLowUntyped interface {
 // ExtractExtensions is a convenience method for converting low-level extension definitions, to a high level *orderedmap.Map[string, *yaml.Node]
 // definition that is easier to consume in applications.
 func ExtractExtensions(extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]) *orderedmap.Map[string, *yaml.Node] {
-	extracted := orderedmap.New[string, *yaml.Node]()
-	for pair := orderedmap.First(extensions); pair != nil; pair = pair.Next() {
-		extracted.Set(pair.Key().Value, pair.Value().Value)
-	}
-	return extracted
+	return low.FromReferenceMap(extensions)
 }
 
 // UnpackExtensions is a convenience function that makes it easy and simple to unpack an objects extensions
@@ -64,15 +60,14 @@ func ExtractExtensions(extensions *orderedmap.Map[low.KeyReference[string], low.
 func UnpackExtensions[T any, R low.HasExtensions[T]](low GoesLow[R]) (*orderedmap.Map[string, *T], error) {
 	m := orderedmap.New[string, *T]()
 	ext := low.GoLow().GetExtensions()
-	for pair := orderedmap.First(ext); pair != nil; pair = pair.Next() {
-		key := pair.Key().Value
+	for ext, value := range ext.FromOldest() {
 		g := new(T)
-		valueNode := pair.Value().ValueNode
+		valueNode := value.ValueNode
 		err := valueNode.Decode(g)
 		if err != nil {
 			return nil, err
 		}
-		m.Set(key, g)
+		m.Set(ext.Value, g)
 	}
 	return m, nil
 }

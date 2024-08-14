@@ -11,7 +11,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -74,8 +73,8 @@ trace:
 	expectedOrder := []string{"get", "put", "post", "patch", "delete", "head", "options", "trace"}
 
 	i := 0
-	for pair := orderedmap.First(r.GetOperations()); pair != nil; pair = pair.Next() {
-		assert.Equal(t, expectedOrder[i], pair.Value().Description)
+	for v := range r.GetOperations().ValuesFromOldest() {
+		assert.Equal(t, expectedOrder[i], v.Description)
 		i++
 	}
 }
@@ -171,8 +170,8 @@ func TestPathItem_GetOperations_NoLow(t *testing.T) {
 	expectedOrderOfOps := []string{"get", "post", "delete"}
 	actualOrder := []string{}
 
-	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
-		actualOrder = append(actualOrder, pair.Key())
+	for k := range ops.KeysFromOldest() {
+		actualOrder = append(actualOrder, k)
 	}
 
 	assert.Equal(t, expectedOrderOfOps, actualOrder)
@@ -190,8 +189,8 @@ func TestPathItem_GetOperations_LowWithUnsetOperations(t *testing.T) {
 	expectedOrderOfOps := []string{"get", "post", "delete"}
 	actualOrder := []string{}
 
-	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
-		actualOrder = append(actualOrder, pair.Key())
+	for k := range ops.KeysFromOldest() {
+		actualOrder = append(actualOrder, k)
 	}
 
 	assert.Equal(t, expectedOrderOfOps, actualOrder)

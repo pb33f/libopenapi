@@ -7,6 +7,7 @@ package orderedmap
 import (
 	"context"
 	"fmt"
+	"iter"
 	"reflect"
 	"slices"
 	"strings"
@@ -71,6 +72,102 @@ func (o *Map[K, V]) First() Pair[K, V] {
 	}
 	return &wrapPair[K, V]{
 		Pair: pair,
+	}
+}
+
+// FromOldest returns an iterator that yields the oldest key-value pair in the map.
+func (o *Map[K, V]) FromOldest() iter.Seq2[K, V] {
+	return func(yield func(K, V) bool) {
+		if o == nil {
+			return
+		}
+
+		for k, v := range o.OrderedMap.FromOldest() {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+// FromNewest returns an iterator that yields the newest key-value pair in the map.
+func (o *Map[K, V]) FromNewest() iter.Seq2[K, V] {
+	o.OrderedMap.FromNewest()
+	return func(yield func(K, V) bool) {
+		if o == nil {
+			return
+		}
+
+		for k, v := range o.OrderedMap.FromNewest() {
+			if !yield(k, v) {
+				return
+			}
+		}
+	}
+}
+
+// FromNewest returns an iterator that yields the newest key-value pair in the map.
+func (o *Map[K, V]) KeysFromOldest() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		if o == nil {
+			return
+		}
+
+		for k := range o.OrderedMap.KeysFromOldest() {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// KeysFromNewest returns an iterator that yields the newest key in the map.
+func (o *Map[K, V]) KeysFromNewest() iter.Seq[K] {
+	return func(yield func(K) bool) {
+		if o == nil {
+			return
+		}
+
+		for k := range o.OrderedMap.KeysFromNewest() {
+			if !yield(k) {
+				return
+			}
+		}
+	}
+}
+
+// ValuesFromOldest returns an iterator that yields the oldest value in the map.
+func (o *Map[K, V]) ValuesFromOldest() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		if o == nil {
+			return
+		}
+		for v := range o.OrderedMap.ValuesFromOldest() {
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// ValuesFromNewest returns an iterator that yields the newest value in the map.
+func (o *Map[K, V]) ValuesFromNewest() iter.Seq[V] {
+	return func(yield func(V) bool) {
+		if o == nil {
+			return
+		}
+		for v := range o.OrderedMap.ValuesFromNewest() {
+			if !yield(v) {
+				return
+			}
+		}
+	}
+}
+
+// From creates a new ordered map from an iterator.
+func From[K comparable, V any](iter iter.Seq2[K, V]) *Map[K, V] {
+	return &Map[K, V]{
+		OrderedMap: wk8orderedmap.From(iter),
 	}
 }
 

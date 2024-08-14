@@ -146,8 +146,8 @@ func (o *OAuthFlow) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 	low.ExtractExtensionNodes(ctx, o.Extensions, o.Nodes)
 
 	if o.Scopes.Value != nil && o.Scopes.Value.Len() > 0 {
-		for fk := o.Scopes.Value.First(); fk != nil; fk = fk.Next() {
-			o.Nodes.Store(fk.Key().KeyNode.Line, fk.Key().KeyNode)
+		for k := range o.Scopes.Value.KeysFromOldest() {
+			o.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -167,8 +167,8 @@ func (o *OAuthFlow) Hash() [32]byte {
 	if !o.RefreshUrl.IsEmpty() {
 		f = append(f, o.RefreshUrl.Value)
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(o.Scopes.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, sha256.Sum256([]byte(fmt.Sprint(pair.Value().Value)))))
+	for k, v := range orderedmap.SortAlpha(o.Scopes.Value).FromOldest() {
+		f = append(f, fmt.Sprintf("%s-%s", k.Value, sha256.Sum256([]byte(fmt.Sprint(v.Value)))))
 	}
 	f = append(f, low.HashExtensions(o.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
