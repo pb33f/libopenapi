@@ -2185,6 +2185,17 @@ func TestFromReferenceMap(t *testing.T) {
 	assert.Equal(t, "qux", om.GetOrZero("baz"))
 }
 
+func TestFromReferenceMapWithFunc(t *testing.T) {
+	refMap := orderedmap.New[KeyReference[string], ValueReference[string]]()
+	refMap.Set(KeyReference[string]{Value: "foo"}, ValueReference[string]{Value: "bar"})
+	refMap.Set(KeyReference[string]{Value: "baz"}, ValueReference[string]{Value: "quxor"})
+	var om *orderedmap.Map[string, int] = FromReferenceMapWithFunc(refMap, func(v string) int {
+		return len(v)
+	})
+	assert.Equal(t, 3, om.GetOrZero("foo"))
+	assert.Equal(t, 5, om.GetOrZero("baz"))
+}
+
 func TestAppendMapHashes(t *testing.T) {
 	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
 	m.Set(KeyReference[string]{Value: "foo"}, ValueReference[string]{Value: "bar"})
