@@ -262,9 +262,7 @@ func (s *Schema) Hash() [32]byte {
 	sort.Strings(keys)
 	d = append(d, keys...)
 
-	for pair := orderedmap.First(orderedmap.SortAlpha(s.Properties.Value)); pair != nil; pair = pair.Next() {
-		d = append(d, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
+	d = low.AppendMapHashes(d, s.Properties.Value)
 	if s.XML.Value != nil {
 		d = append(d, low.GenerateHashString(s.XML.Value))
 	}
@@ -364,13 +362,8 @@ func (s *Schema) Hash() [32]byte {
 		d = append(d, fmt.Sprint(s.Anchor.Value))
 	}
 
-	for pair := orderedmap.First(orderedmap.SortAlpha(s.DependentSchemas.Value)); pair != nil; pair = pair.Next() {
-		d = append(d, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
-
-	for pair := orderedmap.First(orderedmap.SortAlpha(s.PatternProperties.Value)); pair != nil; pair = pair.Next() {
-		d = append(d, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
+	d = low.AppendMapHashes(d, orderedmap.SortAlpha(s.DependentSchemas.Value))
+	d = low.AppendMapHashes(d, orderedmap.SortAlpha(s.PatternProperties.Value))
 
 	if len(s.PrefixItems.Value) > 0 {
 		itemsKeys := make([]string, len(s.PrefixItems.Value))
@@ -1180,7 +1173,6 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 				res: res,
 				idx: schemaIdx,
 			}
-
 		}
 
 		isRef := false

@@ -139,12 +139,12 @@ allTheThings:
 	assert.Equal(t, 324938249028.98234892374892374923874823974, hd.Mustard.Value)
 
 	allTheThings := hd.AllTheThings.Value
-	for pair := orderedmap.First(allTheThings); pair != nil; pair = pair.Next() {
-		if pair.Key().Value == "beer" {
-			assert.Equal(t, "isGood", pair.Value().Value)
+	for k, v := range allTheThings.FromOldest() {
+		if k.Value == "beer" {
+			assert.Equal(t, "isGood", v.Value)
 		}
-		if pair.Key().Value == "cake" {
-			assert.Equal(t, "isNice", pair.Value().Value)
+		if k.Value == "cake" {
+			assert.Equal(t, "isNice", v.Value)
 		}
 	}
 	assert.NoError(t, cErr)
@@ -364,8 +364,7 @@ func TestHandleSlicesOfBools(t *testing.T) {
 }
 
 func TestSetField_Ignore(t *testing.T) {
-	type Complex struct {
-	}
+	type Complex struct{}
 	type internal struct {
 		Thing *Complex
 	}

@@ -14,7 +14,8 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/json"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -94,11 +95,11 @@ type Document struct {
 	// Rolodex is the low-level rolodex used when creating this document.
 	// This in an internal structure and not part of the OpenAPI schema.
 	Rolodex *index.Rolodex `json:"-" yaml:"-"`
-	low     *low.Document
+	low     *lowv3.Document
 }
 
 // NewDocument will create a new high-level Document from a low-level one.
-func NewDocument(document *low.Document) *Document {
+func NewDocument(document *lowv3.Document) *Document {
 	d := new(Document)
 	d.low = document
 	d.Index = document.Index
@@ -134,11 +135,7 @@ func NewDocument(document *low.Document) *Document {
 		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
 	}
 	if !document.Webhooks.IsEmpty() {
-		hooks := orderedmap.New[string, *PathItem]()
-		for pair := orderedmap.First(document.Webhooks.Value); pair != nil; pair = pair.Next() {
-			hooks.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
-		}
-		d.Webhooks = hooks
+		d.Webhooks = low.FromReferenceMapWithFunc(document.Webhooks.Value, NewPathItem)
 	}
 	if !document.Security.IsEmpty() {
 		var security []*base.SecurityRequirement
@@ -151,7 +148,7 @@ func NewDocument(document *low.Document) *Document {
 }
 
 // GoLow returns the low-level Document that was used to create the high level one.
-func (d *Document) GoLow() *low.Document {
+func (d *Document) GoLow() *lowv3.Document {
 	return d.low
 }
 

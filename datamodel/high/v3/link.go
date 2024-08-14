@@ -5,7 +5,8 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -30,20 +31,16 @@ type Link struct {
 	Description  string                              `json:"description,omitempty" yaml:"description,omitempty"`
 	Server       *Server                             `json:"server,omitempty" yaml:"server,omitempty"`
 	Extensions   *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low          *low.Link
+	low          *lowv3.Link
 }
 
 // NewLink will create a new high-level Link instance from a low-level one.
-func NewLink(link *low.Link) *Link {
+func NewLink(link *lowv3.Link) *Link {
 	l := new(Link)
 	l.low = link
 	l.OperationRef = link.OperationRef.Value
 	l.OperationId = link.OperationId.Value
-	params := orderedmap.New[string, string]()
-	for pair := orderedmap.First(link.Parameters.Value); pair != nil; pair = pair.Next() {
-		params.Set(pair.Key().Value, pair.Value().Value)
-	}
-	l.Parameters = params
+	l.Parameters = low.FromReferenceMap(link.Parameters.Value)
 	l.RequestBody = link.RequestBody.Value
 	l.Description = link.Description.Value
 	if link.Server.Value != nil {
@@ -54,7 +51,7 @@ func NewLink(link *low.Link) *Link {
 }
 
 // GoLow will return the low-level Link instance used to create the high-level one.
-func (l *Link) GoLow() *low.Link {
+func (l *Link) GoLow() *lowv3.Link {
 	return l.low
 }
 

@@ -88,8 +88,8 @@ func (r *Response) Hash() [32]byte {
 		f = append(f, low.GenerateHashString(r.Schema.Value))
 	}
 	if !r.Examples.IsEmpty() {
-		for pair := orderedmap.First(orderedmap.SortAlpha(r.Examples.Value.Values)); pair != nil; pair = pair.Next() {
-			f = append(f, low.GenerateHashString(pair.Value().Value))
+		for v := range orderedmap.SortAlpha(r.Examples.Value.Values).ValuesFromOldest() {
+			f = append(f, low.GenerateHashString(v.Value))
 		}
 	}
 	f = append(f, low.HashExtensions(r.Extensions)...)

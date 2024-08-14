@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // LinkChanges represent changes made between two OpenAPI Link Objects.
@@ -128,11 +127,11 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	// parameters
 	lValues := make(map[string]low.ValueReference[string])
 	rValues := make(map[string]low.ValueReference[string])
-	for pair := orderedmap.First(l.Parameters.Value); pair != nil; pair = pair.Next() {
-		lValues[pair.Key().Value] = pair.Value()
+	for k, v := range l.Parameters.Value.FromOldest() {
+		lValues[k.Value] = v
 	}
-	for pair := orderedmap.First(r.Parameters.Value); pair != nil; pair = pair.Next() {
-		rValues[pair.Key().Value] = pair.Value()
+	for k, v := range r.Parameters.Value.FromOldest() {
+		rValues[k.Value] = v
 	}
 	for k := range lValues {
 		if _, ok := rValues[k]; !ok {

@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -38,14 +37,14 @@ func CompareExamplesV2(l, r *v2.Examples) *ExamplesChanges {
 	lValues := make(map[string]low.ValueReference[*yaml.Node])
 	rValues := make(map[string]low.ValueReference[*yaml.Node])
 
-	for pair := orderedmap.First(l.Values); pair != nil; pair = pair.Next() {
-		lHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
-		lValues[pair.Key().Value] = pair.Value()
+	for k, v := range l.Values.FromOldest() {
+		lHashes[k.Value] = low.GenerateHashString(v.Value)
+		lValues[k.Value] = v
 	}
 
-	for pair := orderedmap.First(r.Values); pair != nil; pair = pair.Next() {
-		rHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
-		rValues[pair.Key().Value] = pair.Value()
+	for k, v := range r.Values.FromOldest() {
+		rHashes[k.Value] = low.GenerateHashString(v.Value)
+		rValues[k.Value] = v
 	}
 	var changes []*Change
 

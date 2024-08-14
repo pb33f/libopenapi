@@ -101,18 +101,18 @@ func (r *Responses) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*responseItem
 
-	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
+	for code, resp := range r.Codes.FromOldest() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if r.low != nil {
-			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
-				if lPair.Key().Value == pair.Key() {
-					ln = lPair.Key().KeyNode.Line
-					style = lPair.Key().KeyNode.Style
+			for lk := range r.low.Codes.KeysFromOldest() {
+				if lk.Value == code {
+					ln = lk.KeyNode.Line
+					style = lk.KeyNode.Style
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil, style})
+		mapped = append(mapped, &responseItem{resp, code, ln, nil, style})
 	}
 
 	// extract extensions
@@ -166,18 +166,18 @@ func (r *Responses) MarshalYAMLInline() (interface{}, error) {
 	}
 	var mapped []*responseItem
 
-	for pair := orderedmap.First(r.Codes); pair != nil; pair = pair.Next() {
+	for code, resp := range r.Codes.FromOldest() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if r.low != nil {
-			for lPair := orderedmap.First(r.low.Codes); lPair != nil; lPair = lPair.Next() {
-				if lPair.Key().Value == pair.Key() {
-					ln = lPair.Key().KeyNode.Line
-					style = lPair.Key().KeyNode.Style
+			for lk := range r.low.Codes.KeysFromOldest() {
+				if lk.Value == code {
+					ln = lk.KeyNode.Line
+					style = lk.KeyNode.Style
 				}
 			}
 		}
-		mapped = append(mapped, &responseItem{pair.Value(), pair.Key(), ln, nil, style})
+		mapped = append(mapped, &responseItem{resp, code, ln, nil, style})
 	}
 
 	// extract extensions

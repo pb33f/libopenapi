@@ -5,6 +5,7 @@ package base
 
 import (
 	"encoding/json"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -376,17 +377,18 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 
 	props := orderedmap.New[string, *SchemaProxy]()
-	for pair := orderedmap.First(schema.Properties.Value); pair != nil; pair = pair.Next() {
-		buildProps(pair.Key(), pair.Value(), props, 0)
+	for name, schemaProxy := range schema.Properties.Value.FromOldest() {
+		buildProps(name, schemaProxy, props, 0)
 	}
 
 	dependents := orderedmap.New[string, *SchemaProxy]()
-	for pair := orderedmap.First(schema.DependentSchemas.Value); pair != nil; pair = pair.Next() {
-		buildProps(pair.Key(), pair.Value(), dependents, 1)
+	for name, schemaProxy := range schema.DependentSchemas.Value.FromOldest() {
+		buildProps(name, schemaProxy, dependents, 1)
 	}
+
 	patternProps := orderedmap.New[string, *SchemaProxy]()
-	for pair := orderedmap.First(schema.PatternProperties.Value); pair != nil; pair = pair.Next() {
-		buildProps(pair.Key(), pair.Value(), patternProps, 2)
+	for name, schemaProxy := range schema.PatternProperties.Value.FromOldest() {
+		buildProps(name, schemaProxy, patternProps, 2)
 	}
 
 	var allOf []*SchemaProxy

@@ -21,9 +21,9 @@ import (
 // The name used for each property MUST correspond to a security scheme declared in the Security Definitions
 //   - https://swagger.io/specification/v2/#securityDefinitionsObject
 type SecurityRequirement struct {
-	Requirements *orderedmap.Map[string, []string] `json:"-" yaml:"-"`
-	ContainsEmptyRequirement bool // if a requirement is empty (this means it's optional)
-	low          *base.SecurityRequirement
+	Requirements             *orderedmap.Map[string, []string] `json:"-" yaml:"-"`
+	ContainsEmptyRequirement bool                              // if a requirement is empty (this means it's optional)
+	low                      *base.SecurityRequirement
 }
 
 // NewSecurityRequirement creates a new high-level SecurityRequirement from a low-level one.
@@ -32,12 +32,12 @@ func NewSecurityRequirement(req *base.SecurityRequirement) *SecurityRequirement 
 	r.low = req
 	values := orderedmap.New[string, []string]()
 	// to keep things fast, avoiding copying anything - makes it a little hard to read.
-	for pair := orderedmap.First(req.Requirements.Value); pair != nil; pair = pair.Next() {
+	for name, val := range req.Requirements.Value.FromOldest() {
 		var vals []string
-		for valK := range pair.Value().Value {
-			vals = append(vals, pair.Value().Value[valK].Value)
+		for valK := range val.Value {
+			vals = append(vals, val.Value[valK].Value)
 		}
-		values.Set(pair.Key().Value, vals)
+		values.Set(name.Value, vals)
 	}
 	r.Requirements = values
 	r.ContainsEmptyRequirement = req.ContainsEmptyRequirement
@@ -74,8 +74,8 @@ func (s *SecurityRequirement) MarshalYAML() (interface{}, error) {
 
 	i := 0
 
-	for pair := orderedmap.First(s.Requirements); pair != nil; pair = pair.Next() {
-		keys[i] = &req{key: pair.Key(), val: pair.Value()}
+	for name, vals := range s.Requirements.FromOldest() {
+		keys[i] = &req{key: name, val: vals}
 		i++
 	}
 	i = 0

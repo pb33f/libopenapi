@@ -5,8 +5,9 @@ package base
 
 import (
 	"crypto/sha256"
-	"gopkg.in/yaml.v3"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -42,9 +43,8 @@ func (d *Discriminator) GetKeyNode() *yaml.Node {
 
 // FindMappingValue will return a ValueReference containing the string mapping value
 func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string] {
-	for pair := orderedmap.First(d.Mapping.Value); pair != nil; pair = pair.Next() {
-		if pair.Key().Value == key {
-			v := pair.Value()
+	for k, v := range d.Mapping.Value.FromOldest() {
+		if k.Value == key {
 			return &v
 		}
 	}
@@ -59,8 +59,8 @@ func (d *Discriminator) Hash() [32]byte {
 		f = append(f, d.PropertyName.Value)
 	}
 
-	for pair := orderedmap.First(orderedmap.SortAlpha(d.Mapping.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, pair.Value().Value)
+	for v := range orderedmap.SortAlpha(d.Mapping.Value).ValuesFromOldest() {
+		f = append(f, v.Value)
 	}
 
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

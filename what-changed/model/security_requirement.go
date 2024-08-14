@@ -64,14 +64,14 @@ func checkSecurityRequirement(lSec, rSec *orderedmap.Map[low.KeyReference[string
 	lValues := make(map[string]low.ValueReference[[]low.ValueReference[string]])
 	rValues := make(map[string]low.ValueReference[[]low.ValueReference[string]])
 	var n, z int
-	for pair := orderedmap.First(lSec); pair != nil; pair = pair.Next() {
-		lKeys[n] = pair.Key().Value
-		lValues[pair.Key().Value] = pair.Value()
+	for k, v := range lSec.FromOldest() {
+		lKeys[n] = k.Value
+		lValues[k.Value] = v
 		n++
 	}
-	for pair := orderedmap.First(rSec); pair != nil; pair = pair.Next() {
-		rKeys[z] = pair.Key().Value
-		rValues[pair.Key().Value] = pair.Value()
+	for k, v := range rSec.FromOldest() {
+		rKeys[z] = k.Value
+		rValues[k.Value] = v
 		z++
 	}
 

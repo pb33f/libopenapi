@@ -77,16 +77,16 @@ func ComparePaths(l, r any) *PathsChanges {
 
 		lKeys := make(map[string]low.ValueReference[*v2.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v2.PathItem])
-		for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
-			lKeys[pair.Key().Value] = pair.Value()
+		for k, v := range lPath.PathItems.FromOldest() {
+			lKeys[k.Value] = v
 		}
-		for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
-			rKeys[pair.Key().Value] = pair.Value()
+		for k, v := range rPath.PathItems.FromOldest() {
+			rKeys[k.Value] = v
 		}
 
 		// run every comparison in a thread.
 		var mLock sync.Mutex
-		compare := func(path string, pChanges map[string]*PathItemChanges, l, r *v2.PathItem, doneChan chan bool) {
+		compare := func(path string, _ map[string]*PathItemChanges, l, r *v2.PathItem, doneChan chan bool) {
 			if !low.AreEqual(l, r) {
 				mLock.Lock()
 				pathChanges[path] = ComparePathItems(l, r)
@@ -147,20 +147,16 @@ func ComparePaths(l, r any) *PathsChanges {
 		lKeys := make(map[string]low.ValueReference[*v3.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v3.PathItem])
 
-		if lPath != nil {
-			for pair := orderedmap.First(lPath.PathItems); pair != nil; pair = pair.Next() {
-				lKeys[pair.Key().Value] = pair.Value()
-			}
+		for k, v := range lPath.PathItems.FromOldest() {
+			lKeys[k.Value] = v
 		}
-		if rPath != nil {
-			for pair := orderedmap.First(rPath.PathItems); pair != nil; pair = pair.Next() {
-				rKeys[pair.Key().Value] = pair.Value()
-			}
+		for k, v := range rPath.PathItems.FromOldest() {
+			rKeys[k.Value] = v
 		}
 
 		// run every comparison in a thread.
 		var mLock sync.Mutex
-		compare := func(path string, pChanges map[string]*PathItemChanges, l, r *v3.PathItem, doneChan chan bool) {
+		compare := func(path string, _ map[string]*PathItemChanges, l, r *v3.PathItem, doneChan chan bool) {
 			if !low.AreEqual(l, r) {
 				mLock.Lock()
 				pathChanges[path] = ComparePathItems(l, r)

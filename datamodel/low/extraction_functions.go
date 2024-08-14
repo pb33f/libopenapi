@@ -47,9 +47,9 @@ func FindItemInOrderedMapWithKey[T any](item string, collection *orderedmap.Map[
 func HashExtensions(ext *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]) []string {
 	f := []string{}
 
-	for pair := orderedmap.First(orderedmap.SortAlpha(ext)); pair != nil; pair = pair.Next() {
-		b, _ := yaml.Marshal(pair.Value().GetValue())
-		f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, sha256.Sum256([]byte(b))))
+	for e, node := range orderedmap.SortAlpha(ext).FromOldest() {
+		b, _ := yaml.Marshal(node.GetValue())
+		f = append(f, fmt.Sprintf("%s-%x", e.Value, sha256.Sum256([]byte(b))))
 	}
 
 	return f
@@ -725,7 +725,6 @@ func ExtractMapExtensions[PT Buildable[N], N any](
 		startCtx := foundContext
 
 		translateFunc := func(input buildInput) (mappingResult[PT], error) {
-
 			en := input.value
 
 			sCtx := startCtx
@@ -876,6 +875,14 @@ func GenerateHashString(v any) string {
 	return fmt.Sprintf(HASH, sha256.Sum256([]byte(fmt.Sprint(v))))
 }
 
+// AppendMapHashes will append all the hashes of a map to a slice of strings
+func AppendMapHashes[v any](a []string, m *orderedmap.Map[KeyReference[string], ValueReference[v]]) []string {
+	for k, v := range orderedmap.SortAlpha(m).FromOldest() {
+		a = append(a, fmt.Sprintf("%s-%s", k.Value, GenerateHashString(v.Value)))
+	}
+	return a
+}
+
 func ValueToString(v any) string {
 	if n, ok := v.(*yaml.Node); ok {
 		b, _ := yaml.Marshal(n)
@@ -903,4 +910,22 @@ func LocateRefEnd(ctx context.Context, root *yaml.Node, idx *index.SpecIndex, de
 	} else {
 		return ref, fIdx, err, nCtx
 	}
+}
+
+// FromReferenceMap will convert a *orderedmap.Map[KeyReference[K], ValueReference[V]] to a *orderedmap.Map[K, V]
+func FromReferenceMap[K comparable, V any](refMap *orderedmap.Map[KeyReference[K], ValueReference[V]]) *orderedmap.Map[K, V] {
+	om := orderedmap.New[K, V]()
+	for k, v := range refMap.FromOldest() {
+		om.Set(k.Value, v.Value)
+	}
+	return om
+}
+
+// FromReferenceMapWithFunc will convert a *orderedmap.Map[KeyReference[K], ValueReference[V]] to a *orderedmap.Map[K, VOut] using a transform function
+func FromReferenceMapWithFunc[K comparable, V any, VOut any](refMap *orderedmap.Map[KeyReference[K], ValueReference[V]], transform func(v V) VOut) *orderedmap.Map[K, VOut] {
+	om := orderedmap.New[K, VOut]()
+	for k, v := range refMap.FromOldest() {
+		om.Set(k.Value, transform(v.Value))
+	}
+	return om
 }

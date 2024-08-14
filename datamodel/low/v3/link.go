@@ -79,8 +79,8 @@ func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 
 	// extract parameter nodes.
 	if l.Parameters.Value != nil && l.Parameters.Value.Len() > 0 {
-		for fk := l.Parameters.Value.First(); fk != nil; fk = fk.Next() {
-			l.Nodes.Store(fk.Key().KeyNode.Line, fk.Key().KeyNode)
+		for k := range l.Parameters.Value.KeysFromOldest() {
+			l.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -111,8 +111,8 @@ func (l *Link) Hash() [32]byte {
 	if l.Server.Value != nil {
 		f = append(f, low.GenerateHashString(l.Server.Value))
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(l.Parameters.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, pair.Value().Value)
+	for v := range orderedmap.SortAlpha(l.Parameters.Value).ValuesFromOldest() {
+		f = append(f, v.Value)
 	}
 	f = append(f, low.HashExtensions(l.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

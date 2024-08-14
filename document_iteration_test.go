@@ -2,6 +2,7 @@ package libopenapi
 
 import (
 	"os"
+	"slices"
 	"strings"
 	"testing"
 
@@ -10,7 +11,6 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/require"
-	"slices"
 )
 
 type loopFrame struct {
@@ -38,31 +38,27 @@ func Test_Speakeasy_Document_Iteration(t *testing.T) {
 	m, errs := doc.BuildV3Model()
 	require.Empty(t, errs)
 
-	for pair := orderedmap.First(m.Model.Paths.PathItems); pair != nil; pair = pair.Next() {
-		path := pair.Key()
+	for path, pathItem := range m.Model.Paths.PathItems.FromOldest() {
 		t.Log(path)
 
-		iterateOperations(t, pair.Value().GetOperations())
+		iterateOperations(t, pathItem.GetOperations())
 	}
 
-	for pair := orderedmap.First(m.Model.Webhooks); pair != nil; pair = pair.Next() {
-		t.Log(pair.Key())
+	for path, pathItem := range m.Model.Webhooks.FromOldest() {
+		t.Log(path)
 
-		iterateOperations(t, pair.Value().GetOperations())
+		iterateOperations(t, pathItem.GetOperations())
 	}
 
-	for pair := orderedmap.First(m.Model.Components.Schemas); pair != nil; pair = pair.Next() {
-		t.Log(pair.Key())
+	for name, schemaProxy := range m.Model.Components.Schemas.FromOldest() {
+		t.Log(name)
 
-		handleSchema(t, pair.Value(), context{})
+		handleSchema(t, schemaProxy, context{})
 	}
 }
 
 func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation]) {
-	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
-		method := pair.Key()
-		op := pair.Value()
-
+	for method, op := range ops.FromOldest() {
 		t.Log(method)
 
 		for i, param := range op.Parameters {
@@ -76,10 +72,8 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 		if op.RequestBody != nil {
 			t.Log("request body")
 
-			for pair := orderedmap.First(op.RequestBody.Content); pair != nil; pair = pair.Next() {
-				t.Log(pair.Key())
-
-				mediaType := pair.Value()
+			for contentType, mediaType := range op.RequestBody.Content.FromOldest() {
+				t.Log(contentType)
 
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
@@ -91,13 +85,11 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 			t.Log("responses")
 		}
 
-		for codePair := orderedmap.First(op.Responses.Codes); codePair != nil; codePair = codePair.Next() {
-			t.Log(codePair.Key())
+		for code, response := range op.Responses.Codes.FromOldest() {
+			t.Log(code)
 
-			for contentPair := orderedmap.First(codePair.Value().Content); contentPair != nil; contentPair = contentPair.Next() {
-				t.Log(contentPair.Key())
-
-				mediaType := contentPair.Value()
+			for contentType, mediaType := range response.Content.FromOldest() {
+				t.Log(contentType)
 
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
@@ -109,13 +101,13 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 			t.Log("callbacks")
 		}
 
-		for callacksPair := orderedmap.First(op.Callbacks); callacksPair != nil; callacksPair = callacksPair.Next() {
-			t.Log(callacksPair.Key())
+		for callbackName, callback := range op.Callbacks.FromOldest() {
+			t.Log(callbackName)
 
-			for expressionPair := orderedmap.First(callacksPair.Value().Expression); expressionPair != nil; expressionPair = expressionPair.Next() {
-				t.Log(expressionPair.Key())
+			for name, pathItem := range callback.Expression.FromOldest() {
+				t.Log(name)
 
-				iterateOperations(t, expressionPair.Value().GetOperations())
+				iterateOperations(t, pathItem.GetOperations())
 			}
 		}
 	}
@@ -252,9 +244,9 @@ func handleArray(t *testing.T, sch *base.Schema, ctx context) {
 }
 
 func handleObject(t *testing.T, sch *base.Schema, ctx context) {
-	for pair := orderedmap.First(sch.Properties); pair != nil; pair = pair.Next() {
-		ctx.stack = append(ctx.stack, loopFrame{Type: "object", Restricted: slices.Contains(sch.Required, pair.Key())})
-		handleSchema(t, pair.Value(), ctx)
+	for name, schemaProxy := range sch.Properties.FromOldest() {
+		ctx.stack = append(ctx.stack, loopFrame{Type: "object", Restricted: slices.Contains(sch.Required, name)})
+		handleSchema(t, schemaProxy, ctx)
 	}
 
 	if sch.AdditionalProperties != nil && sch.AdditionalProperties.IsA() {

@@ -67,8 +67,8 @@ func (s *Scopes) Build(_ context.Context, _, root *yaml.Node, _ *index.SpecIndex
 // Hash will return a consistent SHA256 Hash of the Scopes object
 func (s *Scopes) Hash() [32]byte {
 	var f []string
-	for pair := orderedmap.First(orderedmap.SortAlpha(s.Values)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, pair.Value().Value))
+	for k, v := range orderedmap.SortAlpha(s.Values).FromOldest() {
+		f = append(f, fmt.Sprintf("%s-%s", k.Value, v.Value))
 	}
 	f = append(f, low.HashExtensions(s.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

@@ -56,8 +56,8 @@ func TestPathItem_GetOperations_NoLow(t *testing.T) {
 	expectedOrderOfOps := []string{"get", "post", "delete"}
 	actualOrder := []string{}
 
-	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
-		actualOrder = append(actualOrder, pair.Key())
+	for op := range ops.KeysFromOldest() {
+		actualOrder = append(actualOrder, op)
 	}
 
 	assert.Equal(t, expectedOrderOfOps, actualOrder)
@@ -75,8 +75,8 @@ func TestPathItem_GetOperations_LowWithUnsetOperations(t *testing.T) {
 	expectedOrderOfOps := []string{"get", "post", "delete"}
 	actualOrder := []string{}
 
-	for pair := orderedmap.First(ops); pair != nil; pair = pair.Next() {
-		actualOrder = append(actualOrder, pair.Key())
+	for op := range ops.KeysFromOldest() {
+		actualOrder = append(actualOrder, op)
 	}
 
 	assert.Equal(t, expectedOrderOfOps, actualOrder)

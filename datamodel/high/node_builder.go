@@ -78,18 +78,18 @@ func (n *NodeBuilder) add(key string, i int) {
 		j := 0
 		if lowExtensions != nil {
 			// If we have low extensions get the original lowest line number so we end up in the same place
-			for pair := orderedmap.First(lowExtensions); pair != nil; pair = pair.Next() {
-				if j == 0 || pair.Key().KeyNode.Line < j {
-					j = pair.Key().KeyNode.Line
+			for ext := range lowExtensions.KeysFromOldest() {
+				if j == 0 || ext.KeyNode.Line < j {
+					j = ext.KeyNode.Line
 				}
 			}
 		}
 
-		for pair := orderedmap.First(extensions); pair != nil; pair = pair.Next() {
-			nodeEntry := &nodes.NodeEntry{Tag: pair.Key(), Key: pair.Key(), Value: pair.Value(), Line: j}
+		for ext, node := range extensions.FromOldest() {
+			nodeEntry := &nodes.NodeEntry{Tag: ext, Key: ext, Value: node, Line: j}
 
 			if lowExtensions != nil {
-				lowItem := low.FindItemInOrderedMap(pair.Key(), lowExtensions)
+				lowItem := low.FindItemInOrderedMap(ext, lowExtensions)
 				nodeEntry.LowValue = lowItem
 			}
 			n.Nodes = append(n.Nodes, nodeEntry)

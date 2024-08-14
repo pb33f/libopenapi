@@ -52,9 +52,9 @@ func (o *Operation) FindCallback(callback string) *low.ValueReference[*Callback]
 func (o *Operation) FindSecurityRequirement(name string) []low.ValueReference[string] {
 	for k := range o.Security.Value {
 		requirements := o.Security.Value[k].Value.Requirements
-		for pair := orderedmap.First(requirements.Value); pair != nil; pair = pair.Next() {
-			if pair.Key().Value == name {
-				return pair.Value().Value
+		for k, v := range requirements.Value.FromOldest() {
+			if k.Value == name {
+				return v.Value
 			}
 		}
 	}
@@ -140,8 +140,8 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			ValueNode: cbN,
 		}
 		o.Nodes.Store(cbL.Line, cbL)
-		for xj := callbacks.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range callbacks.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -242,8 +242,8 @@ func (o *Operation) Hash() [32]byte {
 	sort.Strings(keys)
 	f = append(f, keys...)
 
-	for pair := orderedmap.First(orderedmap.SortAlpha(o.Callbacks.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(o.Callbacks.Value).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 	f = append(f, low.HashExtensions(o.Extensions)...)
 

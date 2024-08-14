@@ -42,13 +42,11 @@ func CompareExtensions(l, r *orderedmap.Map[low.KeyReference[string], low.ValueR
 	seenLeft := make(map[string]*low.ValueReference[*yaml.Node])
 	seenRight := make(map[string]*low.ValueReference[*yaml.Node])
 
-	for pair := orderedmap.First(l); pair != nil; pair = pair.Next() {
-		h := pair.Value()
-		seenLeft[strings.ToLower(pair.Key().Value)] = &h
+	for k, h := range l.FromOldest() {
+		seenLeft[strings.ToLower(k.Value)] = &h
 	}
-	for pair := orderedmap.First(r); pair != nil; pair = pair.Next() {
-		h := pair.Value()
-		seenRight[strings.ToLower(pair.Key().Value)] = &h
+	for k, h := range r.FromOldest() {
+		seenRight[strings.ToLower(k.Value)] = &h
 	}
 
 	var changes []*Change

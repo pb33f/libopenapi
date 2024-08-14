@@ -4,8 +4,9 @@
 package base
 
 import (
-	low2 "github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/datamodel/high"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowBase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -22,24 +23,20 @@ import (
 type Discriminator struct {
 	PropertyName string                          `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
 	Mapping      *orderedmap.Map[string, string] `json:"mapping,omitempty" yaml:"mapping,omitempty"`
-	low          *low.Discriminator
+	low          *lowBase.Discriminator
 }
 
 // NewDiscriminator will create a new high-level Discriminator from a low-level one.
-func NewDiscriminator(disc *low.Discriminator) *Discriminator {
+func NewDiscriminator(disc *lowBase.Discriminator) *Discriminator {
 	d := new(Discriminator)
 	d.low = disc
 	d.PropertyName = disc.PropertyName.Value
-	mapping := orderedmap.New[string, string]()
-	for pair := orderedmap.First(disc.Mapping.Value); pair != nil; pair = pair.Next() {
-		mapping.Set(pair.Key().Value, pair.Value().Value)
-	}
-	d.Mapping = mapping
+	d.Mapping = low.FromReferenceMap(disc.Mapping.Value)
 	return d
 }
 
 // GoLow returns the low-level Discriminator used to build the high-level one.
-func (d *Discriminator) GoLow() *low.Discriminator {
+func (d *Discriminator) GoLow() *lowBase.Discriminator {
 	return d.low
 }
 
@@ -55,6 +52,6 @@ func (d *Discriminator) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Discriminator object.
 func (d *Discriminator) MarshalYAML() (interface{}, error) {
-	nb := low2.NewNodeBuilder(d, d.low)
+	nb := high.NewNodeBuilder(d, d.low)
 	return nb.Render(), nil
 }

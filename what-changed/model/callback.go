@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
 )
 
 // CallbackChanges represents all changes made between two Callback OpenAPI objects.
@@ -65,14 +64,14 @@ func CompareCallback(l, r *v3.Callback) *CallbackChanges {
 	lValues := make(map[string]low.ValueReference[*v3.PathItem])
 	rValues := make(map[string]low.ValueReference[*v3.PathItem])
 
-	for pair := orderedmap.First(l.Expression); pair != nil; pair = pair.Next() {
-		lHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
-		lValues[pair.Key().Value] = pair.Value()
+	for k, v := range l.Expression.FromOldest() {
+		lHashes[k.Value] = low.GenerateHashString(v.Value)
+		lValues[k.Value] = v
 	}
 
-	for pair := orderedmap.First(r.Expression); pair != nil; pair = pair.Next() {
-		rHashes[pair.Key().Value] = low.GenerateHashString(pair.Value().Value)
-		rValues[pair.Key().Value] = pair.Value()
+	for k, v := range r.Expression.FromOldest() {
+		rHashes[k.Value] = low.GenerateHashString(v.Value)
+		rValues[k.Value] = v
 	}
 
 	expChanges := make(map[string]*PathItemChanges)

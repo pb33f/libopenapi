@@ -1,6 +1,6 @@
 module github.com/pb33f/libopenapi
 
-go 1.21
+go 1.23
 
 require (
 	github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb
@@ -19,3 +19,5 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
+
+replace github.com/wk8/go-ordered-map/v2 => github.com/speakeasy-api/go-ordered-map/v2 v2.0.0-20240813202817-2f1629387283

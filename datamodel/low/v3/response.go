@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -91,8 +90,8 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			ValueNode: kN,
 		}
 		r.Nodes.Store(lN.Line, lN)
-		for xj := headers.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range headers.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -107,8 +106,8 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			ValueNode: cN,
 		}
 		r.Nodes.Store(clN.Line, clN)
-		for xj := con.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range con.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 
@@ -124,8 +123,8 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			ValueNode: linkValue,
 		}
 		r.Nodes.Store(linkLabel.Line, linkLabel)
-		for xj := links.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range links.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 	return nil
@@ -137,15 +136,9 @@ func (r *Response) Hash() [32]byte {
 	if r.Description.Value != "" {
 		f = append(f, r.Description.Value)
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(r.Headers.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(r.Content.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(r.Links.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%s", pair.Key().Value, low.GenerateHashString(pair.Value().Value)))
-	}
+	f = low.AppendMapHashes(f, r.Headers.Value)
+	f = low.AppendMapHashes(f, r.Content.Value)
+	f = low.AppendMapHashes(f, r.Links.Value)
 	f = append(f, low.HashExtensions(r.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }

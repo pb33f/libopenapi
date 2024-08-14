@@ -51,8 +51,8 @@ func (en *Encoding) Hash() [32]byte {
 	if en.ContentType.Value != "" {
 		f = append(f, en.ContentType.Value)
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(en.Headers.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, fmt.Sprintf("%s-%x", pair.Key().Value, pair.Value().Value.Hash()))
+	for k, v := range orderedmap.SortAlpha(en.Headers.Value).FromOldest() {
+		f = append(f, fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
 	}
 	if en.Style.Value != "" {
 		f = append(f, en.Style.Value)
@@ -81,8 +81,8 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 			ValueNode: hN,
 		}
 		en.Nodes.Store(hL.Line, hL)
-		for xj := headers.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range headers.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 	return nil

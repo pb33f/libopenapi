@@ -215,10 +215,10 @@ func TestNewDocument_Components_Callbacks(t *testing.T) {
 
 	assert.Equal(t, "please", xBreakEverything)
 
-	for pair := orderedmap.First(h.Components.GoLow().Callbacks.Value); pair != nil; pair = pair.Next() {
-		if pair.Key().Value == "BurgerCallback" {
-			assert.Equal(t, 295, pair.Key().KeyNode.Line)
-			assert.Equal(t, 5, pair.Key().KeyNode.Column)
+	for k := range h.Components.GoLow().Callbacks.Value.KeysFromOldest() {
+		if k.Value == "BurgerCallback" {
+			assert.Equal(t, 295, k.KeyNode.Line)
+			assert.Equal(t, 5, k.KeyNode.Column)
 		}
 	}
 }
@@ -900,5 +900,4 @@ func TestDocument_RenderJSONError(t *testing.T) {
 	assert.Nil(t, r)
 	assert.Error(t, e)
 	assert.Equal(t, "yaml: cannot decode !!float `-999.99` as a !!int", e.Error())
-
 }

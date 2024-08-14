@@ -4,7 +4,8 @@
 package v2
 
 import (
-	low "github.com/pb33f/libopenapi/datamodel/low/v2"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
 )
 
@@ -14,22 +15,18 @@ import (
 //   - https://swagger.io/specification/v2/#scopesObject
 type Scopes struct {
 	Values *orderedmap.Map[string, string]
-	low    *low.Scopes
+	low    *lowv2.Scopes
 }
 
 // NewScopes creates a new high-level instance of Scopes from a low-level one.
-func NewScopes(scopes *low.Scopes) *Scopes {
+func NewScopes(scopes *lowv2.Scopes) *Scopes {
 	s := new(Scopes)
 	s.low = scopes
-	scopeValues := orderedmap.New[string, string]()
-	for pair := orderedmap.First(scopes.Values); pair != nil; pair = pair.Next() {
-		scopeValues.Set(pair.Key().Value, pair.Value().Value)
-	}
-	s.Values = scopeValues
+	s.Values = low.FromReferenceMap(scopes.Values)
 	return s
 }
 
 // GoLow returns the low-level instance of Scopes used to create the high-level one.
-func (s *Scopes) GoLow() *low.Scopes {
+func (s *Scopes) GoLow() *lowv2.Scopes {
 	return s.low
 }

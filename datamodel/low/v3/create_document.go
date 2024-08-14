@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -12,7 +13,6 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"time"
 )
 
 // CreateDocument will create a new Document instance from the provided SpecInfo.
@@ -178,7 +178,6 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	done = time.Duration(time.Since(now).Milliseconds())
 	if config.Logger != nil {
 		config.Logger.Debug("extractions complete", "time", done)
-
 	}
 	return &doc, errors.Join(errs...)
 }
@@ -313,8 +312,8 @@ func extractWebhooks(ctx context.Context, info *datamodel.SpecInfo, doc *Documen
 			KeyNode:   hooksL,
 			ValueNode: hooksN,
 		}
-		for xj := hooks.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range hooks.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 	return nil

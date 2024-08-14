@@ -107,8 +107,8 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	}
 	if exps != nil && slices.Contains(root.Content, expsL) {
 		mt.Nodes.Store(expsL.Line, expsL)
-		for xj := exps.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range exps.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 		mt.Examples = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]{
 			Value:     exps,
@@ -130,8 +130,8 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 			ValueNode: encsN,
 		}
 		mt.Nodes.Store(encsL.Line, encsL)
-		for xj := encs.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range encs.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 	return nil
@@ -146,11 +146,11 @@ func (mt *MediaType) Hash() [32]byte {
 	if mt.Example.Value != nil && !mt.Example.Value.IsZero() {
 		f = append(f, low.GenerateHashString(mt.Example.Value))
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(mt.Examples.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(mt.Examples.Value).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(mt.Encoding.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(mt.Encoding.Value).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 	f = append(f, low.HashExtensions(mt.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
