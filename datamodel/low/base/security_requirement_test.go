@@ -13,7 +13,6 @@ import (
 )
 
 func TestSecurityRequirement_Build(t *testing.T) {
-
 	yml := `one:
   - two
   - three
@@ -40,7 +39,7 @@ one:
 	_ = sr2.Build(context.Background(), nil, idxNode2.Content[0], nil)
 
 	assert.Equal(t, 2, orderedmap.Len(sr.Requirements.Value))
-	assert.Len(t, sr.GetKeys(), 2)
+	assert.Equal(t, []string{"one", "four"}, sr.GetKeys())
 	assert.Len(t, sr.FindRequirement("one"), 2)
 	assert.Equal(t, sr.Hash(), sr2.Hash())
 	assert.Nil(t, sr.FindRequirement("i-do-not-exist"))
@@ -49,7 +48,6 @@ one:
 }
 
 func TestSecurityRequirement_TestEmptyReq(t *testing.T) {
-
 	yml := `one:
   - two
   - {}`
@@ -61,14 +59,12 @@ func TestSecurityRequirement_TestEmptyReq(t *testing.T) {
 	_ = sr.Build(context.Background(), nil, idxNode.Content[0], nil)
 
 	assert.Equal(t, 1, orderedmap.Len(sr.Requirements.Value))
-	assert.Len(t, sr.GetKeys(), 1)
+	assert.Equal(t, []string{"one"}, sr.GetKeys())
 	assert.True(t, sr.ContainsEmptyRequirement)
-
 }
 
 func TestSecurityRequirement_TestEmptyContent(t *testing.T) {
 	var sr SecurityRequirement
 	_ = sr.Build(context.Background(), nil, &yaml.Node{}, nil)
 	assert.True(t, sr.ContainsEmptyRequirement)
-
 }
