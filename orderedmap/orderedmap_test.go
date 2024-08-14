@@ -434,6 +434,110 @@ func TestIterators(t *testing.T) {
 	assert.Equal(t, expectedValuesFromNewest, values)
 }
 
+func TestIteratorsWithBreak(t *testing.T) {
+	om := orderedmap.New[int, any]()
+	om.Set(1, "bar")
+	om.Set(2, 28)
+	om.Set(3, 100)
+	om.Set(4, "baz")
+	om.Set(5, "28")
+	om.Set(6, "100")
+	om.Set(7, "baz")
+	om.Set(8, "baz")
+
+	expectedKeys := []int{1}
+	expectedKeysFromNewest := []int{8}
+	expectedValues := []any{"bar"}
+	expectedValuesFromNewest := []any{"baz"}
+
+	var keys []int
+	var values []any
+
+	for k, v := range om.FromOldest() {
+		keys = append(keys, k)
+		values = append(values, v)
+		break
+	}
+
+	assert.Equal(t, expectedKeys, keys)
+	assert.Equal(t, expectedValues, values)
+
+	keys, values = []int{}, []any{}
+
+	for k, v := range om.FromNewest() {
+		keys = append(keys, k)
+		values = append(values, v)
+		break
+	}
+
+	assert.Equal(t, expectedKeysFromNewest, keys)
+	assert.Equal(t, expectedValuesFromNewest, values)
+
+	keys = []int{}
+
+	for k := range om.KeysFromOldest() {
+		keys = append(keys, k)
+		break
+	}
+
+	assert.Equal(t, expectedKeys, keys)
+
+	keys = []int{}
+
+	for k := range om.KeysFromNewest() {
+		keys = append(keys, k)
+		break
+	}
+
+	assert.Equal(t, expectedKeysFromNewest, keys)
+
+	values = []any{}
+
+	for v := range om.ValuesFromOldest() {
+		values = append(values, v)
+		break
+	}
+
+	assert.Equal(t, expectedValues, values)
+
+	values = []any{}
+
+	for v := range om.ValuesFromNewest() {
+		values = append(values, v)
+		break
+	}
+
+	assert.Equal(t, expectedValuesFromNewest, values)
+}
+
+func TestIteratorsWithNilMaps(t *testing.T) {
+	var om *orderedmap.Map[int, any]
+
+	for range om.FromOldest() {
+		assert.Fail(t, "should not be called")
+	}
+
+	for range om.FromNewest() {
+		assert.Fail(t, "should not be called")
+	}
+
+	for range om.KeysFromOldest() {
+		assert.Fail(t, "should not be called")
+	}
+
+	for range om.KeysFromNewest() {
+		assert.Fail(t, "should not be called")
+	}
+
+	for range om.ValuesFromOldest() {
+		assert.Fail(t, "should not be called")
+	}
+
+	for range om.ValuesFromNewest() {
+		assert.Fail(t, "should not be called")
+	}
+}
+
 func TestIteratorsFrom(t *testing.T) {
 	om := orderedmap.New[int, any]()
 	om.Set(1, "bar")
