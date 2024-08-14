@@ -92,7 +92,6 @@ func (o *Map[K, V]) FromOldest() iter.Seq2[K, V] {
 
 // FromNewest returns an iterator that yields the newest key-value pair in the map.
 func (o *Map[K, V]) FromNewest() iter.Seq2[K, V] {
-	o.OrderedMap.FromNewest()
 	return func(yield func(K, V) bool) {
 		if o == nil {
 			return
