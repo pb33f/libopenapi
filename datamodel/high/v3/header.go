@@ -6,9 +6,10 @@ package v3
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -28,11 +29,11 @@ type Header struct {
 	Examples        *orderedmap.Map[string, *highbase.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
 	Content         *orderedmap.Map[string, *MediaType]        `json:"content,omitempty" yaml:"content,omitempty"`
 	Extensions      *orderedmap.Map[string, *yaml.Node]        `json:"-" yaml:"-"`
-	low             *low.Header
+	low             *lowv3.Header
 }
 
 // NewHeader creates a new high-level Header instance from a low-level one.
-func NewHeader(header *low.Header) *Header {
+func NewHeader(header *lowv3.Header) *Header {
 	h := new(Header)
 	h.low = header
 	h.Description = header.Description.Value
@@ -57,7 +58,7 @@ func NewHeader(header *low.Header) *Header {
 }
 
 // GoLow returns the low-level Header instance used to create the high-level one.
-func (h *Header) GoLow() *low.Header {
+func (h *Header) GoLow() *lowv3.Header {
 	return h.low
 }
 
@@ -67,12 +68,8 @@ func (h *Header) GoLowUntyped() any {
 }
 
 // ExtractHeaders will extract a hard to navigate low-level Header map, into simple high-level one.
-func ExtractHeaders(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Header]]) *orderedmap.Map[string, *Header] {
-	extracted := orderedmap.New[string, *Header]()
-	for pair := orderedmap.First(elements); pair != nil; pair = pair.Next() {
-		extracted.Set(pair.Key().Value, NewHeader(pair.Value().Value))
-	}
-	return extracted
+func ExtractHeaders(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowv3.Header]]) *orderedmap.Map[string, *Header] {
+	return low.FromReferenceMapWithFunc(elements, NewHeader)
 }
 
 // Render will return a YAML representation of the Header object as a byte slice.

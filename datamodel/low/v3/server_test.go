@@ -52,9 +52,9 @@ variables:
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 
 	// check nodes on variables
-	for k := n.Variables.Value.First(); k != nil; k = k.Next() {
-		assert.NotNil(t, k.Value().Value.GetKeyNode())
-		assert.NotNil(t, k.Value().Value.GetRootNode())
+	for v := range n.Variables.Value.ValuesFromOldest() {
+		assert.NotNil(t, v.Value.GetKeyNode())
+		assert.NotNil(t, v.Value.GetRootNode())
 	}
 }
 

@@ -5,7 +5,8 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -18,27 +19,23 @@ type OAuthFlow struct {
 	RefreshUrl       string                              `json:"refreshUrl,omitempty" yaml:"refreshUrl,omitempty"`
 	Scopes           *orderedmap.Map[string, string]     `json:"scopes,renderZero" yaml:"scopes,renderZero"`
 	Extensions       *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low              *low.OAuthFlow
+	low              *lowv3.OAuthFlow
 }
 
 // NewOAuthFlow creates a new high-level OAuthFlow instance from a low-level one.
-func NewOAuthFlow(flow *low.OAuthFlow) *OAuthFlow {
+func NewOAuthFlow(flow *lowv3.OAuthFlow) *OAuthFlow {
 	o := new(OAuthFlow)
 	o.low = flow
 	o.TokenUrl = flow.TokenUrl.Value
 	o.AuthorizationUrl = flow.AuthorizationUrl.Value
 	o.RefreshUrl = flow.RefreshUrl.Value
-	scopes := orderedmap.New[string, string]()
-	for pair := orderedmap.First(flow.Scopes.Value); pair != nil; pair = pair.Next() {
-		scopes.Set(pair.Key().Value, pair.Value().Value)
-	}
-	o.Scopes = scopes
+	o.Scopes = low.FromReferenceMap(flow.Scopes.Value)
 	o.Extensions = high.ExtractExtensions(flow.Extensions)
 	return o
 }
 
 // GoLow returns the low-level OAuthFlow instance used to create the high-level one.
-func (o *OAuthFlow) GoLow() *low.OAuthFlow {
+func (o *OAuthFlow) GoLow() *lowv3.OAuthFlow {
 	return o.low
 }
 

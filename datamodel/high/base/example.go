@@ -5,9 +5,10 @@ package base
 
 import (
 	"encoding/json"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowBase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -21,11 +22,11 @@ type Example struct {
 	Value         *yaml.Node                          `json:"value,omitempty" yaml:"value,omitempty"`
 	ExternalValue string                              `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
 	Extensions    *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low           *low.Example
+	low           *lowBase.Example
 }
 
 // NewExample will create a new instance of an Example, using a low-level Example.
-func NewExample(example *low.Example) *Example {
+func NewExample(example *lowBase.Example) *Example {
 	e := new(Example)
 	e.low = example
 	e.Summary = example.Summary.Value
@@ -37,7 +38,7 @@ func NewExample(example *low.Example) *Example {
 }
 
 // GoLow will return the low-level Example used to build the high level one.
-func (e *Example) GoLow() *low.Example {
+func (e *Example) GoLow() *lowBase.Example {
 	return e.low
 }
 
@@ -68,10 +69,6 @@ func (e *Example) MarshalJSON() ([]byte, error) {
 
 // ExtractExamples will convert a low-level example map, into a high level one that is simple to navigate.
 // no fidelity is lost, everything is still available via GoLow()
-func ExtractExamples(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.Example]]) *orderedmap.Map[string, *Example] {
-	extracted := orderedmap.New[string, *Example]()
-	for pair := orderedmap.First(elements); pair != nil; pair = pair.Next() {
-		extracted.Set(pair.Key().Value, NewExample(pair.Value().Value))
-	}
-	return extracted
+func ExtractExamples(elements *orderedmap.Map[low.KeyReference[string], low.ValueReference[*lowBase.Example]]) *orderedmap.Map[string, *Example] {
+	return low.FromReferenceMapWithFunc(elements, NewExample)
 }

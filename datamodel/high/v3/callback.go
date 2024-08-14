@@ -7,7 +7,8 @@ import (
 	"sort"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -23,24 +24,20 @@ import (
 type Callback struct {
 	Expression *orderedmap.Map[string, *PathItem]  `json:"-" yaml:"-"`
 	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low        *low.Callback
+	low        *lowv3.Callback
 }
 
 // NewCallback creates a new high-level callback from a low-level one.
-func NewCallback(lowCallback *low.Callback) *Callback {
+func NewCallback(lowCallback *lowv3.Callback) *Callback {
 	n := new(Callback)
 	n.low = lowCallback
-	n.Expression = orderedmap.New[string, *PathItem]()
-	for pair := orderedmap.First(lowCallback.Expression); pair != nil; pair = pair.Next() {
-		n.Expression.Set(pair.Key().Value, NewPathItem(pair.Value().Value))
-	}
-
+	n.Expression = low.FromReferenceMapWithFunc(lowCallback.Expression, NewPathItem)
 	n.Extensions = high.ExtractExtensions(lowCallback.Extensions)
 	return n
 }
 
 // GoLow returns the low-level Callback instance used to create the high-level one.
-func (c *Callback) GoLow() *low.Callback {
+func (c *Callback) GoLow() *lowv3.Callback {
 	return c.low
 }
 
@@ -73,9 +70,7 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		pi := pair.Value()
+	for k, pi := range c.Expression.FromOldest() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if c.low != nil {
@@ -84,9 +79,9 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 				ln = lpi.ValueNode.Line
 			}
 
-			for pair := orderedmap.First(c.low.Expression); pair != nil; pair = pair.Next() {
-				if pair.Key().Value == k {
-					style = pair.Key().KeyNode.Style
+			for lk := range c.low.Expression.KeysFromOldest() {
+				if lk.Value == k {
+					style = lk.KeyNode.Style
 					break
 				}
 			}
@@ -144,9 +139,7 @@ func (c *Callback) MarshalYAMLInline() (interface{}, error) {
 	}
 	var mapped []*pathItem
 
-	for pair := orderedmap.First(c.Expression); pair != nil; pair = pair.Next() {
-		k := pair.Key()
-		pi := pair.Value()
+	for k, pi := range c.Expression.FromOldest() {
 		ln := 9999 // default to a high value to weight new content to the bottom.
 		var style yaml.Style
 		if c.low != nil {
@@ -155,9 +148,9 @@ func (c *Callback) MarshalYAMLInline() (interface{}, error) {
 				ln = lpi.ValueNode.Line
 			}
 
-			for pair := orderedmap.First(c.low.Expression); pair != nil; pair = pair.Next() {
-				if pair.Key().Value == k {
-					style = pair.Key().KeyNode.Style
+			for lk := range c.low.Expression.KeysFromOldest() {
+				if lk.Value == k {
+					style = lk.KeyNode.Style
 					break
 				}
 			}

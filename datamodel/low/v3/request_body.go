@@ -77,8 +77,8 @@ func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 			ValueNode: cN,
 		}
 		rb.Nodes.Store(cL.Line, cL)
-		for xj := con.First(); xj != nil; xj = xj.Next() {
-			xj.Value().Value.Nodes.Store(xj.Key().KeyNode.Line, xj.Key().KeyNode)
+		for k, v := range con.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
 	return nil
@@ -93,8 +93,8 @@ func (rb *RequestBody) Hash() [32]byte {
 	if !rb.Required.IsEmpty() {
 		f = append(f, fmt.Sprint(rb.Required.Value))
 	}
-	for pair := orderedmap.First(orderedmap.SortAlpha(rb.Content.Value)); pair != nil; pair = pair.Next() {
-		f = append(f, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(rb.Content.Value).ValuesFromOldest() {
+		f = append(f, low.GenerateHashString(v.Value))
 	}
 	f = append(f, low.HashExtensions(rb.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

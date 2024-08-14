@@ -86,8 +86,8 @@ func (co *Components) Hash() [32]byte {
 }
 
 func generateHashForObjectMap[T any](collection *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], hash *[]string) {
-	for pair := orderedmap.First(orderedmap.SortAlpha(collection)); pair != nil; pair = pair.Next() {
-		*hash = append(*hash, low.GenerateHashString(pair.Value().Value))
+	for v := range orderedmap.SortAlpha(collection).ValuesFromOldest() {
+		*hash = append(*hash, low.GenerateHashString(v.Value))
 	}
 }
 
@@ -346,10 +346,6 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 	if err != nil {
 		return emptyResult, err
 	}
-
-	//for rt := componentValues.First(); rt != nil; rt = rt.Next() {
-	//
-	//}
 
 	results := low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[T]]]{
 		KeyNode:   nodeLabel,

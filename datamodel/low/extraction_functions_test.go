@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -21,7 +22,6 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"sync"
 )
 
 func TestFindItemInOrderedMap(t *testing.T) {
@@ -932,12 +932,12 @@ one:
 	assert.NoError(t, err)
 	assert.Equal(t, 2, orderedmap.Len(things))
 
-	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
-		if pair.Key().Value == "x-hey" {
+	for k, v := range things.FromOldest() {
+		if k.Value == "x-hey" {
 			continue
 		}
-		assert.Equal(t, "one", pair.Key().Value)
-		assert.Len(t, pair.Value().ValueNode.Content, 2)
+		assert.Equal(t, "one", k.Value)
+		assert.Len(t, v.ValueNode.Content, 2)
 	}
 }
 
@@ -985,8 +985,8 @@ one:
 	assert.NoError(t, err)
 	assert.Equal(t, 1, orderedmap.Len(things))
 
-	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
-		assert.Equal(t, "one", pair.Key().Value)
+	for k := range things.KeysFromOldest() {
+		assert.Equal(t, "one", k.Value)
 	}
 }
 
@@ -1203,8 +1203,8 @@ one:
 	assert.NoError(t, err)
 	assert.Equal(t, 1, orderedmap.Len(things))
 
-	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
-		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
+	for v := range things.ValuesFromOldest() {
+		assert.Equal(t, 99, v.Value.AlmostWork.Value)
 	}
 }
 
@@ -1231,8 +1231,8 @@ func TestExtractMapFlat_DoubleRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 1, orderedmap.Len(things))
 
-	for pair := orderedmap.First(things); pair != nil; pair = pair.Next() {
-		assert.Equal(t, 99, pair.Value().Value.AlmostWork.Value)
+	for v := range things.ValuesFromOldest() {
+		assert.Equal(t, 99, v.Value.AlmostWork.Value)
 	}
 }
 
@@ -1490,11 +1490,11 @@ x-tacos: [1,2,3]`
 
 	r := ExtractExtensions(idxNode.Content[0])
 	assert.Equal(t, 6, orderedmap.Len(r))
-	for pair := orderedmap.First(r); pair != nil; pair = pair.Next() {
+	for k, val := range r.FromOldest() {
 		var v any
-		_ = pair.Value().Value.Decode(&v)
+		_ = val.Value.Decode(&v)
 
-		switch pair.Key().Value {
+		switch k.Value {
 		case "x-bing":
 			assert.Equal(t, "ding", v)
 		case "x-bong":
@@ -1505,7 +1505,7 @@ x-tacos: [1,2,3]`
 			assert.Equal(t, 0.99, v)
 		case "x-fish":
 			var m map[string]any
-			err := pair.Value().Value.Decode(&m)
+			err := val.Value.Decode(&m)
 			require.NoError(t, err)
 			assert.Equal(t, "yeah", m["woo"])
 		case "x-tacos":
@@ -1868,7 +1868,6 @@ func TestLocateRefNode_NoExplode_NoSpecPath(t *testing.T) {
 }
 
 func TestLocateRefNode_DoARealLookup(t *testing.T) {
-
 	lookup := "/root.yaml#/components/schemas/Burger"
 	if runtime.GOOS == "windows" {
 		lookup = "C:\\root.yaml#/components/schemas/Burger"
@@ -2175,4 +2174,23 @@ func TestValueToString(t *testing.T) {
 func TestExtractExtensions_Nill(t *testing.T) {
 	err := ExtractExtensions(nil)
 	assert.Nil(t, err)
+}
+
+func TestFromReferenceMap(t *testing.T) {
+	refMap := orderedmap.New[KeyReference[string], ValueReference[string]]()
+	refMap.Set(KeyReference[string]{Value: "foo"}, ValueReference[string]{Value: "bar"})
+	refMap.Set(KeyReference[string]{Value: "baz"}, ValueReference[string]{Value: "qux"})
+	om := FromReferenceMap(refMap)
+	assert.Equal(t, "bar", om.GetOrZero("foo"))
+	assert.Equal(t, "qux", om.GetOrZero("baz"))
+}
+
+func TestAppendMapHashes(t *testing.T) {
+	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
+	m.Set(KeyReference[string]{Value: "foo"}, ValueReference[string]{Value: "bar"})
+	m.Set(KeyReference[string]{Value: "baz"}, ValueReference[string]{Value: "qux"})
+	a := AppendMapHashes([]string{}, m)
+	assert.Equal(t, 2, len(a))
+	assert.Equal(t, "baz-21f58d27f827d295ffcd860c65045685e3baf1ad4506caa0140113b316647534", a[0])
+	assert.Equal(t, "foo-fcde2b2edba56bf408601fb721fe9b5c338d10ee429ea04fae5511b68fbf8fb9", a[1])
 }

@@ -94,16 +94,16 @@ func (te *test1) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.V
 	g := orderedmap.New[low.KeyReference[string], low.ValueReference[*yaml.Node]]()
 
 	i := 0
-	for pair := orderedmap.First(te.Extensions); pair != nil; pair = pair.Next() {
-		kn := utils.CreateStringNode(pair.Key())
+	for ext, node := range te.Extensions.FromOldest() {
+		kn := utils.CreateStringNode(ext)
 		kn.Line = 999999 + i // weighted to the bottom.
 
 		g.Set(low.KeyReference[string]{
-			Value:   pair.Key(),
+			Value:   ext,
 			KeyNode: kn,
 		}, low.ValueReference[*yaml.Node]{
-			ValueNode: pair.Value(),
-			Value:     pair.Value(),
+			ValueNode: node,
+			Value:     node,
 		})
 		i++
 	}
@@ -175,7 +175,6 @@ func (t test2) GetReference() string {
 }
 
 func (t test2) SetReference(ref string, _ *yaml.Node) {
-
 }
 
 func (t test2) GetReferenceNode() *yaml.Node {

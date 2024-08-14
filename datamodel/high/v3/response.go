@@ -5,7 +5,8 @@ package v3
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
@@ -21,11 +22,11 @@ type Response struct {
 	Content     *orderedmap.Map[string, *MediaType] `json:"content,omitempty" yaml:"content,omitempty"`
 	Links       *orderedmap.Map[string, *Link]      `json:"links,omitempty" yaml:"links,omitempty"`
 	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low         *low.Response
+	low         *lowv3.Response
 }
 
 // NewResponse creates a new high-level Response object that is backed by a low-level one.
-func NewResponse(response *low.Response) *Response {
+func NewResponse(response *lowv3.Response) *Response {
 	r := new(Response)
 	r.low = response
 	r.Description = response.Description.Value
@@ -37,17 +38,13 @@ func NewResponse(response *low.Response) *Response {
 		r.Content = ExtractContent(response.Content.Value)
 	}
 	if !response.Links.IsEmpty() {
-		responseLinks := orderedmap.New[string, *Link]()
-		for pair := orderedmap.First(response.Links.Value); pair != nil; pair = pair.Next() {
-			responseLinks.Set(pair.Key().Value, NewLink(pair.Value().Value))
-		}
-		r.Links = responseLinks
+		r.Links = low.FromReferenceMapWithFunc(response.Links.Value, NewLink)
 	}
 	return r
 }
 
 // GoLow returns the low-level Response object that was used to create the high-level one.
-func (r *Response) GoLow() *low.Response {
+func (r *Response) GoLow() *lowv3.Response {
 	return r.low
 }
 
