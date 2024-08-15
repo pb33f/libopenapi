@@ -1529,6 +1529,9 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.Nil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 10)
 
+	lineCount := rolo.GetFullLineCount()
+	assert.Equal(t, int64(158), lineCount, "total line count in the rolodex is wrong")
+
 	assert.NoError(t, err)
 	assert.Len(t, rolo.indexes, 10)
 

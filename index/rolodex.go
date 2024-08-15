@@ -626,3 +626,23 @@ func (r *Rolodex) RolodexFileSize() int64 {
 	}
 	return size
 }
+
+// GetFullLineCount returns the total number of lines from all files in the Rolodex
+func (r *Rolodex) GetFullLineCount() int64 {
+	var lineCount int64
+	for _, v := range r.localFS {
+		if lfs, ok := v.(RolodexFS); ok {
+			for _, f := range lfs.GetFiles() {
+				lineCount += int64(strings.Count(f.GetContent(), "\n")) + 1
+			}
+		}
+	}
+	for _, v := range r.remoteFS {
+		if lfs, ok := v.(RolodexFS); ok {
+			for _, f := range lfs.GetFiles() {
+				lineCount += int64(strings.Count(f.GetContent(), "\n")) + 1
+			}
+		}
+	}
+	return lineCount
+}
