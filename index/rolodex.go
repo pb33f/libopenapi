@@ -312,7 +312,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 
 			if len(r.localFS) > 0 || len(r.remoteFS) > 0 {
-				r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, "root.yaml")
+				r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, filepath.Base(r.indexConfig.SpecFilePath))
 			}
 		}
 

@@ -45,6 +45,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.AvoidCircularReferenceCheck = true
 	idxConfig.BaseURL = config.BaseURL
 	idxConfig.BasePath = config.BasePath
+	idxConfig.SpecFilePath = config.SpecFilePath
 	idxConfig.Logger = config.Logger
 	extract := config.ExtractRefsSequentially
 	idxConfig.ExtractRefsSequentially = extract

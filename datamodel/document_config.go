@@ -39,6 +39,9 @@ type DocumentConfiguration struct {
 	// To avoid sucking in all the files, set the FileFilter to a list of specific files to be included.
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
 
+	// SpecFilePath is the name of the root specification file (usually named "openapi.yaml").
+	SpecFilePath string
+
 	// FileFilter is a list of specific files to be included by the rolodex when looking up references. If this value
 	// is set, then only these specific files will be included. If this value is not set, then all files will be included.
 	FileFilter []string
