@@ -87,6 +87,9 @@ type SpecIndexConfig struct {
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from
 	BasePath string // set the Base Path for resolving relative references if the spec is exploded.
 
+	// SpecFilePath is the name of the root specification file (usually named "openapi.yaml").
+	SpecFilePath string
+
 	// In an earlier version of libopenapi (pre 0.6.0) the index would automatically resolve all references
 	// They could have been local, or they could have been remote. This was a problem because it meant
 	// There was a potential for a remote exploit if a remote reference was malicious. There aren't any known
