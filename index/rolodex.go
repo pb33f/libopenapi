@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/fs"
 	"log/slog"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
@@ -423,6 +424,26 @@ func (r *Rolodex) BuildIndexes() {
 		r.rootIndex.BuildIndex()
 	}
 	r.manualBuilt = true
+}
+
+// GetAllReferences  returns all references found in the root and all other indices
+func (r *Rolodex) GetAllReferences() map[string]*Reference {
+	allRefs := make(map[string]*Reference)
+	for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
+		refs := idx.GetAllReferences()
+		maps.Copy(allRefs, refs)
+	}
+	return allRefs
+}
+
+// GetAllMappedReferences returns all mapped references found in the root and all other indices
+func (r *Rolodex) GetAllMappedReferences() map[string]*Reference {
+	mappedRefs := make(map[string]*Reference)
+	for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
+		refs := idx.GetMappedReferences()
+		maps.Copy(mappedRefs, refs)
+	}
+	return mappedRefs
 }
 
 // Open opens a file in the rolodex, and returns a RolodexFile.
