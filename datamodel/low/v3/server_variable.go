@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
@@ -20,6 +21,7 @@ type ServerVariable struct {
 	Enum        []low.NodeReference[string]
 	Default     low.NodeReference[string]
 	Description low.NodeReference[string]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
 	*low.Reference
@@ -29,6 +31,11 @@ type ServerVariable struct {
 // GetRootNode returns the root yaml node of the ServerVariable object.
 func (s *ServerVariable) GetRootNode() *yaml.Node {
 	return s.RootNode
+}
+
+// GetExtensions returns all Paths extensions and satisfies the low.HasExtensions interface.
+func (s *ServerVariable) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
+	return s.Extensions
 }
 
 // GetKeyNode returns the key yaml node of the ServerVariable object.
@@ -53,5 +60,6 @@ func (s *ServerVariable) Hash() [32]byte {
 	if !s.Description.IsEmpty() {
 		f = append(f, s.Description.Value)
 	}
+	f = append(f, low.HashExtensions(s.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
 }
