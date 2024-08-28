@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel"
@@ -152,6 +153,17 @@ type SpecIndexConfig struct {
 
 	// private fields
 	uri []string
+}
+
+// SetTheoreticalRoot sets the spec file paths to a theoretical file path
+func (s *SpecIndexConfig) SetTheoreticalRoot() {
+	s.SpecFilePath = filepath.Join(s.BasePath, theoreticalRoot)
+
+	basePath := s.BasePath
+	if !filepath.IsAbs(basePath) {
+		basePath, _ = filepath.Abs(basePath)
+	}
+	s.SpecAbsolutePath = filepath.Join(basePath, theoreticalRoot)
 }
 
 // CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
