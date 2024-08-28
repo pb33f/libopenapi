@@ -24,6 +24,8 @@ import (
 func TestRolodex_NewRolodex(t *testing.T) {
 	c := CreateOpenAPIIndexConfig()
 	rolo := NewRolodex(c)
+	assert.Len(t, rolo.GetAllReferences(), 0)
+	assert.Len(t, rolo.GetAllMappedReferences(), 0)
 	assert.NotNil(t, rolo)
 	assert.NotNil(t, rolo.indexConfig)
 	assert.Nil(t, rolo.GetIgnoredCircularReferences())
@@ -1520,6 +1522,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	}
 
 	cf := CreateOpenAPIIndexConfig()
+	cf.SpecFilePath = filepath.Join(baseDir, "doc1.yaml")
 	cf.BasePath = baseDir
 	cf.IgnoreArrayCircularReferences = true
 	cf.IgnorePolymorphicCircularReferences = true
@@ -1527,11 +1530,19 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	rolo := NewRolodex(cf)
 	rolo.AddLocalFS(baseDir, fileFS)
 
+	rootBytes, err := os.ReadFile(cf.SpecFilePath)
+	assert.NoError(t, err)
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(rootBytes, &rootNode)
+	rolo.SetRootNode(&rootNode)
+
 	err = rolo.IndexTheRolodex()
 
 	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
-	assert.Nil(t, rolo.GetRootIndex())
+	assert.NotNil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 10)
+	assert.Len(t, rolo.GetAllReferences(), 7)
+	assert.Len(t, rolo.GetAllMappedReferences(), 7)
 
 	lineCount := rolo.GetFullLineCount()
 	assert.Equal(t, int64(158), lineCount, "total line count in the rolodex is wrong")

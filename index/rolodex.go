@@ -436,6 +436,9 @@ func (r *Rolodex) BuildIndexes() {
 func (r *Rolodex) GetAllReferences() map[string]*Reference {
 	allRefs := make(map[string]*Reference)
 	for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
+		if idx == nil {
+			continue
+		}
 		refs := idx.GetAllReferences()
 		maps.Copy(allRefs, refs)
 	}
@@ -446,6 +449,9 @@ func (r *Rolodex) GetAllReferences() map[string]*Reference {
 func (r *Rolodex) GetAllMappedReferences() map[string]*Reference {
 	mappedRefs := make(map[string]*Reference)
 	for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
+		if idx == nil {
+			continue
+		}
 		refs := idx.GetMappedReferences()
 		maps.Copy(mappedRefs, refs)
 	}
