@@ -303,7 +303,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 	// indexed and built every supporting file, we can build the root index (our entry point)
 	if r.rootNode != nil {
 
-		// if there is a base path, then we need to set the root spec config to point to a theoretical root.yaml
+		// if there is a base path but no SpecFilePath, then we need to set the root spec config to point to a theoretical root.yaml
 		// which does not exist, but is used to formulate the absolute path to root references correctly.
 		if r.indexConfig.BasePath != "" && r.indexConfig.BaseURL == nil {
 
@@ -313,13 +313,11 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 
 			if len(r.localFS) > 0 || len(r.remoteFS) > 0 {
-				// For specs that are not read from a filesystem (either from remote URL or []byte), we need to
-				// assign a theoretical root file. Having a root file is necessary when mapping references.
-				rootFile := "root.yaml"
 				if r.indexConfig.SpecFilePath != "" {
-					rootFile = filepath.Base(r.indexConfig.SpecFilePath)
+					r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, filepath.Base(r.indexConfig.SpecFilePath))
+				} else {
+					r.indexConfig.SetTheoreticalRoot()
 				}
-				r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, rootFile)
 			}
 		}
 
