@@ -1174,6 +1174,10 @@ components:
 
 	assert.GreaterOrEqual(t, len(rolodex.GetIgnoredCircularReferences()), 1)
 
+	expectedFullLineCount := (strings.Count(first, "\n") + 1) + (strings.Count(second, "\n") + 1) +
+		(strings.Count(third, "\n") + 1) + (strings.Count(fourth, "\n") + 1)
+	assert.Equal(t, int64(expectedFullLineCount), rolodex.GetFullLineCount())
+
 }
 
 func TestRolodex_IndexCircularLookup_PolyItemsFileOnly_LocalIncluded(t *testing.T) {
