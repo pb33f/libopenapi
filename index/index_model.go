@@ -155,7 +155,8 @@ type SpecIndexConfig struct {
 	uri []string
 }
 
-// SetTheoreticalRoot sets the spec file paths to a theoretical file path
+// SetTheoreticalRoot sets the spec file paths to point to a theoretical spec file, which does not exist but is required
+// in order to formulate the absolute path to root references correctly.
 func (s *SpecIndexConfig) SetTheoreticalRoot() {
 	s.SpecFilePath = filepath.Join(s.BasePath, theoreticalRoot)
 

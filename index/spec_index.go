@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ import (
 )
 
 const (
+	// theoreticalRoot is the name of the theoretical spec file used when a root spec file does not exist
 	theoreticalRoot = "root.yaml"
 )
 
@@ -156,11 +158,12 @@ func (index *SpecIndex) GetRolodex() *Rolodex {
 	return index.rolodex
 }
 
+// GetSpecFileName returns the root spec filename, if it exists, otherwise returns the theoretical root spec
 func (index *SpecIndex) GetSpecFileName() string {
-	if index == nil || index.rolodex == nil || index.rolodex.indexConfig == nil {
+	if index == nil || index.rolodex == nil || index.rolodex.indexConfig == nil || index.rolodex.indexConfig.SpecFilePath == "" {
 		return theoreticalRoot
 	}
-	return index.rolodex.indexConfig.SpecFilePath
+	return filepath.Base(index.rolodex.indexConfig.SpecFilePath)
 }
 
 // GetGlobalTagsNode returns document root tags node.
