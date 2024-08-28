@@ -3,10 +3,12 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"gopkg.in/yaml.v3"
 	"sort"
 	"strings"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 // ServerVariable represents a low-level OpenAPI 3+ ServerVariable object.
@@ -20,6 +22,7 @@ type ServerVariable struct {
 	Enum        []low.NodeReference[string]
 	Default     low.NodeReference[string]
 	Description low.NodeReference[string]
+	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
 	*low.Reference
@@ -34,6 +37,11 @@ func (s *ServerVariable) GetRootNode() *yaml.Node {
 // GetKeyNode returns the key yaml node of the ServerVariable object.
 func (s *ServerVariable) GetKeyNode() *yaml.Node {
 	return s.RootNode
+}
+
+// GetExtensions returns all extensions and satisfies the low.HasExtensions interface.
+func (s *ServerVariable) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
+	return s.Extensions
 }
 
 // Hash will return a consistent SHA256 Hash of the ServerVariable object

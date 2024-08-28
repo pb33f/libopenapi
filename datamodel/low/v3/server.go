@@ -72,6 +72,7 @@ func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.S
 			variable.Reference = new(low.Reference)
 			_ = low.BuildModel(varNode, &variable)
 			variable.Nodes = low.ExtractNodesRecursive(ctx, varNode)
+			variable.Extensions = low.ExtractExtensions(varNode)
 			if localKeyNode != nil {
 				variable.Nodes.Store(localKeyNode.Line, localKeyNode)
 			}
