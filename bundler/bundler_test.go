@@ -38,6 +38,7 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 	digi, _ := os.ReadFile(spec)
 
 	doc, err := libopenapi.NewDocumentWithConfiguration([]byte(digi), &datamodel.DocumentConfiguration{
+		SpecFilePath:            spec,
 		BasePath:                tmp + "/specification",
 		ExtractRefsSequentially: true,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{

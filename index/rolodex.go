@@ -313,7 +313,13 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 
 			if len(r.localFS) > 0 || len(r.remoteFS) > 0 {
-				r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, filepath.Base(r.indexConfig.SpecFilePath))
+				// For specs that are not read from a filesystem (either from remote URL or []byte), we need to
+				// assign a theoretical root file. Having a root file is necessary when mapping references.
+				rootFile := "root.yaml"
+				if r.indexConfig.SpecFilePath != "" {
+					rootFile = filepath.Base(r.indexConfig.SpecFilePath)
+				}
+				r.indexConfig.SpecAbsolutePath = filepath.Join(basePath, rootFile)
 			}
 		}
 
