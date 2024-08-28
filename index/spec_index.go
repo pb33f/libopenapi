@@ -25,6 +25,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	theoreticalRoot = "root.yaml"
+)
+
 // NewSpecIndexWithConfig will create a new index of an OpenAPI or Swagger spec. It uses the same logic as NewSpecIndex
 // except it sets a base URL for resolving relative references, except it also allows for granular control over
 // how the index is set up.
@@ -150,6 +154,13 @@ func (index *SpecIndex) GetRootNode() *yaml.Node {
 
 func (index *SpecIndex) GetRolodex() *Rolodex {
 	return index.rolodex
+}
+
+func (index *SpecIndex) GetSpecFileName() string {
+	if index == nil || index.rolodex == nil || index.rolodex.indexConfig == nil {
+		return theoreticalRoot
+	}
+	return index.rolodex.indexConfig.SpecFilePath
 }
 
 // GetGlobalTagsNode returns document root tags node.
