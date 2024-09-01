@@ -5,6 +5,7 @@ import (
 	"errors"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -12,7 +13,6 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"time"
 )
 
 // CreateDocument will create a new Document instance from the provided SpecInfo.
@@ -43,6 +43,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.IgnoreArrayCircularReferences = config.IgnoreArrayCircularReferences
 	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
 	idxConfig.AvoidCircularReferenceCheck = true
+	// FIXME: this we just added because the logs show that all those remote refs
+	// have an absolute path of "." This should be the root folder of the file.
 	idxConfig.BaseURL = config.BaseURL
 	idxConfig.BasePath = config.BasePath
 	idxConfig.Logger = config.Logger
@@ -101,6 +103,8 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		config.Logger.Debug("indexing rolodex")
 	}
 	now := time.Now()
+	// NOTE: here we enter and our rolodex is messed up because it doesn't have a
+	// proper defRoot
 	_ = rolodex.IndexTheRolodex()
 	done := time.Duration(time.Since(now).Milliseconds())
 	if config.Logger != nil {

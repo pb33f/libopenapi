@@ -446,6 +446,8 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	// remove from processing
 	i.ProcessingFiles.Delete(remoteParsedURL.Path)
+	// NOTE: why are we storing the files under their absolute path? are
+	// we later also referencing them by that when bundling?
 	i.Files.Store(absolutePath, remoteFile)
 
 	idx, idxError := remoteFile.Index(&copiedCfg)
