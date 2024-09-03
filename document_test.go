@@ -6,11 +6,14 @@ import (
 	"bytes"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -216,7 +219,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
 
-	// should noth be nil.
+	// should not be nil.
 	assert.Nil(t, errs)
 	assert.Nil(t, errs)
 	assert.NotNil(t, rend)
@@ -476,7 +479,7 @@ func TestDocument_Render_ChangeCheck_Burgershop(t *testing.T) {
 	// compare documents
 	compReport, errs := CompareDocuments(doc, newDoc)
 
-	// should noth be nil.
+	// should not be nil.
 	assert.Nil(t, errs)
 	assert.NotNil(t, rend)
 	assert.Nil(t, compReport)
@@ -1378,6 +1381,44 @@ func TestDocument_TestNestedFiles(t *testing.T) {
 
 	_, errs := doc.BuildV3Model()
 	require.Empty(t, errs)
+}
+
+func TestDocument_MinimalRemoteRefs(t *testing.T) {
+	newRemoteHandlerFunc := func() utils.RemoteURLHandler {
+		c := &http.Client{
+			Timeout: time.Second * 120,
+		}
+
+		return func(url string) (*http.Response, error) {
+			resp, err := c.Get(url)
+			if err != nil {
+				return nil, fmt.Errorf("fetch remote ref: %v", err)
+			}
+
+			return resp, nil
+		}
+	}
+
+	spec, err := os.ReadFile("test_specs/minimal_remote_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	baseURL, err := url.Parse("https://raw.githubusercontent.com/felixjung/libopenapi/authed-remote/test_specs/minimal_remote_refs")
+	require.NoError(t, err)
+
+	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+		BaseURL:               baseURL,
+		AllowFileReferences:   false,
+		AllowRemoteReferences: true,
+		RemoteURLHandler:      newRemoteHandlerFunc(),
+	})
+	require.NoError(t, err)
+
+	d, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	o, err := d.Model.Render()
+	require.NoError(t, err)
+	fmt.Println(string(o))
 }
 
 func TestDocument_Issue264(t *testing.T) {
