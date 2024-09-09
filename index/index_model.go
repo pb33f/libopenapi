@@ -238,6 +238,7 @@ type SpecIndex struct {
 	allComponentSchemaDefinitions       *sync.Map                                     // all schemas found in components (openapi) or definitions (swagger).
 	securitySchemesNode                 *yaml.Node                                    // components/securitySchemes node
 	allSecuritySchemes                  map[string]*Reference                         // all security schemes / definitions.
+	allComponentSchemas                 map[string]*Reference                         // all component schemas
 	requestBodiesNode                   *yaml.Node                                    // components/requestBodies node
 	allRequestBodies                    map[string]*Reference                         // all request bodies
 	responsesNode                       *yaml.Node                                    // components/responses node
