@@ -317,12 +317,9 @@ func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
 	if index != nil && index.allComponentSchemas != nil {
 		return index.allComponentSchemas
 	}
-	if index != nil && index.allComponentSchemas == nil {
-		schemaMap := syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
-		index.allComponentSchemas = schemaMap
-		return index.allComponentSchemas
-	}
-	return nil
+	schemaMap := syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
+	index.allComponentSchemas = schemaMap
+	return index.allComponentSchemas
 }
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
