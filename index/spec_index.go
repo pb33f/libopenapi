@@ -328,7 +328,15 @@ func (index *SpecIndex) GetAllReferenceSchemas() []*Reference {
 
 // GetAllComponentSchemas will return all schemas defined in the components section of the document.
 func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
-	return syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
+	if index != nil && index.allComponentSchemas != nil {
+		return index.allComponentSchemas
+	}
+	if index != nil && index.allComponentSchemas == nil {
+		schemaMap := syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
+		index.allComponentSchemas = schemaMap
+		return index.allComponentSchemas
+	}
+	return nil
 }
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
