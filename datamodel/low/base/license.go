@@ -6,9 +6,9 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 	"strings"
@@ -22,6 +22,7 @@ type License struct {
 	Name       low.NodeReference[string]
 	URL        low.NodeReference[string]
 	Identifier low.NodeReference[string]
+	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
 	*low.Reference
@@ -36,10 +37,8 @@ func (l *License) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 	utils.CheckForMergeNodes(root)
 	l.Reference = new(low.Reference)
 	no := low.ExtractNodes(ctx, root)
+	l.Extensions = low.ExtractExtensions(root)
 	l.Nodes = no
-	if l.URL.Value != "" && l.Identifier.Value != "" {
-		return fmt.Errorf("license cannot have both a URL and an identifier, they are mutually exclusive")
-	}
 	return nil
 }
 
@@ -66,4 +65,9 @@ func (l *License) Hash() [32]byte {
 		f = append(f, l.Identifier.Value)
 	}
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
+// GetExtensions returns all extensions for License
+func (l *License) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
+	return l.Extensions
 }
