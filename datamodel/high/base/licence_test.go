@@ -82,7 +82,8 @@ func TestLicense_Render_Identifier(t *testing.T) {
 
 func TestLicense_Render_IdentifierAndURL_Error(t *testing.T) {
 
-	// this should fail because you can't have both an identifier and a URL
+	// this used to fail because you can't have both an identifier and a URL
+	// however in v0.18.0 I deleted this logic, because it's dumb.
 	highL := &License{Name: "MIT", Identifier: "MIT", URL: "https://pb33f.io"}
 	dat, _ := highL.Render()
 
@@ -95,5 +96,5 @@ func TestLicense_Render_IdentifierAndURL_Error(t *testing.T) {
 	_ = lowmodel.BuildModel(cNode.Content[0], &lowLicense)
 	err := lowLicense.Build(context.Background(), nil, cNode.Content[0], nil)
 
-	assert.Error(t, err)
+	assert.NoError(t, err)
 }
