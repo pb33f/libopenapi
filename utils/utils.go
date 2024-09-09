@@ -751,14 +751,10 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				if intVal <= 99 {
 					if len(cleaned) > 0 {
 						appendSegment(&sb, segs, cleaned, i, false)
-					} else {
-						cleaned = append(cleaned, segs[i])
 					}
 				} else {
 					if len(cleaned) > 0 {
 						appendSegment(&sb, segs, cleaned, i, true)
-					} else {
-						cleaned = append(cleaned, segs[i])
 					}
 				}
 				continue
