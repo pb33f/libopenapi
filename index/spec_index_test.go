@@ -1801,3 +1801,10 @@ components:
 	schemas := index.GetAllReferences()
 	assert.Equal(t, 0, len(schemas))
 }
+
+func Test_GetAllComponentSchemas(t *testing.T) {
+
+	// check for a nil
+	index := SpecIndex{}
+	assert.Nil(t, index.GetAllComponentSchemas())
+}
