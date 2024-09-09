@@ -4,8 +4,9 @@
 package base
 
 import (
-	low2 "github.com/pb33f/libopenapi/datamodel/high"
+	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
 )
 
@@ -14,9 +15,10 @@ import (
 //	v2 - https://swagger.io/specification/v2/#licenseObject
 //	v3 - https://spec.openapis.org/oas/v3.1.0#license-object
 type License struct {
-	Name       string `json:"name,omitempty" yaml:"name,omitempty"`
-	URL        string `json:"url,omitempty" yaml:"url,omitempty"`
-	Identifier string `json:"identifier,omitempty" yaml:"identifier,omitempty"`
+	Name       string                              `json:"name,omitempty" yaml:"name,omitempty"`
+	URL        string                              `json:"url,omitempty" yaml:"url,omitempty"`
+	Identifier string                              `json:"identifier,omitempty" yaml:"identifier,omitempty"`
+	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *low.License
 }
 
@@ -24,6 +26,7 @@ type License struct {
 func NewLicense(license *low.License) *License {
 	l := new(License)
 	l.low = license
+	l.Extensions = high.ExtractExtensions(license.Extensions)
 	if !license.URL.IsEmpty() {
 		l.URL = license.URL.Value
 	}
@@ -53,6 +56,6 @@ func (l *License) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the License object.
 func (l *License) MarshalYAML() (interface{}, error) {
-	nb := low2.NewNodeBuilder(l, l.low)
+	nb := high.NewNodeBuilder(l, l.low)
 	return nb.Render(), nil
 }
