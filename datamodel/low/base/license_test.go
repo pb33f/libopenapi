@@ -13,10 +13,12 @@ import (
 func TestLicense_Hash(t *testing.T) {
 
 	left := `url: https://pb33f.io
-description: the ranch`
+description: the ranch
+x-happy: dance`
 
 	right := `url: https://pb33f.io
-description: the ranch`
+description: the ranch
+x-drink: beer`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -31,9 +33,10 @@ description: the ranch`
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 
 	l := License{}
-	l.Build(nil, &lNode, &rNode, nil)
+	l.Build(nil, lNode.Content[0], rNode.Content[0], nil)
 	assert.NotNil(t, l.GetRootNode())
 	assert.NotNil(t, l.GetKeyNode())
+	assert.Equal(t, 1, l.GetExtensions().Len())
 
 }
 
