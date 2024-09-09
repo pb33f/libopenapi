@@ -710,14 +710,14 @@ func TestConvertComponentIdIntoFriendlyPathSearch_SuperCrazy(t *testing.T) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/examples/0/expires_at")
-	assert.Equal(t, "$.components.schemas['gpg-key'].properties['subkeys'].examples[0].expires_at", path)
+	assert.Equal(t, "$.components.schemas['gpg-key'].properties['subkeys']['examples'][0].expires_at", path)
 	assert.Equal(t, "expires_at", segment)
 }
 
 func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/examples/0/expires_at")
-		assert.Equal(t, "$.components.schemas.gpg-key.properties['subkeys'].examples[0].expires_at", path)
+		assert.Equal(t, "$.components.schemas.gpg-key.properties['subkeys']['examples'][0].expires_at", path)
 		assert.Equal(t, "expires_at", segment)
 	}
 }
@@ -725,7 +725,7 @@ func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Crazy(t *testing.B) {
 func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Plural(t *testing.B) {
 	for n := 0; n < t.N; n++ {
 		segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/gpg-key/properties/subkeys/examples/0/expires_at")
-		assert.Equal(t, "$.components.schemas['gpg-key'].properties['subkeys'].examples[0].expires_at", path)
+		assert.Equal(t, "$.components.schemas['gpg-key'].properties['subkeys']['examples'][0].expires_at", path)
 		assert.Equal(t, "expires_at", segment)
 	}
 }
@@ -738,7 +738,7 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Simple(t *testing.T) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Plural(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/FreshMan/properties/subkeys/examples/0/expires_at")
-	assert.Equal(t, "$.components.schemas['FreshMan'].properties['subkeys'].examples[0].expires_at", path)
+	assert.Equal(t, "$.components.schemas['FreshMan'].properties['subkeys']['examples'][0].expires_at", path)
 	assert.Equal(t, "expires_at", segment)
 }
 
