@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -44,7 +43,7 @@ func BuildModel(node *yaml.Node, model interface{}) error {
 			continue // internal construct
 		}
 
-		kn, vn := utils.FindKeyNodeTop(strings.ToLower(fName), node.Content)
+		kn, vn := utils.FindKeyNodeTop(fName, node.Content)
 		if vn == nil {
 			// no point in going on.
 			continue
