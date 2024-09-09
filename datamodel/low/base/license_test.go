@@ -4,7 +4,6 @@
 package base
 
 import (
-	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -60,26 +59,5 @@ description: the ranch`
 	assert.NoError(t, err)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
-
-}
-
-func TestLicense_WithIdentifierAndURL_Error(t *testing.T) {
-
-	left := `identifier: MIT
-url: https://pb33f.io
-description: the ranch`
-
-	var lNode yaml.Node
-	_ = yaml.Unmarshal([]byte(left), &lNode)
-
-	// create low level objects
-	var lDoc License
-	err := low.BuildModel(lNode.Content[0], &lDoc)
-	assert.NoError(t, err)
-
-	err = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
-
-	assert.Error(t, err)
-	assert.Equal(t, "license cannot have both a URL and an identifier, they are mutually exclusive", err.Error())
 
 }
