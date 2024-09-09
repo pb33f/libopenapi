@@ -672,18 +672,54 @@ var (
 	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
 )
 
+func appendSegment(sb *strings.Builder, segs []string, cleaned []string, i int, wrapInQuotes bool) {
+	sb.Reset()
+	if wrapInQuotes {
+		sb.WriteString("['")
+		sb.WriteString(segs[i])
+		sb.WriteString("']")
+	} else {
+		sb.WriteString("[")
+		sb.WriteString(segs[i])
+		sb.WriteString("]")
+	}
+	c := sb.String()
+	sb.Reset()
+	sb.WriteString(cleaned[len(cleaned)-1])
+	sb.WriteString(c)
+	cleaned[len(cleaned)-1] = sb.String()
+}
+
+// ConvertComponentIdIntoFriendlyPathSearch will convert a JSON Path into a friendly path search string.
+// the friendliness comes from it being suitable for use with any JSON Path parser.
+//
+// This function was re-written in v0.18.0 in order to fix a number of performance issues with the original
+// implementation. Allocations were high and this function is used a lot, this new implementation is much
+// lighter on string allocations by using a string builder.
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	segs := strings.Split(id, "/")
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
-	var cleaned []string
+	cleaned := make([]string, 0, len(segs))
+
+	// use a builder to prevent many pointless string allocations.
+	var sb strings.Builder
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
-		if pathCharExp.Match([]byte(segs[i])) {
+		if pathCharExp.MatchString(segs[i]) {
+
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
-			segs[i] = fmt.Sprintf("['%s']", segs[i])
+			sb.Reset()
+			sb.WriteString("['")
+			sb.WriteString(segs[i])
+			sb.WriteString("']")
+			segs[i] = sb.String()
+
 			if len(cleaned) > 0 {
-				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+				sb.Reset()
+				sb.WriteString(segs[i-1])
+				sb.WriteString(segs[i])
+				cleaned[len(cleaned)-1] = sb.String()
 				continue
 			}
 		} else {
@@ -702,20 +738,29 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			if len(brackets) > 0 {
 				segs[i] = bracketNameExp.ReplaceAllString(segs[i], "['$1[$2]']")
 				if len(cleaned) > 0 {
-					cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", segs[i-1], segs[i])
+					sb.Reset()
+					sb.WriteString(segs[i-1])
+					sb.WriteString(segs[i])
+					cleaned[len(cleaned)-1] = sb.String()
 					continue
 				}
 			}
 
-			intVal, err := strconv.ParseInt(segs[i], 10, 32)
-			if err == nil && intVal <= 99 {
-				segs[i] = fmt.Sprintf("[%d]", intVal)
-				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
-				continue
-			}
-			if err == nil && intVal > 99 {
-				segs[i] = fmt.Sprintf("['%d']", intVal)
-				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
+			intVal, err := strconv.Atoi(segs[i])
+			if err == nil {
+				if intVal <= 99 {
+					if len(cleaned) > 0 {
+						appendSegment(&sb, segs, cleaned, i, false)
+					} else {
+						cleaned = append(cleaned, segs[i])
+					}
+				} else {
+					if len(cleaned) > 0 {
+						appendSegment(&sb, segs, cleaned, i, true)
+					} else {
+						cleaned = append(cleaned, segs[i])
+					}
+				}
 				continue
 			}
 
@@ -725,15 +770,22 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 					cleaned = append(cleaned, segs[i])
 					continue
 				}
-				segs[i] = fmt.Sprintf("['%s']", segs[i])
-				cleaned[len(cleaned)-1] = fmt.Sprintf("%s%s", cleaned[len(cleaned)-1], segs[i])
+				sb.Reset()
+				sb.WriteString("['")
+				sb.WriteString(segs[i])
+				sb.WriteString("']")
+				c := sb.String()
+				sb.Reset()
+				sb.WriteString(cleaned[len(cleaned)-1])
+				sb.WriteString(c)
+				cleaned[len(cleaned)-1] = sb.String()
 				continue
 			}
 
 			cleaned = append(cleaned, segs[i])
 		}
 	}
-	_, err := strconv.ParseInt(name, 10, 32)
+	_, err := strconv.Atoi(name)
 	var replaced string
 	if err != nil {
 		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
