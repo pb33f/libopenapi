@@ -55,7 +55,7 @@ variables:
 	for v := range n.Variables.Value.ValuesFromOldest() {
 		assert.NotNil(t, v.Value.GetKeyNode())
 		assert.NotNil(t, v.Value.GetRootNode())
-		assert.Nil(t, v.Value.GetExtensions())
+		assert.Equal(t, 0, v.Value.GetExtensions().Len())
 	}
 }
 
