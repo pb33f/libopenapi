@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
-	"slices"
 	"gopkg.in/yaml.v3"
+	"slices"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -521,7 +521,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					continue
 				}
 
-
 				value := node.Content[i+1].Value
 				value = strings.ReplaceAll(value, "\\\\", "\\")
 				var locatedRef *Reference
@@ -657,7 +656,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					n.Value == "anyOf" {
 
 					// if this is a polymorphic link, we want to follow it and see if it becomes circular
-					if i+1 <= len(node.Content) && utils.IsNodeMap(node.Content[i+1]) { // check for nested items
+					if i+1 < len(node.Content) && utils.IsNodeMap(node.Content[i+1]) { // check for nested items
 						// check if items is present, to indicate an array
 						if k, v := utils.FindKeyNodeTop("items", node.Content[i+1].Content); v != nil {
 							if utils.IsNodeMap(v) {
