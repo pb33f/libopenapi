@@ -1867,6 +1867,35 @@ func TestLocateRefNode_NoExplode_NoSpecPath(t *testing.T) {
 	assert.NotNil(t, c)
 }
 
+func TestLocateRefNode_Explode_NoSpecPath(t *testing.T) {
+	no := yaml.Node{
+		Kind: yaml.MappingNode,
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "$ref",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "components/schemas/thing.yaml#/components/schemas/thing",
+			},
+		},
+	}
+
+	cf := index.CreateClosedAPIIndexConfig()
+	u, _ := url.Parse("http://smilfghfhfhfhfhes.com/bikes")
+	cf.BaseURL = u
+	idx := index.NewSpecIndexWithConfig(&no, cf)
+	ctx := context.Background()
+
+	n, i, e, c := LocateRefNodeWithContext(ctx, &no, idx)
+	assert.Nil(t, n)
+	assert.NotNil(t, i)
+	assert.NotNil(t, e)
+	assert.NotNil(t, c)
+	assert.ErrorContains(t, e, "http://smilfghfhfhfhfhes.com/bikes/components/schemas/thing.yaml#/components/schemas/thing")
+}
+
 func TestLocateRefNode_DoARealLookup(t *testing.T) {
 	lookup := "/root.yaml#/components/schemas/Burger"
 	if runtime.GOOS == "windows" {
