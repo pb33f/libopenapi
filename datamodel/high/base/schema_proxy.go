@@ -165,7 +165,7 @@ func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
 }
 
 func (sp *SchemaProxy) BuildTempSchema() (*Schema, error) {
-	if sp == nil {
+	if sp == nil || sp.lock == nil {
 		return nil, nil
 	}
 	schema := sp.schema
