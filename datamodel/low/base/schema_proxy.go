@@ -90,9 +90,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 }
 
 func (sp *SchemaProxy) TempSchema() *Schema {
-	if sp.rendered != nil {
-		return sp.rendered
-	}
 	schema := new(Schema)
 	utils.CheckForMergeNodes(sp.vn)
 	err := schema.Build(sp.ctx, sp.vn, sp.idx)
