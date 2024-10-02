@@ -168,7 +168,9 @@ func (sp *SchemaProxy) BuildTempSchema() (*Schema, error) {
 	if sp == nil {
 		return nil, nil
 	}
-	s := sp.schema.Value.TempSchema()
+	schema := sp.schema
+	value := schema.Value
+	s := value.TempSchema()
 	if s == nil {
 		return nil, sp.schema.Value.GetBuildError()
 	}
