@@ -165,6 +165,9 @@ func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
 }
 
 func (sp *SchemaProxy) BuildTempSchema() (*Schema, error) {
+	if sp.rendered != nil {
+		return sp.rendered, nil
+	}
 	if sp.schema == nil {
 		return nil, nil
 	}

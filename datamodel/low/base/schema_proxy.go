@@ -85,14 +85,14 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 // If anything goes wrong during the build, then nothing is returned and the error that occurred can
 // be retrieved by using GetBuildError()
 func (sp *SchemaProxy) Schema() *Schema {
-	if sp.rendered != nil {
-		return sp.rendered
-	}
 	sp.rendered = sp.TempSchema()
 	return sp.rendered
 }
 
 func (sp *SchemaProxy) TempSchema() *Schema {
+	if sp.rendered != nil {
+		return sp.rendered
+	}
 	schema := new(Schema)
 	utils.CheckForMergeNodes(sp.vn)
 	err := schema.Build(sp.ctx, sp.vn, sp.idx)
