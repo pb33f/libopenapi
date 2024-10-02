@@ -164,6 +164,19 @@ func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
 	return schema, er
 }
 
+func (sp *SchemaProxy) BuildTempSchema() (*Schema, error) {
+	if sp == nil {
+		return nil, nil
+	}
+	s := sp.schema.Value.TempSchema()
+	if s == nil {
+		return nil, sp.schema.Value.GetBuildError()
+	}
+	sch := NewSchema(s)
+	sch.ParentProxy = sp
+	return sch, nil
+}
+
 // GetBuildError returns any error that was thrown when calling Schema()
 func (sp *SchemaProxy) GetBuildError() error {
 	return sp.buildError
