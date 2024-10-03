@@ -56,7 +56,7 @@ func Test_extractRequiredReferenceProperties(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("the-big.yaml#/cheese/thing", nil,
+	data := extractRequiredReferenceProperties("the-big.yaml#/cheese/thing",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.NotNil(t, data)
@@ -69,7 +69,7 @@ func Test_extractRequiredReferenceProperties_singleFile(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("dingo-bingo-bango.yaml", nil,
+	data := extractRequiredReferenceProperties("dingo-bingo-bango.yaml",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.NotNil(t, data)
@@ -82,7 +82,7 @@ func Test_extractRequiredReferenceProperties_http(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("http://dingo-bingo-bango.yaml/camel.yaml", nil,
+	data := extractRequiredReferenceProperties("http://dingo-bingo-bango.yaml/camel.yaml",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.NotNil(t, data)
@@ -95,7 +95,7 @@ func Test_extractRequiredReferenceProperties_abs(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("/camel.yaml", nil,
+	data := extractRequiredReferenceProperties("/camel.yaml",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.NotNil(t, data)
@@ -108,7 +108,7 @@ func Test_extractRequiredReferenceProperties_abs3(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("/big/fat/camel.yaml#/milk", nil,
+	data := extractRequiredReferenceProperties("/big/fat/camel.yaml#/milk",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	if runtime.GOOS != "windows" {
@@ -124,7 +124,7 @@ func Test_extractRequiredReferenceProperties_rel_full(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("/chalky/milky/camel.yaml#/milk", nil,
+	data := extractRequiredReferenceProperties("/chalky/milky/camel.yaml#/milk",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	if runtime.GOOS != "windows" {
@@ -140,7 +140,7 @@ func Test_extractRequiredReferenceProperties_rel(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("/camel.yaml#/milk", nil,
+	data := extractRequiredReferenceProperties("/camel.yaml#/milk",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	if runtime.GOOS != "windows" {
@@ -156,7 +156,7 @@ func Test_extractRequiredReferenceProperties_abs2(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("../flannel.yaml#/milk", nil,
+	data := extractRequiredReferenceProperties("../flannel.yaml#/milk",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	if runtime.GOOS != "windows" {
@@ -172,7 +172,7 @@ func Test_extractRequiredReferenceProperties_http_rel(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("http://beer-world.com/lost/in/space.yaml#/vase", nil,
+	data := extractRequiredReferenceProperties("http://beer-world.com/lost/in/space.yaml#/vase",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.Equal(t, "cakes", props["http://beer-world.com/lost/in/my/wet/camel.yaml#/rum/cake"][0])
@@ -186,7 +186,7 @@ func Test_extractRequiredReferenceProperties_http_rel_nocomponent(t *testing.T) 
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("http://beer-world.com/lost/in/space.yaml#/vase", nil,
+	data := extractRequiredReferenceProperties("http://beer-world.com/lost/in/space.yaml#/vase",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.Equal(t, "cakes", props["http://beer-world.com/lost/in/my/wet/camel.yaml"][0])
@@ -200,7 +200,7 @@ func Test_extractRequiredReferenceProperties_nocomponent(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("#/rotund/cakes", nil,
+	data := extractRequiredReferenceProperties("#/rotund/cakes",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.Equal(t, "cakes", props["my/wet/camel.yaml"][0])
@@ -214,7 +214,7 @@ func Test_extractRequiredReferenceProperties_component_http(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("http://bunny-bun-bun.com/no.yaml", nil,
+	data := extractRequiredReferenceProperties("http://bunny-bun-bun.com/no.yaml",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.Equal(t, "cakes", props["http://bunny-bun-bun.com/go-to-bed.com/no/more/cake.yaml#/lovely/jam"][0])
@@ -228,7 +228,7 @@ func Test_extractRequiredReferenceProperties_nocomponent_http(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("http://bunny-bun-bun.com/no.yaml", nil,
+	data := extractRequiredReferenceProperties("http://bunny-bun-bun.com/no.yaml",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	assert.Equal(t, "cakes", props["http://bunny-bun-bun.com/go-to-bed.com/no/more/cake.yaml"][0])
@@ -242,7 +242,7 @@ func Test_extractRequiredReferenceProperties_nocomponent_http2(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	props := make(map[string][]string)
 
-	data := extractRequiredReferenceProperties("/why.yaml", nil,
+	data := extractRequiredReferenceProperties("/why.yaml",
 		rootNode.Content[0], "cakes", props)
 	assert.Len(t, props, 1)
 	if runtime.GOOS != "windows" {
