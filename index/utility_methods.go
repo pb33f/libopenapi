@@ -397,7 +397,8 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 			paramRef := index.allMappedRefs[paramRefName]
 			if paramRef == nil {
 				// could be in the rolodex
-				ref := seekRefEnd(index, paramRefName)
+				searchInIndex := findIndex(index, param.Content[1])
+				ref := seekRefEnd(searchInIndex, paramRefName)
 				if ref != nil {
 					paramRef = ref
 					if strings.Contains(paramRefName, "%") {
@@ -508,6 +509,25 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 			continue
 		}
 	}
+}
+
+func findIndex(index *SpecIndex, i *yaml.Node) *SpecIndex {
+	allIndexes := index.GetRolodex().GetIndexes()
+	for _, searchIndex := range allIndexes {
+		nodeMap := searchIndex.GetNodeMap()
+		line, ok := nodeMap[i.Line]
+		if !ok {
+			continue
+		}
+		node, ok := line[i.Column]
+		if !ok {
+			continue
+		}
+		if node == i {
+			return searchIndex
+		}
+	}
+	return index
 }
 
 func runIndexFunction(funcs []func() int, wg *sync.WaitGroup) {
