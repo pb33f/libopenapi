@@ -512,7 +512,11 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 }
 
 func findIndex(index *SpecIndex, i *yaml.Node) *SpecIndex {
-	allIndexes := index.GetRolodex().GetIndexes()
+	rolodex := index.GetRolodex()
+	if rolodex == nil {
+		return index
+	}
+	allIndexes := rolodex.GetIndexes()
 	for _, searchIndex := range allIndexes {
 		nodeMap := searchIndex.GetNodeMap()
 		line, ok := nodeMap[i.Line]
