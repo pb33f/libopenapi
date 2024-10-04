@@ -3,6 +3,13 @@ info:
   title: Rolodex Test Data
   version: 1.0.0
 components:
+  parameters:
+    SomeParam:
+      name: someParam
+      in: query
+      description: A parameter that does nothing. Ding a ling!
+      schema:
+        type: string
   schemas:
     Ding:
       type: object
