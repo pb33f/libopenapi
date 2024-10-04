@@ -132,9 +132,9 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 
 	yml := `paths:
   /test:
-    $ref: 'rolodex_test_data/paths/paths.yaml'
+    $ref: 'rolodex_test_data/paths/paths.yaml#/~1some~1path'
   /test-2:
-    $ref: './rolodex_test_data/paths/paths.yaml'
+    $ref: './rolodex_test_data/paths/paths.yaml#/~1some~1path'
 `
 
 	baseDir := "."
@@ -166,4 +166,15 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 	assert.Len(t, rolo.indexes, 2)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 
+	params := rolo.rootIndex.GetAllParametersFromOperations()
+	assert.Len(t, params, 2)
+	lookupPath, ok := params["/test"]
+	assert.True(t, ok)
+	lookupOperation, ok := lookupPath["get"]
+	assert.True(t, ok)
+	assert.Len(t, lookupOperation, 1)
+	lookupRef, ok := lookupOperation["../components.yaml#/components/parameters/SomeParam"]
+	assert.True(t, ok)
+	assert.Len(t, lookupRef, 1)
+	assert.Equal(t, lookupRef[0].Name, "SomeParam")
 }
