@@ -1541,11 +1541,11 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.NotNil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 10)
-	assert.Len(t, rolo.GetAllReferences(), 7)
-	assert.Len(t, rolo.GetAllMappedReferences(), 7)
+	assert.Len(t, rolo.GetAllReferences(), 8)
+	assert.Len(t, rolo.GetAllMappedReferences(), 8)
 
 	lineCount := rolo.GetFullLineCount()
-	assert.Equal(t, int64(158), lineCount, "total line count in the rolodex is wrong")
+	assert.Equal(t, int64(167), lineCount, "total line count in the rolodex is wrong")
 
 	assert.NoError(t, err)
 	assert.Len(t, rolo.indexes, 10)
@@ -1562,10 +1562,9 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.True(t, strings.HasSuffix(f.GetFullPath(), "rolodex_test_data"+string(os.PathSeparator)+"components.yaml"))
 	assert.NotNil(t, f.ModTime())
 	if runtime.GOOS != "windows" {
-		assert.Equal(t, int64(283), f.Size())
+		assert.Equal(t, int64(448), f.Size())
 	} else {
-		assert.Equal(t, int64(295), f.Size())
-
+		assert.Equal(t, int64(460), f.Size())
 	}
 	assert.False(t, f.IsDir())
 	assert.Nil(t, f.Sys())
