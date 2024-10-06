@@ -640,7 +640,16 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			index.refLock.Unlock()
 		} else {
 			index.refLock.Unlock()
+			// If it's local, this is safe to do unlocked
+			uri := strings.Split(ref.FullDefinition, "#/")
+			unsafeAsync := len(uri) == 2 && len(uri[0]) > 0
+			if unsafeAsync {
+				index.refLock.Lock()
+			}
 			located := index.FindComponent(ref.FullDefinition)
+			if unsafeAsync {
+				index.refLock.Unlock()
+			}
 			if located != nil {
 
 				// have we already mapped this?
