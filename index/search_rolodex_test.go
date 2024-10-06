@@ -5,10 +5,12 @@ package index
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -129,52 +131,62 @@ func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 }
 
 func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
-
-	yml := `paths:
+	// We're TDD'ing some code that previously had a race condition.
+	// This test is to ensure that we don't regress.
+	wg := sync.WaitGroup{}
+	wg.Add(1000)
+	for i := 0; i < 1000; i++ {
+		go func(i int) {
+			defer wg.Done()
+			yml := `paths:
   /test:
     $ref: 'rolodex_test_data/paths/paths.yaml#/~1some~1path'
   /test-2:
     $ref: './rolodex_test_data/paths/paths.yaml#/~1some~1path'
 `
 
-	baseDir := "."
+			baseDir := "."
 
-	cf := CreateOpenAPIIndexConfig()
-	cf.BasePath = baseDir
-	cf.AvoidCircularReferenceCheck = true
+			cf := CreateOpenAPIIndexConfig()
+			cf.BasePath = baseDir
+			cf.AvoidCircularReferenceCheck = true
 
-	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
-		BaseDirectory: baseDir,
-		IndexConfig:   cf,
-	})
-	if err != nil {
-		t.Fatal(err)
+			fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+				BaseDirectory: baseDir,
+				IndexConfig:   cf,
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			rolo := NewRolodex(cf)
+			rolo.AddLocalFS(baseDir, fileFS)
+
+			var rootNode yaml.Node
+			_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+			rolo.SetRootNode(&rootNode)
+
+			err = rolo.IndexTheRolodex()
+			assert.NoError(t, err)
+			require.Len(t, rolo.indexes, 2)
+
+			rolo.Resolve()
+
+			require.Len(t, rolo.GetCaughtErrors(), 0)
+
+			params := rolo.rootIndex.GetAllParametersFromOperations()
+			require.Len(t, params, 2)
+			lookupPath, ok := params["/test"]
+			require.True(t, ok)
+			lookupOperation, ok := lookupPath["get"]
+			require.True(t, ok)
+			require.Len(t, lookupOperation, 1)
+			lookupRef, ok := lookupOperation["../components.yaml#/components/parameters/SomeParam"]
+			require.True(t, ok)
+			require.Len(t, lookupRef, 1)
+			require.Equal(t, lookupRef[0].Name, "SomeParam")
+		}(i)
 	}
-
-	rolo := NewRolodex(cf)
-	rolo.AddLocalFS(baseDir, fileFS)
-
-	var rootNode yaml.Node
-	_ = yaml.Unmarshal([]byte(yml), &rootNode)
-
-	rolo.SetRootNode(&rootNode)
-
-	err = rolo.IndexTheRolodex()
-	assert.NoError(t, err)
-	rolo.Resolve()
-
-	assert.Len(t, rolo.indexes, 2)
-	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
-	params := rolo.rootIndex.GetAllParametersFromOperations()
-	assert.Len(t, params, 2)
-	lookupPath, ok := params["/test"]
-	assert.True(t, ok)
-	lookupOperation, ok := lookupPath["get"]
-	assert.True(t, ok)
-	assert.Len(t, lookupOperation, 1)
-	lookupRef, ok := lookupOperation["../components.yaml#/components/parameters/SomeParam"]
-	assert.True(t, ok)
-	assert.Len(t, lookupRef, 1)
-	assert.Equal(t, lookupRef[0].Name, "SomeParam")
+	wg.Wait()
 }
