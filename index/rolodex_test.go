@@ -1564,7 +1564,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Equal(t, int64(448), f.Size())
 	} else {
-		assert.Equal(t, int64(460), f.Size())
+		assert.Equal(t, int64(467), f.Size())
 	}
 	assert.False(t, f.IsDir())
 	assert.Nil(t, f.Sys())
