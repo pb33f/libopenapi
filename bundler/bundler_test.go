@@ -6,14 +6,18 @@ package bundler
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
@@ -99,6 +103,45 @@ func TestBundleDocument_Circular(t *testing.T) {
 	}
 
 	assert.Len(t, logEntries, 0)
+}
+
+func TestBundleDocument_MinimalRemoteRefs(t *testing.T) {
+	newRemoteHandlerFunc := func() utils.RemoteURLHandler {
+		c := &http.Client{
+			Timeout: time.Second * 120,
+		}
+
+		return func(url string) (*http.Response, error) {
+			resp, err := c.Get(url)
+			if err != nil {
+				return nil, fmt.Errorf("fetch remote ref: %v", err)
+			}
+
+			return resp, nil
+		}
+	}
+
+	spec, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	baseURL, err := url.Parse("https://raw.githubusercontent.com/felixjung/libopenapi/authed-remote/test_specs/minimal_remote_refs")
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+		BaseURL:               baseURL,
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+		BundleInlineRefs:      true,
+		RemoteURLHandler:      newRemoteHandlerFunc(),
+	})
+	require.NoError(t, err)
+
+	v3Doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	bytes, e := BundleDocument(&v3Doc.Model)
+	assert.NoError(t, e)
+	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
 }
 
 func TestBundleBytes(t *testing.T) {
