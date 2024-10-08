@@ -84,7 +84,7 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 			_, ofNode := utils.FindKeyNodeTop(key, param.Content)
 			if ofNode != nil {
 				for _, ofNodeItem := range ofNode.Content {
-					reqRefProps = extractRequiredReferenceProperties(fulldef, idx, ofNodeItem, name, reqRefProps)
+					reqRefProps = extractRequiredReferenceProperties(fulldef, ofNodeItem, name, reqRefProps)
 				}
 			}
 		}
@@ -97,14 +97,14 @@ func extractDefinitionRequiredRefProperties(schemaNode *yaml.Node, reqRefProps m
 			continue
 		}
 
-		reqRefProps = extractRequiredReferenceProperties(fulldef, idx, requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
+		reqRefProps = extractRequiredReferenceProperties(fulldef, requiredPropDefNode, requiredPropertyNode.Value, reqRefProps)
 	}
 
 	return reqRefProps
 }
 
 // extractRequiredReferenceProperties returns a map of definition names to the property or properties which reference it within a node
-func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
+func extractRequiredReferenceProperties(fulldef string, requiredPropDefNode *yaml.Node, propName string, reqRefProps map[string][]string) map[string][]string {
 	isRef, _, refName := utils.IsNodeRefValue(requiredPropDefNode)
 	if !isRef {
 		_, defItems := utils.FindKeyNodeTop("items", requiredPropDefNode.Content)
@@ -156,7 +156,7 @@ func extractRequiredReferenceProperties(fulldef string, idx *SpecIndex, required
 							abs, _ = filepath.Abs(utils.CheckPathOverlap(filepath.Dir(exp[0]), r[0],
 								string(os.PathSeparator)))
 
-							//abs, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0],
+							// abs, _ = filepath.Abs(filepath.Join(filepath.Dir(exp[0]), r[0],
 							//	string('J')))
 						}
 
