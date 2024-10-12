@@ -246,15 +246,24 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					var fullDefinitionPath string
 					if len(uri) == 2 {
 						if uri[0] == "" {
+							// NOTE: these are local references we are dealing with.
 							fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
 							componentName = value
 						} else {
+							// NOTE: we are dealing with references to other files.
 							if strings.HasPrefix(uri[0], "http") {
+
 								fullDefinitionPath = value
+								// FIXME: here we are actually changing the value in $ref to a
+								// local ref. The whole URL is dropped. It's unclear how this
+								// is supposed to be resolved later.
 								componentName = fmt.Sprintf("#/%s", uri[1])
 							} else {
 								if filepath.IsAbs(uri[0]) {
 									fullDefinitionPath = value
+									// FIXME: here we are actually changing the value in $ref to a
+									// local ref. The whole URL is dropped. It's unclear how this
+									// is supposed to be resolved later.
 									componentName = fmt.Sprintf("#/%s", uri[1])
 								} else {
 									// if the index has a base path, use that to resolve the path
@@ -266,6 +275,9 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 										fullDefinitionPath = fmt.Sprintf("%s#/%s", abs, uri[1])
 										componentName = fmt.Sprintf("#/%s", uri[1])
 									} else {
+										// NOTE: this has to be where the two cases are treated
+										// differently.
+
 										// if the index has a base URL, use that to resolve the path.
 										if index.config.BaseURL != nil && !filepath.IsAbs(defRoot) {
 											var u url.URL
@@ -340,6 +352,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						}
 					}
 
+					// NOTE:
 					_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
 					ref := &Reference{
@@ -423,6 +436,8 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						continue
 					}
 
+					// NOTE: this sets the ref in the path using the full URL and
+					// sub-path.
 					index.allRefs[fullDefinitionPath] = ref
 					found = append(found, ref)
 				}
@@ -696,6 +711,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		if !index.config.ExtractRefsSequentially {
 			go locate(refsToCheck[r], r, mappedRefsInSequence) // run async
 		} else {
+			// NOTE: we are extracting syncronously.
 			locate(refsToCheck[r], r, mappedRefsInSequence) // run synchronously
 		}
 	}
