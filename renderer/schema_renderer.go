@@ -290,7 +290,9 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	}
 
 	// handle objects
-	if slices.Contains(schema.Type, objectType) {
+	if slices.Contains(schema.Type, objectType) || (schema.Properties != nil && schema.Properties.Len() > 0) ||
+		schema.AllOf != nil || (schema.DependentSchemas != nil && schema.DependentSchemas.Len() > 0) || schema.OneOf != nil || schema.AnyOf != nil {
+
 		properties := schema.Properties
 		propertyMap := make(map[string]any)
 
