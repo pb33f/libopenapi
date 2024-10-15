@@ -182,6 +182,9 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 
 		// render the schema as our last hope.
 		renderMap := mg.renderer.RenderSchema(schemaValue)
+		if renderMap == nil {
+			return nil, fmt.Errorf("unable to render schema for mock, it's empty")
+		}
 		return mg.renderMock(renderMap), nil
 	}
 	return nil, nil
