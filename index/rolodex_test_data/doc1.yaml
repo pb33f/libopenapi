@@ -21,6 +21,8 @@ paths:
             application/json:
               schema:
                 $ref: 'components.yaml#/components/schemas/Ding'
+  /external_operation:
+    $ref: 'operations.yaml#/external_operation'
 components:
   schemas:
     Thing:
