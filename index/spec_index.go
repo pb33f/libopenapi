@@ -1000,6 +1000,14 @@ func (index *SpecIndex) GetOperationCount() int {
 				method = index.pathsNode.Content[x+1]
 			}
 
+			// is the path a ref?
+			if isRef, _, ref := utils.IsNodeRefValue(method); isRef {
+				pNode := seekRefEnd(index, ref)
+				if pNode != nil {
+					method = pNode.Node
+				}
+			}
+
 			// extract methods for later use.
 			for y, m := range method.Content {
 				if y%2 == 0 {
