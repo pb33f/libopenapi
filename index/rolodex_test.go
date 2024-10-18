@@ -4,8 +4,6 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -19,6 +17,9 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRolodex_NewRolodex(t *testing.T) {
@@ -1540,15 +1541,16 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 
 	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.NotNil(t, rolo.GetRootIndex())
-	assert.Len(t, rolo.GetIndexes(), 10)
-	assert.Len(t, rolo.GetAllReferences(), 8)
-	assert.Len(t, rolo.GetAllMappedReferences(), 8)
+	assert.Len(t, rolo.GetIndexes(), 11)
+	assert.Len(t, rolo.GetAllReferences(), 9)
+	assert.Len(t, rolo.GetAllMappedReferences(), 9)
+	assert.Len(t, rolo.GetRootIndex().GetAllPaths(), 3)
 
 	lineCount := rolo.GetFullLineCount()
-	assert.Equal(t, int64(167), lineCount, "total line count in the rolodex is wrong")
+	assert.Equal(t, int64(174), lineCount, "total line count in the rolodex is wrong")
 
 	assert.NoError(t, err)
-	assert.Len(t, rolo.indexes, 10)
+	assert.Len(t, rolo.indexes, 11)
 
 	// open components.yaml
 	f, rerr := rolo.Open("components.yaml")

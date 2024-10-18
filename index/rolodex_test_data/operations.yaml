@@ -1,0 +1,5 @@
+external_operation:
+  get:
+    responses:
+      200:
+        description: "OK"
