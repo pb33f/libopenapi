@@ -55,6 +55,8 @@ x-milk: cold`
 	assert.NoError(t, err)
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 
 	path := n.FindPath("/some/path").Value
 	assert.NotNil(t, path)
