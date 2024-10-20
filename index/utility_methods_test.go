@@ -12,6 +12,22 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func Test_seekRefEnd(t *testing.T) {
+
+	d := `cob: wob
+rob:
+  $ref: "#/cob"
+bill:
+  $ref: "#/rob"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+	idx := NewSpecIndex(&rootNode)
+	r := seekRefEnd(idx, "#/rob")
+	assert.NotNil(t, r)
+
+}
+
 func TestGenerateCleanSpecConfigBaseURL(t *testing.T) {
 	u, _ := url.Parse("https://pb33f.io/things/stuff")
 	path := "."
