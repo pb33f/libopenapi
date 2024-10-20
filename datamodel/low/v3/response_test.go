@@ -45,6 +45,8 @@ default:
 
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 
 	assert.NoError(t, err)
 	assert.Equal(t, "default response", n.Default.Value.Description.Value)
@@ -293,6 +295,8 @@ links:
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 }
 
 //

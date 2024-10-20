@@ -25,6 +25,8 @@ type License struct {
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
+	index      *index.SpecIndex
+	context    context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -39,7 +41,19 @@ func (l *License) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 	no := low.ExtractNodes(ctx, root)
 	l.Extensions = low.ExtractExtensions(root)
 	l.Nodes = no
+	l.context = ctx
+	l.index = idx
 	return nil
+}
+
+// GetIndex will return the index.SpecIndex instance attached to the License object
+func (l *License) GetIndex() *index.SpecIndex {
+	return l.index
+}
+
+// GetContext will return the context.Context instance used when building the License object
+func (l *License) GetContext() context.Context {
+	return l.context
 }
 
 // GetRootNode will return the root yaml node of the License object

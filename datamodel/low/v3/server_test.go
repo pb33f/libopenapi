@@ -50,6 +50,8 @@ variables:
 		low.GenerateHashString(s.Value))
 
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 
 	// check nodes on variables
 	for v := range n.Variables.Value.ValuesFromOldest() {

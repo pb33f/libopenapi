@@ -27,6 +27,8 @@ type Example struct {
 	Extensions    *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode       *yaml.Node
 	RootNode      *yaml.Node
+	index         *index.SpecIndex
+	context       context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -68,7 +70,7 @@ func (ex *Example) Hash() [32]byte {
 }
 
 // Build extracts extensions and example value
-func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	ex.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	ex.RootNode = root
@@ -76,6 +78,9 @@ func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index
 	ex.Reference = new(low.Reference)
 	ex.Nodes = low.ExtractNodes(ctx, root)
 	ex.Extensions = low.ExtractExtensions(root)
+	ex.context = ctx
+	ex.index = idx
+
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
 
 	if vn != nil {
@@ -101,4 +106,14 @@ func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index
 // GetExtensions will return Example extensions to satisfy the HasExtensions interface.
 func (ex *Example) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return ex.Extensions
+}
+
+// GetIndex will return the index.SpecIndex instance attached to the Example object
+func (ex *Example) GetIndex() *index.SpecIndex {
+	return ex.index
+}
+
+// GetContext will return the context.Context instance used when building the Example object
+func (ex *Example) GetContext() context.Context {
+	return ex.context
 }

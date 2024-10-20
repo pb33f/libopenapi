@@ -30,18 +30,33 @@ type SecurityRequirement struct {
 	KeyNode                  *yaml.Node
 	RootNode                 *yaml.Node
 	ContainsEmptyRequirement bool // if a requirement is empty (this means it's optional)
+	index                    *index.SpecIndex
+	context                  context.Context
 	*low.Reference
 	low.NodeMap
 }
 
+// GetContext will return the context.Context instance used when building the SecurityRequirement object
+func (s *SecurityRequirement) GetContext() context.Context {
+	return s.context
+}
+
+// GetIndex will return the index.SpecIndex instance attached to the SecurityRequirement object
+func (s *SecurityRequirement) GetIndex() *index.SpecIndex {
+	return s.index
+}
+
 // Build will extract security requirements from the node (the structure is odd, to be honest)
-func (s *SecurityRequirement) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (s *SecurityRequirement) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	s.RootNode = root
 	utils.CheckForMergeNodes(root)
 	s.Reference = new(low.Reference)
 	s.Nodes = low.ExtractNodes(ctx, root)
+	s.context = ctx
+	s.index = idx
+
 	var labelNode *yaml.Node
 	valueMap := orderedmap.New[low.KeyReference[string], low.ValueReference[[]low.ValueReference[string]]]()
 	var arr []low.ValueReference[string]

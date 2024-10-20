@@ -183,6 +183,9 @@ func Test_Schema(t *testing.T) {
 	assert.True(t, v.Value.Schema().ExclusiveMinimum.Value.A)
 	assert.True(t, v.Value.Schema().ExclusiveMaximum.Value.A)
 
+	assert.NotNil(t, sch.GetContext())
+	assert.Nil(t, sch.GetIndex())
+
 	j := v.Value.Schema().FindProperty("somethingBProp").Value.Schema()
 	k := v.Value.Schema().FindProperty("somethingBProp").Value
 

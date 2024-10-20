@@ -39,6 +39,8 @@ type Components struct {
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
+	index           *index.SpecIndex
+	context         context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -51,6 +53,16 @@ type componentBuildResult[T any] struct {
 type componentInput struct {
 	node         *yaml.Node
 	currentLabel *yaml.Node
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Components object
+func (co *Components) GetIndex() *index.SpecIndex {
+	return co.index
+}
+
+// GetContext returns the context.Context instance used when building the Components object
+func (co *Components) GetContext() context.Context {
+	return co.context
 }
 
 // GetExtensions returns all Components extensions and satisfies the low.HasExtensions interface.
@@ -152,6 +164,9 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 	low.ExtractExtensionNodes(ctx, co.Extensions, co.Nodes)
 	co.RootNode = root
 	co.KeyNode = root
+	co.index = idx
+	co.context = ctx
+
 	var reterr error
 	var ceMutex sync.Mutex
 	var wg sync.WaitGroup

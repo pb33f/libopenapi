@@ -108,6 +108,9 @@ func TestComponents_Build_Success(t *testing.T) {
 
 	assert.Equal(t, "c3f868ba89e4c5260831e1fc99dfcacc6e7e63299430bbb88dcfffd06d633e1c",
 		low.GenerateHashString(&n))
+
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestComponents_Build_Success_Skip(t *testing.T) {

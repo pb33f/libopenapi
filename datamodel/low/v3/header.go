@@ -34,8 +34,20 @@ type Header struct {
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
+	index           *index.SpecIndex
+	context         context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Header object
+func (h *Header) GetIndex() *index.SpecIndex {
+	return h.index
+}
+
+// GetContext returns the context.Context instance used when building the Header object
+func (h *Header) GetContext() context.Context {
+	return h.context
 }
 
 // FindExtension will attempt to locate an extension with the supplied name
@@ -107,6 +119,9 @@ func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 	h.Reference = new(low.Reference)
 	h.Nodes = low.ExtractNodes(ctx, root)
 	h.Extensions = low.ExtractExtensions(root)
+	h.context = ctx
+	h.index = idx
+
 	low.ExtractExtensionNodes(ctx, h.Extensions, h.Nodes)
 	// handle example if set.
 	_, expLabel, expNode := utils.FindKeyNodeFull(base.ExampleLabel, root.Content)

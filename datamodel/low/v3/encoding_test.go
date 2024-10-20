@@ -45,6 +45,8 @@ explode: true`
 	assert.Equal(t, true, header.Value.AllowEmptyValue.Value)
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 }
 
 func TestEncoding_Build_Error(t *testing.T) {

@@ -39,8 +39,20 @@ type Parameter struct {
 	Examples        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
 	Content         low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	index           *index.SpecIndex
+	context         context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Parameter object.
+func (p *Parameter) GetIndex() *index.SpecIndex {
+	return p.index
+}
+
+// GetContext returns the context.Context instance used when building the Parameter
+func (p *Parameter) GetContext() context.Context {
+	return p.context
 }
 
 // GetRootNode returns the root yaml node of the Parameter object.
@@ -82,6 +94,8 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	p.Reference = new(low.Reference)
 	p.Nodes = low.ExtractNodes(ctx, root)
 	p.Extensions = low.ExtractExtensions(root)
+	p.index = idx
+	p.context = ctx
 	low.ExtractExtensionNodes(ctx, p.Extensions, p.Nodes)
 
 	// handle example if set.

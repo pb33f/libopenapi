@@ -26,8 +26,20 @@ type OAuthFlows struct {
 	Extensions        *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode           *yaml.Node
 	RootNode          *yaml.Node
+	index             *index.SpecIndex
+	context           context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the OAuthFlows object.
+func (o *OAuthFlows) GetIndex() *index.SpecIndex {
+	return o.index
+}
+
+// GetContext returns the context.Context instance used when building the OAuthFlows object.
+func (o *OAuthFlows) GetContext() context.Context {
+	return o.context
 }
 
 // GetExtensions returns all OAuthFlows extensions and satisfies the low.HasExtensions interface.
@@ -59,6 +71,8 @@ func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	o.Reference = new(low.Reference)
 	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)
+	o.index = idx
+	o.context = ctx
 
 	v, vErr := low.ExtractObject[*OAuthFlow](ctx, ImplicitLabel, root, idx)
 	if vErr != nil {
@@ -114,8 +128,20 @@ type OAuthFlow struct {
 	Scopes           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
 	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	RootNode         *yaml.Node
+	index            *index.SpecIndex
+	context          context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the OAuthFlow object.
+func (o *OAuthFlow) GetIndex() *index.SpecIndex {
+	return o.index
+}
+
+// GetContext returns the context.Context instance used when building the OAuthFlow object.
+func (o *OAuthFlow) GetContext() context.Context {
+	return o.context
 }
 
 // GetExtensions returns all OAuthFlow extensions and satisfies the low.HasExtensions interface.
@@ -143,6 +169,8 @@ func (o *OAuthFlow) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 	o.Reference = new(low.Reference)
 	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)
+	o.index = idx
+	o.context = ctx
 	low.ExtractExtensionNodes(ctx, o.Extensions, o.Nodes)
 
 	if o.Scopes.Value != nil && o.Scopes.Value.Len() > 0 {

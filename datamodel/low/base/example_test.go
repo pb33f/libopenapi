@@ -40,6 +40,8 @@ x-cake: hot`
 	assert.Equal(t, "hot", xCake)
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestExample_Build_Success_Simple(t *testing.T) {

@@ -25,8 +25,20 @@ type RequestBody struct {
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
+	index       *index.SpecIndex
+	context     context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the RequestBody object.
+func (rb *RequestBody) GetIndex() *index.SpecIndex {
+	return rb.index
+}
+
+// GetContext returns the context.Context instance used when building the RequestBody object.
+func (rb *RequestBody) GetContext() context.Context {
+	return rb.context
 }
 
 // GetRootNode returns the root yaml node of the RequestBody object.
@@ -63,6 +75,9 @@ func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 	rb.Reference = new(low.Reference)
 	rb.Nodes = low.ExtractNodes(ctx, root)
 	rb.Extensions = low.ExtractExtensions(root)
+	rb.index = idx
+	rb.context = ctx
+
 	low.ExtractExtensionNodes(ctx, rb.Extensions, rb.Nodes)
 
 	// handle content, if set.

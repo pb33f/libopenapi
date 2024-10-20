@@ -27,6 +27,8 @@ type ExternalDoc struct {
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
+	index       *index.SpecIndex
+	context     context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -55,6 +57,8 @@ func (ex *ExternalDoc) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 	ex.Reference = new(low.Reference)
 	ex.Nodes = low.ExtractNodes(ctx, root)
 	ex.Extensions = low.ExtractExtensions(root)
+	ex.context = ctx
+	ex.index = idx
 	return nil
 }
 
@@ -71,4 +75,14 @@ func (ex *ExternalDoc) Hash() [32]byte {
 	}
 	f = append(f, low.HashExtensions(ex.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the ExternalDoc object
+func (ex *ExternalDoc) GetIndex() *index.SpecIndex {
+	return ex.index
+}
+
+// GetContext returns the context.Context instance used when building the ExternalDoc object
+func (ex *ExternalDoc) GetContext() context.Context {
+	return ex.context
 }

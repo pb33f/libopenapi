@@ -46,6 +46,8 @@ x-requesto: presto`
 	_ = n.FindExtension("x-requesto").Value.Decode(&xRequesto)
 	assert.Equal(t, "presto", xRequesto)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 }
 
 func TestRequestBody_Fail(t *testing.T) {

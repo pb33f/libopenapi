@@ -76,6 +76,8 @@ servers:
 	assert.Equal(t, "write:books", n.FindSecurityRequirement("books")[1].Value)
 	assert.Len(t, n.Servers.Value, 1)
 	assert.Equal(t, "https://pb33f.io", n.Servers.Value[0].Value.URL.Value)
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 }
 
 func TestOperation_Build_FailDocs(t *testing.T) {

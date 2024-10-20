@@ -28,8 +28,20 @@ type Response struct {
 	Links       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
+	index       *index.SpecIndex
+	context     context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Response object.
+func (r *Response) GetIndex() *index.SpecIndex {
+	return r.index
+}
+
+// GetContext returns the context.Context instance used when building the Response object.
+func (r *Response) GetContext() context.Context {
+	return r.context
 }
 
 // GetRootNode returns the root yaml node of the Response object.
@@ -76,6 +88,9 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	r.Reference = new(low.Reference)
 	r.Nodes = low.ExtractNodes(ctx, root)
 	r.Extensions = low.ExtractExtensions(root)
+	r.index = idx
+	r.context = ctx
+
 	low.ExtractExtensionNodes(ctx, r.Extensions, r.Nodes)
 
 	// extract headers

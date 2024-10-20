@@ -40,8 +40,20 @@ type Responses struct {
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
+	index      *index.SpecIndex
+	context    context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Responses object.
+func (r *Responses) GetIndex() *index.SpecIndex {
+	return r.index
+}
+
+// GetContext returns the context.Context instance used when building the Responses object.
+func (r *Responses) GetContext() context.Context {
+	return r.context
 }
 
 // GetRootNode returns the root yaml node of the Responses object.
@@ -67,6 +79,9 @@ func (r *Responses) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	r.Reference = new(low.Reference)
 	r.Nodes = low.ExtractNodes(ctx, root)
 	r.Extensions = low.ExtractExtensions(root)
+	r.index = idx
+	r.context = ctx
+
 	low.ExtractExtensionNodes(ctx, r.Extensions, r.Nodes)
 	utils.CheckForMergeNodes(root)
 	if utils.IsNodeMap(root) {

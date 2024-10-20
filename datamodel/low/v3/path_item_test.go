@@ -84,4 +84,6 @@ summary: it's another path item`
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
