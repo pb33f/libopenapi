@@ -81,6 +81,8 @@ x-milk: please`
 	assert.Equal(t, "please", xMilk)
 	assert.Equal(t, "https://pb33f.io", n.Flows.Value.Implicit.Value.TokenUrl.Value)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestSecurityScheme_Build_Fail(t *testing.T) {
