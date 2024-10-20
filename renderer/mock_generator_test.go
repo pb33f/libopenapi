@@ -412,6 +412,22 @@ properties:
 	assert.Equal(t, "perhaps the best cyberpunk movie ever made.", m["description"].(string))
 }
 
+func TestMockGenerator_EmptyMock(t *testing.T) {
+
+	mg := NewMockGenerator(YAML)
+
+	sp := &lowbase.SchemaProxy{}
+	sp.Build(context.Background(), &yaml.Node{}, &yaml.Node{}, nil)
+
+	mock, err := mg.GenerateMock(&fakeMockable{
+		Schema:   base.NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{Value: sp}),
+		Example:  nil,
+		Examples: nil,
+	}, "")
+	assert.Error(t, err)
+	assert.Nil(t, mock)
+}
+
 func TestMockGenerator_GeneratePropertyExamples(t *testing.T) {
 	fake := createFakeMock(`type: object
 required:

@@ -225,6 +225,9 @@ scopes:
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
+	assert.NotNil(t, n2.GetContext())
+	assert.NotNil(t, n2.GetIndex())
+
 }
 
 func TestOAuthFlows_Hash(t *testing.T) {
