@@ -1054,6 +1054,7 @@ schema:
 	_ = sch.Const.GetValueNode().Decode(&cnst)
 
 	assert.Equal(t, 5, cnst)
+	assert.NotNil(t, sch.Hash())
 }
 
 func TestExtractSchema_Ref(t *testing.T) {
