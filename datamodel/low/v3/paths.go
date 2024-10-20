@@ -29,8 +29,20 @@ type Paths struct {
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
+	index      *index.SpecIndex
+	context    context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Paths object.
+func (p *Paths) GetIndex() *index.SpecIndex {
+	return p.index
+}
+
+// GetContext returns the context.Context instance used when building the Paths object.
+func (p *Paths) GetContext() context.Context {
+	return p.context
 }
 
 // GetRootNode returns the root yaml node of the Paths object.
@@ -85,6 +97,9 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	p.Reference = new(low.Reference)
 	p.Nodes = low.ExtractNodes(ctx, nil) // don't extract anything.
 	p.Extensions = low.ExtractExtensions(root)
+	p.index = idx
+	p.context = ctx
+
 	low.ExtractExtensionNodes(ctx, p.Extensions, p.Nodes)
 
 	pathsMap, err := extractPathItemsMap(ctx, root, idx)

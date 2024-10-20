@@ -34,6 +34,8 @@ type Info struct {
 	Extensions     *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode        *yaml.Node
 	RootNode       *yaml.Node
+	index          *index.SpecIndex
+	context        context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -67,6 +69,8 @@ func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	i.Reference = new(low.Reference)
 	i.Nodes = low.ExtractNodes(ctx, root)
 	i.Extensions = low.ExtractExtensions(root)
+	i.index = idx
+	i.context = ctx
 
 	// extract contact
 	contact, _ := low.ExtractObject[*Contact](ctx, ContactLabel, root, idx)
@@ -76,6 +80,16 @@ func (i *Info) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	lic, _ := low.ExtractObject[*License](ctx, LicenseLabel, root, idx)
 	i.License = lic
 	return nil
+}
+
+// GetIndex will return the index.SpecIndex instance attached to the Info object
+func (i *Info) GetIndex() *index.SpecIndex {
+	return i.index
+}
+
+// GetContext will return the context.Context instance used when building the Info object
+func (i *Info) GetContext() context.Context {
+	return i.context
 }
 
 // Hash will return a consistent SHA256 Hash of the Info object

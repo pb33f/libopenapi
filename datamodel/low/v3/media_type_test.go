@@ -59,6 +59,8 @@ x-rock: and roll`
 	assert.Equal(t, "there?", whereExample)
 	assert.True(t, n.FindPropertyEncoding("chicken").Value.Explode.Value)
 	assert.Equal(t, n.GetAllExamples().Len(), 2)
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestMediaType_Build_Fail_Schema(t *testing.T) {

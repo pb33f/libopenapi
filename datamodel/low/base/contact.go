@@ -24,17 +24,31 @@ type Contact struct {
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
+	index      *index.SpecIndex
+	context    context.Context
 	*low.Reference
 	low.NodeMap
 }
 
-func (c *Contact) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (c *Contact) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	c.KeyNode = keyNode
 	c.RootNode = root
 	c.Reference = new(low.Reference)
 	c.Nodes = low.ExtractNodes(ctx, root)
 	c.Extensions = low.ExtractExtensions(root)
+	c.context = ctx
+	c.index = idx
 	return nil
+}
+
+// GetIndex will return the index.SpecIndex instance attached to the Contact object
+func (c *Contact) GetIndex() *index.SpecIndex {
+	return c.index
+}
+
+// GetContext will return the context.Context instance used when building the Contact object
+func (c *Contact) GetContext() context.Context {
+	return c.context
 }
 
 // GetRootNode will return the root yaml node of the Contact object

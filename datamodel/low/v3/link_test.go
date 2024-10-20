@@ -55,6 +55,8 @@ x-linky: slinky
 	assert.NotNil(t, n.Server.Value)
 	assert.Equal(t, "https://pb33f.io", n.Server.Value.URL.Value)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestLink_Build_Fail(t *testing.T) {

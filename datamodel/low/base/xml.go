@@ -1,6 +1,7 @@
 package base
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"strings"
@@ -29,6 +30,8 @@ type XML struct {
 	Wrapped    low.NodeReference[bool]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	RootNode   *yaml.Node
+	index      *index.SpecIndex
+	context    context.Context
 	*low.Reference
 	low.NodeMap
 }

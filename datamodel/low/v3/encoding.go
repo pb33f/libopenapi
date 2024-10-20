@@ -26,8 +26,20 @@ type Encoding struct {
 	AllowReserved low.NodeReference[bool]
 	KeyNode       *yaml.Node
 	RootNode      *yaml.Node
+	index         *index.SpecIndex
+	context       context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Encoding object
+func (en *Encoding) GetIndex() *index.SpecIndex {
+	return en.index
+}
+
+// GetContext returns the context.Context instance used when building the Encoding object
+func (en *Encoding) GetContext() context.Context {
+	return en.context
 }
 
 // FindHeader attempts to locate a Header with the supplied name
@@ -70,6 +82,9 @@ func (en *Encoding) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	utils.CheckForMergeNodes(root)
 	en.Nodes = low.ExtractNodes(ctx, root)
 	en.Reference = new(low.Reference)
+	en.index = idx
+	en.context = ctx
+
 	headers, hL, hN, err := low.ExtractMap[*Header](ctx, HeadersLabel, root, idx)
 	if err != nil {
 		return err

@@ -24,8 +24,20 @@ type Server struct {
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode     *yaml.Node
 	RootNode    *yaml.Node
+	index       *index.SpecIndex
+	context     context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Server object.
+func (s *Server) GetIndex() *index.SpecIndex {
+	return s.index
+}
+
+// GetContext returns the context.Context instance used when building the Server object.
+func (s *Server) GetContext() context.Context {
+	return s.context
 }
 
 // GetRootNode returns the root yaml node of the Server object.
@@ -44,7 +56,7 @@ func (s *Server) FindVariable(serverVar string) *low.ValueReference[*ServerVaria
 }
 
 // Build will extract server variables from the supplied node.
-func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.SpecIndex) error {
+func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	s.KeyNode = keyNode
 	root = utils.NodeAlias(root)
 	s.RootNode = root
@@ -52,6 +64,9 @@ func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, _ *index.S
 	s.Reference = new(low.Reference)
 	s.Nodes = low.ExtractNodes(ctx, root)
 	s.Extensions = low.ExtractExtensions(root)
+	s.context = ctx
+	s.index = idx
+
 	low.ExtractExtensionNodes(ctx, s.Extensions, s.Nodes)
 
 	kn, vars := utils.FindKeyNode(VariablesLabel, root.Content)

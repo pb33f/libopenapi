@@ -42,6 +42,8 @@ x-coffee: tasty`
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestTag_Build_Error(t *testing.T) {

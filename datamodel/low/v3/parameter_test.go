@@ -76,6 +76,8 @@ content:
 	assert.Equal(t, "she is my heart.", n.Schema.Value.Schema().FindProperty("michelle").Value.Schema().Description.Value)
 	assert.Equal(t, "she is my song.", n.Schema.Value.Schema().FindProperty("meddy").Value.Schema().Description.Value)
 	assert.Equal(t, "he is my champion.", n.Schema.Value.Schema().FindProperty("maddy").Value.Schema().Description.Value)
+	assert.NotNil(t, n.GetIndex())
+	assert.NotNil(t, n.GetContext())
 
 	var m map[string]any
 	err = n.Example.Value.Decode(&m)

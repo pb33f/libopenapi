@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -33,11 +34,12 @@ x-drink: beer`
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 
 	l := License{}
-	l.Build(nil, lNode.Content[0], rNode.Content[0], nil)
+	l.Build(context.Background(), lNode.Content[0], rNode.Content[0], nil)
 	assert.NotNil(t, l.GetRootNode())
 	assert.NotNil(t, l.GetKeyNode())
 	assert.Equal(t, 1, l.GetExtensions().Len())
-
+	assert.Nil(t, l.GetIndex())
+	assert.NotNil(t, l.GetContext())
 }
 
 func TestLicense_WithIdentifier_Hash(t *testing.T) {
