@@ -70,6 +70,8 @@ x-milk: cold`
 	assert.Equal(t, "head method", path.Head.Value.Description.Value)
 	assert.Equal(t, "trace method", path.Trace.Value.Description.Value)
 	assert.Len(t, path.Parameters.Value, 1)
+	assert.NotNil(t, path.GetContext())
+	assert.NotNil(t, path.GetIndex())
 
 	var xMilk string
 	_ = n.FindExtension("x-milk").Value.Decode(&xMilk)

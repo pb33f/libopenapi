@@ -29,8 +29,20 @@ type MediaType struct {
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode    *yaml.Node
 	RootNode   *yaml.Node
+	index      *index.SpecIndex
+	context    context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the MediaType object.
+func (mt *MediaType) GetIndex() *index.SpecIndex {
+	return mt.index
+}
+
+// GetContext returns the context.Context instance used when building the MediaType object.
+func (mt *MediaType) GetContext() context.Context {
+	return mt.context
 }
 
 // GetExtensions returns all MediaType extensions and satisfies the low.HasExtensions interface.
@@ -77,6 +89,9 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	mt.Reference = new(low.Reference)
 	mt.Nodes = low.ExtractNodes(ctx, root)
 	mt.Extensions = low.ExtractExtensions(root)
+	mt.index = idx
+	mt.context = ctx
+
 	low.ExtractExtensionNodes(ctx, mt.Extensions, mt.Nodes)
 
 	// handle example if set.

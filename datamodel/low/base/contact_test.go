@@ -4,6 +4,7 @@
 package base
 
 import (
+	"context"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -35,10 +36,12 @@ x-beer: cold`
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 
 	c := Contact{}
-	c.Build(nil, lNode.Content[0], rNode.Content[0], nil)
+	c.Build(context.Background(), lNode.Content[0], rNode.Content[0], nil)
 	assert.NotNil(t, c.GetRootNode())
 	assert.NotNil(t, c.GetKeyNode())
 	assert.Equal(t, 1, c.GetExtensions().Len())
 	assert.Equal(t, 1, c.GetExtensions().Len())
+	assert.Nil(t, c.GetIndex())
+	assert.NotNil(t, c.GetContext())
 
 }

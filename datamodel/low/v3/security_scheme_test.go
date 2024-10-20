@@ -35,6 +35,8 @@ func TestSecurityRequirement_Build(t *testing.T) {
 	assert.Equal(t, "read:me", n.FindRequirement("something")[0].Value)
 	assert.Equal(t, "write:me", n.FindRequirement("something")[1].Value)
 	assert.Nil(t, n.FindRequirement("none"))
+	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetIndex())
 }
 
 func TestSecurityScheme_Build(t *testing.T) {

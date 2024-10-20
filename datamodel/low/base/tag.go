@@ -28,8 +28,20 @@ type Tag struct {
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
+	index        *index.SpecIndex
+	context      context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Tag object
+func (t *Tag) GetIndex() *index.SpecIndex {
+	return t.index
+}
+
+// GetContext returns the context.Context instance used when building the Tag object
+func (t *Tag) GetContext() context.Context {
+	return t.context
 }
 
 // FindExtension returns a ValueReference containing the extension value, if found.
@@ -56,6 +68,9 @@ func (t *Tag) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.Sp
 	t.Reference = new(low.Reference)
 	t.Nodes = low.ExtractNodes(ctx, root)
 	t.Extensions = low.ExtractExtensions(root)
+	t.index = idx
+	t.context = ctx
+
 	low.ExtractExtensionNodes(ctx, t.Extensions, t.Nodes)
 
 	// extract externalDocs

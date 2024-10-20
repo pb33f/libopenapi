@@ -39,8 +39,20 @@ type Operation struct {
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
+	index        *index.SpecIndex
+	context      context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Operation object.
+func (o *Operation) GetIndex() *index.SpecIndex {
+	return o.index
+}
+
+// GetContext returns the context.Context instance used when building the Operation object.
+func (o *Operation) GetContext() context.Context {
+	return o.context
 }
 
 // FindCallback will attempt to locate a Callback instance by the supplied name.
@@ -80,6 +92,8 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	o.Reference = new(low.Reference)
 	o.Nodes = low.ExtractNodes(ctx, root)
 	o.Extensions = low.ExtractExtensions(root)
+	o.index = idx
+	o.context = ctx
 	low.ExtractExtensionNodes(ctx, o.Extensions, o.Nodes)
 
 	// extract externalDocs

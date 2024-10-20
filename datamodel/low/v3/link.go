@@ -37,8 +37,20 @@ type Link struct {
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
+	index        *index.SpecIndex
+	context      context.Context
 	*low.Reference
 	low.NodeMap
+}
+
+// GetIndex returns the index.SpecIndex instance attached to the Link object
+func (l *Link) GetIndex() *index.SpecIndex {
+	return l.index
+}
+
+// GetContext returns the context.Context instance used when building the Link object
+func (l *Link) GetContext() context.Context {
+	return l.context
 }
 
 // GetExtensions returns all Link extensions and satisfies the low.HasExtensions interface.
@@ -75,6 +87,8 @@ func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 	l.Reference = new(low.Reference)
 	l.Nodes = low.ExtractNodes(ctx, root)
 	l.Extensions = low.ExtractExtensions(root)
+	l.index = idx
+	l.context = ctx
 	low.ExtractExtensionNodes(ctx, l.Extensions, l.Nodes)
 
 	// extract parameter nodes.
