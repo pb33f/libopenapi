@@ -11,14 +11,14 @@ import (
 // is returned, otherwise nil is returned.
 func (r *Rolodex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
 	f := make(chan *NodeOrigin)
-	d := make(chan bool)
+	d := make(chan struct{})
 	findNode := func(i int, node *yaml.Node) {
 		n := r.indexes[i].FindNodeOrigin(node)
 		if n != nil {
 			f <- n
 			return
 		}
-		d <- true
+		d <- struct{}{}
 	}
 	for i := range r.indexes {
 		go findNode(i, node)

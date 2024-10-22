@@ -6,7 +6,6 @@ package index
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -19,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // CanBeIndexed is an interface that allows a file to be indexed.
@@ -194,7 +195,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 	indexRolodexFile := func(
 		location string, fs fs.FS,
-		doneChan chan bool,
+		doneChan chan struct{},
 		errChan chan error,
 		indexChan chan *SpecIndex) {
 
@@ -241,17 +242,17 @@ func (r *Rolodex) IndexTheRolodex() error {
 			if wait {
 				wg.Wait()
 			}
-			doneChan <- true
+			doneChan <- struct{}{}
 			return
 		} else {
 			errChan <- errors.New("rolodex file system is not a RolodexFS")
-			doneChan <- true
+			doneChan <- struct{}{}
 		}
 	}
 
 	indexingCompleted := 0
 	totalToIndex := len(r.localFS) + len(r.remoteFS)
-	doneChan := make(chan bool)
+	doneChan := make(chan struct{})
 	errChan := make(chan error)
 	indexChan := make(chan *SpecIndex)
 
