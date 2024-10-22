@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pb33f/libopenapi/datamodel"
 
@@ -296,6 +297,9 @@ type SpecIndex struct {
 	nodeMap                             map[int]map[int]*yaml.Node
 	nodeMapCompleted                    chan bool
 	pendingResolve                      []refMap
+	highModelCache                      *sync.Map
+	highModelCacheHits                  atomic.Uint64
+	highModelCacheMisses                atomic.Uint64
 }
 
 // GetResolver returns the resolver for this index.
@@ -306,10 +310,6 @@ func (index *SpecIndex) GetResolver() *Resolver {
 // GetConfig returns the SpecIndexConfig for this index.
 func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 	return index.config
-}
-
-func (index *SpecIndex) SetCache(sync *sync.Map) {
-	index.cache = sync
 }
 
 func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
