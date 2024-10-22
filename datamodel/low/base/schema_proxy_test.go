@@ -46,6 +46,7 @@ description: something`
 		low.GenerateHashString(&sch))
 
 	assert.Equal(t, 1, orderedmap.Len(sch.Schema().GetExtensions()))
+	assert.Nil(t, sch.GetIndex())
 }
 
 func TestSchemaProxy_Build_CheckRef(t *testing.T) {

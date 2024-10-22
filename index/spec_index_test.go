@@ -1808,3 +1808,14 @@ func Test_GetAllComponentSchemas(t *testing.T) {
 	index := SpecIndex{}
 	assert.Nil(t, index.GetAllComponentSchemas())
 }
+
+func TestSpecIndex_Cache(t *testing.T) {
+
+	idx := new(SpecIndex)
+	assert.NotNil(t, idx.GetHighCache())
+	assert.NotNil(t, uint(1), idx.HighCacheHit())
+	assert.NotNil(t, uint(1), idx.HighCacheMiss())
+	assert.NotNil(t, uint(1), idx.GetHighCacheHits())
+	assert.NotNil(t, uint(1), idx.GetHighCacheMisses())
+
+}
