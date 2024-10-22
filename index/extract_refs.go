@@ -641,9 +641,9 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 	var found []*Reference
 
 	// run this async because when things get recursive, it can take a while
-	var c chan bool
+	var c chan struct{}
 	if !index.config.ExtractRefsSequentially {
-		c = make(chan bool)
+		c = make(chan struct{})
 	}
 
 	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
@@ -657,7 +657,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			}
 			sequence[refIndex] = rm
 			if !index.config.ExtractRefsSequentially {
-				c <- true
+				c <- struct{}{}
 			}
 			index.refLock.Unlock()
 		} else {
@@ -717,7 +717,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 				index.errorLock.Unlock()
 			}
 			if !index.config.ExtractRefsSequentially {
-				c <- true
+				c <- struct{}{}
 			}
 		}
 	}

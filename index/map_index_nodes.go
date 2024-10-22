@@ -61,7 +61,7 @@ func (index *SpecIndex) GetNode(line int, column int) (*yaml.Node, bool) {
 
 // MapNodes maps all nodes in the document to a map of line/column to node.
 func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
-	cruising := make(chan bool)
+	cruising := make(chan struct{})
 	nodeChan := make(chan *nodeMap)
 	go func(nodeChan chan *nodeMap) {
 		done := false
@@ -69,7 +69,7 @@ func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
 			node, ok := <-nodeChan
 			if !ok {
 				done = true
-				cruising <- true
+				cruising <- struct{}{}
 				return
 			}
 			index.nodeMapLock.Lock()
@@ -83,7 +83,7 @@ func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
 	go enjoyALuxuryCruise(rootNode, nodeChan, true)
 	<-cruising
 	close(cruising)
-	index.nodeMapCompleted <- true
+	index.nodeMapCompleted <- struct{}{}
 	close(index.nodeMapCompleted)
 }
 
