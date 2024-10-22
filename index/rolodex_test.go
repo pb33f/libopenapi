@@ -35,7 +35,7 @@ func TestRolodex_NewRolodex(t *testing.T) {
 	assert.Len(t, rolo.GetIndexes(), 0)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.NotNil(t, rolo.GetConfig())
-	rolo.ClearIndexCaches()
+
 }
 
 func TestRolodex_NoFS(t *testing.T) {
@@ -89,6 +89,9 @@ func TestRolodex_LocalNativeFS(t *testing.T) {
 	f, rerr := rolo.Open("spec.yaml")
 	assert.NoError(t, rerr)
 	assert.Equal(t, "hip", f.GetContent())
+	rolo.rootIndex = &SpecIndex{}
+	rolo.indexes = append(rolo.indexes, rolo.rootIndex)
+	rolo.ClearIndexCaches()
 
 }
 

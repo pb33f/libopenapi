@@ -679,7 +679,9 @@ func (r *Rolodex) GetFullLineCount() int64 {
 }
 
 func (r *Rolodex) ClearIndexCaches() {
-	r.rootIndex.GetHighCache().Clear()
+	if r.rootIndex != nil {
+		r.rootIndex.GetHighCache().Clear()
+	}
 	for _, idx := range r.indexes {
 		idx.GetHighCache().Clear()
 	}
