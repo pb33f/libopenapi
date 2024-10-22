@@ -179,3 +179,8 @@ func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
 		sp.Nodes.Store(key, node)
 	}
 }
+
+// GetIndex will return the index.SpecIndex pointer that was passed to the SchemaProxy during build.
+func (sp *SchemaProxy) GetIndex() *index.SpecIndex {
+	return sp.idx
+}

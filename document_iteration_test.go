@@ -23,9 +23,25 @@ type context struct {
 	stack   []loopFrame
 }
 
+func BenchmarkMemory_Speakeasy(b *testing.B) {
+	// Tell the benchmark to report memory allocations
+	b.ReportAllocs()
+
+	// Run the benchmark the specified number of iterations
+	for i := 0; i < b.N; i++ {
+		runTest(nil, "test_specs/speakeasy-test.yaml")
+	}
+}
+
 func Test_Speakeasy_Document_Iteration(t *testing.T) {
-	spec, err := os.ReadFile("test_specs/speakeasy-test.yaml")
-	require.NoError(t, err)
+	runTest(t, "test_specs/speakeasy-test.yaml")
+}
+
+func runTest(t *testing.T, specLocation string) {
+	spec, err := os.ReadFile(specLocation)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
 		BasePath:                            "./test_specs",
@@ -33,36 +49,55 @@ func Test_Speakeasy_Document_Iteration(t *testing.T) {
 		IgnoreArrayCircularReferences:       true,
 		AllowFileReferences:                 true,
 	})
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	m, errs := doc.BuildV3Model()
-	require.Empty(t, errs)
+	if t != nil {
+		require.Empty(t, errs)
+	}
 
 	for path, pathItem := range m.Model.Paths.PathItems.FromOldest() {
-		t.Log(path)
+		if t != nil {
+			t.Log(path)
+		}
 
 		iterateOperations(t, pathItem.GetOperations())
 	}
 
 	for path, pathItem := range m.Model.Webhooks.FromOldest() {
-		t.Log(path)
+		if t != nil {
+			t.Log(path)
+		}
 
 		iterateOperations(t, pathItem.GetOperations())
 	}
 
 	for name, schemaProxy := range m.Model.Components.Schemas.FromOldest() {
-		t.Log(name)
+		if t != nil {
+			t.Log(name)
+		}
 
 		handleSchema(t, schemaProxy, context{})
 	}
+
+	require.Equal(t, uint64(10), m.Index.GetHighCacheMisses())
+	require.Equal(t, uint64(11), m.Index.GetHighCacheHits())
+	require.Equal(t, uint64(101), m.Index.GetRolodex().GetIndexes()[0].GetHighCacheMisses())
+	require.Equal(t, uint64(206), m.Index.GetRolodex().GetIndexes()[0].GetHighCacheHits())
 }
 
 func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation]) {
 	for method, op := range ops.FromOldest() {
-		t.Log(method)
+		if t != nil {
+			t.Log(method)
+		}
 
 		for i, param := range op.Parameters {
-			t.Log("param", i, param.Name)
+			if t != nil {
+				t.Log("param", i, param.Name)
+			}
 
 			if param.Schema != nil {
 				handleSchema(t, param.Schema, context{})
@@ -70,10 +105,14 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 		}
 
 		if op.RequestBody != nil {
-			t.Log("request body")
+			if t != nil {
+				t.Log("request body")
+			}
 
 			for contentType, mediaType := range op.RequestBody.Content.FromOldest() {
-				t.Log(contentType)
+				if t != nil {
+					t.Log(contentType)
+				}
 
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
@@ -82,14 +121,20 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 		}
 
 		if orderedmap.Len(op.Responses.Codes) > 0 {
-			t.Log("responses")
+			if t != nil {
+				t.Log("responses")
+			}
 		}
 
 		for code, response := range op.Responses.Codes.FromOldest() {
-			t.Log(code)
+			if t != nil {
+				t.Log(code)
+			}
 
 			for contentType, mediaType := range response.Content.FromOldest() {
-				t.Log(contentType)
+				if t != nil {
+					t.Log(contentType)
+				}
 
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
@@ -98,14 +143,20 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 		}
 
 		if orderedmap.Len(op.Responses.Codes) > 0 {
-			t.Log("callbacks")
+			if t != nil {
+				t.Log("callbacks")
+			}
 		}
 
 		for callbackName, callback := range op.Callbacks.FromOldest() {
-			t.Log(callbackName)
+			if t != nil {
+				t.Log(callbackName)
+			}
 
 			for name, pathItem := range callback.Expression.FromOldest() {
-				t.Log(name)
+				if t != nil {
+					t.Log(name)
+				}
 
 				iterateOperations(t, pathItem.GetOperations())
 			}
@@ -119,11 +170,15 @@ func handleSchema(t *testing.T, schProxy *base.SchemaProxy, ctx context) {
 	}
 
 	sch, err := schProxy.BuildSchema()
-	require.NoError(t, err)
+	if t != nil {
+		require.NoError(t, err)
+	}
 
 	typ, subTypes := getResolvedType(sch)
 
-	t.Log("schema", typ, subTypes)
+	if t != nil {
+		t.Log("schema", typ, subTypes)
+	}
 
 	if len(sch.Enum) > 0 {
 		switch typ {
@@ -278,7 +333,9 @@ func checkCircularReference(t *testing.T, ctx *context, schProxy *base.SchemaPro
 				isRestricted = true
 			}
 
-			require.False(t, isRestricted, "circular reference: %s", append(ctx.visited, loopRef))
+			if t != nil {
+				require.False(t, isRestricted, "circular reference: %s", append(ctx.visited, loopRef))
+			}
 			return true
 		}
 

@@ -677,3 +677,10 @@ func (r *Rolodex) GetFullLineCount() int64 {
 	}
 	return lineCount
 }
+
+func (r *Rolodex) ClearIndexCaches() {
+	r.rootIndex.GetHighCache().Clear()
+	for _, idx := range r.indexes {
+		idx.GetHighCache().Clear()
+	}
+}
