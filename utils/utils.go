@@ -121,13 +121,13 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	}
 
 	// this can spin out, to lets gatekeep it.
-	done := make(chan bool)
+	done := make(chan struct{})
 	var results []*yaml.Node
 	to, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
-	go func(d chan bool) {
+	go func(d chan struct{}) {
 		results = path.Query(node)
-		done <- true
+		done <- struct{}{}
 	}(done)
 
 	select {
@@ -398,10 +398,12 @@ func FindExtensionNodes(nodes []*yaml.Node) []*ExtensionNode {
 	for i, v := range nodes {
 		if i%2 == 0 && strings.HasPrefix(v.Value, "x-") {
 			if i+1 < len(nodes) {
-				extensions = append(extensions, &ExtensionNode{
-					Key:   v,
-					Value: NodeAlias(nodes[i+1]),
-				})
+				extensions = append(
+					extensions, &ExtensionNode{
+						Key:   v,
+						Value: NodeAlias(nodes[i+1]),
+					},
+				)
 			}
 		}
 	}
@@ -855,8 +857,10 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 			//bracketNameExp/.
 			key := bracketNameExp.ReplaceAllString(segs[i], "$1")
 			val := strings.ReplaceAll(bracketNameExp.ReplaceAllString(segs[i], "$2"), "/", "~1")
-			cleaned = append(cleaned[:i],
-				append([]string{fmt.Sprintf("%s/%s", key, val)}, cleaned[i:]...)...)
+			cleaned = append(
+				cleaned[:i],
+				append([]string{fmt.Sprintf("%s/%s", key, val)}, cleaned[i:]...)...,
+			)
 			continue
 		}
 		cleaned = append(cleaned, segs[i])

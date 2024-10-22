@@ -317,7 +317,7 @@ func NewSchema(schema *base.Schema) *Schema {
 	// any polymorphic properties need to be handled in their own threads
 	// any properties each need to be processed in their own thread.
 	// we go as fast as we can.
-	polyCompletedChan := make(chan bool)
+	polyCompletedChan := make(chan struct{})
 	errChan := make(chan error)
 
 	type buildResult struct {
@@ -340,7 +340,7 @@ func NewSchema(schema *base.Schema) *Schema {
 
 	// schema async
 	buildOutSchemas := func(schemas []lowmodel.ValueReference[*base.SchemaProxy], items *[]*SchemaProxy,
-		doneChan chan bool, e chan error,
+		doneChan chan struct{}, e chan error,
 	) {
 		bChan := make(chan buildResult)
 		totalSchemas := len(schemas)
@@ -353,7 +353,7 @@ func NewSchema(schema *base.Schema) *Schema {
 			j++
 			(*items)[r.idx] = r.s
 		}
-		doneChan <- true
+		doneChan <- struct{}{}
 	}
 
 	// props async
