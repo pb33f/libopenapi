@@ -50,12 +50,10 @@ func runTest(t *testing.T, specLocation string) {
 	}
 
 	for _, pathItem := range m.Model.Paths.PathItems.FromOldest() {
-
 		iterateOperations(t, pathItem.GetOperations())
 	}
 
 	for _, pathItem := range m.Model.Webhooks.FromOldest() {
-
 		iterateOperations(t, pathItem.GetOperations())
 	}
 
