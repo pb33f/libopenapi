@@ -391,7 +391,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
-		doneChan := make(chan bool)
+		doneChan := make(chan struct{})
 		props, totalProperties := checkMappedSchemaOfASchema(lSchema.Properties.Value, rSchema.Properties.Value, &changes, doneChan)
 		sc.SchemaPropertyChanges = props
 
@@ -454,7 +454,7 @@ func checkMappedSchemaOfASchema(
 	lSchema,
 	rSchema *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]],
 	changes *[]*Change,
-	doneChan chan bool,
+	doneChan chan struct{},
 ) (map[string]*SchemaChanges, int) {
 	propChanges := make(map[string]*SchemaChanges)
 
@@ -482,20 +482,20 @@ func checkMappedSchemaOfASchema(
 }
 
 func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*base.SchemaProxy,
-	propChanges map[string]*SchemaChanges, doneChan chan bool, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node,
+	propChanges map[string]*SchemaChanges, doneChan chan struct{}, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node,
 ) int {
 	var propLock sync.Mutex
-	checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan bool) {
+	checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan struct{}) {
 		if lp != nil && rp != nil {
 			if low.AreEqual(lp, rp) {
-				done <- true
+				done <- struct{}{}
 				return
 			}
 			s := CompareSchemas(lp, rp)
 			propLock.Lock()
 			propChanges[key] = s
 			propLock.Unlock()
-			done <- true
+			done <- struct{}{}
 		}
 	}
 
@@ -1234,11 +1234,11 @@ func extractSchemaChanges(
 	label string,
 	sc *[]*SchemaChanges,
 	changes *[]*Change,
-	done chan bool,
+	done chan struct{},
 ) {
 	// if there is nothing here, there is nothing to do.
 	if lSchema == nil && rSchema == nil {
-		done <- true
+		done <- struct{}{}
 		return
 	}
 
@@ -1302,5 +1302,5 @@ func extractSchemaChanges(
 			}
 		}
 	}
-	done <- true
+	done <- struct{}{}
 }

@@ -493,9 +493,9 @@ func TestTranslatePipeline(t *testing.T) {
 
 				ctx, c := context.WithTimeout(context.Background(), 5*time.Second)
 				defer c()
-				doneChan := make(chan bool)
+				doneChan := make(chan struct{})
 
-				go func(completedChan chan bool) {
+				go func(completedChan chan struct{}) {
 
 					const concurrency = 2
 					in := make(chan int)
@@ -532,7 +532,7 @@ func TestTranslatePipeline(t *testing.T) {
 					close(done)
 					wg.Wait()
 					require.Error(t, err)
-					doneChan <- true
+					doneChan <- struct{}{}
 				}(doneChan)
 
 				select {

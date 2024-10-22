@@ -1876,14 +1876,14 @@ func TestBuildSchema_BadNodeTypes(t *testing.T) {
 	}
 
 	eChan := make(chan error, 1)
-	doneChan := make(chan bool, 1)
+	doneChan := make(chan struct{}, 1)
 	bChan := make(chan schemaProxyBuildResult, 1)
 	var err error
 	go func() {
 		for {
 			e := <-eChan
 			err = e
-			doneChan <- true
+			doneChan <- struct{}{}
 		}
 	}()
 

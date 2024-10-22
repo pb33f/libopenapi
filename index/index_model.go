@@ -314,15 +314,15 @@ type SpecIndex struct {
 	arrayCircularReferences             []*CircularReferenceResult // only available when the resolver has been used.
 	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
 	config                              *SpecIndexConfig           // configuration for the index
-	componentIndexChan                  chan bool
-	polyComponentIndexChan              chan bool
+	componentIndexChan                  chan struct{}
+	polyComponentIndexChan              chan struct{}
 	resolver                            *Resolver
 	cache                               *sync.Map
 	built                               bool
 	uri                                 []string
 	logger                              *slog.Logger
 	nodeMap                             map[int]map[int]*yaml.Node
-	nodeMapCompleted                    chan bool
+	nodeMapCompleted                    chan struct{}
 	pendingResolve                      []refMap
 	highModelCache                      Cache
 }

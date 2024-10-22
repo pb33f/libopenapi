@@ -76,7 +76,7 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	if rootNode == nil {
 		return index
 	}
-	index.nodeMapCompleted = make(chan bool)
+	index.nodeMapCompleted = make(chan struct{})
 	index.nodeMap = make(map[int]map[int]*yaml.Node)
 	go index.MapNodes(rootNode) // this can run async.
 
