@@ -1817,5 +1817,7 @@ func TestSpecIndex_Cache(t *testing.T) {
 	assert.NotNil(t, uint(1), idx.HighCacheMiss())
 	assert.NotNil(t, uint(1), idx.GetHighCacheHits())
 	assert.NotNil(t, uint(1), idx.GetHighCacheMisses())
+	idx.SetHighCache(nil)
+	assert.Nil(t, idx.GetHighCache())
 
 }
