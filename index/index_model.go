@@ -4,15 +4,13 @@
 package index
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"sync"
-	"sync/atomic"
-
-	"github.com/pb33f/libopenapi/datamodel"
 
 	"gopkg.in/yaml.v3"
 )
@@ -297,9 +295,7 @@ type SpecIndex struct {
 	nodeMap                             map[int]map[int]*yaml.Node
 	nodeMapCompleted                    chan bool
 	pendingResolve                      []refMap
-	highModelCache                      *sync.Map
-	highModelCacheHits                  atomic.Uint64
-	highModelCacheMisses                atomic.Uint64
+	highModelCache                      Cache
 }
 
 // GetResolver returns the resolver for this index.
