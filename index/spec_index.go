@@ -327,12 +327,32 @@ func (index *SpecIndex) GetAllReferenceSchemas() []*Reference {
 }
 
 // GetAllComponentSchemas will return all schemas defined in the components section of the document.
+// GetAllComponentSchemas returns all schemas defined in the components section of the document.
 func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
-	if index != nil && index.allComponentSchemas != nil {
+	if index == nil {
+		return nil
+	}
+
+	// Acquire read lock
+	index.allComponentSchemasLock.RLock()
+	if index.allComponentSchemas != nil {
+		// Make sure to defer the lock release
+		defer index.allComponentSchemasLock.RUnlock()
 		return index.allComponentSchemas
 	}
-	schemaMap := syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
-	index.allComponentSchemas = schemaMap
+	// Release the read lock before acquiring write lock
+	index.allComponentSchemasLock.RUnlock()
+
+	// Acquire write lock to initialize the map
+	index.allComponentSchemasLock.Lock()
+	defer index.allComponentSchemasLock.Unlock()
+
+	// Double-check if another goroutine initialized it
+	if index.allComponentSchemas == nil {
+		schemaMap := syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
+		index.allComponentSchemas = schemaMap
+	}
+
 	return index.allComponentSchemas
 }
 
