@@ -4,14 +4,13 @@
 package index
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"sync"
-
-	"github.com/pb33f/libopenapi/datamodel"
 
 	"gopkg.in/yaml.v3"
 )
@@ -297,6 +296,7 @@ type SpecIndex struct {
 	nodeMap                             map[int]map[int]*yaml.Node
 	nodeMapCompleted                    chan bool
 	pendingResolve                      []refMap
+	highModelCache                      Cache
 }
 
 // GetResolver returns the resolver for this index.
@@ -307,10 +307,6 @@ func (index *SpecIndex) GetResolver() *Resolver {
 // GetConfig returns the SpecIndexConfig for this index.
 func (index *SpecIndex) GetConfig() *SpecIndexConfig {
 	return index.config
-}
-
-func (index *SpecIndex) SetCache(sync *sync.Map) {
-	index.cache = sync
 }
 
 func (index *SpecIndex) GetNodeMap() map[int]map[int]*yaml.Node {
