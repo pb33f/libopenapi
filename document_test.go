@@ -433,12 +433,9 @@ func TestDocument_Render_WithError(t *testing.T) {
 
 	// create a new document from specification bytes
 	doc, err := NewDocument(petstore)
-	// if anything went wrong, an error is thrown
-	if err != nil {
-		panic(fmt.Sprintf("cannot create new document: %e", err))
-	}
+	assert.NoError(t, err)
 
-	// instead of building the model, we will render it directly - therefore no underlying v3 model exists on render
+	// instead of building the model, we will render the doc immediately - therefore no underlying v3 model exists on render
 	_, e := doc.Render()
 	assert.Error(t, e)
 }
