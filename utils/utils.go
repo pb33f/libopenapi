@@ -113,13 +113,13 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 	}
 
 	// this can spin out, to lets gatekeep it.
-	done := make(chan bool)
+	done := make(chan struct{})
 	var results []*yaml.Node
 	timeout, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
-	go func(d chan bool) {
+	go func(d chan struct{}) {
 		results, _ = path.Find(node)
-		done <- true
+		done <- struct{}{}
 	}(done)
 
 	select {

@@ -149,15 +149,15 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 
 	// all operations have been superficially built,
 	// now we need to build out the operation, we will do this asynchronously for speed.
-	opBuildChan := make(chan bool)
+	opBuildChan := make(chan struct{})
 	opErrorChan := make(chan error)
 
-	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- bool, errCh chan<- error) {
+	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- struct{}, errCh chan<- error) {
 		er := op.Value.Build(ctx, op.KeyNode, op.ValueNode, idx)
 		if er != nil {
 			errCh <- er
 		}
-		ch <- true
+		ch <- struct{}{}
 	}
 
 	if len(ops) <= 0 {
