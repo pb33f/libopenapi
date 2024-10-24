@@ -427,6 +427,22 @@ func TestDocument_Render(t *testing.T) {
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
 }
 
+func TestDocument_Render_WithError(t *testing.T) {
+	// load an OpenAPI 3 specification from bytes
+	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
+
+	// create a new document from specification bytes
+	doc, err := NewDocument(petstore)
+	// if anything went wrong, an error is thrown
+	if err != nil {
+		panic(fmt.Sprintf("cannot create new document: %e", err))
+	}
+
+	// instead of building the model, we will render it directly - therefore no underlying v3 model exists on render
+	_, e := doc.Render()
+	assert.Error(t, e)
+}
+
 func TestDocument_RenderWithLargeIndention(t *testing.T) {
 	json := `{
       "openapi": "3.0"
