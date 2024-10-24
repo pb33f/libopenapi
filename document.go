@@ -225,7 +225,7 @@ func (d *document) Render() ([]byte, error) {
 		return nil, errors.New("unable to render, no openapi model has been built for the document")
 	}
 	if d.info == nil {
-		return nil, errors.New("unable to render, no specification (info) has been loaded")
+		return nil, errors.New("unable to render, no specification has been loaded")
 	}
 
 	var newBytes []byte
