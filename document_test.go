@@ -427,7 +427,7 @@ func TestDocument_Render(t *testing.T) {
 		h.Components.SecuritySchemes.GetOrZero("petstore_auth").Flows.Implicit.AuthorizationUrl)
 }
 
-func TestDocument_Render_WithError(t *testing.T) {
+func TestDocument_Render_Missing_Model_Error(t *testing.T) {
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
@@ -438,6 +438,19 @@ func TestDocument_Render_WithError(t *testing.T) {
 	// instead of building the model, we will render the doc immediately - therefore no underlying v3 model exists on render
 	_, e := doc.Render()
 	assert.Error(t, e)
+	assert.Equal(t, "unable to render, no openapi model has been built for the document", e.Error())
+}
+
+func TestDocument_Render_Missing_Info_Error(t *testing.T) {
+	doc := &document{
+		// set the highOpenAPI3Model to a non-nil model to mock an existing model
+		highOpenAPI3Model: &DocumentModel[v3high.Document]{},
+		// do not set the info property
+		info: nil,
+	}
+	_, e := doc.Render()
+	assert.Error(t, e)
+	assert.Equal(t, "unable to render, no specification has been loaded", e.Error())
 }
 
 func TestDocument_RenderWithLargeIndention(t *testing.T) {
