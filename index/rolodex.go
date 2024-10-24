@@ -6,7 +6,6 @@ package index
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -19,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // CanBeIndexed is an interface that allows a file to be indexed.
@@ -193,7 +194,8 @@ func (r *Rolodex) IndexTheRolodex() error {
 	var indexBuildQueue []*SpecIndex
 
 	indexRolodexFile := func(
-		location string, fs fs.FS,
+		location string,
+		fs fs.FS,
 		doneChan chan bool,
 		errChan chan error,
 		indexChan chan *SpecIndex) {
@@ -231,7 +233,10 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 		if lfs, ok := fs.(RolodexFS); ok {
 			wait := false
-			for _, f := range lfs.GetFiles() {
+
+			files := lfs.GetFiles()
+
+			for _, f := range files {
 				if idxFile, ko := f.(CanBeIndexed); ko {
 					wg.Add(1)
 					wait = true
@@ -321,6 +326,8 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 		}
 
+		// NOTE: Here we tae the root note and build also build the index for it.
+		// This involves extracting references!
 		index := NewSpecIndexWithConfig(r.rootNode, r.indexConfig)
 		resolver := NewResolver(index)
 

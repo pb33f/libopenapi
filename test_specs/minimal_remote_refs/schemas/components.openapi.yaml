@@ -1,0 +1,39 @@
+---
+openapi: 3.1.0
+info:
+  description: Example API component definitions
+  version: v1
+  title: Example
+  contact:
+    name: Example
+    email: example@example.com
+    url: www.example.com
+  license:
+    name: Example
+    url: www.example.com
+components:
+  schemas:
+    Account:
+      type: object
+      properties:
+        name:
+          type: string
+          description: >
+            Name of the account
+  responses:
+    ListAccounts:
+      description: List all accounts.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              items:
+                type: array
+                items:
+                  description: >
+                    The accounts.
+                  $ref: "#/components/schemas/Account"
+              total:
+                type: integer
+                description: Total number of accounts.
