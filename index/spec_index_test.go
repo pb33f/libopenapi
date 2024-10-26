@@ -1809,6 +1809,62 @@ func Test_GetAllComponentSchemas(t *testing.T) {
 	assert.Nil(t, index.GetAllComponentSchemas())
 }
 
+func TestSpecIndex_GetAllComponentSchemas_ConcurrentAccess(t *testing.T) {
+	yml := `
+openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+    Cat:
+      type: object
+      properties:
+        lives:
+          type: integer
+`
+
+	// Parse the YAML into a yaml.Node
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &rootNode)
+	assert.NoError(t, err)
+
+	index := NewSpecIndex(&rootNode)
+
+	callGetAllComponentSchemas := func(wg *sync.WaitGroup) {
+		defer wg.Done()
+		schemas := index.GetAllComponentSchemas()
+		assert.Equal(t, 2, len(schemas))
+	}
+
+	const numGoroutines = 10
+
+	// WaitGroup to wait for all goroutines to finish
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	// Start multiple goroutines
+	for i := 0; i < numGoroutines; i++ {
+		go callGetAllComponentSchemas(&wg)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+}
+
+func TestSpecIndex_GetAllComponentSchemas_NilIndex(t *testing.T) {
+	index := &SpecIndex{}
+	schemas := index.GetAllComponentSchemas()
+	assert.Nil(t, schemas, "Expected GetAllComponentSchemas to return nil when index is nil")
+}
+
 func TestSpecIndex_Cache(t *testing.T) {
 
 	idx := new(SpecIndex)
