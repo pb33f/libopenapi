@@ -7,7 +7,6 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/vmware-labs/yaml-jsonpath v0.3.2
 	github.com/wk8/go-ordered-map/v2 v2.1.9-0.20240815153524-6ea36470d1bd
-	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
 	gopkg.in/yaml.v3 v3.0.1
 )
 

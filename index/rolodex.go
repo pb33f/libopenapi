@@ -6,7 +6,6 @@ package index
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -19,6 +18,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/yaml.v3"
 )
 
 // CanBeIndexed is an interface that allows a file to be indexed.
@@ -193,7 +194,8 @@ func (r *Rolodex) IndexTheRolodex() error {
 	var indexBuildQueue []*SpecIndex
 
 	indexRolodexFile := func(
-		location string, fs fs.FS,
+		location string,
+		fs fs.FS,
 		doneChan chan bool,
 		errChan chan error,
 		indexChan chan *SpecIndex) {
@@ -231,6 +233,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 
 		if lfs, ok := fs.(RolodexFS); ok {
 			wait := false
+
 			for _, f := range lfs.GetFiles() {
 				if idxFile, ko := f.(CanBeIndexed); ko {
 					wg.Add(1)
@@ -306,7 +309,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 		// if there is a base path but no SpecFilePath, then we need to set the root spec config to point to a theoretical root.yaml
 		// which does not exist, but is used to formulate the absolute path to root references correctly.
 		if r.indexConfig.BasePath != "" && r.indexConfig.BaseURL == nil {
-
 			basePath := r.indexConfig.BasePath
 			if !filepath.IsAbs(basePath) {
 				basePath, _ = filepath.Abs(basePath)
