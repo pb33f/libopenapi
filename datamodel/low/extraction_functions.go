@@ -87,7 +87,6 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		for _, collection := range collections {
 			found = collection()
 			if found != nil && found[rv] != nil {
-
 				// if this is a ref node, we need to keep diving
 				// until we hit something that isn't a ref.
 				if jh, _, _ := utils.IsNodeRefValue(found[rv].Node); jh {
@@ -147,7 +146,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 								u := *idx.GetConfig().BaseURL
 								p := ""
 								if u.Path != "" {
-									p = filepath.Dir(u.Path)
+									p = u.Path
 								}
 								u.Path = filepath.Join(p, explodedRefValue[0])
 								rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
