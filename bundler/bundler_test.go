@@ -6,8 +6,12 @@ package bundler
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -99,6 +103,72 @@ func TestBundleDocument_Circular(t *testing.T) {
 	}
 
 	assert.Len(t, logEntries, 0)
+}
+
+func TestBundleDocument_MinimalRemoteRefsBundledLocally(t *testing.T) {
+	specBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: false,
+		BundleInlineRefs:      false,
+		BasePath:              "../test_specs/minimal_remote_refs",
+		BaseURL:               nil,
+	}
+	require.NoError(t, err)
+
+	bytes, e := BundleBytes(specBytes, config)
+	assert.NoError(t, e)
+	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
+}
+
+func TestBundleDocument_MinimalRemoteRefsBundledRemotely(t *testing.T) {
+	baseURL, err := url.Parse("https://raw.githubusercontent.com/felixjung/libopenapi/authed-remote/test_specs/minimal_remote_refs")
+
+	refBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/schemas/components.openapi.yaml")
+	require.NoError(t, err)
+
+	wantURL := fmt.Sprintf("%s/%s", baseURL.String(), "schemas/components.openapi.yaml")
+
+	newRemoteHandlerFunc := func() utils.RemoteURLHandler {
+		handler := func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.String() != wantURL {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+
+			w.Write(refBytes)
+		}
+
+		return func(url string) (*http.Response, error) {
+			req := httptest.NewRequest("GET", url, nil)
+			w := httptest.NewRecorder()
+			handler(w, req)
+
+			return w.Result(), nil
+		}
+	}
+
+	specBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		BaseURL:               baseURL,
+		AllowFileReferences:   false,
+		AllowRemoteReferences: true,
+		BundleInlineRefs:      false,
+		RemoteURLHandler:      newRemoteHandlerFunc(),
+	}
+	require.NoError(t, err)
+
+	bytes, e := BundleBytes(specBytes, config)
+	assert.NoError(t, e)
+	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
 }
 
 func TestBundleBytes(t *testing.T) {
