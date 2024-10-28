@@ -3,7 +3,9 @@ package v3
 import (
 	"context"
 	"errors"
+	"net/url"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -43,7 +45,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.IgnoreArrayCircularReferences = config.IgnoreArrayCircularReferences
 	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
 	idxConfig.AvoidCircularReferenceCheck = true
-	idxConfig.BaseURL = config.BaseURL
+	idxConfig.BaseURL = urlWithoutTrailingSlash(config.BaseURL)
 	idxConfig.BasePath = config.BasePath
 	idxConfig.SpecFilePath = config.SpecFilePath
 	idxConfig.Logger = config.Logger
@@ -318,4 +320,14 @@ func extractWebhooks(ctx context.Context, info *datamodel.SpecInfo, doc *Documen
 		}
 	}
 	return nil
+}
+
+func urlWithoutTrailingSlash(u *url.URL) *url.URL {
+	if u == nil {
+		return nil
+	}
+
+	u.Path, _ = strings.CutSuffix(u.Path, "/")
+
+	return u
 }
