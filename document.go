@@ -342,6 +342,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}
+
 	return d.highOpenAPI3Model, errs
 }
 
