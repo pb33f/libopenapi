@@ -881,3 +881,48 @@ func ExampleCreateDocument() {
 	fmt.Print(document.Info.Value.Contact.Value.Email.Value)
 	// Output: apiteam@swagger.io
 }
+
+func TestURLWithoutTrailingSlash(t *testing.T) {
+	tc := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{
+			name: "url with no path",
+			url:  "https://example.com",
+			want: "https://example.com",
+		},
+		{
+			name: "nil pointer",
+			url:  "",
+		},
+		{
+			name: "URL with path not ending in slash",
+			url:  "https://example.com/some/path",
+			want: "https://example.com/some/path",
+		},
+		{
+			name: "URL with path ending in slash",
+			url:  "https://example.com/some/path/",
+			want: "https://example.com/some/path",
+		},
+	}
+
+	for _, tt := range tc {
+		t.Run(tt.name, func(t *testing.T) {
+			u, _ := url.Parse(tt.url)
+			if tt.url == "" {
+				u = nil
+			}
+
+			got := urlWithoutTrailingSlash(u)
+
+			if u == nil {
+				assert.Nil(t, got)
+				return
+			}
+			assert.Equal(t, tt.want, got.String())
+		})
+	}
+}
