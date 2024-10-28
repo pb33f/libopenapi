@@ -10,7 +10,7 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high/v3"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 )
 
@@ -56,6 +56,7 @@ func BundleDocument(model *v3.Document) ([]byte, error) {
 
 func bundle(model *v3.Document, inline bool) ([]byte, error) {
 	rolodex := model.Rolodex
+
 	compact := func(idx *index.SpecIndex, root bool) {
 		mappedReferences := idx.GetMappedReferences()
 		sequencedReferences := idx.GetRawReferencesSequenced()
@@ -78,6 +79,7 @@ func bundle(model *v3.Document, inline bool) ([]byte, error) {
 				sequenced.Node.Content = mappedReference.Node.Content
 				continue
 			}
+
 			if mappedReference != nil && mappedReference.Circular {
 				if idx.GetLogger() != nil {
 					idx.GetLogger().Warn("[bundler] skipping circular reference",

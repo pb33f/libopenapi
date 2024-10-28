@@ -124,7 +124,6 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 					if idxError != nil && idx == nil {
 						extractedFile.readingErrors = append(l.readingErrors, idxError)
 					} else {
-
 						// for each index, we need a resolver
 						resolver := NewResolver(idx)
 						idx.resolver = resolver
