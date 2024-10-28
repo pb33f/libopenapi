@@ -323,6 +323,8 @@ func (r *Rolodex) IndexTheRolodex() error {
 			}
 		}
 
+		// Here we take the root node and also build the index for it.
+		// This involves extracting references.
 		index := NewSpecIndexWithConfig(r.rootNode, r.indexConfig)
 		resolver := NewResolver(index)
 

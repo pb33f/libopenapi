@@ -105,49 +105,75 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 			}
 		}
 
-		// perform a search for the reference in the index
-		// extract the correct root
+		// Obtain the absolute filepath/URL of the spec in which we are trying to
+		// resolve the reference value [rv] from. It's either available from the
+		// index or passed down through context.
 		specPath := idx.GetSpecAbsolutePath()
 		if ctx.Value(index.CurrentPathKey) != nil {
 			specPath = ctx.Value(index.CurrentPathKey).(string)
 		}
 
+		// explodedRefValue contains both the path to the file containing the
+		// reference value at index 0 and the path within that file to a specific
+		// sub-schema, should it exist, at index 1.
 		explodedRefValue := strings.Split(rv, "#")
 		if len(explodedRefValue) == 2 {
+			// The ref points to a component within either this file or another file.
 			if !strings.HasPrefix(explodedRefValue[0], "http") {
+				// The ref is not an absolute URL.
 				if !filepath.IsAbs(explodedRefValue[0]) {
+					// The ref is not an absolute local file path.
 					if strings.HasPrefix(specPath, "http") {
+						// The schema containing the ref is itself a remote file.
 						u, _ := url.Parse(specPath)
+						// p is the directory the referenced file is expected to be in.
 						p := ""
 						if u.Path != "" && explodedRefValue[0] != "" {
+							// We are using the path of the resolved URL from the rolodex to
+							// obtain the "folder" or base of the file URL.
 							p = filepath.Dir(u.Path)
 						}
 						if p != "" && explodedRefValue[0] != "" {
+							// We are resolving the relative URL against the absolute URL of
+							// the spec containing the reference.
 							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(p, explodedRefValue[0]))
 						}
 						u.Fragment = ""
+						// Turn the reference value [rv] into the absolute filepath/URL we
+						// resolved.
 						rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
-
 					} else {
+						// The schema containing the ref is a local file or doesn't have an
+						// absolute URL.
 						if specPath != "" {
+							// We have _some_ path for the schema containing the reference.
 							var abs string
 							if explodedRefValue[0] == "" {
+								// Reference is made within the schema file, so we are using the
+								// same absolute local filepath.
 								abs = specPath
 							} else {
 								// break off any fragments from the spec path
 								sp := strings.Split(specPath, "#")
+								// Create a clean (absolute?) path to the file containing the
+								// referenced value.
 								abs, _ = filepath.Abs(filepath.Join(filepath.Dir(sp[0]), explodedRefValue[0]))
 							}
 							rv = fmt.Sprintf("%s#%s", abs, explodedRefValue[1])
 						} else {
-							// check for a config baseURL and use that if it exists.
-							if idx.GetConfig().BaseURL != nil {
+							// We don't have a path for the schema we are trying to resolve
+							// relative references from. This likely happens when the schema
+							// is the root schema, i.e. the file given to libopenapi as entry.
+							//
 
+							// check for a config BaseURL and use that if it exists.
+							if idx.GetConfig().BaseURL != nil {
 								u := *idx.GetConfig().BaseURL
 								p := ""
 								if u.Path != "" {
 									p = u.Path
 								}
+
 								u.Path = filepath.Join(p, explodedRefValue[0])
 								rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 							}

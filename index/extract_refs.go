@@ -246,6 +246,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					var componentName string
 					var fullDefinitionPath string
 					if len(uri) == 2 {
+						// Check if we are dealing with a ref to a local definition.
 						if uri[0] == "" {
 							fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, uri[1])
 							componentName = value
@@ -424,6 +425,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						continue
 					}
 
+					// This sets the ref in the path using the full URL and sub-path.
 					index.allRefs[fullDefinitionPath] = ref
 					found = append(found, ref)
 				}
@@ -713,5 +715,6 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, mappedRefsInSequence[m])
 		}
 	}
+
 	return found
 }
