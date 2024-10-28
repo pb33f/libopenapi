@@ -174,7 +174,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 									p = u.Path
 								}
 
-								u.Path = filepath.Join(p, explodedRefValue[0])
+								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(filepath.Join(p, explodedRefValue[0]))
 								rv = fmt.Sprintf("%s#%s", u.String(), explodedRefValue[1])
 							}
 						}
