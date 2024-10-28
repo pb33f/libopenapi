@@ -4,11 +4,12 @@
 package datamodel
 
 import (
-	"github.com/pb33f/libopenapi/utils"
 	"io/fs"
 	"log/slog"
 	"net/url"
 	"os"
+
+	"github.com/pb33f/libopenapi/utils"
 )
 
 // DocumentConfiguration is used to configure the document creation process. It was added in v0.6.0 to allow
@@ -18,6 +19,8 @@ import (
 // any non-local (local being the specification, not the file system) references, will be ignored.
 type DocumentConfiguration struct {
 	// The BaseURL will be the root from which relative references will be resolved from if they can't be found locally.
+	// Make sure it does not point to a file as relative paths will be blindly added to the end of the
+	// BaseURL's path.
 	// Schema must be set to "http/https".
 	BaseURL *url.URL
 
