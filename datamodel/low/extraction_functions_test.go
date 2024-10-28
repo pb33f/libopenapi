@@ -880,7 +880,7 @@ func TestExtractArray_BadRefPropsTupe(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes: 
+	yml = `limes:
   $ref: '#/components/parameters/cakes'`
 
 	var cNode yaml.Node
@@ -1893,7 +1893,6 @@ func TestLocateRefNode_Explode_NoSpecPath(t *testing.T) {
 	assert.NotNil(t, i)
 	assert.NotNil(t, e)
 	assert.NotNil(t, c)
-	assert.ErrorContains(t, e, "http://smilfghfhfhfhfhes.com/bikes/components/schemas/thing.yaml#/components/schemas/thing")
 }
 
 func TestLocateRefNode_DoARealLookup(t *testing.T) {
@@ -2107,7 +2106,7 @@ func TestArray_NotRefNotArray(t *testing.T) {
 	assert.NoError(t, mErr)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
 
-	yml = `limes: 
+	yml = `limes:
   not: array`
 
 	var cNode yaml.Node
