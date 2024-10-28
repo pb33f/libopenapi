@@ -312,7 +312,9 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 	if d.config == nil {
 		d.config = &datamodel.DocumentConfiguration{
 			AllowFileReferences:   false,
+			BasePath:              "",
 			AllowRemoteReferences: false,
+			BaseURL:               nil,
 		}
 	}
 

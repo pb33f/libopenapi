@@ -9,11 +9,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"slices"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -56,6 +56,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
 					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 				}
+
 				ref := &Reference{
 					ParentNode:     parent,
 					FullDefinition: fullDefinitionPath,
