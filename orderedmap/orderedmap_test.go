@@ -271,6 +271,11 @@ func TestFirst(t *testing.T) {
 		require.Nil(t, pair)
 	})
 
+	t.Run("Nil map", func(t *testing.T) {
+		var m orderedmap.Map[string, int]
+		require.Nil(t, m.First())
+	})
+
 	t.Run("Single item", func(t *testing.T) {
 		m := orderedmap.New[string, int]()
 		m.Set("key", 1)
