@@ -1860,7 +1860,7 @@ components:
 }
 
 func TestSpecIndex_GetAllComponentSchemas_NilIndex(t *testing.T) {
-	index := &SpecIndex{}
+	var index *SpecIndex
 	schemas := index.GetAllComponentSchemas()
 	assert.Nil(t, schemas, "Expected GetAllComponentSchemas to return nil when index is nil")
 }
