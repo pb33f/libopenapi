@@ -116,6 +116,9 @@ type DocumentConfiguration struct {
 
 	// BundleInlineRefs is used by the bundler module. If set to true, all references will be inlined, including
 	// local references (to the root document) as well as all external references. This is false by default.
+	//
+	// Deprecrated: BundleInlineRefs will be removed in the future in favour of
+	// [bundler.BundleOpts].
 	BundleInlineRefs bool
 }
 
