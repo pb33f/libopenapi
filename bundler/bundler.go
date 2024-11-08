@@ -57,42 +57,48 @@ func BundleDocument(model *v3.Document) ([]byte, error) {
 func bundle(model *v3.Document, inline bool) ([]byte, error) {
 	rolodex := model.Rolodex
 
-	compact := func(idx *index.SpecIndex, root bool) {
-		mappedReferences := idx.GetMappedReferences()
-		sequencedReferences := idx.GetRawReferencesSequenced()
-		for _, sequenced := range sequencedReferences {
-			mappedReference := mappedReferences[sequenced.FullDefinition]
+	indexes := rolodex.GetIndexes()
+	for _, idx := range indexes {
+		handleRefs(idx, inline, false)
+	}
 
-			// if we're in the root document, don't bundle anything.
-			refExp := strings.Split(sequenced.FullDefinition, "#/")
-			if len(refExp) == 2 {
-				if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
-					if root && !inline {
-						idx.GetLogger().Debug("[bundler] skipping local root reference",
-							"ref", sequenced.Definition)
-						continue
-					}
-				}
-			}
+	handleRefs(rolodex.GetRootIndex(), inline, true)
+	return model.Render()
+}
 
-			if mappedReference != nil && !mappedReference.Circular {
-				sequenced.Node.Content = mappedReference.Node.Content
-				continue
-			}
-
-			if mappedReference != nil && mappedReference.Circular {
-				if idx.GetLogger() != nil {
-					idx.GetLogger().Warn("[bundler] skipping circular reference",
-						"ref", sequenced.FullDefinition)
+func handleRefs(idx *index.SpecIndex, inline, root bool) {
+	mappedReferences := idx.GetMappedReferences()
+	sequencedReferences := idx.GetRawReferencesSequenced()
+	for _, sequenced := range sequencedReferences {
+		// if we're in the root document, don't bundle anything.
+		refExp := strings.Split(sequenced.FullDefinition, "#/")
+		if len(refExp) == 2 {
+			if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
+				if root && !inline {
+					idx.GetLogger().Debug("[bundler] skipping local root reference",
+						"ref", sequenced.Definition)
+					continue
 				}
 			}
 		}
-	}
 
-	indexes := rolodex.GetIndexes()
-	for _, idx := range indexes {
-		compact(idx, false)
+		mappedReference := mappedReferences[sequenced.FullDefinition]
+		if mappedReference == nil {
+			if idx.GetLogger() != nil {
+				idx.GetLogger().Warn("[bundler] skipping unresolved reference",
+					"ref", sequenced.FullDefinition)
+			}
+			continue
+		}
+
+		if mappedReference.Circular {
+			if idx.GetLogger() != nil {
+				idx.GetLogger().Warn("[bundler] skipping circular reference",
+					"ref", sequenced.FullDefinition)
+			}
+			continue
+		}
+
+		sequenced.Node.Content = mappedReference.Node.Content
 	}
-	compact(rolodex.GetRootIndex(), true)
-	return model.Render()
 }
