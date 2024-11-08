@@ -17,6 +17,18 @@ import (
 // ErrInvalidModel is returned when the model is not usable.
 var ErrInvalidModel = errors.New("invalid model")
 
+type RefHandling string
+
+const (
+	RefHandlingIgnore  RefHandling = "ignore"
+	RefHandlingInline  RefHandling = "inline"
+	RefHandlingCompose RefHandling = "compose"
+)
+
+type BundleOptions struct {
+	RelativeRefHandling RefHandling
+}
+
 // BundleBytes will take a byte slice of an OpenAPI specification and return a bundled version of it.
 // This is useful for when you want to take a specification with external references, and you want to bundle it
 // into a single document.
@@ -25,7 +37,7 @@ var ErrInvalidModel = errors.New("invalid model")
 // document will be a valid OpenAPI specification, containing no references.
 //
 // Circular references will not be resolved and will be skipped.
-func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) ([]byte, error) {
+func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration, opts BundleOptions) ([]byte, error) {
 	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
 	if err != nil {
 		return nil, err
@@ -37,7 +49,12 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
 
-	bundledBytes, e := bundle(&v3Doc.Model, configuration.BundleInlineRefs)
+	// Overwrite bundle options, if deprecated config field is used.
+	if configuration.BundleInlineRefs {
+		opts.RelativeRefHandling = RefHandlingInline
+	}
+
+	bundledBytes, e := bundle(&v3Doc.Model, opts)
 	return bundledBytes, errors.Join(err, e)
 }
 
@@ -51,22 +68,24 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 //
 // Circular references will not be resolved and will be skipped.
 func BundleDocument(model *v3.Document) ([]byte, error) {
-	return bundle(model, false)
+	return bundle(model, BundleOptions{RelativeRefHandling: RefHandlingIgnore})
 }
 
-func bundle(model *v3.Document, inline bool) ([]byte, error) {
+func bundle(model *v3.Document, opts BundleOptions) ([]byte, error) {
 	rolodex := model.Rolodex
 
 	indexes := rolodex.GetIndexes()
 	for _, idx := range indexes {
-		handleRefs(idx, inline, false)
+		handleRefs(idx, opts, false)
 	}
 
-	handleRefs(rolodex.GetRootIndex(), inline, true)
+	handleRefs(rolodex.GetRootIndex(), opts, true)
 	return model.Render()
 }
 
-func handleRefs(idx *index.SpecIndex, inline, root bool) {
+func handleRefs(idx *index.SpecIndex, opts BundleOptions, root bool) {
+	inline := opts.RelativeRefHandling == RefHandlingInline
+
 	mappedReferences := idx.GetMappedReferences()
 	sequencedReferences := idx.GetRawReferencesSequenced()
 	for _, sequenced := range sequencedReferences {
@@ -99,6 +118,24 @@ func handleRefs(idx *index.SpecIndex, inline, root bool) {
 			continue
 		}
 
+		// NOTE: here we are taking a $ref in a document and we replace its
+		// content from the referenced document.
+		// To change this behavior, we'd have to take the local part of the
+		// FullDefinition, create a matching entry in the root's components
+		// section and replace the content of the node with a reference to that.
+		//
+		// In OpenAPI 3.1 a reference may point to any other JSONSchema file. We
+		// have to deal with that case and figure out what to name such a
+		// reference. Alternatively, we may skip that and do the regular
+		// behavior.
+		//
+		// No need to look up the type of a component, because that should be
+		// evident from the reference itself.
+		//
+		// Keep a list of all added references so you can deduplicate.
+		//
+		// - Use sequenced.Node.Content to determine the location of the reference
+		//   target in the root document.
 		sequenced.Node.Content = mappedReference.Node.Content
 	}
 }
