@@ -10,9 +10,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"slices"
+
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"slices"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -245,15 +246,15 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 	res.indexesVisited++
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
-		var journey []*Reference
+		var journey []*ReferenceNode
 		res.journeysTaken++
-		res.VisitReference(ref.Reference, seenReferences, journey, false)
+		res.VisitReference(ref.Target, seenReferences, journey, false)
 	}
 	schemas := idx.GetAllComponentSchemas()
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
-			var journey []*Reference
+			var journey []*ReferenceNode
 			res.journeysTaken++
 			res.VisitReference(schemaRef, seenReferences, journey, false)
 		}
@@ -261,7 +262,7 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 }
 
 type refMap struct {
-	ref   *Reference
+	ref   *ReferenceNode
 	nodes []*yaml.Node
 }
 
@@ -273,15 +274,15 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	var refs []refMap
 	for _, ref := range mapped {
 		seenReferences := make(map[string]bool)
-		var journey []*Reference
+		var journey []*ReferenceNode
 		res.journeysTaken++
-		if ref != nil && ref.Reference != nil {
-			n := res.VisitReference(ref.Reference, seenReferences, journey, true)
-			if !ref.Reference.Circular {
+		if ref != nil && ref.Target != nil {
+			n := res.VisitReference(ref.Target, seenReferences, journey, true)
+			if !ref.Target.Circular {
 				// make a note of the reference and map the original ref after we're done
-				if ok, _, _ := utils.IsNodeRefValue(ref.OriginalReference.Node); ok {
+				if ok, _, _ := utils.IsNodeRefValue(ref.Source.Node); ok {
 					refs = append(refs, refMap{
-						ref:   ref.OriginalReference,
+						ref:   ref.Source,
 						nodes: n,
 					})
 				}
@@ -294,7 +295,7 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
-			var journey []*Reference
+			var journey []*ReferenceNode
 			res.journeysTaken++
 			schemaRef.Node.Content = res.VisitReference(schemaRef, seenReferences, journey, true)
 		}
@@ -304,7 +305,7 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	for s, schemaRef := range schemas {
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
-			var journey []*Reference
+			var journey []*ReferenceNode
 			res.journeysTaken++
 			schemaRef.Node.Content = res.VisitReference(schemaRef, seenReferences, journey, true)
 		}
@@ -322,7 +323,7 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 }
 
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
-func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
+func (resolver *Resolver) VisitReference(ref *ReferenceNode, seen map[string]bool, journey []*ReferenceNode, resolve bool) []*yaml.Node {
 	resolver.referencesVisited++
 	if resolve && ref.Seen {
 		if ref.Resolved {
@@ -346,7 +347,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 		for i, j := range journey {
 			if j.FullDefinition == r.FullDefinition {
 
-				var foundDup *Reference
+				var foundDup *ReferenceNode
 				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
 				if foundRef != nil {
 					foundDup = foundRef
@@ -393,7 +394,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 		}
 
 		if !skip {
-			var original *Reference
+			var original *ReferenceNode
 			foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
 			if foundRef != nil {
 				original = foundRef
@@ -414,8 +415,8 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 	return ref.Node.Content
 }
 
-func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDefinitions map[string]bool,
-	initialRef *Reference,
+func (resolver *Resolver) isInfiniteCircularDependency(ref *ReferenceNode, visitedDefinitions map[string]bool,
+	initialRef *ReferenceNode,
 ) (bool, map[string]bool) {
 	if ref == nil {
 		return false, visitedDefinitions
@@ -451,10 +452,10 @@ func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDe
 	return false, visitedDefinitions
 }
 
-func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.Node,
+func (resolver *Resolver) extractRelatives(ref *ReferenceNode, node, parent *yaml.Node,
 	foundRelatives map[string]bool,
-	journey []*Reference, seen map[int]bool, resolve bool, depth int,
-) []*Reference {
+	journey []*ReferenceNode, seen map[int]bool, resolve bool, depth int,
+) []*ReferenceNode {
 	if len(journey) > 100 {
 		return nil
 	}
@@ -486,7 +487,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 		return nil
 	}
 
-	var found []*Reference
+	var found []*ReferenceNode
 
 	if len(node.Content) > 0 {
 		skip := false
@@ -498,7 +499,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
 				depth++
 
-				var foundRef *Reference
+				var foundRef *ReferenceNode
 				foundRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(ref)
 				if foundRef != nil && !foundRef.Circular {
 					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
@@ -523,7 +524,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 				value := node.Content[i+1].Value
 				value = strings.ReplaceAll(value, "\\\\", "\\")
-				var locatedRef *Reference
+				var locatedRef *ReferenceNode
 				var fullDef string
 				var definition string
 
@@ -605,7 +606,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					}
 				}
 
-				searchRef := &Reference{
+				searchRef := &ReferenceNode{
 					Definition:     definition,
 					FullDefinition: fullDef,
 					RemoteLocation: ref.RemoteLocation,
@@ -808,7 +809,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 	return found
 }
 
-func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
+func (resolver *Resolver) buildDefPath(ref *ReferenceNode, l string) string {
 	def := ""
 	exp := strings.Split(l, "#/")
 	if len(exp) == 2 {

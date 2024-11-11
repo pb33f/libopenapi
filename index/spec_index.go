@@ -84,7 +84,7 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	results := index.ExtractRefs(index.root.Content[0], index.root, []string{}, 0, false, "")
 
 	// map poly refs
-	poly := make([]*Reference, len(index.polymorphicRefs))
+	poly := make([]*ReferenceNode, len(index.polymorphicRefs))
 	z := 0
 	for i := range index.polymorphicRefs {
 		poly[z] = index.polymorphicRefs[i]
@@ -210,33 +210,33 @@ func (index *SpecIndex) GetPathsNode() *yaml.Node {
 }
 
 // GetDiscoveredReferences will return all unique references found in the spec
-func (index *SpecIndex) GetDiscoveredReferences() map[string]*Reference {
+func (index *SpecIndex) GetDiscoveredReferences() map[string]*ReferenceNode {
 	return index.allRefs
 }
 
 // GetPolyReferences will return every polymorphic reference in the doc
-func (index *SpecIndex) GetPolyReferences() map[string]*Reference {
+func (index *SpecIndex) GetPolyReferences() map[string]*ReferenceNode {
 	return index.polymorphicRefs
 }
 
 // GetPolyAllOfReferences will return every 'allOf' polymorphic reference in the doc
-func (index *SpecIndex) GetPolyAllOfReferences() []*Reference {
+func (index *SpecIndex) GetPolyAllOfReferences() []*ReferenceNode {
 	return index.polymorphicAllOfRefs
 }
 
 // GetPolyAnyOfReferences will return every 'anyOf' polymorphic reference in the doc
-func (index *SpecIndex) GetPolyAnyOfReferences() []*Reference {
+func (index *SpecIndex) GetPolyAnyOfReferences() []*ReferenceNode {
 	return index.polymorphicAnyOfRefs
 }
 
 // GetPolyOneOfReferences will return every 'allOf' polymorphic reference in the doc
-func (index *SpecIndex) GetPolyOneOfReferences() []*Reference {
+func (index *SpecIndex) GetPolyOneOfReferences() []*ReferenceNode {
 	return index.polymorphicOneOfRefs
 }
 
 // GetAllCombinedReferences will return the number of unique and polymorphic references discovered.
-func (index *SpecIndex) GetAllCombinedReferences() map[string]*Reference {
-	combined := make(map[string]*Reference)
+func (index *SpecIndex) GetAllCombinedReferences() map[string]*ReferenceNode {
+	combined := make(map[string]*ReferenceNode)
 	for k, ref := range index.allRefs {
 		combined[k] = ref
 	}
@@ -260,13 +260,13 @@ func (index *SpecIndex) GetLinesWithReferences() map[int]bool {
 // this collection is completely unsorted, traversing it may produce random results when resolving it and
 // encountering circular references can change results depending on where in the collection the resolver started
 // its journey through the index.
-func (index *SpecIndex) GetMappedReferences() map[string]*Reference {
+func (index *SpecIndex) GetMappedReferences() map[string]*ReferenceNode {
 	return index.allMappedRefs
 }
 
 // GetRawReferencesSequenced returns a slice of every single reference found in the document, extracted raw from the doc
 // returned in the exact order they were found in the document.
-func (index *SpecIndex) GetRawReferencesSequenced() []*Reference {
+func (index *SpecIndex) GetRawReferencesSequenced() []*ReferenceNode {
 	return index.rawSequencedRefs
 }
 
@@ -277,7 +277,7 @@ func (index *SpecIndex) GetMappedReferencesSequenced() []*ReferenceMapped {
 }
 
 // GetOperationParameterReferences will return all references to operation parameters
-func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]map[string][]*Reference {
+func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]map[string][]*ReferenceNode {
 	return index.paramOpRefs
 }
 
@@ -286,11 +286,11 @@ func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]
 // and then following on are all the references extracted from the components section (using GetAllComponentSchemas).
 // finally all the references that are not inline, but marked as $ref in the document are returned (using GetAllReferenceSchemas).
 // the results are sorted by line number.
-func (index *SpecIndex) GetAllSchemas() []*Reference {
+func (index *SpecIndex) GetAllSchemas() []*ReferenceNode {
 	componentSchemas := index.GetAllComponentSchemas()
 	inlineSchemas := index.GetAllInlineSchemas()
 	refSchemas := index.GetAllReferenceSchemas()
-	combined := make([]*Reference, len(inlineSchemas)+len(componentSchemas)+len(refSchemas))
+	combined := make([]*ReferenceNode, len(inlineSchemas)+len(componentSchemas)+len(refSchemas))
 	i := 0
 	for x := range inlineSchemas {
 		combined[i] = inlineSchemas[x]
@@ -312,22 +312,22 @@ func (index *SpecIndex) GetAllSchemas() []*Reference {
 
 // GetAllInlineSchemaObjects will return all schemas that are inline (not inside components) and that are also typed
 // as 'object' or 'array' (not primitives).
-func (index *SpecIndex) GetAllInlineSchemaObjects() []*Reference {
+func (index *SpecIndex) GetAllInlineSchemaObjects() []*ReferenceNode {
 	return index.allInlineSchemaObjectDefinitions
 }
 
 // GetAllInlineSchemas will return all schemas defined in the components section of the document.
-func (index *SpecIndex) GetAllInlineSchemas() []*Reference {
+func (index *SpecIndex) GetAllInlineSchemas() []*ReferenceNode {
 	return index.allInlineSchemaDefinitions
 }
 
 // GetAllReferenceSchemas will return all schemas that are not inline, but $ref'd from somewhere.
-func (index *SpecIndex) GetAllReferenceSchemas() []*Reference {
+func (index *SpecIndex) GetAllReferenceSchemas() []*ReferenceNode {
 	return index.allRefSchemaDefinitions
 }
 
 // GetAllComponentSchemas will return all schemas defined in the components section of the document.
-func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
+func (index *SpecIndex) GetAllComponentSchemas() map[string]*ReferenceNode {
 	if index == nil {
 		return nil
 	}
@@ -347,7 +347,7 @@ func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
 
 	// Double-check if another goroutine initialized it
 	if index.allComponentSchemas == nil {
-		schemaMap := syncMapToMap[string, *Reference](index.allComponentSchemaDefinitions)
+		schemaMap := syncMapToMap[string, *ReferenceNode](index.allComponentSchemaDefinitions)
 		index.allComponentSchemas = schemaMap
 	}
 
@@ -355,22 +355,22 @@ func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
 }
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
-func (index *SpecIndex) GetAllSecuritySchemes() map[string]*Reference {
+func (index *SpecIndex) GetAllSecuritySchemes() map[string]*ReferenceNode {
 	return index.allSecuritySchemes
 }
 
 // GetAllHeaders will return all headers found in the document (under components)
-func (index *SpecIndex) GetAllHeaders() map[string]*Reference {
+func (index *SpecIndex) GetAllHeaders() map[string]*ReferenceNode {
 	return index.allHeaders
 }
 
 // GetAllExternalDocuments will return all external documents found
-func (index *SpecIndex) GetAllExternalDocuments() map[string]*Reference {
+func (index *SpecIndex) GetAllExternalDocuments() map[string]*ReferenceNode {
 	return index.allExternalDocuments
 }
 
 // GetAllExamples will return all examples found in the document (under components)
-func (index *SpecIndex) GetAllExamples() map[string]*Reference {
+func (index *SpecIndex) GetAllExamples() map[string]*ReferenceNode {
 	return index.allExamples
 }
 
@@ -395,47 +395,47 @@ func (index *SpecIndex) GetAllSummaries() []*DescriptionReference {
 }
 
 // GetAllRequestBodies will return all requestBodies found in the document (under components)
-func (index *SpecIndex) GetAllRequestBodies() map[string]*Reference {
+func (index *SpecIndex) GetAllRequestBodies() map[string]*ReferenceNode {
 	return index.allRequestBodies
 }
 
 // GetAllLinks will return all links found in the document (under components)
-func (index *SpecIndex) GetAllLinks() map[string]*Reference {
+func (index *SpecIndex) GetAllLinks() map[string]*ReferenceNode {
 	return index.allLinks
 }
 
 // GetAllParameters will return all parameters found in the document (under components)
-func (index *SpecIndex) GetAllParameters() map[string]*Reference {
+func (index *SpecIndex) GetAllParameters() map[string]*ReferenceNode {
 	return index.allParameters
 }
 
 // GetAllResponses will return all responses found in the document (under components)
-func (index *SpecIndex) GetAllResponses() map[string]*Reference {
+func (index *SpecIndex) GetAllResponses() map[string]*ReferenceNode {
 	return index.allResponses
 }
 
 // GetAllCallbacks will return all links found in the document (under components)
-func (index *SpecIndex) GetAllCallbacks() map[string]*Reference {
+func (index *SpecIndex) GetAllCallbacks() map[string]*ReferenceNode {
 	return index.allCallbacks
 }
 
 // GetInlineOperationDuplicateParameters will return a map of duplicates located in operation parameters.
-func (index *SpecIndex) GetInlineOperationDuplicateParameters() map[string][]*Reference {
+func (index *SpecIndex) GetInlineOperationDuplicateParameters() map[string][]*ReferenceNode {
 	return index.paramInlineDuplicateNames
 }
 
 // GetReferencesWithSiblings will return a map of all the references with sibling nodes (illegal)
-func (index *SpecIndex) GetReferencesWithSiblings() map[string]Reference {
+func (index *SpecIndex) GetReferencesWithSiblings() map[string]ReferenceNode {
 	return index.refsWithSiblings
 }
 
 // GetAllReferences will return every reference found in the spec, after being de-duplicated.
-func (index *SpecIndex) GetAllReferences() map[string]*Reference {
+func (index *SpecIndex) GetAllReferences() map[string]*ReferenceNode {
 	return index.allRefs
 }
 
 // GetAllSequencedReferences will return every reference (in sequence) that was found (non-polymorphic)
-func (index *SpecIndex) GetAllSequencedReferences() []*Reference {
+func (index *SpecIndex) GetAllSequencedReferences() []*ReferenceNode {
 	return index.rawSequencedRefs
 }
 
@@ -460,27 +460,27 @@ func (index *SpecIndex) GetOperationParametersIndexErrors() []error {
 }
 
 // GetAllPaths will return all paths indexed in the document
-func (index *SpecIndex) GetAllPaths() map[string]map[string]*Reference {
+func (index *SpecIndex) GetAllPaths() map[string]map[string]*ReferenceNode {
 	return index.pathRefs
 }
 
 // GetOperationTags will return all references to all tags found in operations.
-func (index *SpecIndex) GetOperationTags() map[string]map[string][]*Reference {
+func (index *SpecIndex) GetOperationTags() map[string]map[string][]*ReferenceNode {
 	return index.operationTagsRefs
 }
 
 // GetAllParametersFromOperations will return all paths indexed in the document
-func (index *SpecIndex) GetAllParametersFromOperations() map[string]map[string]map[string][]*Reference {
+func (index *SpecIndex) GetAllParametersFromOperations() map[string]map[string]map[string][]*ReferenceNode {
 	return index.paramOpRefs
 }
 
 // GetRootSecurityReferences will return all root security settings
-func (index *SpecIndex) GetRootSecurityReferences() []*Reference {
+func (index *SpecIndex) GetRootSecurityReferences() []*ReferenceNode {
 	return index.rootSecurity
 }
 
 // GetSecurityRequirementReferences will return all security requirement definitions found in the document
-func (index *SpecIndex) GetSecurityRequirementReferences() map[string]map[string][]*Reference {
+func (index *SpecIndex) GetSecurityRequirementReferences() map[string]map[string][]*ReferenceNode {
 	return index.securityRequirementRefs
 }
 
@@ -495,12 +495,12 @@ func (index *SpecIndex) GetRootServersNode() *yaml.Node {
 }
 
 // GetAllRootServers will return all root servers defined
-func (index *SpecIndex) GetAllRootServers() []*Reference {
+func (index *SpecIndex) GetAllRootServers() []*ReferenceNode {
 	return index.serversRefs
 }
 
 // GetAllOperationsServers will return all operation overrides for servers.
-func (index *SpecIndex) GetAllOperationsServers() map[string]map[string][]*Reference {
+func (index *SpecIndex) GetAllOperationsServers() map[string]map[string][]*ReferenceNode {
 	return index.opServersRefs
 }
 
@@ -551,11 +551,11 @@ func (index *SpecIndex) GetPathCount() int {
 }
 
 // ExtractExternalDocuments will extract the number of externalDocs nodes found in the document.
-func (index *SpecIndex) ExtractExternalDocuments(node *yaml.Node) []*Reference {
+func (index *SpecIndex) ExtractExternalDocuments(node *yaml.Node) []*ReferenceNode {
 	if node == nil {
 		return nil
 	}
-	var found []*Reference
+	var found []*ReferenceNode
 	if len(node.Content) > 0 {
 		for i, n := range node.Content {
 			if utils.IsNodeMap(n) || utils.IsNodeArray(n) {
@@ -566,7 +566,7 @@ func (index *SpecIndex) ExtractExternalDocuments(node *yaml.Node) []*Reference {
 				docNode := node.Content[i+1]
 				_, urlNode := utils.FindKeyNode("url", docNode.Content)
 				if urlNode != nil {
-					ref := &Reference{
+					ref := &ReferenceNode{
 						Definition: urlNode.Value,
 						Name:       urlNode.Value,
 						Node:       docNode,
@@ -607,7 +607,7 @@ func (index *SpecIndex) GetGlobalTagsCount() int {
 							desc = ""
 						}
 						if name != nil {
-							ref := &Reference{
+							ref := &ReferenceNode{
 								Definition: desc,
 								Name:       name.Value,
 								Node:       tagNode,
@@ -706,19 +706,19 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 				for _, callback := range res[0].Content {
 					if utils.IsNodeMap(callback) {
 
-						ref := &Reference{
+						ref := &ReferenceNode{
 							Definition: m.Name,
 							Name:       m.Name,
 							Node:       callback,
 						}
 
 						if index.callbacksRefs[path] == nil {
-							index.callbacksRefs[path] = make(map[string][]*Reference)
+							index.callbacksRefs[path] = make(map[string][]*ReferenceNode)
 						}
 						if len(index.callbacksRefs[path][m.Name]) > 0 {
 							index.callbacksRefs[path][m.Name] = append(index.callbacksRefs[path][m.Name], ref)
 						} else {
-							index.callbacksRefs[path][m.Name] = []*Reference{ref}
+							index.callbacksRefs[path][m.Name] = []*ReferenceNode{ref}
 						}
 						index.globalCallbacksCount++
 					}
@@ -754,18 +754,18 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 				for _, link := range res[0].Content {
 					if utils.IsNodeMap(link) {
 
-						ref := &Reference{
+						ref := &ReferenceNode{
 							Definition: m.Name,
 							Name:       m.Name,
 							Node:       link,
 						}
 						if index.linksRefs[path] == nil {
-							index.linksRefs[path] = make(map[string][]*Reference)
+							index.linksRefs[path] = make(map[string][]*ReferenceNode)
 						}
 						if len(index.linksRefs[path][m.Name]) > 0 {
 							index.linksRefs[path][m.Name] = append(index.linksRefs[path][m.Name], ref)
 						}
-						index.linksRefs[path][m.Name] = []*Reference{ref}
+						index.linksRefs[path][m.Name] = []*ReferenceNode{ref}
 						index.globalLinksCount++
 					}
 				}
@@ -800,7 +800,7 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 				if i+1 < len(index.root.Content[0].Content) {
 					serverDefinitions := index.root.Content[0].Content[i+1]
 					for x, def := range serverDefinitions.Content {
-						ref := &Reference{
+						ref := &ReferenceNode{
 							Definition: "servers",
 							Name:       "server",
 							Node:       def,
@@ -820,7 +820,7 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 					for x, def := range securityDefinitions.Content {
 						if len(def.Content) > 0 {
 							name := def.Content[0]
-							ref := &Reference{
+							ref := &ReferenceNode{
 								Definition: name.Value,
 								Name:       name.Value,
 								Node:       def,
@@ -1006,7 +1006,7 @@ func (index *SpecIndex) GetOperationCount() int {
 
 	opCount := 0
 
-	locatedPathRefs := make(map[string]map[string]*Reference)
+	locatedPathRefs := make(map[string]map[string]*ReferenceNode)
 
 	for x, p := range index.pathsNode.Content {
 		if x%2 == 0 {
@@ -1038,7 +1038,7 @@ func (index *SpecIndex) GetOperationCount() int {
 						}
 					}
 					if valid {
-						ref := &Reference{
+						ref := &ReferenceNode{
 							Definition: m.Value,
 							Name:       m.Value,
 							Node:       method.Content[y+1],
@@ -1046,7 +1046,7 @@ func (index *SpecIndex) GetOperationCount() int {
 							ParentNode: m,
 						}
 						if locatedPathRefs[p.Value] == nil {
-							locatedPathRefs[p.Value] = make(map[string]*Reference)
+							locatedPathRefs[p.Value] = make(map[string]*ReferenceNode)
 						}
 						locatedPathRefs[p.Value][ref.Name] = ref
 						// update
@@ -1109,11 +1109,11 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 					if prop.Value == "servers" {
 						serversNode := pathPropertyNode.Content[y+1]
 						if index.opServersRefs[pathItemNode.Value] == nil {
-							index.opServersRefs[pathItemNode.Value] = make(map[string][]*Reference)
+							index.opServersRefs[pathItemNode.Value] = make(map[string][]*ReferenceNode)
 						}
-						var serverRefs []*Reference
+						var serverRefs []*ReferenceNode
 						for i, serverRef := range serversNode.Content {
-							ref := &Reference{
+							ref := &ReferenceNode{
 								Definition: serverRef.Value,
 								Name:       serverRef.Value,
 								Node:       serverRef,
@@ -1147,12 +1147,12 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 									tags := pathPropertyNode.Content[y+1].Content[z+1]
 
 									if index.operationTagsRefs[pathItemNode.Value] == nil {
-										index.operationTagsRefs[pathItemNode.Value] = make(map[string][]*Reference)
+										index.operationTagsRefs[pathItemNode.Value] = make(map[string][]*ReferenceNode)
 									}
 
-									var tagRefs []*Reference
+									var tagRefs []*ReferenceNode
 									for _, tagRef := range tags.Content {
-										ref := &Reference{
+										ref := &ReferenceNode{
 											Definition: tagRef.Value,
 											Name:       tagRef.Value,
 											Node:       tagRef,
@@ -1165,27 +1165,27 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 								// extract description and summaries
 								if httpMethodProp.Value == "description" {
 									desc := pathPropertyNode.Content[y+1].Content[z+1].Value
-									ref := &Reference{
+									ref := &ReferenceNode{
 										Definition: desc,
 										Name:       "description",
 										Node:       pathPropertyNode.Content[y+1].Content[z+1],
 									}
 									if index.operationDescriptionRefs[pathItemNode.Value] == nil {
-										index.operationDescriptionRefs[pathItemNode.Value] = make(map[string]*Reference)
+										index.operationDescriptionRefs[pathItemNode.Value] = make(map[string]*ReferenceNode)
 									}
 
 									index.operationDescriptionRefs[pathItemNode.Value][prop.Value] = ref
 								}
 								if httpMethodProp.Value == "summary" {
 									summary := pathPropertyNode.Content[y+1].Content[z+1].Value
-									ref := &Reference{
+									ref := &ReferenceNode{
 										Definition: summary,
 										Name:       "summary",
 										Node:       pathPropertyNode.Content[y+1].Content[z+1],
 									}
 
 									if index.operationSummaryRefs[pathItemNode.Value] == nil {
-										index.operationSummaryRefs[pathItemNode.Value] = make(map[string]*Reference)
+										index.operationSummaryRefs[pathItemNode.Value] = make(map[string]*ReferenceNode)
 									}
 
 									index.operationSummaryRefs[pathItemNode.Value][prop.Value] = ref
@@ -1195,9 +1195,9 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 								if httpMethodProp.Value == "servers" {
 									serversNode := pathPropertyNode.Content[y+1].Content[z+1]
 
-									var serverRefs []*Reference
+									var serverRefs []*ReferenceNode
 									for i, serverRef := range serversNode.Content {
-										ref := &Reference{
+										ref := &ReferenceNode{
 											Definition: "servers",
 											Name:       "servers",
 											Node:       serverRef,
@@ -1208,7 +1208,7 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 									}
 
 									if index.opServersRefs[pathItemNode.Value] == nil {
-										index.opServersRefs[pathItemNode.Value] = make(map[string][]*Reference)
+										index.opServersRefs[pathItemNode.Value] = make(map[string][]*ReferenceNode)
 									}
 
 									index.opServersRefs[pathItemNode.Value][prop.Value] = serverRefs

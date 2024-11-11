@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -442,7 +443,7 @@ func TestResolver_CircularReferencesRequiredInvalid(t *testing.T) {
 }
 
 func TestResolver_DeepJourney(t *testing.T) {
-	var journey []*Reference
+	var journey []*ReferenceNode
 	for f := 0; f < 200; f++ {
 		journey = append(journey, nil)
 	}
@@ -478,7 +479,7 @@ func TestResolver_DeepDepth(t *testing.T) {
 	}))
 	idx.logger = logger
 
-	ref := &Reference{
+	ref := &ReferenceNode{
 		FullDefinition: "#/components/schemas/A",
 	}
 	found := resolver.extractRelatives(ref, refA, nil, nil, nil, nil, false, 0)
@@ -569,7 +570,7 @@ components:
       description: cheese
       anyOf:
         items:
-          $ref: '#/components/schemas/crackers' 
+          $ref: '#/components/schemas/crackers'
     crackers:
       description: crackers
       allOf:
@@ -596,7 +597,7 @@ components:
     cheese:
       description: cheese
       anyOf:
-        - $ref: '#/components/schemas/crackers' 
+        - $ref: '#/components/schemas/crackers'
     crackers:
       description: crackers
       anyOf:
@@ -633,7 +634,7 @@ components:
       description: cheese
       properties:
         thang:
-          $ref: '#/components/schemas/crackers' 
+          $ref: '#/components/schemas/crackers'
     crackers:
       description: crackers
       properties:
@@ -1312,7 +1313,7 @@ components:
     B:
       type: object
       allOf:
-        - $ref: '#/components/schemas/A' 
+        - $ref: '#/components/schemas/A'
       properties:
         children:
           type: array
@@ -1392,7 +1393,7 @@ components:
     ReferenceType:
       type: object
       required: [$ref]
-      properties: 
+      properties:
         $ref:
           type: string`
 

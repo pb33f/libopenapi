@@ -18,11 +18,11 @@ import (
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
-func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
+func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*ReferenceNode {
 	if node == nil {
 		return nil
 	}
-	var found []*Reference
+	var found []*ReferenceNode
 	if len(node.Content) > 0 {
 		var prev, polyName string
 		for i, n := range node.Content {
@@ -57,7 +57,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 				}
 
-				ref := &Reference{
+				ref := &ReferenceNode{
 					ParentNode:     parent,
 					FullDefinition: fullDefinitionPath,
 					Definition:     definitionPath,
@@ -134,7 +134,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
-					ref := &Reference{
+					ref := &ReferenceNode{
 						ParentNode:     parent,
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
@@ -182,7 +182,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
 
-					ref := &Reference{
+					ref := &ReferenceNode{
 						ParentNode:     parent,
 						FullDefinition: fullDefinitionPath,
 						Definition:     definitionPath,
@@ -344,7 +344,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 					_, p := utils.ConvertComponentIdIntoFriendlyPathSearch(componentName)
 
-					ref := &Reference{
+					ref := &ReferenceNode{
 						ParentNode:     parent,
 						FullDefinition: fullDefinitionPath,
 						Definition:     componentName,
@@ -373,7 +373,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					// then add to refs with siblings
 					if len(node.Content) > 2 {
 						copiedNode := *node
-						copied := Reference{
+						copied := ReferenceNode{
 							ParentNode:     parent,
 							FullDefinition: fullDefinitionPath,
 							Definition:     ref.Definition,
@@ -510,20 +510,20 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 										continue
 									}
 									if utils.IsNodeArray(b.Content[k].Content[g]) {
-										var refMap map[string][]*Reference
+										var refMap map[string][]*ReferenceNode
 										if index.securityRequirementRefs[secKey] == nil {
-											index.securityRequirementRefs[secKey] = make(map[string][]*Reference)
+											index.securityRequirementRefs[secKey] = make(map[string][]*ReferenceNode)
 											refMap = index.securityRequirementRefs[secKey]
 										} else {
 											refMap = index.securityRequirementRefs[secKey]
 										}
 										for r := range b.Content[k].Content[g].Content {
-											var refs []*Reference
+											var refs []*ReferenceNode
 											if refMap[b.Content[k].Content[g].Content[r].Value] != nil {
 												refs = refMap[b.Content[k].Content[g].Content[r].Value]
 											}
 
-											refs = append(refs, &Reference{
+											refs = append(refs, &ReferenceNode{
 												Definition: b.Content[k].Content[g].Content[r].Value,
 												Path:       fmt.Sprintf("%s.security[%d].%s[%d]", jsonPath, k, secKey, r),
 												Node:       b.Content[k].Content[g].Content[r],
@@ -618,8 +618,8 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 // ExtractComponentsFromRefs returns located components from references. The returned nodes from here
 // can be used for resolving as they contain the actual object properties.
-func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Reference {
-	var found []*Reference
+func (index *SpecIndex) ExtractComponentsFromRefs(refs []*ReferenceNode) []*ReferenceNode {
+	var found []*ReferenceNode
 
 	// run this async because when things get recursive, it can take a while
 	var c chan bool
@@ -627,14 +627,14 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		c = make(chan bool)
 	}
 
-	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
+	locate := func(ref *ReferenceNode, refIndex int, sequence []*ReferenceMapped) {
 		index.refLock.Lock()
 		if index.allMappedRefs[ref.FullDefinition] != nil {
 			rm := &ReferenceMapped{
-				OriginalReference: ref,
-				Reference:         index.allMappedRefs[ref.FullDefinition],
-				Definition:        index.allMappedRefs[ref.FullDefinition].Definition,
-				FullDefinition:    index.allMappedRefs[ref.FullDefinition].FullDefinition,
+				Source:         ref,
+				Target:         index.allMappedRefs[ref.FullDefinition],
+				Definition:     index.allMappedRefs[ref.FullDefinition].Definition,
+				FullDefinition: index.allMappedRefs[ref.FullDefinition].FullDefinition,
 			}
 			sequence[refIndex] = rm
 			if !index.config.ExtractRefsSequentially {
@@ -662,10 +662,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 					index.allMappedRefs[located.FullDefinition] = located
 				}
 				rm := &ReferenceMapped{
-					OriginalReference: ref,
-					Reference:         located,
-					Definition:        located.Definition,
-					FullDefinition:    located.FullDefinition,
+					Source:         ref,
+					Target:         located,
+					Definition:     located.Definition,
+					FullDefinition: located.FullDefinition,
 				}
 				sequence[refIndex] = rm
 				index.refLock.Unlock()
@@ -689,7 +689,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		}
 	}
 
-	var refsToCheck []*Reference
+	var refsToCheck []*ReferenceNode
 	refsToCheck = append(refsToCheck, refs...)
 
 	mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))

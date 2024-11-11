@@ -138,6 +138,16 @@ func (r *Rolodex) GetIndexes() []*SpecIndex {
 	return r.indexes
 }
 
+func (r *Rolodex) GetFileIndex(file string) *SpecIndex {
+	for _, index := range r.indexes {
+		if index.specAbsolutePath == file {
+			return index
+		}
+	}
+
+	return nil
+}
+
 // GetCaughtErrors returns all the errors that were caught during the indexing process.
 func (r *Rolodex) GetCaughtErrors() []error {
 	return r.caughtErrors
@@ -435,8 +445,8 @@ func (r *Rolodex) BuildIndexes() {
 }
 
 // GetAllReferences  returns all references found in the root and all other indices
-func (r *Rolodex) GetAllReferences() map[string]*Reference {
-	allRefs := make(map[string]*Reference)
+func (r *Rolodex) GetAllReferences() map[string]*ReferenceNode {
+	allRefs := make(map[string]*ReferenceNode)
 	for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
 		if idx == nil {
 			continue
@@ -448,8 +458,8 @@ func (r *Rolodex) GetAllReferences() map[string]*Reference {
 }
 
 // GetAllMappedReferences returns all mapped references found in the root and all other indices
-func (r *Rolodex) GetAllMappedReferences() map[string]*Reference {
-	mappedRefs := make(map[string]*Reference)
+func (r *Rolodex) GetAllMappedReferences() map[string]*ReferenceNode {
+	mappedRefs := make(map[string]*ReferenceNode)
 	for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
 		if idx == nil {
 			continue

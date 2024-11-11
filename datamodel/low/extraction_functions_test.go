@@ -1929,7 +1929,7 @@ func TestLocateRefNode_DoARealLookup(t *testing.T) {
 
 	// fake cache to a lookup for a file that does not exist will work.
 	fakeCache := new(sync.Map)
-	fakeCache.Store(lookup, &index.Reference{Node: &no, Index: idx})
+	fakeCache.Store(lookup, &index.ReferenceNode{Node: &no, Index: idx})
 	idx.SetCache(fakeCache)
 
 	ctx := context.WithValue(context.Background(), index.CurrentPathKey, lookup)
