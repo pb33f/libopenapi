@@ -102,87 +102,110 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		}
 	}
 
-	if !bypass {
-		// check for specific keys
-		if openAPI3 != nil {
-			version, majorVersion, versionError := parseVersionTypeData(openAPI3.Value)
-			if versionError != nil {
+	//if !bypass {
+	// check for specific keys
+	parsed := false
+	if openAPI3 != nil {
+		version, majorVersion, versionError := parseVersionTypeData(openAPI3.Value)
+		if versionError != nil {
+			if !bypass {
 				return nil, versionError
 			}
+		}
 
-			specInfo.SpecType = utils.OpenApi3
-			specInfo.Version = version
-			specInfo.SpecFormat = OAS3
+		specInfo.SpecType = utils.OpenApi3
+		specInfo.Version = version
+		specInfo.SpecFormat = OAS3
 
-			switch specInfo.Version {
-			case "3.1.0", "3.1":
-				specInfo.VersionNumeric = 3.1
-				specInfo.APISchema = OpenAPI31SchemaData
-				specInfo.SpecFormat = OAS31
-			default:
-				specInfo.VersionNumeric = 3.0
-				specInfo.APISchema = OpenAPI3SchemaData
-			}
+		switch specInfo.Version {
+		case "3.1.0", "3.1":
+			specInfo.VersionNumeric = 3.1
+			specInfo.APISchema = OpenAPI31SchemaData
+			specInfo.SpecFormat = OAS31
+		default:
+			specInfo.VersionNumeric = 3.0
+			specInfo.APISchema = OpenAPI3SchemaData
+		}
 
-			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+		// parse JSON
+		parseJSON(spec, specInfo, &parsedSpec)
+		parsed = true
 
-			// double check for the right version, people mix this up.
-			if majorVersion < 3 {
+		// double check for the right version, people mix this up.
+		if majorVersion < 3 {
+			if !bypass {
 				specInfo.Error = errors.New("spec is defined as an openapi spec, but is using a swagger (2.0), or unknown version")
 				return specInfo, specInfo.Error
 			}
 		}
+	}
 
-		if openAPI2 != nil {
-			version, majorVersion, versionError := parseVersionTypeData(openAPI2.Value)
-			if versionError != nil {
+	if openAPI2 != nil {
+		version, majorVersion, versionError := parseVersionTypeData(openAPI2.Value)
+		if versionError != nil {
+			if !bypass {
 				return nil, versionError
 			}
+		}
 
-			specInfo.SpecType = utils.OpenApi2
-			specInfo.Version = version
-			specInfo.SpecFormat = OAS2
-			specInfo.VersionNumeric = 2.0
-			specInfo.APISchema = OpenAPI2SchemaData
+		specInfo.SpecType = utils.OpenApi2
+		specInfo.Version = version
+		specInfo.SpecFormat = OAS2
+		specInfo.VersionNumeric = 2.0
+		specInfo.APISchema = OpenAPI2SchemaData
 
-			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+		// parse JSON
+		parseJSON(spec, specInfo, &parsedSpec)
+		parsed = true
 
-			// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
-			if majorVersion > 2 {
+		// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
+		if majorVersion > 2 {
+			if !bypass {
 				specInfo.Error = errors.New("spec is defined as a swagger (openapi 2.0) spec, but is an openapi 3 or unknown version")
 				return specInfo, specInfo.Error
 			}
 		}
-		if asyncAPI != nil {
-			version, majorVersion, versionErr := parseVersionTypeData(asyncAPI.Value)
-			if versionErr != nil {
+	}
+	if asyncAPI != nil {
+		version, majorVersion, versionErr := parseVersionTypeData(asyncAPI.Value)
+		if versionErr != nil {
+			if !bypass {
 				return nil, versionErr
 			}
+		}
 
-			specInfo.SpecType = utils.AsyncApi
-			specInfo.Version = version
-			// TODO: format for AsyncAPI.
+		specInfo.SpecType = utils.AsyncApi
+		specInfo.Version = version
+		// TODO: format for AsyncAPI.
 
-			// parse JSON
-			parseJSON(spec, specInfo, &parsedSpec)
+		// parse JSON
+		parseJSON(spec, specInfo, &parsedSpec)
+		parsed = true
 
-			// so far there is only 2 as a major release of AsyncAPI
-			if majorVersion > 2 {
+		// so far there is only 2 as a major release of AsyncAPI
+		if majorVersion > 2 {
+			if !bypass {
 				specInfo.Error = errors.New("spec is defined as asyncapi, but has a major version that is invalid")
 				return specInfo, specInfo.Error
 			}
 		}
+	}
 
-		if specInfo.SpecType == "" {
-			// parse JSON
+	if specInfo.SpecType == "" {
+		// parse JSON
+		if !bypass {
 			parseJSON(spec, specInfo, &parsedSpec)
+			parsed = true
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
 			return specInfo, specInfo.Error
 		}
-	} else {
-		// parse JSON
+	}
+	//} else {
+	//	// parse JSON
+	//	parseJSON(spec, specInfo, &parsedSpec)
+	//}
+
+	if !parsed {
 		parseJSON(spec, specInfo, &parsedSpec)
 	}
 
