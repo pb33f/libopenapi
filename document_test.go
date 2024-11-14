@@ -1402,7 +1402,7 @@ func TestDocument_MinimalRemoteRefs(t *testing.T) {
 	spec, err := os.ReadFile("test_specs/minimal_remote_refs/openapi.yaml")
 	require.NoError(t, err)
 
-	baseURL, err := url.Parse("https://raw.githubusercontent.com/felixjung/libopenapi/authed-remote/test_specs/minimal_remote_refs")
+	baseURL, err := url.Parse("https://raw.githubusercontent.com/pb33f/libopenapi/refs/heads/main/test_specs/minimal_remote_refs/")
 	require.NoError(t, err)
 
 	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
