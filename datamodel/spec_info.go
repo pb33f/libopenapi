@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"time"
+
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -114,8 +115,14 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.Version = version
 			specInfo.SpecFormat = OAS3
 
-			switch specInfo.Version {
-			case "3.1.0", "3.1":
+			// Extract the prefix version
+			prefixVersion := specInfo.Version
+			if len(specInfo.Version) >= 3 {
+				prefixVersion = specInfo.Version[:3]
+			}
+
+			switch prefixVersion {
+			case "3.1":
 				specInfo.VersionNumeric = 3.1
 				specInfo.APISchema = OpenAPI31SchemaData
 				specInfo.SpecFormat = OAS31
