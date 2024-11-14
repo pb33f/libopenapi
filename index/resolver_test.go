@@ -1213,7 +1213,7 @@ paths:
           content:
             application/json:
               schema:
-                "$ref": https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml#/components/schemas/Error`
+                "$ref": https://raw.githubusercontent.com/pb33f/openapi-specification/main/examples/v3.0/petstore.yaml#/components/schemas/Error`
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(spec), &rootNode)
