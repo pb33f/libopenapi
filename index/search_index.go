@@ -125,7 +125,13 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		if strings.Contains(roloLookup, "#") {
 			roloLookup = strings.Split(roloLookup, "#")[0]
 		}
-		if filepath.Base(roloLookup) == index.GetSpecFileName() {
+
+		b := filepath.Base(roloLookup)
+		sfn := index.GetSpecFileName()
+
+		abp := index.GetSpecAbsolutePath()
+
+		if b == sfn && roloLookup == abp {
 			return nil, index, ctx
 		}
 		rFile, err := index.rolodex.Open(roloLookup)
