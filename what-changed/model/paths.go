@@ -147,11 +147,15 @@ func ComparePaths(l, r any) *PathsChanges {
 		lKeys := make(map[string]low.ValueReference[*v3.PathItem])
 		rKeys := make(map[string]low.ValueReference[*v3.PathItem])
 
-		for k, v := range lPath.PathItems.FromOldest() {
-			lKeys[k.Value] = v
+		if lPath != nil && lPath.PathItems != nil {
+			for k, v := range lPath.PathItems.FromOldest() {
+				lKeys[k.Value] = v
+			}
 		}
-		for k, v := range rPath.PathItems.FromOldest() {
-			rKeys[k.Value] = v
+		if rPath != nil && rPath.PathItems != nil {
+			for k, v := range rPath.PathItems.FromOldest() {
+				rKeys[k.Value] = v
+			}
 		}
 
 		// run every comparison in a thread.
