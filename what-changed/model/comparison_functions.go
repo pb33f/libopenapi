@@ -286,7 +286,7 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 
 	expChanges := make(map[string]R)
 
-	checkLeft := func(k string, doneChan chan bool, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
+	checkLeft := func(k string, doneChan chan struct{}, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
 		rhash := g[k]
 		if rhash == "" {
 			chLock.Lock()
@@ -297,11 +297,11 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 				p[k].GetValueNode(), nil, true,
 				p[k].GetValue(), nil)
 			chLock.Unlock()
-			doneChan <- true
+			doneChan <- struct{}{}
 			return
 		}
 		if f[k] == g[k] {
-			doneChan <- true
+			doneChan <- struct{}{}
 			return
 		}
 		// run comparison.
@@ -315,10 +315,10 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 			}
 			chLock.Unlock()
 		}
-		doneChan <- true
+		doneChan <- struct{}{}
 	}
 
-	doneChan := make(chan bool)
+	doneChan := make(chan struct{})
 	count := 0
 
 	// check left example hashes
@@ -343,7 +343,7 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 	return expChanges
 }
 
-func checkRightValue[T any](k string, doneChan chan bool, f map[string]string, p map[string]low.ValueReference[T],
+func checkRightValue[T any](k string, doneChan chan struct{}, f map[string]string, p map[string]low.ValueReference[T],
 	changes *[]*Change, label string, lock *sync.Mutex,
 ) {
 	lhash := f[k]
@@ -357,7 +357,7 @@ func checkRightValue[T any](k string, doneChan chan bool, f map[string]string, p
 			nil, p[k].GetValue())
 		lock.Unlock()
 	}
-	doneChan <- true
+	doneChan <- struct{}{}
 }
 
 // ExtractStringValueSliceChanges will compare two low level string slices for changes.
