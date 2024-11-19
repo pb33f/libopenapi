@@ -20,9 +20,12 @@ components:
           type: string
           description: >
             Name of the account
+    Email:
+      type: string
+      format: email
   responses:
     ListAccounts:
-      description: List all accounts.
+      description: A list of accounts.
       content:
         application/json:
           schema:
@@ -37,3 +40,9 @@ components:
               total:
                 type: integer
                 description: Total number of accounts.
+    GetAccountEmail:
+      description: A single account.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Email"
