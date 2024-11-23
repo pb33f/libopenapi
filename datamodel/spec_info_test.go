@@ -188,10 +188,10 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 func TestExtractSpecInfo_AnyDocument(t *testing.T) {
 	random := `something: yeah
 nothing:
- - one
- - two
+  - one
+  - two
 why:
- yes: no`
+  yes: no`
 
 	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
 	assert.Nil(t, e)
@@ -203,10 +203,10 @@ why:
 func TestExtractSpecInfo_AnyDocument_Sync(t *testing.T) {
 	random := `something: yeah
 nothing:
- - one
- - two
+  - one
+  - two
 why:
- yes: no`
+  yes: no`
 
 	r, e := ExtractSpecInfoWithDocumentCheckSync([]byte(random), true)
 	assert.Nil(t, e)
@@ -228,10 +228,10 @@ func TestExtractSpecInfo_AnyDocument_JSON(t *testing.T) {
 func TestExtractSpecInfo_AnyDocumentFromConfig(t *testing.T) {
 	random := `something: yeah
 nothing:
- - one
- - two
+  - one
+  - two
 why:
- yes: no`
+  yes: no`
 
 	r, e := ExtractSpecInfoWithConfig([]byte(random), &DocumentConfiguration{
 		BypassDocumentCheck: true,
@@ -281,7 +281,7 @@ func TestExtractSpecInfo_AsyncAPI_OddVersion(t *testing.T) {
 
 func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
 	yml := `openapi:
-should: fail`
+ should: fail`
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
@@ -289,7 +289,7 @@ should: fail`
 
 func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
 	yml := `swagger:
-should: fail`
+ should: fail`
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
@@ -297,7 +297,7 @@ should: fail`
 
 func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
 	yml := `asyncapi:
-should: fail`
+ should: fail`
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
