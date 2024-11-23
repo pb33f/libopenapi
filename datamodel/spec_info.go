@@ -137,8 +137,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			}
 
 			// parse JSON
-			err := parseJSON(spec, specInfo, &parsedSpec)
-			if err != nil {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
 				return nil, err
 			}
 
@@ -162,8 +161,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.APISchema = OpenAPI2SchemaData
 
 			// parse JSON
-			err := parseJSON(spec, specInfo, &parsedSpec)
-			if err != nil {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
 				return nil, err
 			}
 
@@ -184,8 +182,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			// TODO: format for AsyncAPI.
 
 			// parse JSON
-			err := parseJSON(spec, specInfo, &parsedSpec)
-			if err != nil {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
 				return nil, err
 			}
 
@@ -198,8 +195,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 		if specInfo.SpecType == "" {
 			// parse JSON
-			err := parseJSON(spec, specInfo, &parsedSpec)
-			if err != nil {
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
 				return nil, err
 			}
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
