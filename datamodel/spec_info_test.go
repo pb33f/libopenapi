@@ -5,10 +5,10 @@ package datamodel
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"os"
 	"testing"
 
-	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -74,6 +74,23 @@ tags:
 servers:
   - url: https://quobix.com/api`
 
+// This is a bad yaml file, where the second openapi path is indented incorrectly,
+// causing its 'get' operation to be on the same indent level as the first path's 'get' operation, so it's a duplicate key and would fail decoding.
+var BadYAML2 = `openapi: 3.0.1
+info:
+  title: Test API
+paths:
+  /test:
+    get:
+      responses:
+        '200':
+          description: OK
+    /test2:
+    get:
+      responses:
+        '200':
+          description: OK`
+
 var OpenApi2Spec = `swagger: 2.0.1
 info:
   title: Test API
@@ -134,6 +151,11 @@ func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
 	assert.Error(t, e)
 }
 
+func TestExtractSpecInfo_InvalidYAML2(t *testing.T) {
+	_, e := ExtractSpecInfo([]byte(BadYAML2))
+	assert.Error(t, e)
+}
+
 func TestExtractSpecInfo_InvalidOpenAPIVersion(t *testing.T) {
 	_, e := ExtractSpecInfo([]byte(OpenApiOne))
 	assert.Error(t, e)
@@ -166,10 +188,10 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 func TestExtractSpecInfo_AnyDocument(t *testing.T) {
 	random := `something: yeah
 nothing:
-  - one
-  - two
+ - one
+ - two
 why:
-  yes: no`
+ yes: no`
 
 	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), true)
 	assert.Nil(t, e)
@@ -181,10 +203,10 @@ why:
 func TestExtractSpecInfo_AnyDocument_Sync(t *testing.T) {
 	random := `something: yeah
 nothing:
-  - one
-  - two
+ - one
+ - two
 why:
-  yes: no`
+ yes: no`
 
 	r, e := ExtractSpecInfoWithDocumentCheckSync([]byte(random), true)
 	assert.Nil(t, e)
@@ -206,10 +228,10 @@ func TestExtractSpecInfo_AnyDocument_JSON(t *testing.T) {
 func TestExtractSpecInfo_AnyDocumentFromConfig(t *testing.T) {
 	random := `something: yeah
 nothing:
-  - one
-  - two
+ - one
+ - two
 why:
-  yes: no`
+ yes: no`
 
 	r, e := ExtractSpecInfoWithConfig([]byte(random), &DocumentConfiguration{
 		BypassDocumentCheck: true,
@@ -259,7 +281,7 @@ func TestExtractSpecInfo_AsyncAPI_OddVersion(t *testing.T) {
 
 func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
 	yml := `openapi:
- should: fail`
+should: fail`
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
@@ -267,7 +289,7 @@ func TestExtractSpecInfo_BadVersion_OpenAPI3(t *testing.T) {
 
 func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
 	yml := `swagger:
- should: fail`
+should: fail`
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
@@ -275,7 +297,7 @@ func TestExtractSpecInfo_BadVersion_Swagger(t *testing.T) {
 
 func TestExtractSpecInfo_BadVersion_AsyncAPI(t *testing.T) {
 	yml := `asyncapi:
- should: fail`
+should: fail`
 
 	_, err := ExtractSpecInfo([]byte(yml))
 	assert.Error(t, err)
