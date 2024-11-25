@@ -24,9 +24,10 @@ const (
 )
 
 var (
-	goodJSON = `{"name":"kitty", "noises":["meow","purrrr","gggrrraaaaaooooww"]}`
-	badJSON  = `{"name":"kitty, "noises":[{"meow","purrrr","gggrrraaaaaooooww"]}}`
-	goodYAML = `name: kitty
+	goodJSON            = `{"name":"kitty", "noises":["meow","purrrr","gggrrraaaaaooooww"]}`
+	badJSON             = `{"name":"kitty, "noises":[{"meow","purrrr","gggrrraaaaaooooww"]}}`
+	badJSONMissingQuote = `{"openapi": "3.0.1", "name":"kitty", "name":["kitty2",kitty3"]}`
+	goodYAML            = `name: kitty
 noises:
 - meow
 - purrr
@@ -76,7 +77,7 @@ servers:
 
 // This is a bad yaml file, where the second openapi path is indented incorrectly,
 // causing its 'get' operation to be on the same indent level as the first path's 'get' operation, so it's a duplicate key and would fail decoding.
-var BadYAML2 = `openapi: 3.0.1
+var BadYAMLRepeatedPathKey = `openapi: 3.0.1
 info:
   title: Test API
 paths:
@@ -135,6 +136,11 @@ func TestExtractSpecInfo_InvalidJSON(t *testing.T) {
 	assert.Error(t, e)
 }
 
+func TestExtractSpecInfo_InvalidJSON_MissingQuote(t *testing.T) {
+	_, e := ExtractSpecInfo([]byte(badJSONMissingQuote))
+	assert.Error(t, e)
+}
+
 func TestExtractSpecInfo_Nothing(t *testing.T) {
 	_, e := ExtractSpecInfo([]byte(""))
 	assert.Error(t, e)
@@ -151,8 +157,8 @@ func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
 	assert.Error(t, e)
 }
 
-func TestExtractSpecInfo_InvalidYAML2(t *testing.T) {
-	_, e := ExtractSpecInfo([]byte(BadYAML2))
+func TestExtractSpecInfo_InvalidYAML_RepeatedPathKey(t *testing.T) {
+	_, e := ExtractSpecInfo([]byte(BadYAMLRepeatedPathKey))
 	assert.Error(t, e)
 }
 

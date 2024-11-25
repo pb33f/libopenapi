@@ -90,28 +90,23 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) error {
 		var jsonSpec map[string]interface{}
-		var errs []error
+		var parseErr error
+
 		if utils.IsYAML(string(bytes)) {
-			err := parsedNode.Decode(&jsonSpec)
-			if err != nil {
-				errs = append(errs, err)
-			}
-			b, err := json.Marshal(&jsonSpec)
-			if err != nil {
-				errs = append(errs, err)
-			}
+			parseErr = parsedNode.Decode(&jsonSpec)
+			// NOTE: Even if Decoding results in an error, `jsonSpec` can still contain partial or empty data.
+			// This subsequent Marshalling should succeed unless `jsonSpec` contains unsupported types,
+			// which isn't possible as Decoding will only decode valid data.
+			b, _ := json.Marshal(&jsonSpec)
 			spec.SpecJSONBytes = &b
 			spec.SpecJSON = &jsonSpec
 		} else {
-			err := json.Unmarshal(bytes, &jsonSpec)
-			if err != nil {
-				errs = append(errs, err)
-			}
+			parseErr = json.Unmarshal(bytes, &jsonSpec)
 			spec.SpecJSONBytes = &bytes
 			spec.SpecJSON = &jsonSpec
 		}
 
-		return errors.Join(errs...)
+		return parseErr
 	}
 
 	if !bypass {
