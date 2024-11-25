@@ -140,7 +140,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		}
 
 		// parse JSON
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
 			return nil, err
 		}
 		parsed = true
@@ -169,7 +169,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		specInfo.APISchema = OpenAPI2SchemaData
 
 		// parse JSON
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
 			return nil, err
 		}
 		parsed = true
@@ -195,7 +195,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		// TODO: format for AsyncAPI.
 
 		// parse JSON
-		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
 			return nil, err
 		}
 		parsed = true
@@ -226,7 +226,9 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	//}
 
 	if !parsed {
-		_ = parseJSON(spec, specInfo, &parsedSpec)
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil && !bypass {
+			return nil, err
+		}
 	}
 
 	// detect the original whitespace indentation
