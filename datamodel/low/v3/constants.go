@@ -56,6 +56,7 @@ const (
 	HostLabel                  = "host"
 	BasePathLabel              = "basePath"
 	LicenseLabel               = "license"
+	Identifier                 = "identifier"
 	ContactLabel               = "contact"
 	NamespaceLabel             = "namespace"
 	PrefixLabel                = "prefix"

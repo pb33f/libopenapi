@@ -5,7 +5,7 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 // LicenseChanges represent changes to a License object that is a child of Info object. Part of an OpenAPI document
@@ -52,6 +52,17 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 		LeftNode:  l.Name.ValueNode,
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
+
+	// check identifier
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.Identifier.ValueNode,
+		RightNode: r.Identifier.ValueNode,
+		Label:     v3.Identifier,
 		Changes:   &changes,
 		Breaking:  false,
 		Original:  l,
