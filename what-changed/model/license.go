@@ -5,22 +5,34 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 // LicenseChanges represent changes to a License object that is a child of Info object. Part of an OpenAPI document
 type LicenseChanges struct {
 	*PropertyChanges
+	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between License objects
 func (l *LicenseChanges) GetAllChanges() []*Change {
-	return l.Changes
+	var changes []*Change
+	changes = append(changes, l.Changes...)
+	if l.ExtensionChanges != nil {
+		changes = append(changes, l.ExtensionChanges.GetAllChanges()...)
+	}
+	return changes
 }
 
 // TotalChanges represents the total number of changes made to a License instance.
 func (l *LicenseChanges) TotalChanges() int {
-	return l.PropertyChanges.TotalChanges()
+
+	c := l.PropertyChanges.TotalChanges()
+
+	if l.ExtensionChanges != nil {
+		c += l.ExtensionChanges.TotalChanges()
+	}
+	return c
 }
 
 // TotalBreakingChanges always returns 0 for License objects, they are non-binding.
@@ -58,11 +70,23 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 		New:       r,
 	})
 
+	// check identifier
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.Identifier.ValueNode,
+		RightNode: r.Identifier.ValueNode,
+		Label:     v3.Identifier,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
+
 	// check everything.
 	CheckProperties(props)
 
 	lc := new(LicenseChanges)
 	lc.PropertyChanges = NewPropertyChanges(changes)
+	lc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	if lc.TotalChanges() <= 0 {
 		return nil
 	}
