@@ -87,5 +87,8 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 	lc := new(LicenseChanges)
 	lc.PropertyChanges = NewPropertyChanges(changes)
 	lc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
+	if lc.TotalChanges() <= 0 {
+		return nil
+	}
 	return lc
 }
