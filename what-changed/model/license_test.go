@@ -5,11 +5,12 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareLicense_URLAdded(t *testing.T) {
@@ -197,4 +198,32 @@ url: https://pb33f.io`
 	// compare.
 	extChanges := CompareLicense(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
+}
+
+func TestCompareLicense_Identifier(t *testing.T) {
+
+	left := `name: buckaroo
+identifier: https://pb33f.io`
+
+	right := `name: buckaroo
+identifier: https://pb33f.io2`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc lowbase.License
+	var rDoc lowbase.License
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareLicense(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "identifier", extChanges.Changes[0].Property)
 }
