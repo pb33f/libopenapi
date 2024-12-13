@@ -227,3 +227,31 @@ identifier: https://pb33f.io2`
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "identifier", extChanges.Changes[0].Property)
 }
+
+func TestCompareLicense_extension(t *testing.T) {
+
+	left := `name: buckaroo
+identifier: https://pb33f.io
+x-truc: hello`
+
+	right := `name: buckaroo
+identifier: https://pb33f.io
+x-truc: hey`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc lowbase.License
+	var rDoc lowbase.License
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareLicense(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+}
