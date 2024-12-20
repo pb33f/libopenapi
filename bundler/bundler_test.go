@@ -19,6 +19,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
@@ -26,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var defaultBundleOpts = BundleOptions{RelativeRefHandling: RefHandlingIgnore}
+var defaultBundleOpts = BundleOptions{RelativeRefHandling: RefHandlingInline}
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 
@@ -107,7 +108,7 @@ func TestBundleDocument_Circular(t *testing.T) {
 	assert.Len(t, logEntries, 0)
 }
 
-func TestBundleDocument_MinimalRemoteRefsBundledLocally(t *testing.T) {
+func TestBundleDocument_MinimalRemoteRefsBundledLocallyComposed(t *testing.T) {
 	specBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
 	require.NoError(t, err)
 
@@ -116,13 +117,33 @@ func TestBundleDocument_MinimalRemoteRefsBundledLocally(t *testing.T) {
 	config := &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: false,
-		BundleInlineRefs:      false,
 		BasePath:              "../test_specs/minimal_remote_refs",
 		BaseURL:               nil,
 	}
 	require.NoError(t, err)
 
-	bytes, e := BundleBytes(specBytes, config, defaultBundleOpts)
+	bytes, e := BundleBytes(specBytes, config, BundleOptions{RelativeRefHandling: RefHandlingCompose})
+	spew.Dump(string(bytes))
+	assert.NoError(t, e)
+	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
+}
+
+func TestBundleDocument_MinimalRemoteRefsBundledLocallyInline(t *testing.T) {
+	specBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: false,
+		BasePath:              "../test_specs/minimal_remote_refs",
+		BaseURL:               nil,
+	}
+	require.NoError(t, err)
+
+	bytes, e := BundleBytes(specBytes, config, BundleOptions{RelativeRefHandling: RefHandlingInline})
+	spew.Dump(string(bytes))
 	assert.NoError(t, e)
 	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
 }
