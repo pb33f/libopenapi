@@ -138,6 +138,16 @@ func (r *Rolodex) GetIndexes() []*SpecIndex {
 	return r.indexes
 }
 
+func (r *Rolodex) GetFileIndex(file string) *SpecIndex {
+	for _, index := range r.indexes {
+		if index.specAbsolutePath == file {
+			return index
+		}
+	}
+
+	return nil
+}
+
 // GetCaughtErrors returns all the errors that were caught during the indexing process.
 func (r *Rolodex) GetCaughtErrors() []error {
 	return r.caughtErrors
