@@ -18,7 +18,7 @@ const (
 	FoundIndexKey  ContextKey = "foundIndex"
 )
 
-func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) (*Reference, *SpecIndex) {
+func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *ReferenceNode) (*ReferenceNode, *SpecIndex) {
 	r, idx, _ := index.SearchIndexForReferenceByReferenceWithContext(context.Background(), fullRef)
 	return r, idx
 }
@@ -26,19 +26,19 @@ func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) (
 // SearchIndexForReference searches the index for a reference, first looking through the mapped references
 // and then externalSpecIndex for a match. If no match is found, it will recursively search the child indexes
 // extracted when parsing the OpenAPI Spec.
-func (index *SpecIndex) SearchIndexForReference(ref string) (*Reference, *SpecIndex) {
-	return index.SearchIndexForReferenceByReference(&Reference{FullDefinition: ref})
+func (index *SpecIndex) SearchIndexForReference(ref string) (*ReferenceNode, *SpecIndex) {
+	return index.SearchIndexForReferenceByReference(&ReferenceNode{FullDefinition: ref})
 }
 
-func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, ref string) (*Reference, *SpecIndex, context.Context) {
-	return index.SearchIndexForReferenceByReferenceWithContext(ctx, &Reference{FullDefinition: ref})
+func (index *SpecIndex) SearchIndexForReferenceWithContext(ctx context.Context, ref string) (*ReferenceNode, *SpecIndex, context.Context) {
+	return index.SearchIndexForReferenceByReferenceWithContext(ctx, &ReferenceNode{FullDefinition: ref})
 }
 
-func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
+func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx context.Context, searchRef *ReferenceNode) (*ReferenceNode, *SpecIndex, context.Context) {
 	if index.cache != nil {
 		if v, ok := index.cache.Load(searchRef.FullDefinition); ok {
-			idx := index.extractIndex(v.(*Reference))
-			return v.(*Reference), idx, context.WithValue(ctx, CurrentPathKey, v.(*Reference).RemoteLocation)
+			idx := index.extractIndex(v.(*ReferenceNode))
+			return v.(*ReferenceNode), idx, context.WithValue(ctx, CurrentPathKey, v.(*ReferenceNode).RemoteLocation)
 		}
 	}
 
@@ -113,7 +113,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	}
 
 	if r, ok := index.allComponentSchemaDefinitions.Load(refAlt); ok {
-		rf := r.(*Reference)
+		rf := r.(*ReferenceNode)
 		idx := index.extractIndex(rf)
 		index.cache.Store(refAlt, r)
 		return rf, idx, context.WithValue(ctx, CurrentPathKey, rf.RemoteLocation)
@@ -153,7 +153,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 			if strings.HasSuffix(refParsed, n) {
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {
-					r := &Reference{
+					r := &ReferenceNode{
 						FullDefinition: n,
 						Definition:     n,
 						IsRemote:       true,
@@ -181,7 +181,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 				// build a collection of all the inline schemas and search them
 				// for the reference.
-				var d []*Reference
+				var d []*ReferenceNode
 				d = append(d, idx.allInlineSchemaDefinitions...)
 				d = append(d, idx.allRefSchemaDefinitions...)
 				d = append(d, idx.allInlineSchemaObjectDefinitions...)
@@ -197,7 +197,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				// does component exist in the root?
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {
-					var found *Reference
+					var found *ReferenceNode
 					exp := strings.Split(ref, "#/")
 					compId := ref
 
@@ -225,7 +225,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	return nil, index, ctx
 }
 
-func (index *SpecIndex) extractIndex(r *Reference) *SpecIndex {
+func (index *SpecIndex) extractIndex(r *ReferenceNode) *SpecIndex {
 	idx := r.Index
 	if idx != nil && r.Index.GetSpecAbsolutePath() != r.RemoteLocation {
 		for i := range r.Index.rolodex.indexes {

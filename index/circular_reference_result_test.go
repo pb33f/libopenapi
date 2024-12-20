@@ -4,13 +4,14 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCircularReferenceResult_GenerateJourneyPath(t *testing.T) {
 
-	refs := []*Reference{
+	refs := []*ReferenceNode{
 		{Name: "chicken"},
 		{Name: "nuggets"},
 		{Name: "chicken"},

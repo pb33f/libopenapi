@@ -26,7 +26,7 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
 		fullDef := fmt.Sprintf("%s%s", index.specAbsolutePath, def)
 
-		ref := &Reference{
+		ref := &ReferenceNode{
 			FullDefinition:        fullDef,
 			Definition:            def,
 			Name:                  name,
@@ -208,7 +208,7 @@ func (index *SpecIndex) extractComponentParameters(paramsNode *yaml.Node, pathPr
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       param,
@@ -228,7 +228,7 @@ func (index *SpecIndex) extractComponentRequestBodies(requestBodiesNode *yaml.No
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       reqBod,
@@ -248,7 +248,7 @@ func (index *SpecIndex) extractComponentResponses(responsesNode *yaml.Node, path
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       response,
@@ -268,7 +268,7 @@ func (index *SpecIndex) extractComponentHeaders(headersNode *yaml.Node, pathPref
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       header,
@@ -288,7 +288,7 @@ func (index *SpecIndex) extractComponentCallbacks(callbacksNode *yaml.Node, path
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       callback,
@@ -308,7 +308,7 @@ func (index *SpecIndex) extractComponentLinks(linksNode *yaml.Node, pathPrefix s
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       link,
@@ -328,7 +328,7 @@ func (index *SpecIndex) extractComponentExamples(examplesNode *yaml.Node, pathPr
 			continue
 		}
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
-		ref := &Reference{
+		ref := &ReferenceNode{
 			Definition: def,
 			Name:       name,
 			Node:       example,
@@ -350,7 +350,7 @@ func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yam
 		def := fmt.Sprintf("%s%s", pathPrefix, name)
 		fullDef := fmt.Sprintf("%s%s", index.specAbsolutePath, def)
 
-		ref := &Reference{
+		ref := &ReferenceNode{
 			FullDefinition:        fullDef,
 			Definition:            def,
 			Name:                  name,
@@ -378,7 +378,7 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
 	return unique
 }
 
-func seekRefEnd(index *SpecIndex, refName string) *Reference {
+func seekRefEnd(index *SpecIndex, refName string) *ReferenceNode {
 	ref, _ := index.SearchIndexForReference(refName)
 	if ref != nil {
 		if ok, _, v := utils.IsNodeRefValue(ref.Node); ok {
@@ -408,13 +408,13 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 			}
 
 			if index.paramOpRefs[pathItemNode.Value] == nil {
-				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)
-				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
+				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*ReferenceNode)
+				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*ReferenceNode)
 
 			}
 			// if we know the path, but it's a new method
 			if index.paramOpRefs[pathItemNode.Value][method] == nil {
-				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
+				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*ReferenceNode)
 			}
 
 			// if this is a duplicate, add an error and ignore it
@@ -458,7 +458,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 				continue
 			}
 
-			ref := &Reference{
+			ref := &ReferenceNode{
 				Definition: vn.Value,
 				Name:       vn.Value,
 				Node:       param,
@@ -466,13 +466,13 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 				Path:       path,
 			}
 			if index.paramOpRefs[pathItemNode.Value] == nil {
-				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)
-				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
+				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*ReferenceNode)
+				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*ReferenceNode)
 			}
 
 			// if we know the path but this is a new method.
 			if index.paramOpRefs[pathItemNode.Value][method] == nil {
-				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
+				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*ReferenceNode)
 			}
 
 			// if this is a duplicate name, check if the `in` type is also the same, if so, it's a duplicate.

@@ -56,8 +56,8 @@ func HashExtensions(ext *orderedmap.Map[KeyReference[string], ValueReference[*ya
 }
 
 // helper function to generate a list of all the things an index should be searched for.
-func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.Reference {
-	return []func() map[string]*index.Reference{
+func generateIndexCollection(idx *index.SpecIndex) []func() map[string]*index.ReferenceNode {
+	return []func() map[string]*index.ReferenceNode{
 		idx.GetAllComponentSchemas,
 		idx.GetMappedReferences,
 		idx.GetAllExternalDocuments,
@@ -83,7 +83,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		// run through everything and return as soon as we find a match.
 		// this operates as fast as possible as ever
 		collections := generateIndexCollection(idx)
-		var found map[string]*index.Reference
+		var found map[string]*index.ReferenceNode
 		for _, collection := range collections {
 			found = collection()
 			if found != nil && found[rv] != nil {

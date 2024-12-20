@@ -17,7 +17,7 @@ import (
 // FindComponent will locate a component by its reference, returns nil if nothing is found.
 // This method will recurse through remote, local and file references. For each new external reference
 // a new index will be created. These indexes can then be traversed recursively.
-func (index *SpecIndex) FindComponent(componentId string) *Reference {
+func (index *SpecIndex) FindComponent(componentId string) *ReferenceNode {
 	if index.root == nil {
 		return nil
 	}
@@ -46,7 +46,7 @@ func (index *SpecIndex) FindComponent(componentId string) *Reference {
 	}
 }
 
-func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index *SpecIndex) *Reference {
+func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index *SpecIndex) *ReferenceNode {
 	// check component for url encoding.
 	if strings.Contains(componentId, "%") {
 		// decode the url.
@@ -77,7 +77,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 			parentNode = index.allRefs[fullDef].ParentNode
 		}
 
-		ref := &Reference{
+		ref := &ReferenceNode{
 			FullDefinition:        fullDef,
 			Definition:            componentId,
 			Name:                  name,
@@ -93,14 +93,14 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 	return nil
 }
 
-func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
+func (index *SpecIndex) FindComponentInRoot(componentId string) *ReferenceNode {
 	if index.root != nil {
 		return FindComponent(index.root, componentId, index.specAbsolutePath, index)
 	}
 	return nil
 }
 
-func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
+func (index *SpecIndex) lookupRolodex(uri []string) *ReferenceNode {
 	if index.rolodex == nil {
 		return nil
 	}
@@ -158,7 +158,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 
 		// check if there is a component we want to suck in, or if the
 		// entire root needs to come in.
-		var foundRef *Reference
+		var foundRef *ReferenceNode
 		if wholeFile {
 			if parsedDocument.Kind == yaml.DocumentNode {
 				parsedDocument = parsedDocument.Content[0]
@@ -169,7 +169,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 				parentNode = index.allRefs[absoluteFileLocation].ParentNode
 			}
 
-			foundRef = &Reference{
+			foundRef = &ReferenceNode{
 				ParentNode:            parentNode,
 				FullDefinition:        absoluteFileLocation,
 				Definition:            fileName,
