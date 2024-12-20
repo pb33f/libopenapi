@@ -6,7 +6,7 @@ package bundler
 
 import (
 	"errors"
-	"strings"
+	"fmt"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
@@ -20,7 +20,6 @@ var ErrInvalidModel = errors.New("invalid model")
 type RefHandling string
 
 const (
-	RefHandlingIgnore  RefHandling = "ignore"
 	RefHandlingInline  RefHandling = "inline"
 	RefHandlingCompose RefHandling = "compose"
 )
@@ -68,74 +67,96 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration, o
 //
 // Circular references will not be resolved and will be skipped.
 func BundleDocument(model *v3.Document) ([]byte, error) {
-	return bundle(model, BundleOptions{RelativeRefHandling: RefHandlingIgnore})
+	return bundle(model, BundleOptions{RelativeRefHandling: RefHandlingInline})
 }
 
-func bundle(model *v3.Document, opts BundleOptions) ([]byte, error) {
+func bundle(model *v3.Document, opts BundleOptions) (_ []byte, err error) {
 	rolodex := model.Rolodex
 
-	indexes := rolodex.GetIndexes()
-	for _, idx := range indexes {
-		handleRefs(idx, opts, false)
+	idx := rolodex.GetRootIndex()
+	mappedReferences := idx.GetMappedReferences()
+	sequencedReferences := idx.GetRawReferencesSequenced()
+
+	for _, sequenced := range sequencedReferences {
+		mappedReference := mappedReferences[sequenced.FullDefinition]
+		if mappedReference == nil {
+			return nil, fmt.Errorf("no mapped reference found for: %s", sequenced.FullDefinition)
+		}
+
+		if mappedReference.DefinitionFile() == idx.GetSpecAbsolutePath() {
+			// Don't bundle anything that's in the main file.
+			continue
+		}
+
+		switch opts.RelativeRefHandling {
+		case RefHandlingInline:
+			// Just deal with simple inlining.
+			sequenced.Node.Content = mappedReference.Node.Content
+		case RefHandlingCompose:
+			// Recursively collect all reference targets to be bundled into the root
+			// file.
+			bundledComponents := make(map[string]*index.ReferenceNode)
+			if err := bundleRefTarget(sequenced, mappedReference, bundledComponents, opts); err != nil {
+				return nil, err
+			}
+		}
 	}
 
-	handleRefs(rolodex.GetRootIndex(), opts, true)
 	return model.Render()
 }
 
-func handleRefs(idx *index.SpecIndex, opts BundleOptions, root bool) {
-	inline := opts.RelativeRefHandling == RefHandlingInline
-
-	mappedReferences := idx.GetMappedReferences()
-	sequencedReferences := idx.GetRawReferencesSequenced()
-	for _, sequenced := range sequencedReferences {
-		// if we're in the root document, don't bundle anything.
-		refExp := strings.Split(sequenced.FullDefinition, "#/")
-		if len(refExp) == 2 {
-			if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
-				if root && !inline {
-					idx.GetLogger().Debug("[bundler] skipping local root reference",
-						"ref", sequenced.Definition)
-					continue
-				}
-			}
+func bundleRefTarget(ref, mappedRef *index.ReferenceNode, bundledComponents map[string]*index.ReferenceNode, opts BundleOptions) error {
+	idx := ref.Index
+	if mappedRef == nil {
+		if idx.GetLogger() != nil {
+			idx.GetLogger().Warn("[bundler] skipping unresolved reference",
+				"ref", ref.FullDefinition)
 		}
-
-		mappedReference := mappedReferences[sequenced.FullDefinition]
-		if mappedReference == nil {
-			if idx.GetLogger() != nil {
-				idx.GetLogger().Warn("[bundler] skipping unresolved reference",
-					"ref", sequenced.FullDefinition)
-			}
-			continue
-		}
-
-		if mappedReference.Circular {
-			if idx.GetLogger() != nil {
-				idx.GetLogger().Warn("[bundler] skipping circular reference",
-					"ref", sequenced.FullDefinition)
-			}
-			continue
-		}
-
-		// NOTE: here we are taking a $ref in a document and we replace its
-		// content from the referenced document.
-		// To change this behavior, we'd have to take the local part of the
-		// FullDefinition, create a matching entry in the root's components
-		// section and replace the content of the node with a reference to that.
-		//
-		// In OpenAPI 3.1 a reference may point to any other JSONSchema file. We
-		// have to deal with that case and figure out what to name such a
-		// reference. Alternatively, we may skip that and do the regular
-		// behavior.
-		//
-		// No need to look up the type of a component, because that should be
-		// evident from the reference itself.
-		//
-		// Keep a list of all added references so you can deduplicate.
-		//
-		// - Use sequenced.Node.Content to determine the location of the reference
-		//   target in the root document.
-		sequenced.Node.Content = mappedReference.Node.Content
+		return nil
 	}
+
+	if mappedRef.Circular {
+		if idx.GetLogger() != nil {
+			idx.GetLogger().Warn("[bundler] skipping circular reference",
+				"ref", ref.FullDefinition)
+		}
+		return nil
+	}
+
+	bundledRef, exists := bundledComponents[mappedRef.Definition]
+	if exists && bundledRef.FullDefinition != mappedRef.FullDefinition {
+		// TODO: we don't want to error here
+		return fmt.Errorf("duplicate component definition: %s", mappedRef.Definition)
+	} else {
+		bundledComponents[mappedRef.Definition] = mappedRef
+		ref.KeyNode.Value = mappedRef.Definition
+	}
+
+	// When composing, we need to update the ref values to point to a local reference. At the
+	// same time we need to track all components referenced by any children of the target, so
+	// that we can include them in the final document.
+	//
+	// One issue we might face is that the name of a target component in any given target
+	// document is the same as that of another component in a different target document or
+	// even the root document.
+
+	// Obtain the target's file's index because we should find child references using that.
+	// Otherwise ExtractRefs will use the ref's index and it's absolute spec path for
+	// the FullPath of any extracted ref targets.
+	targetIndex := idx
+	if targetFile := mappedRef.DefinitionFile(); targetFile != "" {
+		targetIndex = idx.GetRolodex().GetFileIndex(targetFile)
+	}
+
+	targetMappedReferences := targetIndex.GetMappedReferences()
+
+	childRefs := targetIndex.ExtractRefs(mappedRef.Node, mappedRef.ParentNode, make([]string, 0), 0, false, "")
+	for _, childRef := range childRefs {
+		childRefTarget := targetMappedReferences[childRef.FullDefinition]
+		if err := bundleRefTarget(childRef, childRefTarget, bundledComponents, opts); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
