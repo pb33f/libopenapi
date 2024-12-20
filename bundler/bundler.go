@@ -7,11 +7,18 @@ package bundler
 import (
 	"errors"
 	"fmt"
+	"strings"
+	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	highV3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
+	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"gopkg.in/yaml.v3"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
@@ -66,11 +73,11 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration, o
 // document will be a valid OpenAPI specification, containing no references.
 //
 // Circular references will not be resolved and will be skipped.
-func BundleDocument(model *v3.Document) ([]byte, error) {
+func BundleDocument(model *highV3.Document) ([]byte, error) {
 	return bundle(model, BundleOptions{RelativeRefHandling: RefHandlingInline})
 }
 
-func bundle(model *v3.Document, opts BundleOptions) (_ []byte, err error) {
+func bundle(model *highV3.Document, opts BundleOptions) (_ []byte, err error) {
 	rolodex := model.Rolodex
 
 	idx := rolodex.GetRootIndex()
@@ -99,10 +106,57 @@ func bundle(model *v3.Document, opts BundleOptions) (_ []byte, err error) {
 			if err := bundleRefTarget(sequenced, mappedReference, bundledComponents, opts); err != nil {
 				return nil, err
 			}
+
+			model, err = composeDocument(model, bundledComponents)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
 	return model.Render()
+}
+
+func composeDocument(model *highV3.Document, comps map[string]*index.ReferenceNode) (*highV3.Document, error) {
+	lowModel := model.GoLow()
+
+	components := lowModel.Components
+
+	for def, component := range comps {
+		defParts := strings.Split(def, "/")
+		// TODO: use constant from low model labels
+		if len(defParts) != 4 || defParts[1] != lowV3.ComponentsLabel {
+			return nil, fmt.Errorf("unsupported component section: %s", def)
+		}
+		spew.Dump(component)
+
+		switch defParts[2] {
+		case "schemas":
+			key := low.KeyReference[string]{
+				Value: defParts[3],
+				KeyNode: &yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Style: yaml.TaggedStyle,
+					Tag:   "!!str",
+					Value: defParts[3],
+				},
+			}
+			value := low.ValueReference[*base.SchemaProxy]{
+				Reference: low.Reference{},
+				Value: &base.SchemaProxy{
+					Reference: low.Reference{},
+					NodeMap:   &low.NodeMap{Nodes: &sync.Map{}},
+				},
+				ValueNode: &yaml.Node{},
+			}
+			components.Value.Schemas.Value.Set(key, value)
+
+		default:
+			return nil, fmt.Errorf("unsupported component type: %s", defParts[2])
+		}
+	}
+
+	return nil, nil
 }
 
 func bundleRefTarget(ref, mappedRef *index.ReferenceNode, bundledComponents map[string]*index.ReferenceNode, opts BundleOptions) error {
