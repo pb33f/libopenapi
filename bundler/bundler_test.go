@@ -19,12 +19,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+var defaultBundleOpts = BundleOptions{RelativeRefHandling: RefHandlingInline}
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 
@@ -105,7 +108,7 @@ func TestBundleDocument_Circular(t *testing.T) {
 	assert.Len(t, logEntries, 0)
 }
 
-func TestBundleDocument_MinimalRemoteRefsBundledLocally(t *testing.T) {
+func TestBundleDocument_MinimalRemoteRefsBundledLocallyComposed(t *testing.T) {
 	specBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
 	require.NoError(t, err)
 
@@ -114,13 +117,33 @@ func TestBundleDocument_MinimalRemoteRefsBundledLocally(t *testing.T) {
 	config := &datamodel.DocumentConfiguration{
 		AllowFileReferences:   true,
 		AllowRemoteReferences: false,
-		BundleInlineRefs:      false,
 		BasePath:              "../test_specs/minimal_remote_refs",
 		BaseURL:               nil,
 	}
 	require.NoError(t, err)
 
-	bytes, e := BundleBytes(specBytes, config)
+	bytes, e := BundleBytes(specBytes, config, BundleOptions{RelativeRefHandling: RefHandlingCompose})
+	spew.Dump(string(bytes))
+	assert.NoError(t, e)
+	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
+}
+
+func TestBundleDocument_MinimalRemoteRefsBundledLocallyInline(t *testing.T) {
+	specBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: false,
+		BasePath:              "../test_specs/minimal_remote_refs",
+		BaseURL:               nil,
+	}
+	require.NoError(t, err)
+
+	bytes, e := BundleBytes(specBytes, config, BundleOptions{RelativeRefHandling: RefHandlingInline})
+	spew.Dump(string(bytes))
 	assert.NoError(t, e)
 	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
 }
@@ -166,7 +189,7 @@ func TestBundleDocument_MinimalRemoteRefsBundledRemotely(t *testing.T) {
 	}
 	require.NoError(t, err)
 
-	bytes, e := BundleBytes(specBytes, config)
+	bytes, e := BundleBytes(specBytes, config, defaultBundleOpts)
 	assert.NoError(t, e)
 	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
 }
@@ -185,7 +208,7 @@ func TestBundleBytes(t *testing.T) {
 		})),
 	}
 
-	bytes, e := BundleBytes(digi, config)
+	bytes, e := BundleBytes(digi, config, defaultBundleOpts)
 	assert.Error(t, e)
 	assert.Len(t, bytes, 2016)
 
@@ -214,7 +237,7 @@ components:
 		})),
 	}
 
-	_, e := BundleBytes(digi, config)
+	_, e := BundleBytes(digi, config, defaultBundleOpts)
 	require.Error(t, e)
 	unwrap := utils.UnwrapErrors(e)
 	require.Len(t, unwrap, 2)
@@ -270,7 +293,7 @@ components:
 		})),
 	}
 
-	bytes, e := BundleBytes(digi, config)
+	bytes, e := BundleBytes(digi, config, defaultBundleOpts)
 	assert.NoError(t, e)
 	assert.Len(t, bytes, 537)
 
@@ -312,7 +335,7 @@ components:
 		})),
 	}
 
-	bytes, e := BundleBytes(digi, config)
+	bytes, e := BundleBytes(digi, config, defaultBundleOpts)
 	assert.Error(t, e)
 	assert.Len(t, bytes, 458)
 
@@ -321,7 +344,7 @@ components:
 }
 
 func TestBundleBytes_Bad(t *testing.T) {
-	bytes, e := BundleBytes(nil, nil)
+	bytes, e := BundleBytes(nil, nil, defaultBundleOpts)
 	assert.Error(t, e)
 	assert.Nil(t, bytes)
 }
@@ -346,7 +369,7 @@ func TestBundleBytes_RootDocumentRefs(t *testing.T) {
 		ExtractRefsSequentially: true,
 	}
 
-	bundledSpec, err := BundleBytes(spec, config)
+	bundledSpec, err := BundleBytes(spec, config, defaultBundleOpts)
 	assert.NoError(t, err)
 
 	assert.Equal(t, string(spec), string(bundledSpec))

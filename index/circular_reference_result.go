@@ -1,17 +1,18 @@
 package index
 
 import (
-	"gopkg.in/yaml.v3"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // CircularReferenceResult contains a circular reference found when traversing the graph.
 type CircularReferenceResult struct {
-	Journey             []*Reference
+	Journey             []*ReferenceNode
 	ParentNode          *yaml.Node
-	Start               *Reference
+	Start               *ReferenceNode
 	LoopIndex           int
-	LoopPoint           *Reference
+	LoopPoint           *ReferenceNode
 	IsArrayResult       bool   // if this result comes from an array loop.
 	PolymorphicType     string // which type of polymorphic loop is this? (oneOf, anyOf, allOf)
 	IsPolymorphicResult bool   // if this result comes from a polymorphic loop.

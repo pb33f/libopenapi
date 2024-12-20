@@ -6,16 +6,34 @@ package bundler
 
 import (
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	highV3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
+	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"gopkg.in/yaml.v3"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
 var ErrInvalidModel = errors.New("invalid model")
+
+type RefHandling string
+
+const (
+	RefHandlingInline  RefHandling = "inline"
+	RefHandlingCompose RefHandling = "compose"
+)
+
+type BundleOptions struct {
+	RelativeRefHandling RefHandling
+}
 
 // BundleBytes will take a byte slice of an OpenAPI specification and return a bundled version of it.
 // This is useful for when you want to take a specification with external references, and you want to bundle it
@@ -25,7 +43,7 @@ var ErrInvalidModel = errors.New("invalid model")
 // document will be a valid OpenAPI specification, containing no references.
 //
 // Circular references will not be resolved and will be skipped.
-func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) ([]byte, error) {
+func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration, opts BundleOptions) ([]byte, error) {
 	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
 	if err != nil {
 		return nil, err
@@ -37,7 +55,12 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
 
-	bundledBytes, e := bundle(&v3Doc.Model, configuration.BundleInlineRefs)
+	// Overwrite bundle options, if deprecated config field is used.
+	if configuration.BundleInlineRefs {
+		opts.RelativeRefHandling = RefHandlingInline
+	}
+
+	bundledBytes, e := bundle(&v3Doc.Model, opts)
 	return bundledBytes, errors.Join(err, e)
 }
 
@@ -50,49 +73,144 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 // document will be a valid OpenAPI specification, containing no references.
 //
 // Circular references will not be resolved and will be skipped.
-func BundleDocument(model *v3.Document) ([]byte, error) {
-	return bundle(model, false)
+func BundleDocument(model *highV3.Document) ([]byte, error) {
+	return bundle(model, BundleOptions{RelativeRefHandling: RefHandlingInline})
 }
 
-func bundle(model *v3.Document, inline bool) ([]byte, error) {
+func bundle(model *highV3.Document, opts BundleOptions) (_ []byte, err error) {
 	rolodex := model.Rolodex
 
-	compact := func(idx *index.SpecIndex, root bool) {
-		mappedReferences := idx.GetMappedReferences()
-		sequencedReferences := idx.GetRawReferencesSequenced()
-		for _, sequenced := range sequencedReferences {
-			mappedReference := mappedReferences[sequenced.FullDefinition]
+	idx := rolodex.GetRootIndex()
+	mappedReferences := idx.GetMappedReferences()
+	sequencedReferences := idx.GetRawReferencesSequenced()
 
-			// if we're in the root document, don't bundle anything.
-			refExp := strings.Split(sequenced.FullDefinition, "#/")
-			if len(refExp) == 2 {
-				if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
-					if root && !inline {
-						idx.GetLogger().Debug("[bundler] skipping local root reference",
-							"ref", sequenced.Definition)
-						continue
-					}
-				}
+	for _, sequenced := range sequencedReferences {
+		mappedReference := mappedReferences[sequenced.FullDefinition]
+		if mappedReference == nil {
+			return nil, fmt.Errorf("no mapped reference found for: %s", sequenced.FullDefinition)
+		}
+
+		if mappedReference.DefinitionFile() == idx.GetSpecAbsolutePath() {
+			// Don't bundle anything that's in the main file.
+			continue
+		}
+
+		switch opts.RelativeRefHandling {
+		case RefHandlingInline:
+			// Just deal with simple inlining.
+			sequenced.Node.Content = mappedReference.Node.Content
+		case RefHandlingCompose:
+			// Recursively collect all reference targets to be bundled into the root
+			// file.
+			bundledComponents := make(map[string]*index.ReferenceNode)
+			if err := bundleRefTarget(sequenced, mappedReference, bundledComponents, opts); err != nil {
+				return nil, err
 			}
 
-			if mappedReference != nil && !mappedReference.Circular {
-				sequenced.Node.Content = mappedReference.Node.Content
-				continue
-			}
-
-			if mappedReference != nil && mappedReference.Circular {
-				if idx.GetLogger() != nil {
-					idx.GetLogger().Warn("[bundler] skipping circular reference",
-						"ref", sequenced.FullDefinition)
-				}
+			model, err = composeDocument(model, bundledComponents)
+			if err != nil {
+				return nil, err
 			}
 		}
 	}
 
-	indexes := rolodex.GetIndexes()
-	for _, idx := range indexes {
-		compact(idx, false)
-	}
-	compact(rolodex.GetRootIndex(), true)
 	return model.Render()
+}
+
+func composeDocument(model *highV3.Document, comps map[string]*index.ReferenceNode) (*highV3.Document, error) {
+	lowModel := model.GoLow()
+
+	components := lowModel.Components
+
+	for def, component := range comps {
+		defParts := strings.Split(def, "/")
+		// TODO: use constant from low model labels
+		if len(defParts) != 4 || defParts[1] != lowV3.ComponentsLabel {
+			return nil, fmt.Errorf("unsupported component section: %s", def)
+		}
+		spew.Dump(component)
+
+		switch defParts[2] {
+		case "schemas":
+			key := low.KeyReference[string]{
+				Value: defParts[3],
+				KeyNode: &yaml.Node{
+					Kind:  yaml.ScalarNode,
+					Style: yaml.TaggedStyle,
+					Tag:   "!!str",
+					Value: defParts[3],
+				},
+			}
+			value := low.ValueReference[*base.SchemaProxy]{
+				Reference: low.Reference{},
+				Value: &base.SchemaProxy{
+					Reference: low.Reference{},
+					NodeMap:   &low.NodeMap{Nodes: &sync.Map{}},
+				},
+				ValueNode: &yaml.Node{},
+			}
+			components.Value.Schemas.Value.Set(key, value)
+
+		default:
+			return nil, fmt.Errorf("unsupported component type: %s", defParts[2])
+		}
+	}
+
+	return nil, nil
+}
+
+func bundleRefTarget(ref, mappedRef *index.ReferenceNode, bundledComponents map[string]*index.ReferenceNode, opts BundleOptions) error {
+	idx := ref.Index
+	if mappedRef == nil {
+		if idx.GetLogger() != nil {
+			idx.GetLogger().Warn("[bundler] skipping unresolved reference",
+				"ref", ref.FullDefinition)
+		}
+		return nil
+	}
+
+	if mappedRef.Circular {
+		if idx.GetLogger() != nil {
+			idx.GetLogger().Warn("[bundler] skipping circular reference",
+				"ref", ref.FullDefinition)
+		}
+		return nil
+	}
+
+	bundledRef, exists := bundledComponents[mappedRef.Definition]
+	if exists && bundledRef.FullDefinition != mappedRef.FullDefinition {
+		// TODO: we don't want to error here
+		return fmt.Errorf("duplicate component definition: %s", mappedRef.Definition)
+	} else {
+		bundledComponents[mappedRef.Definition] = mappedRef
+		ref.KeyNode.Value = mappedRef.Definition
+	}
+
+	// When composing, we need to update the ref values to point to a local reference. At the
+	// same time we need to track all components referenced by any children of the target, so
+	// that we can include them in the final document.
+	//
+	// One issue we might face is that the name of a target component in any given target
+	// document is the same as that of another component in a different target document or
+	// even the root document.
+
+	// Obtain the target's file's index because we should find child references using that.
+	// Otherwise ExtractRefs will use the ref's index and it's absolute spec path for
+	// the FullPath of any extracted ref targets.
+	targetIndex := idx
+	if targetFile := mappedRef.DefinitionFile(); targetFile != "" {
+		targetIndex = idx.GetRolodex().GetFileIndex(targetFile)
+	}
+
+	targetMappedReferences := targetIndex.GetMappedReferences()
+
+	childRefs := targetIndex.ExtractRefs(mappedRef.Node, mappedRef.ParentNode, make([]string, 0), 0, false, "")
+	for _, childRef := range childRefs {
+		childRefTarget := targetMappedReferences[childRef.FullDefinition]
+		if err := bundleRefTarget(childRef, childRefTarget, bundledComponents, opts); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

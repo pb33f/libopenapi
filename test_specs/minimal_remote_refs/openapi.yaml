@@ -29,8 +29,27 @@ paths:
       responses:
         "200":
           $ref: ./schemas/components.openapi.yaml#/components/responses/ListAccounts
+  /api/v1/example:
+    get:
+      summary: TODO
+      description: TODO
+      tags:
+        - Account
+      operationId: placeholder
+      responses:
+        "200":
+          description: >
+            Foo
+          content:
+            application/json:
+              schema:
 components:
   securitySchemes:
     BearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    Foobar:
+      type: string
+      description: >
+        Something nice to say.
