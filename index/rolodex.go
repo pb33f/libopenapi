@@ -113,6 +113,21 @@ func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
 	return debouncedResults
 }
 
+// GetSafeCircularReferences returns a list of circular references that were found to be safe during the indexing process.
+func (r *Rolodex) GetSafeCircularReferences() []*CircularReferenceResult {
+	debounced := make(map[string]*CircularReferenceResult)
+	for _, c := range r.safeCircularReferences {
+		if _, ok := debounced[c.LoopPoint.FullDefinition]; !ok {
+			debounced[c.LoopPoint.FullDefinition] = c
+		}
+	}
+	var debouncedResults []*CircularReferenceResult
+	for _, v := range debounced {
+		debouncedResults = append(debouncedResults, v)
+	}
+	return debouncedResults
+}
+
 // GetIndexingDuration returns the duration it took to index the rolodex.
 func (r *Rolodex) GetIndexingDuration() time.Duration {
 	return r.indexingDuration
