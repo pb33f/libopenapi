@@ -28,7 +28,7 @@ type NodeOrigin struct {
 
 	// AbsoluteLocation is the absolute path to the reference was extracted from.
 	// This can either be an absolute path to a file, or a URL.
-	AbsoluteLocation string `json:"absolute_location" yaml:"absolute_location"`
+	AbsoluteLocation string `json:"absoluteLocation" yaml:"absoluteLocation"`
 
 	// Index is the index that contains the node that was located in.
 	Index *SpecIndex `json:"-" yaml:"-"`
@@ -37,10 +37,12 @@ type NodeOrigin struct {
 // GetNode returns a node from the spec based on a line and column. The second return var bool is true
 // if the node was found, false if not.
 func (index *SpecIndex) GetNode(line int, column int) (*yaml.Node, bool) {
+	index.nodeMapLock.RLock()
 	if index.nodeMap[line] == nil {
 		return nil, false
 	}
 	node := index.nodeMap[line][column]
+	index.nodeMapLock.RUnlock()
 	return node, node != nil
 }
 
@@ -57,10 +59,12 @@ func (index *SpecIndex) MapNodes(rootNode *yaml.Node) {
 				cruising <- true
 				return
 			}
+			index.nodeMapLock.Lock()
 			if index.nodeMap[node.line] == nil {
 				index.nodeMap[node.line] = make(map[int]*yaml.Node)
 			}
 			index.nodeMap[node.line][node.column] = node.node
+			index.nodeMapLock.Unlock()
 		}
 	}(nodeChan)
 	go enjoyALuxuryCruise(rootNode, nodeChan, true)
