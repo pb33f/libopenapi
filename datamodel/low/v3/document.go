@@ -87,6 +87,10 @@ type Document struct {
 	// Rolodex is a reference to the rolodex used when creating this document.
 	Rolodex *index.Rolodex
 
+	// StorageRoot is the root path to the storage location of the document. This has no effect on resolving references.
+	// but it's used by the doctor to determine where to store the document. This is not part of the OpenAPI schema.
+	StorageRoot string `json:"-" yaml:"-"`
+
 	low.NodeMap
 }
 
@@ -114,6 +118,10 @@ func (d *Document) GetExternalDocs() *low.NodeReference[any] {
 		ValueNode: d.ExternalDocs.ValueNode,
 		Value:     d.ExternalDocs.Value,
 	}
+}
+
+func (d *Document) GetIndex() *index.SpecIndex {
+	return d.Index
 }
 
 // TODO: some behavior in this hash is not correct, disabled for now
