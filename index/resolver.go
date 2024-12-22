@@ -411,7 +411,10 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 
 	ref.Seen = true
 
-	return ref.Node.Content
+	if ref.Node != nil {
+		return ref.Node.Content
+	}
+	return nil
 }
 
 func (resolver *Resolver) isInfiniteCircularDependency(ref *Reference, visitedDefinitions map[string]bool,
@@ -488,7 +491,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 	var found []*Reference
 
-	if len(node.Content) > 0 {
+	if node != nil && len(node.Content) > 0 {
 		skip := false
 		for i, n := range node.Content {
 			if skip {
