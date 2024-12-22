@@ -199,3 +199,7 @@ func (d *Document) MarshalYAMLInline() (interface{}, error) {
 	nb.Resolve = true
 	return nb.Render(), nil
 }
+
+func (d *Document) GetIndex() *index.SpecIndex {
+	return d.Index
+}
