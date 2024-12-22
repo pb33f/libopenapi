@@ -4,10 +4,13 @@
 package index
 
 import (
+	"crypto/sha256"
 	"fmt"
+	"hash"
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -604,4 +607,44 @@ func syncMapToMap[K comparable, V any](sm *sync.Map) map[K]V {
 	})
 
 	return m
+}
+
+// HashNode returns a consistent SHA256 hash string of the node and its children.
+// it runs as fast as possible, but it's recursive, with a hard limit of 1000 levels deep.
+func HashNode(n *yaml.Node) string {
+	h := sha256.New()
+	hashNode(n, h, 0)
+	sum := h.Sum(nil)
+	return fmt.Sprintf("%x", sum)
+}
+
+func hashNode(n *yaml.Node, h hash.Hash, depth int) {
+	if n == nil {
+		return
+	}
+	if depth > 1000 {
+		// Prevent extremely deep recursion from using too much stack.
+		return
+	}
+
+	// Write Tag
+	h.Write([]byte(n.Tag))
+
+	// Write Line
+	buf := make([]byte, 0, 32) // small buffer for integer conversion
+	buf = strconv.AppendInt(buf, int64(n.Line), 10)
+	h.Write(buf)
+
+	// Reuse buffer for Column
+	buf = buf[:0]
+	buf = strconv.AppendInt(buf, int64(n.Column), 10)
+	h.Write(buf)
+
+	// Write Value
+	h.Write([]byte(n.Value))
+
+	// Recurse over Content
+	for _, c := range n.Content {
+		hashNode(c, h, depth+1)
+	}
 }

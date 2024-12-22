@@ -274,3 +274,16 @@ func Test_extractDefinitionRequiredRefProperties_nil(t *testing.T) {
 func TestSyncMapToMap_Nil(t *testing.T) {
 	assert.Nil(t, syncMapToMap[string, string](nil))
 }
+
+func Test_HashNode(t *testing.T) {
+	d := `plum: soup
+chicken: wing
+beef: burger
+pork: chop`
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	hash := HashNode(&rootNode)
+	assert.NotEmpty(t, hash)
+	assert.Equal(t, "e9aba1ce94ac8bd0143524ce594c0c7d38c06c09eca7ae96725187f488661fcd", hash)
+}
