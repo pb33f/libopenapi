@@ -25,6 +25,20 @@ import (
 const (
 	YAML FileExtension = iota
 	JSON
+	JS
+	GO
+	TS
+	CS
+	C
+	CPP
+	PHP
+	PY
+	HTML
+	MD
+	JAVA
+	RS
+	ZIG
+	RB
 	UNSUPPORTED
 )
 
