@@ -13,6 +13,8 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"path/filepath"
+	"strings"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -243,7 +245,8 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 }
 
 // MarshalYAMLInline will create a ready to render YAML representation of the SchemaProxy object. The
-// $ref values will be inlined instead of kept as is.
+// $ref values will be inlined instead of kept as is. All circular references will be ignored, regardless
+// of the type of circular reference, they are all bad when rendering.
 func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 	var s *Schema
 	var err error
@@ -251,10 +254,35 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 
 	if s != nil && s.GoLow() != nil && s.GoLow().Index != nil {
 		circ := s.GoLow().Index.GetCircularReferences()
+
+		// extract the ignored and safe circular references
+		ignored := s.GoLow().Index.GetRolodex().GetIgnoredCircularReferences()
+		safe := s.GoLow().Index.GetRolodex().GetSafeCircularReferences()
+		circ = append(circ, ignored...)
+		circ = append(circ, safe...)
 		for _, c := range circ {
 			if sp.IsReference() {
-				// we cannot proceed.
 				if sp.GetReference() == c.LoopPoint.Definition {
+					// nope
+					return sp.GetReferenceNode(), nil
+				}
+				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
+
+				if !filepath.IsAbs(basePath) {
+					basePath, _ = filepath.Abs(basePath)
+				}
+
+				if basePath == c.LoopPoint.FullDefinition {
+					// we loop on our-self
+					return sp.GetReferenceNode(), nil
+				}
+				a := strings.Replace(c.LoopPoint.Definition, basePath, "", 1)
+				b := sp.GetReference()
+				if strings.HasPrefix(b, "./") {
+					b = strings.Replace(b, "./", "/", 1) // strip any leading ./ from the reference
+				}
+				if a == b {
+					// nope
 					return sp.GetReferenceNode(), nil
 				}
 			}
@@ -264,7 +292,10 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	nb := high.NewNodeBuilder(s, s.low)
-	nb.Resolve = true
-	return nb.Render(), nil
+	if s != nil {
+		nb := high.NewNodeBuilder(s, s.low)
+		nb.Resolve = true
+		return nb.Render(), nil
+	}
+	return nil, fmt.Errorf("unable to render schema at line `%d`", sp.GoLow().GetKeyNode().Line)
 }
