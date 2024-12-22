@@ -4,44 +4,67 @@
 package index
 
 import (
+	"encoding/json"
 	"github.com/pb33f/libopenapi/datamodel"
+	"gopkg.in/yaml.v3"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"sync"
-
-	"gopkg.in/yaml.v3"
 )
 
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing
 // algorithms on data models. the *yaml.Node def is just a bit too low level for tracking state.
 type Reference struct {
-	FullDefinition        string
-	Definition            string
-	Name                  string
-	Node                  *yaml.Node
-	KeyNode               *yaml.Node
-	ParentNode            *yaml.Node
-	ParentNodeSchemaType  string   // used to determine if the parent node is an array or not.
-	ParentNodeTypes       []string // used to capture deep journeys, if any item is an array, we need to know.
-	Resolved              bool
-	Circular              bool
-	Seen                  bool
-	IsRemote              bool
-	Index                 *SpecIndex // index that contains this reference.
-	RemoteLocation        string
-	Path                  string              // this won't always be available.
-	RequiredRefProperties map[string][]string // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition
+	FullDefinition        string              `json:"fullDefinition,omitempty"`
+	Definition            string              `json:"definition,omitempty"`
+	Name                  string              `json:"name,omitempty"`
+	Node                  *yaml.Node          `json:"-"`
+	KeyNode               *yaml.Node          `json:"-"`
+	ParentNode            *yaml.Node          `json:"-"`
+	ParentNodeSchemaType  string              `json:"-"` // used to determine if the parent node is an array or not.
+	ParentNodeTypes       []string            `json:"-"` // used to capture deep journeys, if any item is an array, we need to know.
+	Resolved              bool                `json:"-"`
+	Circular              bool                `json:"-"`
+	Seen                  bool                `json:"-"`
+	IsRemote              bool                `json:"isRemote,omitempty"`
+	Index                 *SpecIndex          `json:"-"` // index that contains this reference.
+	RemoteLocation        string              `json:"remoteLocation,omitempty"`
+	Path                  string              `json:"path,omitempty"`               // this won't always be available.
+	RequiredRefProperties map[string][]string `json:"requiredProperties,omitempty"` // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition
 }
 
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
 type ReferenceMapped struct {
-	OriginalReference *Reference
-	Reference         *Reference
-	Definition        string
-	FullDefinition    string
+	OriginalReference *Reference `json:"originalReference,omitempty"`
+	Reference         *Reference `json:"reference,omitempty"`
+	Definition        string     `json:"definition,omitempty"`
+	FullDefinition    string     `json:"fullDefinition,omitempty"`
+	IsPolymorphic     bool       `json:"isPolymorphic,omitempty"`
+}
+
+// MarshalJSON is a custom JSON marshaller for the ReferenceMapped struct.
+func (rm *ReferenceMapped) MarshalJSON() ([]byte, error) {
+	d := map[string]interface{}{
+		"definition":     rm.Definition,
+		"fullDefinition": rm.FullDefinition,
+		"jsonPath":       rm.OriginalReference.Path,
+		"line":           rm.OriginalReference.Node.Line,
+		"startColumn":    rm.OriginalReference.Node.Column,
+		"endColumn": rm.OriginalReference.Node.Content[1].Column +
+			(len(rm.OriginalReference.Node.Content[1].Value) + 2),
+	}
+	if rm.IsPolymorphic {
+		d["isPolymorphic"] = true
+	}
+
+	if rm.Reference != nil && rm.Reference.KeyNode != nil {
+		d["targetLine"] = rm.Reference.KeyNode.Line
+		d["targetColumn"] = rm.Reference.KeyNode.Column
+	}
+	return json.Marshal(d)
 }
 
 // SpecIndexConfig is a configuration struct for the SpecIndex introduced in 0.6.0 that provides an expandable
@@ -279,6 +302,7 @@ type SpecIndex struct {
 	descriptionCount                    int
 	summaryCount                        int
 	refLock                             sync.Mutex
+	nodeMapLock                         sync.RWMutex
 	componentLock                       sync.RWMutex
 	errorLock                           sync.RWMutex
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
