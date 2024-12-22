@@ -379,6 +379,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 							Definition:     ref.Definition,
 							Name:           ref.Name,
 							Node:           &copiedNode,
+							KeyNode:        node.Content[i],
 							Path:           p,
 							Index:          index,
 						}
@@ -413,15 +414,19 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 					if value == "" {
 
 						completedPath := fmt.Sprintf("$.%s", strings.Join(fp, "."))
+						c := node.Content[i]
+						if len(n.Content) > i+1 { // if the next node exists, use that.
+							c = node.Content[i+1]
+						}
 
 						indexError := &IndexingError{
-							Err:  errors.New("schema reference is empty and cannot be processed"),
-							Node: node.Content[i+1],
-							Path: completedPath,
+							Err:     errors.New("schema reference is empty and cannot be processed"),
+							Node:    c,
+							KeyNode: node.Content[i],
+							Path:    completedPath,
 						}
 
 						index.refErrors = append(index.refErrors, indexError)
-
 						continue
 					}
 
@@ -654,6 +659,20 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 				index.refLock.Unlock()
 			}
 			if located != nil {
+
+				// key node is always going to be nil when mapping, yamlpath API returns
+				// subnodes only, so we need to rollback in the nodemap a line (if we can) to extract
+				// the keynode.
+				if located.Node != nil {
+					index.nodeMapLock.RLock()
+					if located.Node.Line > 1 && len(index.nodeMap[located.Node.Line-1]) > 0 {
+						for _, v := range index.nodeMap[located.Node.Line-1] {
+							located.KeyNode = v
+							break
+						}
+					}
+					index.nodeMapLock.RUnlock()
+				}
 
 				// have we already mapped this?
 				index.refLock.Lock()
