@@ -194,7 +194,11 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 			cNode := value.currentNode
 
 			foundContext := ctx
+			var isRef bool
+			var refNode *yaml.Node
 			if ok, _, _ := utils.IsNodeRefValue(pNode); ok {
+				isRef = true
+				refNode = pNode
 				r, _, err, fCtx := low.LocateRefNodeWithContext(ctx, pNode, idx)
 				if r != nil {
 					pNode = r
@@ -213,6 +217,11 @@ func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIn
 			path := new(PathItem)
 			_ = low.BuildModel(pNode, path)
 			err := path.Build(foundContext, cNode, pNode, idx)
+
+			if isRef {
+				path.SetReference(refNode.Content[1].Value, refNode)
+			}
+
 			if err != nil {
 				if idx != nil && idx.GetLogger() != nil {
 					idx.GetLogger().Error(fmt.Sprintf("error building path item: %s", err.Error()))
