@@ -79,7 +79,22 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 	err := yaml.Unmarshal(spec, &parsedSpec)
 	if err != nil {
-		return nil, fmt.Errorf("unable to parse specification: %s", err.Error())
+		if !bypass {
+			return nil, fmt.Errorf("unable to parse specification: %s", err.Error())
+		}
+
+		// read the file into a simulated document node.
+		// we can't parse it, so create a fake document node with a single string content
+		parsedSpec = yaml.Node{
+			Kind: yaml.DocumentNode,
+			Content: []*yaml.Node{
+				{
+					Kind:  yaml.ScalarNode,
+					Tag:   "!!str",
+					Value: string(spec),
+				},
+			},
+		}
 	}
 
 	specInfo.RootNode = &parsedSpec
