@@ -54,5 +54,47 @@ func ExtractFileType(ref string) FileExtension {
 	if strings.HasSuffix(ref, ".json") {
 		return JSON
 	}
+	if strings.HasSuffix(ref, ".js") {
+		return JS
+	}
+	if strings.HasSuffix(ref, ".go") {
+		return GO
+	}
+	if strings.HasSuffix(ref, ".ts") {
+		return TS
+	}
+	if strings.HasSuffix(ref, ".cs") {
+		return CS
+	}
+	if strings.HasSuffix(ref, ".c") {
+		return C
+	}
+	if strings.HasSuffix(ref, ".cpp") {
+		return CPP
+	}
+	if strings.HasSuffix(ref, ".php") {
+		return PHP
+	}
+	if strings.HasSuffix(ref, ".py") {
+		return PY
+	}
+	if strings.HasSuffix(ref, ".html") {
+		return HTML
+	}
+	if strings.HasSuffix(ref, ".md") {
+		return MD
+	}
+	if strings.HasSuffix(ref, ".java") {
+		return JAVA
+	}
+	if strings.HasSuffix(ref, ".rs") {
+		return RS
+	}
+	if strings.HasSuffix(ref, ".zig") {
+		return ZIG
+	}
+	if strings.HasSuffix(ref, ".rb") {
+		return RB
+	}
 	return UNSUPPORTED
 }
