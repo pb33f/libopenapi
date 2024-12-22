@@ -140,9 +140,8 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			}
 
 			parsedDocument, err = rFile.GetContentAsYAMLNode()
-			if err != nil {
-				index.logger.Error("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
-				return nil
+			if err != nil && !index.config.SkipDocumentCheck {
+				index.logger.Warn("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
 			}
 		} else {
 			parsedDocument = index.root
@@ -160,8 +159,11 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		// entire root needs to come in.
 		var foundRef *Reference
 		if wholeFile {
-			if parsedDocument.Kind == yaml.DocumentNode {
-				parsedDocument = parsedDocument.Content[0]
+
+			if parsedDocument != nil {
+				if parsedDocument.Kind == yaml.DocumentNode {
+					parsedDocument = parsedDocument.Content[0]
+				}
 			}
 
 			var parentNode *yaml.Node
