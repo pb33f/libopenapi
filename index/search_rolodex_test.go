@@ -14,6 +14,334 @@ import (
 	"testing"
 )
 
+func TestRolodex_FindNodeOrigin_InRoot(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+
+	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
+	rolo.Resolve()
+
+	origin := rolo.FindNodeOrigin(node.Content[0])
+	assert.NotNil(t, origin)
+	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
+
+}
+
+func TestRolodex_FindNodeOrigin_InRoot_InMap(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+
+	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
+	rolo.Resolve()
+
+	node.Kind = yaml.MappingNode
+	node.Tag = "!!map"
+
+	copied := *node
+
+	origin := rolo.FindNodeOrigin(&copied)
+	assert.NotNil(t, origin)
+	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
+
+}
+
+func TestRolodex_FindNodeOriginWithValue_NoKey(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	origin := rolo.FindNodeOriginWithValue(nil, nil, nil, "")
+
+	assert.Nil(t, origin)
+}
+
+func TestRolodex_FindNodeOriginWithValue(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+
+	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
+	rolo.Resolve()
+
+	origin := rolo.FindNodeOriginWithValue(node.Content[0], node.Content[0], nil, "")
+
+	assert.NotNil(t, origin)
+	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
+
+}
+
+func TestRolodex_FindNodeOriginWithValue_SimulateIsRef(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+
+	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
+	rolo.Resolve()
+
+	origin := rolo.FindNodeOriginWithValue(node.Content[0], node.Content[0], node.Content[0], "burgers!")
+
+	assert.NotNil(t, origin)
+	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
+	assert.Equal(t, "openapi", origin.Node.Content[0].Value) // key value.
+
+}
+
+func TestRolodex_FindNodeOriginWithValue_NonRoot(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open components
+	f, rerr := rolo.Open("dir2/components.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	// open doc2
+	f2, ferr := rolo.Open("doc2.yaml")
+	assert.Nil(t, ferr)
+	assert.NotNil(t, f2)
+
+	nodef, _ := f2.GetContentAsYAMLNode()
+	node, _ := f.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(nodef)
+
+	err = rolo.IndexTheRolodex()
+	assert.NoError(t, err)
+	rolo.Resolve()
+
+	origin := rolo.FindNodeOriginWithValue(node.Content[0].Content[2], node.Content[0].Content[3], nil, "")
+
+	assert.NotNil(t, origin)
+
+	// should not be equal, root and origin are different
+	assert.NotEqual(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
+
+}
+
+func TestRolodex_FindNodeOriginWithValue_BadKeyAndValue(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open components
+	f, rerr := rolo.Open("dir2/components.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	// open doc2
+	f2, ferr := rolo.Open("doc2.yaml")
+	assert.Nil(t, ferr)
+	assert.NotNil(t, f2)
+
+	nodef, _ := f2.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(nodef)
+	err = rolo.IndexTheRolodex()
+	rolo.Resolve()
+
+	origin := rolo.FindNodeOriginWithValue(&yaml.Node{
+		Kind:   yaml.ScalarNode,
+		Value:  "burgers!",
+		Line:   9999,
+		Column: 9999,
+	}, &yaml.Node{
+		Kind:   yaml.ScalarNode,
+		Value:  "fries and beer!",
+		Line:   22222,
+		Column: 232323,
+	}, nil, "")
+
+	assert.Nil(t, origin)
+
+}
+
+func TestRolodex_FindNodeOriginWithValue_BadValue(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open components
+	f, rerr := rolo.Open("dir2/components.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	// open doc2
+	f2, ferr := rolo.Open("doc2.yaml")
+	assert.Nil(t, ferr)
+	assert.NotNil(t, f2)
+
+	node, _ := f2.GetContentAsYAMLNode()
+
+	rolo.SetRootNode(node)
+	err = rolo.IndexTheRolodex()
+	rolo.Resolve()
+
+	origin := rolo.FindNodeOriginWithValue(node.Content[0], &yaml.Node{
+		Kind:   yaml.ScalarNode,
+		Value:  "fries and beer!",
+		Line:   22222,
+		Column: 232323,
+	}, nil, "")
+
+	assert.Nil(t, origin)
+
+}
+
 func TestRolodex_FindNodeOrigin(t *testing.T) {
 
 	baseDir := "rolodex_test_data"
