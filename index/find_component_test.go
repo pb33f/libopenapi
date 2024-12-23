@@ -114,7 +114,7 @@ func TestSpecIndex_CheckCircularIndex_NoDirFS(t *testing.T) {
 	assert.Nil(t, c)
 }
 
-func TestFindComponent_RolodexFileParseError(t *testing.T) {
+func TestFindComponent_RolodexFileParseError_Recovery(t *testing.T) {
 
 	badData := "I cannot be parsed: \"I am not a YAML file or a JSON file"
 	_ = os.WriteFile("bad.yaml", []byte(badData), 0644)
@@ -154,16 +154,16 @@ components:
 	indexedErr := rolo.IndexTheRolodex()
 	rolo.BuildIndexes()
 
-	// should error
-	assert.Error(t, indexedErr)
+	// should no longer error
+	assert.NoError(t, indexedErr)
 
 	index := rolo.GetRootIndex()
 
 	assert.Nil(t, index.uri)
 
-	// can't be found.
+	// can still be found.
 	a, _ := index.SearchIndexForReference("bad.yaml")
-	assert.Nil(t, a)
+	assert.NotNil(t, a)
 }
 
 func TestSpecIndex_performExternalLookup_invalidURL(t *testing.T) {

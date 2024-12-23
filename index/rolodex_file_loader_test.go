@@ -83,6 +83,7 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 	assert.NoError(t, ierr)
 	assert.NotNil(t, idx)
 
+	// this is an invalid file, but the rolodex can read it now.
 	key, _ = filepath.Abs(filepath.Join(fileFS.baseDirectory, "spock.yaml"))
 
 	localFile = files[key]
@@ -91,10 +92,10 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 
 	lf = localFile.(*LocalFile)
 	idx, ierr = lf.Index(CreateOpenAPIIndexConfig())
-	assert.Error(t, ierr)
-	assert.Nil(t, idx)
+	assert.NoError(t, ierr)
+	assert.NotNil(t, idx)
 	assert.NotNil(t, localFile.GetContent())
-	assert.Nil(t, localFile.GetIndex())
+	assert.NotNil(t, localFile.GetIndex())
 
 }
 
@@ -219,7 +220,7 @@ func TestNewRolodexLocalFile_BadOffset(t *testing.T) {
 	assert.Error(t, y)
 }
 
-func TestRecursiveLocalFile_IndexFail(t *testing.T) {
+func TestRecursiveLocalFile_IndexNonParsable(t *testing.T) {
 
 	pup := []byte("I:\n miss you fox, you're: my good boy:")
 
@@ -256,8 +257,8 @@ func TestRecursiveLocalFile_IndexFail(t *testing.T) {
 	fox, fErr := rolo.Open("fox.yaml")
 	assert.NoError(t, fErr)
 	assert.NotNil(t, fox)
-	assert.Len(t, fox.GetErrors(), 1)
-	assert.Equal(t, "unable to parse specification: yaml: line 2: mapping values are not allowed in this context", fox.GetErrors()[0].Error())
+	assert.Len(t, fox.GetErrors(), 0)
+	assert.Equal(t, "I:\n miss you fox, you're: my good boy:", fox.GetContent())
 
 }
 
