@@ -4,6 +4,7 @@
 package base
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -87,12 +88,11 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
 func (sp *SchemaProxy) Schema() *Schema {
-	if sp == nil || sp.lock == nil {
+	if sp == nil || sp.lock == nil || sp.schema == nil || sp.schema.Value == nil {
 		return nil
 	}
 	sp.lock.Lock()
 	if sp.rendered == nil {
-
 		//check the high-level cache first.
 		idx := sp.schema.Value.GetIndex()
 		if idx != nil && sp.schema.Value != nil {
@@ -297,5 +297,5 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 		nb.Resolve = true
 		return nb.Render(), nil
 	}
-	return nil, fmt.Errorf("unable to render schema at line `%d`", sp.GoLow().GetKeyNode().Line)
+	return nil, errors.New("unable to render schema")
 }
