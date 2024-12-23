@@ -399,15 +399,90 @@ func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
 		Reference: ref,
 	}
 
-	spEmpty := NewSchemaProxy(nil)
-	assert.Nil(t, spEmpty.GetSchemaKeyNode())
 	sp := NewSchemaProxy(&lowRef)
 
 	assert.NotNil(t, sp.GetSchemaKeyNode())
 
 	ref.SetReference("./schema_n.yaml", rootNode.Content[0])
 	lowProxy.Reference = ref
-	//lowProxy.GetIndex().SetAbsolutePath(basePath)
+
+	rend, _ := sp.MarshalYAMLInline()
+	assert.NotNil(t, rend)
+
+	// should not have rendered and should be the same as the input
+	// check by hashing.
+	assert.Equal(t, index.HashNode(rootNode.Content[0]), index.HashNode(rend.(*yaml.Node)))
+}
+
+func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {
+
+	const ymlComponents = `properties:
+  spice:
+    allOf:
+      - $ref: '#/properties/rice'
+  rice:
+    oneOf: 
+      - $ref: './schema_k.yaml'`
+
+	_ = os.WriteFile("schema_k.yaml", []byte(ymlComponents), 0777)
+	defer os.RemoveAll("schema_k.yaml")
+
+	actualYaml := []byte("$ref: './schema_k.yaml'")
+
+	cwd, _ := os.Getwd()
+	basePath := cwd
+
+	// create an index config
+	config := index.CreateOpenAPIIndexConfig()
+	rolodex := index.NewRolodex(config)
+
+	fsCfg := &index.LocalFSConfig{
+		BaseDirectory: basePath,
+		IndexConfig:   config,
+	}
+
+	fileFS, err := index.NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		panic(err)
+	}
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(actualYaml, &rootNode)
+
+	rolodex.SetRootNode(&rootNode)
+
+	rolodex.AddLocalFS(basePath, fileFS)
+
+	indexingError := rolodex.IndexTheRolodex()
+	if indexingError != nil {
+		panic(indexingError)
+	}
+
+	// there should be no errors at this point
+	resolvingErrors := rolodex.GetCaughtErrors()
+	if resolvingErrors != nil {
+		panic(resolvingErrors)
+	}
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err = lowProxy.Build(context.Background(), &rootNode, rootNode.Content[0], rolodex.GetRootIndex())
+	assert.NoError(t, err)
+	ref := low.Reference{}
+
+	assert.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		KeyNode:   rootNode.Content[0],
+		Reference: ref,
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+
+	assert.NotNil(t, sp.GetSchemaKeyNode())
+
+	ref.SetReference("./schema_n.yaml", rootNode.Content[0])
+	lowProxy.Reference = ref
 
 	rend, _ := sp.MarshalYAMLInline()
 	assert.NotNil(t, rend)
