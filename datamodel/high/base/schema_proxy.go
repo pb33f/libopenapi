@@ -276,7 +276,7 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 					// we loop on our-self
 					return sp.GetReferenceNode(), nil
 				}
-				a := strings.Replace(c.LoopPoint.Definition, basePath, "", 1)
+				a := strings.Replace(c.LoopPoint.FullDefinition, basePath, "", 1)
 				b := sp.GetReference()
 				if strings.HasPrefix(b, "./") {
 					b = strings.Replace(b, "./", "/", 1) // strip any leading ./ from the reference
