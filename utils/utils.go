@@ -436,6 +436,9 @@ func IsNodeMap(node *yaml.Node) bool {
 		return false
 	}
 	n := NodeAlias(node)
+	if n.Kind == yaml.MappingNode {
+		return true
+	}
 	return n.Tag == "!!map"
 }
 
