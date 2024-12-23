@@ -237,11 +237,11 @@ func TestRemoteFile_Index_AlreadySet(t *testing.T) {
 	assert.NoError(t, y)
 }
 
-func TestRemoteFile_Index_BadContent(t *testing.T) {
+func TestRemoteFile_Index_BadContent_Recover(t *testing.T) {
 	rf := &RemoteFile{data: []byte("no: sleep: until: the bugs: weep")}
 	x, y := rf.Index(&SpecIndexConfig{})
-	assert.Nil(t, x)
-	assert.Error(t, y)
+	assert.NotNil(t, x)
+	assert.NoError(t, y)
 }
 
 func TestRemoteFS_NoConfig(t *testing.T) {
