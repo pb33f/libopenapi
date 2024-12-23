@@ -98,15 +98,18 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 }
 
 // GetIgnoredCircularReferences returns a list of circular references that were ignored during the indexing process.
-// These can be array or polymorphic references.
+// These can be an array or polymorphic references. Will return an empty slice if no ignored circular references are found.
 func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
 	debounced := make(map[string]*CircularReferenceResult)
+	var debouncedResults []*CircularReferenceResult
+	if r == nil {
+		return debouncedResults
+	}
 	for _, c := range r.ignoredCircularReferences {
 		if _, ok := debounced[c.LoopPoint.FullDefinition]; !ok {
 			debounced[c.LoopPoint.FullDefinition] = c
 		}
 	}
-	var debouncedResults []*CircularReferenceResult
 	for _, v := range debounced {
 		debouncedResults = append(debouncedResults, v)
 	}
@@ -114,14 +117,18 @@ func (r *Rolodex) GetIgnoredCircularReferences() []*CircularReferenceResult {
 }
 
 // GetSafeCircularReferences returns a list of circular references that were found to be safe during the indexing process.
+// These can be an array or polymorphic references. Will return an empty slice if no safe circular references are found.
 func (r *Rolodex) GetSafeCircularReferences() []*CircularReferenceResult {
 	debounced := make(map[string]*CircularReferenceResult)
+	var debouncedResults []*CircularReferenceResult
+	if r == nil {
+		return debouncedResults
+	}
 	for _, c := range r.safeCircularReferences {
 		if _, ok := debounced[c.LoopPoint.FullDefinition]; !ok {
 			debounced[c.LoopPoint.FullDefinition] = c
 		}
 	}
-	var debouncedResults []*CircularReferenceResult
 	for _, v := range debounced {
 		debouncedResults = append(debouncedResults, v)
 	}
