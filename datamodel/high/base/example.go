@@ -44,6 +44,9 @@ func (e *Example) GoLow() *lowBase.Example {
 
 // GoLowUntyped will return the low-level Example instance that was used to create the high-level one, with no type
 func (e *Example) GoLowUntyped() any {
+	if e == nil {
+		return nil
+	}
 	return e.low
 }
 
