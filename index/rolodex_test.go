@@ -1851,6 +1851,22 @@ func TestHumanFileSize(t *testing.T) {
 
 }
 
+func TestRolodex_GetSafeCircularReferences_nil(t *testing.T) {
+
+	var r *Rolodex
+	circ := r.GetSafeCircularReferences()
+	assert.Nil(t, circ)
+
+}
+
+func TestRolodex_GetIgnoredCircularReferences_nil(t *testing.T) {
+
+	var r *Rolodex
+	circ := r.GetIgnoredCircularReferences()
+	assert.Nil(t, circ)
+
+}
+
 func TestRolodex_IndexCircularLookup_SafeCircular(t *testing.T) {
 
 	offToOz := `openapi: 3.1.0
