@@ -300,6 +300,7 @@ func TestCreateDocument(t *testing.T) {
 
 func TestCreateDocument_Info(t *testing.T) {
 	initTest()
+	assert.NotNil(t, doc.GetIndex())
 	assert.Equal(t, "https://pb33f.io", doc.Info.Value.TermsOfService.Value)
 	assert.Equal(t, "pb33f", doc.Info.Value.Contact.Value.Name.Value)
 	assert.Equal(t, "buckaroo@pb33f.io", doc.Info.Value.Contact.Value.Email.Value)
