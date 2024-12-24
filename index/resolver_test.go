@@ -1443,3 +1443,24 @@ components:
 	assert.Len(t, errs, 0)
 
 }
+
+func TestVisitReference_Nil(t *testing.T) {
+
+	var d = `banana`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	config := CreateClosedAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+
+	resolver := NewResolver(idx)
+	assert.NotNil(t, resolver)
+
+	errs := resolver.Resolve()
+	assert.Len(t, errs, 0)
+	n := resolver.VisitReference(nil, nil, nil, false)
+	assert.Nil(t, n)
+}
+
+//func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
