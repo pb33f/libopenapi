@@ -304,3 +304,12 @@ func TestExtractSpecInfoSync_Error(t *testing.T) {
 	_, e := ExtractSpecInfoWithDocumentCheckSync([]byte(random), true)
 	assert.Error(t, e)
 }
+
+func TestExtractSpecInfoWithDocumentCheck_Bypass_NonYAML(t *testing.T) {
+	yml := `I am not: a parsable: yaml: file: at all.`
+
+	info, err := ExtractSpecInfoWithDocumentCheck([]byte(yml), true)
+	assert.Equal(t, "I am not: a parsable: yaml: file: at all.", info.RootNode.Content[0].Value)
+	assert.NoError(t, err)
+	assert.Equal(t, "I am not: a parsable: yaml: file: at all.", string(*info.SpecBytes))
+}
