@@ -103,6 +103,7 @@ func TestNewDocument_Info(t *testing.T) {
 	wentOnceMore := highDoc.Info.License.GoLow()
 	assert.Equal(t, 12, wentOnceMore.Name.ValueNode.Line)
 	assert.Equal(t, 11, wentOnceMore.Name.ValueNode.Column)
+	assert.NotNil(t, highDoc.GetIndex())
 }
 
 func TestNewDocument_Servers(t *testing.T) {

@@ -117,8 +117,6 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		// if the absolute file location has no file ext, then get the rolodex root.
 		ext := filepath.Ext(absoluteFileLocation)
 		var parsedDocument *yaml.Node
-		var err error
-
 		idx := index
 		if ext != "" {
 			// extract the document from the rolodex.
@@ -139,10 +137,8 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 				idx = rFile.GetIndex()
 			}
 
-			parsedDocument, err = rFile.GetContentAsYAMLNode()
-			if err != nil && !index.config.SkipDocumentCheck {
-				index.logger.Warn("unable to parse rolodex file", "file", absoluteFileLocation, "error", err)
-			}
+			parsedDocument, _ = rFile.GetContentAsYAMLNode()
+
 		} else {
 			parsedDocument = index.root
 		}

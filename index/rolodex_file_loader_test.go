@@ -203,7 +203,10 @@ func TestRolodexLocalFile_FileNotSpec(t *testing.T) {
 
 	file := files[filepath.Join(cwd, "spack.cpp")]
 	node, err := file.GetContentAsYAMLNode()
-	assert.NoError(t, err)
+	assert.Error(t, err)
+	idx, ierr := file.(*LocalFile).Index(CreateOpenAPIIndexConfig())
+	assert.NotNil(t, idx)
+	assert.NoError(t, ierr)
 	assert.NotNil(t, node)
 	assert.Equal(t, "clip:clop: clap: chap:", node.Content[0].Value)
 

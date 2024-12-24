@@ -380,3 +380,23 @@ components:
 	assert.Nil(t, n)
 
 }
+
+func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
+
+	spec := `i:am : not a yaml file:`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	n := index.lookupRolodex([]string{"bingobango"})
+
+	// if the reference is not found, it should return the root.
+	assert.NotNil(t, n)
+
+}

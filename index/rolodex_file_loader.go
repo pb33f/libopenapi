@@ -184,11 +184,9 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	}
 	content := l.data
 
-	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheckSync(content, true)
-	if err != nil {
-		return nil, err
-	}
+	// first, we must parse the content of the file,
+	// the check is bypassed, so as long as it's readable, we're good.
+	info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
 	if config.SpecInfo == nil {
 		config.SpecInfo = info
 	}
@@ -236,7 +234,7 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 		l.index.root = &root
 	}
 	l.parsed = &root
-	return &root, nil
+	return &root, err
 }
 
 // GetFileExtension returns the FileExtension of the file.
