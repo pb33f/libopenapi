@@ -324,95 +324,96 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
 func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
 	resolver.referencesVisited++
-	if resolve && ref.Seen {
+	if resolve && ref != nil && ref.Seen {
 		if ref.Resolved {
 			return ref.Node.Content
 		}
 	}
-	if !resolve && ref.Seen {
+	if !resolve && ref != nil && ref.Seen {
 		return ref.Node.Content
 	}
+	if ref != nil {
+		journey = append(journey, ref)
+		seenRelatives := make(map[int]bool)
+		relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, seenRelatives, resolve, 0)
 
-	journey = append(journey, ref)
-	seenRelatives := make(map[int]bool)
-	relatives := resolver.extractRelatives(ref, ref.Node, nil, seen, journey, seenRelatives, resolve, 0)
+		seen = make(map[string]bool)
 
-	seen = make(map[string]bool)
+		seen[ref.Definition] = true
+		for _, r := range relatives {
+			// check if we have seen this on the journey before, if so! it's circular
+			skip := false
+			for i, j := range journey {
+				if j.FullDefinition == r.FullDefinition {
 
-	seen[ref.Definition] = true
-	for _, r := range relatives {
-		// check if we have seen this on the journey before, if so! it's circular
-		skip := false
-		for i, j := range journey {
-			if j.FullDefinition == r.FullDefinition {
+					var foundDup *Reference
+					foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
+					if foundRef != nil {
+						foundDup = foundRef
+					}
 
-				var foundDup *Reference
+					var circRef *CircularReferenceResult
+					if !foundDup.Circular {
+						loop := append(journey, foundDup)
+
+						visitedDefinitions := make(map[string]bool)
+						isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup,
+							visitedDefinitions, nil)
+
+						isArray := false
+						if r.ParentNodeSchemaType == "array" || slices.Contains(r.ParentNodeTypes, "array") {
+							isArray = true
+						}
+						circRef = &CircularReferenceResult{
+							ParentNode:     foundDup.ParentNode,
+							Journey:        loop,
+							Start:          foundDup,
+							LoopIndex:      i,
+							LoopPoint:      foundDup,
+							IsArrayResult:  isArray,
+							IsInfiniteLoop: isInfiniteLoop,
+						}
+
+						if resolver.IgnorePoly && !isArray {
+							resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
+						} else if resolver.IgnoreArray && isArray {
+							resolver.ignoredArrayReferences = append(resolver.ignoredArrayReferences, circRef)
+						} else {
+							if !resolver.circChecked {
+								resolver.circularReferences = append(resolver.circularReferences, circRef)
+							}
+						}
+						r.Seen = true
+						r.Circular = true
+						foundDup.Seen = true
+						foundDup.Circular = true
+					}
+					skip = true
+				}
+			}
+
+			if !skip {
+				var original *Reference
 				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
 				if foundRef != nil {
-					foundDup = foundRef
+					original = foundRef
 				}
-
-				var circRef *CircularReferenceResult
-				if !foundDup.Circular {
-					loop := append(journey, foundDup)
-
-					visitedDefinitions := make(map[string]bool)
-					isInfiniteLoop, _ := resolver.isInfiniteCircularDependency(foundDup,
-						visitedDefinitions, nil)
-
-					isArray := false
-					if r.ParentNodeSchemaType == "array" || slices.Contains(r.ParentNodeTypes, "array") {
-						isArray = true
-					}
-					circRef = &CircularReferenceResult{
-						ParentNode:     foundDup.ParentNode,
-						Journey:        loop,
-						Start:          foundDup,
-						LoopIndex:      i,
-						LoopPoint:      foundDup,
-						IsArrayResult:  isArray,
-						IsInfiniteLoop: isInfiniteLoop,
-					}
-
-					if resolver.IgnorePoly && !isArray {
-						resolver.ignoredPolyReferences = append(resolver.ignoredPolyReferences, circRef)
-					} else if resolver.IgnoreArray && isArray {
-						resolver.ignoredArrayReferences = append(resolver.ignoredArrayReferences, circRef)
-					} else {
-						if !resolver.circChecked {
-							resolver.circularReferences = append(resolver.circularReferences, circRef)
-						}
-					}
-					r.Seen = true
-					r.Circular = true
-					foundDup.Seen = true
-					foundDup.Circular = true
+				resolved := resolver.VisitReference(original, seen, journey, resolve)
+				if resolve && !original.Circular {
+					ref.Resolved = true
+					r.Resolved = true
+					r.Node.Content = resolved // this is where we perform the actual resolving.
 				}
-				skip = true
+				r.Seen = true
+				ref.Seen = true
 			}
 		}
 
-		if !skip {
-			var original *Reference
-			foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
-			if foundRef != nil {
-				original = foundRef
-			}
-			resolved := resolver.VisitReference(original, seen, journey, resolve)
-			if resolve && !original.Circular {
-				ref.Resolved = true
-				r.Resolved = true
-				r.Node.Content = resolved // this is where we perform the actual resolving.
-			}
-			r.Seen = true
-			ref.Seen = true
+		ref.Seen = true
+
+		if ref.Node != nil {
+			return ref.Node.Content
 		}
-	}
-
-	ref.Seen = true
-
-	if ref.Node != nil {
-		return ref.Node.Content
 	}
 	return nil
 }
