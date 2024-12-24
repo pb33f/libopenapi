@@ -411,10 +411,10 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 		var file fs.File
 		var fileError error
 		if config != nil && config.DirFS != nil {
-			l.logger.Debug("[rolodex file loader]: collecting %s file from dirFS", "file", extension, "location", abs)
+			l.logger.Debug("[rolodex file loader]: collecting file from dirFS", "file", extension, "location", abs)
 			file, _ = config.DirFS.Open(p)
 		} else {
-			l.logger.Debug("[rolodex file loader]: reading local %s file from OS", "file", extension, "location", abs)
+			l.logger.Debug("[rolodex file loader]: reading local file from OS", "file", extension, "location", abs)
 			file, fileError = os.Open(abs)
 		}
 
