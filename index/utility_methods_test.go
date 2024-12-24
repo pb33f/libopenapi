@@ -287,3 +287,17 @@ pork: chop`
 	assert.NotEmpty(t, hash)
 	assert.Equal(t, "e9aba1ce94ac8bd0143524ce594c0c7d38c06c09eca7ae96725187f488661fcd", hash)
 }
+
+func Test_HashNode_TooDeep(t *testing.T) {
+
+	nodeA := &yaml.Node{}
+	nodeB := &yaml.Node{}
+
+	// create an infinite loop.
+	nodeA.Content = append(nodeA.Content, nodeB)
+	nodeB.Content = append(nodeB.Content, nodeA)
+
+	hash := HashNode(nodeA)
+	assert.NotEmpty(t, hash)
+	assert.Equal(t, "e6d506f4b5a87b3f37ac8bed41c8411a5883b5f20d141d45ee92245c023a73e4", hash)
+}
