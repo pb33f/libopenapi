@@ -117,3 +117,9 @@ x-hack: code`
 	fmt.Print(highExample.ExternalValue)
 	// Output: https://pb33f.io
 }
+
+func TestExample_GoLow(t *testing.T) {
+	var example *Example
+	assert.Nil(t, example.GoLow())
+	assert.Nil(t, example.GoLowUntyped())
+}
