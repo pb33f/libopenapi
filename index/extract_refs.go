@@ -415,7 +415,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 						completedPath := fmt.Sprintf("$.%s", strings.Join(fp, "."))
 						c := node.Content[i]
-						if len(n.Content) > i+1 { // if the next node exists, use that.
+						if len(node.Content) > i+1 { // if the next node exists, use that.
 							c = node.Content[i+1]
 						}
 
