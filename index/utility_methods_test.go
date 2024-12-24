@@ -301,3 +301,9 @@ func Test_HashNode_TooDeep(t *testing.T) {
 	assert.NotEmpty(t, hash)
 	assert.Equal(t, "e6d506f4b5a87b3f37ac8bed41c8411a5883b5f20d141d45ee92245c023a73e4", hash)
 }
+
+func Test_HashNode_Nil(t *testing.T) {
+	var nodeA *yaml.Node
+	hash := HashNode(nodeA)
+	assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", hash)
+}
