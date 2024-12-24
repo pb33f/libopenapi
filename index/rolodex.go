@@ -252,11 +252,7 @@ func (r *Rolodex) IndexTheRolodex() error {
 			copiedConfig.AvoidBuildIndex = true // we will build out everything in two steps.
 			idx, err := idxFile.Index(&copiedConfig)
 
-			if err != nil {
-				errChan <- err
-			}
-
-			if err == nil {
+			if err == nil { // Index() does not throw an error anymore.
 				// for each index, we need a resolver
 				resolver := NewResolver(idx)
 
