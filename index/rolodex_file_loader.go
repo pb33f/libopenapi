@@ -116,16 +116,14 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 					copiedCfg.AvoidBuildIndex = true
 					copiedCfg.SpecInfo = nil
 
-					idx, idxError := extractedFile.Index(&copiedCfg)
+					idx, _ := extractedFile.Index(&copiedCfg)
 
 					if idx != nil && l.rolodex != nil {
 						idx.rolodex = l.rolodex
 					}
 
-					if idxError != nil && idx == nil {
-						extractedFile.readingErrors = append(l.readingErrors, idxError)
-					} else {
-						// for each index, we need a resolver
+					// for each index, we need a resolver
+					if idx != nil {
 						resolver := NewResolver(idx)
 						idx.resolver = resolver
 						idx.BuildIndex()
