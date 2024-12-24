@@ -39,6 +39,9 @@ func NewExample(example *lowBase.Example) *Example {
 
 // GoLow will return the low-level Example used to build the high level one.
 func (e *Example) GoLow() *lowBase.Example {
+	if e == nil {
+		return nil
+	}
 	return e.low
 }
 
