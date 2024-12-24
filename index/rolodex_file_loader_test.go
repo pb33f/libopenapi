@@ -181,6 +181,34 @@ func TestRolodexLocalFile_IndexSingleFile(t *testing.T) {
 
 }
 
+func TestRolodexLocalFile_FileNotSpec(t *testing.T) {
+
+	testFS := fstest.MapFS{
+		"spec.yaml": {Data: []byte("hip"), ModTime: time.Now()},
+		"spack.cpp": {Data: []byte("clip:clop: clap: chap:"), ModTime: time.Now()},
+	}
+
+	fileFS, _ := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: "./",
+		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
+		DirFS: testFS,
+	})
+
+	cwd, _ := os.Getwd()
+
+	files := fileFS.GetFiles()
+	assert.Len(t, files, 2)
+
+	file := files[filepath.Join(cwd, "spack.cpp")]
+	node, err := file.GetContentAsYAMLNode()
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+	assert.Equal(t, "clip:clop: clap: chap:", node.Content[0].Value)
+
+}
+
 func TestRolodexLocalFile_TestFilters(t *testing.T) {
 
 	testFS := fstest.MapFS{
