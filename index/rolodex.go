@@ -124,6 +124,25 @@ func (r *Rolodex) GetSafeCircularReferences() []*CircularReferenceResult {
 	if r == nil {
 		return debouncedResults
 	}
+
+	// if this rolodex has not been manually checked for circular references or resolved,
+	// then we need to perform that check now, looking at all indexes and extracting
+	// results from the resolvers.
+	if !r.circChecked {
+		var extracted []*CircularReferenceResult
+		for _, idx := range append(r.GetIndexes(), r.GetRootIndex()) {
+			if idx != nil {
+				res := idx.resolver
+				if res != nil {
+					extracted = append(extracted, res.GetSafeCircularReferences()...)
+				}
+			}
+		}
+		if len(extracted) > 0 {
+			r.safeCircularReferences = append(r.safeCircularReferences, extracted...)
+		}
+	}
+
 	for _, c := range r.safeCircularReferences {
 		if _, ok := debounced[c.LoopPoint.FullDefinition]; !ok {
 			debounced[c.LoopPoint.FullDefinition] = c
