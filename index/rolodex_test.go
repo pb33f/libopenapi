@@ -1850,3 +1850,47 @@ func TestHumanFileSize(t *testing.T) {
 	assert.Equal(t, "1 MB", HumanFileSize(1024*1024))
 
 }
+
+func TestRolodex_IndexCircularLookup_SafeCircular(t *testing.T) {
+
+	offToOz := `openapi: 3.1.0
+components:
+  schemas:
+    One:
+      properties:
+        lemon:
+          $ref: "#/components/schemas/Two"
+    Two:
+      properties:
+        orange:
+          allOf:
+            - $ref: "#/components/schemas/One"
+     `
+
+	_ = os.WriteFile("off_to_ozmin.yaml", []byte(offToOz), 0644)
+	defer os.Remove("off_to_ozmin.yaml")
+
+	baseDir, _ := os.Getwd()
+
+	fsCfg := &LocalFSConfig{
+		BaseDirectory: baseDir,
+		DirFS:         os.DirFS(baseDir),
+		FileFilters: []string{
+			"off_to_ozmin.yaml",
+		},
+	}
+
+	fileFS, err := NewLocalFSWithConfig(fsCfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	rolodex := NewRolodex(cf)
+	rolodex.AddLocalFS(baseDir, fileFS)
+	err = rolodex.IndexTheRolodex()
+
+	safeRefs := rolodex.GetSafeCircularReferences()
+	assert.Len(t, safeRefs, 1)
+}
