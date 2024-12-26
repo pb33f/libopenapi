@@ -716,6 +716,10 @@ func (r *Rolodex) GetFullLineCount() int64 {
 			}
 		}
 	}
+	// add in root count
+	if r.indexConfig != nil && r.indexConfig.SpecInfo != nil {
+		lineCount += int64(strings.Count(string(*r.indexConfig.SpecInfo.SpecBytes), "\n")) + 1
+	}
 	return lineCount
 }
 
