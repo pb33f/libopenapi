@@ -39,6 +39,37 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 			} else {
 				return nil
 			}
+		} else {
+
+			// the value is not in the root index, so we need to search all indexes
+			for i := range r.indexes {
+				idx := r.indexes[i]
+				if keyOrigin == nil {
+					keyOrigin = idx.FindNodeOrigin(key)
+				}
+				n := idx.FindNodeOrigin(value)
+				if n != nil {
+					if refNode != nil && refValue != "" {
+						return keyOrigin
+					}
+
+					valueHash = HashNode(value)
+					nHash := HashNode(n.Node)
+
+					if valueHash == nHash {
+						if keyOrigin.AbsoluteLocation != n.AbsoluteLocation {
+							if refNode == nil && refValue == "" {
+								keyOrigin.AbsoluteLocationValue = n.AbsoluteLocation
+								keyOrigin.LineValue = n.Line
+								keyOrigin.ColumnValue = n.Column
+								keyOrigin.ValueNode = n.Node
+							}
+						}
+						return keyOrigin
+					}
+				}
+			}
+
 		}
 	}
 	return keyOrigin
@@ -92,6 +123,18 @@ func (index *SpecIndex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
 					if !match {
 						// hash node and found node
 						match = checkHash(node, foundNode)
+
+						if !match {
+							// check if the found node is a map and if the first item in the map
+							// has the same line and column, as well as the same value
+							if utils.IsNodeMap(foundNode) && len(foundNode.Content) > 0 {
+								if foundNode.Content[0].Line == node.Line &&
+									foundNode.Content[0].Column == node.Column &&
+									foundNode.Content[0].Value == node.Value {
+									match = true
+								}
+							}
+						}
 					}
 				}
 
@@ -120,6 +163,7 @@ type originCheck struct {
 	value       *yaml.Node
 	ref         string
 	refNode     *yaml.Node
+	skipIndex   *SpecIndex
 }
 
 func checkHash(node, foundNode *yaml.Node) bool {
@@ -141,6 +185,11 @@ func checkOrigin(check originCheck) (*NodeOrigin, bool) {
 	} else {
 		// no hit on the root, but we know the value is in the spec, so we need to search all indexes
 		for i := range check.rolodex.indexes {
+			if check.skipIndex != nil {
+				if check.rolodex.indexes[i] == check.skipIndex {
+					continue
+				}
+			}
 			idx := check.rolodex.indexes[i]
 			n := idx.FindNodeOrigin(check.value)
 			if n != nil && n.Node != nil {
@@ -149,7 +198,10 @@ func checkOrigin(check originCheck) (*NodeOrigin, bool) {
 				if check.valueHash == valueOriginHash {
 					if check.keyOrigin.AbsoluteLocation != n.AbsoluteLocation {
 						if check.refNode == nil && check.ref == "" {
-							check.keyOrigin.AbsoluteLocation = n.AbsoluteLocation
+							check.keyOrigin.AbsoluteLocationValue = n.AbsoluteLocation
+							check.keyOrigin.LineValue = n.Line
+							check.keyOrigin.ColumnValue = n.Column
+							check.keyOrigin.ValueNode = n.Node
 						}
 					}
 					return check.keyOrigin, true
