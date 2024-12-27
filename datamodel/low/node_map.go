@@ -98,7 +98,13 @@ func (nm *NodeMap) ContainsLine(line int) bool {
 func ExtractNodes(_ context.Context, root *yaml.Node) *sync.Map {
 	var syncMap sync.Map
 	nm := &NodeMap{Nodes: &syncMap}
-	nm.ExtractNodes(root, false)
+	if root != nil && len(root.Content) > 0 {
+		nm.ExtractNodes(root, false)
+	} else {
+		if root != nil {
+			nm.AddNode(root.Line, root)
+		}
+	}
 	return nm.Nodes
 }
 
