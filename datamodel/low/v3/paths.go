@@ -95,7 +95,7 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
 	p.Reference = new(low.Reference)
-	p.Nodes = low.ExtractNodes(ctx, nil) // don't extract anything.
+	p.Nodes = low.ExtractNodes(ctx, keyNode)
 	p.Extensions = low.ExtractExtensions(root)
 	p.index = idx
 	p.context = ctx
