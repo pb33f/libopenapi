@@ -229,3 +229,21 @@ x-rice:
 	assert.Equal(t, 6, count)
 
 }
+
+func TestExtractNodes_NoContent(t *testing.T) {
+
+	yml := `one`
+
+	var root yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &root)
+
+	nm := ExtractNodes(nil, root.Content[0])
+
+	count := 0
+	nm.Range(func(key, value interface{}) bool {
+		count++
+		return true
+	})
+
+	assert.Equal(t, 1, count)
+}
