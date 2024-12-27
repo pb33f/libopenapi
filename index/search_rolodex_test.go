@@ -89,7 +89,7 @@ func TestRolodex_FindNodeOrigin_InRoot_InMap(t *testing.T) {
 
 	copied := *node
 
-	origin := rolo.FindNodeOrigin(&copied)
+	origin := rolo.FindNodeOrigin(copied.Content[0])
 	assert.NotNil(t, origin)
 	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
 
@@ -240,9 +240,13 @@ func TestRolodex_FindNodeOriginWithValue_NonRoot(t *testing.T) {
 
 	assert.NotNil(t, origin)
 
+	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
 	// should not be equal, root and origin are different
-	assert.NotEqual(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
-
+	assert.NotEqual(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocationValue)
+	assert.Equal(t, 2, origin.Line)
+	assert.Equal(t, 1, origin.Column)
+	assert.Equal(t, 3, origin.LineValue)
+	assert.Equal(t, 3, origin.ColumnValue)
 }
 
 func TestRolodex_FindNodeOriginWithValue_BadKeyAndValue(t *testing.T) {
