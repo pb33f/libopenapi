@@ -442,6 +442,15 @@ func IsNodeMap(node *yaml.Node) bool {
 	return n.Tag == "!!map"
 }
 
+// IsNodeNull checks if the node is a null type
+func IsNodeNull(node *yaml.Node) bool {
+	if node == nil {
+		return true
+	}
+	n := NodeAlias(node)
+	return n.Tag == "!!null"
+}
+
 // IsNodeAlias checks if the node is an alias, and lifts out the anchor
 func IsNodeAlias(node *yaml.Node) (*yaml.Node, bool) {
 	if node == nil {

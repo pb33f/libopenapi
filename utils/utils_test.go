@@ -1183,3 +1183,12 @@ func TestNodeMerge_NoNodes(t *testing.T) {
 	n := NodeMerge(nil)
 	assert.Nil(t, n)
 }
+
+func TestIsNodeNull(t *testing.T) {
+	n := &yaml.Node{
+		Tag: "!!null",
+	}
+	assert.True(t, IsNodeNull(n))
+	n.Tag = "!!str"
+	assert.False(t, IsNodeNull(n))
+}
