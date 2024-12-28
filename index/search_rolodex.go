@@ -159,7 +159,6 @@ type originCheck struct {
 	value       *yaml.Node
 	ref         string
 	refNode     *yaml.Node
-	skipIndex   *SpecIndex
 }
 
 func checkHash(node, foundNode *yaml.Node) bool {
@@ -181,11 +180,6 @@ func checkOrigin(check originCheck) (*NodeOrigin, bool) {
 	} else {
 		// no hit on the root, but we know the value is in the spec, so we need to search all indexes
 		for i := range check.rolodex.indexes {
-			if check.skipIndex != nil {
-				if check.rolodex.indexes[i] == check.skipIndex {
-					continue
-				}
-			}
 			idx := check.rolodex.indexes[i]
 			n := idx.FindNodeOrigin(check.value)
 			if n != nil && n.Node != nil {
