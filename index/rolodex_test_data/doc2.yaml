@@ -12,6 +12,12 @@ paths:
             application/json:
               schema:
                 $ref: 'dir2/components.yaml#/components/schemas/AnotherComponent'
+        default:
+          description: Anything
+          content:
+            application/json:
+              schema:
+                $ref: 'dir2/components.yaml#/components/schemas/GlobalComponent'
 components:
   schemas:
     Thing:
