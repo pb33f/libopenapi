@@ -1191,6 +1191,10 @@ func TestIsNodeNull(t *testing.T) {
 	assert.True(t, IsNodeNull(n))
 	n.Tag = "!!str"
 	assert.False(t, IsNodeNull(n))
+
+	var noNode *yaml.Node
+	assert.False(t, IsNodeNull(noNode))
+
 }
 
 func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
