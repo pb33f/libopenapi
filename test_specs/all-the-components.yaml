@@ -1,4 +1,9 @@
-openapi: 3.0.1
+jsonSchemaDialect: https://pb33f.io/api"
+externalDocs:
+  description: Find out more
+  url: https://quobix.com/
+x-hack: code
+openapi: 3.1.1
 info:
   title: Burger Shop
   description: |
@@ -23,6 +28,8 @@ tags:
 servers:
   - url: https://quobix.com/api
   - url: https://pb33f.com/api
+security:
+  - api_key: []
 paths:
   /burgers:
     servers:
@@ -369,3 +376,10 @@ components:
           type: string
           description: what size man? S/M/L
           example: M
+webhooks:
+  bHook:
+    get:
+      description: coffee in the morning
+  aHook:
+    get:
+      description: jazz in the evening
