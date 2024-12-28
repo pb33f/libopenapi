@@ -605,7 +605,11 @@ func TestRolodex_FindNodeOrigin_NonRootToNonRootLookup(t *testing.T) {
 	assert.NotEmpty(t, origin.AbsoluteLocation)
 	assert.Empty(t, origin.AbsoluteLocationValue)
 
+	origin = rolo.FindNodeOrigin(nodeUtils.Content[0].Content[0])
+	assert.NotNil(t, origin)
+	assert.Equal(t, 1, origin.Line)
+	assert.Equal(t, 1, origin.Column)
 	// get full line count.
-	assert.Equal(t, int64(88), rolo.GetFullLineCount())
+	assert.Equal(t, int64(100), rolo.GetFullLineCount())
 
 }
