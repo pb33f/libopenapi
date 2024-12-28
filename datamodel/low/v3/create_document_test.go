@@ -278,25 +278,25 @@ func TestCreateDocument(t *testing.T) {
 	assert.Equal(t, 1, orderedmap.Len(doc.GetExtensions()))
 }
 
-//func TestCreateDocumentHash(t *testing.T) {
-//	data, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
-//	info, _ := datamodel.ExtractSpecInfo(data)
-//	d, _ := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-//		AllowFileReferences:   false,
-//		AllowRemoteReferences: false,
-//		BasePath:              "/here",
-//	})
-//
-//	dataB, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
-//	infoB, _ := datamodel.ExtractSpecInfo(dataB)
-//	e, _ := CreateDocumentFromConfig(infoB, &datamodel.DocumentConfiguration{
-//		AllowFileReferences:   false,
-//		AllowRemoteReferences: false,
-//		BasePath:              "/here",
-//	})
-//
-//	assert.Equal(t, d.Hash(), e.Hash())
-//}
+func TestCreateDocumentHash(t *testing.T) {
+	data, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
+	info, _ := datamodel.ExtractSpecInfo(data)
+	d, _ := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+		BasePath:              "/here",
+	})
+
+	dataB, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
+	infoB, _ := datamodel.ExtractSpecInfo(dataB)
+	e, _ := CreateDocumentFromConfig(infoB, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   false,
+		AllowRemoteReferences: false,
+		BasePath:              "/here",
+	})
+
+	assert.Equal(t, d.Hash(), e.Hash())
+}
 
 func TestCreateDocument_Info(t *testing.T) {
 	initTest()
