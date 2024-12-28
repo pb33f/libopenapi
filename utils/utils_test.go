@@ -1192,3 +1192,25 @@ func TestIsNodeNull(t *testing.T) {
 	n.Tag = "!!str"
 	assert.False(t, IsNodeNull(n))
 }
+
+func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
+
+	// create a and b node that reference each other
+	a := &yaml.Node{
+		Value: "beans",
+		Tag:   "!!map",
+		Kind:  yaml.MappingNode,
+	}
+	b := &yaml.Node{
+		Tag:   "!!map",
+		Value: "cake",
+		Kind:  yaml.MappingNode,
+	}
+	a.Content = []*yaml.Node{b}
+	b.Content = []*yaml.Node{a}
+
+	// now look for something that does not exist.
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10)
+	assert.Nil(t, nodes)
+	assert.Error(t, err)
+}
