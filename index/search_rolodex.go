@@ -69,7 +69,6 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 					}
 				}
 			}
-
 		}
 	}
 	return keyOrigin
@@ -103,9 +102,6 @@ func (index *SpecIndex) FindNodeOrigin(node *yaml.Node) *NodeOrigin {
 		if index.nodeMap[node.Line] != nil {
 			if index.nodeMap[node.Line][node.Column] != nil {
 				foundNode := index.nodeMap[node.Line][node.Column]
-				if foundNode.Kind == yaml.DocumentNode {
-					foundNode = foundNode.Content[0]
-				}
 				match := false
 
 				if foundNode == node {

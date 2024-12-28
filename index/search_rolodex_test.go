@@ -4,6 +4,7 @@
 package index
 
 import (
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
@@ -521,4 +522,90 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 		}(i)
 	}
 	wg.Wait()
+}
+
+func TestRolodex_FindNodeOrigin_NonRootToNonRootLookup(t *testing.T) {
+
+	baseDir := "rolodex_test_data"
+
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = baseDir
+	cf.AvoidCircularReferenceCheck = true
+
+	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: baseDir,
+		IndexConfig:   cf,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	rolo := NewRolodex(cf)
+	rolo.AddLocalFS(baseDir, fileFS)
+
+	// open doc2
+	f, rerr := rolo.Open("doc2.yaml")
+	assert.Nil(t, rerr)
+	assert.NotNil(t, f)
+
+	node, _ := f.GetContentAsYAMLNode()
+
+	// open dir2 components
+	comp, cerr := rolo.Open("dir2/components.yaml")
+	assert.Nil(t, cerr)
+	assert.NotNil(t, comp)
+
+	nodeComponents, _ := comp.GetContentAsYAMLNode()
+	assert.NotNil(t, nodeComponents)
+
+	// open utils
+	utils, uerr := rolo.Open("dir2/utils/utils.yaml")
+	assert.Nil(t, uerr)
+	assert.NotNil(t, utils)
+
+	nodeUtils, _ := utils.GetContentAsYAMLNode()
+	assert.NotNil(t, nodeUtils)
+
+	rolo.SetRootNode(node)
+	// create a spec info
+	b := []byte(f.GetContent())
+	specInfo := &datamodel.SpecInfo{
+		SpecBytes: &b,
+	}
+	cf.SpecInfo = specInfo
+
+	key := nodeComponents.Content[0].Content[5].Content[1].Content[4]
+	keyRef := nodeComponents.Content[0].Content[5].Content[1].Content[5]
+	value := nodeUtils.Content[0]
+
+	assert.NotNil(t, key)
+	assert.NotNil(t, value)
+
+	err = rolo.IndexTheRolodex()
+
+	origin := rolo.FindNodeOriginWithValue(key, value, nil, "")
+	assert.NotNil(t, origin)
+	assert.NoError(t, err)
+	assert.Equal(t, 20, origin.Line)
+	assert.Equal(t, 5, origin.Column)
+	assert.Equal(t, 1, origin.LineValue)
+	assert.Equal(t, 1, origin.ColumnValue)
+	assert.NotEmpty(t, origin.AbsoluteLocation)
+	assert.NotEmpty(t, origin.AbsoluteLocationValue)
+	assert.NotEqual(t, origin.AbsoluteLocationValue, origin.AbsoluteLocation)
+
+	// pretend that we have a reference.
+	origin = rolo.FindNodeOriginWithValue(key, value, keyRef, "#/burgers")
+	assert.NotNil(t, origin)
+	assert.NoError(t, err)
+	assert.Equal(t, 20, origin.Line)
+	assert.Equal(t, 5, origin.Column)
+	assert.Equal(t, 0, origin.LineValue)
+	assert.Equal(t, 0, origin.ColumnValue)
+	assert.NotEmpty(t, origin.AbsoluteLocation)
+	assert.Empty(t, origin.AbsoluteLocationValue)
+
+	// get full line count.
+	assert.Equal(t, int64(88), rolo.GetFullLineCount())
+
 }
