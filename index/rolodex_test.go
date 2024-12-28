@@ -1546,12 +1546,12 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.NotNil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 11)
-	assert.Len(t, rolo.GetAllReferences(), 9)
-	assert.Len(t, rolo.GetAllMappedReferences(), 9)
+	assert.Len(t, rolo.GetAllReferences(), 10)
+	assert.Len(t, rolo.GetAllMappedReferences(), 10)
 	assert.Len(t, rolo.GetRootIndex().GetAllPaths(), 3)
 
 	lineCount := rolo.GetFullLineCount()
-	assert.Equal(t, int64(174), lineCount, "total line count in the rolodex is wrong")
+	assert.Equal(t, int64(180), lineCount, "total line count in the rolodex is wrong")
 
 	assert.NoError(t, err)
 	assert.Len(t, rolo.indexes, 11)
