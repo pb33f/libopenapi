@@ -1193,7 +1193,7 @@ func TestIsNodeNull(t *testing.T) {
 	assert.False(t, IsNodeNull(n))
 
 	var noNode *yaml.Node
-	assert.False(t, IsNodeNull(noNode))
+	assert.True(t, IsNodeNull(noNode))
 
 }
 
