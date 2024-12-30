@@ -111,7 +111,7 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 
 // FindNodesWithoutDeserializing will find a node based on JSONPath, without deserializing from yaml/json
 // This function can be customized with a timeout.
-func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeoutMs time.Duration) ([]*yaml.Node, error) {
+func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
 
 	path, err := yamlpath.NewPath(jsonPath)
@@ -122,7 +122,7 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	// this can spin out, to lets gatekeep it.
 	done := make(chan bool)
 	var results []*yaml.Node
-	timeout, cancel := context.WithTimeout(context.Background(), timeoutMs*time.Millisecond)
+	to, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go func(d chan bool) {
 		results, _ = path.Find(node)
@@ -132,8 +132,8 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	select {
 	case <-done:
 		return results, nil
-	case <-timeout.Done():
-		return nil, fmt.Errorf("node lookup timeout exceeded")
+	case <-to.Done():
+		return nil, fmt.Errorf("node lookup timeout exceeded (%v)", timeout)
 	}
 }
 
