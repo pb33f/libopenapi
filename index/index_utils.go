@@ -53,7 +53,7 @@ func boostrapIndexCollections(index *SpecIndex) {
 	index.externalSpecIndex = make(map[string]*SpecIndex)
 	index.allComponentSchemaDefinitions = &sync.Map{}
 	index.allParameters = make(map[string]*Reference)
-	index.allSecuritySchemes = make(map[string]*Reference)
+	index.allSecuritySchemes = &sync.Map{}
 	index.allRequestBodies = make(map[string]*Reference)
 	index.allResponses = make(map[string]*Reference)
 	index.allHeaders = make(map[string]*Reference)
