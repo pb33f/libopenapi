@@ -6,6 +6,7 @@ package base
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
@@ -268,7 +269,7 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 				}
 				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
 
-				if !filepath.IsAbs(basePath) {
+				if !filepath.IsAbs(basePath) && !strings.HasPrefix(basePath, "http") {
 					basePath, _ = filepath.Abs(basePath)
 				}
 
@@ -280,6 +281,16 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 				b := sp.GetReference()
 				if strings.HasPrefix(b, "./") {
 					b = strings.Replace(b, "./", "/", 1) // strip any leading ./ from the reference
+				}
+				// if loading things in remotely and references are relative.
+				if strings.HasPrefix(a, "http") {
+					purl, _ := url.Parse(a)
+					if purl != nil {
+						specPath := filepath.Dir(purl.Path)
+						host := fmt.Sprintf("%s://%s", purl.Scheme, purl.Host)
+						a = strings.Replace(a, host, "", 1)
+						a = strings.Replace(a, specPath, "", 1)
+					}
 				}
 				if a == b {
 					// nope
