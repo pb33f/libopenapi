@@ -275,7 +275,7 @@ type SpecIndex struct {
 	allInlineSchemaObjectDefinitions    []*Reference                                  // all schemas that are objects found in document outside of components (openapi) or definitions (swagger).
 	allComponentSchemaDefinitions       *sync.Map                                     // all schemas found in components (openapi) or definitions (swagger).
 	securitySchemesNode                 *yaml.Node                                    // components/securitySchemes node
-	allSecuritySchemes                  map[string]*Reference                         // all security schemes / definitions.
+	allSecuritySchemes                  *sync.Map                                     // all security schemes / definitions.
 	allComponentSchemas                 map[string]*Reference                         // all component schema definitions
 	allComponentSchemasLock             sync.RWMutex                                  // prevent concurrent read writes to the schema file which causes a race condition
 	requestBodiesNode                   *yaml.Node                                    // components/requestBodies node

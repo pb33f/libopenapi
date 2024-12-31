@@ -119,6 +119,16 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		return rf, idx, context.WithValue(ctx, CurrentPathKey, rf.RemoteLocation)
 	}
 
+	// check security schemes
+	if index.allSecuritySchemes != nil {
+		if r, ok := index.allSecuritySchemes.Load(refAlt); ok {
+			rf := r.(*Reference)
+			idx := index.extractIndex(rf)
+			index.cache.Store(refAlt, r)
+			return rf, idx, context.WithValue(ctx, CurrentPathKey, rf.RemoteLocation)
+		}
+	}
+
 	// check the rolodex for the reference.
 	if roloLookup != "" {
 

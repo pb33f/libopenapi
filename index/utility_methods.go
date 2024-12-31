@@ -363,7 +363,7 @@ func (index *SpecIndex) extractComponentSecuritySchemes(securitySchemesNode *yam
 			ParentNode:            securitySchemesNode,
 			RequiredRefProperties: extractDefinitionRequiredRefProperties(securitySchemesNode, map[string][]string{}, fullDef, index),
 		}
-		index.allSecuritySchemes[def] = ref
+		index.allSecuritySchemes.Store(def, ref)
 	}
 }
 
