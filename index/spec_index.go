@@ -356,7 +356,7 @@ func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
 
 // GetAllSecuritySchemes will return all security schemes / definitions found in the document.
 func (index *SpecIndex) GetAllSecuritySchemes() map[string]*Reference {
-	return index.allSecuritySchemes
+	return syncMapToMap[string, *Reference](index.allSecuritySchemes)
 }
 
 // GetAllHeaders will return all headers found in the document (under components)
