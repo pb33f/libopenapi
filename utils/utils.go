@@ -106,7 +106,7 @@ func BuildPath(basePath string, segs []string) string {
 // FindNodesWithoutDeserializing will find a node based on JSONPath, without deserializing from yaml/json
 // This function will timeout after 500ms.
 func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.Node, error) {
-	return FindNodesWithoutDeserializingWithTimeout(node, jsonPath, 500)
+	return FindNodesWithoutDeserializingWithTimeout(node, jsonPath, 500*time.Millisecond)
 }
 
 // FindNodesWithoutDeserializing will find a node based on JSONPath, without deserializing from yaml/json
