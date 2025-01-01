@@ -433,6 +433,8 @@ func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {
 
 func TestSchemaProxy_MarshalYAML_Inline_HTTP(t *testing.T) {
 
+	// this triggers http code by fudging references, found when importing from URLs directly.
+
 	first := `type: object
 properties:
   cakes:
@@ -444,11 +446,9 @@ properties:
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
 
 	cf := index.CreateOpenAPIIndexConfig()
-	cf.IgnorePolymorphicCircularReferences = true
 	cf.SkipDocumentCheck = true
 
 	rolodex := index.NewRolodex(cf)
-
 	rolodex.SetRootNode(&rootNode)
 	rErr := rolodex.IndexTheRolodex()
 
