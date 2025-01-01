@@ -430,3 +430,51 @@ func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {
 	assert.Nil(t, rend)
 	assert.Error(t, err)
 }
+
+func TestSchemaProxy_MarshalYAML_Inline_HTTP(t *testing.T) {
+
+	first := `type: object
+properties:
+  cakes:
+    type: array
+    items: 
+      $ref: 'http#/properties/cakes'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(first), &rootNode)
+
+	cf := index.CreateOpenAPIIndexConfig()
+	cf.IgnorePolymorphicCircularReferences = true
+	cf.SkipDocumentCheck = true
+
+	rolodex := index.NewRolodex(cf)
+
+	rolodex.SetRootNode(&rootNode)
+	rErr := rolodex.IndexTheRolodex()
+
+	assert.NoError(t, rErr)
+
+	circularRefs := []*index.CircularReferenceResult{
+		{
+			LoopPoint: &index.Reference{
+				Definition:     "#/components/schemas/Ten",
+				FullDefinition: "http#/properties/cakes",
+			},
+		},
+	}
+
+	rolodex.GetRootIndex().SetCircularReferences(circularRefs)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, rootNode.Content[0], rolodex.GetRootIndex())
+	assert.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+
+	rend, _ := sp.Schema().Properties.GetOrZero("cakes").Schema().Items.A.MarshalYAMLInline()
+	assert.NotNil(t, rend)
+}

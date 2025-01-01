@@ -198,6 +198,68 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 }
 
+func TestSpecIndex_Redocly(t *testing.T) {
+	do, _ := os.ReadFile("../test_specs/redocly-starter.yaml")
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal(do, &rootNode)
+
+	location := "https://raw.githubusercontent.com/Redocly/openapi-starter/5d36274f068e67d630a441b33aefdc208b5f76a1/openapi"
+	baseURL, _ := url.Parse(location)
+
+	// create a new config that allows remote lookups.
+	cf := &SpecIndexConfig{}
+	cf.AvoidBuildIndex = true
+	cf.AllowRemoteLookup = true
+	cf.AvoidCircularReferenceCheck = true
+	cf.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelError,
+	}))
+
+	// setting this baseURL will override the base
+	cf.BaseURL = baseURL
+
+	// create a new rolodex
+	rolo := NewRolodex(cf)
+
+	// set the rolodex root node to the root node of the spec.
+	rolo.SetRootNode(&rootNode)
+
+	// create a new remote fs and set the config for indexing.
+	remoteFS, _ := NewRemoteFSWithConfig(cf)
+
+	// create a handler that uses an env variable to capture any GITHUB_TOKEN in the OS ENV
+	// and inject it into the request header, so this does not fail when running lots of local tests.
+	if os.Getenv("GH_PAT") != "" {
+		fmt.Println("GH_PAT found, setting remote handler func")
+		client := &http.Client{
+			Timeout: time.Second * 120,
+		}
+		remoteFS.SetRemoteHandlerFunc(func(url string) (*http.Response, error) {
+			request, _ := http.NewRequest(http.MethodGet, url, nil)
+			request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("GH_PAT")))
+			return client.Do(request)
+		})
+	}
+
+	// add remote filesystem
+	rolo.AddRemoteFS(location, remoteFS)
+
+	// index the rolodex.
+	indexedErr := rolo.IndexTheRolodex()
+	assert.NoError(t, indexedErr)
+
+	// get all the files!
+	files := remoteFS.GetFiles()
+	fileLen := len(files)
+	assert.Equal(t, 18, fileLen)
+	assert.Len(t, remoteFS.GetErrors(), 0)
+
+	// check circular references
+	rolo.CheckForCircularReferences()
+	assert.Len(t, rolo.GetCaughtErrors(), 0)
+	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
+}
+
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	// this is a full checkout of the digitalocean API repo.
 	tmp, _ := os.MkdirTemp("", "openapi")
