@@ -89,11 +89,20 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
 func (sp *SchemaProxy) Schema() *Schema {
-	if sp == nil || sp.lock == nil || sp.schema == nil || sp.schema.Value == nil {
+	if sp == nil || sp.lock == nil {
 		return nil
 	}
-	sp.lock.Lock()
+
+	if sp.rendered != nil {
+		return sp.rendered
+	}
 	if sp.rendered == nil {
+		if sp.schema == nil || sp.schema.Value == nil {
+			return nil
+		}
+
+		sp.lock.Lock()
+
 		//check the high-level cache first.
 		idx := sp.schema.Value.GetIndex()
 		if idx != nil && sp.schema.Value != nil {
@@ -136,10 +145,8 @@ func (sp *SchemaProxy) Schema() *Schema {
 		sp.rendered = sch
 		sp.lock.Unlock()
 		return sch
-	} else {
-		sp.lock.Unlock()
-		return sp.rendered
 	}
+	return nil
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
@@ -265,7 +272,8 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 			if sp.IsReference() {
 				if sp.GetReference() == c.LoopPoint.Definition {
 					// nope
-					return sp.GetReferenceNode(), nil
+					return sp.GetReferenceNode(),
+					fmt.Errorf("cannot render circular reference: %s", c.LoopPoint.Definition)
 				}
 				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
 
