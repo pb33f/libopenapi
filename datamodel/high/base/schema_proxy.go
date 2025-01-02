@@ -96,57 +96,56 @@ func (sp *SchemaProxy) Schema() *Schema {
 	if sp.rendered != nil {
 		return sp.rendered
 	}
-	if sp.rendered == nil {
-		if sp.schema == nil || sp.schema.Value == nil {
-			return nil
-		}
 
-		sp.lock.Lock()
-
-		//check the high-level cache first.
-		idx := sp.schema.Value.GetIndex()
-		if idx != nil && sp.schema.Value != nil {
-			if sp.schema.Value.IsReference() && sp.schema.Value.GetReferenceNode() != nil && sp.schema.GetValueNode() != nil {
-				loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
-				if seen, ok := idx.GetHighCache().Load(loc); ok {
-					sp.lock.Unlock()
-					idx.HighCacheHit()
-					return seen.(*Schema)
-				} else {
-					idx.HighCacheMiss()
-				}
-			}
-		}
-
-		s := sp.schema.Value.Schema()
-		if s == nil {
-			sp.buildError = sp.schema.Value.GetBuildError()
-			sp.lock.Unlock()
-			return nil
-		}
-		sch := NewSchema(s)
-
-		if idx != nil {
-
-			// only store the schema in the cache if is a reference!
-			if sp.IsReference() && sp.GetReferenceNode() != nil && sp.schema != nil && sp.schema.GetValueNode() != nil {
-				//if sp.schema.GetValueNode() != nil {
-				loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
-
-				// caching is only performed on traditional $ref nodes with a reference and a value node, any 3.1 additional
-				// will not be cached as libopenapi does not yet support them.
-				if len(sp.GetReferenceNode().Content) == 2 {
-					idx.GetHighCache().Store(loc, sch)
-				}
-			}
-		}
-
-		sch.ParentProxy = sp
-		sp.rendered = sch
-		sp.lock.Unlock()
-		return sch
+	if sp.schema == nil || sp.schema.Value == nil {
+		return nil
 	}
-	return nil
+
+	sp.lock.Lock()
+
+	//check the high-level cache first.
+	idx := sp.schema.Value.GetIndex()
+	if idx != nil && sp.schema.Value != nil {
+		if sp.schema.Value.IsReference() && sp.schema.Value.GetReferenceNode() != nil && sp.schema.GetValueNode() != nil {
+			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
+			if seen, ok := idx.GetHighCache().Load(loc); ok {
+				sp.lock.Unlock()
+				idx.HighCacheHit()
+				return seen.(*Schema)
+			} else {
+				idx.HighCacheMiss()
+			}
+		}
+	}
+
+	s := sp.schema.Value.Schema()
+	if s == nil {
+		sp.buildError = sp.schema.Value.GetBuildError()
+		sp.lock.Unlock()
+		return nil
+	}
+	sch := NewSchema(s)
+
+	if idx != nil {
+
+		// only store the schema in the cache if is a reference!
+		if sp.IsReference() && sp.GetReferenceNode() != nil && sp.schema != nil && sp.schema.GetValueNode() != nil {
+			//if sp.schema.GetValueNode() != nil {
+			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
+
+			// caching is only performed on traditional $ref nodes with a reference and a value node, any 3.1 additional
+			// will not be cached as libopenapi does not yet support them.
+			if len(sp.GetReferenceNode().Content) == 2 {
+				idx.GetHighCache().Store(loc, sch)
+			}
+		}
+	}
+
+	sch.ParentProxy = sp
+	sp.rendered = sch
+	sp.lock.Unlock()
+	return sch
+
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
@@ -273,7 +272,7 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 				if sp.GetReference() == c.LoopPoint.Definition {
 					// nope
 					return sp.GetReferenceNode(),
-					fmt.Errorf("cannot render circular reference: %s", c.LoopPoint.Definition)
+						fmt.Errorf("cannot render circular reference: %s", c.LoopPoint.Definition)
 				}
 				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
 
