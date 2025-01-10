@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"log/slog"
 	"net/http"
 	"net/url"
@@ -650,7 +650,7 @@ components:
 
 	err := resolver.Resolve()
 	assert.Len(t, err, 2)
-	assert.Equal(t, "cannot resolve reference `go home, I am drunk`, it's missing: $go home, I am drunk [18:11]", err[0].Error())
+	assert.Equal(t, "cannot resolve reference `go home, I am drunk`, it's missing: $.['go home, I am drunk'] [18:11]", err[0].Error())
 }
 
 func TestResolver_ResolveThroughPaths(t *testing.T) {
@@ -1259,13 +1259,13 @@ paths:
 	var nodes []*yaml.Node
 
 	// pull out schema type
-	path, _ := yamlpath.NewPath("$.paths./pet/findByStatus.get.responses.default.content['application/json'].schema.type")
-	nodes, _ = path.Find(&rootNode)
+	path, _ := jsonpath.NewPath("$.paths['/pet/findByStatus'].get.responses['default'].content['application/json'].schema.type")
+	nodes = path.Query(&rootNode)
 	assert.Equal(t, nodes[0].Value, "object")
 
 	// pull out required array
-	path, _ = yamlpath.NewPath("$.paths./pet/findByStatus.get.responses.default.content['application/json'].schema.required")
-	nodes, _ = path.Find(&rootNode)
+	path, _ = jsonpath.NewPath("$.paths['/pet/findByStatus'].get.responses['default'].content['application/json'].schema.required")
+	nodes = path.Query(&rootNode)
 	assert.Equal(t, nodes[0].Content[0].Value, "code")
 	assert.Equal(t, nodes[0].Content[1].Value, "message")
 

@@ -5,8 +5,8 @@ package index
 
 import (
 	"github.com/pb33f/libopenapi/utils"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
 	"os"
 	"reflect"
@@ -24,8 +24,8 @@ func TestSpecIndex_MapNodes(t *testing.T) {
 	<-index.nodeMapCompleted
 
 	// look up a node and make sure they match exactly (same pointer)
-	path, _ := yamlpath.NewPath("$.paths./pet.put")
-	nodes, _ := path.Find(&rootNode)
+	path, _ := jsonpath.NewPath("$.paths['/pet'].put")
+	nodes := path.Query(&rootNode)
 
 	keyNode, valueNode := utils.FindKeyNodeTop("operationId", nodes[0].Content)
 	mappedKeyNode, _ := index.GetNode(keyNode.Line, keyNode.Column)
@@ -60,7 +60,7 @@ func BenchmarkSpecIndex_MapNodes(b *testing.B) {
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(petstore, &rootNode)
-	path, _ := yamlpath.NewPath("$.paths./pet.put")
+	path, _ := jsonpath.NewPath("$.paths['/pet'].put")
 
 	for i := 0; i < b.N; i++ {
 
@@ -69,7 +69,7 @@ func BenchmarkSpecIndex_MapNodes(b *testing.B) {
 		<-index.nodeMapCompleted
 
 		// look up a node and make sure they match exactly (same pointer)
-		nodes, _ := path.Find(&rootNode)
+		nodes := path.Query(&rootNode)
 
 		keyNode, valueNode := utils.FindKeyNodeTop("operationId", nodes[0].Content)
 		mappedKeyNode, _ := index.GetNode(keyNode.Line, keyNode.Column)

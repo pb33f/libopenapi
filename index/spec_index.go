@@ -14,6 +14,7 @@ package index
 
 import (
 	"fmt"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -22,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -699,9 +700,9 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 		for _, m := range p {
 
 			// look through method for callbacks
-			callbacks, _ := yamlpath.NewPath("$..callbacks")
+			callbacks, _ := jsonpath.NewPath("$..callbacks")
 			var res []*yaml.Node
-			res, _ = callbacks.Find(m.Node)
+			res = callbacks.Query(m.Node)
 			if len(res) > 0 {
 				for _, callback := range res[0].Content {
 					if utils.IsNodeMap(callback) {
@@ -745,10 +746,10 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 		for _, m := range p {
 
 			// look through method for links
-			links, _ := yamlpath.NewPath("$..links")
+			links, _ := jsonpath.NewPath("$..links")
 			var res []*yaml.Node
 
-			res, _ = links.Find(m.Node)
+			res = links.Query(m.Node)
 
 			if len(res) > 0 {
 				for _, link := range res[0].Content {
