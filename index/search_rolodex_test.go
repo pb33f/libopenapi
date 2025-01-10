@@ -5,9 +5,9 @@ package index
 
 import (
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"strings"
@@ -382,9 +382,9 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	assert.Len(t, rolo.indexes, 4)
 
 	// extract something that can only exist after resolution
-	path := "$.paths./nested/files3.get.responses.200.content.application/json.schema.properties.message.properties.utilMessage.properties.message.description"
-	yp, _ := yamlpath.NewPath(path)
-	results, _ := yp.Find(node)
+	path := "$.paths['/nested/files3'].get.responses['200'].content['application/json'].schema.properties['message'].properties['utilMessage'].properties['message'].description"
+	yp, _ := jsonpath.NewPath(path)
+	results := yp.Query(node)
 
 	assert.NotNil(t, results)
 	assert.Len(t, results, 1)
@@ -450,9 +450,9 @@ func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 
 	assert.Len(t, rolo.indexes, 4)
 
-	path := "$.paths./nested/files3.get.responses.200.content.application/json.schema"
-	yp, _ := yamlpath.NewPath(path)
-	results, _ := yp.Find(node)
+	path := "$.paths['/nested/files3'].get.responses['200'].content['application/json'].schema"
+	yp, _ := jsonpath.NewPath(path)
+	results := yp.Query(node)
 
 	// copy, modify, and try again
 	o := *results[0]

@@ -62,7 +62,7 @@ func TestFindLastChildNode(t *testing.T) {
 }
 
 func TestFindLastChildNode_WithKids(t *testing.T) {
-	nodes, _ := FindNodes(getPetstore(), "$.paths./pet")
+	nodes, _ := FindNodes(getPetstore(), "$.paths['/pet']")
 	lastNode := FindLastChildNode(nodes[0])
 	lastNodeDouble := FindLastChildNodeWithLevel(nodes[0], 0)
 	assert.Equal(t, lastNode, lastNodeDouble)
@@ -732,7 +732,7 @@ func BenchmarkConvertComponentIdIntoFriendlyPathSearch_Plural(t *testing.B) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Simple(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/~1fresh~1pizza/get")
-	assert.Equal(t, "$['/fresh/pizza'].get", path)
+	assert.Equal(t, "$.['/fresh/pizza'].get", path)
 	assert.Equal(t, "get", segment)
 }
 
@@ -774,8 +774,26 @@ func TestConvertComponentIdIntoFriendlyPathSearch_CrazyShort(t *testing.T) {
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Short(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("/~1crazy~1ass~1references")
-	assert.Equal(t, "$['/crazy/ass/references']", path)
+	assert.Equal(t, "$.['/crazy/ass/references']", path)
 	assert.Equal(t, "/crazy/ass/references", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Callback(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/pathItems/test-callback-2")
+	assert.Equal(t, "$.components.pathItems['test-callback-2']", path)
+	assert.Equal(t, "test-callback-2", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Callback2(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/test-callback")
+	assert.Equal(t, "$.['test-callback']", path)
+	assert.Equal(t, "test-callback", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_CBase(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/NoMoreBeer")
+	assert.Equal(t, "$.NoMoreBeer", path)
+	assert.Equal(t, "NoMoreBeer", segment)
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_Array(t *testing.T) {
