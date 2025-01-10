@@ -95,6 +95,17 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 
 func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 	if index.root != nil {
+
+		componentId = utils.ReplaceWindowsDriveWithLinuxPath(componentId)
+		if !strings.HasPrefix(componentId, "#/") {
+			spl := strings.Split(componentId, "#/")
+			if len(spl) == 2 {
+				if spl[0] != "" {
+					componentId = fmt.Sprintf("#/%s", spl[1])
+				}
+			}
+		}
+
 		return FindComponent(index.root, componentId, index.specAbsolutePath, index)
 	}
 	return nil
