@@ -353,6 +353,33 @@ components:
 
 }
 
+func TestFindComponentInRoot_SimulateWindows(t *testing.T) {
+
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    thang:
+      type: object
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	n := index.FindComponentInRoot(`C:\windows\you\annoy\me#\components\schemas\thang`)
+
+	assert.NotNil(t, n)
+
+}
+
 func TestFindComponent_LookupRolodex_NoURL(t *testing.T) {
 
 	spec := `openapi: 3.0.2
