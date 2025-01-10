@@ -222,7 +222,7 @@ components:
 	unwrapNext := utils.UnwrapErrors(unwrap[1])
 	require.Len(t, unwrapNext, 2)
 	assert.Equal(t, "component `bork` does not exist in the specification", unwrapNext[0].Error())
-	assert.Equal(t, "cannot resolve reference `bork`, it's missing: $bork [5:7]", unwrapNext[1].Error())
+	assert.Equal(t, "cannot resolve reference `bork`, it's missing: $.bork [5:7]", unwrapNext[1].Error())
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {

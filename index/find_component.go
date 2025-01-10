@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"gopkg.in/yaml.v3"
 )
 
@@ -57,11 +57,11 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 	if friendlySearch == "$." {
 		friendlySearch = "$"
 	}
-	path, err := yamlpath.NewPath(friendlySearch)
+	path, err := jsonpath.NewPath(friendlySearch)
 	if path == nil || err != nil || root == nil {
 		return nil // no component found
 	}
-	res, _ := path.Find(root)
+	res := path.Query(root)
 
 	if len(res) == 1 {
 		resNode := res[0]

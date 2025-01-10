@@ -17,7 +17,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"gopkg.in/yaml.v3"
 )
 
@@ -221,13 +221,11 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		// cant be found? last resort is to try a path lookup
 		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
 		if friendly != "" {
-			path, err := yamlpath.NewPath(friendly)
+			path, err := jsonpath.NewPath(friendly)
 			if err == nil {
-				nodes, fErr := path.Find(idx.GetRootNode())
-				if fErr == nil {
-					if len(nodes) > 0 {
-						return utils.NodeAlias(nodes[0]), idx, nil, ctx
-					}
+				nodes := path.Query(idx.GetRootNode())
+				if len(nodes) > 0 {
+					return utils.NodeAlias(nodes[0]), idx, nil, ctx
 				}
 			}
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -12,7 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vmware-labs/yaml-jsonpath/pkg/yamlpath"
 	"gopkg.in/yaml.v3"
 )
 
@@ -45,11 +45,11 @@ func FindNodes(yamlData []byte, jsonPath string) ([]*yaml.Node, error) {
 	var node yaml.Node
 	yaml.Unmarshal(yamlData, &node)
 
-	path, err := yamlpath.NewPath(jsonPath)
+	path, err := jsonpath.NewPath(jsonPath)
 	if err != nil {
 		return nil, err
 	}
-	results, _ := path.Find(&node)
+	results := path.Query(&node)
 	return results, nil
 }
 
@@ -114,7 +114,7 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
 
-	path, err := yamlpath.NewPath(jsonPath)
+	path, err := jsonpath.NewPath(jsonPath)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +125,7 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	to, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	go func(d chan bool) {
-		results, _ = path.Find(node)
+		results = path.Query(node)
 		done <- true
 	}(done)
 
@@ -688,7 +688,7 @@ func IsHttpVerb(verb string) bool {
 // define bracket name expression
 var (
 	bracketNameExp = regexp.MustCompile(`^(\w+)\['?([\w/]+)'?]$`)
-	pathCharExp    = regexp.MustCompile(`[%=;~.]`)
+	pathCharExp    = regexp.MustCompile(`^[A-Za-z0-9_\\]*$`)
 )
 
 func appendSegment(sb *strings.Builder, segs []string, cleaned []string, i int, wrapInQuotes bool) {
@@ -716,6 +716,9 @@ func appendSegment(sb *strings.Builder, segs []string, cleaned []string, i int, 
 // implementation. Allocations were high and this function is used a lot, this new implementation is much
 // lighter on string allocations by using a string builder.
 func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
+	if id == "" || id == "#/" {
+		return "", "$."
+	}
 	segs := strings.Split(id, "/")
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
 	cleaned := make([]string, 0, len(segs))
@@ -725,7 +728,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
-		if pathCharExp.MatchString(segs[i]) {
+		if !pathCharExp.MatchString(segs[i]) {
 
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			sb.Reset()
@@ -740,6 +743,11 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				sb.WriteString(segs[i])
 				cleaned[len(cleaned)-1] = sb.String()
 				continue
+			} else {
+				if i > 0 {
+					cleaned = append(cleaned, segs[i])
+					continue
+				}
 			}
 		} else {
 
@@ -800,17 +808,33 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			cleaned = append(cleaned, segs[i])
 		}
 	}
-	_, err := strconv.Atoi(name)
+
+	if len(cleaned) == 0 && len(segs) == 1 {
+		cleaned = append(cleaned, segs[0])
+	}
+
+	//	_, err := strconv.Atoi(name)
 	var replaced string
-	if err != nil {
+	//	if err != nil {
+	if len(cleaned) > 1 {
 		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
 	} else {
-		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
+		replaced = strings.ReplaceAll(strings.Join(cleaned, ""), "#", "$.")
 	}
+	//	} else {
+	//		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
+	//	}
 
 	if len(replaced) > 0 {
 		if replaced[0] != '$' {
 			replaced = fmt.Sprintf("$%s", replaced)
+		}
+		if replaced[1] != '.' {
+
+			// the second rune needs to be a period, if it's not we need to insert one.
+			sb.Reset()
+			sb.WriteString(fmt.Sprintf("%s.%s", replaced[:1], replaced[1:]))
+			replaced = sb.String()
 		}
 	}
 	return name, replaced

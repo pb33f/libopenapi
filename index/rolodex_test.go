@@ -715,7 +715,7 @@ components:
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
 	assert.GreaterOrEqual(t, len(rolodex.GetCaughtErrors()), 1)
-	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing:  [8:11]", rolodex.GetCaughtErrors()[0].Error())
+	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing: $.['not_found.yaml'] [8:11]", rolodex.GetCaughtErrors()[0].Error())
 
 }
 
@@ -1410,7 +1410,7 @@ components:
 	err = rolodex.IndexTheRolodex()
 	assert.Error(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 2)
-	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing:  [8:11]", rolodex.GetCaughtErrors()[0].Error())
+	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing: $.['not_found.yaml'] [8:11]", rolodex.GetCaughtErrors()[0].Error())
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
