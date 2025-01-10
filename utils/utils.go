@@ -740,16 +740,27 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			sb.WriteString("']")
 			segs[i] = sb.String()
 
-			if len(cleaned) > 0 {
+			if len(cleaned) > 0 && i < len(segs)-1 {
 				sb.Reset()
 				sb.WriteString(segs[i-1])
 				sb.WriteString(segs[i])
 				cleaned[len(cleaned)-1] = sb.String()
 				continue
 			} else {
-				if i > 0 {
+				if i > 0 && i < len(segs)-1 {
 					cleaned = append(cleaned, segs[i])
 					continue
+				}
+				if i == len(segs)-1 {
+					sb.Reset()
+					l := len(cleaned)
+					if l > 0 {
+						sb.WriteString(cleaned[l-1])
+						sb.WriteString(segs[i])
+						cleaned[l-1] = sb.String()
+					} else {
+						cleaned = append(cleaned, segs[i])
+					}
 				}
 			}
 		} else {
@@ -759,21 +770,6 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				segs[i] = strings.ReplaceAll(segs[i], `\`, "")
 				cleaned = append(cleaned, segs[i])
 				continue
-			}
-
-			// check for brackets in the name, and if found, rewire the path to encapsulate them
-			// correctly. https://github.com/pb33f/libopenapi/issues/112
-			brackets := bracketNameExp.FindStringSubmatch(segs[i])
-
-			if len(brackets) > 0 {
-				segs[i] = bracketNameExp.ReplaceAllString(segs[i], "['$1[$2]']")
-				if len(cleaned) > 0 {
-					sb.Reset()
-					sb.WriteString(segs[i-1])
-					sb.WriteString(segs[i])
-					cleaned[len(cleaned)-1] = sb.String()
-					continue
-				}
 			}
 
 			intVal, err := strconv.Atoi(segs[i])
@@ -810,10 +806,6 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 
 			cleaned = append(cleaned, segs[i])
 		}
-	}
-
-	if len(cleaned) == 0 && len(segs) == 1 {
-		cleaned = append(cleaned, segs[0])
 	}
 
 	var replaced string
