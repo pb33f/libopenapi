@@ -813,17 +813,12 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		cleaned = append(cleaned, segs[0])
 	}
 
-	//	_, err := strconv.Atoi(name)
 	var replaced string
-	//	if err != nil {
 	if len(cleaned) > 1 {
 		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
 	} else {
 		replaced = strings.ReplaceAll(strings.Join(cleaned, ""), "#", "$.")
 	}
-	//	} else {
-	//		replaced = strings.ReplaceAll(strings.Join(cleaned, "."), "#", "$")
-	//	}
 
 	if len(replaced) > 0 {
 		if replaced[0] != '$' {
