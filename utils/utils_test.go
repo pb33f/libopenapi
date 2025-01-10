@@ -790,6 +790,12 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Callback2(t *testing.T) {
 	assert.Equal(t, "test-callback", segment)
 }
 
+func TestConvertComponentIdIntoFriendlyPathSearch_Root(t *testing.T) {
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/")
+	assert.Equal(t, "$.", path)
+	assert.Equal(t, "", segment)
+}
+
 func TestConvertComponentIdIntoFriendlyPathSearch_CBase(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/NoMoreBeer")
 	assert.Equal(t, "$.NoMoreBeer", path)
@@ -805,6 +811,11 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Array(t *testing.T) {
 func TestConvertComponentIdIntoFriendlyPathSearch_Slashes(t *testing.T) {
 	_, path := ConvertComponentIdIntoFriendlyPathSearch(`#/nice/\rice/\and/\spice`)
 	assert.Equal(t, "$.nice.rice.and.spice", path)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_DashSomething(t *testing.T) {
+	_, path := ConvertComponentIdIntoFriendlyPathSearch(`-rome`)
+	assert.Equal(t, "$.['-rome']", path)
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_HTTPCode(t *testing.T) {
