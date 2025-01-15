@@ -434,6 +434,29 @@ components:
 	assert.Equal(t, v3.RequiredLabel, changes.Changes[0].Property)
 }
 
+func TestCompareSchemas_EnumSimilar(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      enum: [a]`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      enum: ["a"]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
 func TestCompareSchemas_EnumAdded(t *testing.T) {
 	left := `openapi: 3.0
 components:
