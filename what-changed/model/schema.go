@@ -926,10 +926,10 @@ func checkSchemaPropertyChanges(
 	j = make(map[string]int)
 	k = make(map[string]int)
 	for i := range lSchema.Enum.Value {
-		j[toString(lSchema.Enum.Value[i].Value)] = i
+		j[toString(lSchema.Enum.Value[i].Value.Value)] = i
 	}
 	for i := range rSchema.Enum.Value {
-		k[toString(rSchema.Enum.Value[i].Value)] = i
+		k[toString(rSchema.Enum.Value[i].Value.Value)] = i
 	}
 	for g := range k {
 		if _, ok := j[g]; !ok {
