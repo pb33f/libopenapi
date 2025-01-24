@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -114,7 +115,7 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
 
-	path, err := jsonpath.NewPath(jsonPath)
+	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
 	if err != nil {
 		return nil, err
 	}
