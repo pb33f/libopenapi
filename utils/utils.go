@@ -44,9 +44,12 @@ func FindNodes(yamlData []byte, jsonPath string) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
 
 	var node yaml.Node
-	yaml.Unmarshal(yamlData, &node)
+	err := yaml.Unmarshal(yamlData, &node)
+	if err != nil {
+		return nil, err
+	}
 
-	path, err := jsonpath.NewPath(jsonPath)
+	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +113,7 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 	return FindNodesWithoutDeserializingWithTimeout(node, jsonPath, 500*time.Millisecond)
 }
 
-// FindNodesWithoutDeserializing will find a node based on JSONPath, without deserializing from yaml/json
+// FindNodesWithoutDeserializingWithTimeout will find a node based on JSONPath, without deserializing from yaml/json
 // This function can be customized with a timeout.
 func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
