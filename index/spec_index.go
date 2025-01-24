@@ -15,6 +15,7 @@ package index
 import (
 	"fmt"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -700,7 +701,7 @@ func (index *SpecIndex) GetGlobalCallbacksCount() int {
 		for _, m := range p {
 
 			// look through method for callbacks
-			callbacks, _ := jsonpath.NewPath("$..callbacks")
+			callbacks, _ := jsonpath.NewPath("$..callbacks", jsonpathconfig.WithPropertyNameExtension())
 			var res []*yaml.Node
 			res = callbacks.Query(m.Node)
 			if len(res) > 0 {
@@ -746,7 +747,7 @@ func (index *SpecIndex) GetGlobalLinksCount() int {
 		for _, m := range p {
 
 			// look through method for links
-			links, _ := jsonpath.NewPath("$..links")
+			links, _ := jsonpath.NewPath("$..links", jsonpathconfig.WithPropertyNameExtension())
 			var res []*yaml.Node
 
 			res = links.Query(m.Node)
