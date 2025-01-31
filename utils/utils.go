@@ -44,10 +44,7 @@ func FindNodes(yamlData []byte, jsonPath string) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
 
 	var node yaml.Node
-	err := yaml.Unmarshal(yamlData, &node)
-	if err != nil {
-		return nil, err
-	}
+	yaml.Unmarshal(yamlData, &node)
 
 	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
 	if err != nil {
