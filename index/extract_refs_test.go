@@ -194,3 +194,21 @@ components:
 	idx := NewSpecIndexWithConfig(&rootNode, c)
 	assert.Len(t, idx.allEnums, 3)
 }
+
+func TestSpecIndex_ExtractRefs_CheckRefsUnderExtensionsAreNotIncluded(t *testing.T) {
+	yml := `openapi: 3.1.0
+components:
+  schemas:
+    Pasta:
+      x-hello:
+       thing:
+         $ref: '404'
+   `
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+	assert.Len(t, idx.allMappedRefs, 0)
+	assert.Len(t, idx.allRefs, 0)
+	assert.Len(t, idx.refErrors, 0)
+}
