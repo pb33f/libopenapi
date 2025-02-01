@@ -213,16 +213,17 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 			if i%2 == 0 && n.Value == "$ref" {
 
 				// check if this reference is under an extension or not, if so, drop it from the index.
-				ext := false
-				for _, spi := range seenPath {
-					if strings.HasPrefix(spi, "x-") {
-						ext = true
-						break
+				if index.config.ExcludeExtensionRefs {
+					ext := false
+					for _, spi := range seenPath {
+						if strings.HasPrefix(spi, "x-") {
+							ext = true
+							break
+						}
 					}
-				}
-
-				if ext {
-					continue
+					if ext {
+						continue
+					}
 				}
 
 				// only look at scalar values, not maps (looking at you k8s)
