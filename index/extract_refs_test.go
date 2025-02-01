@@ -207,6 +207,7 @@ components:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 	c := CreateOpenAPIIndexConfig()
+	c.ExcludeExtensionRefs = true
 	idx := NewSpecIndexWithConfig(&rootNode, c)
 	assert.Len(t, idx.allMappedRefs, 0)
 	assert.Len(t, idx.allRefs, 0)

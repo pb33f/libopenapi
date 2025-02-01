@@ -173,6 +173,10 @@ type SpecIndexConfig struct {
 	// to be bundled.
 	ExtractRefsSequentially bool
 
+	// ExcludeExtensionReferences will prevent the indexing of any $ref pointers buried under extensions.
+	// defaults to false (which means extensions will be included)
+	ExcludeExtensionRefs bool
+
 	// private fields
 	uri []string
 }

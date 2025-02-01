@@ -78,7 +78,7 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	combined := index.GetAllCombinedReferences()
 	assert.Equal(t, 871, len(combined))
 
-	assert.Equal(t, len(index.rawSequencedRefs), 2712)
+	assert.Equal(t, 2712, len(index.rawSequencedRefs))
 	assert.Equal(t, 336, index.pathCount)
 	assert.Equal(t, 494, index.operationCount)
 	assert.Equal(t, 871, index.schemaCount)
@@ -110,7 +110,7 @@ func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
 	assert.Len(t, index.GetCircularReferences(), 1)
 
 	assert.Equal(t, 871, len(index.GetRefsByLine()))
-	assert.Equal(t, 2712, len(index.GetLinesWithReferences()), 1972)
+	assert.Equal(t, 2712, len(index.GetLinesWithReferences()))
 	assert.Equal(t, 0, len(index.GetAllExternalDocuments()))
 }
 
