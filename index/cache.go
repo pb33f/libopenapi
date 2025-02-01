@@ -9,7 +9,6 @@ import (
 )
 
 // SetCache sets a sync map as a temporary cache for the index.
-// TODO: this needs to be moved to the Cache interface.
 func (index *SpecIndex) SetCache(sync *sync.Map) {
 	index.cache = sync
 }
@@ -55,8 +54,6 @@ type Cache interface {
 	GetStore() *sync.Map
 	AddHit() uint64
 	AddMiss() uint64
-	SetHits(uint64) uint64
-	SetMisses(uint64) uint64
 	GetHits() uint64
 	GetMisses() uint64
 	Clear()
@@ -100,26 +97,12 @@ func (c *SimpleCache) Store(key, value any) {
 
 // AddHit increments the hit counter by one, and returns the current value of hits.
 func (c *SimpleCache) AddHit() uint64 {
-	c.hits.Add(1)
-	return c.hits.Load()
+	return c.hits.Add(1)
 }
 
 // AddMiss increments the miss counter by one, and returns the current value of misses.
 func (c *SimpleCache) AddMiss() uint64 {
-	c.misses.Add(1)
-	return c.hits.Load()
-}
-
-// SetHits sets the hit counter to the provided value, and returns the current value of hits.
-func (c *SimpleCache) SetHits(hits uint64) uint64 {
-	c.hits.Add(hits)
-	return c.hits.Load()
-}
-
-// SetMisses sets the miss counter to the provided value, and returns the current value of misses.
-func (c *SimpleCache) SetMisses(misses uint64) uint64 {
-	c.misses.Add(misses)
-	return c.misses.Load()
+	return c.misses.Add(1)
 }
 
 // GetHits returns the current value of hits.
