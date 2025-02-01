@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -45,7 +46,7 @@ func FindNodes(yamlData []byte, jsonPath string) ([]*yaml.Node, error) {
 	var node yaml.Node
 	yaml.Unmarshal(yamlData, &node)
 
-	path, err := jsonpath.NewPath(jsonPath)
+	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
 	if err != nil {
 		return nil, err
 	}
@@ -109,12 +110,12 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 	return FindNodesWithoutDeserializingWithTimeout(node, jsonPath, 500*time.Millisecond)
 }
 
-// FindNodesWithoutDeserializing will find a node based on JSONPath, without deserializing from yaml/json
+// FindNodesWithoutDeserializingWithTimeout will find a node based on JSONPath, without deserializing from yaml/json
 // This function can be customized with a timeout.
 func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
 	jsonPath = FixContext(jsonPath)
 
-	path, err := jsonpath.NewPath(jsonPath)
+	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
 	if err != nil {
 		return nil, err
 	}
