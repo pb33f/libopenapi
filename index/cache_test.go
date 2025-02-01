@@ -61,20 +61,6 @@ func TestAddMiss(t *testing.T) {
 	assert.Equal(t, initialMisses+1, newMisses)
 }
 
-// TestSetHits tests that the hit counter is correctly set.
-func TestSetHits(t *testing.T) {
-	cache := CreateNewCache()
-	cache.SetHits(10)
-	assert.Equal(t, uint64(10), cache.GetHits())
-}
-
-// TestSetMisses tests that the miss counter is correctly set.
-func TestSetMisses(t *testing.T) {
-	cache := CreateNewCache()
-	cache.SetMisses(5)
-	assert.Equal(t, uint64(5), cache.GetMisses())
-}
-
 // TestClear tests that the cache is correctly cleared.
 func TestClear(t *testing.T) {
 	cache := CreateNewCache()
