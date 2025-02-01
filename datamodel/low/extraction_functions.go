@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"net/url"
 	"path/filepath"
 	"reflect"
@@ -221,7 +222,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		// cant be found? last resort is to try a path lookup
 		_, friendly := utils.ConvertComponentIdIntoFriendlyPathSearch(rv)
 		if friendly != "" {
-			path, err := jsonpath.NewPath(friendly)
+			path, err := jsonpath.NewPath(friendly, jsonpathconfig.WithPropertyNameExtension())
 			if err == nil {
 				nodes := path.Query(idx.GetRootNode())
 				if len(nodes) > 0 {

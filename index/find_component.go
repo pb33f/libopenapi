@@ -5,6 +5,7 @@ package index
 
 import (
 	"fmt"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -57,7 +58,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 	if friendlySearch == "$." {
 		friendlySearch = "$"
 	}
-	path, err := jsonpath.NewPath(friendlySearch)
+	path, err := jsonpath.NewPath(friendlySearch, jsonpathconfig.WithPropertyNameExtension())
 	if path == nil || err != nil || root == nil {
 		return nil // no component found
 	}
