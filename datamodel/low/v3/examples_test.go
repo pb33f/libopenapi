@@ -21,7 +21,7 @@ func Example_createLowLevelOpenAPIDocument() {
 	info, _ := datamodel.ExtractSpecInfo(petstoreBytes)
 
 	// build low-level document model
-	document, errs := CreateDocument(info)
+	document, errs := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 
 	// if something went wrong, a slice of errors is returned
 	if errs != nil {

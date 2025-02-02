@@ -114,6 +114,10 @@ type DocumentConfiguration struct {
 	// to be bundled.
 	ExtractRefsSequentially bool
 
+	// ExcludeExtensionReferences will prevent the indexing of any $ref pointers buried under extensions.
+	// defaults to false (which means extensions will be included)
+	ExcludeExtensionRefs bool
+
 	// BundleInlineRefs is used by the bundler module. If set to true, all references will be inlined, including
 	// local references (to the root document) as well as all external references. This is false by default.
 	BundleInlineRefs bool
