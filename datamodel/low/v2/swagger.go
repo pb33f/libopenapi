@@ -147,6 +147,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.BaseURL = config.BaseURL
 	idxConfig.BasePath = config.BasePath
 	idxConfig.Logger = config.Logger
+	idxConfig.ExcludeExtensionRefs = config.ExcludeExtensionRefs
 	rolodex := index.NewRolodex(idxConfig)
 	rolodex.SetRootNode(info.RootNode)
 	doc.Rolodex = rolodex
