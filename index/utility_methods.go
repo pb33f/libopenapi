@@ -20,9 +20,11 @@ import (
 
 func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pathPrefix string) {
 	var name string
+	var keyNode *yaml.Node
 	for i, schema := range schemasNode.Content {
 		if i%2 == 0 {
 			name = schema.Value
+			keyNode = schema
 			continue
 		}
 
@@ -33,7 +35,7 @@ func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pat
 			FullDefinition:        fullDef,
 			Definition:            def,
 			Name:                  name,
-			KeyNode:               schemasNode,
+			KeyNode:               keyNode,
 			Node:                  schema,
 			Path:                  fmt.Sprintf("$.components.schemas['%s']", name),
 			ParentNode:            schemasNode,
