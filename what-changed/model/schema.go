@@ -544,6 +544,16 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				continue
 			}
 		}
+		for w := range rProps {
+			if lEntities[rProps[w]] != nil {
+				totalProperties++
+				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+			} else {
+				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
+					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+				continue
+			}
+		}
 	}
 
 	// something added
@@ -555,6 +565,17 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
 					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+				continue
+			}
+		}
+		// now check if anything was removed
+		for w := range lProps {
+			if rEntities[lProps[w]] != nil {
+				totalProperties++
+				go checkProperty(lProps[w], rEntities[lProps[w]], lEntities[rProps[w]], propChanges, doneChan)
+			} else {
+				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
+					nil, lKeyNodes[lProps[w]], true, lEntities[lProps[w]], nil)
 				continue
 			}
 		}
