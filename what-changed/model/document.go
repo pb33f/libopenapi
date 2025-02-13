@@ -268,7 +268,7 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		}
 		if lDoc.Components.IsEmpty() && !rDoc.Components.IsEmpty() {
 			CreateChange(&changes, PropertyAdded, v3.ComponentsLabel,
-				rDoc.Components.ValueNode, nil, false, nil, lDoc.Components.Value)
+				nil, rDoc.Components.ValueNode, false, nil, lDoc.Components.Value)
 		}
 
 		// compare servers
