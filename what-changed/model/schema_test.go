@@ -2965,3 +2965,174 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 
 }
+
+// https://github.com/pb33f/openapi-changes/issues/104
+func TestCompareSchemas_CheckOrderingDoesNotCreateChanges(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    operatorArray:
+      type: bool
+    operator:
+      type: bool
+    Ordering:
+      properties:
+        three: 
+          $ref: '#/components/schemas/operator'
+        one: 
+          $ref: '#/components/schemas/operator'
+        two: 
+          $ref: '#/components/schemas/operator'
+        four: 
+          $ref: '#/components/schemas/operatorArray'`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    operator:
+      type: bool
+    operatorArray:
+      type: bool
+    Ordering:
+      properties:
+        four: 
+          $ref: '#/components/schemas/operatorArray'
+        one: 
+          $ref: '#/components/schemas/operator'
+        two: 
+          $ref: '#/components/schemas/operator'
+        three: 
+          $ref: '#/components/schemas/operator'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Ordering").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Ordering").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+	assert.Equal(t, 0, changes.TotalChanges())
+
+}
+
+// https://github.com/pb33f/openapi-changes/issues/108
+func TestCompareSchemas_CheckRequiredOrdering(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Ordering:
+      required:
+        - one
+        - three
+      properties:
+        three: 
+          type: string
+        one: 
+           type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Ordering:
+      required:
+        - three
+        - one
+      properties:
+        three: 
+          type: string
+        one: 
+           type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Ordering").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Ordering").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+	assert.Equal(t, 0, changes.TotalChanges())
+
+}
+
+func TestCompareSchemas_CheckEnums(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        id:
+          readOnly: true
+          type: string
+        name:
+          type: string
+          enum: 
+            - Bob`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        id:
+          readOnly: true
+          type: string
+        name:
+          type: string
+          enum: 
+            - "Bob"`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Pet").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Pet").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+	assert.Equal(t, 0, changes.TotalChanges())
+
+}
+
+// https://github.com/pb33f/openapi-changes/issues/160
+func TestCompareSchemas_CheckAddProp(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    TestResult:
+      properties:
+        result:
+          type: string
+        resultType:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    TestResult:
+      properties:
+        result:
+          type: string
+        testResultType:
+          type: string
+        test:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TestResult").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TestResult").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 3, changes.TotalChanges())
+
+	changes = CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 3, changes.TotalChanges())
+
+}
