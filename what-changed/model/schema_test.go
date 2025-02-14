@@ -3185,3 +3185,50 @@ components:
 	}
 
 }
+
+func TestCompareSchemas_TestSchemaLockIssue(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    CompanyInformation:
+      description: |
+        Provides information about Company
+      type: object
+      properties:
+        companyName:
+          type: string
+          maxLength: 100
+        website:
+          type: string
+          maxLength: 1024
+`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    CompanyInformation:
+      description: |
+        Provides information about Company
+      type: object
+      properties:
+        companyName:
+          type: string
+          maxLength: 100
+        website:
+          type: string
+          maxLength: 1024
+        extraField:
+          type: string
+          maxLength: 1024`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("CompanyInformation").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("CompanyInformation").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+
+}
