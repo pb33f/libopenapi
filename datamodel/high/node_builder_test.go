@@ -1120,7 +1120,7 @@ func TestNewNodeBuilder_Float64_Negative(t *testing.T) {
 
 	data, _ := yaml.Marshal(node)
 
-	desired := `thung: -3.33333`
+	desired := `thral: -3.33333`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
 }
