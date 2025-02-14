@@ -546,7 +546,6 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 		}
 		for w := range rProps {
 			if lEntities[rProps[w]] != nil {
-				totalProperties++
 				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]], propChanges, doneChan)
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
@@ -571,7 +570,6 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 		// now check if anything was removed
 		for w := range lProps {
 			if rEntities[lProps[w]] != nil {
-				totalProperties++
 				go checkProperty(lProps[w], rEntities[lProps[w]], lEntities[rProps[w]], propChanges, doneChan)
 			} else {
 				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
