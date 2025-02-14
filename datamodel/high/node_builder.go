@@ -492,24 +492,22 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			}
 			if b, bok := value.(*int64); bok {
 				encodeSkip = true
-				if *b > 0 {
+				if *b != 0 {
 					valueNode = utils.CreateIntNode(strconv.Itoa(int(*b)))
 					valueNode.Line = line
 				}
 			}
 			if b, bok := value.(*float64); bok {
 				encodeSkip = true
-				if *b > 0 || (entry.RenderZero && entry.Line > 0) {
+				if *b != 0 || (entry.RenderZero && entry.Line > 0) {
 					formatFloat := strconv.FormatFloat(*b, 'f', -1, 64)
-					if *b > 0 {
-						if *b == math.Trunc(*b) {
-							valueNode = utils.CreateIntNode(formatFloat)
-						} else {
-							valueNode = utils.CreateFloatNode(formatFloat)
-						}
-					} else {
+
+					if *b == math.Trunc(*b) {
 						valueNode = utils.CreateIntNode(formatFloat)
+					} else {
+						valueNode = utils.CreateFloatNode(formatFloat)
 					}
+
 					valueNode.Line = line
 				}
 			}
