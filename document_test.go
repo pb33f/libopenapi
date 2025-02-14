@@ -1429,8 +1429,8 @@ func TestDocument_Issue264(t *testing.T) {
 	_, _ = d.BuildV3Model()
 
 	_, _, _, errs := d.RenderAndReload() // code panics here
-	assert.Len(t, errs, 1)
-	assert.Equal(t, "yaml: cannot decode !!float `-999.99` as a !!int", errs[0].Error())
+	assert.Nil(t, errs)
+
 }
 
 func TestDocument_Issue269(t *testing.T) {
