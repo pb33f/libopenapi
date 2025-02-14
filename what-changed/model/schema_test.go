@@ -3136,3 +3136,52 @@ components:
 	assert.Equal(t, 3, changes.TotalChanges())
 
 }
+
+// https://github.com/pb33f/openapi-changes/issues/177
+func TestCompareSchemas_CheckOneOfIdenticalChange(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    TestResult:
+      type: string
+      oneOf:
+        - title: CUT
+          const: CUT
+          description: cat
+        - title: HEAD
+          const: HEAD
+          description: sat
+        - title: SCENARIO
+          const: SCENARIO
+          description: mat`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    TestResult:
+      type: string
+      oneOf:
+        - title: CUT
+          const: CUT
+          description: bat
+        - title: HEAD
+          const: HEAD
+          description: clap
+        - title: SCENARIO
+          const: SCENARIO
+          description: chap`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TestResult").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TestResult").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 3, changes.TotalChanges())
+	for _, c := range changes.OneOfChanges {
+		assert.Equal(t, "description", c.PropertyChanges.Changes[0].Property)
+	}
+
+}

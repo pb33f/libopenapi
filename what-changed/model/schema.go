@@ -1269,12 +1269,14 @@ func extractSchemaChanges(
 	rKeys := make([]string, 0, len(rSchema))
 	lEntities := make(map[string]*base.SchemaProxy)
 	rEntities := make(map[string]*base.SchemaProxy)
+
+	// take a double pass at this, we want to ensure all keys are
+
 	for h := range lSchema {
 		q := lSchema[h].Value
 		z := fmt.Sprintf(x, q.Hash())
 		lKeys = append(lKeys, z)
 		lEntities[z] = q
-
 	}
 	for h := range rSchema {
 		q := rSchema[h].Value
@@ -1283,10 +1285,6 @@ func extractSchemaChanges(
 		rEntities[z] = q
 
 	}
-
-	// sort slices so that like for like is all sequenced.
-	sort.Strings(lKeys)
-	sort.Strings(rKeys)
 
 	// check for identical lengths
 	if len(lKeys) == len(rKeys) {
