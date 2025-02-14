@@ -1270,8 +1270,6 @@ func extractSchemaChanges(
 	lEntities := make(map[string]*base.SchemaProxy)
 	rEntities := make(map[string]*base.SchemaProxy)
 
-	// take a double pass at this, we want to ensure all keys are
-
 	for h := range lSchema {
 		q := lSchema[h].Value
 		z := fmt.Sprintf(x, q.Hash())
@@ -1283,7 +1281,6 @@ func extractSchemaChanges(
 		z := fmt.Sprintf(x, q.Hash())
 		rKeys = append(rKeys, z)
 		rEntities[z] = q
-
 	}
 
 	// check for identical lengths
