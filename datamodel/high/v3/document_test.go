@@ -880,25 +880,3 @@ components:
 
 	assert.Equal(t, desired, strings.TrimSpace(string(r)))
 }
-
-func TestDocument_RenderJSONError(t *testing.T) {
-	// create a new document
-	jsonFile := `{"openapi":"3.0.0","info":{"title":"dummy","version":"1.0.0"},"paths":{"/dummy":{"post":{"requestBody":{"content":{"application/json":{"schema":{"type":"object","properties":{"value":{"type":"number","format":"decimal","multipleOf":0.01,"minimum":-999.99}}}}}},"responses":{"200":{"description":"OK"}}}}}}`
-
-	info, _ := datamodel.ExtractSpecInfo([]byte(jsonFile))
-	var err error
-	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
-		AllowFileReferences:   true,
-		AllowRemoteReferences: true,
-	})
-	if err != nil {
-		panic("broken something")
-	}
-	h := NewDocument(lowDoc)
-
-	// render the document to YAML and it should be identical.
-	r, e := h.RenderJSON(" ")
-	assert.Nil(t, r)
-	assert.Error(t, e)
-	assert.Equal(t, "yaml: cannot decode !!float `-999.99` as a !!int", e.Error())
-}

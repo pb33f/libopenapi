@@ -1108,3 +1108,35 @@ func TestNodeBuilder_GetStringLowValue(t *testing.T) {
 
 	assert.Equal(t, `thing: "thing"`, strings.TrimSpace(string(data)))
 }
+
+func TestNewNodeBuilder_Float64_Negative(t *testing.T) {
+	floatNum := -3.33333
+	t1 := test1{
+		Thral: &floatNum,
+	}
+
+	nb := NewNodeBuilder(&t1, &t1)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `thung: -3.33333`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNewNodeBuilder_Int64_Negative(t *testing.T) {
+	intNum := int64(-3)
+	t1 := test1{
+		Thurr: &intNum,
+	}
+
+	nb := NewNodeBuilder(&t1, &t1)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	desired := `thurr: -3`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
