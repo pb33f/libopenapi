@@ -144,7 +144,6 @@ func (s *SchemaChanges) TotalChanges() int {
 	if s == nil {
 		return 0
 	}
-
 	t := s.PropertyChanges.TotalChanges()
 	if s.DiscriminatorChanges != nil {
 		t += s.DiscriminatorChanges.TotalChanges()
@@ -230,7 +229,6 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	if s == nil {
 		return 0
 	}
-
 	t := s.PropertyChanges.TotalBreakingChanges()
 	if s.DiscriminatorChanges != nil {
 		t += s.DiscriminatorChanges.TotalBreakingChanges()
@@ -391,32 +389,35 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
-		doneChan := make(chan struct{})
-		props, totalProperties := checkMappedSchemaOfASchema(lSchema.Properties.Value, rSchema.Properties.Value, &changes, doneChan)
+		props := checkMappedSchemaOfASchema(lSchema.Properties.Value, rSchema.Properties.Value, &changes)
 		sc.SchemaPropertyChanges = props
 
-		deps, depsTotal := checkMappedSchemaOfASchema(lSchema.DependentSchemas.Value, rSchema.DependentSchemas.Value, &changes, doneChan)
+		deps := checkMappedSchemaOfASchema(lSchema.DependentSchemas.Value, rSchema.DependentSchemas.Value, &changes)
 		sc.DependentSchemasChanges = deps
 
-		patterns, patternsTotal := checkMappedSchemaOfASchema(lSchema.PatternProperties.Value, rSchema.PatternProperties.Value, &changes, doneChan)
+		patterns := checkMappedSchemaOfASchema(lSchema.PatternProperties.Value, rSchema.PatternProperties.Value, &changes)
 		sc.PatternPropertiesChanges = patterns
 
-		// check polymorphic and multi-values async for speed.
-		go extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
-			&sc.OneOfChanges, &changes, doneChan)
+		var wg sync.WaitGroup
+		wg.Add(3)
+		go func() {
+			extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
+				&sc.OneOfChanges, &changes)
+			wg.Done()
 
-		go extractSchemaChanges(lSchema.AllOf.Value, rSchema.AllOf.Value, v3.AllOfLabel,
-			&sc.AllOfChanges, &changes, doneChan)
+		}()
+		go func() {
+			extractSchemaChanges(lSchema.AllOf.Value, rSchema.AllOf.Value, v3.AllOfLabel,
+				&sc.AllOfChanges, &changes)
+			wg.Done()
+		}()
+		go func() {
+			extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
+				&sc.AnyOfChanges, &changes)
+			wg.Done()
+		}()
+		wg.Wait()
 
-		go extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
-			&sc.AnyOfChanges, &changes, doneChan)
-
-		totalChecks := totalProperties + depsTotal + patternsTotal + 3
-		completedChecks := 0
-		for completedChecks < totalChecks {
-			<-doneChan
-			completedChecks++
-		}
 	}
 	// done
 	if changes != nil {
@@ -454,10 +455,8 @@ func checkMappedSchemaOfASchema(
 	lSchema,
 	rSchema *orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.SchemaProxy]],
 	changes *[]*Change,
-	doneChan chan struct{},
-) (map[string]*SchemaChanges, int) {
-	propChanges := make(map[string]*SchemaChanges)
-
+) map[string]*SchemaChanges {
+	var syncPropChanges sync.Map // concurrent-safe map
 	var lProps []string
 	lEntities := make(map[string]*base.SchemaProxy)
 	lKeyNodes := make(map[string]*yaml.Node)
@@ -477,42 +476,43 @@ func checkMappedSchemaOfASchema(
 	}
 	sort.Strings(lProps)
 	sort.Strings(rProps)
-	totalProperties := buildProperty(lProps, rProps, lEntities, rEntities, propChanges, doneChan, changes, rKeyNodes, lKeyNodes)
-	return propChanges, totalProperties
+	buildProperty(lProps, rProps, lEntities, rEntities, &syncPropChanges, changes, rKeyNodes, lKeyNodes)
+
+	// Convert the sync.Map into a regular map[string]*SchemaChanges.
+	propChanges := make(map[string]*SchemaChanges)
+	syncPropChanges.Range(func(key, value interface{}) bool {
+		propChanges[key.(string)] = value.(*SchemaChanges)
+		return true
+	})
+	return propChanges
 }
 
 func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*base.SchemaProxy,
-	propChanges map[string]*SchemaChanges, doneChan chan struct{}, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node,
-) int {
-	var propLock sync.Mutex
-	checkProperty := func(key string, lp, rp *base.SchemaProxy, propChanges map[string]*SchemaChanges, done chan struct{}) {
-		if lp != nil && rp != nil {
-			if low.AreEqual(lp, rp) {
-				done <- struct{}{}
-				return
-			}
-			s := CompareSchemas(lp, rp)
-			propLock.Lock()
-			propChanges[key] = s
-			propLock.Unlock()
-			done <- struct{}{}
+	propChanges *sync.Map, changes *[]*Change, rKeyNodes, lKeyNodes map[string]*yaml.Node,
+) {
+	var wg sync.WaitGroup
+	checkProperty := func(key string, lp, rp *base.SchemaProxy) {
+		defer wg.Done()
+		if low.AreEqual(lp, rp) {
+			return
 		}
+		s := CompareSchemas(lp, rp)
+		propChanges.Store(key, s)
 	}
 
-	totalProperties := 0
+	// left and right equal.
 	if len(lProps) == len(rProps) {
 		for w := range lProps {
 			lp := lEntities[lProps[w]]
 			rp := rEntities[rProps[w]]
 			if lProps[w] == rProps[w] && lp != nil && rp != nil {
-				totalProperties++
-				go checkProperty(lProps[w], lp, rp, propChanges, doneChan)
+				wg.Add(1)
+				go checkProperty(lProps[w], lp, rp)
 			}
-
-			// keys do not match, even after sorting, check which one was added and which one was removed.
+			// Handle keys that do not match.
 			if lProps[w] != rProps[w] {
 				if !slices.Contains(lProps, rProps[w]) {
-					// new added.
+					// new property added.
 					CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
 						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
 				}
@@ -522,63 +522,61 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				}
 				if slices.Contains(lProps, rProps[w]) {
 					h := slices.Index(lProps, rProps[w])
-					totalProperties++
 					lp = lEntities[lProps[h]]
 					rp = rEntities[rProps[w]]
-					go checkProperty(lProps[h], lp, rp, propChanges, doneChan)
+					wg.Add(1)
+					go checkProperty(lProps[h], lp, rp)
 				}
 			}
 		}
 	}
 
-	// something removed
+	// things removed
 	if len(lProps) > len(rProps) {
 		for w := range lProps {
 			if rEntities[lProps[w]] != nil {
-				totalProperties++
-				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[lProps[w]], propChanges, doneChan)
-				continue
+				wg.Add(1)
+				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[lProps[w]])
 			} else {
 				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
 					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
-				continue
 			}
 		}
 		for w := range rProps {
 			if lEntities[rProps[w]] != nil {
-				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+				wg.Add(1)
+				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]])
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
 					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
-				continue
 			}
 		}
 	}
 
-	// something added
+	// stuff added
 	if len(rProps) > len(lProps) {
 		for w := range rProps {
 			if lEntities[rProps[w]] != nil {
-				totalProperties++
-				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]], propChanges, doneChan)
+				wg.Add(1)
+				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]])
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
 					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
-				continue
 			}
 		}
-		// now check if anything was removed
 		for w := range lProps {
 			if rEntities[lProps[w]] != nil {
-				go checkProperty(lProps[w], rEntities[lProps[w]], lEntities[rProps[w]], propChanges, doneChan)
+				wg.Add(1)
+				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]])
 			} else {
 				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
 					nil, lKeyNodes[lProps[w]], true, lEntities[lProps[w]], nil)
-				continue
 			}
 		}
 	}
-	return totalProperties
+
+	// Wait for all property comparisons to finish.
+	wg.Wait()
 }
 
 func checkSchemaPropertyChanges(
@@ -1253,11 +1251,9 @@ func extractSchemaChanges(
 	label string,
 	sc *[]*SchemaChanges,
 	changes *[]*Change,
-	done chan struct{},
 ) {
 	// if there is nothing here, there is nothing to do.
 	if lSchema == nil && rSchema == nil {
-		done <- struct{}{}
 		return
 	}
 
@@ -1316,5 +1312,4 @@ func extractSchemaChanges(
 			}
 		}
 	}
-	done <- struct{}{}
 }
