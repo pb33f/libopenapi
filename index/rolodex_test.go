@@ -89,7 +89,7 @@ func TestRolodex_LocalNativeFS(t *testing.T) {
 	f, rerr := rolo.Open("spec.yaml")
 	assert.NoError(t, rerr)
 	assert.Equal(t, "hip", f.GetContent())
-	rolo.rootIndex = &SpecIndex{}
+	rolo.rootIndex = NewTestSpecIndex()
 	rolo.indexes = append(rolo.indexes, rolo.rootIndex)
 	rolo.ClearIndexCaches()
 

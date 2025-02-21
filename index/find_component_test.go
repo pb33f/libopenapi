@@ -202,7 +202,7 @@ components:
 
 func TestSpecIndex_FailFindComponentInRoot(t *testing.T) {
 
-	index := &SpecIndex{}
+	index := NewTestSpecIndex()
 	assert.Nil(t, index.FindComponentInRoot("does it even matter? of course not. no"))
 
 }
