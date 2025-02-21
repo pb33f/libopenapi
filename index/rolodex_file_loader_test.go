@@ -145,7 +145,7 @@ func TestRolodexLocalFile_BadParse(t *testing.T) {
 
 func TestRolodexLocalFile_NoIndexRoot(t *testing.T) {
 
-	lf := &LocalFile{data: []byte("burders"), index: &SpecIndex{}}
+	lf := &LocalFile{data: []byte("burders"), index: NewTestSpecIndex()}
 	n, e := lf.GetContentAsYAMLNode()
 	assert.NotNil(t, n)
 	assert.NoError(t, e)

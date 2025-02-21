@@ -9,6 +9,13 @@ import (
 	"testing"
 )
 
+// NewTestSpecIndex Test helper function to create a SpecIndex with initialised high cache.
+func NewTestSpecIndex() *SpecIndex {
+	index := &SpecIndex{}
+	index.InitHighCache()
+	return index
+}
+
 // SimpleCache struct and methods are assumed to be imported from the respective package
 
 // TestCreateNewCache tests that a new cache is correctly created.

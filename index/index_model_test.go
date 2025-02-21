@@ -11,7 +11,7 @@ import (
 )
 
 func TestSpecIndex_GetConfig(t *testing.T) {
-	idx1 := new(SpecIndex)
+	idx1 := NewTestSpecIndex()
 	c := SpecIndexConfig{}
 	idx1.config = &c
 	assert.Equal(t, &c, idx1.GetConfig())

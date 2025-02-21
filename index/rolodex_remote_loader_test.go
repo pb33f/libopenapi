@@ -210,14 +210,14 @@ func TestRemoteFile_NoContent(t *testing.T) {
 }
 
 func TestRemoteFile_BadContent(t *testing.T) {
-	rf := &RemoteFile{data: []byte("bad: data: on: a single: line: makes: for: unhappy: yaml"), index: &SpecIndex{}}
+	rf := &RemoteFile{data: []byte("bad: data: on: a single: line: makes: for: unhappy: yaml"), index: NewTestSpecIndex()}
 	x, y := rf.GetContentAsYAMLNode()
 	assert.Nil(t, x)
 	assert.Error(t, y)
 }
 
 func TestRemoteFile_GoodContent(t *testing.T) {
-	rf := &RemoteFile{data: []byte("good: data"), index: &SpecIndex{}}
+	rf := &RemoteFile{data: []byte("good: data"), index: NewTestSpecIndex()}
 	x, y := rf.GetContentAsYAMLNode()
 	assert.NotNil(t, x)
 	assert.NoError(t, y)
@@ -231,7 +231,7 @@ func TestRemoteFile_GoodContent(t *testing.T) {
 }
 
 func TestRemoteFile_Index_AlreadySet(t *testing.T) {
-	rf := &RemoteFile{data: []byte("good: data"), index: &SpecIndex{}}
+	rf := &RemoteFile{data: []byte("good: data"), index: NewTestSpecIndex()}
 	x, y := rf.Index(&SpecIndexConfig{})
 	assert.NotNil(t, x)
 	assert.NoError(t, y)
