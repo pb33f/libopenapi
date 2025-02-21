@@ -936,7 +936,7 @@ func TestTagsNoDescription(t *testing.T) {
 }
 
 func TestGlobalCallbacksNoIndexTest(t *testing.T) {
-	idx := new(SpecIndex)
+	idx := NewTestSpecIndex()
 	assert.Equal(t, -1, idx.GetGlobalCallbacksCount())
 }
 
@@ -1864,13 +1864,6 @@ components:
 	assert.Equal(t, 0, len(schemas))
 }
 
-func Test_GetAllComponentSchemas(t *testing.T) {
-
-	// check for a nil
-	index := SpecIndex{}
-	assert.Nil(t, index.GetAllComponentSchemas())
-}
-
 func TestSpecIndex_GetAllComponentSchemas_ConcurrentAccess(t *testing.T) {
 	yml := `
 openapi: 3.0.0
@@ -1929,7 +1922,7 @@ func TestSpecIndex_GetAllComponentSchemas_NilIndex(t *testing.T) {
 
 func TestSpecIndex_Cache(t *testing.T) {
 
-	idx := new(SpecIndex)
+	idx := NewTestSpecIndex()
 	assert.NotNil(t, idx.GetHighCache())
 	assert.NotNil(t, uint(1), idx.HighCacheHit())
 	assert.NotNil(t, uint(1), idx.HighCacheMiss())
