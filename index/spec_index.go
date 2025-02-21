@@ -39,6 +39,7 @@ const (
 func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
 	boostrapIndexCollections(index)
+	index.InitHighCache()
 	index.config = config
 	index.rolodex = config.Rolodex
 	index.uri = config.uri
@@ -65,6 +66,7 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 // the rolodex will automatically read those files or open those h
 func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index := new(SpecIndex)
+	index.InitHighCache()
 	index.config = CreateOpenAPIIndexConfig()
 	index.root = rootNode
 	boostrapIndexCollections(index)

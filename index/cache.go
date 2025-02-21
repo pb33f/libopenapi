@@ -37,10 +37,12 @@ func (index *SpecIndex) GetHighCacheMisses() uint64 {
 
 // GetHighCache returns the high model cache for this index.
 func (index *SpecIndex) GetHighCache() Cache {
-	if index.highModelCache == nil {
-		index.highModelCache = CreateNewCache()
-	}
 	return index.highModelCache
+}
+
+// InitHighCache allocates a new high model cache onto the index.
+func (index *SpecIndex) InitHighCache() {
+	index.highModelCache = CreateNewCache()
 }
 
 // SetHighCache sets the high model cache for this index.
