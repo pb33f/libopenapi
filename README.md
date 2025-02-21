@@ -58,6 +58,7 @@ like our _very kind_ sponsors:
 - [github.com/speakeasy-api/speakeasy](https://github.com/speakeasy-api/speakeasy) - "Speakeasy CLI makes validating OpenAPI docs and generating idiomatic SDKs easy!"
 - [github.com/apicat/apicat](https://github.com/apicat/apicat) - "AI-powered API development tool"
 - [github.com/mattermost/mattermost](https://github.com/mattermost/mattermost) - "Software development lifecycle platform"
+- [github.com/gopher-fleece/gleece](https://github.com/gopher-fleece/gleece) - "Building and documenting REST APIs through code-first development"
 - Your project here?
 ---
 
