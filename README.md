@@ -29,6 +29,15 @@ like our _very kind_ sponsors:
 
 [Speakeasy](https://speakeasy.com/?utm_source=libopenapi+repo&utm_medium=github+sponsorship)
 
+<a href="https://bump.sh/?utm_source=quobix&utm_campaign=sponsor">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/bump.sh-dark.png">
+  <img alt="bump.sh'" src=".github/sponsors/bump.sh-light.png">
+</picture>
+</a>
+
+[bump.sh](https://bump.sh/?utm_source=quobix&utm_campaign=sponsor)
+
 <a href="https://scalar.com">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/scalar-dark.png">
