@@ -31,8 +31,8 @@ like our _very kind_ sponsors:
 
 <a href="https://bump.sh/?utm_source=quobix&utm_campaign=sponsor">
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/bump.sh-dark.png">
-  <img alt="bump.sh'" src=".github/sponsors/bump.sh-light.png">
+  <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/bump-sh-dark.png">
+  <img alt="bump.sh'" src=".github/sponsors/bump-sh-light.png">
 </picture>
 </a>
 
