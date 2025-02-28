@@ -753,7 +753,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						}
 					}
 					// for array based polymorphic items
-					if i+1 <= len(node.Content) && utils.IsNodeArray(node.Content[i+1]) { // check for nested items
+					if i+1 < len(node.Content) && utils.IsNodeArray(node.Content[i+1]) { // check for nested items
 						for q := range node.Content[i+1].Content {
 							v := node.Content[i+1].Content[q]
 							if utils.IsNodeMap(v) {
