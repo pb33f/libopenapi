@@ -262,3 +262,101 @@ func TestComponents_Build_HashEmpty(t *testing.T) {
 	assert.Equal(t, "e45605d7361dbc9d4b9723257701bef1d283f8fe9566b9edda127fc66a6b8fdd",
 		low.GenerateHashString(&n))
 }
+
+func TestComponents_IsReference(t *testing.T) {
+	var yml = `
+schemas:
+    one:
+        description: one of many
+    two:
+        $ref: "#/schemas/one"
+responses:
+    three:
+        description: three of many
+    four:
+        $ref: "#/responses/three"
+parameters:
+    five:
+        description: five of many
+    six:
+        $ref: "#/parameters/five"
+examples:
+    seven:
+        description: seven of many
+    eight:
+        $ref: "#/examples/seven"
+requestBodies:
+    nine:
+        description: nine of many
+    ten:
+        $ref: "#/requestBodies/nine"
+headers:
+    eleven:
+        description: eleven of many
+    twelve:
+        $ref: "#/headers/eleven"
+securitySchemes:
+    thirteen:
+        description: thirteen of many
+    fourteen:
+        $ref: "#/securitySchemes/thirteen"
+links:
+    fifteen:
+        description: fifteen of many
+    sixteen:
+        $ref: "#/links/fifteen"
+callbacks:
+    seventeen:
+        '{reference}':
+            post:
+            description: seventeen of many
+    eighteen:
+        $ref: "#/callbacks/seventeen"
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "#/schemas/one", n.FindSchema("two").Value.GetReference())
+	assert.Equal(t, "#/responses/three", n.FindResponse("four").Value.GetReference())
+	assert.Equal(t, "#/parameters/five", n.FindParameter("six").Value.GetReference())
+	assert.Equal(t, "#/examples/seven", n.FindExample("eight").Value.GetReference())
+	assert.Equal(t, "#/requestBodies/nine", n.FindRequestBody("ten").Value.GetReference())
+	assert.Equal(t, "#/headers/eleven", n.FindHeader("twelve").Value.GetReference())
+	assert.Equal(t, "#/securitySchemes/thirteen", n.FindSecurityScheme("fourteen").Value.GetReference())
+	assert.Equal(t, "#/links/fifteen", n.FindLink("sixteen").Value.GetReference())
+	assert.Equal(t, "#/callbacks/seventeen", n.FindCallback("eighteen").Value.GetReference())
+}
+
+func TestComponents_IsReference_OutOfSpecification_PathItem(t *testing.T) {
+	var yml = `
+pathItems:
+    one:
+        description: one of many
+    two:
+        $ref: "#/pathItems/one"
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "#/pathItems/one", n.FindPathItem("two").Value.GetReference())
+}
