@@ -113,10 +113,13 @@ func (h *Header) Hash() [32]byte {
 // Build will extract extensions, examples, schema and content/media types from node.
 func (h *Header) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	h.KeyNode = keyNode
+	h.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		h.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	h.RootNode = root
 	utils.CheckForMergeNodes(root)
-	h.Reference = new(low.Reference)
 	h.Nodes = low.ExtractNodes(ctx, root)
 	h.Extensions = low.ExtractExtensions(root)
 	h.context = ctx

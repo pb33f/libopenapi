@@ -310,23 +310,9 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 		currentLabel := value.currentLabel
 		node := value.node
 
-		// if this is a reference, extract it (although components with references is an antipattern)
-		// If you're building components as references... pls... stop, this code should not need to be here.
-		// TODO: check circular crazy on this. It may explode
-		var err error
-		nCtx := ctx
-		fIdx := idx
-		if h, rv, _ := utils.IsNodeRefValue(node); h && label != SchemasLabel {
-			node, fIdx, err, nCtx = low.LocateRefNodeWithContext(ctx, node, idx)
-			nCtx = context.WithValue(nCtx, "reference", rv)
-		}
-		if err != nil {
-			return componentBuildResult[T]{}, err
-		}
-
 		// build.
 		_ = low.BuildModel(node, n)
-		err = n.Build(nCtx, currentLabel, node, fIdx)
+		err := n.Build(ctx, currentLabel, node, idx)
 		if err != nil {
 			return componentBuildResult[T]{}, err
 		}

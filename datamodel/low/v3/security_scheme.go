@@ -76,10 +76,13 @@ func (ss *SecurityScheme) GetExtensions() *orderedmap.Map[low.KeyReference[strin
 // Build will extract OAuthFlows and extensions from the node.
 func (ss *SecurityScheme) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	ss.KeyNode = keyNode
+	ss.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		ss.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	ss.RootNode = root
 	utils.CheckForMergeNodes(root)
-	ss.Reference = new(low.Reference)
 	ss.Nodes = low.ExtractNodes(ctx, root)
 	ss.Extensions = low.ExtractExtensions(root)
 	ss.index = idx

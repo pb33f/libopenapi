@@ -195,3 +195,22 @@ x-burger: nice`
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 	assert.Equal(t, 1, orderedmap.Len(lDoc.GetExtensions()))
 }
+
+func TestExample_Build_Success_Ref(t *testing.T) {
+	yml := `$ref: "#/responses/abc"`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+
+	var n Example
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.True(t, n.IsReference())
+	assert.Equal(t, "#/responses/abc", n.GetReference())
+}

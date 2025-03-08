@@ -72,10 +72,13 @@ func (ex *Example) Hash() [32]byte {
 // Build extracts extensions and example value
 func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	ex.KeyNode = keyNode
+	ex.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		ex.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	ex.RootNode = root
 	utils.CheckForMergeNodes(root)
-	ex.Reference = new(low.Reference)
 	ex.Nodes = low.ExtractNodes(ctx, root)
 	ex.Extensions = low.ExtractExtensions(root)
 	ex.context = ctx

@@ -81,10 +81,13 @@ func (l *Link) GetKeyNode() *yaml.Node {
 // Build will extract extensions and servers from the node.
 func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	l.KeyNode = keyNode
+	l.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		l.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	l.RootNode = root
 	utils.CheckForMergeNodes(root)
-	l.Reference = new(low.Reference)
 	l.Nodes = low.ExtractNodes(ctx, root)
 	l.Extensions = low.ExtractExtensions(root)
 	l.index = idx

@@ -67,10 +67,13 @@ func (cb *Callback) FindExpression(exp string) *low.ValueReference[*PathItem] {
 // Build will extract extensions, expressions and PathItem objects for Callback
 func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	cb.KeyNode = keyNode
+	cb.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		cb.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	cb.RootNode = root
 	utils.CheckForMergeNodes(root)
-	cb.Reference = new(low.Reference)
 	cb.Nodes = low.ExtractNodes(ctx, root)
 	cb.Extensions = low.ExtractExtensions(root)
 	cb.context = ctx

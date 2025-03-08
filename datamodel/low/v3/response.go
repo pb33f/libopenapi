@@ -82,10 +82,13 @@ func (r *Response) FindLink(hType string) *low.ValueReference[*Link] {
 // Build will extract headers, extensions, content and links from node.
 func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
 	r.KeyNode = keyNode
+	r.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		r.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	r.RootNode = root
 	utils.CheckForMergeNodes(root)
-	r.Reference = new(low.Reference)
 	r.Nodes = low.ExtractNodes(ctx, root)
 	r.Extensions = low.ExtractExtensions(root)
 	r.index = idx

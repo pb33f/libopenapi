@@ -129,11 +129,14 @@ func (p *PathItem) GetExtensions() *orderedmap.Map[low.KeyReference[string], low
 // Build extracts extensions, parameters, servers and each http method defined.
 // everything is extracted asynchronously for speed.
 func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.SpecIndex) error {
+	p.Reference = new(low.Reference)
+	if ok, _, ref := utils.IsNodeRefValue(root); ok {
+		p.SetReference(ref, root)
+	}
 	root = utils.NodeAlias(root)
 	p.KeyNode = keyNode
 	p.RootNode = root
 	utils.CheckForMergeNodes(root)
-	p.Reference = new(low.Reference)
 	p.Nodes = low.ExtractNodes(ctx, root)
 	p.Extensions = low.ExtractExtensions(root)
 	p.index = idx
