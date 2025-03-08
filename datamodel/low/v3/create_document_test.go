@@ -753,7 +753,7 @@ components:
 	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
 	var err error
 	_, err = CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{})
-	assert.Equal(t, "reference at line 5, column 7 is empty, it cannot be resolved", err.Error())
+	assert.Equal(t, "schema build failed: reference '[empty]' cannot be found at line 5, col 12", err.Error())
 }
 
 func TestCreateDocument_Paths_Errors(t *testing.T) {
