@@ -93,15 +93,16 @@ func (sp *SchemaProxy) Schema() *Schema {
 		return nil
 	}
 
-	if sp.rendered != nil {
-		return sp.rendered
-	}
-
 	if sp.schema == nil || sp.schema.Value == nil {
 		return nil
 	}
 
 	sp.lock.Lock()
+	defer sp.lock.Unlock()
+
+	if sp.rendered != nil {
+		return sp.rendered
+	}
 
 	//check the high-level cache first.
 	idx := sp.schema.Value.GetIndex()
@@ -109,7 +110,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 		if sp.schema.Value.IsReference() && sp.schema.Value.GetReferenceNode() != nil && sp.schema.GetValueNode() != nil {
 			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
-				sp.lock.Unlock()
 				idx.HighCacheHit()
 				return seen.(*Schema)
 			} else {
@@ -121,7 +121,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 	s := sp.schema.Value.Schema()
 	if s == nil {
 		sp.buildError = sp.schema.Value.GetBuildError()
-		sp.lock.Unlock()
 		return nil
 	}
 	sch := NewSchema(s)
@@ -143,7 +142,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 
 	sch.ParentProxy = sp
 	sp.rendered = sch
-	sp.lock.Unlock()
 	return sch
 
 }
