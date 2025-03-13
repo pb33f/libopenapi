@@ -12,6 +12,8 @@ const (
 	EmailLabel                 = "email"
 	NameLabel                  = "name"
 	URLLabel                   = "url"
+	ServersLabel               = "servers"
+	ServerLabel                = "server"
 	TagsLabel                  = "tags"
 	ExternalDocsLabel          = "externalDocs"
 	ExamplesLabel              = "examples"
