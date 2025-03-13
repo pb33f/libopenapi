@@ -28,6 +28,7 @@ type SchemaChanges struct {
 	AllOfChanges                []*SchemaChanges          `json:"allOf,omitempty" yaml:"allOf,omitempty"`
 	AnyOfChanges                []*SchemaChanges          `json:"anyOf,omitempty" yaml:"anyOf,omitempty"`
 	OneOfChanges                []*SchemaChanges          `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
+	PrefixItemsChanges          []*SchemaChanges          `json:"prefixItems,omitempty" yaml:"prefixItems,omitempty"`
 	NotChanges                  *SchemaChanges            `json:"not,omitempty" yaml:"not,omitempty"`
 	ItemsChanges                *SchemaChanges            `json:"items,omitempty" yaml:"items,omitempty"`
 	SchemaPropertyChanges       map[string]*SchemaChanges `json:"properties,omitempty" yaml:"properties,omitempty"`
@@ -73,6 +74,13 @@ func (s *SchemaChanges) GetAllChanges() []*Change {
 		for n := range s.OneOfChanges {
 			if s.OneOfChanges[n] != nil {
 				changes = append(changes, s.OneOfChanges[n].GetAllChanges()...)
+			}
+		}
+	}
+	if len(s.PrefixItemsChanges) > 0 {
+		for n := range s.PrefixItemsChanges {
+			if s.PrefixItemsChanges[n] != nil {
+				changes = append(changes, s.PrefixItemsChanges[n].GetAllChanges()...)
 			}
 		}
 	}
@@ -165,6 +173,12 @@ func (s *SchemaChanges) TotalChanges() int {
 			t += s.OneOfChanges[n].TotalChanges()
 		}
 	}
+	if len(s.PrefixItemsChanges) > 0 {
+		for n := range s.PrefixItemsChanges {
+			t += s.PrefixItemsChanges[n].TotalChanges()
+		}
+	}
+
 	if s.NotChanges != nil {
 		t += s.NotChanges.TotalChanges()
 	}
@@ -251,6 +265,11 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	if len(s.OneOfChanges) > 0 {
 		for n := range s.OneOfChanges {
 			t += s.OneOfChanges[n].TotalBreakingChanges()
+		}
+	}
+	if len(s.PrefixItemsChanges) > 0 {
+		for n := range s.PrefixItemsChanges {
+			t += s.PrefixItemsChanges[n].TotalBreakingChanges()
 		}
 	}
 	if s.NotChanges != nil {
@@ -399,12 +418,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		sc.PatternPropertiesChanges = patterns
 
 		var wg sync.WaitGroup
-		wg.Add(3)
+		wg.Add(4)
 		go func() {
 			extractSchemaChanges(lSchema.OneOf.Value, rSchema.OneOf.Value, v3.OneOfLabel,
 				&sc.OneOfChanges, &changes)
 			wg.Done()
-
 		}()
 		go func() {
 			extractSchemaChanges(lSchema.AllOf.Value, rSchema.AllOf.Value, v3.AllOfLabel,
@@ -414,6 +432,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		go func() {
 			extractSchemaChanges(lSchema.AnyOf.Value, rSchema.AnyOf.Value, v3.AnyOfLabel,
 				&sc.AnyOfChanges, &changes)
+			wg.Done()
+		}()
+		go func() {
+			extractSchemaChanges(lSchema.PrefixItems.Value, rSchema.PrefixItems.Value, v3.PrefixItemsLabel,
+				&sc.PrefixItemsChanges, &changes)
 			wg.Done()
 		}()
 		wg.Wait()
