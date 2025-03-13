@@ -92,6 +92,7 @@ const (
 	PropertiesLabel            = "properties"
 	AllOfLabel                 = "allOf"
 	AnyOfLabel                 = "anyOf"
+	PrefixItemsLabel           = "prefixItems"
 	OneOfLabel                 = "oneOf"
 	AdditionalPropertiesLabel  = "additionalProperties"
 	ContentEncodingLabel       = "contentEncoding"
