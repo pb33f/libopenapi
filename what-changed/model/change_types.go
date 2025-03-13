@@ -111,11 +111,13 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 	data := map[string]interface{}{
 		"change":     c.ChangeType,
 		"changeText": changeType,
-		"context":    c.Context,
 		"property":   c.Property,
 		"original":   c.Original,
 		"new":        c.New,
 		"breaking":   c.Breaking,
+	}
+	if c.Context != nil {
+		data["context"] = c.Context
 	}
 	return json.Marshal(data)
 }
