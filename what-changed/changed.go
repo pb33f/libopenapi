@@ -16,4 +16,10 @@ type Changed interface {
 
 	// TotalBreakingChanges returns a count of all breaking changes on this object
 	TotalBreakingChanges() int
+
+	// GetPropertyChanges
+	GetPropertyChanges() []*model.Change
+
+	// PropertiesOnly will set a change object to only render properties and not the whole timeline.
+	PropertiesOnly()
 }
