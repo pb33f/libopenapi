@@ -112,10 +112,17 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 		"change":     c.ChangeType,
 		"changeText": changeType,
 		"property":   c.Property,
-		"original":   c.Original,
-		"new":        c.New,
 		"breaking":   c.Breaking,
 	}
+
+	if c.Original != "" {
+		data["original"] = c.Original
+	}
+
+	if c.New != "" {
+		data["new"] = c.New
+	}
+
 	if c.Context != nil {
 		data["context"] = c.Context
 	}
@@ -124,19 +131,30 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 
 // PropertyChanges holds a slice of Change pointers
 type PropertyChanges struct {
+	RenderPropertiesOnly bool `json:"-" yaml:"-"`
 	//Total *int `json:"total,omitempty" yaml:"total,omitempty"`
 	//Breaking *int `json:"breaking,omitempty" yaml:"breaking,omitempty"`
 	Changes []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
 }
 
 // TotalChanges returns the total number of property changes made.
-func (p PropertyChanges) TotalChanges() int {
+func (p *PropertyChanges) TotalChanges() int {
 	return len(p.Changes)
 }
 
 // TotalBreakingChanges returns the total number of property breaking changes made.
-func (p PropertyChanges) TotalBreakingChanges() int {
+func (p *PropertyChanges) TotalBreakingChanges() int {
 	return CountBreakingChanges(p.Changes)
+}
+
+// PropertiesOnly will set the change object to only render properties, not the timeline.
+func (p *PropertyChanges) PropertiesOnly() {
+	p.RenderPropertiesOnly = true
+}
+
+// GetPropertyChanges will return just the property changes
+func (p *PropertyChanges) GetPropertyChanges() []*Change {
+	return p.Changes
 }
 
 func NewPropertyChanges(changes []*Change) *PropertyChanges {
