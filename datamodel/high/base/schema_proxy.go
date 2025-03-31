@@ -9,14 +9,15 @@ import (
 	"net/url"
 	"sync"
 
+	"path/filepath"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"path/filepath"
-	"strings"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -111,7 +112,10 @@ func (sp *SchemaProxy) Schema() *Schema {
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
 				sp.lock.Unlock()
 				idx.HighCacheHit()
-				return seen.(*Schema)
+				// attribute the parent proxy to the cloned schema
+				schema := (*seen.(*Schema))
+				schema.ParentProxy = sp
+				return &schema
 			} else {
 				idx.HighCacheMiss()
 			}
