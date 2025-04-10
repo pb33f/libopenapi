@@ -113,7 +113,7 @@ Or, follow these steps and see something in a few seconds.
 #### Step 1: Grab the petstore
 
 ```bash
-curl https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/examples/v3.0/petstore.yaml > petstorev3.json
+curl https://raw.githubusercontent.com/OAI/OpenAPI-Specification/main/_archive_/schemas/v3.0/pass/petstore.yaml > petstorev3.json
 ```
 
 #### Step 2: Grab libopenapi
