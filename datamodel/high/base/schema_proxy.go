@@ -94,15 +94,15 @@ func (sp *SchemaProxy) Schema() *Schema {
 		return nil
 	}
 
-	if sp.schema == nil || sp.schema.Value == nil {
-		return nil
-	}
-
 	sp.lock.Lock()
 	defer sp.lock.Unlock()
 
 	if sp.rendered != nil {
 		return sp.rendered
+	}
+
+	if sp.schema == nil || sp.schema.Value == nil {
+		return nil
 	}
 
 	//check the high-level cache first.
