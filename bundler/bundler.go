@@ -5,10 +5,10 @@
 package bundler
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 
 	"github.com/davecgh/go-spew/spew"
 	"github.com/pb33f/libopenapi"
@@ -141,14 +141,20 @@ func composeDocument(model *highV3.Document, comps map[string]*index.ReferenceNo
 					Value: defParts[3],
 				},
 			}
+
+			var schemaProxy base.SchemaProxy
+			ctx := context.Background()
+			err := schemaProxy.Build(ctx, lowModel.Components.ValueNode, component.Node, nil)
+			if err != nil {
+				return nil, fmt.Errorf("failed to build schema proxy for component %s: %w", def, err)
+			}
+
 			value := low.ValueReference[*base.SchemaProxy]{
 				Reference: low.Reference{},
-				Value: &base.SchemaProxy{
-					Reference: low.Reference{},
-					NodeMap:   &low.NodeMap{Nodes: &sync.Map{}},
-				},
-				ValueNode: &yaml.Node{},
+				Value:     &schemaProxy,
+				ValueNode: component.Node,
 			}
+
 			components.Value.Schemas.Value.Set(key, value)
 
 		default:
