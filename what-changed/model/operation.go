@@ -184,7 +184,6 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 			l.GetResponses().ValueNode, nil, true, l.GetResponses().Value,
 			nil)
 	}
-
 }
 
 // CompareOperations compares a left and right Swagger or OpenAPI Operation object. If changes are found, returns

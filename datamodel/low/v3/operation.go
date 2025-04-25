@@ -306,6 +306,14 @@ func (o *Operation) GetResponses() low.NodeReference[any] {
 	}
 }
 
+func (o *Operation) GetRequestBody() low.NodeReference[any] {
+	return low.NodeReference[any]{
+		ValueNode: o.RequestBody.ValueNode,
+		KeyNode:   o.RequestBody.KeyNode,
+		Value:     o.RequestBody.Value,
+	}
+}
+
 func (o *Operation) GetParameters() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Parameters.ValueNode,
