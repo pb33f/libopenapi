@@ -308,7 +308,16 @@ func GetCircularReferenceResult(node *yaml.Node, idx *index.SpecIndex) *index.Ci
 	if idx == nil {
 		return nil // no index! nothing we can do.
 	}
-	refs := idx.GetCircularReferences()
+	var refs []*index.CircularReferenceResult
+	if idx.GetResolver() != nil {
+		refs = append(refs, idx.GetResolver().GetCircularReferences()...)
+		refs = append(refs, idx.GetResolver().GetInfiniteCircularReferences()...)
+		refs = append(refs, idx.GetResolver().GetIgnoredCircularArrayReferences()...)
+		refs = append(refs, idx.GetResolver().GetIgnoredCircularPolyReferences()...)
+		refs = append(refs, idx.GetResolver().GetSafeCircularReferences()...)
+	} else {
+		refs = idx.GetCircularReferences()
+	}
 	for i := range refs {
 		if refs[i].LoopPoint.Node == node {
 			return refs[i]
