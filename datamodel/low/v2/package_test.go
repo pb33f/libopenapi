@@ -41,7 +41,7 @@ func Example_createLowLevelSwaggerDocument() {
 }
 
 // How to create a low-level Swagger / OpenAPI 2 Document from a specification
-func ExampleCreateDocument() {
+func Example_createDocument() {
 
 	// How to create a low-level OpenAPI 2 Document
 

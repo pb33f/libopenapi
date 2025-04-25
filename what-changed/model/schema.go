@@ -968,11 +968,11 @@ func checkSchemaPropertyChanges(
 	lnv = nil
 	rnv = nil
 
-	if lSchema != nil && lSchema.Required.ValueNode != nil {
-		lnv = lSchema.Required.ValueNode
+	if lSchema != nil && lSchema.UniqueItems.ValueNode != nil {
+		lnv = lSchema.UniqueItems.ValueNode
 	}
-	if rSchema != nil && rSchema.Required.ValueNode != nil {
-		rnv = rSchema.Required.ValueNode
+	if rSchema != nil && rSchema.UniqueItems.ValueNode != nil {
+		rnv = rSchema.UniqueItems.ValueNode
 	}
 	// UniqueItems
 	props = append(props, &PropertyCheck{
