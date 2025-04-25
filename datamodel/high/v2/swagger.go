@@ -9,6 +9,8 @@
 // API, which provides fine grain detail to the underlying AST powering the data, lines, columns, raw nodes etc.
 //
 // IMPORTANT: As a general rule, Swagger / OpenAPI 2 should be avoided for new projects.
+// VERY IMPORTANT: pb33f is no longer maintaining the v2 model. It's a commercial product (Swagger) by a company (SmartBear) and not OpenAPI.
+// PLEASE DO NOT USE THIS MODEL UNLESS YOU HAVE TO. IT'S HERE FOR LEGACY SUPPORT ONLY. Upgrade to 3x!
 package v2
 
 import (
