@@ -89,6 +89,11 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 // Schema will create a new Schema instance using NewSchema from the low-level SchemaProxy backing this high-level one.
 // If there is a problem building the Schema, then this method will return nil. Use GetBuildError to gain access
 // to that building error.
+//
+// It's important to note that this method will return nil on a pointer created using NewSchemaProxy or CreateSchema* methods
+// there is no low-level SchemaProxy backing it, and therefore no schema to build, so this will fail. Use BuildSchema
+// instead for proxies created using NewSchemaProxy or CreateSchema* methods.
+// https://github.com/pb33f/libopenapi/issues/403
 func (sp *SchemaProxy) Schema() *Schema {
 	if sp == nil || sp.lock == nil {
 		return nil
@@ -196,7 +201,11 @@ func (sp *SchemaProxy) GetReferenceOrigin() *index.NodeOrigin {
 	return nil
 }
 
-// BuildSchema operates the same way as Schema, except it will return any error along with the *Schema
+// BuildSchema operates the same way as Schema, except it will return any error along with the *Schema. Unlike the Schema
+// method, this will work on a proxy created by the NewSchemaProxy or CreateSchema* methods.
+//
+// It differs from Schema in that it does not require a low-level SchemaProxy to be present,
+// and will build the schema from the high-level one.
 func (sp *SchemaProxy) BuildSchema() (*Schema, error) {
 	if sp.rendered != nil {
 		return sp.rendered, sp.buildError
