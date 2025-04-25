@@ -129,7 +129,13 @@ func (n *NodeBuilder) add(key string, i int) {
 	} else if zeroer, ok := f.(yaml.IsZeroer); ok && zeroer.IsZero() {
 		isZero = true
 	} else if f == nil || value.IsZero() {
-		isZero = true
+		if tagName != "description" {
+			isZero = true
+		} else {
+			if omitEmptyFlag {
+				isZero = true
+			}
+		}
 	}
 	if !renderZeroFlag && isZero || omitEmptyFlag && isZero {
 		return
