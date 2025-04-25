@@ -11,7 +11,9 @@ import (
 // ServerChanges represents changes found between two OpenAPI Server Objects
 type ServerChanges struct {
 	*PropertyChanges
+	Server                *v3.Server
 	ServerVariableChanges map[string]*ServerVariableChanges `json:"serverVariables,omitempty" yaml:"serverVariables,omitempty"`
+	ExtensionChanges      *ExtensionChanges                 `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between SecurityRequirement objects
@@ -21,6 +23,9 @@ func (s *ServerChanges) GetAllChanges() []*Change {
 	for k := range s.ServerVariableChanges {
 		changes = append(changes, s.ServerVariableChanges[k].GetAllChanges()...)
 	}
+	if s.ExtensionChanges != nil {
+		changes = append(changes, s.ExtensionChanges.GetAllChanges()...)
+	}
 	return changes
 }
 
@@ -29,6 +34,9 @@ func (s *ServerChanges) TotalChanges() int {
 	c := s.PropertyChanges.TotalChanges()
 	for k := range s.ServerVariableChanges {
 		c += s.ServerVariableChanges[k].TotalChanges()
+	}
+	if s.ExtensionChanges != nil {
+		c += s.ExtensionChanges.TotalChanges()
 	}
 	return c
 }
@@ -78,5 +86,7 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 	sc.ServerVariableChanges = CheckMapForChanges(l.Variables.Value, r.Variables.Value,
 		&changes, v3.VariablesLabel, CompareServerVariables)
 
+	sc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
+	sc.Server = r
 	return sc
 }
