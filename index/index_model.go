@@ -293,7 +293,9 @@ type SpecIndex struct {
 	linksNode                           *yaml.Node                                    // components/links node
 	allLinks                            map[string]*Reference                         // all links
 	callbacksNode                       *yaml.Node                                    // components/callbacks node
-	allCallbacks                        map[string]*Reference                         // all components examples
+	pathItemsNode                       *yaml.Node                                    // components/pathItems node
+	allCallbacks                        map[string]*Reference                         // all components callbacks
+	allComponentPathItems               map[string]*Reference                         // all components path items examples
 	allExternalDocuments                map[string]*Reference                         // all external documents
 	externalSpecIndex                   map[string]*SpecIndex                         // create a primary index of all external specs and componentIds
 	refErrors                           []error                                       // errors when indexing references

@@ -67,4 +67,5 @@ func boostrapIndexCollections(index *SpecIndex) {
 	index.opServersRefs = make(map[string]map[string][]*Reference)
 	index.componentIndexChan = make(chan struct{})
 	index.polyComponentIndexChan = make(chan struct{})
+	index.allComponentPathItems = make(map[string]*Reference)
 }

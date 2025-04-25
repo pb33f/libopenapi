@@ -303,6 +303,26 @@ func (index *SpecIndex) extractComponentCallbacks(callbacksNode *yaml.Node, path
 	}
 }
 
+func (index *SpecIndex) extractComponentPathItems(pathItemsNode *yaml.Node, pathPrefix string) {
+	var name string
+	var keyNode *yaml.Node
+	for i, pathItemName := range pathItemsNode.Content {
+		if i%2 == 0 {
+			name = pathItemName.Value
+			keyNode = pathItemName
+			continue
+		}
+		def := fmt.Sprintf("%s%s", pathPrefix, name)
+		ref := &Reference{
+			Definition: def,
+			Name:       name,
+			Node:       pathItemName,
+			KeyNode:    keyNode,
+		}
+		index.allComponentPathItems[def] = ref
+	}
+}
+
 func (index *SpecIndex) extractComponentLinks(linksNode *yaml.Node, pathPrefix string) {
 	var name string
 	var keyNode *yaml.Node
