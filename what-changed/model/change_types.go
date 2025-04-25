@@ -91,6 +91,12 @@ type Change struct {
 
 	// NewObject represents the new object that has been modified.
 	NewObject any `json:"-" yaml:"-"`
+
+	// Type represents the type of object that was changed. (not used in the current implementation).
+	Type string `json:"type,omitempty"`
+
+	// Path represents the path to the object that was changed (not used in the current implementation).
+	Path string `json:"path,omitempty"`
 }
 
 // MarshalJSON is a custom JSON marshaller for the Change object.
@@ -125,6 +131,12 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 
 	if c.Context != nil {
 		data["context"] = c.Context
+	}
+	if c.Type != "" {
+		data["type"] = c.Type
+	}
+	if c.Path != "" {
+		data["path"] = c.Path
 	}
 	return json.Marshal(data)
 }

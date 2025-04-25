@@ -116,8 +116,10 @@ func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 // Hash will return a consistent SHA256 Hash of the Server object
 func (s *Server) Hash() [32]byte {
 	var f []string
-	for v := range orderedmap.SortAlpha(s.Variables.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+	if s.Variables.Value != nil {
+		for v := range orderedmap.SortAlpha(s.Variables.Value).ValuesFromOldest() {
+			f = append(f, low.GenerateHashString(v.Value))
+		}
 	}
 	if !s.URL.IsEmpty() {
 		f = append(f, s.URL.Value)
