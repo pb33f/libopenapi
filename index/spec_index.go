@@ -423,6 +423,11 @@ func (index *SpecIndex) GetAllCallbacks() map[string]*Reference {
 	return index.allCallbacks
 }
 
+// GetAllComponentPathItems will return all path items found in the document (under components)
+func (index *SpecIndex) GetAllComponentPathItems() map[string]*Reference {
+	return index.allComponentPathItems
+}
+
 // GetInlineOperationDuplicateParameters will return a map of duplicates located in operation parameters.
 func (index *SpecIndex) GetInlineOperationDuplicateParameters() map[string][]*Reference {
 	return index.paramInlineDuplicateNames
@@ -848,6 +853,7 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 				_, examplesNode := utils.FindKeyNode("examples", index.root.Content[0].Content[i+1].Content)
 				_, linksNode := utils.FindKeyNode("links", index.root.Content[0].Content[i+1].Content)
 				_, callbacksNode := utils.FindKeyNode("callbacks", index.root.Content[0].Content[i+1].Content)
+				_, pathItemsNode := utils.FindKeyNode("pathItems", index.root.Content[0].Content[i+1].Content)
 
 				// extract schemas
 				if schemasNode != nil {
@@ -904,6 +910,12 @@ func (index *SpecIndex) GetComponentSchemaCount() int {
 				if callbacksNode != nil {
 					index.extractComponentCallbacks(callbacksNode, "#/components/callbacks/")
 					index.callbacksNode = callbacksNode
+				}
+
+				// extract pathItems
+				if pathItemsNode != nil {
+					index.extractComponentPathItems(pathItemsNode, "#/components/pathItems/")
+					index.pathItemsNode = pathItemsNode
 				}
 
 			}
