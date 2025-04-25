@@ -7,6 +7,7 @@ require (
 	github.com/speakeasy-api/jsonpath v0.6.1
 	github.com/stretchr/testify v1.10.0
 	github.com/wk8/go-ordered-map/v2 v2.1.9-0.20240815153524-6ea36470d1bd
+	go.uber.org/goleak v1.3.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

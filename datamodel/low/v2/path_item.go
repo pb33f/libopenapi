@@ -147,25 +147,37 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		}
 	}
 
-	// all operations have been superficially built,
-	// now we need to build out the operation, we will do this asynchronously for speed.
-	opBuildChan := make(chan struct{})
-	opErrorChan := make(chan error)
-
-	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- struct{}, errCh chan<- error) {
-		er := op.Value.Build(ctx, op.KeyNode, op.ValueNode, idx)
-		if er != nil {
-			errCh <- er
-		}
-		ch <- struct{}{}
-	}
-
 	if len(ops) <= 0 {
 		return nil // nothing to do.
 	}
 
+	// derive a cancellable ctx
+	buildOpCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// all operations have been superficially built,
+	// now we need to build out the operation, we will do this asynchronously for speed.
+	opBuildChan := make(chan struct{}, len(ops))
+	opErrorChan := make(chan error, len(ops))
+
+	var buildOpFunc = func(op low.NodeReference[*Operation]) {
+		defer func() { opBuildChan <- struct{}{} }()
+
+		// If we’ve already been canceled, skip running Build at all
+		select {
+		case <-buildOpCtx.Done():
+			return
+		default:
+		}
+
+		if err := op.Value.Build(ctx, op.KeyNode, op.ValueNode, idx); err != nil {
+			opErrorChan <- err
+			cancel()
+		}
+	}
+
 	for _, op := range ops {
-		go buildOpFunc(op, opBuildChan, opErrorChan)
+		go buildOpFunc(op)
 	}
 
 	n := 0
@@ -179,7 +191,9 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 		}
 	}
 
-	// make sure we don't exit before the path is finished building.
+	// TODO:
+	// I am not sure about this one.
+	// Should it not be before we call buildOpFunc??
 	if len(ops) > 0 {
 		wg.Wait()
 	}
