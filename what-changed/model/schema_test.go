@@ -3232,3 +3232,152 @@ components:
 	assert.Equal(t, 1, changes.TotalChanges())
 
 }
+
+func TestCompareSchemas_TestGetPropertiesChanges(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      patternProperties:
+        ketchup:
+          type: number
+          const: 2
+      dependentSchemas:
+        monkey:
+          type: string
+          const: fluff
+      properties:
+        mick:
+          description: hey`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      patternProperties:
+        ketchup:
+          type: number
+          const: 1
+      dependentSchemas:
+        monkey:
+          type: string
+          const: flaff
+      properties:
+        mick:
+          description: hey ho`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetPropertyChanges(), 3)
+}
+
+func TestCompareSchemas_PrefixItems(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      prefixItems:
+        - type: number
+          const: 1`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      prefixItems:
+        - type: number
+          const: 2`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, changes.TotalChanges(), 1)
+	assert.Equal(t, changes.TotalBreakingChanges(), 1)
+}
+
+func TestCompareSchemas_CheckXML(t *testing.T) {
+	checkSchemaXML(nil, nil, nil, nil)
+	checkSchemaPropertyChanges(nil, nil, nil, nil)
+}
+
+func TestCompareSchemas_TestProps(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      $schema: moo
+      exclusiveMaximum: 1
+      exclusiveMinimum: 1
+      multipleOf: 1
+      minimum: 1
+      maximum: 1
+      maxLength: 1
+      minLength: 1
+      pattern: a
+      format: b
+      maxItems: 1
+      minItems: 1
+      maxProperties: 1
+      minProperties: 1
+      uniqueItems: true
+      contentMediaType: a
+      contentEncoding: b
+      default: a
+      nullable: true
+      deprecated: true
+      readOnly: true
+      writeOnly: true
+`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      $schema: cows
+      exclusiveMaximum: 2
+      exclusiveMinimum: 2
+      multipleOf: 2
+      minimum: 2
+      maximum: 2
+      maxLength: 2
+      minLength: 2
+      pattern: b
+      format: a
+      maxItems: 2
+      minItems: 2
+      maxProperties: 2
+      minProperties: 2
+      uniqueItems: false
+      contentMediaType: b
+      contentEncoding: a
+      default: b
+      nullable: false
+      deprecated: false
+      readOnly: false
+      writeOnly: false
+`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 22)
+	assert.Equal(t, changes.TotalChanges(), 22)
+	assert.Equal(t, changes.TotalBreakingChanges(), 21)
+}

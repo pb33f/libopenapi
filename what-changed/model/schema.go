@@ -985,6 +985,9 @@ func checkSchemaPropertyChanges(
 		New:       rSchema,
 	})
 
+	lnv = nil
+	rnv = nil
+
 	// AdditionalProperties
 	if lSchema != nil && lSchema.AdditionalProperties.Value != nil && rSchema != nil && rSchema.AdditionalProperties.Value != nil {
 		if lSchema.AdditionalProperties.Value.IsA() && rSchema.AdditionalProperties.Value.IsA() {

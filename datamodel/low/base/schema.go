@@ -639,7 +639,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	_, schemaRefLabel, schemaRefNode := utils.FindKeyNodeFullTop(SchemaTypeLabel, root.Content)
 	if schemaRefNode != nil {
 		s.SchemaTypeRef = low.NodeReference[string]{
-			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefLabel,
+			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefNode,
 		}
 	}
 
@@ -647,7 +647,7 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	_, anchorLabel, anchorNode := utils.FindKeyNodeFullTop(AnchorLabel, root.Content)
 	if anchorNode != nil {
 		s.Anchor = low.NodeReference[string]{
-			Value: anchorNode.Value, KeyNode: anchorLabel, ValueNode: anchorLabel,
+			Value: anchorNode.Value, KeyNode: anchorLabel, ValueNode: anchorNode,
 		}
 	}
 
