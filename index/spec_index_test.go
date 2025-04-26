@@ -1932,3 +1932,18 @@ func TestSpecIndex_Cache(t *testing.T) {
 	assert.Nil(t, idx.GetHighCache())
 
 }
+
+func TestSpecIndex_getAllPathItemsFromComponents(t *testing.T) {
+	yml := `openapi: 3.0.1
+components:
+  pathItems:
+    bingo:
+      operationId: bango`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	pathItems := index.GetAllComponentPathItems()
+	assert.Equal(t, 1, len(pathItems))
+}

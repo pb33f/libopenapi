@@ -78,6 +78,7 @@ servers:
 	assert.Equal(t, "https://pb33f.io", n.Servers.Value[0].Value.URL.Value)
 	assert.NotNil(t, n.GetIndex())
 	assert.NotNil(t, n.GetContext())
+	assert.NotNil(t, n.GetRequestBody())
 }
 
 func TestOperation_Build_FailDocs(t *testing.T) {
