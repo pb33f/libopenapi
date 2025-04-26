@@ -143,10 +143,8 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 
 // PropertyChanges holds a slice of Change pointers
 type PropertyChanges struct {
-	RenderPropertiesOnly bool `json:"-" yaml:"-"`
-	//Total *int `json:"total,omitempty" yaml:"total,omitempty"`
-	//Breaking *int `json:"breaking,omitempty" yaml:"breaking,omitempty"`
-	Changes []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
+	RenderPropertiesOnly bool      `json:"-" yaml:"-"`
+	Changes              []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
 }
 
 // TotalChanges returns the total number of property changes made.

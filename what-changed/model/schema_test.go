@@ -3380,4 +3380,7 @@ components:
 	assert.Len(t, changes.GetAllChanges(), 22)
 	assert.Equal(t, changes.TotalChanges(), 22)
 	assert.Equal(t, changes.TotalBreakingChanges(), 21)
+	assert.Len(t, changes.GetPropertyChanges(), 22)
+	changes.PropertiesOnly() // this does nothing in this lib.
+
 }
