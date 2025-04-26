@@ -3307,9 +3307,10 @@ components:
 	assert.Equal(t, changes.TotalBreakingChanges(), 1)
 }
 
-func TestCompareSchemas_CheckXML(t *testing.T) {
+func TestCompareSchemas_fireNilCheck(t *testing.T) {
 	checkSchemaXML(nil, nil, nil, nil)
 	checkSchemaPropertyChanges(nil, nil, nil, nil)
+	checkExamples(nil, nil, nil)
 }
 
 func TestCompareSchemas_TestProps(t *testing.T) {

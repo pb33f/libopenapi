@@ -89,4 +89,7 @@ func TestChange_MarshalJSON(t *testing.T) {
 	rebuilt = rinseAndRepeat(&change)
 	assert.Equal(t, "difficult", rebuilt["path"])
 
+	prop := &PropertyChanges{Changes: []*Change{&change}}
+	assert.Empty(t, prop.GetPropertyChanges())
+
 }
