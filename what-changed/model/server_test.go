@@ -191,5 +191,7 @@ x-coffee: cold`
 	extChanges := CompareServers(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.ExtensionChanges.GetAllChanges(), 1)
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Empty(t, extChanges.PropertyChanges)
 
 }
