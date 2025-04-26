@@ -1478,7 +1478,9 @@ func checkSchemaPropertyChanges(
 	if rSchema != nil {
 		rext = rSchema.Extensions
 	}
-	sc.ExtensionChanges = CompareExtensions(lext, rext)
+	if lext != nil && rext != nil {
+		sc.ExtensionChanges = CompareExtensions(lext, rext)
+	}
 
 	// check core properties
 	CheckProperties(props)
