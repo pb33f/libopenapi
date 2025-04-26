@@ -56,4 +56,37 @@ func TestChange_MarshalJSON(t *testing.T) {
 	assert.Equal(t, "property_removed", rebuilt["changeText"])
 	assert.Equal(t, float64(5), rebuilt["change"])
 
+	change = Change{
+		Original: "gangster",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "gangster", rebuilt["original"])
+
+	change = Change{
+		New: "shoes",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "shoes", rebuilt["new"])
+
+	one := 1
+	change = Change{
+		Context: &ChangeContext{
+			OriginalLine: &one,
+		},
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.NotNil(t, rebuilt["context"])
+
+	change = Change{
+		Type: "burger",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "burger", rebuilt["type"])
+
+	change = Change{
+		Path: "difficult",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "difficult", rebuilt["path"])
+
 }
