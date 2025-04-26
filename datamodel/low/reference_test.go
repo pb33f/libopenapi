@@ -712,3 +712,8 @@ func TestKeyReference_MarshalYAML(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, kn, on)
 }
+
+func TestGetCircularReferenceResult(t *testing.T) {
+	kn := utils.CreateStringNode("pizza")
+	assert.Empty(t, GetCircularReferenceResult(kn, &index.SpecIndex{})) // tests no resolver path
+}
