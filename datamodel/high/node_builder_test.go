@@ -1148,6 +1148,12 @@ func TestNewNodeBuilder_DescriptionOmitEmpty(t *testing.T) {
 		Blah: "",
 	}
 
+	t2 := struct {
+		Blah string `yaml:"description,omitempty"`
+	}{
+		Blah: "",
+	}
+
 	nb := NewNodeBuilder(&t1, &t1)
 	node := nb.Render()
 
@@ -1156,4 +1162,14 @@ func TestNewNodeBuilder_DescriptionOmitEmpty(t *testing.T) {
 	desired := `description: ""` // response body needs this capability
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+
+	nb = NewNodeBuilder(&t2, &t2)
+	node = nb.Render()
+
+	data, _ = yaml.Marshal(node)
+
+	desired = `{}`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+
 }
