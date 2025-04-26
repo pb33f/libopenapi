@@ -85,7 +85,6 @@ type test1 struct {
 	Thunk      valueReferenceStruct                              `yaml:"thunk,omitempty"`
 	Thrim      *valueReferenceStruct                             `yaml:"thrim,omitempty"`
 	Thril      *orderedmap.Map[string, *valueReferenceStruct]    `yaml:"thril,omitempty"`
-	Thryp      string                                            `yaml:"description"`
 	Extensions *orderedmap.Map[string, *yaml.Node]               `yaml:"-"`
 	ignoreMe   string                                            `yaml:"-"`
 	IgnoreMe   string                                            `yaml:"-"`
@@ -1143,8 +1142,10 @@ func TestNewNodeBuilder_Int64_Negative(t *testing.T) {
 }
 
 func TestNewNodeBuilder_DescriptionOmitEmpty(t *testing.T) {
-	t1 := test1{
-		Thryp: "",
+	t1 := struct {
+		Blah string `yaml:"description"`
+	}{
+		Blah: "",
 	}
 
 	nb := NewNodeBuilder(&t1, &t1)
