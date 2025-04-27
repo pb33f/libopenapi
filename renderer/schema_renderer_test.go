@@ -996,6 +996,32 @@ properties:
 	assert.Nil(t, journeyMap["pb33f"].(map[string]interface{})["fries"])
 }
 
+func TestRenderExample_Test_RequiredWithMissingProp(t *testing.T) {
+	testObject := `type: [object]
+required:
+  - missing
+  - drink
+properties:
+  burger:
+    type: string`
+
+	compiled := getSchema([]byte(testObject))
+
+	journeyMap := make(map[string]any)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+
+	assert.NotNil(t, journeyMap["pb33f"])
+	drink := journeyMap["pb33f"].(map[string]interface{})["drink"].(string)
+	assert.NotNil(t, drink)
+
+	_, exists := journeyMap["pb33f"].(map[string]interface{})["missing"]
+	assert.True(t, exists)
+
+	assert.Nil(t, journeyMap["pb33f"].(map[string]interface{})["burger"])
+}
+
+
 func TestRenderExample_Test_RequiredCheckDisabled(t *testing.T) {
 	testObject := `type: [object]
 required:
