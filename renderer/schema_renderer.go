@@ -300,17 +300,27 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			// check if this schema has required properties, if so, then only render required props, if not
 			// render everything in the schema.
 			checkProps := orderedmap.New[string, *base.SchemaProxy]()
-			if !wr.disableRequired && len(schema.Required) > 0 {
-				for _, requiredProp := range schema.Required {
-					checkProps.Set(requiredProp, properties.GetOrZero(requiredProp))
+			if wr.disableRequired || len(schema.Required) == 0 {
+				for name, value := range properties.FromOldest() {
+					checkProps.Set(name, value)
 				}
-			} else {
-				checkProps = properties
 			}
+
+			for _, requiredProp := range schema.Required {
+				checkProps.Set(requiredProp, properties.GetOrZero(requiredProp))
+			}
+
 			for propName, propValue := range checkProps.FromOldest() {
 				// render property
 				propertySchema := propValue.Schema()
-				wr.DiveIntoSchema(propertySchema, propName, propertyMap, depth+1)
+				if propertySchema != nil {
+					wr.DiveIntoSchema(propertySchema, propName, propertyMap, depth+1)
+				} else {
+					// If the property is required but not specified in the schema,
+    			// any value is allowed for this property (no specific validation).
+					// In our case, we render an empty map.
+					propertyMap[propName] = make(map[string]any)
+				}
 			}
 		}
 

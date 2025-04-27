@@ -1003,6 +1003,8 @@ required:
   - drink
 properties:
   burger:
+    type: string
+  drink:
     type: string`
 
 	compiled := getSchema([]byte(testObject))
@@ -1026,6 +1028,7 @@ func TestRenderExample_Test_RequiredCheckDisabled(t *testing.T) {
 	testObject := `type: [object]
 required:
   - drink
+  - missing
 properties:
   burger:
     type: string
@@ -1044,6 +1047,10 @@ properties:
 	assert.NotNil(t, journeyMap["pb33f"])
 	drink := journeyMap["pb33f"].(map[string]interface{})["drink"].(string)
 	assert.NotNil(t, drink)
+
+	_, exists := journeyMap["pb33f"].(map[string]interface{})["missing"]
+	assert.True(t, exists)
+
 	assert.NotNil(t, journeyMap["pb33f"].(map[string]interface{})["burger"])
 	assert.NotNil(t, journeyMap["pb33f"].(map[string]interface{})["fries"])
 }
