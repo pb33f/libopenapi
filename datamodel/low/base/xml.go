@@ -52,6 +52,11 @@ func (x *XML) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Valu
 	return x.Extensions
 }
 
+// GetRootNode returns the root yaml node of the Tag object
+func (x *XML) GetRootNode() *yaml.Node {
+	return x.RootNode
+}
+
 // Hash generates a SHA256 hash of the XML object using properties
 func (x *XML) Hash() [32]byte {
 	var f []string
