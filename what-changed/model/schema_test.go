@@ -3414,4 +3414,5 @@ components:
 	assert.Len(t, changes.GetAllChanges(), 2)
 	assert.Equal(t, changes.TotalChanges(), 2)
 	assert.Equal(t, changes.TotalBreakingChanges(), 2)
+	assert.Len(t, changes.GetPropertyChanges(), 2)
 }
