@@ -3385,3 +3385,33 @@ components:
 	changes.PropertiesOnly() // this does nothing in this lib.
 
 }
+
+func TestCompareSchemas_CheckXML(t *testing.T) {
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      xml:
+        name: ding
+        namespace: dong`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      xml:
+        name: bing
+        namespace: bong`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(rSchemaProxy, lSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 2)
+	assert.Equal(t, changes.TotalChanges(), 2)
+	assert.Equal(t, changes.TotalBreakingChanges(), 2)
+}
