@@ -72,6 +72,9 @@ func (s *SchemaChanges) GetPropertyChanges() []*Change {
 			}
 		}
 	}
+	if s.XMLChanges != nil {
+		changes = append(changes, s.XMLChanges.GetAllChanges()...)
+	}
 	return changes
 }
 
