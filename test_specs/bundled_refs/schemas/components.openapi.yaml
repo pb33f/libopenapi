@@ -1,0 +1,50 @@
+components:
+  schemas:
+    AccountObject: 
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  requestBodies:
+    ExampleRequest:
+      description: Minimal request body
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+  callbacks:
+    AccountCallback:
+      newMessage:
+        '{$request.body#/callbackUrl}':
+          post:
+            requestBody:
+              description: Callback payload
+              content:
+                application/json:
+                  schema:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+            responses:
+              '200':
+                description: Callback received
+  links:
+    AccountLink:
+      operationId: listAccounts
+      parameters:
+        userId: $response.body#/id
+  headers:
+    X-RateLimit-Remaining:
+      schema:
+        type: integer

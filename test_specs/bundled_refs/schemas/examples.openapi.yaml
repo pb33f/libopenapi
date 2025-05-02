@@ -1,0 +1,7 @@
+components:
+  examples:
+    AccountExample:
+      summary: An example account
+      value:
+        id: "abc123"
+        name: "Example Account"
