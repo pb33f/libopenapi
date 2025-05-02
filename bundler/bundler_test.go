@@ -19,7 +19,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
@@ -28,6 +27,7 @@ import (
 )
 
 var defaultBundleOpts = BundleOptions{RelativeRefHandling: RefHandlingInline}
+var composeBundleOpts = BundleOptions{RelativeRefHandling: RefHandlingCompose}
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 
@@ -104,7 +104,7 @@ func TestBundleDocument_Circular(t *testing.T) {
 	if len(logEntries) == 1 && logEntries[0] == "" {
 		logEntries = []string{}
 	}
-
+	fmt.Println(string(bytes))
 	assert.Len(t, logEntries, 0)
 }
 
@@ -123,9 +123,55 @@ func TestBundleDocument_MinimalRemoteRefsBundledLocallyComposed(t *testing.T) {
 	require.NoError(t, err)
 
 	bytes, e := BundleBytes(specBytes, config, BundleOptions{RelativeRefHandling: RefHandlingCompose})
-	spew.Dump(string(bytes))
 	assert.NoError(t, e)
 	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
+}
+
+func TestBundleDocument_LocallyComposed_Examples(t *testing.T) {
+	specBytes, err := os.ReadFile("../test_specs/bundled_refs/openapi.yaml")
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: false,
+		BasePath:              "../test_specs/bundled_refs",
+		BaseURL:               nil,
+	}
+	require.NoError(t, err)
+
+	bytes, e := BundleBytes(specBytes, config, composeBundleOpts)
+	assert.NoError(t, e)
+
+	if err != nil {
+		t.Fatalf("Failed to render OpenAPI document: %v", err)
+	}
+
+	//schema objects
+	assert.Contains(t, string(bytes), "AccountObject", "should contain schema reference targets")
+
+	//examples references
+	assert.Contains(t, string(bytes), "AccountExample", "should contain example reference targets")
+
+	//link references
+	assert.Contains(t, string(bytes), "AccountLink", "should contain link reference targets")
+
+	//parameter references
+	assert.Contains(t, string(bytes), "AccountFilter", "should contain parameter reference targets")
+
+	//requestBody references
+	assert.Contains(t, string(bytes), "ExampleRequest", "should contain requestBody reference targets")
+
+	//responses references
+	assert.Contains(t, string(bytes), "ExampleResponse", "should contain resposne reference targets")
+
+	//SecuretyScheme references
+	assert.Contains(t, string(bytes), "BearerAuth", "should contain SecurityScheme reference targets")
+
+	//header references
+	assert.Contains(t, string(bytes), "X-RateLimit-Remaining", "should contain header reference targets")
+
 }
 
 func TestBundleDocument_MinimalRemoteRefsBundledLocallyInline(t *testing.T) {
@@ -143,14 +189,15 @@ func TestBundleDocument_MinimalRemoteRefsBundledLocallyInline(t *testing.T) {
 	require.NoError(t, err)
 
 	bytes, e := BundleBytes(specBytes, config, BundleOptions{RelativeRefHandling: RefHandlingInline})
-	spew.Dump(string(bytes))
 	assert.NoError(t, e)
-	assert.Contains(t, string(bytes), "Name of the account", "should contain all reference targets")
+	assert.Contains(t, string(bytes), "A list of accounts.", "should contain all reference targets")
 }
 
 func TestBundleDocument_MinimalRemoteRefsBundledRemotely(t *testing.T) {
-	baseURL, err := url.Parse("https://raw.githubusercontent.com/felixjung/libopenapi/authed-remote/test_specs/minimal_remote_refs")
-
+	baseURL, err := url.Parse("https://raw.githubusercontent.com/pb33f/libopenapi/refs/heads/main/test_specs/minimal_remote_refs/openapi.yaml")
+	if err != nil {
+		t.Fatalf("Failed to parse URL: %v", err)
+	}
 	refBytes, err := os.ReadFile("../test_specs/minimal_remote_refs/schemas/components.openapi.yaml")
 	require.NoError(t, err)
 

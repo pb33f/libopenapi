@@ -1,0 +1,33 @@
+components:
+  schemas:
+    AccountObject: 
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+  requestBodies:
+    ExampleRequest:
+      description: Minimal request body
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              name:
+                type: string
+  links:
+    AccountLink:
+      operationId: listAccounts
+      parameters:
+        userId: $response.body#/id
+  headers:
+    X-RateLimit-Remaining:
+      schema:
+        type: integer

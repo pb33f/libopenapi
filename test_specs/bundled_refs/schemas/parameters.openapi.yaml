@@ -1,0 +1,14 @@
+components:
+  parameters:
+    AccountFilter:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema:
+        type: string

@@ -1,0 +1,25 @@
+components:
+  responses:
+    ListAccounts:
+      description: A successful response
+      content:
+        application/json:
+          schema:
+            type: array
+            items:
+              type: string
+    ExampleResponse:
+      description: Example placeholder response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+    AccountResponse:
+      description: Account response
+      content:
+        application/json:
+          schema:
+            $ref: ./components.openapi.yaml#/components/schemas/AccountObject

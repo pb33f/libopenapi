@@ -1,0 +1,87 @@
+openapi: 3.1.0
+info:
+  description: Example API spec
+  version: v1
+  title: Example
+  contact:
+    name: Example
+    email: example@example.com
+    url: www.example.com
+  license:
+    name: Example
+    url: www.example.com
+tags:
+  - name: Account
+    description: Account
+servers:
+  - url: https://<hidden>
+paths:
+  /api/v1/Accounts:
+    get:
+      summary: TODO
+      description: TODO
+      security:
+        - BearerAuth: []
+      tags:
+        - Account
+      operationId: listAccounts
+      parameters:
+        - $ref: ./schemas/parameters.openapi.yaml#/components/parameters/AccountFilter
+      responses:
+        "200":
+          $ref: ./schemas/responses.openapi.yaml#/components/responses/ListAccounts
+  /api/v1/accounts/{accountId}:
+    get:
+      summary: get account by id
+      description: get account by id
+      security:
+        - BearerAuth: []
+      tags:
+        - Account
+      operationId: getAccount
+      parameters:
+        - $ref: ./schemas/parameters.openapi.yaml#/components/parameters/AccountId
+      responses:
+        "200":
+          $ref: ./schemas/responses.openapi.yaml#/components/responses/AccountResponse
+  /api/v1/example:
+    get:
+      summary: TODO
+      description: TODO
+      tags:
+        - Account
+      operationId: placeholder
+      requestBody:
+        $ref: ./schemas/components.openapi.yaml#/components/requestBodies/ExampleRequest
+      responses:
+        "200":
+          $ref: ./schemas/responses.openapi.yaml#/components/responses/ExampleResponse
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: ./schemas/components.openapi.yaml#/components/securitySchemes/BearerAuth
+  schemas:
+    Foobar:
+      type: string
+      description: >
+        Something nice to say.
+  parameters:
+    AccountFilter:
+      $ref: ./schemas/parameters.openapi.yaml#/components/parameters/AccountFilter
+  examples:
+    AccountExample:
+      $ref: ./schemas/examples.openapi.yaml#/components/examples/AccountExample
+  responses:
+    ListAccounts:
+      $ref: ./schemas/responses.openapi.yaml#/components/responses/ListAccounts
+    ExampleResponse:
+      $ref: ./schemas/responses.openapi.yaml#/components/responses/ExampleResponse
+  requestBodies:
+    ExampleRequest:
+      $ref: ./schemas/components.openapi.yaml#/components/requestBodies/ExampleRequest
+  links:
+    AccountLink:
+      $ref: ./schemas/components.openapi.yaml#/components/links/AccountLink
+  headers:
+    RateLimit-Limit:
+      $ref: ./schemas/components.openapi.yaml#/components/headers/X-RateLimit-Remaining
