@@ -87,7 +87,8 @@ func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
 func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 	// dive into the schema and render it
 	structure := make(map[string]any)
-	wr.DiveIntoSchema(schema, rootType, structure, 0)
+	visited := make(map[string]bool)
+	wr.DiveIntoSchema(schema, rootType, structure, visited, 0)
 	return structure[rootType]
 }
 
@@ -100,20 +101,20 @@ func (wr *SchemaRenderer) DisableRequiredCheck() {
 
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
 // the schema, then the renderer will attempt to generate a value based on the schema type, format and pattern.
-func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, structure map[string]any, depth int) {
+func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, structure map[string]any, visited map[string]bool, depth int) bool {
 	// got an example? use it, we're done here.
 	if schema.Example != nil {
 		var example any
 		_ = schema.Example.Decode(&example)
 
 		structure[key] = example
-		return
+		return true
 	}
 
 	// emergency break to prevent stack overflow from ever occurring
 	if depth > 100 {
 		structure[key] = "to deep to continue rendering..."
-		return
+		return true
 	}
 
 	// render out a string.
@@ -154,7 +155,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						}
 					}
 					structure[key] = renderedExamples
-					return
+					return true
 				} else {
 					// render the first example
 					exmp := schema.Examples[0]
@@ -164,7 +165,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						renderedExample = fmt.Sprint(ex)
 					}
 					structure[key] = renderedExample
-					return
+					return true
 				}
 			}
 
@@ -224,7 +225,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				}
 			}
 		}
-		return
+		return true
 	}
 
 	// handle numbers
@@ -262,7 +263,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						renderedExample = ex
 					}
 					structure[key] = renderedExample
-					return
+					return true
 				}
 			}
 
@@ -281,7 +282,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				structure[key] = wr.RandomInt(minimum, maximum)
 			}
 		}
-		return
+		return true
 	}
 
 	// handle booleans
@@ -292,6 +293,14 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	// handle objects
 	if slices.Contains(schema.Type, objectType) || (schema.Properties != nil && schema.Properties.Len() > 0) ||
 		schema.AllOf != nil || (schema.DependentSchemas != nil && schema.DependentSchemas.Len() > 0) || schema.OneOf != nil || schema.AnyOf != nil {
+
+		if schema.ParentProxy.IsReference() && visited[schema.ParentProxy.GetReference()] {
+			return false
+		}
+
+		if schema.ParentProxy.IsReference() {
+			visited[schema.ParentProxy.GetReference()] = true
+		}
 
 		properties := schema.Properties
 		propertyMap := make(map[string]any)
@@ -313,8 +322,16 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			for propName, propValue := range checkProps.FromOldest() {
 				// render property
 				propertySchema := propValue.Schema()
+				required := slices.Contains(schema.Required, propName)
 				if propertySchema != nil {
-					wr.DiveIntoSchema(propertySchema, propName, propertyMap, depth+1)
+					success := wr.DiveIntoSchema(propertySchema, propName, propertyMap, copyMap(visited), depth+1)
+					if !success {
+						if required {
+							return false
+						}
+						propertyMap[propName] = nil
+						continue
+					}
 				} else {
 					// If the property is required but not specified in the schema,
     			// any value is allowed for this property (no specific validation).
@@ -330,7 +347,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			allOfMap := make(map[string]any)
 			for _, allOfSchema := range allOf {
 				allOfCompiled := allOfSchema.Schema()
-				wr.DiveIntoSchema(allOfCompiled, allOfType, allOfMap, depth+1)
+				success := wr.DiveIntoSchema(allOfCompiled, allOfType, allOfMap, copyMap(visited), depth+1)
+				if !success {
+					return false
+				}
+
 				if m, ok := allOfMap[allOfType].(map[string]any); ok {
 					for k, v := range m {
 						propertyMap[k] = v
@@ -350,7 +371,10 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				// only map if the property exists
 				if propertyMap[k] != nil {
 					dependentSchemaCompiled := dependentSchema.Schema()
-					wr.DiveIntoSchema(dependentSchemaCompiled, k, dependentSchemasMap, depth+1)
+					success := wr.DiveIntoSchema(dependentSchemaCompiled, k, dependentSchemasMap, copyMap(visited), depth+1)
+					if !success {
+						return false
+					}
 					for i, v := range dependentSchemasMap[k].(map[string]any) {
 						propertyMap[k].(map[string]any)[i] = v
 					}
@@ -360,10 +384,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		// handle oneOf
 		oneOf := schema.OneOf
-		if len(oneOf) > 0 {
+		for _, oneOfSchema := range oneOf {
 			oneOfMap := make(map[string]any)
-			oneOfCompiled := oneOf[0].Schema()
-			wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, depth+1)
+			oneOfCompiled := oneOfSchema.Schema()
+			success := wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, copyMap(visited), depth+1)
+			if !success {
+				continue
+			}
 			if m, ok := oneOfMap[oneOfType].(map[string]any); ok {
 				for k, v := range m {
 					propertyMap[k] = v
@@ -372,14 +399,20 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			if m, ok := oneOfMap[oneOfType].(string); ok {
 				propertyMap[oneOfType] = m
 			}
+			// to do: throw error if none of the oneOf schemas was successfully rendered
+
+			break
 		}
 
 		// handle anyOf
 		anyOf := schema.AnyOf
-		if len(anyOf) > 0 {
+		for _, anyOfSchema := range anyOf {
 			anyOfMap := make(map[string]any)
-			anyOfCompiled := anyOf[0].Schema()
-			wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, depth+1)
+			anyOfCompiled := anyOfSchema.Schema()
+			success := wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, copyMap(visited), depth+1)
+			if !success {
+				continue
+			}
 			if m, ok := anyOfMap[anyOfType].(map[string]any); ok {
 				for k, v := range m {
 					propertyMap[k] = v
@@ -388,9 +421,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			if m, ok := anyOfMap[anyOfType].(string); ok {
 				propertyMap[anyOfType] = m
 			}
+			// to do: throw error if none of the oneOf schemas was successfully rendered
+
+			break
 		}
+
 		structure[key] = propertyMap
-		return
+		return true
 	}
 
 	if slices.Contains(schema.Type, arrayType) {
@@ -407,12 +444,19 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 					minItems = *schema.MinItems
 				}
 
-				var renderedItems []any
+				renderedItems := []any{}
 				// build up the array
 				for i := int64(0); i < minItems; i++ {
 					itemMap := make(map[string]any)
 					itemsSchemaCompiled := itemsSchema.A.Schema()
-					wr.DiveIntoSchema(itemsSchemaCompiled, itemsType, itemMap, depth+1)
+
+					success := wr.DiveIntoSchema(itemsSchemaCompiled, itemsType, itemMap, copyMap(visited), depth+1)
+					if !success {
+						// to do handle minItems correctly
+						renderedItems = []any{}
+						break
+					}
+
 					if multipleItems, ok := itemMap[itemsType].([]any); ok {
 						renderedItems = multipleItems
 					} else {
@@ -420,10 +464,12 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 					}
 				}
 				structure[key] = renderedItems
-				return
+				return true
 			}
 		}
 	}
+
+	return true
 }
 
 func readFile(file io.Reader) []string {
@@ -432,6 +478,14 @@ func readFile(file io.Reader) []string {
 		return []string{}
 	}
 	return strings.Split(string(bytes), "\n")
+}
+
+func copyMap(m map[string]bool) map[string]bool {
+	res := make(map[string]bool)
+	for key, value := range m {
+		res[key] = value
+	}
+	return res
 }
 
 // ReadDictionary will read a dictionary file and return a slice of strings.
