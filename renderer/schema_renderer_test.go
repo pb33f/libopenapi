@@ -73,8 +73,9 @@ example: dog`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.Equal(t, journeyMap["pb33f"], "dog")
 }
@@ -85,8 +86,9 @@ func TestRenderExample_StringWithNoExample(t *testing.T) {
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.GreaterOrEqual(t, len(journeyMap["pb33f"].(string)), 3)
@@ -100,8 +102,9 @@ format: date-time`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	now := time.Now()
 	assert.NotNil(t, journeyMap["pb33f"])
@@ -115,8 +118,9 @@ pattern: "^[a-z]{5,10}@[a-z]{5,10}\\.(com|net|org)$"` // an email address
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 
@@ -133,8 +137,9 @@ pattern: "^\\([0-9]{3}\\)-[0-9]{3}-[0-9]{4}$"` // a phone number
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 
@@ -150,8 +155,9 @@ format: date`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	now := time.Now().Format("2006-01-02")
 
@@ -166,8 +172,9 @@ format: time`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	now := time.Now().Format("15:04:05")
 
@@ -182,8 +189,9 @@ format: email`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.True(t, strings.Contains(journeyMap["pb33f"].(string), "@"))
@@ -196,8 +204,9 @@ format: hostname`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.True(t, strings.Contains(journeyMap["pb33f"].(string), ".com"))
@@ -209,9 +218,10 @@ format: ipv4`
 
 	compiled := getSchema([]byte(testObject))
 
+	visited := make(map[string]bool)
 	journeyMap := make(map[string]any)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	segs := strings.Split(journeyMap["pb33f"].(string), ".")
@@ -225,8 +235,9 @@ format: ipv6`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	segs := strings.Split(journeyMap["pb33f"].(string), ":")
@@ -240,8 +251,9 @@ format: uri`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	uri, e := url.Parse(journeyMap["pb33f"].(string))
@@ -257,8 +269,9 @@ format: uuid`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	segs := strings.Split(journeyMap["pb33f"].(string), "-")
@@ -272,8 +285,9 @@ format: byte`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.NotEmpty(t, journeyMap["pb33f"].(string))
@@ -286,8 +300,9 @@ format: password`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.NotEmpty(t, journeyMap["pb33f"].(string))
@@ -300,8 +315,9 @@ format: uri-reference`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	segs := strings.Split(journeyMap["pb33f"].(string), "/")
@@ -315,8 +331,9 @@ format: binary`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	encoded := journeyMap["pb33f"].(string)
 	decodedString, err := base64.StdEncoding.DecodeString(encoded)
@@ -332,8 +349,9 @@ example: 3.14`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Equal(t, 3.14, journeyMap["pb33f"])
@@ -346,8 +364,9 @@ minLength: 10`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.GreaterOrEqual(t, len(journeyMap["pb33f"].(string)), 10)
@@ -360,8 +379,9 @@ maxLength: 10`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.LessOrEqual(t, len(journeyMap["pb33f"].(string)), 10)
@@ -375,8 +395,9 @@ minLength: 3`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.LessOrEqual(t, len(journeyMap["pb33f"].(string)), 8)
@@ -389,8 +410,9 @@ func TestRenderExample_NumberNoExample_Default(t *testing.T) {
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Greater(t, journeyMap["pb33f"], int64(0))
@@ -404,8 +426,9 @@ minimum: 60`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.GreaterOrEqual(t, journeyMap["pb33f"], int64(60))
@@ -419,8 +442,9 @@ maximum: 4`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.GreaterOrEqual(t, journeyMap["pb33f"], int64(1))
@@ -434,8 +458,9 @@ format: float`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Greater(t, journeyMap["pb33f"], float32(0))
@@ -448,8 +473,9 @@ format: double`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Greater(t, journeyMap["pb33f"], float64(0))
@@ -462,8 +488,9 @@ format: int32`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Greater(t, journeyMap["pb33f"], 0)
@@ -476,8 +503,9 @@ format: int64`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Greater(t, journeyMap["pb33f"], int64(0))
@@ -490,8 +518,9 @@ example: true`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.True(t, journeyMap["pb33f"].(bool))
@@ -503,8 +532,9 @@ func TestRenderExample_Boolean_WithoutExample(t *testing.T) {
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.True(t, journeyMap["pb33f"].(bool))
@@ -518,8 +548,9 @@ items:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -534,8 +565,9 @@ items:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -551,8 +583,9 @@ items:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 3)
@@ -571,8 +604,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 2)
@@ -597,8 +631,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 2)
@@ -622,8 +657,9 @@ allOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 2)
@@ -650,8 +686,9 @@ dependentSchemas:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -667,8 +704,9 @@ allOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -691,8 +729,9 @@ oneOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -707,8 +746,9 @@ oneOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -731,8 +771,9 @@ anyOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -747,8 +788,9 @@ anyOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Len(t, journeyMap["pb33f"], 1)
@@ -798,8 +840,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["id"].(string), "d1404c5c-69bd-4cd2-a4cf-b47c79a30112")
@@ -862,8 +905,9 @@ example:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.Equal(t, journeyMap["pb33f"].(map[string]interface{})["id"].(string), "not-a-uuid")
@@ -914,8 +958,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	assert.NotEmpty(t, journeyMap["pb33f"].(map[string]interface{})["id"].(string))
@@ -959,8 +1004,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	burger := journeyMap["pb33f"].(map[string]interface{})["burger"].(map[string]interface{})
@@ -986,8 +1032,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	drink := journeyMap["pb33f"].(map[string]interface{})["drink"].(string)
@@ -1010,8 +1057,9 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	drink := journeyMap["pb33f"].(map[string]interface{})["drink"].(string)
@@ -1040,9 +1088,10 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
 	wr.DisableRequiredCheck()
-	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	drink := journeyMap["pb33f"].(map[string]interface{})["drink"].(string)
@@ -1064,8 +1113,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"name":"pb33f"}`, string(rendered))
 }
@@ -1079,8 +1129,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"name":"pb33f"}`, string(rendered))
 }
@@ -1094,8 +1145,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"count":9934.223}`, string(rendered))
 }
@@ -1109,8 +1161,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"count":9934}`, string(rendered))
 }
@@ -1132,8 +1185,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"args":{"arrParam":"test,test2","arrParamExploded":["1"]}}`, string(rendered))
 }
@@ -1157,8 +1211,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"args":{"arrParam":"test,test2","arrParamExploded":["1","2"]}}`, string(rendered))
 }
@@ -1186,8 +1241,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"bigint":8821239038968084,"bigintStr":"9223372036854775808","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586"}`, string(rendered))
 }
@@ -1218,8 +1274,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"bigint":8821239038968084,"bigintStr":"9223372036854775808","decimal":3.141592653589793,"decimalStr":"3.14159265358979344719667586"}`, string(rendered))
 }
@@ -1243,8 +1300,9 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(compiled, "pb33f", schema, 0)
+	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["bigint"])
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["bigintStr"])
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["decimal"])
@@ -1318,8 +1376,9 @@ func TestWordRenderer_RandomWordMinMaxZero(t *testing.T) {
 func TestRenderSchema_NestedDeep(t *testing.T) {
 	deepNest := createNestedStructure()
 	journeyMap := make(map[string]any)
+	visited := make(map[string]bool)
 	wr := createSchemaRenderer()
-	wr.DiveIntoSchema(deepNest.Schema(), "pb33f", journeyMap, 0)
+	wr.DiveIntoSchema(deepNest.Schema(), "pb33f", journeyMap, visited, 0)
 
 	assert.NotNil(t, journeyMap["pb33f"])
 	journeyLevel := 0
