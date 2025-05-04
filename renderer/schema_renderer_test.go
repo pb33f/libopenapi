@@ -1769,6 +1769,48 @@ schemas:
 	assert.Equal(t, `{"name":"Maria the frog"}`, string(rendered))
 }
 
+func TestRenderSchema_Ref_SkipCircularProp(t *testing.T) {
+	yml := `
+schemas:
+  pet:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Maria the frog
+      color:
+        type: string
+        example: green
+      bestFriend:
+        $ref: "#/schemas/pet"
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("pet")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+  wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"bestFriend":{"color":"green","name":"Maria the frog"},"color":"green","name":"Maria the frog"}`, string(rendered))
+}
 
 func TestRenderSchema_Ref_FailRenderOfCircularRef(t *testing.T) {
 	yml := `
@@ -1814,6 +1856,7 @@ schemas:
   success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
   assert.False(t, success)
 }
+
 
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
