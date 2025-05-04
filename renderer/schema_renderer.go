@@ -294,13 +294,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	if slices.Contains(schema.Type, objectType) || (schema.Properties != nil && schema.Properties.Len() > 0) ||
 		schema.AllOf != nil || (schema.DependentSchemas != nil && schema.DependentSchemas.Len() > 0) || schema.OneOf != nil || schema.AnyOf != nil {
 
-		if schema.ParentProxy.IsReference() && visited[schema.ParentProxy.GetReference()] {
-			return false
-		}
-
 		if schema.ParentProxy.IsReference() {
+			if visited[schema.ParentProxy.GetReference()] {
+				return false
+			}
 			visited[schema.ParentProxy.GetReference()] = true
 		}
+
 
 		properties := schema.Properties
 		propertyMap := make(map[string]any)
