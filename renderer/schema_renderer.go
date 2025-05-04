@@ -329,7 +329,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 						if required {
 							return false
 						}
-						propertyMap[propName] = nil
+						delete(propertyMap, propName)
 						continue
 					}
 				} else {
