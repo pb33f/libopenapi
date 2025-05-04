@@ -68,6 +68,10 @@ func getSchema(schema []byte) *highbase.Schema {
 	return schemaProxy.Schema()
 }
 
+func createVisitedMap() map[string]bool {
+  return make(map[string]bool)
+}
+
 func TestRenderExample_StringWithExample(t *testing.T) {
 	testObject := `type: string
 example: dog`
@@ -75,8 +79,8 @@ example: dog`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
-	wr := createSchemaRenderer()
+	visited := createVisitedMap()
+  wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.Equal(t, journeyMap["pb33f"], "dog")
@@ -88,7 +92,7 @@ func TestRenderExample_StringWithNoExample(t *testing.T) {
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -104,7 +108,7 @@ format: date-time`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -120,7 +124,7 @@ pattern: "^[a-z]{5,10}@[a-z]{5,10}\\.(com|net|org)$"` // an email address
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -139,7 +143,7 @@ pattern: "^\\([0-9]{3}\\)-[0-9]{3}-[0-9]{4}$"` // a phone number
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -157,7 +161,7 @@ format: date`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -174,7 +178,7 @@ format: time`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -191,7 +195,7 @@ format: email`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -206,7 +210,7 @@ format: hostname`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -220,7 +224,7 @@ format: ipv4`
 
 	compiled := getSchema([]byte(testObject))
 
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	journeyMap := make(map[string]any)
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
@@ -237,7 +241,7 @@ format: ipv6`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -253,7 +257,7 @@ format: uri`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -271,7 +275,7 @@ format: uuid`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -287,7 +291,7 @@ format: byte`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -302,7 +306,7 @@ format: password`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -317,7 +321,7 @@ format: uri-reference`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -333,7 +337,7 @@ format: binary`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -351,7 +355,7 @@ example: 3.14`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -366,7 +370,7 @@ minLength: 10`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -381,7 +385,7 @@ maxLength: 10`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -397,7 +401,7 @@ minLength: 3`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -412,7 +416,7 @@ func TestRenderExample_NumberNoExample_Default(t *testing.T) {
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -428,7 +432,7 @@ minimum: 60`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -444,7 +448,7 @@ maximum: 4`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -460,7 +464,7 @@ format: float`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -475,7 +479,7 @@ format: double`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -490,7 +494,7 @@ format: int32`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -505,7 +509,7 @@ format: int64`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -520,7 +524,7 @@ example: true`
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -534,7 +538,7 @@ func TestRenderExample_Boolean_WithoutExample(t *testing.T) {
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -550,7 +554,7 @@ items:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -567,7 +571,7 @@ items:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -585,7 +589,7 @@ items:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -606,7 +610,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -633,7 +637,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -659,7 +663,7 @@ allOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -688,7 +692,7 @@ dependentSchemas:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -706,7 +710,7 @@ allOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -731,7 +735,7 @@ oneOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -748,7 +752,7 @@ oneOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -773,7 +777,7 @@ anyOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -790,7 +794,7 @@ anyOf:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -842,7 +846,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -907,7 +911,7 @@ example:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -960,7 +964,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -1006,7 +1010,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -1034,7 +1038,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -1059,7 +1063,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
@@ -1090,7 +1094,7 @@ properties:
 	compiled := getSchema([]byte(testObject))
 
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DisableRequiredCheck()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
@@ -1115,7 +1119,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1131,7 +1135,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1147,7 +1151,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1163,7 +1167,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1187,7 +1191,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1213,7 +1217,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1243,7 +1247,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1276,7 +1280,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1302,7 +1306,7 @@ properties:
 
 	compiled := getSchema([]byte(testObject))
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", schema, visited, 0)
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["bigint"])
@@ -1350,7 +1354,7 @@ schemas:
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
@@ -1394,7 +1398,7 @@ schemas:
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["address"])
@@ -1451,12 +1455,275 @@ schemas:
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"name":"John Doe","pets":[{"name":"Bob the cat","offspring":[]}]}`, string(rendered))
 }
+
+func TestRenderSchema_Ref_AllOfCircularArray(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+      pets:  
+        type: array
+        items: 
+          allOf:
+            - $ref: "#/schemas/animal"
+  animal:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Bob the cat
+      offspring:
+        type: array
+        items:
+          $ref: "#/schemas/animal"
+    required:
+      - name
+      - offspring
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"name":"John Doe","pets":[{"name":"Bob the cat","offspring":[]}]}`, string(rendered))
+}
+
+func TestRenderSchema_Ref_AllOfCircularArray2(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+      friends:  
+        type: array
+        items: 
+          allOf:
+            - $ref: "#/schemas/human"
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"friends":[{"friends":[],"name":"John Doe"}],"name":"John Doe"}`, string(rendered))
+}
+
+func TestRenderSchema_Ref_AnyOfCircularArray(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+      pets:  
+        type: array
+        items: 
+          anyOf:
+            - $ref: "#/schemas/animal"
+  animal:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Bob the cat
+      offspring:
+        type: array
+        items:
+          $ref: "#/schemas/animal"
+    required:
+      - name
+      - offspring
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"name":"John Doe","pets":[{"name":"Bob the cat","offspring":[]}]}`, string(rendered))
+}
+
+func TestRenderSchema_Ref_AnyOfCircularArray2(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+      friends:  
+        type: array
+        items: 
+          anyOf:
+            - $ref: "#/schemas/human"
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"friends":[{"friends":[],"name":"John Doe"}],"name":"John Doe"}`, string(rendered))
+}
+
+func TestRenderSchema_Ref_AnyOfCircularArraySkip(t *testing.T) {
+	yml := `
+schemas:
+  country:
+    type: object
+    properties:
+      president:
+        $ref: "#/schemas/human"
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+      pet:
+        $ref: "#/schemas/pet"
+  pet:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Hilbert the fish
+      bestFriend:
+        anyOf:
+          - $ref: "#/schemas/pet"
+          - $ref: "#/schemas/toy"
+  toy:
+    type: object
+    properties:
+      model:
+        type: string
+        example: ball
+      age: 
+        type: number
+        example: 1
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"name":"John Doe","pet":{"bestFriend":{"age":1,"model":"ball"},"name":"Hilbert the fish"}}`, string(rendered))
+}
+
 
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
@@ -1525,7 +1792,7 @@ func TestWordRenderer_RandomWordMinMaxZero(t *testing.T) {
 func TestRenderSchema_NestedDeep(t *testing.T) {
 	deepNest := createNestedStructure()
 	journeyMap := make(map[string]any)
-	visited := make(map[string]bool)
+	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(deepNest.Schema(), "pb33f", journeyMap, visited, 0)
 
