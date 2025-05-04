@@ -17,8 +17,10 @@ import (
 	"time"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -1307,6 +1309,153 @@ properties:
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["bigintStr"])
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["decimal"])
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["decimalStr"])
+}
+
+func TestRenderSchema_Ref(t *testing.T) {
+	yml := `
+schemas:
+  restaurant:
+    type: object
+    properties:
+      address:
+        type: string
+        example: Baker Street
+      owner:
+        $ref: "#/schemas/person"
+  person:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowRestaurant := components.FindSchema("restaurant")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := make(map[string]bool)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"address":"Baker Street","owner":{"name":"John Doe"}}`, string(rendered))
+}
+
+func TestRenderSchema_Ref_NoExample(t *testing.T) {
+	yml := `
+schemas:
+  restaurant:
+    type: object
+    properties:
+      address:
+        type: string
+      owner:
+        $ref: "#/schemas/person"
+  person:
+    type: object
+    properties:
+      name:
+        type: string
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowRestaurant := components.FindSchema("restaurant")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := make(map[string]bool)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["address"])
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["owner"])
+	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["owner"].(map[string]interface{})["name"])
+}
+
+
+func TestRenderSchema_Ref_CircularArray(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: John Doe
+      pets:  
+        type: array
+        items: 
+          $ref: "#/schemas/animal"
+  animal:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Bob the cat
+      offspring:
+        type: array
+        items:
+          $ref: "#/schemas/animal"
+    required:
+      - name
+      - offspring
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := make(map[string]bool)
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"name":"John Doe","pets":[{"name":"Bob the cat","offspring":[]}]}`, string(rendered))
 }
 
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
