@@ -384,7 +384,9 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 		// handle oneOf
 		oneOf := schema.OneOf
+		oneOfSuccess := true
 		for _, oneOfSchema := range oneOf {
+			oneOfSuccess = false
 			oneOfMap := make(map[string]any)
 			oneOfCompiled := oneOfSchema.Schema()
 			success := wr.DiveIntoSchema(oneOfCompiled, oneOfType, oneOfMap, copyMap(visited), depth+1)
@@ -399,14 +401,19 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			if m, ok := oneOfMap[oneOfType].(string); ok {
 				propertyMap[oneOfType] = m
 			}
-			// to do: throw error if none of the oneOf schemas was successfully rendered
+			oneOfSuccess = true
 
 			break
 		}
+		if !oneOfSuccess {
+			return false
+		}
 
 		// handle anyOf
+		anyOfSuccess := true
 		anyOf := schema.AnyOf
 		for _, anyOfSchema := range anyOf {
+			anyOfSuccess = false
 			anyOfMap := make(map[string]any)
 			anyOfCompiled := anyOfSchema.Schema()
 			success := wr.DiveIntoSchema(anyOfCompiled, anyOfType, anyOfMap, copyMap(visited), depth+1)
@@ -421,9 +428,13 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			if m, ok := anyOfMap[anyOfType].(string); ok {
 				propertyMap[anyOfType] = m
 			}
-			// to do: throw error if none of the oneOf schemas was successfully rendered
+			anyOfSuccess = true
 
 			break
+		}
+
+		if !anyOfSuccess {
+			return false
 		}
 
 		structure[key] = propertyMap
