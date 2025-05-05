@@ -702,6 +702,7 @@ dependentSchemas:
 	assert.True(t, journeyMap["pb33f"].(map[string]interface{})["fishCake"].(map[string]interface{})["bones"].(bool))
 }
 
+
 func TestRenderExample_String_AllOf(t *testing.T) {
 	testObject := `type: object
 allOf:
@@ -1997,8 +1998,64 @@ schemas:
 	wr := createSchemaRenderer()
   success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
   assert.False(t, success)
+
 }
 
+func TestRenderExample_Ref_DependentSchemasFail(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: "Lena"
+      pet:
+        type: object
+        properties: 
+          name:
+            type: string
+            example: Luis the kangaroo
+    dependentSchemas:
+      pet:
+        properties:
+          friend:
+            $ref: "#/schemas/toy"
+        required:
+          - friend
+  toy:
+    type: object
+    properties:
+      enemy:
+        $ref: "#/schemas/toy"
+    required:
+      - enemy
+`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+  success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+  assert.False(t, success)
+}
 
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {
 	assert.NotNil(t, CreateRendererUsingDefaultDictionary())
