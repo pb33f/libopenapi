@@ -1823,6 +1823,64 @@ schemas:
   assert.Equal(t, `{"friend":{"name":"John Doe"},"name":"John Doe"}`, string(rendered))
 }
 
+func TestRenderSchema_Ref_OneOfCircularArraySkip2(t *testing.T) {
+	yml := `
+schemas:
+  pet:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Cathy the cat
+      friend:
+        oneOf:
+          - $ref: "#/schemas/human"
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Maria
+      enemy:
+        oneOf:
+          - $ref: "#/schemas/human"
+          - $ref: "#/schemas/alien"
+  alien:
+    type: object
+    properties:
+      name: 
+        type: string
+        example: Alf
+`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("pet")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+  rendered, _ := json.Marshal(schema["pb33f"])
+  assert.Equal(t, `{"friend":{"enemy":{"name":"Alf"},"name":"Maria"},"name":"Cathy the cat"}`, string(rendered))
+}
+
+
 func TestRenderSchema_Ref_OneOfCircularArrayFail(t *testing.T) {
 	yml := `
 schemas:
@@ -1998,7 +2056,64 @@ schemas:
 	wr := createSchemaRenderer()
   success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
   assert.False(t, success)
+}
 
+func TestRenderExample_Ref_DependentSchemasCircularSkip(t *testing.T) {
+	yml := `
+schemas:
+  human:
+    type: object
+    properties:
+      name:
+        type: string
+        example: "Lena"
+      pet:
+        type: object
+        properties: 
+          name:
+            type: string
+            example: Luis the kangaroo
+    dependentSchemas:
+      pet:
+        properties:
+          friend:
+            $ref: "#/schemas/toy"
+        required:
+          - friend
+  toy:
+    type: object
+    properties:
+      name:
+        type: string
+        example: Teddy bear
+      enemy:
+        $ref: "#/schemas/toy"
+`
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var components v3.Components
+	err := low.BuildModel(idxNode.Content[0], &components)
+	assert.NoError(t, err)
+
+	err = components.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+  lowRestaurant := components.FindSchema("human")
+	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
+		ValueNode: lowRestaurant.ValueNode,
+		Reference: lowRestaurant.Reference,
+		Value: lowRestaurant.Value,
+	}
+	schemaProxy := highbase.NewSchemaProxy(&lowNode)
+	schema := make(map[string]any)
+	visited := createVisitedMap()
+	wr := createSchemaRenderer()
+  wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"name":"Lena","pet":{"friend":{"name":"Teddy bear"},"name":"Luis the kangaroo"}}`, string(rendered))
 }
 
 func TestRenderExample_Ref_DependentSchemasFail(t *testing.T) {
