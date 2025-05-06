@@ -85,9 +85,11 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 // If anything goes wrong during the build, then nothing is returned and the error that occurred can
 // be retrieved by using GetBuildError()
 func (sp *SchemaProxy) Schema() *Schema {
-	if sp.rendered != nil {
-		return sp.rendered
-	}
+	sp.rendered = sp.TempSchema()
+	return sp.rendered
+}
+
+func (sp *SchemaProxy) TempSchema() *Schema {
 	schema := new(Schema)
 	utils.CheckForMergeNodes(sp.vn)
 	err := schema.Build(sp.ctx, sp.vn, sp.idx)
@@ -96,8 +98,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 		return nil
 	}
 	schema.ParentProxy = sp // https://github.com/pb33f/libopenapi/issues/29
-	sp.rendered = schema
-
 	// for all the nodes added, copy them over to the schema
 	if sp.NodeMap != nil {
 		sp.NodeMap.Nodes.Range(func(key, value any) bool {
