@@ -20,14 +20,14 @@ complex specifications you can think of.
 If your company is using `libopenapi`, please considering [supporting this project](https://github.com/sponsors/daveshanley), 
 like our _very kind_ sponsors:
 
-<a href="https://speakeasy.com/?utm_source=libopenapi+repo&utm_medium=github+sponsorship">
+<a href="https://speakeasy.com/editor?utm_source=libopenapi+repo&utm_medium=github+sponsorship">
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset=".github/sponsors/speakeasy-github-sponsor-dark.svg">
   <img alt="speakeasy'" src=".github/sponsors/speakeasy-github-sponsor-light.svg">
 </picture>
 </a>
 
-[Speakeasy](https://speakeasy.com/?utm_source=libopenapi+repo&utm_medium=github+sponsorship)
+[Speakeasy](https://speakeasy.com/editor?utm_source=libopenapi+repo&utm_medium=github+sponsorship)
 
 <a href="https://bump.sh/?utm_source=quobix&utm_campaign=sponsor">
 <picture>
