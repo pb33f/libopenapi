@@ -1970,3 +1970,10 @@ func TestExtractSchema_CheckExampleNodesExtracted(t *testing.T) {
 		t.Fail()
 	}
 }
+
+func TestSchema_Hash_Empty(t *testing.T) {
+
+	var s *Schema
+	assert.NotNil(t, s.Hash())
+
+}
