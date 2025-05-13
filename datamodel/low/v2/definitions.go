@@ -277,6 +277,8 @@ func (s *SecurityDefinitions) Build(ctx context.Context, _, root *yaml.Node, idx
 	var defLabel *yaml.Node
 	totalDefinitions := 0
 
+	// TODO:
+	// Same issue here
 	buildFunc := func(label *yaml.Node, value *yaml.Node, idx *index.SpecIndex,
 		r chan definitionResult[*SecurityScheme], e chan error,
 	) {
