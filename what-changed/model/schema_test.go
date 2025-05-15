@@ -3416,3 +3416,70 @@ components:
 	assert.Equal(t, changes.TotalBreakingChanges(), 2)
 	assert.Len(t, changes.GetPropertyChanges(), 2)
 }
+
+// https://github.com/pb33f/openapi-changes/issues/203
+func TestCompareSchemas_CheckRogueDescription(t *testing.T) {
+	left := `openapi: 3.0.3
+paths:
+  "/test-url":
+    get:
+      summary: Example endpoint
+      responses:
+        '200':
+          description: Success!
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/bar"
+components:
+  schemas:
+    bar:
+      type: object
+      additionalProperties: true
+      properties:
+        test:
+          type: string
+          description: Some existing value.
+          default: ''
+`
+
+	right := `openapi: 3.0.3
+paths:
+  "/test-url":
+    get:
+      summary: Example endpoint
+      responses:
+        '200':
+          description: Success!
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/bar"
+components:
+  schemas:
+    bar:
+      type: object
+      additionalProperties: true
+      properties:
+        test:
+          type: string
+          description: Some existing value.
+          default: ''
+        foo:
+          type: string
+          description: Foo.
+          default: ''`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("bar").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("bar").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, changes.TotalChanges(), 1)
+	assert.Equal(t, changes.TotalBreakingChanges(), 0)
+	assert.Len(t, changes.GetPropertyChanges(), 1)
+}
