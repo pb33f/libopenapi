@@ -398,7 +398,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			rHash := r.Schema().Hash()
 			if lHash != rHash {
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode(), r.GetValueNode().Content[1], true, l, r.GetReference())
+					l.GetValueNode(), r.GetValueNode().Content[1], false, l, r.GetReference())
 				sc.PropertyChanges = NewPropertyChanges(changes)
 				return sc // we're done here
 			}
@@ -412,7 +412,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			rHash := r.Schema().Hash()
 			if lHash != rHash {
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode().Content[1], r.GetValueNode(), true, l.GetReference(), r)
+					l.GetValueNode().Content[1], r.GetValueNode(), false, l.GetReference(), r)
 				sc.PropertyChanges = NewPropertyChanges(changes)
 				return sc // done, nothing else to do.
 			}
@@ -631,22 +631,22 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 
 	// stuff added
 	if len(rProps) > len(lProps) {
-		for w := range rProps {
-			if lEntities[rProps[w]] != nil {
+		for _, propName := range rProps {
+			if lEntities[propName] != nil {
 				wg.Add(1)
-				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]])
+				go checkProperty(propName, lEntities[propName], rEntities[propName])
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
-					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+					nil, rKeyNodes[propName], false, nil, rEntities[propName])
 			}
 		}
-		for w := range lProps {
-			if rEntities[lProps[w]] != nil {
+		for _, propName := range lProps {
+			if rEntities[propName] != nil {
 				wg.Add(1)
-				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[rProps[w]])
+				go checkProperty(propName, lEntities[propName], rEntities[propName])
 			} else {
 				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
-					nil, lKeyNodes[lProps[w]], true, lEntities[lProps[w]], nil)
+					nil, lKeyNodes[propName], true, lEntities[propName], nil)
 			}
 		}
 	}
