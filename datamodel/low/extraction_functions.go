@@ -95,9 +95,15 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 					if !IsCircular(found[rv].Node, idx) {
 						return LocateRefNodeWithContext(ctx, found[rv].Node, idx)
 					} else {
+
+						crr := GetCircularReferenceResult(found[rv].Node, idx)
+						jp := ""
+						if crr != nil {
+							jp = crr.GenerateJourneyPath()
+						}
 						return found[rv].Node, idx, fmt.Errorf("circular reference '%s' found during lookup at line "+
 							"%d, column %d, It cannot be resolved",
-							GetCircularReferenceResult(found[rv].Node, idx).GenerateJourneyPath(),
+							jp,
 							found[rv].Node.Line,
 							found[rv].Node.Column), ctx
 					}
