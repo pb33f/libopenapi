@@ -94,10 +94,12 @@ type Schema struct {
 	Items low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]
 
 	// 3.1 only
-	If                    low.NodeReference[*SchemaProxy]
-	Else                  low.NodeReference[*SchemaProxy]
-	Then                  low.NodeReference[*SchemaProxy]
-	DependentSchemas      low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
+	If               low.NodeReference[*SchemaProxy]
+	Else             low.NodeReference[*SchemaProxy]
+	Then             low.NodeReference[*SchemaProxy]
+	DependentSchemas low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
+	// TODO: add DependentRequired.
+
 	PatternProperties     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
 	PropertyNames         low.NodeReference[*SchemaProxy]
 	UnevaluatedItems      low.NodeReference[*SchemaProxy]
