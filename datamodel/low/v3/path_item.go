@@ -187,15 +187,23 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			p.Nodes.Store(ln.Line, ln)
 		}
 	}
-
+	prevExt := false
 	for i, pathNode := range root.Content {
 		if strings.HasPrefix(strings.ToLower(pathNode.Value), "x-") {
 			skip = true
+			prevExt = true
 			continue
 		}
+		// https://github.com/pb33f/libopenapi/issues/388
+		// in the case where a user has an extension with the value 'parameters', make sure we handle
+		// it correctly, by not skipping.
 		if strings.HasPrefix(strings.ToLower(pathNode.Value), "parameters") {
-			skip = true
-			continue
+			if !prevExt { // this
+				skip = true
+				continue
+			} else {
+				prevExt = false
+			}
 		}
 		if skip {
 			skip = false
