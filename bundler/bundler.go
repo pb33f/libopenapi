@@ -6,12 +6,11 @@ package bundler
 
 import (
 	"errors"
-	"strings"
-
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
+	"strings"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
@@ -56,7 +55,7 @@ func BundleDocument(model *v3.Document) ([]byte, error) {
 
 func bundle(model *v3.Document, inline bool) ([]byte, error) {
 	rolodex := model.Rolodex
-
+	indexes := rolodex.GetIndexes()
 	compact := func(idx *index.SpecIndex, root bool) {
 		mappedReferences := idx.GetMappedReferences()
 		sequencedReferences := idx.GetRawReferencesSequenced()
@@ -66,6 +65,24 @@ func bundle(model *v3.Document, inline bool) ([]byte, error) {
 			// if we're in the root document, don't bundle anything.
 			refExp := strings.Split(sequenced.FullDefinition, "#/")
 			if len(refExp) == 2 {
+
+				// make sure to use the correct index.
+				// https://github.com/pb33f/libopenapi/issues/397
+				if root {
+					for _, i := range indexes {
+						if i.GetSpecAbsolutePath() == refExp[0] {
+							if mappedReference != nil && !mappedReference.Circular {
+								mr := i.FindComponent(refExp[1])
+								if mr != nil {
+									// found the component, this is the one we want to use.
+									mappedReference = mr
+									break
+								}
+							}
+						}
+					}
+				}
+
 				if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
 					if root && !inline {
 						idx.GetLogger().Debug("[bundler] skipping local root reference",
@@ -89,7 +106,6 @@ func bundle(model *v3.Document, inline bool) ([]byte, error) {
 		}
 	}
 
-	indexes := rolodex.GetIndexes()
 	for _, idx := range indexes {
 		compact(idx, false)
 	}
