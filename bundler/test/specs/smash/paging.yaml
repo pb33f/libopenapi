@@ -1,0 +1,12 @@
+openapi: "3.0.0"
+info:
+  title: Common schemas
+  version: "1.0.0"
+servers: []
+paths: []
+
+components:
+  schemas:
+    dtoTest:
+      description: Test schema (SMASH)
+      type: object

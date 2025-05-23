@@ -1,0 +1,50 @@
+openapi: "3.1.0"
+info:
+  title: API Title
+  version: "1.0.0"
+servers: []
+
+paths:
+  /bing:
+    $ref: "common.yaml#/components/pathItems/bing"
+  /test/{testId}:
+    get:
+      operationId: GetTest
+      callbacks:
+        onData:
+          "{$request.query.callbackUrl}/data":
+            $ref: "common.yaml#/components/callbacks/testCallback"
+      parameters:
+        - $ref: "common.yaml#/components/parameters/query"
+      responses:
+        404:
+          $ref: "common.yaml#/components/responses/404"
+        200:
+          links:
+            testLink:
+              $ref: "common.yaml#/components/links/testLink"
+          headers:
+            request-id:
+              $ref: "common.yaml#/components/headers/request-id"
+          description: Test 200
+          content:
+            application/json:
+              schema:
+                $ref:  "common.yaml#/components/schemas/dtoTest"
+        403:
+          $ref: "common.yaml#/components/responses/403"
+
+  /test2:
+    post:
+      requestBody:
+        $ref: "common.yaml#/components/requestBodies/testBody"
+    get:
+      operationId: GetTest2
+      responses:
+        200:
+          description: Test
+          content:
+            application/json:
+              schema:
+                $ref:  "paging.yaml#/components/schemas/paging"
+
