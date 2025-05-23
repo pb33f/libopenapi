@@ -121,6 +121,11 @@ type DocumentConfiguration struct {
 	// BundleInlineRefs is used by the bundler module. If set to true, all references will be inlined, including
 	// local references (to the root document) as well as all external references. This is false by default.
 	BundleInlineRefs bool
+
+	// RecomposeRefs is used by the bundler module. If set to true, all references will be composed into the root document.
+	// The bundler will attempt to create a single document, with all references moved to the `components` section. Any names used
+	// will be kept, any collisions will be resolved by appending a number to the name
+	RecomposeRefs bool
 }
 
 func NewDocumentConfiguration() *DocumentConfiguration {
