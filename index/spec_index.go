@@ -268,6 +268,12 @@ func (index *SpecIndex) GetMappedReferences() map[string]*Reference {
 	return index.allMappedRefs
 }
 
+// SetMappedReferences will set the mapped references to the index. Not something you need every day unless you're
+// doing some kind of index hacking.
+func (index *SpecIndex) SetMappedReferences(mappedRefs map[string]*Reference) {
+	index.allMappedRefs = mappedRefs
+}
+
 // GetRawReferencesSequenced returns a slice of every single reference found in the document, extracted raw from the doc
 // returned in the exact order they were found in the document.
 func (index *SpecIndex) GetRawReferencesSequenced() []*Reference {
