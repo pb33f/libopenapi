@@ -1,0 +1,151 @@
+openapi: "3.1.0"
+info:
+    title: API Title
+    version: "1.0.0"
+paths:
+    /bing:
+        $ref: "#/components/pathItems/bing"
+    /test/{testId}:
+        get:
+            operationId: GetTest
+            callbacks:
+                onData:
+                    "{$request.query.callbackUrl}/data":
+                        $ref: "#/components/callbacks/testCallback"
+            parameters:
+                - $ref: "#/components/parameters/query"
+            responses:
+                "404":
+                    $ref: "#/components/responses/404"
+                "200":
+                    links:
+                        testLink:
+                            $ref: "#/components/links/testLink"
+                    headers:
+                        request-id:
+                            $ref: "#/components/headers/request-id"
+                    description: Test 200
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/dtoTest"
+                "403":
+                    $ref: "#/components/responses/403"
+    /test2:
+        post:
+            requestBody:
+                $ref: "#/components/requestBodies/testBody"
+        get:
+            operationId: GetTest2
+            responses:
+                "200":
+                    description: Test
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/paging"
+components:
+    schemas:
+        dtoTest:
+            description: Test schema (original - common.yaml)
+            type: object
+            required:
+                - id
+            properties:
+                id:
+                    type: string
+                spacing:
+                    $ref: "#/components/schemas/dtoTest__paging"
+                paging:
+                    $ref: "#/components/schemas/paging"
+        paging:
+            description: Paging section
+            type: object
+            properties:
+                test:
+                    $ref: "#/components/schemas/dtoTest__paging__2"
+                total:
+                    description: Total count
+                    type: integer
+                    example: 439
+        dtoTest__paging:
+            description: Test schema (SMASH)
+            type: object
+        dtoError:
+            description: General error structure
+            type: object
+            required:
+                - errorCode
+                - requestId
+            properties:
+                errorCode:
+                    $ref: "#/components/schemas/errorCode"
+                requestId:
+                    type: string
+                message:
+                    type: string
+                testBangCrash:
+                    $ref: "#/components/schemas/dtoTest__paging__1"
+                testBang:
+                    $ref: "#/components/schemas/dtoTest__error"
+        errorCode:
+            description: ErrCode enumeration
+            type: string
+            enum:
+                - ErrUnknownError
+                - ErrEntityNotFound
+        dtoTest__paging__1:
+            description: Test schema (CLASH)
+            type: object
+        dtoTest__error:
+            description: A Test schema (error.yaml)
+            type: string
+        dtoTest__paging__2:
+            description: A Test schema (paging.yaml)
+            type: string
+    responses:
+        "404":
+            description: Not found response
+        "403":
+            description: Forbidden response
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/dtoError"
+                    examples:
+                        "example1":
+                            value:
+                                errorCode: ErrOperationForbidden
+                                requestId: "x837ant-000007"
+                                message: Forbidden
+    parameters:
+        query:
+            description: Query param
+            name: query
+            in: query
+            required: false
+            schema:
+                type: string
+    requestBodies:
+        testBody:
+            description: Test request body
+    headers:
+        request-id:
+            description: Request ID
+            required: true
+            example: "x837ant-000007"
+    links:
+        testLink:
+            description: Test link
+            operationId: testLink
+            parameters:
+                request-id: "x837ant-000007"
+                query: "test"
+    callbacks:
+        testCallback:
+            get:
+                description: Test callback
+    pathItems:
+        bing:
+            get:
+                description: Bing path item
