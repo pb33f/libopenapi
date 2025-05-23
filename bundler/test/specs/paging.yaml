@@ -1,0 +1,23 @@
+openapi: "3.0.0"
+info:
+  title: Test - paging schema
+  version: "1.0.0"
+servers: []
+paths: []
+
+components:
+
+  schemas:
+    dtoTest:
+      description: A Test schema (paging.yaml)
+      type: string
+    paging:
+      description: Paging section
+      type: object
+      properties:
+        test:
+          $ref: "#/components/schemas/dtoTest"
+        total:
+          description: Total count
+          type: integer
+          example: 439

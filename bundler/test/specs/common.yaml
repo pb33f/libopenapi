@@ -1,0 +1,74 @@
+openapi: "3.1.0"
+info:
+  title: Common schemas
+  version: "1.0.0"
+servers: []
+paths: []
+
+components:
+  pathItems:
+    bing:
+      get:
+        description: Bing path item
+  callbacks:
+    testCallback:
+      get:
+        description: Test callback
+        operationId: testCallback
+
+  links:
+    testLink:
+      description: Test link
+      operationId: testLink
+      parameters:
+        request-id: "x837ant-000007"
+        query: "test"
+  requestBodies:
+    testBody:
+        description: Test request body
+  headers:
+    request-id:
+      description: Request ID
+      type: string
+      required: true
+      example: "x837ant-000007"
+  schemas:
+    dtoTest:
+      description: Test schema (original - common.yaml)
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+        spacing:
+          $ref: "smash/paging.yaml#/components/schemas/dtoTest"
+        paging:
+          $ref: "paging.yaml#/components/schemas/paging"
+
+  responses:
+    404:
+      description: Not found response
+
+    403:
+      description: Forbidden response
+      content:
+        application/json:
+          schema:
+            $ref: "error.yaml#/components/schemas/dtoError"
+          examples:
+            "example1":
+              value:
+                errorCode: ErrOperationForbidden
+                requestId: "x837ant-000007"
+                message: Forbidden
+
+  parameters:
+    query:
+      description: Query param
+      name: query
+      in: query
+      required: false
+      schema:
+        type: string
+

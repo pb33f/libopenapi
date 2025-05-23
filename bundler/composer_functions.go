@@ -16,9 +16,50 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
+	"path/filepath"
 	"reflect"
+	"strconv"
 	"strings"
 )
+
+func calculateCollisionName(name, pointer string) string {
+	jsonPointer := strings.Split(pointer, "#/")
+	if len(jsonPointer) == 2 {
+
+		// TODO: make delimiter configurable.
+		// count the number of collisions by splitting the name by the __ delimiter.
+		nameSegments := strings.Split(name, "__")
+		if len(nameSegments) > 1 {
+
+			if len(nameSegments) == 2 {
+				return fmt.Sprintf("%s__%s", name, "1")
+			}
+			if len(nameSegments) == 3 {
+				count, err := strconv.Atoi(nameSegments[2])
+				if err != nil {
+					return fmt.Sprintf("%s__%s", name, "X")
+				}
+				count++
+				nameSegments[2] = strconv.Itoa(count)
+				return strings.Join(nameSegments, "__")
+			}
+
+		} else {
+
+			// the first collision attempt will be to use the last segment of the location as a postfix.
+			// this will be the last segment of the path.
+			uri := jsonPointer[0]
+			b := filepath.Base(uri)
+			fileName := fmt.Sprintf("%s__%s", name, strings.Replace(b, filepath.Ext(b), "", 1))
+			return fileName
+
+		}
+
+	}
+
+	// TODO: handle full file imports.
+	return name
+}
 
 func checkReferenceAndBubbleUp[T any](
 	name string,
