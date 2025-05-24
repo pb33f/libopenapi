@@ -16,7 +16,6 @@ import (
 )
 
 func TestNewSecurityRequirement(t *testing.T) {
-
 	var cNode yaml.Node
 
 	yml := `pizza:

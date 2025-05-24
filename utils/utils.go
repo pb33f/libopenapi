@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"math/big"
 	"net/http"
 	"net/url"
@@ -15,6 +13,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
 	"gopkg.in/yaml.v3"
 )
@@ -491,7 +492,6 @@ func NodeMerge(nodes []*yaml.Node) *yaml.Node {
 
 // NodeAlias checks if the node is an alias, and lifts out the anchor
 func NodeAlias(node *yaml.Node) *yaml.Node {
-
 	if node == nil {
 		return nil
 	}
@@ -838,7 +838,6 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 // ConvertComponentIdIntoPath will convert a JSON Path into a component ID
 // TODO: This function is named incorrectly and should be changed to reflect the correct function
 func ConvertComponentIdIntoPath(id string) (string, string) {
-
 	segs := strings.Split(id, ".")
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
 	var cleaned []string
@@ -856,7 +855,7 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 		// if there are brackets, shift the path to encapsulate them correctly.
 		if len(brackets) > 0 {
 
-			//bracketNameExp/.
+			// bracketNameExp/.
 			key := bracketNameExp.ReplaceAllString(segs[i], "$1")
 			val := strings.ReplaceAll(bracketNameExp.ReplaceAllString(segs[i], "$2"), "/", "~1")
 			cleaned = append(
@@ -870,7 +869,6 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 
 	if cleaned[0] != "#" {
 		cleaned = append(cleaned[:0], append([]string{"#"}, cleaned[0:]...)...)
-
 	}
 	replaced := strings.ReplaceAll(strings.Join(cleaned, "/"), "$", "#")
 

@@ -4,8 +4,9 @@
 package utils
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestAreValuesCorrectlyTyped(t *testing.T) {
@@ -33,5 +34,4 @@ func TestAreValuesCorrectlyTyped(t *testing.T) {
 	assert.Len(t, AreValuesCorrectlyTyped("boolean", []interface{}{true, true, "burgers"}), 1)
 	assert.Len(t, AreValuesCorrectlyTyped("boolean", []interface{}{true, false, "what", 1.2, 4}), 3)
 	assert.Nil(t, AreValuesCorrectlyTyped("boolean", []string{"hi"}))
-
 }

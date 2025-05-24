@@ -4,12 +4,13 @@
 package bundler
 
 import (
+	"strings"
+	"sync"
+
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"strings"
-	"sync"
 )
 
 type processRef struct {
@@ -95,7 +96,6 @@ func handleIndex(c *handleIndexConfig) {
 // processReference will extract a reference from the current index, and transform it into a first class
 // top-level component in the root OpenAPI document.
 func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig) error {
-
 	idx := pr.idx
 	var components *v3.Components
 	var err error
@@ -121,7 +121,6 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 		// this is a root document reference, there is no way to get the location from the fragment.
 		// first, lets try to determine the type of the import, if we can.
 		if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
-
 			// cool, using the filename as the reference name, check if we have any collisions.
 			switch importType {
 			case v3low.SchemasLabel:
@@ -152,7 +151,6 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 	if len(location) > 0 {
 		pr.location = location
 		if location[0] == v3low.ComponentsLabel {
-
 			if len(location) > 1 {
 				switch location[1] {
 				case v3low.SchemasLabel:

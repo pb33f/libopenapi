@@ -16,7 +16,6 @@ import (
 )
 
 func TestPaths_MarshalYAML(t *testing.T) {
-
 	yml := `/foo/bar/bizzle:
     get:
         description: get a bizzle
@@ -64,11 +63,9 @@ func TestPaths_MarshalYAML(t *testing.T) {
 
 	rend, _ = high.Render()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
-
 }
 
 func TestPaths_MarshalYAMLInline(t *testing.T) {
-
 	yml := `/foo/bar/bizzle:
     get:
         description: get a bizzle
@@ -116,5 +113,4 @@ func TestPaths_MarshalYAMLInline(t *testing.T) {
 
 	rend, _ = high.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
-
 }

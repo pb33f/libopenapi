@@ -7,7 +7,6 @@ import "github.com/pb33f/libopenapi/what-changed/model"
 
 // Changed represents an object that was changed
 type Changed interface {
-
 	// GetAllChanges returns all top level changes made to properties in this object
 	GetAllChanges() []*model.Change
 

@@ -4,9 +4,10 @@
 package bundler
 
 import (
+	"strings"
+
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"gopkg.in/yaml.v3"
-	"strings"
 )
 
 // DetectOpenAPIComponentType attempts to determine what type of OpenAPI component a node represents.
@@ -61,8 +62,10 @@ func DetectOpenAPIComponentType(node *yaml.Node) (string, bool) {
 func hasSchemaProperties(node *yaml.Node) bool {
 	// Schema typically has properties like "type", "properties", "items", "allOf", etc.
 	keys := getNodeKeys(node)
-	schemaIndicators := []string{v3.TypeLabel, v3.PropertiesLabel,
-		v3.ItemsLabel, v3.AllOfLabel, v3.AnyOfLabel, v3.OneOfLabel, v3.EnumLabel}
+	schemaIndicators := []string{
+		v3.TypeLabel, v3.PropertiesLabel,
+		v3.ItemsLabel, v3.AllOfLabel, v3.AnyOfLabel, v3.OneOfLabel, v3.EnumLabel,
+	}
 
 	for _, indicator := range schemaIndicators {
 		if containsKey(keys, indicator) {

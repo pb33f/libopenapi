@@ -15,7 +15,6 @@ import (
 )
 
 func TestComparePathItem_V2(t *testing.T) {
-
 	left := `get:
   description: get me
 put:
@@ -54,7 +53,6 @@ x-thing: thang.`
 }
 
 func TestComparePathItem_V2_ModifyOps(t *testing.T) {
-
 	left := `get:
   description: get me
 put:
@@ -111,7 +109,6 @@ x-thing: ding-a-ling`
 }
 
 func TestComparePathItem_V2_ModifyParam(t *testing.T) {
-
 	left := `get:
   description: get me
 parameters:
@@ -150,7 +147,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddParam(t *testing.T) {
-
 	left := `get:
   description: get me
 parameters:
@@ -190,7 +186,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_RemoveParam(t *testing.T) {
-
 	left := `get:
   description: get me
 parameters:
@@ -230,7 +225,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddParametersToPath(t *testing.T) {
-
 	left := `get:
   description: get me`
 
@@ -262,11 +256,9 @@ parameters:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ParametersLabel, extChanges.Changes[0].Property)
-
 }
 
 func TestComparePathItem_V2_RemoveParametersToPath(t *testing.T) {
-
 	left := `get:
   description: get me
 parameters:
@@ -296,11 +288,9 @@ parameters:
 	extChanges := ComparePathItems(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-
 }
 
 func TestComparePathItem_V2_AddMethods(t *testing.T) {
-
 	left := `parameters:
   - in: head`
 
@@ -339,8 +329,8 @@ parameters:
 	assert.Len(t, extChanges.GetAllChanges(), 7)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
-func TestComparePathItem_V2_RemoveMethods(t *testing.T) {
 
+func TestComparePathItem_V2_RemoveMethods(t *testing.T) {
 	left := `parameters:
   - in: head`
 
@@ -381,7 +371,6 @@ parameters:
 }
 
 func TestComparePathItem_V3(t *testing.T) {
-
 	left := `summary: something
 description: nice
 get:
@@ -426,7 +415,6 @@ x-thing: thang.`
 }
 
 func TestComparePathItem_V3_Modify(t *testing.T) {
-
 	left := `summary: something
 description: nice
 get:
@@ -496,7 +484,6 @@ x-thing: dang.`
 }
 
 func TestComparePathItem_V3_AddParams(t *testing.T) {
-
 	left := `summary: something`
 
 	right := `summary: something
@@ -525,7 +512,6 @@ parameters:
 }
 
 func TestComparePathItem_V3_RemoveParams(t *testing.T) {
-
 	left := `summary: something`
 
 	right := `summary: something
@@ -554,7 +540,6 @@ parameters:
 }
 
 func TestComparePathItem_V3_AddMethods(t *testing.T) {
-
 	left := `summary: something`
 
 	right := `summary: something
@@ -595,7 +580,6 @@ trace:
 }
 
 func TestComparePathItem_V3_RemoveMethods(t *testing.T) {
-
 	left := `summary: something`
 
 	right := `summary: something
@@ -636,7 +620,6 @@ trace:
 }
 
 func TestComparePathItem_V3_AddParam(t *testing.T) {
-
 	left := `summary: hello`
 
 	right := `summary: hello
@@ -664,7 +647,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddParamOptional(t *testing.T) {
-
 	left := `summary: hello`
 
 	right := `summary: hello
@@ -692,7 +674,6 @@ parameters:
 }
 
 func TestComparePathItem_V3_AddParamRequired(t *testing.T) {
-
 	left := `summary: hello`
 
 	right := `summary: hello
@@ -721,7 +702,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddParamRequired(t *testing.T) {
-
 	left := `summary: hello`
 
 	right := `summary: hello

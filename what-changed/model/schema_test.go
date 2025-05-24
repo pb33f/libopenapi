@@ -2906,7 +2906,6 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.Nil(t, changes)
-
 }
 
 func TestCompareSchemas_PropertyRefChange_IdenticalReverse(t *testing.T) {
@@ -2934,7 +2933,6 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.Nil(t, changes)
-
 }
 
 func TestCompareSchemas_PropertyRefChange_Fail(t *testing.T) {
@@ -2963,7 +2961,6 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
-
 }
 
 // https://github.com/pb33f/openapi-changes/issues/104
@@ -3013,7 +3010,6 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.Nil(t, changes)
 	assert.Equal(t, 0, changes.TotalChanges())
-
 }
 
 // https://github.com/pb33f/openapi-changes/issues/108
@@ -3053,7 +3049,6 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.Nil(t, changes)
 	assert.Equal(t, 0, changes.TotalChanges())
-
 }
 
 func TestCompareSchemas_CheckEnums(t *testing.T) {
@@ -3094,7 +3089,6 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.Nil(t, changes)
 	assert.Equal(t, 0, changes.TotalChanges())
-
 }
 
 // https://github.com/pb33f/openapi-changes/issues/160
@@ -3134,7 +3128,6 @@ components:
 	changes = CompareSchemas(rSchemaProxy, lSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 3, changes.TotalChanges())
-
 }
 
 // https://github.com/pb33f/openapi-changes/issues/177
@@ -3183,7 +3176,6 @@ components:
 	for _, c := range changes.OneOfChanges {
 		assert.Equal(t, "description", c.PropertyChanges.Changes[0].Property)
 	}
-
 }
 
 func TestCompareSchemas_TestSchemaLockIssue(t *testing.T) {
@@ -3230,7 +3222,6 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
-
 }
 
 func TestCompareSchemas_TestGetPropertiesChanges(t *testing.T) {
@@ -3383,7 +3374,6 @@ components:
 	assert.Equal(t, changes.TotalBreakingChanges(), 21)
 	assert.Len(t, changes.GetPropertyChanges(), 22)
 	changes.PropertiesOnly() // this does nothing in this lib.
-
 }
 
 func TestCompareSchemas_CheckXML(t *testing.T) {

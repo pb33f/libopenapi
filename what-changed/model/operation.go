@@ -150,7 +150,6 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 
 // check shared objects
 func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change, opChanges *OperationChanges) {
-
 	// external docs
 	if !l.GetExternalDocs().IsEmpty() && !r.GetExternalDocs().IsEmpty() {
 		lExtDoc := l.GetExternalDocs().Value.(*base.ExternalDoc)
@@ -189,7 +188,6 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 // CompareOperations compares a left and right Swagger or OpenAPI Operation object. If changes are found, returns
 // a pointer to an OperationChanges instance, or nil if nothing is found.
 func CompareOperations(l, r any) *OperationChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -426,7 +424,6 @@ func CompareOperations(l, r any) *OperationChanges {
 
 // check servers property
 func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.Server]]) []*ServerChanges {
-
 	var serverChanges []*ServerChanges
 
 	if !lServers.IsEmpty() && !rServers.IsEmpty() {
@@ -474,7 +471,6 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 		}
 
 		for k := range rv {
-
 			if _, ok := lv[k]; !ok {
 
 				var changes []*Change
@@ -487,7 +483,6 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 				sc.PropertyChanges = NewPropertyChanges(changes)
 				serverChanges = append(serverChanges, sc)
 			}
-
 		}
 	}
 	var changes []*Change
@@ -514,8 +509,8 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 
 // check security property.
 func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]],
-	changes *[]*Change, oc any) {
-
+	changes *[]*Change, oc any,
+) {
 	lv := make(map[string]*base.SecurityRequirement, len(lSecurity.Value))
 	rv := make(map[string]*base.SecurityRequirement, len(rSecurity.Value))
 	lvn := make(map[string]*yaml.Node, len(lSecurity.Value))

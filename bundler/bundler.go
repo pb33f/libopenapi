@@ -6,14 +6,15 @@ package bundler
 
 import (
 	"errors"
+	"slices"
+	"strings"
+	"sync"
+
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"slices"
-	"strings"
-	"sync"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
@@ -73,7 +74,6 @@ func BundleDocumentComposed(model *v3.Document, compositionConfig *BundleComposi
 }
 
 func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]byte, error) {
-
 	if compositionConfig == nil {
 		compositionConfig = &BundleCompositionConfig{
 			Delimiter: "__",
@@ -141,7 +141,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 func bundle(model *v3.Document) ([]byte, error) {
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
-	//indexMap := make(map[string]*index.SpecIndex)
+	// indexMap := make(map[string]*index.SpecIndex)
 	// compact function.
 	compact := func(idx *index.SpecIndex, root bool) {
 		mappedReferences := idx.GetMappedReferences()
@@ -156,7 +156,6 @@ func bundle(model *v3.Document) ([]byte, error) {
 				// make sure to use the correct index.
 				// https://github.com/pb33f/libopenapi/issues/397
 				if root {
-
 					for _, i := range indexes {
 						if i.GetSpecAbsolutePath() == refExp[0] {
 							if mappedReference != nil && !mappedReference.Circular {

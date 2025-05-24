@@ -4,15 +4,15 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
-
 	left := `propertyName: chicken`
 
 	right := `propertyName: nuggets`
@@ -32,11 +32,9 @@ func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareDiscriminator_PropertyNameRemoved(t *testing.T) {
-
 	left := `mapping:
   cake: burger
 propertyName: chicken`
@@ -62,7 +60,6 @@ propertyName: chicken`
 }
 
 func TestCompareDiscriminator_PropertyNameAdded(t *testing.T) {
-
 	left := `mapping:
   cake: burger
 propertyName: chicken`
@@ -88,7 +85,6 @@ propertyName: chicken`
 }
 
 func TestCompareDiscriminator_MappingAdded(t *testing.T) {
-
 	left := `propertyName: chicken`
 
 	right := `propertyName: chicken
@@ -123,7 +119,6 @@ mapping:
 }
 
 func TestCompareDiscriminator_MappingRemoved(t *testing.T) {
-
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing
@@ -152,7 +147,6 @@ mapping:
 }
 
 func TestCompareDiscriminator_SingleMappingAdded(t *testing.T) {
-
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing`
@@ -178,11 +172,9 @@ mapping:
 	assert.Equal(t, ObjectAdded, extChanges.MappingChanges[0].ChangeType)
 	assert.Equal(t, "hacking", extChanges.MappingChanges[0].Property)
 	assert.Equal(t, "coding", extChanges.MappingChanges[0].New)
-
 }
 
 func TestCompareDiscriminator_MultiMappingAdded(t *testing.T) {
-
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing`
@@ -220,7 +212,6 @@ mapping:
 }
 
 func TestCompareDiscriminator_SingleMappingModified(t *testing.T) {
-
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing`
@@ -249,11 +240,9 @@ mapping:
 
 	// should be a single breaking change
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-
 }
 
 func TestCompareDiscriminator_Identical(t *testing.T) {
-
 	left := `propertyName: chicken`
 
 	right := `propertyName: chicken`

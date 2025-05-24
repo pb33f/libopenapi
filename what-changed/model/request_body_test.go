@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareRequestBodies(t *testing.T) {
-
 	left := `description: something
 required: true
 content:
@@ -46,7 +46,6 @@ content:
 }
 
 func TestCompareRequestBodies_Modified(t *testing.T) {
-
 	left := `description: something
 required: true
 x-pizza: thin

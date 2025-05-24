@@ -155,7 +155,6 @@ func ComparePathItemsV3(l, r *v3.PathItem) *PathItemChanges {
 // ComparePathItems compare a left and right Swagger or OpenAPI PathItem object for changes. If found, returns
 // a pointer to PathItemChanges, or returns nil if nothing is found.
 func ComparePathItems(l, r any) *PathItemChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -219,7 +218,6 @@ func ComparePathItems(l, r any) *PathItemChanges {
 }
 
 func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *PathItemChanges) []*PropertyCheck {
-
 	var props []*PropertyCheck
 
 	totalOps := 0
@@ -376,7 +374,8 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 }
 
 func extractV2ParametersIntoInterface(l, r []low.ValueReference[*v2.Parameter]) ([]low.ValueReference[low.SharedParameters],
-	[]low.ValueReference[low.SharedParameters]) {
+	[]low.ValueReference[low.SharedParameters],
+) {
 	lp := make([]low.ValueReference[low.SharedParameters], len(l))
 	rp := make([]low.ValueReference[low.SharedParameters], len(r))
 	for i := range l {
@@ -395,7 +394,8 @@ func extractV2ParametersIntoInterface(l, r []low.ValueReference[*v2.Parameter]) 
 }
 
 func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) ([]low.ValueReference[low.SharedParameters],
-	[]low.ValueReference[low.SharedParameters]) {
+	[]low.ValueReference[low.SharedParameters],
+) {
 	lp := make([]low.ValueReference[low.SharedParameters], len(l))
 	rp := make([]low.ValueReference[low.SharedParameters], len(r))
 	for i := range l {
@@ -414,7 +414,6 @@ func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) 
 }
 
 func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters], changes *[]*Change, pc *PathItemChanges) {
-
 	lv := make(map[string]low.SharedParameters, len(lParams))
 	rv := make(map[string]low.SharedParameters, len(rParams))
 
@@ -454,8 +453,7 @@ func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters]
 }
 
 func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *PathItemChanges) {
-
-	//var props []*PropertyCheck
+	// var props []*PropertyCheck
 
 	totalOps := 0
 	opChan := make(chan opCheck)

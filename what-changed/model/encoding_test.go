@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareEncoding(t *testing.T) {
-
 	left := `contentType: application/json
 headers:
   aHeader:
@@ -48,7 +48,6 @@ allowReserved: true`
 }
 
 func TestCompareEncoding_Modified(t *testing.T) {
-
 	left := `contentType: application/xml
 headers:
   aHeader:
@@ -83,11 +82,9 @@ allowReserved: true`
 	assert.Equal(t, 4, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 4)
 	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
-
 }
 
 func TestCompareEncoding_Added(t *testing.T) {
-
 	left := `contentType: application/json
 explode: true
 allowReserved: true`
@@ -123,7 +120,6 @@ allowReserved: true`
 }
 
 func TestCompareEncoding_Removed(t *testing.T) {
-
 	left := `contentType: application/json
 explode: true
 allowReserved: true`
@@ -154,5 +150,4 @@ allowReserved: true`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-
 }

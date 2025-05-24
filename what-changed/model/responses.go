@@ -4,10 +4,11 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"reflect"
 )
 
 // ResponsesChanges represents changes made between two Swagger or OpenAPI Responses objects.
@@ -65,7 +66,6 @@ func (r *ResponsesChanges) TotalBreakingChanges() int {
 // CompareResponses compares a left and right Swagger or OpenAPI Responses object for any changes. If found
 // returns a pointer to ResponsesChanges, or returns nil.
 func CompareResponses(l, r any) *ResponsesChanges {
-
 	var changes []*Change
 
 	rc := new(ResponsesChanges)
@@ -109,7 +109,7 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		lResponses := l.(*v3.Responses)
 		rResponses := r.(*v3.Responses)
 
-		//perform hash check to avoid further processing
+		// perform hash check to avoid further processing
 		if low.AreEqual(lResponses, rResponses) {
 			return nil
 		}

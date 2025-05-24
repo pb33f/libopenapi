@@ -48,7 +48,6 @@ func (e *EncodingChanges) TotalBreakingChanges() int {
 // CompareEncoding returns a pointer to *EncodingChanges that contain all changes made between a left and right
 // set of Encoding objects.
 func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 

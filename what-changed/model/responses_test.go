@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareResponses_V2(t *testing.T) {
-
 	left := `x-coffee: roasty
 default:
   schema:
@@ -47,7 +47,6 @@ default:
 }
 
 func TestCompareResponses_V2_ModifyCode(t *testing.T) {
-
 	left := `200:
   description: OK response
   schema:
@@ -270,7 +269,6 @@ default:
 }
 
 func TestCompareResponses_V3(t *testing.T) {
-
 	left := `x-coffee: roasty
 default:
   description: a thing
@@ -298,7 +296,6 @@ default:
 }
 
 func TestCompareResponses_V3_ModifyCode(t *testing.T) {
-
 	left := `x-coffee: roasty
 default:
   description: a thing
@@ -334,7 +331,6 @@ x-coffee: yum
 }
 
 func TestCompareResponses_V3_AddDefault(t *testing.T) {
-
 	left := `x-coffee: roasty
 200:
   description: OK response
@@ -369,7 +365,6 @@ default:
 }
 
 func TestCompareResponses_V3_RemoveDefault(t *testing.T) {
-
 	left := `x-coffee: roasty
 200:
   description: OK response
@@ -404,7 +399,6 @@ default:
 }
 
 func TestCompareResponses_V3_ModifyDefault(t *testing.T) {
-
 	left := `x-coffee: roasty
 200:
   description: OK response
@@ -441,7 +435,6 @@ default:
 }
 
 func TestCompareResponses_V3_AddRemoveMediaType(t *testing.T) {
-
 	left := `200:
   content:
     application/json:

@@ -4,12 +4,12 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractedRef_GetFile(t *testing.T) {
-
 	a := &ExtractedRef{Location: "#/components/schemas/One", Type: Local}
 	assert.Equal(t, "#/components/schemas/One", a.GetFile())
 
@@ -18,11 +18,9 @@ func TestExtractedRef_GetFile(t *testing.T) {
 
 	a = &ExtractedRef{Location: "https://api.pb33f.io/openapi.yaml#/components/schemas/One", Type: File}
 	assert.Equal(t, "https://api.pb33f.io/openapi.yaml", a.GetFile())
-
 }
 
 func TestExtractedRef_GetReference(t *testing.T) {
-
 	a := &ExtractedRef{Location: "#/components/schemas/One", Type: Local}
 	assert.Equal(t, "#/components/schemas/One", a.GetReference())
 
@@ -31,7 +29,6 @@ func TestExtractedRef_GetReference(t *testing.T) {
 
 	a = &ExtractedRef{Location: "https://api.pb33f.io/openapi.yaml#/components/schemas/One", Type: File}
 	assert.Equal(t, "#/components/schemas/One", a.GetReference())
-
 }
 
 func TestExtractFileType(t *testing.T) {

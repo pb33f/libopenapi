@@ -1,11 +1,12 @@
 package libopenapi
 
 import (
-	"github.com/pb33f/libopenapi"
 	"os"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -69,16 +70,13 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 	for _, op := range ops.FromOldest() {
 
 		for _, param := range op.Parameters {
-
 			if param.Schema != nil {
 				handleSchema(t, param.Schema, context{})
 			}
 		}
 
 		if op.RequestBody != nil {
-
 			for _, mediaType := range op.RequestBody.Content.FromOldest() {
-
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
 				}
@@ -89,9 +87,7 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 		}
 
 		for _, response := range op.Responses.Codes.FromOldest() {
-
 			for _, mediaType := range response.Content.FromOldest() {
-
 				if mediaType.Schema != nil {
 					handleSchema(t, mediaType.Schema, context{})
 				}
@@ -99,13 +95,10 @@ func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation])
 		}
 
 		if orderedmap.Len(op.Responses.Codes) > 0 {
-
 		}
 
 		for _, callback := range op.Callbacks.FromOldest() {
-
 			for _, pathItem := range callback.Expression.FromOldest() {
-
 				iterateOperations(t, pathItem.GetOperations())
 			}
 		}

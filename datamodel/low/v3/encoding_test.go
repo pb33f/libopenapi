@@ -5,15 +5,15 @@ package v3
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestEncoding_Build_Success(t *testing.T) {
-
 	yml := `contentType: hot/cakes
 headers: 
   ohMyStars:
@@ -50,7 +50,6 @@ explode: true`
 }
 
 func TestEncoding_Build_Error(t *testing.T) {
-
 	yml := `contentType: hot/cakes
 headers: 
   $ref: #/borked`
@@ -69,7 +68,6 @@ headers:
 }
 
 func TestEncoding_Hash(t *testing.T) {
-
 	yml := `contentType: application/waffle
 headers:
   heady:
@@ -105,5 +103,4 @@ style: post modern
 
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
-
 }

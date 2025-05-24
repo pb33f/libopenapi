@@ -6,12 +6,13 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"strings"
 )
 
 // License is a low-level representation of a License object as defined by OpenAPI 2 and OpenAPI 3

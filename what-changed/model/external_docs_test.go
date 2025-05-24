@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareExternalDocs(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: this is a test
 x-testing: hello`
@@ -67,11 +67,9 @@ x-testing: hiya!`
 	assert.Equal(t, "hello", extChange.Original)
 	assert.Equal(t, 3, *extChange.Context.OriginalLine)
 	assert.Equal(t, 12, *extChange.Context.OriginalColumn)
-
 }
 
 func TestCompareExternalDocs_Moved(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: this is a test
 x-testing: hello`
@@ -122,7 +120,6 @@ url: https://quobix.com`
 }
 
 func TestCompareExternalDocs_Identical(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: this is a test
 x-testing: hello`
@@ -149,7 +146,6 @@ x-testing: hello`
 }
 
 func TestCompareExternalDocs_DescriptionAdded(t *testing.T) {
-
 	left := `url: https://pb33f.io
 x-testing: hello`
 
@@ -177,7 +173,6 @@ x-testing: hello`
 }
 
 func TestCompareExternalDocs_URLAdded(t *testing.T) {
-
 	left := `description: hi!`
 
 	right := `description: hi!
@@ -203,7 +198,6 @@ url: https://pb33f.io`
 }
 
 func TestCompareExternalDocs_DescriptionRemoved(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: something`
 
@@ -229,7 +223,6 @@ description: something`
 }
 
 func TestCompareExternalDocs_URLRemoved(t *testing.T) {
-
 	left := `description: something
 url: https://pb33f.io`
 

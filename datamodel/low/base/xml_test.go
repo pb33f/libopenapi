@@ -4,11 +4,12 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestXML_Build(t *testing.T) {
@@ -30,5 +31,4 @@ wrapped: true`
 	assert.Equal(t, "somewhere", n.Namespace.Value)
 	assert.True(t, n.Wrapped.Value)
 	assert.NotNil(t, n.GetRootNode())
-
 }

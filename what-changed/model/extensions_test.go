@@ -4,14 +4,14 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareExtensions(t *testing.T) {
-
 	left := `x-test: 1`
 	right := `x-test: 2`
 
@@ -34,7 +34,6 @@ func TestCompareExtensions(t *testing.T) {
 }
 
 func TestCompareExtensions_Removed(t *testing.T) {
-
 	left := `pizza: pie
 x-test: 1`
 
@@ -59,7 +58,6 @@ x-test: 1`
 }
 
 func TestCompareExtensions_Added(t *testing.T) {
-
 	left := `pizza: pie`
 
 	right := `pizza: pie
@@ -84,7 +82,6 @@ x-test: 1`
 }
 
 func TestCompareExtensions_Identical(t *testing.T) {
-
 	left := `x-test: 1`
 
 	right := `x-test: 1`

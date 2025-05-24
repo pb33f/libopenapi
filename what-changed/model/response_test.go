@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareResponse_V2(t *testing.T) {
-
 	left := `description: response
 schema:
   type: string
@@ -42,11 +42,9 @@ x-toot: poot`
 
 	extChanges := CompareResponse(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
-
 }
 
 func TestCompareResponse_V2_Modify(t *testing.T) {
-
 	left := `description: response
 schema:
   type: string
@@ -85,7 +83,6 @@ x-toot: poot`
 }
 
 func TestCompareResponse_V2_Add(t *testing.T) {
-
 	left := `description: response
 headers:
   thing:
@@ -119,7 +116,6 @@ examples:
 }
 
 func TestCompareResponse_V2_Remove(t *testing.T) {
-
 	left := `description: response
 headers:
   thing:
@@ -153,7 +149,6 @@ examples:
 }
 
 func TestCompareResponse_V3(t *testing.T) {
-
 	left := `description: response
 content:
   application/json:
@@ -185,7 +180,6 @@ x-toot: poot`
 }
 
 func TestCompareResponse_V3_Modify(t *testing.T) {
-
 	left := `description: response
 content:
   application/json:

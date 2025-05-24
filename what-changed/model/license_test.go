@@ -14,7 +14,6 @@ import (
 )
 
 func TestCompareLicense_URLAdded(t *testing.T) {
-
 	left := `name: buckaroo`
 
 	right := `name: buckaroo
@@ -38,11 +37,9 @@ url: https://pb33f.io`
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-
 }
 
 func TestCompareLicense_URLRemoved(t *testing.T) {
-
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -65,11 +62,9 @@ url: https://pb33f.io`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareLicense_NameAdded(t *testing.T) {
-
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -92,11 +87,9 @@ name: buckaroo`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareLicense_NameRemoved(t *testing.T) {
-
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -119,11 +112,9 @@ name: buckaroo`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareLicense_URLModified(t *testing.T) {
-
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io/new`
@@ -145,11 +136,9 @@ func TestCompareLicense_URLModified(t *testing.T) {
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareLicense_URLModifiedAndMoved(t *testing.T) {
-
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -176,7 +165,6 @@ url: https://pb33f.io`
 }
 
 func TestCompareLicense_Identical(t *testing.T) {
-
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -201,7 +189,6 @@ url: https://pb33f.io`
 }
 
 func TestCompareLicense_Identifier(t *testing.T) {
-
 	left := `name: buckaroo
 identifier: https://pb33f.io`
 
@@ -229,7 +216,6 @@ identifier: https://pb33f.io2`
 }
 
 func TestCompareLicense_extension(t *testing.T) {
-
 	left := `name: buckaroo
 identifier: https://pb33f.io
 x-truc: hello`

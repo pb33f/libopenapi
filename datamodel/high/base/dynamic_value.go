@@ -4,9 +4,10 @@
 package base
 
 import (
+	"reflect"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"gopkg.in/yaml.v3"
-	"reflect"
 )
 
 // DynamicValue is used to hold multiple possible values for a schema property. There are two values, a left

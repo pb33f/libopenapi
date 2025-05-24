@@ -51,7 +51,6 @@ func (i *ItemsChanges) TotalBreakingChanges() int {
 // It is worth nothing that Items can contain Items. This means recursion is possible and has the potential for
 // runaway code if not using the resolver's circular reference checking.
 func CompareItems(l, r *v2.Items) *ItemsChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -67,7 +66,6 @@ func CompareItems(l, r *v2.Items) *ItemsChanges {
 			// compare.
 			ic.ItemsChanges = CompareItems(l.Items.Value, r.Items.Value)
 		}
-
 	}
 	if l.Items.IsEmpty() && !r.Items.IsEmpty() {
 		// added items
