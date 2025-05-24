@@ -64,6 +64,9 @@ func TestSpecIndex_GetCache(t *testing.T) {
 	assert.Len(t, index.GetIgnoredArrayCircularReferences(), 0)
 	assert.Equal(t, len(index.GetRawReferencesSequenced()), 42)
 	assert.Equal(t, len(index.GetNodeMap()), 824)
+	assert.Greater(t, len(index.GetMappedReferences()), 1)
+	index.SetMappedReferences(nil)
+	assert.Zero(t, index.GetMappedReferences())
 }
 
 func TestSpecIndex_ExtractRefsStripe(t *testing.T) {
