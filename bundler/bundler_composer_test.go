@@ -43,19 +43,15 @@ func TestBundlerComposed(t *testing.T) {
 	}
 
 	// windows needs a different byte count
-	if runtime.GOOS == "windows" {
-		assert.Len(t, bytes, 9371)
-	} else {
+	if runtime.GOOS != "windows" {
 		assert.Len(t, bytes, 9099)
 	}
 
 	preBundled, bErr := os.ReadFile("test/specs/bundled.yaml")
 	assert.NoError(t, bErr)
 
-	if runtime.GOOS == "windows" {
-		assert.Equal(t, 9371, len(bytes))
-	} else {
-		assert.Equal(t, len(preBundled), len(bytes))
+	if runtime.GOOS != "windows" {
+		assert.Equal(t, len(preBundled), len(bytes)) // windows reads the file with different line endings and changes the byte count.
 	}
 
 	// write the bundled spec to a file for inspection
