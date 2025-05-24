@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -1252,4 +1253,17 @@ func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
 	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10)
 	assert.Nil(t, nodes)
 	assert.Error(t, err)
+}
+
+func TestGenerateAlphanumericString(t *testing.T) {
+
+	reg := regexp.MustCompile("^[0-9A-Za-z]{1,4}$")
+	assert.NotNil(t, reg.MatchString(GenerateAlphanumericString(4)))
+
+	reg = regexp.MustCompile("^[0-9A-Za-z]{1,10}$")
+	assert.NotNil(t, reg.MatchString(GenerateAlphanumericString(10)))
+
+	reg = regexp.MustCompile("^[0-9A-Za-z]{1,15}$")
+	assert.NotNil(t, reg.MatchString(GenerateAlphanumericString(15)))
+
 }

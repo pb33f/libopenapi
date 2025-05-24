@@ -22,26 +22,23 @@ import (
 	"strings"
 )
 
-func calculateCollisionName(name, pointer string) string {
+func calculateCollisionName(name, pointer, delimiter string, iteration int) string {
 	jsonPointer := strings.Split(pointer, "#/")
 	if len(jsonPointer) == 2 {
 
 		// TODO: make delimiter configurable.
 		// count the number of collisions by splitting the name by the __ delimiter.
-		nameSegments := strings.Split(name, "__")
+		nameSegments := strings.Split(name, delimiter)
 		if len(nameSegments) > 1 {
 
 			if len(nameSegments) == 2 {
-				return fmt.Sprintf("%s__%s", name, "1")
+				return fmt.Sprintf("%s%s%s", name, delimiter, "1")
 			}
 			if len(nameSegments) == 3 {
-				count, err := strconv.Atoi(nameSegments[2])
-				if err != nil {
-					return fmt.Sprintf("%s__%s", name, "X")
-				}
+				count, _ := strconv.Atoi(nameSegments[2])
 				count++
 				nameSegments[2] = strconv.Itoa(count)
-				return strings.Join(nameSegments, "__")
+				return strings.Join(nameSegments, delimiter)
 			}
 
 		} else {
@@ -50,19 +47,39 @@ func calculateCollisionName(name, pointer string) string {
 			// this will be the last segment of the path.
 			uri := jsonPointer[0]
 			b := filepath.Base(uri)
-			fileName := fmt.Sprintf("%s__%s", name, strings.Replace(b, filepath.Ext(b), "", 1))
+			fileName := fmt.Sprintf("%s%s%s", name, delimiter, strings.Replace(b, filepath.Ext(b), "", 1))
 			return fileName
 
 		}
 
 	}
 
-	// TODO: handle full file imports.
+	// split a path into segments and then create a new name by appending the iteration count.
+	segments := strings.Split(utils.ReplaceWindowsDriveWithLinuxPath(filepath.Dir(pointer)), "/")
+	if len(segments) > 0 {
+
+		if iteration < len(segments) {
+
+			lastSegment := segments[len(segments)-(iteration)]
+
+			// split the name by __ and append the last segment of the path
+			nameSegments := strings.Split(name, delimiter)
+			if len(nameSegments) > 1 {
+				if len(nameSegments) <= iteration {
+					name = fmt.Sprintf("%s%s%s", name, delimiter, lastSegment)
+				}
+			} else {
+				name = fmt.Sprintf("%s%s%s", name, delimiter, lastSegment)
+			}
+		} else {
+			name = fmt.Sprintf("%s%s%s", name, delimiter, utils.GenerateAlphanumericString(4))
+		}
+	}
 	return name
 }
 
 func checkReferenceAndBubbleUp[T any](
-	name string,
+	name, delimiter string,
 	pr *processRef,
 	idx *index.SpecIndex,
 	componentMap *orderedmap.Map[string, T],
@@ -71,13 +88,12 @@ func checkReferenceAndBubbleUp[T any](
 	// Build the component
 	component, err := buildFunc(pr.ref.Node, idx)
 	if err != nil {
-		idx.GetLogger().Error("[bundler] unable to build component", "error", err)
 		return err
 	}
 
 	// Handle potential collisions and add to the component map
 	if v := componentMap.GetOrZero(name); !isZeroOfType(v) {
-		uniqueName := handleCollision(name, pr, componentMap)
+		uniqueName := handleCollision(name, delimiter, pr, componentMap)
 		componentMap.Set(uniqueName, component)
 	} else {
 		componentMap.Set(name, component)
@@ -91,11 +107,13 @@ func isZeroOfType[T any](v T) bool {
 	return isZero
 }
 
-func handleCollision[T any](schemaName string, pr *processRef, componentsItem *orderedmap.Map[string, T]) string {
+func handleCollision[T any](schemaName, delimiter string, pr *processRef, componentsItem *orderedmap.Map[string, T]) string {
 	foundUnique := false
 	uniqueName := schemaName
+	iterations := 0
 	for !foundUnique {
-		uniqueName = calculateCollisionName(uniqueName, pr.ref.FullDefinition)
+		iterations++
+		uniqueName = calculateCollisionName(uniqueName, pr.ref.FullDefinition, delimiter, iterations)
 		if v := componentsItem.GetOrZero(uniqueName); isZeroOfType(v) {
 			foundUnique = true
 		}
@@ -103,6 +121,21 @@ func handleCollision[T any](schemaName string, pr *processRef, componentsItem *o
 	}
 	pr.name = uniqueName
 	return uniqueName
+}
+
+func handleFileImport[T any](pr *processRef, importType, delimiter string, components *orderedmap.Map[string, T]) []string {
+	name := checkForCollision(filepath.Base(strings.Replace(pr.ref.Name, filepath.Ext(pr.ref.Name), "", 1)), delimiter, pr, components)
+	pr.name = name
+	pr.ref.Name = name
+	pr.seqRef.Name = name
+	return []string{v3low.ComponentsLabel, importType, name}
+}
+
+func checkForCollision[T any](schemaName, delimiter string, pr *processRef, componentsItem *orderedmap.Map[string, T]) string {
+	if v := componentsItem.GetOrZero(schemaName); !isZeroOfType(v) {
+		return handleCollision(schemaName, delimiter, pr, componentsItem)
+	}
+	return schemaName
 }
 
 func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *processRef]) {
@@ -123,13 +156,24 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 
 func renameRef(def string, processedNodes *orderedmap.Map[string, *processRef]) string {
 
-	defSplit := strings.Split(def, "#/")
-	if len(defSplit) != 2 {
-		return def
+	if strings.Contains(def, "#/") {
+
+		defSplit := strings.Split(def, "#/")
+		if len(defSplit) != 2 {
+			return def
+		}
+		split := strings.Split(defSplit[1], "/")
+		return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), processedNodes.GetOrZero(def).name)
 	}
 
-	split := strings.Split(defSplit[1], "/")
-	return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), processedNodes.GetOrZero(def).name)
+	// handle root file imports.
+	name := ""
+	if pn := processedNodes.GetOrZero(def); pn != nil {
+		if len(pn.location) > 0 {
+			name = fmt.Sprintf("#/%s", strings.Join(pn.location, "/"))
+		}
+	}
+	return name
 }
 
 func rewireRef(ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
@@ -145,6 +189,9 @@ func rewireRef(ref *index.Reference, fullDef string, processedNodes *orderedmap.
 }
 
 func buildComponents(idx *index.SpecIndex) (*v3.Components, error) {
+	if idx == nil {
+		return nil, errors.New("index is nil")
+	}
 	comp := v3low.Components{}
 	_ = low.BuildModel(&yaml.Node{}, &comp)
 	ctx := context.Background()

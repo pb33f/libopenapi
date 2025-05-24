@@ -1,0 +1,8 @@
+type: object
+in: query
+description: I am a a query param.
+properties:
+  vinegar:
+    type: string
+    description: The type of vinegar used
+    example: "malt"

@@ -56,6 +56,11 @@ func BundleDocument(model *v3.Document) ([]byte, error) {
 	return bundle(model)
 }
 
+// BundleCompositionConfig is used to configure the composition of OpenAPI documents when using BundleDocumentComposed.
+type BundleCompositionConfig struct {
+	Delimiter string // Delimiter is used to separate clashing names. Defaults to `__`.
+}
+
 // BundleDocumentComposed will take a v3.Document and return a composed bundled version of it. Composed means
 // that every external file will have references lifted out and added to the `components` section of the document.
 // Names will be preserved where possible, conflicts will be appended with a number. If the type of the reference cannot
@@ -63,30 +68,51 @@ func BundleDocument(model *v3.Document) ([]byte, error) {
 // The document model will be mutated permanently.
 //
 // Circular references will not be resolved and will be skipped.
-func BundleDocumentComposed(model *v3.Document) ([]byte, error) {
-	return compose(model)
+func BundleDocumentComposed(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]byte, error) {
+	return compose(model, compositionConfig)
 }
 
-func compose(model *v3.Document) ([]byte, error) {
+func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]byte, error) {
+
+	if compositionConfig == nil {
+		compositionConfig = &BundleCompositionConfig{
+			Delimiter: "__",
+		}
+	} else {
+		if compositionConfig.Delimiter == "" {
+			compositionConfig.Delimiter = "__"
+		}
+		if strings.Contains(compositionConfig.Delimiter, "#") ||
+			strings.Contains(compositionConfig.Delimiter, "/") {
+			return nil, errors.New("composition delimiter cannot contain '#' or '/' characters")
+		}
+		if strings.Contains(compositionConfig.Delimiter, " ") {
+			return nil, errors.New("composition delimiter cannot contain spaces")
+		}
+	}
+
+	if model == nil || model.Rolodex == nil {
+		return nil, errors.New("model or rolodex is nil")
+	}
 
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
 
 	cf := &handleIndexConfig{
-		idx:     rolodex.GetRootIndex(),
-		model:   model,
-		indexes: indexes,
-		seen:    sync.Map{},
-		depth:   0,
-		refMap:  orderedmap.New[string, *processRef](),
+		idx:               rolodex.GetRootIndex(),
+		model:             model,
+		indexes:           indexes,
+		seen:              sync.Map{},
+		refMap:            orderedmap.New[string, *processRef](),
+		compositionConfig: compositionConfig,
 	}
-	// recursive function to handle the indexes, we need a very different approach to composition vs. inlining.
+	// recursive function to handle the indexes, we need a different approach to composition vs. inlining.
 	handleIndex(cf)
 
 	processedNodes := orderedmap.New[string, *processRef]()
 
 	for _, ref := range cf.refMap.FromOldest() {
-		processReference(model, ref)
+		processReference(model, ref, cf)
 		processedNodes.Set(ref.ref.FullDefinition, ref)
 	}
 
@@ -102,6 +128,11 @@ func compose(model *v3.Document) ([]byte, error) {
 
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
+	}
+
+	// anything that could not be recomposed and needs inlining
+	for _, pr := range cf.inlineRequired {
+		pr.seqRef.Node.Content = pr.ref.Node.Content
 	}
 
 	return model.Render()

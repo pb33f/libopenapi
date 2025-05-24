@@ -3,18 +3,51 @@ info:
     title: API Title
     version: "1.0.0"
 paths:
+    /bong:
+        $ref: "#/components/pathItems/pathItem_A"
     /bing:
         $ref: "#/components/pathItems/bing"
     /test/{testId}:
+        patch:
+            operationId: Patch Test
+            requestBody:
+                $ref: "#/components/requestBodies/requestbody_A"
+        post:
+            operationId: Post Test
+            requestBody:
+                $ref: "#/components/requestBodies/testBody"
+            responses:
+                "403":
+                    description: could be meat, could be cake. only option is to inline.
+                "404":
+                    description: another test
+                    content:
+                        application/json:
+                            examples:
+                                lemonTest:
+                                    $ref: "#/components/examples/example_A"
+                            schema:
+                                $ref: "#/components/schemas/lemons"
+                "200":
+                    description: Test
+                    content:
+                        application/json:
+                            schema:
+                                $ref: "#/components/schemas/fishcake"
         get:
             operationId: GetTest
             callbacks:
+                doSomething:
+                    $ref: "#/components/callbacks/callback_A"
                 onData:
                     "{$request.query.callbackUrl}/data":
                         $ref: "#/components/callbacks/testCallback"
             parameters:
                 - $ref: "#/components/parameters/query"
+                - $ref: "#/components/parameters/param_A"
             responses:
+                "500":
+                    $ref: "#/components/responses/response_A"
                 "404":
                     $ref: "#/components/responses/404"
                 "200":
@@ -24,6 +57,8 @@ paths:
                     headers:
                         request-id:
                             $ref: "#/components/headers/request-id"
+                        lost-pepsi:
+                            $ref: "#/components/headers/header_A"
                     description: Test 200
                     content:
                         application/json:
@@ -46,6 +81,23 @@ paths:
                                 $ref: "#/components/schemas/paging"
 components:
     schemas:
+        lemons:
+            description: fresh
+            type: array
+            items:
+                type: object
+        fishcake:
+            type: object
+            description: I am a fishcake schema
+            properties:
+                filling:
+                    type: string
+                    description: The filling of the fishcake
+                    example: "cod"
+                batter:
+                    type: string
+                    description: The type of batter used
+                    example: "breadcrumb"
         dtoTest:
             description: Test schema (original - common.yaml)
             type: object
@@ -71,6 +123,9 @@ components:
         dtoTest__paging:
             description: Test schema (SMASH)
             type: object
+            properties:
+                fishcake:
+                    $ref: "#/components/schemas/fishcake"
         dtoError:
             example:
                 $ref: "#/components/examples/dtoErrorExample"
@@ -99,13 +154,40 @@ components:
         dtoTest__paging__1:
             description: Test schema (CLASH)
             type: object
+            properties:
+                fishcake:
+                    $ref: "#/components/schemas/fishcake__clash"
         dtoTest__error:
             description: A Test schema (error.yaml)
             type: string
+        fishcake__clash:
+            type: object
+            description: I am a fishcake schema (and a clash)
+            properties:
+                mixFilling:
+                    type: string
+                    description: The mixed filling of the cake
+                    example: "haddock"
+                temp:
+                    type: number
+                    format: float
+                    minimum: 0
+                    maximum: 180
+                    description: temperature in degrees celcius
+                    example: 145
         dtoTest__paging__2:
             description: A Test schema (paging.yaml)
             type: string
     responses:
+        response_A:
+            links:
+                aTestLink:
+                    $ref: "#/components/links/link_A"
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/dtoTest__paging"
+            description: ""
         "404":
             description: Not found response
         "403":
@@ -128,13 +210,27 @@ components:
             required: false
             schema:
                 type: string
+        param_A:
+            in: query
+            description: I am a a query param.
     examples:
+        example_A:
+            description: a test example
+            value:
+                cakes: nice
+                iceCream: good
         dtoErrorExample:
             value:
                 errorCode: ErrUnknownError
                 requestId: "12345"
                 message: "An unknown error occurred"
     requestBodies:
+        requestbody_A:
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: "#/components/schemas/dtoTest__paging__1"
         testBody:
             description: Test request body
     headers:
@@ -142,6 +238,10 @@ components:
             description: Request ID
             required: true
             example: "x837ant-000007"
+        header_A:
+            schema:
+                type: object
+                description: this is a header
     links:
         testLink:
             description: Test link
@@ -149,11 +249,24 @@ components:
             parameters:
                 request-id: "x837ant-000007"
                 query: "test"
+        link_A:
+            operationRef: updateCalendarRef
+            operationId: updateCalendar
+            description: a test link
     callbacks:
+        callback_A:
+            '{$request.query.queryUrl}':
+                post:
+                    requestBody:
+                        description: Callback payload
         testCallback:
             get:
                 description: Test callback
     pathItems:
+        pathItem_A:
+            get:
+                operationId: somethingHere
+                description: a test get
         bing:
             get:
                 description: Bing path item
