@@ -6,12 +6,13 @@ package libopenapi
 import (
 	"bytes"
 	"fmt"
-	what_changed "github.com/pb33f/libopenapi/what-changed"
 	"log/slog"
 	"net/url"
 	"os"
 	"strings"
 	"testing"
+
+	what_changed "github.com/pb33f/libopenapi/what-changed"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/index"
@@ -105,12 +106,11 @@ func ExampleNewDocument_fromWithDocumentConfigurationFailure() {
 }
 
 func ExampleNewDocument_fromWithDocumentConfigurationSuccess() {
-
 	// load in the Digital Ocean OpenAPI specification
 	digitalOcean, _ := os.ReadFile("test_specs/digitalocean.yaml")
 
 	// Digital Ocean needs a baseURL to be set, so we can resolve relative references.
-	//baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
+	// baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/main/specification")
 	// locked this in to a release, because the spec is throwing 404's occasionally.
 	baseURL, _ := url.Parse("https://raw.githubusercontent.com/digitalocean/openapi/9b763029ba805c3e0e56927fd6685d73bc27f3e8/specification")
 
@@ -655,5 +655,4 @@ func ExampleNewDocument_modifyAndReRender() {
 	fmt.Printf("The new spec has %d bytes\n", len(rawBytes))
 	// Output: There were 13 original paths. There are now 14 paths in the document
 	// The new spec has 31213 bytes
-
 }

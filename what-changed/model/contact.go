@@ -32,7 +32,6 @@ func (c *ContactChanges) TotalBreakingChanges() int {
 // were any, a pointer to a ContactChanges object is returned, otherwise if nothing changed - the function
 // returns nil.
 func CompareContact(l, r *base.Contact) *ContactChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 

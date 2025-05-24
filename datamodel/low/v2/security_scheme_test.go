@@ -48,7 +48,6 @@ func TestSecurityScheme_Build_Scopes(t *testing.T) {
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, orderedmap.Len(n.Scopes.Value.Values))
-
 }
 
 func TestSecurityScheme_Hash(t *testing.T) {

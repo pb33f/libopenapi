@@ -13,7 +13,6 @@ import (
 )
 
 func Test_seekRefEnd(t *testing.T) {
-
 	d := `cob: wob
 rob:
   $ref: "#/cob"
@@ -25,7 +24,6 @@ bill:
 	idx := NewSpecIndex(&rootNode)
 	r := seekRefEnd(idx, "#/rob")
 	assert.NotNil(t, r)
-
 }
 
 func TestGenerateCleanSpecConfigBaseURL(t *testing.T) {
@@ -289,7 +287,6 @@ pork: chop`
 }
 
 func Test_HashNode_TooDeep(t *testing.T) {
-
 	nodeA := &yaml.Node{}
 	nodeB := &yaml.Node{}
 

@@ -12,7 +12,6 @@ import (
 )
 
 func TestServer_MarshalYAML(t *testing.T) {
-
 	server := &Server{
 		URL:         "https://pb33f.io",
 		Description: "the b33f",

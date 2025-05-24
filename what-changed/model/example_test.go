@@ -16,7 +16,6 @@ import (
 )
 
 func TestCompareExamples_SummaryModified(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: cure all`
 
@@ -44,7 +43,6 @@ func TestCompareExamples_SummaryModified(t *testing.T) {
 }
 
 func TestCompareExamples_Map(t *testing.T) {
-
 	left := `value:
   cheesy: bread
   pasta: sauce`
@@ -74,7 +72,6 @@ func TestCompareExamples_Map(t *testing.T) {
 }
 
 func TestCompareExamples_MapAdded(t *testing.T) {
-
 	left := `value:
   cheesy: bread`
 
@@ -103,7 +100,6 @@ func TestCompareExamples_MapAdded(t *testing.T) {
 }
 
 func TestCompareExamples_MapRemoved(t *testing.T) {
-
 	left := `value:
   cheesy: bread`
 
@@ -131,7 +127,6 @@ func TestCompareExamples_MapRemoved(t *testing.T) {
 }
 
 func TestCompareExamples_SummaryAdded(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: magic herbs
 description: cure all`
@@ -158,7 +153,6 @@ description: cure all`
 }
 
 func TestCompareExamples_ExtensionAdded(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: magic herbs
 x-herbs: cure all`
@@ -185,7 +179,6 @@ x-herbs: cure all`
 }
 
 func TestCompareExamples_Identical(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: magic herbs`
 

@@ -4,14 +4,14 @@
 package low
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func Test_NodeMapExtractNodes(t *testing.T) {
-
 	yml := `one: hello
 two: there
 three: nice one
@@ -26,7 +26,6 @@ four:
 	nm := &NodeMap{Nodes: &syncMap}
 	nm.ExtractNodes(root.Content[0], false)
 	testTheThing(t, nm)
-
 }
 
 func testTheThing(t *testing.T, nm *NodeMap) {
@@ -71,7 +70,6 @@ func testTheThingUnmarshalled(t *testing.T, nm *sync.Map) {
 }
 
 func TestExtractNodes(t *testing.T) {
-
 	yml := `one: hello
 two: there
 three: nice one
@@ -93,11 +91,9 @@ four:
 
 	assert.Equal(t, 4, count)
 	testTheThingUnmarshalled(t, nm)
-
 }
 
 func TestExtractNodesRecursive(t *testing.T) {
-
 	yml := `one: hello
 two: there
 three: nice one
@@ -119,7 +115,6 @@ four:
 
 	assert.Equal(t, 6, count)
 	testTheThingUnmarshalled(t, nm)
-
 }
 
 func TestExtractNodes_Nil(t *testing.T) {
@@ -137,7 +132,6 @@ func TestExtractNodes_Nil(t *testing.T) {
 }
 
 func Test_NodeMapExtractNodes_SingleNode(t *testing.T) {
-
 	yml := `one: hello
 two: there
 three: nice one
@@ -154,7 +148,6 @@ four:
 	syncMap.Store(1, root.Content[0])
 
 	nm.ExtractNodes(root.Content[0], false)
-
 }
 
 func Test_NodeMapGetNodes_SingleNode(t *testing.T) {
@@ -164,11 +157,9 @@ func Test_NodeMapGetNodes_SingleNode(t *testing.T) {
 	syncMap.Store(1, &yaml.Node{})
 	ex := nm.GetNodes()
 	assert.Equal(t, 1, len(ex))
-
 }
 
 func Test_NodeMapContainsLine(t *testing.T) {
-
 	yml := `one: hello
 two: there
 three: nice one
@@ -199,11 +190,9 @@ func Test_NodeMapGetNodes_EmptyNode(t *testing.T) {
 
 	ex := nm.GetNodes()
 	assert.Equal(t, 1, len(ex))
-
 }
 
 func TestExtractExtensionNodes(t *testing.T) {
-
 	yml := `openapi: 3.1
 chack: spack
 x-fresh: nice
@@ -227,11 +216,9 @@ x-rice:
 	})
 
 	assert.Equal(t, 6, count)
-
 }
 
 func TestExtractNodes_NoContent(t *testing.T) {
-
 	yml := `one`
 
 	var root yaml.Node

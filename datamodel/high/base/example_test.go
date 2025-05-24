@@ -68,7 +68,6 @@ x-hack: code`
 	assert.Equal(t, "https://pb33f.io", j["externalValue"])
 	assert.Equal(t, "code", j["x-hack"])
 	assert.Equal(t, "a thing", j["value"])
-
 }
 
 func TestExtractExamples(t *testing.T) {

@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareScopes(t *testing.T) {
-
 	left := `pizza: pie
 lemon: sky
 x-nugget: chicken`
@@ -39,7 +39,6 @@ x-nugget: chicken`
 }
 
 func TestCompareScopes_Modified(t *testing.T) {
-
 	left := `pizza: sky
 lemon: sky
 x-nugget: chicken`
@@ -69,7 +68,6 @@ x-nugget: chicken`
 }
 
 func TestCompareScopes_Added(t *testing.T) {
-
 	left := `pizza: sky
 x-nugget: chicken`
 	right := `pizza: sky
@@ -99,7 +97,6 @@ x-nugget: chicken`
 }
 
 func TestCompareScopes_Removed_ChangeExt(t *testing.T) {
-
 	left := `pizza: sky
 x-nugget: chicken`
 	right := `pizza: sky

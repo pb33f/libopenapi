@@ -5,15 +5,15 @@ package v2
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestDefinitions_Schemas_Build_Error(t *testing.T) {
-
 	yml := `gonna:
   $ref: break`
 
@@ -28,11 +28,9 @@ func TestDefinitions_Schemas_Build_Error(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestDefinitions_Parameters_Build_Error(t *testing.T) {
-
 	yml := `gonna:
   $ref: break`
 
@@ -47,11 +45,9 @@ func TestDefinitions_Parameters_Build_Error(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestDefinitions_Hash(t *testing.T) {
-
 	yml := `nice:
   description: rice`
 
@@ -67,11 +63,9 @@ func TestDefinitions_Hash(t *testing.T) {
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Equal(t, "26d23786e6873e1a337f8e9be85f7de1490e4ff6cd303c3b15e593a25a6a149d",
 		low.GenerateHashString(&n))
-
 }
 
 func TestDefinitions_Responses_Build_Error(t *testing.T) {
-
 	yml := `gonna:
   $ref: break`
 
@@ -86,11 +80,9 @@ func TestDefinitions_Responses_Build_Error(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }
 
 func TestDefinitions_Security_Build_Error(t *testing.T) {
-
 	yml := `gonna:
   $ref: break`
 
@@ -105,5 +97,4 @@ func TestDefinitions_Security_Build_Error(t *testing.T) {
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
-
 }

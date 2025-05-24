@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareExamplesV2(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: cure all`
 
@@ -41,7 +41,6 @@ func TestCompareExamplesV2(t *testing.T) {
 }
 
 func TestCompareExamplesV2_Add(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: magic herbs
 yummy: coffee`
@@ -66,7 +65,6 @@ yummy: coffee`
 }
 
 func TestCompareExamplesV2_Remove(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := `summary: magic herbs
 yummy: coffee`
@@ -91,7 +89,6 @@ yummy: coffee`
 }
 
 func TestCompareExamplesV2_Identical(t *testing.T) {
-
 	left := `summary: magic herbs`
 	right := left
 

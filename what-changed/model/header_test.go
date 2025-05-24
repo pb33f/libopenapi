@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func test_buildUltraGlobOfHeaders() string {
-
 	// this is a mega glob of every header item in both swagger and openapi. the versioned models will
 	// pick out the relevant bits required when parsing.
 	return `description: header desc
@@ -60,7 +60,6 @@ x-beer: yummy`
 }
 
 func TestCompareHeaders_v2_identical(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := left
@@ -83,7 +82,6 @@ func TestCompareHeaders_v2_identical(t *testing.T) {
 }
 
 func TestCompareHeaders_v2_modified(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `description: header desc
@@ -129,7 +127,6 @@ x-beer: really yummy`
 }
 
 func TestCompareHeaders_v2_addedItems(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `description: header desc
@@ -174,7 +171,6 @@ x-beer: yummy`
 }
 
 func TestCompareHeaders_v2_removedItems(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `description: header desc
@@ -219,7 +215,6 @@ x-beer: yummy`
 }
 
 func TestCompareHeaders_v2_ItemsModified(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := left
@@ -242,7 +237,6 @@ func TestCompareHeaders_v2_ItemsModified(t *testing.T) {
 }
 
 func TestCompareHeaders_v3_identical(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := left
@@ -265,7 +259,6 @@ func TestCompareHeaders_v3_identical(t *testing.T) {
 }
 
 func TestCompareHeaders_v3_modified(t *testing.T) {
-
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `required: true
@@ -307,5 +300,4 @@ x-beer: yummy`
 	assert.Equal(t, 5, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-
 }

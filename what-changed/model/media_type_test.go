@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareMediaTypes(t *testing.T) {
-
 	left := `schema:
   type: string
 example: tasty herbs in the morning
@@ -50,7 +50,6 @@ encoding:
 }
 
 func TestCompareMediaTypes_Modify(t *testing.T) {
-
 	left := `schema:
   type: string
 example: tasty herbs in the morning
@@ -92,7 +91,6 @@ encoding:
 }
 
 func TestCompareMediaTypes_Modify_Examples(t *testing.T) {
-
 	left := `schema:
   type: string
 example:
@@ -127,7 +125,6 @@ example:
 }
 
 func TestCompareMediaTypes_ExampleChangedToMap(t *testing.T) {
-
 	left := `schema:
   type: string`
 
@@ -160,7 +157,6 @@ example:
 }
 
 func TestCompareMediaTypes_ExampleMapRemoved(t *testing.T) {
-
 	left := `schema:
   type: string`
 
@@ -193,7 +189,6 @@ example:
 }
 
 func TestCompareMediaTypes_AddSchema(t *testing.T) {
-
 	left := `example: tasty herbs in the morning
 examples:
   exampleOne:
@@ -233,7 +228,6 @@ encoding:
 }
 
 func TestCompareMediaTypes_RemoveSchema(t *testing.T) {
-
 	left := `example: tasty herbs in the morning
 examples:
   exampleOne:
@@ -273,7 +267,6 @@ encoding:
 }
 
 func TestCompareMediaTypes_ModifyObjects(t *testing.T) {
-
 	left := `schema:
   type: string
 example: tasty herbs in the morning

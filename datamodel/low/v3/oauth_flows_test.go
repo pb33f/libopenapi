@@ -45,7 +45,6 @@ x-tasty: herbs
 	assert.Equal(t, "https://pb33f.io/refresh", n.RefreshUrl.Value)
 	assert.Equal(t, "vanilla", n.FindScope("fresh:cake").Value)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
-
 }
 
 func TestOAuthFlow_Build_Implicit(t *testing.T) {
@@ -74,7 +73,6 @@ x-tasty: herbs`
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 	assert.NotNil(t, n.GetContext())
 	assert.NotNil(t, n.GetIndex())
-
 }
 
 func TestOAuthFlow_Build_Implicit_Fail(t *testing.T) {
@@ -227,7 +225,6 @@ scopes:
 	assert.Equal(t, n.Hash(), n2.Hash())
 	assert.NotNil(t, n2.GetContext())
 	assert.NotNil(t, n2.GetIndex())
-
 }
 
 func TestOAuthFlows_Hash(t *testing.T) {

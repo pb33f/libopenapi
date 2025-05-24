@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareContact_URLAdded(t *testing.T) {
-
 	left := `name: buckaroo`
 
 	right := `name: buckaroo
@@ -36,11 +36,9 @@ url: https://pb33f.io`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareContact_URLRemoved(t *testing.T) {
-
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -62,11 +60,9 @@ url: https://pb33f.io`
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareContact_NameAdded(t *testing.T) {
-
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -88,11 +84,9 @@ name: buckaroo`
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareContact_NameRemoved(t *testing.T) {
-
 	left := `url: https://pb33f.io
 name: buckaroo`
 
@@ -117,7 +111,6 @@ name: buckaroo`
 }
 
 func TestCompareContact_EmailAdded(t *testing.T) {
-
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -139,11 +132,9 @@ email: buckaroo@pb33f.io`
 	extChanges := CompareContact(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareContact_EmailRemoved(t *testing.T) {
-
 	left := `url: https://pb33f.io
 email: buckaroo@pb33f.io`
 
@@ -168,7 +159,6 @@ email: buckaroo@pb33f.io`
 }
 
 func TestCompareContact_EmailModified(t *testing.T) {
-
 	left := `url: https://pb33f.io
 email: buckaroo@pb33f.io`
 
@@ -195,7 +185,6 @@ email: dave@quobix.com`
 }
 
 func TestCompareContact_EmailModifiedAndMoved(t *testing.T) {
-
 	left := `email: buckaroo@pb33f.io
 url: https://pb33f.io`
 
@@ -220,7 +209,6 @@ email: dave@quobix.com`
 }
 
 func TestCompareContact_Identical(t *testing.T) {
-
 	left := `email: buckaroo@pb33f.io
 url: https://pb33f.io`
 

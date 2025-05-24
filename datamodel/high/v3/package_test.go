@@ -5,8 +5,9 @@ package v3
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"os"
+
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"

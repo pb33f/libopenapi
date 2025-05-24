@@ -5,14 +5,15 @@ package index
 
 import (
 	"encoding/json"
-	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"sync"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"gopkg.in/yaml.v3"
 )
 
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing

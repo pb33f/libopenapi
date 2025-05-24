@@ -488,7 +488,6 @@ func TestTranslatePipeline(t *testing.T) {
 			// context cancel.  Then the second item is aborted by this error
 			// handler.
 			t.Run("Error while waiting on worker", func(t *testing.T) {
-
 				// this test gets stuck sometimes, so it needs a hard limit.
 
 				ctx, c := context.WithTimeout(context.Background(), 5*time.Second)
@@ -496,7 +495,6 @@ func TestTranslatePipeline(t *testing.T) {
 				doneChan := make(chan struct{})
 
 				go func(completedChan chan struct{}) {
-
 					const concurrency = 2
 					in := make(chan int)
 					out := make(chan string)

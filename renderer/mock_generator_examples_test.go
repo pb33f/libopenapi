@@ -11,7 +11,6 @@ import (
 )
 
 func ExampleMockGenerator_generateBurgerMock_yaml() {
-
 	// create a new YAML mock generator
 	mg := NewMockGenerator(YAML)
 
@@ -25,17 +24,15 @@ func ExampleMockGenerator_generateBurgerMock_yaml() {
 	burgerModel := v3Model.Model.Components.Schemas.GetOrZero("Burger")
 	burger := burgerModel.Schema()
 	mock, err := mg.GenerateMock(burger, "")
-
 	if err != nil {
 		panic(err)
 	}
 	fmt.Println(string(mock))
 	// Output: name: Big Mac
-	//numPatties: 2
+	// numPatties: 2
 }
 
 func ExampleMockGenerator_generateFriesMock_json() {
-
 	// create a new YAML mock generator
 	mg := NewMockGenerator(JSON)
 
@@ -49,7 +46,6 @@ func ExampleMockGenerator_generateFriesMock_json() {
 	friesModel := v3Model.Model.Components.Schemas.GetOrZero("Fries")
 	fries := friesModel.Schema()
 	mock, err := mg.GenerateMock(fries, "")
-
 	if err != nil {
 		panic(err)
 	}
@@ -58,7 +54,6 @@ func ExampleMockGenerator_generateFriesMock_json() {
 }
 
 func ExampleMockGenerator_generateRequestMock_json() {
-
 	// create a new YAML mock generator
 	mg := NewMockGenerator(JSON)
 
@@ -74,7 +69,6 @@ func ExampleMockGenerator_generateRequestMock_json() {
 
 	// use the 'cakeBurger' example to generate a mock
 	mock, err := mg.GenerateMock(burgerRequestModel, "cakeBurger")
-
 	if err != nil {
 		panic(err)
 	}
@@ -83,7 +77,6 @@ func ExampleMockGenerator_generateRequestMock_json() {
 }
 
 func ExampleMockGenerator_generateResponseMock_json() {
-
 	mg := NewMockGenerator(JSON)
 	// create a new YAML mock generator
 
@@ -99,7 +92,6 @@ func ExampleMockGenerator_generateResponseMock_json() {
 
 	// use the 'filetOFish' example to generate a mock
 	mock, err := mg.GenerateMock(burgerResponseModel, "filetOFish")
-
 	if err != nil {
 		panic(err)
 	}
@@ -108,7 +100,6 @@ func ExampleMockGenerator_generateResponseMock_json() {
 }
 
 func ExampleMockGenerator_generatePolymorphicMock_json() {
-
 	mg := NewMockGenerator(JSON)
 	// create a new YAML mock generator
 
@@ -122,7 +113,6 @@ func ExampleMockGenerator_generatePolymorphicMock_json() {
 	payloadModel := v3Model.Model.Components.Schemas.GetOrZero("SomePayload")
 	payload := payloadModel.Schema()
 	mock, err := mg.GenerateMock(payload, "")
-
 	if err != nil {
 		panic(err)
 	}

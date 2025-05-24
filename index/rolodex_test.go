@@ -35,33 +35,27 @@ func TestRolodex_NewRolodex(t *testing.T) {
 	assert.Len(t, rolo.GetIndexes(), 0)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
 	assert.NotNil(t, rolo.GetConfig())
-
 }
 
 func TestRolodex_NoFS(t *testing.T) {
-
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 	rf, err := rolo.Open("spec.yaml")
 	assert.Error(t, err)
 	assert.Equal(t, "rolodex has no file systems configured, cannot open 'spec.yaml'. "+
 		"Add a BaseURL or BasePath to your configuration so the rolodex knows how to resolve references", err.Error())
 	assert.Nil(t, rf)
-
 }
 
 func TestRolodex_NoFSButHasRemoteFS(t *testing.T) {
-
 	rolo := NewRolodex(CreateOpenAPIIndexConfig())
 	rolo.AddRemoteFS("http://localhost", nil)
 	rf, err := rolo.Open("spec.yaml")
 	assert.Error(t, err)
 	assert.Equal(t, "the rolodex has no local file systems configured, cannot open local file 'spec.yaml'", err.Error())
 	assert.Nil(t, rf)
-
 }
 
 func TestRolodex_LocalNativeFS(t *testing.T) {
-
 	t.Parallel()
 	testFS := fstest.MapFS{
 		"spec.yaml":             {Data: []byte("hip"), ModTime: time.Now()},
@@ -92,11 +86,9 @@ func TestRolodex_LocalNativeFS(t *testing.T) {
 	rolo.rootIndex = NewTestSpecIndex()
 	rolo.indexes = append(rolo.indexes, rolo.rootIndex)
 	rolo.ClearIndexCaches()
-
 }
 
 func TestRolodex_LocalNonNativeFS(t *testing.T) {
-
 	t.Parallel()
 	testFS := fstest.MapFS{
 		"spec.yaml":             {Data: []byte("hip"), ModTime: time.Now()},
@@ -137,6 +129,7 @@ func (t *test_badfs) Open(v string) (fs.File, error) {
 	}
 	return &test_badfs{ok: ok, goodstat: t.goodstat}, nil
 }
+
 func (t *test_badfs) Stat() (fs.FileInfo, error) {
 	if t.goodstat {
 		return &LocalFile{
@@ -145,6 +138,7 @@ func (t *test_badfs) Stat() (fs.FileInfo, error) {
 	}
 	return nil, os.ErrInvalid
 }
+
 func (t *test_badfs) Read(b []byte) (int, error) {
 	if t.ok {
 		if t.offset >= int64(len("pizza")) {
@@ -159,12 +153,12 @@ func (t *test_badfs) Read(b []byte) (int, error) {
 	}
 	return 0, os.ErrNotExist
 }
+
 func (t *test_badfs) Close() error {
 	return os.ErrNotExist
 }
 
 func TestRolodex_LocalNonNativeFS_BadRead(t *testing.T) {
-
 	t.Parallel()
 	testFS := &test_badfs{}
 
@@ -184,7 +178,6 @@ func TestRolodex_LocalNonNativeFS_BadRead(t *testing.T) {
 }
 
 func TestRolodex_LocalNonNativeFS_BadStat(t *testing.T) {
-
 	t.Parallel()
 	testFS := &test_badfs{}
 
@@ -197,11 +190,9 @@ func TestRolodex_LocalNonNativeFS_BadStat(t *testing.T) {
 	assert.Nil(t, f)
 	assert.Error(t, rerr)
 	assert.Equal(t, "invalid argument", rerr.Error())
-
 }
 
 func TestRolodex_LocalNonNativeRemoteFS_BadRead(t *testing.T) {
-
 	t.Parallel()
 	testFS := &test_badfs{}
 
@@ -217,7 +208,6 @@ func TestRolodex_LocalNonNativeRemoteFS_BadRead(t *testing.T) {
 }
 
 func TestRolodex_LocalNonNativeRemoteFS_ReadFile(t *testing.T) {
-
 	t.Parallel()
 	testFS := &test_badfs{}
 
@@ -247,7 +237,6 @@ func TestRolodex_LocalNonNativeRemoteFS_ReadFile(t *testing.T) {
 }
 
 func TestRolodex_LocalNonNativeRemoteFS_BadStat(t *testing.T) {
-
 	t.Parallel()
 	testFS := &test_badfs{}
 
@@ -260,7 +249,6 @@ func TestRolodex_LocalNonNativeRemoteFS_BadStat(t *testing.T) {
 	assert.Nil(t, f)
 	assert.Error(t, rerr)
 	assert.Equal(t, "invalid argument", rerr.Error())
-
 }
 
 func TestRolodex_rolodexFileTests(t *testing.T) {
@@ -282,7 +270,6 @@ func TestRolodex_rolodexFileTests(t *testing.T) {
 }
 
 func TestRolodex_NotRolodexFS(t *testing.T) {
-
 	nonRoloFS := os.DirFS(".")
 	cf := CreateOpenAPIIndexConfig()
 	rolo := NewRolodex(cf)
@@ -292,18 +279,16 @@ func TestRolodex_NotRolodexFS(t *testing.T) {
 
 	assert.Error(t, err)
 	assert.Equal(t, "rolodex file system is not a RolodexFS", err.Error())
-
 }
 
 func TestRolodex_IndexCircularLookup(t *testing.T) {
-
 	offToOz := `openapi: 3.1.0
 components:
   schemas:
     CircleTest:
       $ref: "../test_specs/circular-tests.yaml#/components/schemas/One"`
 
-	_ = os.WriteFile("off_to_oz.yaml", []byte(offToOz), 0644)
+	_ = os.WriteFile("off_to_oz.yaml", []byte(offToOz), 0o644)
 	defer os.Remove("off_to_oz.yaml")
 
 	baseDir := "../"
@@ -333,7 +318,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_AroundWeGo(t *testing.T) {
-
 	there := `openapi: 3.1.0
 components:
   schemas:
@@ -356,8 +340,8 @@ components:
         muffins:
          $ref: "there.yaml#/components/schemas/CircleTest"`
 
-	_ = os.WriteFile("there.yaml", []byte(there), 0644)
-	_ = os.WriteFile("back-again.yaml", []byte(backagain), 0644)
+	_ = os.WriteFile("there.yaml", []byte(there), 0o644)
+	_ = os.WriteFile("back-again.yaml", []byte(backagain), 0o644)
 	defer os.Remove("there.yaml")
 	defer os.Remove("back-again.yaml")
 
@@ -388,7 +372,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_AroundWeGo_IgnorePoly(t *testing.T) {
-
 	fifth := "type: string"
 
 	fourth := `type: "object"
@@ -449,7 +432,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-a"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -517,16 +500,16 @@ components:
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
 
-	//srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
+	// srv := test_rolodexDeepRefServer([]byte(first), []byte(second),
 	//	[]byte(third), []byte(fourth), []byte(fifth))
-	//defer srv.Close()
+	// defer srv.Close()
 
-	//u, _ := url.Parse(srv.URL)
-	//cf.BaseURL = u
-	//remoteFS, rErr := NewRemoteFSWithConfig(cf)
-	//assert.NoError(t, rErr)
+	// u, _ := url.Parse(srv.URL)
+	// cf.BaseURL = u
+	// remoteFS, rErr := NewRemoteFSWithConfig(cf)
+	// assert.NoError(t, rErr)
 
-	//rolodex.AddRemoteFS(srv.URL, remoteFS)
+	// rolodex.AddRemoteFS(srv.URL, remoteFS)
 
 	var rootNode yaml.Node
 	err = yaml.Unmarshal([]byte(first), &rootNode)
@@ -582,7 +565,6 @@ components:
 	//// file that is not local, but is remote
 	//f, _ = rolodex.Open("https://pb33f.io/bingo/jingo.yaml")
 	//assert.NotNil(t, f)
-
 }
 
 func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
@@ -618,7 +600,6 @@ func test_rolodexDeepRefServer(a, b, c, d, e []byte) *httptest.Server {
 }
 
 func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_WithFiles_RecursiveLookup(t *testing.T) {
-
 	fourth := `type: "object"
 properties:
   name:
@@ -664,7 +645,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-b"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -716,11 +697,9 @@ components:
 	assert.Error(t, err)
 	assert.GreaterOrEqual(t, len(rolodex.GetCaughtErrors()), 1)
 	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing: $.['not_found.yaml'] [8:11]", rolodex.GetCaughtErrors()[0].Error())
-
 }
 
 func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_WithFiles(t *testing.T) {
-
 	first := `openapi: 3.1.0
 components:
   schemas:
@@ -777,7 +756,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-f"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -828,7 +807,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_PolyItems_LocalLoop_BuildIndexesPost(t *testing.T) {
-
 	first := `openapi: 3.1.0
 components:
   schemas:
@@ -885,7 +863,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-c"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -939,11 +917,9 @@ components:
 	// trigger a rebuild, should do nothing.
 	rolodex.BuildIndexes()
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
-
 }
 
 func TestRolodex_IndexCircularLookup_ArrayItems_LocalLoop_WithFiles(t *testing.T) {
-
 	first := `openapi: 3.1.0
 components:
   schemas:
@@ -998,7 +974,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-d"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -1048,7 +1024,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_PolyItemsHttpOnly(t *testing.T) {
-
 	third := `type: string`
 	fourth := `components:
   schemas:
@@ -1129,7 +1104,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-e"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -1184,11 +1159,9 @@ components:
 	expectedFullLineCount := (strings.Count(first, "\n") + 1) + (strings.Count(second, "\n") + 1) +
 		(strings.Count(third, "\n") + 1) + (strings.Count(fourth, "\n") + 1)
 	assert.Equal(t, int64(expectedFullLineCount), rolodex.GetFullLineCount())
-
 }
 
 func TestRolodex_IndexCircularLookup_PolyItemsFileOnly_LocalIncluded(t *testing.T) {
-
 	third := `type: string`
 
 	second := `openapi: 3.1.0
@@ -1243,7 +1216,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-g"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "first-*.yaml")
 	assert.NoError(t, fErr)
@@ -1301,7 +1274,6 @@ components:
 }
 
 func TestRolodex_TestDropDownToRemoteFS_CatchErrors(t *testing.T) {
-
 	fourth := `type: "object"
 properties:
   name:
@@ -1347,7 +1319,7 @@ components:
 	var fErr error
 
 	tmp := "tmp-h"
-	_ = os.Mkdir(tmp, 0755)
+	_ = os.Mkdir(tmp, 0o755)
 
 	firstFile, fErr = os.CreateTemp(tmp, "*-first.yaml")
 	assert.NoError(t, fErr)
@@ -1414,7 +1386,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_LookupHttpNoBaseURL(t *testing.T) {
-
 	first := `openapi: 3.1.0
 components:
   schemas:
@@ -1447,7 +1418,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_ignorePoly(t *testing.T) {
-
 	spinny := `openapi: 3.1.0
 components:
   schemas:
@@ -1479,7 +1449,6 @@ components:
 }
 
 func TestRolodex_IndexCircularLookup_ignoreArray(t *testing.T) {
-
 	spinny := `openapi: 3.1.0
 components:
   schemas:
@@ -1511,7 +1480,6 @@ components:
 }
 
 func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
@@ -1521,7 +1489,6 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 		})),
 		DirFS: os.DirFS(baseDir),
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1543,7 +1510,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 
 	err = rolo.IndexTheRolodex()
 
-	//assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
+	// assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.NotNil(t, rolo.GetRootIndex())
 	assert.Len(t, rolo.GetIndexes(), 11)
 	assert.Len(t, rolo.GetAllReferences(), 10)
@@ -1584,12 +1551,10 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.NoError(t, rolo.IndexTheRolodex())
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
-
 }
 
 func TestRolodex_CircularReferencesPolyIgnored(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     bingo:
@@ -1625,12 +1590,10 @@ components:
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
 }
 
 func TestRolodex_CircularReferencesPolyIgnored_PostCheck(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     bingo:
@@ -1667,12 +1630,10 @@ components:
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
 }
 
 func TestRolodex_CircularReferencesPolyIgnored_Resolve(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     bingo:
@@ -1709,12 +1670,10 @@ components:
 	rolo.Resolve()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
 }
 
 func TestRolodex_CircularReferencesPostCheck(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     bingo:
@@ -1739,12 +1698,10 @@ components:
 	assert.Len(t, rolo.GetCaughtErrors(), 1)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetInfiniteCircularReferences(), 1)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetSafeCircularReferences(), 0)
-
 }
 
 func TestRolodex_CircularReferencesArrayIgnored(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -1772,12 +1729,10 @@ components:
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
 }
 
 func TestRolodex_CircularReferencesArrayIgnored_Resolve(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -1805,12 +1760,10 @@ components:
 	rolo.Resolve()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
 }
 
 func TestRolodex_CircularReferencesArrayIgnored_PostCheck(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -1839,36 +1792,28 @@ components:
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
-
 }
 
 func TestHumanFileSize(t *testing.T) {
-
 	// test bytes for different units
 	assert.Equal(t, "1 B", HumanFileSize(1))
 	assert.Equal(t, "1 KB", HumanFileSize(1024))
 	assert.Equal(t, "1 MB", HumanFileSize(1024*1024))
-
 }
 
 func TestRolodex_GetSafeCircularReferences_nil(t *testing.T) {
-
 	var r *Rolodex
 	circ := r.GetSafeCircularReferences()
 	assert.Nil(t, circ)
-
 }
 
 func TestRolodex_GetIgnoredCircularReferences_nil(t *testing.T) {
-
 	var r *Rolodex
 	circ := r.GetIgnoredCircularReferences()
 	assert.Nil(t, circ)
-
 }
 
 func TestRolodex_IndexCircularLookup_SafeCircular(t *testing.T) {
-
 	offToOz := `openapi: 3.1.0
 components:
   schemas:
@@ -1883,7 +1828,7 @@ components:
             - $ref: "#/components/schemas/One"
      `
 
-	_ = os.WriteFile("off_to_ozmin.yaml", []byte(offToOz), 0644)
+	_ = os.WriteFile("off_to_ozmin.yaml", []byte(offToOz), 0o644)
 	defer os.Remove("off_to_ozmin.yaml")
 
 	baseDir, _ := os.Getwd()

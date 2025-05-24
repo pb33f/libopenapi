@@ -4,17 +4,17 @@
 package index
 
 import (
+	"os"
+	"reflect"
+	"testing"
+
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"os"
-	"reflect"
-	"testing"
 )
 
 func TestSpecIndex_MapNodes(t *testing.T) {
-
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(petstore, &rootNode)
@@ -56,7 +56,6 @@ func TestSpecIndex_MapNodes(t *testing.T) {
 }
 
 func BenchmarkSpecIndex_MapNodes(b *testing.B) {
-
 	petstore, _ := os.ReadFile("../test_specs/petstorev3.json")
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal(petstore, &rootNode)

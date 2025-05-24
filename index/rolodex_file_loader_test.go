@@ -4,8 +4,6 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -14,6 +12,9 @@ import (
 	"testing"
 	"testing/fstest"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
@@ -33,7 +34,6 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 		})),
 		DirFS: testFS,
 	})
-
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,11 +96,9 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 	assert.NotNil(t, idx)
 	assert.NotNil(t, localFile.GetContent())
 	assert.NotNil(t, localFile.GetIndex())
-
 }
 
 func TestRolodexLocalFS_NoConfig(t *testing.T) {
-
 	lfs := &LocalFS{}
 	f, e := lfs.Open("test.yaml")
 	assert.Nil(t, f)
@@ -108,7 +106,6 @@ func TestRolodexLocalFS_NoConfig(t *testing.T) {
 }
 
 func TestRolodexLocalFS_NoLookup(t *testing.T) {
-
 	cf := CreateClosedAPIIndexConfig()
 	lfs := &LocalFS{indexConfig: cf}
 	f, e := lfs.Open("test.yaml")
@@ -117,7 +114,6 @@ func TestRolodexLocalFS_NoLookup(t *testing.T) {
 }
 
 func TestRolodexLocalFS_BadAbsFile(t *testing.T) {
-
 	cf := CreateOpenAPIIndexConfig()
 	lfs := &LocalFS{indexConfig: cf}
 	f, e := lfs.Open("/test.yaml")
@@ -126,7 +122,6 @@ func TestRolodexLocalFS_BadAbsFile(t *testing.T) {
 }
 
 func TestRolodexLocalFS_ErrorOutWaiter(t *testing.T) {
-
 	lfs := &LocalFS{indexConfig: nil}
 	lfs.processingFiles.Store("/test.yaml", &waiterLocal{})
 	f, e := lfs.Open("/test.yaml")
@@ -135,7 +130,6 @@ func TestRolodexLocalFS_ErrorOutWaiter(t *testing.T) {
 }
 
 func TestRolodexLocalFile_BadParse(t *testing.T) {
-
 	lf := &LocalFile{}
 	n, e := lf.GetContentAsYAMLNode()
 	assert.Nil(t, n)
@@ -144,16 +138,13 @@ func TestRolodexLocalFile_BadParse(t *testing.T) {
 }
 
 func TestRolodexLocalFile_NoIndexRoot(t *testing.T) {
-
 	lf := &LocalFile{data: []byte("burders"), index: NewTestSpecIndex()}
 	n, e := lf.GetContentAsYAMLNode()
 	assert.NotNil(t, n)
 	assert.NoError(t, e)
-
 }
 
 func TestRolodexLocalFS_NoBaseRelative(t *testing.T) {
-
 	lfs := &LocalFS{}
 	f, e := lfs.extractFile("test.jpg")
 	assert.Nil(t, f)
@@ -161,7 +152,6 @@ func TestRolodexLocalFS_NoBaseRelative(t *testing.T) {
 }
 
 func TestRolodexLocalFile_IndexSingleFile(t *testing.T) {
-
 	testFS := fstest.MapFS{
 		"spec.yaml":  {Data: []byte("hip"), ModTime: time.Now()},
 		"spock.yaml": {Data: []byte("hop"), ModTime: time.Now()},
@@ -178,11 +168,9 @@ func TestRolodexLocalFile_IndexSingleFile(t *testing.T) {
 
 	files := fileFS.GetFiles()
 	assert.Len(t, files, 1)
-
 }
 
 func TestRolodexLocalFile_FileNotSpec(t *testing.T) {
-
 	testFS := fstest.MapFS{
 		"spec.yaml": {Data: []byte("hip"), ModTime: time.Now()},
 		"spack.cpp": {Data: []byte("clip:clop: clap: chap:"), ModTime: time.Now()},
@@ -209,11 +197,9 @@ func TestRolodexLocalFile_FileNotSpec(t *testing.T) {
 	assert.NoError(t, ierr)
 	assert.NotNil(t, node)
 	assert.Equal(t, "clip:clop: clap: chap:", node.Content[0].Value)
-
 }
 
 func TestRolodexLocalFile_TestFilters(t *testing.T) {
-
 	testFS := fstest.MapFS{
 		"spec.yaml":  {Data: []byte("hip"), ModTime: time.Now()},
 		"spock.yaml": {Data: []byte("pip"), ModTime: time.Now()},
@@ -227,11 +213,9 @@ func TestRolodexLocalFile_TestFilters(t *testing.T) {
 	})
 	files := fileFS.GetFiles()
 	assert.Len(t, files, 2)
-
 }
 
 func TestRolodexLocalFile_TestBadFS(t *testing.T) {
-
 	testFS := test_badfs{}
 
 	fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
@@ -240,11 +224,9 @@ func TestRolodexLocalFile_TestBadFS(t *testing.T) {
 	})
 	assert.Error(t, err)
 	assert.Nil(t, fileFS)
-
 }
 
 func TestNewRolodexLocalFile_BadOffset(t *testing.T) {
-
 	lf := &LocalFile{offset: -1}
 	z, y := io.ReadAll(lf)
 	assert.Len(t, z, 0)
@@ -252,7 +234,6 @@ func TestNewRolodexLocalFile_BadOffset(t *testing.T) {
 }
 
 func TestRecursiveLocalFile_IndexNonParsable(t *testing.T) {
-
 	pup := []byte("I:\n miss you fox, you're: my good boy:")
 
 	var myPuppy yaml.Node
@@ -290,11 +271,9 @@ func TestRecursiveLocalFile_IndexNonParsable(t *testing.T) {
 	assert.NotNil(t, fox)
 	assert.Len(t, fox.GetErrors(), 0)
 	assert.Equal(t, "I:\n miss you fox, you're: my good boy:", fox.GetContent())
-
 }
 
 func TestRecursiveLocalFile_MultipleRequests(t *testing.T) {
-
 	pup := []byte(`components:
   schemas:
     fox:

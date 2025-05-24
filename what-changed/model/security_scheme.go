@@ -4,10 +4,11 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"reflect"
 )
 
 // SecuritySchemeChanges represents changes made between Swagger or OpenAPI SecurityScheme Objects.
@@ -78,7 +79,6 @@ func CompareSecuritySchemesV3(l, r *v3.SecurityScheme) *SecuritySchemeChanges {
 // CompareSecuritySchemes compares left and right Swagger or OpenAPI Security Scheme objects for changes.
 // If anything is found, returns a pointer to *SecuritySchemeChanges or nil if nothing is found.
 func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
-
 	var props []*PropertyCheck
 	var changes []*Change
 

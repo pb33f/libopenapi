@@ -4,10 +4,11 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"reflect"
 )
 
 // HeaderChanges represents changes made between two Header objects. Supports both Swagger and OpenAPI header
@@ -205,7 +206,6 @@ func CompareHeadersV3(l, r *v3.Header) *HeaderChanges {
 // CompareHeaders will compare left and right Header objects (any version of Swagger or OpenAPI) and return
 // a pointer to HeaderChanges with anything that has changed, or nil if nothing changed.
 func CompareHeaders(l, r any) *HeaderChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 	hc := new(HeaderChanges)

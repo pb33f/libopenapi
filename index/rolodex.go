@@ -78,7 +78,6 @@ type Rolodex struct {
 
 // NewRolodex creates a new rolodex with the provided index configuration.
 func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
-
 	logger := indexConfig.Logger
 	if logger == nil {
 		logger = slog.New(
@@ -244,7 +243,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 		errChan chan error,
 		indexChan chan *SpecIndex,
 	) {
-
 		var wg sync.WaitGroup
 
 		indexFileFunc := func(idxFile CanBeIndexed, fullPath string) {
@@ -269,7 +267,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 				}
 				indexChan <- idx
 			}
-
 		}
 
 		if lfs, ok := fs.(RolodexFS); ok {
@@ -413,7 +410,6 @@ func (r *Rolodex) IndexTheRolodex() error {
 	r.caughtErrors = caughtErrors
 	r.built = true
 	return errors.Join(caughtErrors...)
-
 }
 
 // CheckForCircularReferences checks for circular references in the rolodex.
@@ -447,7 +443,6 @@ func (r *Rolodex) CheckForCircularReferences() {
 
 // Resolve resolves references in the rolodex.
 func (r *Rolodex) Resolve() {
-
 	var resolvers []*Resolver
 	if r.rootIndex != nil && r.rootIndex.resolver != nil {
 		resolvers = append(resolvers, r.rootIndex.resolver)
@@ -521,7 +516,6 @@ func (r *Rolodex) GetAllMappedReferences() map[string]*Reference {
 
 // Open opens a file in the rolodex, and returns a RolodexFile.
 func (r *Rolodex) Open(location string) (RolodexFile, error) {
-
 	if r == nil {
 		return nil, fmt.Errorf("rolodex has not been initialized, cannot open file '%s'", location)
 	}
@@ -613,7 +607,6 @@ func (r *Rolodex) Open(location string) (RolodexFile, error) {
 				r.logger.Warn("[rolodex] errors opening remote file", "location", fileLookup, "error", err)
 			}
 			if f != nil {
-
 				if rf, ok := interface{}(f).(*RemoteFile); ok {
 					remoteFile = rf
 					break

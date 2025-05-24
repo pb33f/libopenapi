@@ -4,10 +4,11 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {
@@ -28,7 +29,6 @@ func TestSpecIndex_performExternalLookup(t *testing.T) {
 }
 
 func TestSpecIndex_CheckCircularIndex(t *testing.T) {
-
 	cFile := "../test_specs/first.yaml"
 	yml, _ := os.ReadFile(cFile)
 	var rootNode yaml.Node
@@ -72,7 +72,6 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 }
 
 func TestSpecIndex_CheckCircularIndex_NoDirFS(t *testing.T) {
-
 	cFile := "../test_specs/first.yaml"
 	yml, _ := os.ReadFile(cFile)
 	var rootNode yaml.Node
@@ -115,9 +114,8 @@ func TestSpecIndex_CheckCircularIndex_NoDirFS(t *testing.T) {
 }
 
 func TestFindComponent_RolodexFileParseError_Recovery(t *testing.T) {
-
 	badData := "I cannot be parsed: \"I am not a YAML file or a JSON file"
-	_ = os.WriteFile("bad.yaml", []byte(badData), 0644)
+	_ = os.WriteFile("bad.yaml", []byte(badData), 0o644)
 	defer os.Remove("bad.yaml")
 
 	badRef := `openapi: 3.1.0
@@ -201,14 +199,11 @@ components:
 }
 
 func TestSpecIndex_FailFindComponentInRoot(t *testing.T) {
-
 	index := NewTestSpecIndex()
 	assert.Nil(t, index.FindComponentInRoot("does it even matter? of course not. no"))
-
 }
 
 func TestSpecIndex_LocateRemoteDocsWithRemoteURLHandler(t *testing.T) {
-
 	// This test will push the index to do try and locate remote references that use relative references
 	spec := `openapi: 3.0.2
 info:
@@ -298,7 +293,6 @@ paths:
 }
 
 func TestFindComponent_LookupRolodex_GrabRoot(t *testing.T) {
-
 	spec := `openapi: 3.0.2
 info:
   title: Test
@@ -322,11 +316,9 @@ components:
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)
-
 }
 
 func TestFindComponentInRoot_GrabDocRoot(t *testing.T) {
-
 	spec := `openapi: 3.0.2
 info:
   title: Test
@@ -350,11 +342,9 @@ components:
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)
-
 }
 
 func TestFindComponentInRoot_SimulateWindows(t *testing.T) {
-
 	spec := `openapi: 3.0.2
 info:
   title: Test
@@ -377,11 +367,9 @@ components:
 	n := index.FindComponentInRoot(`C:\windows\you\annoy\me#\components\schemas\thang`)
 
 	assert.NotNil(t, n)
-
 }
 
 func TestFindComponent_LookupRolodex_NoURL(t *testing.T) {
-
 	spec := `openapi: 3.0.2
 info:
   title: Test
@@ -405,11 +393,9 @@ components:
 
 	// no url, no ref.
 	assert.Nil(t, n)
-
 }
 
 func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
-
 	spec := `i:am : not a yaml file:`
 
 	var rootNode yaml.Node
@@ -425,5 +411,4 @@ func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)
-
 }

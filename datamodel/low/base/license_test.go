@@ -5,14 +5,14 @@ package base
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestLicense_Hash(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: the ranch
 x-happy: dance`
@@ -43,7 +43,6 @@ x-drink: beer`
 }
 
 func TestLicense_WithIdentifier_Hash(t *testing.T) {
-
 	left := `identifier: MIT
 description: the ranch`
 
@@ -64,5 +63,4 @@ description: the ranch`
 	assert.NoError(t, err)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
-
 }

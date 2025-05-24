@@ -7,6 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
+	"reflect"
+	"strconv"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -16,10 +21,6 @@ import (
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"path/filepath"
-	"reflect"
-	"strconv"
-	"strings"
 )
 
 func calculateCollisionName(name, pointer, delimiter string, iteration int) string {
@@ -57,7 +58,6 @@ func calculateCollisionName(name, pointer, delimiter string, iteration int) stri
 	// split a path into segments and then create a new name by appending the iteration count.
 	segments := strings.Split(utils.ReplaceWindowsDriveWithLinuxPath(filepath.Dir(pointer)), "/")
 	if len(segments) > 0 {
-
 		if iteration < len(segments) {
 
 			lastSegment := segments[len(segments)-(iteration)]
@@ -139,7 +139,6 @@ func checkForCollision[T any](schemaName, delimiter string, pr *processRef, comp
 }
 
 func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *processRef]) {
-
 	seq := idx.GetRawReferencesSequenced()
 	for _, sequenced := range seq {
 		rewireRef(sequenced, sequenced.FullDefinition, processedNodes)
@@ -151,11 +150,9 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 		reMapped[mRef.FullDefinition] = mRef
 	}
 	idx.SetMappedReferences(reMapped)
-
 }
 
 func renameRef(def string, processedNodes *orderedmap.Map[string, *processRef]) string {
-
 	if strings.Contains(def, "#/") {
 
 		defSplit := strings.Split(def, "#/")
@@ -177,7 +174,6 @@ func renameRef(def string, processedNodes *orderedmap.Map[string, *processRef]) 
 }
 
 func rewireRef(ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
-
 	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
 	rename := renameRef(fullDef, processedNodes)
 	if isRef {

@@ -4,9 +4,10 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
 	"sync"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // NewTestSpecIndex Test helper function to create a SpecIndex with initialised high cache.

@@ -21,7 +21,6 @@ import (
 // create pointless test changes. So here is a standalone test. you know... for science.
 
 func TestNewResponses(t *testing.T) {
-
 	yml := `default:
   description: default response`
 
@@ -37,11 +36,9 @@ func TestNewResponses(t *testing.T) {
 
 	assert.Equal(t, "default response", r.Default.Description)
 	assert.Equal(t, 1, r.GoLow().Default.KeyNode.Line)
-
 }
 
 func TestResponses_MarshalYAML(t *testing.T) {
-
 	yml := `"201":
     description: this is a response
     content:
@@ -67,11 +64,9 @@ func TestResponses_MarshalYAML(t *testing.T) {
 
 	rend, _ := r.Render()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
-
 }
 
 func TestResponses_MarshalYAMLInline(t *testing.T) {
-
 	yml := `"201":
     description: this is a response
     content:
@@ -97,5 +92,4 @@ func TestResponses_MarshalYAMLInline(t *testing.T) {
 
 	rend, _ := r.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
-
 }

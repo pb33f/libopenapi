@@ -5,10 +5,11 @@ package index
 
 import (
 	"fmt"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"net/url"
 	"path/filepath"
 	"strings"
+
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"

@@ -11,13 +11,14 @@ package v3
 import (
 	"crypto/sha256"
 	"fmt"
+	"sort"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
-	"sort"
-	"strings"
 )
 
 type Document struct {

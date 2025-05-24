@@ -4,15 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -23,7 +24,6 @@ func TestNewResolver(t *testing.T) {
 }
 
 func TestResolvingError_Error(t *testing.T) {
-
 	errs := []error{
 		&ResolvingError{
 			Path:     "$.test1",
@@ -48,7 +48,6 @@ func TestResolvingError_Error(t *testing.T) {
 }
 
 func TestResolvingError_Error_Index(t *testing.T) {
-
 	errs := []error{
 		&ResolvingError{
 			ErrorRef: errors.Join(&IndexingError{
@@ -142,7 +141,6 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 	assert.Len(t, rolo.GetCaughtErrors(), 3)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetResolvingErrors(), 3)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetInfiniteCircularReferences(), 3)
-
 }
 
 func TestResolver_CheckForCircularReferences_CatchArray(t *testing.T) {
@@ -539,7 +537,6 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetNonPolymorphicCircularErrors(), 1)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetPolymorphicCircularErrors(), 0)
 	assert.Len(t, rolo.GetRootIndex().GetResolver().GetSafeCircularReferences(), 25)
-
 }
 
 func TestResolver_ResolveComponents_BurgerShop(t *testing.T) {
@@ -617,7 +614,6 @@ components:
 	assert.Len(t, idx.GetCircularReferences(), 1)
 	assert.Len(t, resolver.GetPolymorphicCircularErrors(), 1)
 	assert.Equal(t, 2, idx.GetCircularReferences()[0].LoopIndex)
-
 }
 
 func TestResolver_ResolveComponents_Missing(t *testing.T) {
@@ -683,8 +679,8 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	_ = yaml.Unmarshal(mixedref, &rootNode)
 
 	// create a test server.
-	//server := test_buildMixedRefServer()
-	//defer server.Close()
+	// server := test_buildMixedRefServer()
+	// defer server.Close()
 
 	// create a new config that allows local and remote to be mixed up.
 	cf := CreateOpenAPIIndexConfig()
@@ -791,7 +787,6 @@ func ExampleNewResolver() {
 		len(resolver.GetSafeCircularReferences()))
 	// Output: There is 1 circular reference error, 0 of them are polymorphic errors, 1 are not
 	// with a total pf 25 safe circular references.
-
 }
 
 func ExampleResolvingError() {
@@ -810,8 +805,7 @@ func ExampleResolvingError() {
 }
 
 func TestDocument_IgnoreArrayCircularReferences(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -840,12 +834,10 @@ components:
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
-
 }
 
 func TestDocument_IgnorePolyCircularReferences(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     ProductCategory:
@@ -874,12 +866,10 @@ components:
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
-
 }
 
 func TestDocument_IgnorePolyCircularReferences_NoArrayForRef(t *testing.T) {
-
-	var d = `openapi: 3.1.0
+	d := `openapi: 3.1.0
 components:
   schemas:
     bingo:
@@ -915,7 +905,6 @@ components:
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
-
 }
 
 func TestResolver_isInfiniteCircularDep_NoRef(t *testing.T) {
@@ -926,7 +915,6 @@ func TestResolver_isInfiniteCircularDep_NoRef(t *testing.T) {
 }
 
 func TestResolver_AllowedCircle(t *testing.T) {
-
 	d := `openapi: 3.1.0
 paths:
   /test:
@@ -961,11 +949,9 @@ components:
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
-
 }
 
 func TestResolver_AllowedCircle_Array(t *testing.T) {
-
 	d := `openapi: 3.1.0
 components:
   schemas:
@@ -1003,11 +989,9 @@ components:
 	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
 	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
-
 }
 
 func TestResolver_CatchInvalidMapPolyCircle(t *testing.T) {
-
 	d := `openapi: 3.1.0
 paths:
   /test:
@@ -1041,11 +1025,9 @@ components:
 	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 0)
-
 }
 
 func TestResolver_CatchInvalidMapPolyCircle_Ignored(t *testing.T) {
-
 	d := `openapi: 3.1.0
 paths:
   /test:
@@ -1082,11 +1064,9 @@ components:
 	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
-
 }
 
 func TestResolver_CatchInvalidMapPoly(t *testing.T) {
-
 	d := `openapi: 3.1.0
 paths:
   /test:
@@ -1125,11 +1105,9 @@ components:
 	assert.Len(t, resolver.GetInfiniteCircularReferences(), 0)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 0)
-
 }
 
 func TestResolver_NotAllowedDeepCircle(t *testing.T) {
-
 	d := `openapi: 3.0
 components:
   schemas:
@@ -1159,11 +1137,9 @@ components:
 	assert.Len(t, circ, 1)
 	assert.Len(t, resolver.GetInfiniteCircularReferences(), 1)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 0)
-
 }
 
 func TestLocateRefEnd_WithResolve(t *testing.T) {
-
 	yml, _ := os.ReadFile("../../test_specs/first.yaml")
 	var bsn yaml.Node
 	_ = yaml.Unmarshal(yml, &bsn)
@@ -1201,7 +1177,6 @@ func TestLocateRefEnd_WithResolve(t *testing.T) {
 }
 
 func TestResolveDoc_Issue195(t *testing.T) {
-
 	spec := `openapi: 3.0.1
 info:
   title: Some Example!
@@ -1268,12 +1243,10 @@ paths:
 	nodes = path.Query(&rootNode)
 	assert.Equal(t, nodes[0].Content[0].Value, "code")
 	assert.Equal(t, nodes[0].Content[1].Value, "message")
-
 }
 
 func TestDocument_LoopThroughAnArray(t *testing.T) {
-
-	var d = `openapi: "3.0.1"
+	d := `openapi: "3.0.1"
 components:
   schemas:
     B:
@@ -1298,12 +1271,10 @@ components:
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
-
 }
 
 func TestDocument_ObjectWithPolyAndArray(t *testing.T) {
-
-	var d = `openapi: "3.0.1"
+	d := `openapi: "3.0.1"
 components:
   schemas:
     A:
@@ -1333,12 +1304,10 @@ components:
 	circ := resolver.Resolve()
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 1)
-
 }
 
 func TestDocument_ObjectWithMultiPolyAndArray(t *testing.T) {
-
-	var d = `openapi: "3.0.1"
+	d := `openapi: "3.0.1"
 components:
   schemas:
     A:
@@ -1371,12 +1340,10 @@ components:
 	assert.Len(t, circ, 0)
 	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
 	assert.Len(t, resolver.GetIgnoredCircularArrayReferences(), 0)
-
 }
 
 func TestIssue_259(t *testing.T) {
-
-	var d = `openapi: 3.0.3
+	d := `openapi: 3.0.3
 info:
   description: test
   title: test
@@ -1409,12 +1376,10 @@ components:
 
 	errs := resolver.Resolve()
 	assert.Len(t, errs, 0)
-
 }
 
 func TestIssue_481(t *testing.T) {
-
-	var d = `openapi: 3.0.1
+	d := `openapi: 3.0.1
 components:
   schemas:
     PetPot:
@@ -1441,12 +1406,10 @@ components:
 
 	errs := resolver.Resolve()
 	assert.Len(t, errs, 0)
-
 }
 
 func TestVisitReference_Nil(t *testing.T) {
-
-	var d = `banana`
+	d := `banana`
 
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
@@ -1463,4 +1426,4 @@ func TestVisitReference_Nil(t *testing.T) {
 	assert.Nil(t, n)
 }
 
-//func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
+// func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
