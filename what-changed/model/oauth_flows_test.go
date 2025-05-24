@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareOAuthFlow(t *testing.T) {
-
 	left := `authorizationUrl: cheese
 tokenUrl: biscuits
 refreshUrl: cake
@@ -41,11 +41,9 @@ scopes:
 	// compare
 	extChanges := CompareOAuthFlow(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
-
 }
 
 func TestCompareOAuthFlow_Modified(t *testing.T) {
-
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -80,7 +78,6 @@ x-burgers: crispy`
 }
 
 func TestCompareOAuthFlow_AddScope(t *testing.T) {
-
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -118,7 +115,6 @@ x-burgers: nice`
 }
 
 func TestCompareOAuthFlow_RemoveScope(t *testing.T) {
-
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -156,7 +152,6 @@ x-burgers: nice`
 }
 
 func TestCompareOAuthFlow_ModifyScope(t *testing.T) {
-
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast

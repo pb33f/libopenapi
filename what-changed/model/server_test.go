@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareServers(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: a server
 variables:
@@ -50,7 +50,6 @@ variables:
 }
 
 func TestCompareServers_Modified(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: a server
 variables:
@@ -193,5 +192,4 @@ x-coffee: cold`
 	assert.Len(t, extChanges.ExtensionChanges.GetAllChanges(), 1)
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Empty(t, extChanges.PropertyChanges)
-
 }

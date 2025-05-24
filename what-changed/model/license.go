@@ -26,7 +26,6 @@ func (l *LicenseChanges) GetAllChanges() []*Change {
 
 // TotalChanges represents the total number of changes made to a License instance.
 func (l *LicenseChanges) TotalChanges() int {
-
 	c := l.PropertyChanges.TotalChanges()
 
 	if l.ExtensionChanges != nil {
@@ -44,7 +43,6 @@ func (l *LicenseChanges) TotalBreakingChanges() int {
 // were any, a pointer to a LicenseChanges object is returned, otherwise if nothing changed - the function
 // returns nil.
 func CompareLicense(l, r *base.License) *LicenseChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 

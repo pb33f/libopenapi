@@ -1,0 +1,14 @@
+type: object
+description: I am a fishcake schema (and a clash)
+properties:
+  mixFilling:
+    type: string
+    description: The mixed filling of the cake
+    example: "haddock"
+  temp:
+    type: number
+    format: float
+    minimum: 0
+    maximum: 180
+    description: temperature in degrees celcius
+    example: 145

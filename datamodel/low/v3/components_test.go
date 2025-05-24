@@ -264,7 +264,7 @@ func TestComponents_Build_HashEmpty(t *testing.T) {
 }
 
 func TestComponents_IsReference(t *testing.T) {
-	var yml = `
+	yml := `
 schemas:
     one:
         description: one of many
@@ -338,7 +338,7 @@ callbacks:
 }
 
 func TestComponents_IsReference_OutOfSpecification_PathItem(t *testing.T) {
-	var yml = `
+	yml := `
 pathItems:
     one:
         description: one of many

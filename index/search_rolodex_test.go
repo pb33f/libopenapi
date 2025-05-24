@@ -4,19 +4,19 @@
 package index
 
 import (
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-	"path/filepath"
-	"strings"
-	"sync"
-	"testing"
 )
 
 func TestRolodex_FindNodeOrigin_InRoot(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -50,11 +50,9 @@ func TestRolodex_FindNodeOrigin_InRoot(t *testing.T) {
 	origin := rolo.FindNodeOrigin(node.Content[0])
 	assert.NotNil(t, origin)
 	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
-
 }
 
 func TestRolodex_FindNodeOrigin_InRoot_InMap(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -93,11 +91,9 @@ func TestRolodex_FindNodeOrigin_InRoot_InMap(t *testing.T) {
 	origin := rolo.FindNodeOrigin(copied.Content[0])
 	assert.NotNil(t, origin)
 	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
-
 }
 
 func TestRolodex_FindNodeOriginWithValue_NoKey(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -121,7 +117,6 @@ func TestRolodex_FindNodeOriginWithValue_NoKey(t *testing.T) {
 }
 
 func TestRolodex_FindNodeOriginWithValue(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -156,11 +151,9 @@ func TestRolodex_FindNodeOriginWithValue(t *testing.T) {
 
 	assert.NotNil(t, origin)
 	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
-
 }
 
 func TestRolodex_FindNodeOriginWithValue_SimulateIsRef(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -196,11 +189,9 @@ func TestRolodex_FindNodeOriginWithValue_SimulateIsRef(t *testing.T) {
 	assert.NotNil(t, origin)
 	assert.Equal(t, rolo.GetRootIndex().specAbsolutePath, origin.AbsoluteLocation)
 	assert.Equal(t, "openapi", origin.Node.Content[0].Value) // key value.
-
 }
 
 func TestRolodex_FindNodeOriginWithValue_NonRoot(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -251,7 +242,6 @@ func TestRolodex_FindNodeOriginWithValue_NonRoot(t *testing.T) {
 }
 
 func TestRolodex_FindNodeOriginWithValue_BadKeyAndValue(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -298,11 +288,9 @@ func TestRolodex_FindNodeOriginWithValue_BadKeyAndValue(t *testing.T) {
 	}, nil, "")
 
 	assert.Nil(t, origin)
-
 }
 
 func TestRolodex_FindNodeOriginWithValue_BadValue(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -344,11 +332,9 @@ func TestRolodex_FindNodeOriginWithValue_BadValue(t *testing.T) {
 	}, nil, "")
 
 	assert.Nil(t, origin)
-
 }
 
 func TestRolodex_FindNodeOrigin(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -417,7 +403,6 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 }
 
 func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -525,7 +510,6 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 }
 
 func TestRolodex_FindNodeOrigin_NonRootToNonRootLookup(t *testing.T) {
-
 	baseDir := "rolodex_test_data"
 
 	cf := CreateOpenAPIIndexConfig()
@@ -611,5 +595,4 @@ func TestRolodex_FindNodeOrigin_NonRootToNonRootLookup(t *testing.T) {
 	assert.Equal(t, 1, origin.Column)
 	// get full line count.
 	assert.Equal(t, int64(100), rolo.GetFullLineCount())
-
 }

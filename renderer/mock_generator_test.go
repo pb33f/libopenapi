@@ -6,6 +6,9 @@ package renderer
 import (
 	"context"
 	"encoding/json"
+	"strings"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
@@ -14,8 +17,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
-	"strings"
-	"testing"
 )
 
 type fakeMockable struct {
@@ -110,8 +111,7 @@ func TestMockGenerator_GenerateJSONMock_NoObject(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_BadObject(t *testing.T) {
-	type NotMockable struct {
-	}
+	type NotMockable struct{}
 
 	mg := NewMockGenerator(JSON)
 	mock, err := mg.GenerateMock(&NotMockable{}, "")
@@ -322,7 +322,6 @@ func TestMockGenerator_GenerateMock_YamlNode_Nil(t *testing.T) {
 }
 
 func TestMockGenerator_GenerateJSONMock_Object_SchemaExamples(t *testing.T) {
-
 	yml := `type: object
 examples:
   - name: happy days
@@ -353,7 +352,6 @@ properties:
 }
 
 func TestMockGenerator_GenerateJSONMock_Object_SchemaExamples_Preferred(t *testing.T) {
-
 	yml := `type: object
 examples:
   - name: happy days
@@ -384,7 +382,6 @@ properties:
 }
 
 func TestMockGenerator_GenerateJSONMock_Object_SchemaExample(t *testing.T) {
-
 	yml := `type: object
 example:
   name: robocop
@@ -413,7 +410,6 @@ properties:
 }
 
 func TestMockGenerator_EmptyMock(t *testing.T) {
-
 	mg := NewMockGenerator(YAML)
 
 	sp := &lowbase.SchemaProxy{}

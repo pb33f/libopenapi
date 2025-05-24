@@ -161,12 +161,15 @@ func (o *Operation) Hash() [32]byte {
 func (o *Operation) GetTags() low.NodeReference[[]low.ValueReference[string]] {
 	return o.Tags
 }
+
 func (o *Operation) GetSummary() low.NodeReference[string] {
 	return o.Summary
 }
+
 func (o *Operation) GetDescription() low.NodeReference[string] {
 	return o.Description
 }
+
 func (o *Operation) GetExternalDocs() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.ExternalDocs.ValueNode,
@@ -174,15 +177,19 @@ func (o *Operation) GetExternalDocs() low.NodeReference[any] {
 		Value:     o.ExternalDocs.Value,
 	}
 }
+
 func (o *Operation) GetOperationId() low.NodeReference[string] {
 	return o.OperationId
 }
+
 func (o *Operation) GetDeprecated() low.NodeReference[bool] {
 	return o.Deprecated
 }
+
 func (o *Operation) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]] {
 	return o.Extensions
 }
+
 func (o *Operation) GetResponses() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Responses.ValueNode,
@@ -190,6 +197,7 @@ func (o *Operation) GetResponses() low.NodeReference[any] {
 		Value:     o.Responses.Value,
 	}
 }
+
 func (o *Operation) GetParameters() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Parameters.ValueNode,
@@ -197,6 +205,7 @@ func (o *Operation) GetParameters() low.NodeReference[any] {
 		Value:     o.Parameters.Value,
 	}
 }
+
 func (o *Operation) GetSecurity() low.NodeReference[any] {
 	return low.NodeReference[any]{
 		ValueNode: o.Security.ValueNode,
@@ -204,12 +213,15 @@ func (o *Operation) GetSecurity() low.NodeReference[any] {
 		Value:     o.Security.Value,
 	}
 }
+
 func (o *Operation) GetSchemes() low.NodeReference[[]low.ValueReference[string]] {
 	return o.Schemes
 }
+
 func (o *Operation) GetProduces() low.NodeReference[[]low.ValueReference[string]] {
 	return o.Produces
 }
+
 func (o *Operation) GetConsumes() low.NodeReference[[]low.ValueReference[string]] {
 	return o.Consumes
 }

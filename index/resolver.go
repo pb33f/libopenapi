@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"net/url"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
-	"slices"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.
@@ -539,7 +539,6 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						if strings.HasPrefix(exp[0], "http") {
 							fullDef = value
 						} else {
-
 							if strings.HasPrefix(ref.FullDefinition, "http") {
 
 								// split the http URI into parts
@@ -558,11 +557,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 								// extract the location of the ref and build a full def path.
 								abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(fileDef[0]), exp[0], string(filepath.Separator)))
-								//abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
+								// abs = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 								fullDef = fmt.Sprintf("%s#/%s", abs, exp[1])
 
 							}
-
 						}
 					} else {
 						// local component, full def is based on passed in ref
@@ -870,7 +868,6 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 		if strings.HasPrefix(l, "http") {
 			def = l
 		} else {
-
 			// check if were dealing with a remote file
 			if strings.HasPrefix(ref.FullDefinition, "http") {
 
@@ -885,7 +882,6 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 				abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(lookupRef[0]), l, string(filepath.Separator)))
 				def = abs
 			}
-
 		}
 	}
 

@@ -1,8 +1,9 @@
 package index
 
 import (
-	"gopkg.in/yaml.v3"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 // CircularReferenceResult contains a circular reference found when traversing the graph.

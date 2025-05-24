@@ -87,7 +87,8 @@ func (p *ParameterChanges) TotalBreakingChanges() int {
 }
 
 func addPropertyCheck(props *[]*PropertyCheck,
-	lvn, rvn *yaml.Node, lv, rv any, changes *[]*Change, label string, breaking bool) {
+	lvn, rvn *yaml.Node, lv, rv any, changes *[]*Change, label string, breaking bool,
+) {
 	*props = append(*props, &PropertyCheck{
 		LeftNode:  lvn,
 		RightNode: rvn,
@@ -344,12 +345,10 @@ func checkParameterExample(expLeft, expRight low.NodeReference[*yaml.Node], chan
 		CreateChange(&changes, PropertyAdded, v3.ExampleLabel,
 			nil, expRight.GetValueNode(), false,
 			nil, expRight.GetValue())
-
 	}
 	if expLeft.Value != nil && expRight.Value == nil {
 		CreateChange(&changes, PropertyRemoved, v3.ExampleLabel,
 			expLeft.GetValueNode(), nil, false,
 			expLeft.GetValue(), nil)
-
 	}
 }

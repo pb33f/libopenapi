@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareItems(t *testing.T) {
-
 	left := `type: string`
 
 	right := `type: int`
@@ -41,7 +41,6 @@ func TestCompareItems(t *testing.T) {
 }
 
 func TestCompareItems_RecursiveCheck(t *testing.T) {
-
 	left := `type: string
 items:
   type: string`
@@ -73,7 +72,6 @@ items:
 }
 
 func TestCompareItems_AddItems(t *testing.T) {
-
 	left := `type: int`
 
 	right := `type: int
@@ -103,7 +101,6 @@ items:
 }
 
 func TestCompareItems_RemoveItems(t *testing.T) {
-
 	left := `type: int`
 
 	right := `type: int
@@ -133,7 +130,6 @@ items:
 }
 
 func TestCompareItems_RefVsInlineIdentical(t *testing.T) {
-
 	left := `swagger: 2.0
 definitions:
   thing:

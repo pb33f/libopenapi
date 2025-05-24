@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestComparePaths_v2(t *testing.T) {
-
 	left := `
 /fresh/cake:
   get:
@@ -43,11 +43,9 @@ func TestComparePaths_v2(t *testing.T) {
 	// compare.
 	extChanges := ComparePaths(&rDoc, &lDoc)
 	assert.Nil(t, extChanges)
-
 }
 
 func TestComparePaths_v2_ModifyOp(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?
@@ -90,7 +88,6 @@ x-windows: washed
 }
 
 func TestComparePaths_v2_AddPath(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?
@@ -132,7 +129,6 @@ x-windows: dirty
 }
 
 func TestComparePaths_v2_RemovePath(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?
@@ -174,7 +170,6 @@ x-windows: dirty
 }
 
 func TestComparePaths_v3(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?
@@ -202,11 +197,9 @@ func TestComparePaths_v3(t *testing.T) {
 	// compare.
 	extChanges := ComparePaths(&rDoc, &lDoc)
 	assert.Nil(t, extChanges)
-
 }
 
 func TestComparePaths_v3_ModifyOp(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?
@@ -249,7 +242,6 @@ x-windows: washed
 }
 
 func TestComparePaths_v3_AddPath(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?
@@ -298,7 +290,6 @@ x-windows: dirty`
 }
 
 func TestComparePaths_v3_RemovePath(t *testing.T) {
-
 	left := `/fresh/cake:
   get:
     description: a thing?

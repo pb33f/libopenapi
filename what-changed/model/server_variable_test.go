@@ -4,15 +4,15 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareServerVariables(t *testing.T) {
-
 	left := `description: hi
 default: hello
 enum:
@@ -38,11 +38,9 @@ enum:
 	// compare.
 	extChanges := CompareServerVariables(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
-
 }
 
 func TestCompareServerVariables_EnumRemoved(t *testing.T) {
-
 	left := `description: hi
 default: hello
 enum:
@@ -70,11 +68,9 @@ enum:
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareServerVariables_Modified(t *testing.T) {
-
 	left := `description: hi
 default: hello
 enum:
@@ -106,7 +102,6 @@ enum:
 }
 
 func TestCompareServerVariables_Added(t *testing.T) {
-
 	left := `description: hi
 enum:
   - one
@@ -137,7 +132,6 @@ enum:
 }
 
 func TestCompareServerVariables_Removed(t *testing.T) {
-
 	left := `description: hi
 default: hello
 enum:

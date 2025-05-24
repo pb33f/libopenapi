@@ -14,14 +14,15 @@ package index
 
 import (
 	"fmt"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
 	"github.com/pb33f/libopenapi/utils"
 
@@ -266,6 +267,12 @@ func (index *SpecIndex) GetLinesWithReferences() map[int]bool {
 // its journey through the index.
 func (index *SpecIndex) GetMappedReferences() map[string]*Reference {
 	return index.allMappedRefs
+}
+
+// SetMappedReferences will set the mapped references to the index. Not something you need every day unless you're
+// doing some kind of index hacking.
+func (index *SpecIndex) SetMappedReferences(mappedRefs map[string]*Reference) {
+	index.allMappedRefs = mappedRefs
 }
 
 // GetRawReferencesSequenced returns a slice of every single reference found in the document, extracted raw from the doc

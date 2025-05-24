@@ -12,7 +12,6 @@ import (
 )
 
 func TestEncoding_MarshalYAML(t *testing.T) {
-
 	explode := true
 	encoding := &Encoding{
 		ContentType: "application/json",
@@ -67,5 +66,4 @@ headers:
 style: simple`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
-
 }

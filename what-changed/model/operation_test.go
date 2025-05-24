@@ -15,7 +15,6 @@ import (
 )
 
 func TestCompareOperations_V2(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -53,7 +52,6 @@ parameters:
 }
 
 func TestCompareOperations_V2_ModifyParam(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -108,7 +106,6 @@ parameters:
 }
 
 func TestCompareOperations_V2_AddParamProperty(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -158,11 +155,9 @@ parameters:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "parameters", extChanges.Changes[0].Property)
-
 }
 
 func TestCompareOperations_V2_RemoveParamProperty(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -212,11 +207,9 @@ parameters:
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "parameters", extChanges.Changes[0].Property)
-
 }
 
 func TestCompareOperations_V2_AddParam(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -274,7 +267,6 @@ parameters:
 }
 
 func TestCompareOperations_V2_RemoveParam(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -330,11 +322,9 @@ parameters:
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "jummy", extChanges.Changes[0].Original)
-
 }
 
 func TestCompareOperations_V2_ModifyTag(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -391,7 +381,6 @@ parameters:
 }
 
 func TestCompareOperations_V2_AddTag(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -449,7 +438,6 @@ parameters:
 }
 
 func TestCompareOperations_V2_Modify_ProducesConsumesSchemes(t *testing.T) {
-
 	left := `produces:
   - electricity
 consumes:
@@ -484,7 +472,6 @@ schemes:
 }
 
 func TestCompareOperations_V2_Modify_ExtDocs_Responses(t *testing.T) {
-
 	left := `externalDocs:
   url: https://pb33f.io/old
 responses:
@@ -517,11 +504,9 @@ responses:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ResponsesChanges.ResponseChanges["200"].Changes[0].ChangeType)
 	assert.Equal(t, Modified, extChanges.ExternalDocChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareOperations_V2_AddRemoveResponses(t *testing.T) {
-
 	left := `operationId: updatePet
 responses:
   '400':
@@ -560,7 +545,6 @@ responses:
 }
 
 func TestCompareOperations_V2_Add_ExtDocs_Responses(t *testing.T) {
-
 	left := `operationId: nuggets`
 
 	right := `operationId: nuggets
@@ -592,7 +576,6 @@ responses:
 }
 
 func TestCompareOperations_V2_Remove_ExtDocs_Responses(t *testing.T) {
-
 	left := `operationId: nuggets`
 
 	right := `operationId: nuggets
@@ -624,7 +607,6 @@ responses:
 }
 
 func TestCompareOperations_V2_AddSecurityReq_Role(t *testing.T) {
-
 	left := `operationId: nuggets
 security:
   - things:
@@ -657,11 +639,9 @@ security:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "crap", extChanges.SecurityRequirementChanges[0].Changes[0].New)
-
 }
 
 func TestCompareOperations_V2_RemoveSecurityReq_Role(t *testing.T) {
-
 	left := `operationId: nuggets
 security:
   - things:
@@ -694,11 +674,9 @@ security:
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
 	assert.Equal(t, "crap", extChanges.SecurityRequirementChanges[0].Changes[0].Original)
-
 }
 
 func TestCompareOperations_V2_AddSecurityRequirement(t *testing.T) {
-
 	left := `operationId: nuggets
 security:
   - things:
@@ -733,11 +711,9 @@ security:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "thongs", extChanges.Changes[0].New)
-
 }
 
 func TestCompareOperations_V2_RemoveSecurityRequirement(t *testing.T) {
-
 	left := `operationId: nuggets
 security:
   - things:
@@ -772,11 +748,9 @@ security:
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "thongs", extChanges.Changes[0].Original)
-
 }
 
 func TestCompareOperations_V3(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -822,7 +796,6 @@ parameters:
 }
 
 func TestCompareOperations_V3_ModifyParam(t *testing.T) {
-
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -854,7 +827,6 @@ func TestCompareOperations_V3_ModifyParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddParam(t *testing.T) {
-
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -888,7 +860,6 @@ func TestCompareOperations_V3_AddParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveParam(t *testing.T) {
-
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -922,7 +893,6 @@ func TestCompareOperations_V3_RemoveParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveParams(t *testing.T) {
-
 	left := `operationId: ohNoes
 parameters:
   - name: honey
@@ -952,7 +922,6 @@ parameters:
 }
 
 func TestCompareOperations_V3_AddParams(t *testing.T) {
-
 	left := `operationId: ohNoes
 parameters:
   - name: honey
@@ -980,8 +949,8 @@ parameters:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 }
-func TestCompareOperations_V3_ModifyTag(t *testing.T) {
 
+func TestCompareOperations_V3_ModifyTag(t *testing.T) {
 	left := `tags:
   - one
   - two
@@ -1020,7 +989,6 @@ operationId: mintyFresh
 }
 
 func TestCompareOperations_V3_AddTag(t *testing.T) {
-
 	left := `tags:
   - one
   - two
@@ -1058,8 +1026,8 @@ operationId: mintyFresh
 	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.TagsLabel, extChanges.Changes[0].Property)
 }
-func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 
+func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 	left := `servers:
   - url: https://pb33f.io
   - description: nourl!`
@@ -1090,7 +1058,6 @@ func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 }
 
 func TestCompareOperations_V3_ModifyCallback(t *testing.T) {
-
 	left := `callbacks:
   myCallback:
     '{$request.query.queryUrl}':
@@ -1127,7 +1094,6 @@ func TestCompareOperations_V3_ModifyCallback(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddCallback(t *testing.T) {
-
 	left := `callbacks:
   myCallback:
     '{$request.query.queryUrl}':
@@ -1165,7 +1131,6 @@ func TestCompareOperations_V3_AddCallback(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddCallbacks(t *testing.T) {
-
 	left := `operationId: 123`
 
 	right := `operationId: 123
@@ -1200,7 +1165,6 @@ callbacks:
 }
 
 func TestCompareOperations_V3_RemoveCallbacks(t *testing.T) {
-
 	left := `operationId: 123`
 
 	right := `operationId: 123
@@ -1235,7 +1199,6 @@ callbacks:
 }
 
 func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
-
 	left := `callbacks:
   myCallback:
     '{$request.query.queryUrl}':
@@ -1273,7 +1236,6 @@ func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddServer(t *testing.T) {
-
 	left := `servers:
   - url: https://pb33f.io`
 
@@ -1302,7 +1264,6 @@ func TestCompareOperations_V3_AddServer(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveServer(t *testing.T) {
-
 	left := `servers:
   - url: https://pb33f.io`
 
@@ -1331,7 +1292,6 @@ func TestCompareOperations_V3_RemoveServer(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddServerToOp(t *testing.T) {
-
 	left := `operationId: noServers!`
 
 	right := `operationId: noServers!
@@ -1360,7 +1320,6 @@ servers:
 }
 
 func TestCompareOperations_V3_RemoveServerFromOp(t *testing.T) {
-
 	left := `operationId: noServers!`
 
 	right := `operationId: noServers!
@@ -1389,7 +1348,6 @@ servers:
 }
 
 func TestCompareOperations_V3_ModifySecurity(t *testing.T) {
-
 	left := `operationId: coldSecurity
 security:
   - winter:
@@ -1480,7 +1438,6 @@ security: []`
 }
 
 func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
-
 	left := `requestBody:
   description: jammy`
 
@@ -1508,7 +1465,6 @@ func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddRequestBody(t *testing.T) {
-
 	left := `operationId: noRequestBody`
 
 	right := `operationId: noRequestBody
@@ -1536,7 +1492,6 @@ requestBody:
 }
 
 func TestCompareOperations_V3_ModifyExtension(t *testing.T) {
-
 	left := `x-pizza: yummy`
 
 	right := `x-pizza: yammy!`
@@ -1562,7 +1517,6 @@ func TestCompareOperations_V3_ModifyExtension(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveRequestBody(t *testing.T) {
-
 	left := `operationId: noRequestBody`
 
 	right := `operationId: noRequestBody
@@ -1590,7 +1544,6 @@ requestBody:
 }
 
 func TestComparePathItem_V3_AddOptionalParam(t *testing.T) {
-
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings
@@ -1619,7 +1572,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddOptionalParam(t *testing.T) {
-
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings
@@ -1648,7 +1600,6 @@ parameters:
 }
 
 func TestComparePathItem_V3_AddRequiredParam(t *testing.T) {
-
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings
@@ -1677,7 +1628,6 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddRequiredParam(t *testing.T) {
-
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings

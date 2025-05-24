@@ -40,7 +40,6 @@ func (r *Rolodex) FindNodeOriginWithValue(key, value, refNode *yaml.Node, refVal
 				return nil
 			}
 		} else {
-
 			// the value is not in the root index, so we need to search all indexes
 			for i := range r.indexes {
 				idx := r.indexes[i]

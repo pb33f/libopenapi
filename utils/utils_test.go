@@ -2,6 +2,7 @@ package utils
 
 import (
 	"os"
+	"regexp"
 	"sync"
 	"testing"
 
@@ -1055,7 +1056,6 @@ x-b:
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, "true", v.Value)
-
 }
 
 func TestFindKeyNodeFull_MergeTest(t *testing.T) {
@@ -1075,7 +1075,6 @@ x-b:
 	assert.Nil(t, k)
 	assert.Nil(t, v)
 	assert.Nil(t, l)
-
 }
 
 func TestFindFirstKeyNode_DoubleMerge(t *testing.T) {
@@ -1096,7 +1095,6 @@ x-b:
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, "a nice string", v.Value)
-
 }
 
 func TestFindKeyNodeTop_DoubleMerge(t *testing.T) {
@@ -1117,7 +1115,6 @@ x-b:
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, "a nice string", v.Value)
-
 }
 
 func TestFindKeyNode_DoubleMerge(t *testing.T) {
@@ -1138,7 +1135,6 @@ x-b:
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, "a nice string", v.Value)
-
 }
 
 func TestFindKeyNodeFull_DoubleMerge(t *testing.T) {
@@ -1164,7 +1160,6 @@ x-b:
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, "a nice string", v.Value)
-
 }
 
 func TestFindKeyNodeFullTop_DoubleMerge(t *testing.T) {
@@ -1189,7 +1184,6 @@ x-b:
 	assert.NotNil(t, k)
 	assert.NotNil(t, v)
 	assert.Equal(t, "a nice string", v.Value)
-
 }
 
 func TestNodeMerge(t *testing.T) {
@@ -1229,11 +1223,9 @@ func TestIsNodeNull(t *testing.T) {
 
 	var noNode *yaml.Node
 	assert.True(t, IsNodeNull(noNode))
-
 }
 
 func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
-
 	// create a and b node that reference each other
 	a := &yaml.Node{
 		Value: "beans",
@@ -1252,4 +1244,15 @@ func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
 	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10)
 	assert.Nil(t, nodes)
 	assert.Error(t, err)
+}
+
+func TestGenerateAlphanumericString(t *testing.T) {
+	reg := regexp.MustCompile("^[0-9A-Za-z]{1,4}$")
+	assert.NotNil(t, reg.MatchString(GenerateAlphanumericString(4)))
+
+	reg = regexp.MustCompile("^[0-9A-Za-z]{1,10}$")
+	assert.NotNil(t, reg.MatchString(GenerateAlphanumericString(10)))
+
+	reg = regexp.MustCompile("^[0-9A-Za-z]{1,15}$")
+	assert.NotNil(t, reg.MatchString(GenerateAlphanumericString(15)))
 }

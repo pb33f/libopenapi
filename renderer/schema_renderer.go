@@ -301,7 +301,6 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 			visited[schema.ParentProxy.GetReference()] = true
 		}
 
-
 		properties := schema.Properties
 		propertyMap := make(map[string]any)
 
@@ -334,7 +333,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 					}
 				} else {
 					// If the property is required but not specified in the schema,
-    			// any value is allowed for this property (no specific validation).
+					// any value is allowed for this property (no specific validation).
 					// In our case, we render an empty map.
 					propertyMap[propName] = make(map[string]any)
 				}

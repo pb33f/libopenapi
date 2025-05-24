@@ -13,7 +13,6 @@ import (
 )
 
 func TestServerVariable_MarshalYAML(t *testing.T) {
-
 	svar := &ServerVariable{
 		Enum:        []string{"one", "two", "three"},
 		Description: "money day",

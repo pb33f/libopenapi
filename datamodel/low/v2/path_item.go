@@ -152,7 +152,7 @@ func (p *PathItem) Build(ctx context.Context, _, root *yaml.Node, idx *index.Spe
 	opBuildChan := make(chan struct{})
 	opErrorChan := make(chan error)
 
-	var buildOpFunc = func(op low.NodeReference[*Operation], ch chan<- struct{}, errCh chan<- error) {
+	buildOpFunc := func(op low.NodeReference[*Operation], ch chan<- struct{}, errCh chan<- error) {
 		er := op.Value.Build(ctx, op.KeyNode, op.ValueNode, idx)
 		if er != nil {
 			errCh <- er

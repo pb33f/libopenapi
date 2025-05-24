@@ -87,3 +87,21 @@ summary: it's another path item`
 	assert.NotNil(t, n.GetContext())
 	assert.NotNil(t, n.GetIndex())
 }
+
+// https://github.com/pb33f/libopenapi/issues/388
+func TestPathItem_CheckExtensionWithParametersValue_NoPanic(t *testing.T) {
+	yml := `x-user_extension: parameters
+get:
+   description: test users 
+   operationId: users`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.NotNil(t, n.RootNode)
+}

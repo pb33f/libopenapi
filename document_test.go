@@ -1430,7 +1430,6 @@ func TestDocument_Issue264(t *testing.T) {
 
 	_, _, _, errs := d.RenderAndReload() // code panics here
 	assert.Nil(t, errs)
-
 }
 
 func TestDocument_Issue269(t *testing.T) {

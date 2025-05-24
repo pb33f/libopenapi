@@ -5,14 +5,14 @@ package base
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestContact_Hash(t *testing.T) {
-
 	left := `url: https://pb33f.io
 description: the ranch
 email: buckaroo@pb33f.io
@@ -43,5 +43,4 @@ x-beer: cold`
 	assert.Equal(t, 1, c.GetExtensions().Len())
 	assert.Nil(t, c.GetIndex())
 	assert.NotNil(t, c.GetContext())
-
 }

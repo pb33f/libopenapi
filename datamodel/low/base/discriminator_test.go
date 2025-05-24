@@ -4,10 +4,11 @@
 package base
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestDiscriminator_FindMappingValue(t *testing.T) {
@@ -24,11 +25,9 @@ mapping:
 	assert.NoError(t, err)
 	assert.Equal(t, "nothing", n.FindMappingValue("something").Value)
 	assert.Nil(t, n.FindMappingValue("freshCakes"))
-
 }
 
 func TestDiscriminator_Hash(t *testing.T) {
-
 	left := `propertyName: freshCakes
 mapping:
   something: nothing`
@@ -52,5 +51,4 @@ propertyName: freshCakes`
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
 	assert.NotNil(t, lDoc.GetRootNode())
 	assert.NotNil(t, lDoc.GetKeyNode())
-
 }

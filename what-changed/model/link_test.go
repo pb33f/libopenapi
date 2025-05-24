@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareLinks(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -39,11 +39,9 @@ parameters:
 	// compare.
 	extChanges := CompareLinks(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
-
 }
 
 func TestCompareLinks_ModifyExtension(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -80,11 +78,9 @@ x-cake: very tasty`
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.ExtensionChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareLinks_ModifyServer(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -122,7 +118,6 @@ parameters:
 }
 
 func TestCompareLinks_AddServer(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -158,7 +153,6 @@ parameters:
 }
 
 func TestCompareLinks_RemoveServer(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -194,7 +188,6 @@ parameters:
 }
 
 func TestCompareLinks_ModifyParam(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -235,7 +228,6 @@ parameters:
 }
 
 func TestCompareLinks_AddParam(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -276,7 +268,6 @@ parameters:
 }
 
 func TestCompareLinks_RemoveParam(t *testing.T) {
-
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link

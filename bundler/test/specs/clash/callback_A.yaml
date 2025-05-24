@@ -1,0 +1,4 @@
+'{$request.query.queryUrl}':
+  post:
+    requestBody:
+      description: Callback payload

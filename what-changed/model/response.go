@@ -4,9 +4,10 @@
 package model
 
 import (
+	"reflect"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"reflect"
 )
 
 import (
@@ -109,7 +110,6 @@ func CompareResponseV3(l, r *v3.Response) *ResponseChanges {
 // CompareResponse compares a left and right Swagger or OpenAPI Response object. If anything is found
 // a pointer to a ResponseChanges is returned, otherwise it returns nil.
 func CompareResponse(l, r any) *ResponseChanges {
-
 	var changes []*Change
 	var props []*PropertyCheck
 
@@ -143,9 +143,8 @@ func CompareResponse(l, r any) *ResponseChanges {
 				nil, rResponse.Schema.Value)
 		}
 
-		rc.HeadersChanges =
-			CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
-				&changes, v3.HeadersLabel, CompareHeadersV2)
+		rc.HeadersChanges = CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
+			&changes, v3.HeadersLabel, CompareHeadersV2)
 
 		if !lResponse.Examples.IsEmpty() && !rResponse.Examples.IsEmpty() {
 			rc.ExamplesChanges = CompareExamplesV2(lResponse.Examples.Value, rResponse.Examples.Value)
@@ -178,17 +177,14 @@ func CompareResponse(l, r any) *ResponseChanges {
 		addPropertyCheck(&props, lResponse.Description.ValueNode, rResponse.Description.ValueNode,
 			lResponse.Description.Value, lResponse.Description.Value, &changes, v3.DescriptionLabel, false)
 
-		rc.HeadersChanges =
-			CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
-				&changes, v3.HeadersLabel, CompareHeadersV3)
+		rc.HeadersChanges = CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
+			&changes, v3.HeadersLabel, CompareHeadersV3)
 
-		rc.ContentChanges =
-			CheckMapForChanges(lResponse.Content.Value, rResponse.Content.Value,
-				&changes, v3.ContentLabel, CompareMediaTypes)
+		rc.ContentChanges = CheckMapForChanges(lResponse.Content.Value, rResponse.Content.Value,
+			&changes, v3.ContentLabel, CompareMediaTypes)
 
-		rc.LinkChanges =
-			CheckMapForChanges(lResponse.Links.Value, rResponse.Links.Value,
-				&changes, v3.LinksLabel, CompareLinks)
+		rc.LinkChanges = CheckMapForChanges(lResponse.Links.Value, rResponse.Links.Value,
+			&changes, v3.LinksLabel, CompareLinks)
 
 		rc.ExtensionChanges = CompareExtensions(lResponse.Extensions, rResponse.Extensions)
 	}

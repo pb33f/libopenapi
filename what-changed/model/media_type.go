@@ -78,7 +78,6 @@ func (m *MediaTypeChanges) TotalBreakingChanges() int {
 // CompareMediaTypes compares a left and a right MediaType object for any changes. If found, a pointer to a
 // MediaTypeChanges instance is returned, otherwise nothing is returned.
 func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
-
 	var props []*PropertyCheck
 	var changes []*Change
 

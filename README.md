@@ -58,7 +58,7 @@ like our _very kind_ sponsors:
 
 ---
 
-`libopenapi` is pretty new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
+`libopenapi` is kinda new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
 
 - [github.com/daveshanley/vacuum](https://github.com/daveshanley/vacuum) - "The world's fastest and most scalable OpenAPI/Swagger linter/quality tool"
 - [github.com/pb33f/openapi-changes](https://github.com/pb33f/openapi-changes) - "The world's **sexiest** OpenAPI breaking changes detector"

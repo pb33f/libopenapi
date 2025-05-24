@@ -5,9 +5,10 @@ package index
 
 import (
 	"encoding/json"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestSpecIndex_GetConfig(t *testing.T) {
@@ -18,7 +19,6 @@ func TestSpecIndex_GetConfig(t *testing.T) {
 }
 
 func Test_MarshalJSON(t *testing.T) {
-
 	rm := &ReferenceMapped{
 		OriginalReference: &Reference{
 			FullDefinition: "full definition",

@@ -6,11 +6,12 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"strings"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"gopkg.in/yaml.v3"
-	"strings"
 )
 
 // Contact represents a low-level representation of the Contact definitions found at

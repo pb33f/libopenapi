@@ -50,7 +50,6 @@ func (t *TagChanges) TotalBreakingChanges() int {
 // any changes between them. If there are changes, a pointer to TagChanges is returned, if not then
 // nil is returned instead.
 func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
-
 	var tagResults []*TagChanges
 
 	// look at the original and then look through the new.
@@ -65,7 +64,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 		seenRight[r[i].Value.Name.Value] = &h
 	}
 
-	//var changes []*Change
+	// var changes []*Change
 
 	// check for removals, modifications and moves
 	for i := range seenLeft {

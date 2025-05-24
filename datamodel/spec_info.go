@@ -7,10 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"strings"
 	"time"
+
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -117,7 +118,7 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		}
 	}
 
-	//if !bypass {
+	// if !bypass {
 	// check for specific keys
 	parsed := false
 	if openAPI3 != nil {

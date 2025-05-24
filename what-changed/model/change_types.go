@@ -5,6 +5,7 @@ package model
 
 import (
 	"encoding/json"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -65,7 +66,6 @@ func (c *ChangeContext) HasChanged() bool {
 
 // Change represents a change between two different elements inside an OpenAPI specification.
 type Change struct {
-
 	// Context represents the lines and column numbers of the original and new values
 	// It's worth noting that these values may frequently be different and are not used to calculate
 	// a change. If the positions change, but values do not, then no change is recorded.
@@ -173,7 +173,6 @@ func NewPropertyChanges(changes []*Change) *PropertyChanges {
 
 // PropertyCheck is used by functions to check the state of left and right values.
 type PropertyCheck struct {
-
 	// Original is the property we're checking on the left
 	Original any
 
