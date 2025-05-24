@@ -227,7 +227,7 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 				case v3low.PathItemsLabel:
 					if len(location) > 2 {
 						pathItem := location[2]
-						if components.Callbacks != nil {
+						if components.PathItems != nil {
 							return checkReferenceAndBubbleUp(pathItem, cf.compositionConfig.Delimiter,
 								pr, idx, components.PathItems, buildPathItem)
 						}
