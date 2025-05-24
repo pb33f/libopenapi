@@ -27,7 +27,6 @@ import (
 )
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
-
 	// test the mother of all exploded specs.
 	tmp, _ := os.MkdirTemp("", "openapi")
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
@@ -62,11 +61,9 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 
 	assert.NoError(t, e)
 	assert.False(t, strings.Contains("$ref", string(bytes)), "should not contain $ref")
-
 }
 
 func TestBundleDocument_Circular(t *testing.T) {
-
 	digi, _ := os.ReadFile("../test_specs/circular-tests.yaml")
 
 	var logs []byte
@@ -172,7 +169,6 @@ func TestBundleDocument_MinimalRemoteRefsBundledRemotely(t *testing.T) {
 }
 
 func TestBundleBytes(t *testing.T) {
-
 	digi, _ := os.ReadFile("../test_specs/circular-tests.yaml")
 
 	var logs []byte
@@ -233,7 +229,6 @@ components:
 }
 
 func TestBundleBytes_CircularArray(t *testing.T) {
-
 	digi := []byte(`openapi: 3.1.0
 info:
   title: FailureCases
@@ -279,7 +274,6 @@ components:
 }
 
 func TestBundleBytes_CircularFile(t *testing.T) {
-
 	digi := []byte(`openapi: 3.1.0
 info:
   title: FailureCases

@@ -5,12 +5,12 @@ package base
 
 import (
 	"context"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetModelContext(t *testing.T) {
-
 	assert.Nil(t, GetModelContext(nil))
 	assert.Nil(t, GetModelContext(context.Background()))
 
@@ -19,5 +19,4 @@ func TestGetModelContext(t *testing.T) {
 
 	ctx = context.WithValue(context.Background(), "modelCtx", "wrong")
 	assert.Nil(t, GetModelContext(ctx))
-
 }

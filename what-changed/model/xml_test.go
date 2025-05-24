@@ -4,15 +4,15 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareXML_NameChanged(t *testing.T) {
-
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -42,11 +42,9 @@ wrapped: true`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareXML_NameRemoved(t *testing.T) {
-
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -76,11 +74,9 @@ namespace: something`
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-
 }
 
 func TestCompareXML_ExtensionAdded(t *testing.T) {
-
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -111,11 +107,9 @@ x-coffee: time`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, extChanges.ExtensionChanges.Changes[0].ChangeType)
-
 }
 
 func TestCompareXML_Identical(t *testing.T) {
-
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -143,5 +137,4 @@ wrapped: true`
 	// compare.
 	extChanges := CompareXML(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
-
 }

@@ -367,7 +367,6 @@ func TestNewRemoteFS_RemoteBaseURL_200_NotOpenAPI(t *testing.T) {
 	c, err := f.(*rolodexFile).Index(cf)
 	assert.Nil(t, c)
 	assert.Error(t, err)
-
 }
 
 func TestNewRemoteFS_RemoteBaseURL_Error400(t *testing.T) {

@@ -1868,7 +1868,6 @@ components:
 }
 
 func TestBuildSchema_BadNodeTypes(t *testing.T) {
-
 	n := &yaml.Node{
 		Tag:    "!!burgers",
 		Line:   1,
@@ -1893,7 +1892,6 @@ func TestBuildSchema_BadNodeTypes(t *testing.T) {
 }
 
 func TestExtractSchema_CheckPathAndSpec(t *testing.T) {
-
 	yml := `openapi: 3.0.3
 components:
   schemas:
@@ -1921,11 +1919,9 @@ components:
 	res, e := ExtractSchema(ctx, idxNode.Content[0], idx)
 	assert.Nil(t, res)
 	assert.Equal(t, "schema build failed: reference '#/' cannot be found at line 2, col 9", e.Error())
-
 }
 
 func TestExtractSchema_CheckExampleNodesExtracted(t *testing.T) {
-
 	yml := `schema:
   type: object
   example:
@@ -1972,8 +1968,6 @@ func TestExtractSchema_CheckExampleNodesExtracted(t *testing.T) {
 }
 
 func TestSchema_Hash_Empty(t *testing.T) {
-
 	var s *Schema
 	assert.NotNil(t, s.Hash())
-
 }

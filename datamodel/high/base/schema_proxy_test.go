@@ -258,7 +258,6 @@ components:
 }
 
 func TestSchemaProxy_MarshalYAML_MatchBasePath(t *testing.T) {
-
 	const ymlComponents = `properties:
   spice:
     allOf:
@@ -267,7 +266,7 @@ func TestSchemaProxy_MarshalYAML_MatchBasePath(t *testing.T) {
     oneOf: 
       - $ref: './schema.yaml'`
 
-	_ = os.WriteFile("schema.yaml", []byte(ymlComponents), 0777)
+	_ = os.WriteFile("schema.yaml", []byte(ymlComponents), 0o777)
 	defer os.RemoveAll("schema.yaml")
 
 	actualYaml := []byte("$ref: 'schema.yaml'")
@@ -337,7 +336,6 @@ func TestSchemaProxy_MarshalYAML_MatchBasePath(t *testing.T) {
 }
 
 func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
-
 	const ymlComponents = `properties:
   spice:
     allOf:
@@ -346,7 +344,7 @@ func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
     oneOf: 
       - $ref: './schema_n.yaml'`
 
-	_ = os.WriteFile("schema_n.yaml", []byte(ymlComponents), 0777)
+	_ = os.WriteFile("schema_n.yaml", []byte(ymlComponents), 0o777)
 	defer os.RemoveAll("schema_n.yaml")
 
 	actualYaml := []byte("$ref: './schema_n.yaml'")
@@ -415,7 +413,6 @@ func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
 }
 
 func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {
-
 	actualYaml := []byte("$ref: './schema_k.yaml'")
 
 	var rootNode yaml.Node
@@ -432,7 +429,6 @@ func TestSchemaProxy_MarshalYAML_BadSchema(t *testing.T) {
 }
 
 func TestSchemaProxy_MarshalYAML_Inline_HTTP(t *testing.T) {
-
 	// this triggers http code by fudging references, found when importing from URLs directly.
 
 	first := `type: object

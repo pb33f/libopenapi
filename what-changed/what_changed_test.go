@@ -15,7 +15,6 @@ import (
 )
 
 func TestCompareOpenAPIDocuments(t *testing.T) {
-
 	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	modified, _ := os.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
@@ -27,11 +26,9 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
 	assert.Equal(t, 75, changes.TotalChanges())
 	assert.Equal(t, 20, changes.TotalBreakingChanges())
-
 }
 
 func TestCompareSwaggerDocuments(t *testing.T) {
-
 	original, _ := os.ReadFile("../test_specs/petstorev2-complete.yaml")
 	modified, _ := os.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
@@ -43,11 +40,9 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 	changes := CompareSwaggerDocuments(origDoc, modDoc)
 	assert.Equal(t, 52, changes.TotalChanges())
 	assert.Equal(t, 27, changes.TotalBreakingChanges())
-
 }
 
 func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
-
 	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	modified, _ := os.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
 
@@ -62,7 +57,6 @@ func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 }
 
 func Benchmark_CompareSwaggerDocuments(b *testing.B) {
-
 	original, _ := os.ReadFile("../test_specs/petstorev2-complete.yaml")
 	modified, _ := os.ReadFile("../test_specs/petstorev2-complete-modified.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
@@ -77,7 +71,6 @@ func Benchmark_CompareSwaggerDocuments(b *testing.B) {
 }
 
 func Benchmark_CompareOpenAPIDocuments_NoChange(b *testing.B) {
-
 	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	modified, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
@@ -92,7 +85,6 @@ func Benchmark_CompareOpenAPIDocuments_NoChange(b *testing.B) {
 }
 
 func Benchmark_CompareK8s(b *testing.B) {
-
 	original, _ := os.ReadFile("../test_specs/k8s.json")
 	modified, _ := os.ReadFile("../test_specs/k8s.json")
 
@@ -107,7 +99,6 @@ func Benchmark_CompareK8s(b *testing.B) {
 }
 
 func Benchmark_CompareStripe(b *testing.B) {
-
 	original, _ := os.ReadFile("../test_specs/stripe.yaml")
 	modified, _ := os.ReadFile("../test_specs/stripe.yaml")
 
@@ -122,7 +113,6 @@ func Benchmark_CompareStripe(b *testing.B) {
 }
 
 func ExampleCompareOpenAPIDocuments() {
-
 	// Read in a 'left' (original) OpenAPI specification
 	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 
@@ -146,5 +136,5 @@ func ExampleCompareOpenAPIDocuments() {
 	// Print out some interesting stats.
 	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
-	//Output: There are 75 changes, of which 20 are breaking. 6 schemas have changes.
+	// Output: There are 75 changes, of which 20 are breaking. 6 schemas have changes.
 }

@@ -4,14 +4,14 @@
 package model
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestCompareTags(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - name: a tag
@@ -54,7 +54,6 @@ tags:
 }
 
 func TestCompareTags_AddNewTag(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - name: a tag
@@ -94,7 +93,6 @@ tags:
 }
 
 func TestCompareTags_AddDeleteTag(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - name: a tag
@@ -127,7 +125,6 @@ tags:
 }
 
 func TestCompareTags_DescriptionMoved(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -157,11 +154,9 @@ tags:
 
 	// evaluate.
 	assert.Nil(t, changes)
-
 }
 
 func TestCompareTags_NameMoved(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -194,7 +189,6 @@ tags:
 }
 
 func TestCompareTags_ModifiedAndMoved(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -234,7 +228,6 @@ tags:
 }
 
 func TestCompareTags_Identical(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -264,11 +257,9 @@ tags:
 
 	// evaluate.
 	assert.Nil(t, changes)
-
 }
 
 func TestCompareTags_AddExternalDocs(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - name: something else`
@@ -293,11 +284,9 @@ tags:
 	assert.Equal(t, 1, changes[0].TotalChanges())
 	assert.Len(t, changes[0].GetAllChanges(), 1)
 	assert.Equal(t, ObjectAdded, changes[0].Changes[0].ChangeType)
-
 }
 
 func TestCompareTags_RemoveExternalDocs(t *testing.T) {
-
 	left := `openapi: 3.0.1
 tags:
   - name: something else`
@@ -322,5 +311,4 @@ tags:
 	assert.Equal(t, 1, changes[0].TotalChanges())
 	assert.Len(t, changes[0].GetAllChanges(), 1)
 	assert.Equal(t, ObjectRemoved, changes[0].Changes[0].ChangeType)
-
 }

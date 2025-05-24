@@ -5,16 +5,16 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareSecuritySchemes_v2(t *testing.T) {
-
 	left := `type: string
 description: a thing
 flow: heavy
@@ -47,7 +47,6 @@ x-beer: tasty`
 }
 
 func TestCompareSecuritySchemes_v2_ModifyProps(t *testing.T) {
-
 	left := `type: int
 description: who cares if this changes?
 flow: very heavy
@@ -82,7 +81,6 @@ x-beer: very tasty`
 }
 
 func TestCompareSecuritySchemes_v2_AddScope(t *testing.T) {
-
 	left := `description: I am a thing`
 
 	right := `description: I am a thing
@@ -112,7 +110,6 @@ scopes:
 }
 
 func TestCompareSecuritySchemes_v2_RemoveScope(t *testing.T) {
-
 	left := `description: I am a thing`
 
 	right := `description: I am a thing
@@ -142,7 +139,6 @@ scopes:
 }
 
 func TestCompareSecuritySchemes_v2_ModifyScope(t *testing.T) {
-
 	left := `scopes:
   pizza: pie`
 
@@ -172,7 +168,6 @@ func TestCompareSecuritySchemes_v2_ModifyScope(t *testing.T) {
 }
 
 func TestCompareSecuritySchemes_v3(t *testing.T) {
-
 	left := `type: string
 description: a thing
 scheme: fishy
@@ -203,7 +198,6 @@ description: a thing`
 }
 
 func TestCompareSecuritySchemes_v3_ModifyProps(t *testing.T) {
-
 	left := `type: string
 description: a thing
 scheme: fishy
@@ -241,7 +235,6 @@ x-beer: cool`
 }
 
 func TestCompareSecuritySchemes_v3_AddFlows(t *testing.T) {
-
 	left := `type: oauth`
 
 	right := `type: oauth
@@ -270,7 +263,6 @@ flows:
 }
 
 func TestCompareSecuritySchemes_v3_RemoveFlows(t *testing.T) {
-
 	left := `type: oauth`
 
 	right := `type: oauth
@@ -299,7 +291,6 @@ flows:
 }
 
 func TestCompareSecuritySchemes_v3_ModifyFlows(t *testing.T) {
-
 	left := `type: oauth
 flows:
   implicit:

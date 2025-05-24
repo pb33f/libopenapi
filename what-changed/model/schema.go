@@ -1490,7 +1490,6 @@ func checkSchemaPropertyChanges(
 }
 
 func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change) {
-
 	if lSchema == nil && rSchema == nil {
 		return
 	}

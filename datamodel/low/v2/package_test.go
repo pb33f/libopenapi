@@ -5,15 +5,15 @@ package v2
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"os"
+
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
 )
 
 // How to create a low-level Swagger / OpenAPI 2 Document from a specification
 func Example_createLowLevelSwaggerDocument() {
-
 	// How to create a low-level OpenAPI 2 Document
 
 	// load petstore into bytes
@@ -37,12 +37,10 @@ func Example_createLowLevelSwaggerDocument() {
 	// print out email address from the info > contact object.
 	fmt.Print(document.Info.Value.Contact.Value.Email.Value)
 	// Output: apiteam@swagger.io
-
 }
 
 // How to create a low-level Swagger / OpenAPI 2 Document from a specification
 func Example_createDocument() {
-
 	// How to create a low-level OpenAPI 2 Document
 
 	// load petstore into bytes
@@ -66,5 +64,4 @@ func Example_createDocument() {
 	// print out email address from the info > contact object.
 	fmt.Print(document.Info.Value.Contact.Value.Email.Value)
 	// Output: apiteam@swagger.io
-
 }

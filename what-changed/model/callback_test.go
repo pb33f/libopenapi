@@ -5,15 +5,15 @@ package model
 
 import (
 	"context"
+	"testing"
+
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestCompareCallback(t *testing.T) {
-
 	left := `'{$request.query.queryUrl}':
     post:
       requestBody:
@@ -46,7 +46,6 @@ func TestCompareCallback(t *testing.T) {
 }
 
 func TestCompareCallback_Add(t *testing.T) {
-
 	left := `'{$request.query.queryUrl}':
     post:
       requestBody:
@@ -96,7 +95,6 @@ func TestCompareCallback_Add(t *testing.T) {
 }
 
 func TestCompareCallback_Modify(t *testing.T) {
-
 	left := `x-pizza: tasty
 '{$request.query.queryUrl}':
     post:
@@ -147,7 +145,6 @@ func TestCompareCallback_Modify(t *testing.T) {
 }
 
 func TestCompareCallback_Remove(t *testing.T) {
-
 	left := `'{$request.query.queryUrl}':
     post:
       requestBody:

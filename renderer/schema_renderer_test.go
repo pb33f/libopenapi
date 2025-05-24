@@ -17,9 +17,9 @@ import (
 	"time"
 
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -69,7 +69,7 @@ func getSchema(schema []byte) *highbase.Schema {
 }
 
 func createVisitedMap() map[string]bool {
-  return make(map[string]bool)
+	return make(map[string]bool)
 }
 
 func TestRenderExample_StringWithExample(t *testing.T) {
@@ -80,7 +80,7 @@ example: dog`
 
 	journeyMap := make(map[string]any)
 	visited := createVisitedMap()
-  wr := createSchemaRenderer()
+	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(compiled, "pb33f", journeyMap, visited, 0)
 
 	assert.Equal(t, journeyMap["pb33f"], "dog")
@@ -702,7 +702,6 @@ dependentSchemas:
 	assert.True(t, journeyMap["pb33f"].(map[string]interface{})["fishCake"].(map[string]interface{})["bones"].(bool))
 }
 
-
 func TestRenderExample_String_AllOf(t *testing.T) {
 	testObject := `type: object
 allOf:
@@ -1078,7 +1077,6 @@ properties:
 	assert.Nil(t, journeyMap["pb33f"].(map[string]interface{})["burger"])
 }
 
-
 func TestRenderExample_Test_RequiredCheckDisabled(t *testing.T) {
 	testObject := `type: [object]
 required:
@@ -1351,7 +1349,7 @@ schemas:
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1395,7 +1393,7 @@ schemas:
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1406,7 +1404,6 @@ schemas:
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["owner"])
 	assert.NotEmpty(t, schema["pb33f"].(map[string]interface{})["owner"].(map[string]interface{})["name"])
 }
-
 
 func TestRenderSchema_Ref_CircularArray(t *testing.T) {
 	yml := `
@@ -1448,11 +1445,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1504,11 +1501,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1547,11 +1544,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1603,11 +1600,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1646,11 +1643,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1660,7 +1657,6 @@ schemas:
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"friends":[{"friends":[],"name":"John Doe"}],"name":"John Doe"}`, string(rendered))
 }
-
 
 func TestRenderSchema_Ref_AnyOfCircularArraySkip(t *testing.T) {
 	yml := `
@@ -1711,11 +1707,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1767,11 +1763,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1808,19 +1804,19 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
 	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
-  rendered, _ := json.Marshal(schema["pb33f"])
-  assert.Equal(t, `{"friend":{"name":"John Doe"},"name":"John Doe"}`, string(rendered))
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"friend":{"name":"John Doe"},"name":"John Doe"}`, string(rendered))
 }
 
 func TestRenderSchema_Ref_OneOfCircularArraySkip2(t *testing.T) {
@@ -1865,21 +1861,20 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("pet")
+	lowRestaurant := components.FindSchema("pet")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
 	visited := createVisitedMap()
 	wr := createSchemaRenderer()
 	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
-  rendered, _ := json.Marshal(schema["pb33f"])
-  assert.Equal(t, `{"friend":{"enemy":{"name":"Alf"},"name":"Maria"},"name":"Cathy the cat"}`, string(rendered))
+	rendered, _ := json.Marshal(schema["pb33f"])
+	assert.Equal(t, `{"friend":{"enemy":{"name":"Alf"},"name":"Maria"},"name":"Cathy the cat"}`, string(rendered))
 }
-
 
 func TestRenderSchema_Ref_OneOfCircularArrayFail(t *testing.T) {
 	yml := `
@@ -1910,11 +1905,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1923,7 +1918,6 @@ schemas:
 	success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	assert.False(t, success)
 }
-
 
 func TestRenderSchema_Ref_SkipOptional(t *testing.T) {
 	yml := `
@@ -1955,11 +1949,11 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("pet")
+	lowRestaurant := components.FindSchema("pet")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
@@ -1998,17 +1992,17 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("pet")
+	lowRestaurant := components.FindSchema("pet")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
 	visited := createVisitedMap()
 	wr := createSchemaRenderer()
-  wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"bestFriend":{"color":"green","name":"Maria the frog"},"color":"green","name":"Maria the frog"}`, string(rendered))
 }
@@ -2044,18 +2038,18 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("pet")
+	lowRestaurant := components.FindSchema("pet")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
 	visited := createVisitedMap()
 	wr := createSchemaRenderer()
-  success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
-  assert.False(t, success)
+	success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	assert.False(t, success)
 }
 
 func TestRenderExample_Ref_DependentSchemasCircularSkip(t *testing.T) {
@@ -2101,17 +2095,17 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
 	visited := createVisitedMap()
 	wr := createSchemaRenderer()
-  wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
 	rendered, _ := json.Marshal(schema["pb33f"])
 	assert.Equal(t, `{"name":"Lena","pet":{"friend":{"name":"Teddy bear"},"name":"Luis the kangaroo"}}`, string(rendered))
 }
@@ -2158,18 +2152,18 @@ schemas:
 	err = components.Build(context.Background(), idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-  lowRestaurant := components.FindSchema("human")
+	lowRestaurant := components.FindSchema("human")
 	lowNode := low.NodeReference[*lowbase.SchemaProxy]{
 		ValueNode: lowRestaurant.ValueNode,
 		Reference: lowRestaurant.Reference,
-		Value: lowRestaurant.Value,
+		Value:     lowRestaurant.Value,
 	}
 	schemaProxy := highbase.NewSchemaProxy(&lowNode)
 	schema := make(map[string]any)
 	visited := createVisitedMap()
 	wr := createSchemaRenderer()
-  success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
-  assert.False(t, success)
+	success := wr.DiveIntoSchema(schemaProxy.Schema(), "pb33f", schema, visited, 0)
+	assert.False(t, success)
 }
 
 func TestCreateRendererUsingDefaultDictionary(t *testing.T) {

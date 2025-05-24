@@ -162,7 +162,6 @@ properties:
 }
 
 func TestSchemaProxy_Build_HashFail(t *testing.T) {
-
 	sp := new(SchemaProxy)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
 	idx := index.NewSpecIndexWithConfig(nil, &index.SpecIndexConfig{Logger: logger})
@@ -197,5 +196,4 @@ description: cakes`
 	n, f = s.Nodes.Load(4)
 	assert.True(t, f)
 	assert.NotNil(t, n)
-
 }

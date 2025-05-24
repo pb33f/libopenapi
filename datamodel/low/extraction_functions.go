@@ -7,12 +7,13 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"net/url"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
+
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/index"

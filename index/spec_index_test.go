@@ -15,13 +15,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"sync"
 )
 
 const (
@@ -1921,7 +1921,6 @@ func TestSpecIndex_GetAllComponentSchemas_NilIndex(t *testing.T) {
 }
 
 func TestSpecIndex_Cache(t *testing.T) {
-
 	idx := NewTestSpecIndex()
 	assert.NotNil(t, idx.GetHighCache())
 	assert.NotNil(t, uint(1), idx.HighCacheHit())
@@ -1930,7 +1929,6 @@ func TestSpecIndex_Cache(t *testing.T) {
 	assert.NotNil(t, uint(1), idx.GetHighCacheMisses())
 	idx.SetHighCache(nil)
 	assert.Nil(t, idx.GetHighCache())
-
 }
 
 func TestSpecIndex_getAllPathItemsFromComponents(t *testing.T) {

@@ -4,10 +4,11 @@
 package bundler
 
 import (
+	"testing"
+
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
-	"testing"
 )
 
 func TestDetectOpenAPIComponentType_NilNode(t *testing.T) {
@@ -143,7 +144,6 @@ schema:
 	componentType, detected := DetectOpenAPIComponentType(node)
 	assert.Equal(t, v3.ParametersLabel, componentType)
 	assert.True(t, detected)
-
 }
 
 func TestDetectOpenAPIComponentType_Example(t *testing.T) {
@@ -318,7 +318,6 @@ description: Just a description
 `
 	node = parseYaml(t, nonResponseYaml)
 	assert.False(t, hasResponseProperties(node))
-
 }
 
 func TestHasParameterProperties(t *testing.T) {

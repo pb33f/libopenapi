@@ -15,7 +15,6 @@ import (
 )
 
 func TestCompareInfo_DescriptionAdded(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -56,7 +55,6 @@ license:
 }
 
 func TestCompareInfo_TitleRemoved(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -97,7 +95,6 @@ license:
 }
 
 func TestCompareInfo_VersionModified(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -137,7 +134,6 @@ license:
 }
 
 func TestCompareInfo_RemoveLicense(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -175,7 +171,6 @@ contact:
 }
 
 func TestCompareInfo_AddLicense(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -213,7 +208,6 @@ license:
 }
 
 func TestCompareInfo_LicenseChanged(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -253,7 +247,6 @@ license:
 }
 
 func TestCompareInfo_AddContact(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -290,7 +283,6 @@ license:
 }
 
 func TestCompareInfo_RemoveContact(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -327,7 +319,6 @@ license:
 }
 
 func TestCompareInfo_ContactModified(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -368,7 +359,6 @@ license:
 }
 
 func TestCompareInfo_Equal(t *testing.T) {
-
 	left := `title: a nice spec
 termsOfService: https://pb33f.io/terms
 version: '1.2.3'
@@ -407,7 +397,6 @@ x-extension: extension`
 }
 
 func TestCompareInfo_ExtensionAdded(t *testing.T) {
-
 	left := `title: a nice spec
 version: '1.2.3'
 `
@@ -438,7 +427,6 @@ x-extension: new extension
 }
 
 func TestCompareInfo_ExtensionRemoved(t *testing.T) {
-
 	left := `title: a nice spec
 version: '1.2.3'
 x-extension: extension
@@ -469,7 +457,6 @@ version: '1.2.3'
 }
 
 func TestCompareInfo_ExtensionModified(t *testing.T) {
-
 	left := `title: a nice spec
 version: '1.2.3'
 x-extension: original extension

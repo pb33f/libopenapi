@@ -5,12 +5,12 @@ package model
 
 import (
 	"encoding/json"
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestChange_MarshalJSON(t *testing.T) {
-
 	rinseAndRepeat := func(ch *Change) map[string]any {
 		b, err := ch.MarshalJSON()
 		assert.NoError(t, err)
@@ -91,5 +91,4 @@ func TestChange_MarshalJSON(t *testing.T) {
 
 	prop := &PropertyChanges{Changes: []*Change{&change}}
 	assert.Len(t, prop.GetPropertyChanges(), 1)
-
 }

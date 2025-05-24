@@ -4,12 +4,12 @@
 package index
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestCircularReferenceResult_GenerateJourneyPath(t *testing.T) {
-
 	refs := []*Reference{
 		{Name: "chicken"},
 		{Name: "nuggets"},
@@ -26,5 +26,4 @@ func TestCircularReferenceResult_GenerateJourneyPath(t *testing.T) {
 	cr := &CircularReferenceResult{Journey: refs}
 	assert.Equal(t, "chicken -> nuggets -> chicken -> soup -> "+
 		"chicken -> nuggets -> for -> me -> and -> you", cr.GenerateJourneyPath())
-
 }

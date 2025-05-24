@@ -12,11 +12,11 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"gopkg.in/yaml.v3"
-	"sync"
 )
 
 // LocalFS is a file system that indexes local files.
@@ -215,7 +215,6 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	var root yaml.Node
 	err := yaml.Unmarshal(l.data, &root)
 	if err != nil {
-
 		// we can't parse it, so create a fake document node with a single string content
 		root = yaml.Node{
 			Kind: yaml.DocumentNode,

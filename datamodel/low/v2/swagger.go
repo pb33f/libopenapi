@@ -130,7 +130,8 @@ func (s *Swagger) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.
 
 // CreateDocumentFromConfig will create a new Swagger document from the provided SpecInfo and DocumentConfiguration.
 func CreateDocumentFromConfig(info *datamodel.SpecInfo,
-	configuration *datamodel.DocumentConfiguration) (*Swagger, error) {
+	configuration *datamodel.DocumentConfiguration,
+) (*Swagger, error) {
 	return createDocument(info, configuration)
 }
 

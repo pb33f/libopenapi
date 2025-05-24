@@ -7,10 +7,9 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
-	"sync"
-
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -110,7 +109,7 @@ func (sp *SchemaProxy) Schema() *Schema {
 		return nil
 	}
 
-	//check the high-level cache first.
+	// check the high-level cache first.
 	idx := sp.schema.Value.GetIndex()
 	if idx != nil && sp.schema.Value != nil {
 		if sp.schema.Value.IsReference() && sp.schema.Value.GetReferenceNode() != nil && sp.schema.GetValueNode() != nil {
@@ -135,10 +134,9 @@ func (sp *SchemaProxy) Schema() *Schema {
 	sch := NewSchema(s)
 
 	if idx != nil {
-
 		// only store the schema in the cache if is a reference!
 		if sp.IsReference() && sp.GetReferenceNode() != nil && sp.schema != nil && sp.schema.GetValueNode() != nil {
-			//if sp.schema.GetValueNode() != nil {
+			// if sp.schema.GetValueNode() != nil {
 			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 
 			// caching is only performed on traditional $ref nodes with a reference and a value node, any 3.1 additional
@@ -152,7 +150,6 @@ func (sp *SchemaProxy) Schema() *Schema {
 	sch.ParentProxy = sp
 	sp.rendered = sch
 	return sch
-
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.

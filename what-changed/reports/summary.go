@@ -21,7 +21,6 @@ type OverallReport struct {
 
 // CreateOverallReport will create a high level report for all top level changes (but with deep counts)
 func CreateOverallReport(changes *model.DocumentChanges) *OverallReport {
-
 	changedReport := make(map[string]*Changed)
 	if changes.InfoChanges != nil {
 		changedReport[v3.InfoLabel] = createChangedModel(changes.InfoChanges)

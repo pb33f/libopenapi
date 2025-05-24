@@ -235,7 +235,6 @@ func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
 	assert.Equal(t, "string",
 		n.FindResponseByCode("200").Value.FindHeader("x-header1").Value.Schema.Value.Schema().Type.Value.A)
 	assert.NotNil(t, n.FindResponseByCode("200").GetValue().GetRootNode())
-
 }
 
 func TestResponse_Hash(t *testing.T) {

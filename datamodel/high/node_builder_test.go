@@ -1171,5 +1171,4 @@ func TestNewNodeBuilder_DescriptionOmitEmpty(t *testing.T) {
 	desired = `{}`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
-
 }
