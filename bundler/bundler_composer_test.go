@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"regexp"
+	"runtime"
 	"testing"
 
 	"github.com/pb33f/libopenapi"
@@ -40,7 +41,13 @@ func TestBundlerComposed(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	assert.Len(t, bytes, 9099)
+
+	// windows needs a different byte count
+	if runtime.GOOS == "windows" {
+		assert.Len(t, bytes, 9371)
+	} else {
+		assert.Len(t, bytes, 9099)
+	}
 
 	preBundled, bErr := os.ReadFile("test/specs/bundled.yaml")
 	assert.NoError(t, bErr)
