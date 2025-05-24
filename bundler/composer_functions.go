@@ -149,10 +149,7 @@ func buildComponents(idx *index.SpecIndex) (*v3.Components, error) {
 	_ = low.BuildModel(&yaml.Node{}, &comp)
 	ctx := context.Background()
 	err := comp.Build(ctx, &yaml.Node{}, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewComponents(&comp), nil
+	return v3.NewComponents(&comp), err
 }
 
 func buildSchema(node *yaml.Node, idx *index.SpecIndex) (*base.SchemaProxy, error) {
@@ -166,13 +163,9 @@ func buildSchema(node *yaml.Node, idx *index.SpecIndex) (*base.SchemaProxy, erro
 
 	var sch lowbase.SchemaProxy
 	err = sch.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-
 	r := &low.NodeReference[*lowbase.SchemaProxy]{Value: &sch}
 	highSchemaProxy := base.NewSchemaProxy(r)
-	return highSchemaProxy, nil
+	return highSchemaProxy, err
 }
 
 func buildResponse(node *yaml.Node, idx *index.SpecIndex) (*v3.Response, error) {
@@ -180,10 +173,7 @@ func buildResponse(node *yaml.Node, idx *index.SpecIndex) (*v3.Response, error) 
 	_ = low.BuildModel(node, &resp)
 	ctx := context.Background()
 	err := resp.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewResponse(&resp), nil
+	return v3.NewResponse(&resp), err
 }
 
 func buildParameter(node *yaml.Node, idx *index.SpecIndex) (*v3.Parameter, error) {
@@ -191,10 +181,7 @@ func buildParameter(node *yaml.Node, idx *index.SpecIndex) (*v3.Parameter, error
 	_ = low.BuildModel(node, &param)
 	ctx := context.Background()
 	err := param.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewParameter(&param), nil
+	return v3.NewParameter(&param), err
 }
 
 func buildHeader(node *yaml.Node, idx *index.SpecIndex) (*v3.Header, error) {
@@ -202,10 +189,7 @@ func buildHeader(node *yaml.Node, idx *index.SpecIndex) (*v3.Header, error) {
 	_ = low.BuildModel(node, &header)
 	ctx := context.Background()
 	err := header.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewHeader(&header), nil
+	return v3.NewHeader(&header), err
 }
 
 func buildRequestBody(node *yaml.Node, idx *index.SpecIndex) (*v3.RequestBody, error) {
@@ -213,10 +197,7 @@ func buildRequestBody(node *yaml.Node, idx *index.SpecIndex) (*v3.RequestBody, e
 	_ = low.BuildModel(node, &requestBody)
 	ctx := context.Background()
 	err := requestBody.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewRequestBody(&requestBody), nil
+	return v3.NewRequestBody(&requestBody), err
 }
 
 func buildExample(node *yaml.Node, idx *index.SpecIndex) (*base.Example, error) {
@@ -224,10 +205,7 @@ func buildExample(node *yaml.Node, idx *index.SpecIndex) (*base.Example, error) 
 	_ = low.BuildModel(node, &example)
 	ctx := context.Background()
 	err := example.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return base.NewExample(&example), nil
+	return base.NewExample(&example), err
 }
 
 func buildLink(node *yaml.Node, idx *index.SpecIndex) (*v3.Link, error) {
@@ -235,10 +213,7 @@ func buildLink(node *yaml.Node, idx *index.SpecIndex) (*v3.Link, error) {
 	_ = low.BuildModel(node, &link)
 	ctx := context.Background()
 	err := link.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewLink(&link), nil
+	return v3.NewLink(&link), err
 }
 
 func buildCallback(node *yaml.Node, idx *index.SpecIndex) (*v3.Callback, error) {
@@ -246,10 +221,7 @@ func buildCallback(node *yaml.Node, idx *index.SpecIndex) (*v3.Callback, error) 
 	_ = low.BuildModel(node, &callback)
 	ctx := context.Background()
 	err := callback.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewCallback(&callback), nil
+	return v3.NewCallback(&callback), err
 }
 
 func buildPathItem(node *yaml.Node, idx *index.SpecIndex) (*v3.PathItem, error) {
@@ -257,8 +229,5 @@ func buildPathItem(node *yaml.Node, idx *index.SpecIndex) (*v3.PathItem, error) 
 	_ = low.BuildModel(node, &pathItem)
 	ctx := context.Background()
 	err := pathItem.Build(ctx, &yaml.Node{}, node, idx)
-	if err != nil {
-		return nil, err
-	}
-	return v3.NewPathItem(&pathItem), nil
+	return v3.NewPathItem(&pathItem), err
 }

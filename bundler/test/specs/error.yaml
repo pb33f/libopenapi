@@ -18,6 +18,8 @@ components:
         - ErrEntityNotFound
 
     dtoError:
+      example:
+        $ref: "./clash/paging.yaml#/components/examples/dtoErrorExample"
       description: General error structure
       type: object
       required:

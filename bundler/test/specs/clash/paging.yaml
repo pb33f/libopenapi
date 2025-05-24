@@ -6,6 +6,12 @@ servers: []
 paths: []
 
 components:
+  examples:
+    dtoErrorExample:
+      value:
+        errorCode: ErrUnknownError
+        requestId: "12345"
+        message: "An unknown error occurred"
   schemas:
     dtoTest:
       description: Test schema (CLASH)

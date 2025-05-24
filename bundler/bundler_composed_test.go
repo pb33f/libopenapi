@@ -34,7 +34,12 @@ func TestBundlerComposed(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	assert.Len(t, bytes, 4797)
+	assert.Len(t, bytes, 5069)
+
+	// write the bundled spec to a file for inspection
+	// uncomment this to rebuild the bundled spec file, if the example spec changes.
+	//err = os.WriteFile("test/specs/bundled.yaml", bytes, 0644)
+
 	preBundled, bErr := os.ReadFile("test/specs/bundled.yaml")
 	assert.NoError(t, bErr)
 	assert.Equal(t, string(preBundled), string(bytes))

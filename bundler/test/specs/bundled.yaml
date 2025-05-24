@@ -72,6 +72,8 @@ components:
             description: Test schema (SMASH)
             type: object
         dtoError:
+            example:
+                $ref: "#/components/examples/dtoErrorExample"
             description: General error structure
             type: object
             required:
@@ -126,6 +128,12 @@ components:
             required: false
             schema:
                 type: string
+    examples:
+        dtoErrorExample:
+            value:
+                errorCode: ErrUnknownError
+                requestId: "12345"
+                message: "An unknown error occurred"
     requestBodies:
         testBody:
             description: Test request body
