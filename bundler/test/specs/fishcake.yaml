@@ -1,0 +1,11 @@
+type: object
+description: I am a fishcake schema
+properties:
+  filling:
+    type: string
+    description: The filling of the fishcake
+    example: "cod"
+  batter:
+    type: string
+    description: The type of batter used
+    example: "breadcrumb"

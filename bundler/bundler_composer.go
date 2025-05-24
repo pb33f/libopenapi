@@ -13,28 +13,27 @@ import (
 )
 
 type processRef struct {
-	idx    *index.SpecIndex
-	ref    *index.Reference
-	seqRef *index.Reference
-	name   string
+	idx      *index.SpecIndex
+	ref      *index.Reference
+	seqRef   *index.Reference
+	name     string
+	location []string
 }
 
 type handleIndexConfig struct {
-	idx     *index.SpecIndex
-	model   *v3.Document
-	indexes []*index.SpecIndex
-	refMap  *orderedmap.Map[string, *processRef]
-	seen    sync.Map
-	depth   int
+	idx               *index.SpecIndex
+	model             *v3.Document
+	indexes           []*index.SpecIndex
+	refMap            *orderedmap.Map[string, *processRef]
+	seen              sync.Map
+	inlineRequired    []*processRef
+	compositionConfig *BundleCompositionConfig
 }
 
+// handleIndex will recursively explore the indexes and their references, building a map of references
+// to be processed later. It will also check for circular references and avoid infinite loops.
+// everything is stored in the handleIndexConfig, which is passed around to avoid passing too many parameters.
 func handleIndex(c *handleIndexConfig) {
-	c.depth++
-	if c.depth > 1000 {
-		c.idx.GetLogger().Error("[bundler] too deep, we're over 1000 levels deep")
-		return
-	}
-
 	mappedReferences := c.idx.GetMappedReferences()
 	sequencedReferences := c.idx.GetRawReferencesSequenced()
 	var indexesToExplore []*index.SpecIndex
@@ -45,38 +44,43 @@ func handleIndex(c *handleIndexConfig) {
 		// if we're in the root document, don't bundle anything.
 		refExp := strings.Split(sequenced.FullDefinition, "#/")
 		var foundIndex *index.SpecIndex
-		if len(refExp) == 2 {
 
-			// make sure to use the correct index.
-			// https://github.com/pb33f/libopenapi/issues/397
-			for _, i := range c.indexes {
-				if i.GetSpecAbsolutePath() == refExp[0] {
-					foundIndex = i
-					if mappedReference != nil && !mappedReference.Circular {
-						mr := i.FindComponent(sequenced.Definition)
-						if mr != nil {
-							// found the component; this is the one we want to use.
-							mappedReference = mr
-							break
-						}
+		// make sure to use the correct index.
+		// https://github.com/pb33f/libopenapi/issues/397
+		for _, i := range c.indexes {
+			if i.GetSpecAbsolutePath() == refExp[0] {
+				foundIndex = i
+				if mappedReference != nil && !mappedReference.Circular {
+
+					lookup := sequenced.Definition
+					if !strings.Contains(lookup, "#/") {
+						lookup = sequenced.FullDefinition
+					}
+					mr := i.FindComponent(lookup)
+					if mr != nil {
+						// found the component; this is the one we want to use.
+						mappedReference = mr
+						break
 					}
 				}
 			}
-			// check if we have seen this index before, if so - skip it, otherwise we will be going around forever.
-			if _, ok := c.seen.Load(sequenced.FullDefinition); ok {
-				continue
+		}
+		// check if we have seen this index before, if so - skip it, otherwise we will be going around forever.
+		if _, ok := c.seen.Load(sequenced.FullDefinition); ok {
+			continue
+		}
+		if foundIndex != nil && mappedReference != nil {
+			// store the reference to be composed in the root.
+			if kk := c.refMap.GetOrZero(mappedReference.FullDefinition); kk == nil {
+				c.refMap.Set(mappedReference.FullDefinition, &processRef{
+					idx:    foundIndex,
+					ref:    mappedReference,
+					seqRef: sequenced,
+					name:   mappedReference.Name,
+				})
 			}
-			if foundIndex != nil && mappedReference != nil {
-				// store the reference to be composed in the root.
-				if kk := c.refMap.GetOrZero(mappedReference.FullDefinition); kk == nil {
-					c.refMap.Set(mappedReference.FullDefinition, &processRef{
-						idx:    foundIndex,
-						ref:    mappedReference,
-						seqRef: sequenced,
-						name:   mappedReference.Name,
-					})
-				}
-				c.seen.Store(mappedReference.FullDefinition, mappedReference) // TODO: replace with map.
+			if _, ok := c.seen.Load(foundIndex.GetSpecAbsolutePath()); !ok {
+				c.seen.Store(foundIndex.GetSpecAbsolutePath(), mappedReference) // TODO: replace with map.
 				indexesToExplore = append(indexesToExplore, foundIndex)
 			}
 		}
@@ -88,25 +92,66 @@ func handleIndex(c *handleIndexConfig) {
 	}
 }
 
-func processReference(model *v3.Document, pr *processRef) {
+// processReference will extract a reference from the current index, and transform it into a first class
+// top-level component in the root OpenAPI document.
+func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig) error {
 
 	idx := pr.idx
-	location := strings.Split(pr.ref.Definition, "/")[1:]
-
+	var components *v3.Components
 	var err error
-	if len(location) > 0 {
-		if location[0] == v3low.ComponentsLabel {
-			var components *v3.Components
-			if model.Components != nil {
-				components = model.Components
-			} else {
-				components, err = buildComponents(idx)
-				if err != nil {
-					idx.GetLogger().Error("[bundler] unable to build components", "error", err)
-					return
-				}
-				model.Components = components
+
+	delim := cf.compositionConfig.Delimiter
+
+	if model.Components != nil {
+		components = model.Components
+	} else {
+		components, err = buildComponents(idx)
+		if err != nil {
+			return err
+		}
+		model.Components = components
+	}
+
+	var location []string
+	if strings.Contains(pr.ref.FullDefinition, "#/") {
+		location = strings.Split(pr.ref.Definition, "/")[1:]
+	} else {
+		// make sure the sequence ref and pr ref have the same full definition.
+		pr.ref.FullDefinition = pr.seqRef.FullDefinition
+		// this is a root document reference, there is no way to get the location from the fragment.
+		// first, lets try to determine the type of the import, if we can.
+		if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
+
+			// cool, using the filename as the reference name, check if we have any collisions.
+			switch importType {
+			case v3low.SchemasLabel:
+				location = handleFileImport(pr, v3low.SchemasLabel, delim, components.Schemas)
+			case v3low.ResponsesLabel:
+				location = handleFileImport(pr, v3low.ResponsesLabel, delim, components.Responses)
+			case v3low.ParametersLabel:
+				location = handleFileImport(pr, v3low.ParametersLabel, delim, components.Parameters)
+			case v3low.HeadersLabel:
+				location = handleFileImport(pr, v3low.HeadersLabel, delim, components.Headers)
+			case v3low.RequestBodiesLabel:
+				location = handleFileImport(pr, v3low.RequestBodiesLabel, delim, components.RequestBodies)
+			case v3low.ExamplesLabel:
+				location = handleFileImport(pr, v3low.ExamplesLabel, delim, components.Examples)
+			case v3low.LinksLabel:
+				location = handleFileImport(pr, v3low.LinksLabel, delim, components.Links)
+			case v3low.CallbacksLabel:
+				location = handleFileImport(pr, v3low.CallbacksLabel, delim, components.Callbacks)
+			case v3low.PathItemsLabel:
+				location = handleFileImport(pr, v3low.PathItemsLabel, delim, components.PathItems)
 			}
+		} else {
+			// the only choice we can make here to be accurate is to inline instead of recompose.
+			cf.inlineRequired = append(cf.inlineRequired, pr)
+		}
+	}
+
+	if len(location) > 0 {
+		pr.location = location
+		if location[0] == v3low.ComponentsLabel {
 
 			if len(location) > 1 {
 				switch location[1] {
@@ -114,10 +159,8 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						schemaName := location[2]
 						if components.Schemas != nil {
-							err = checkReferenceAndBubbleUp(schemaName, pr, idx, components.Schemas, buildSchema)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(schemaName, cf.compositionConfig.Delimiter,
+								pr, idx, components.Schemas, buildSchema)
 						}
 					}
 
@@ -125,10 +168,8 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						responseCode := location[2]
 						if components.Responses != nil {
-							err = checkReferenceAndBubbleUp(responseCode, pr, idx, components.Responses, buildResponse)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(responseCode, cf.compositionConfig.Delimiter,
+								pr, idx, components.Responses, buildResponse)
 						}
 					}
 
@@ -136,10 +177,8 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						paramName := location[2]
 						if components.Parameters != nil {
-							err = checkReferenceAndBubbleUp(paramName, pr, idx, components.Parameters, buildParameter)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(paramName, cf.compositionConfig.Delimiter,
+								pr, idx, components.Parameters, buildParameter)
 						}
 					}
 
@@ -147,10 +186,8 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						headerName := location[2]
 						if components.Headers != nil {
-							err = checkReferenceAndBubbleUp(headerName, pr, idx, components.Headers, buildHeader)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(headerName, cf.compositionConfig.Delimiter,
+								pr, idx, components.Headers, buildHeader)
 						}
 					}
 
@@ -158,20 +195,16 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						requestBodyName := location[2]
 						if components.RequestBodies != nil {
-							err = checkReferenceAndBubbleUp(requestBodyName, pr, idx, components.RequestBodies, buildRequestBody)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(requestBodyName, cf.compositionConfig.Delimiter,
+								pr, idx, components.RequestBodies, buildRequestBody)
 						}
 					}
 				case v3low.ExamplesLabel:
 					if len(location) > 2 {
 						exampleName := location[2]
 						if components.Examples != nil {
-							err = checkReferenceAndBubbleUp(exampleName, pr, idx, components.Examples, buildExample)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(exampleName, cf.compositionConfig.Delimiter,
+								pr, idx, components.Examples, buildExample)
 						}
 					}
 
@@ -179,10 +212,8 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						linksName := location[2]
 						if components.Links != nil {
-							err = checkReferenceAndBubbleUp(linksName, pr, idx, components.Links, buildLink)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(linksName, cf.compositionConfig.Delimiter,
+								pr, idx, components.Links, buildLink)
 						}
 					}
 
@@ -190,10 +221,8 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						callbacks := location[2]
 						if components.Callbacks != nil {
-							err = checkReferenceAndBubbleUp(callbacks, pr, idx, components.Callbacks, buildCallback)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(callbacks, cf.compositionConfig.Delimiter,
+								pr, idx, components.Callbacks, buildCallback)
 						}
 					}
 
@@ -201,14 +230,13 @@ func processReference(model *v3.Document, pr *processRef) {
 					if len(location) > 2 {
 						pathItem := location[2]
 						if components.Callbacks != nil {
-							err = checkReferenceAndBubbleUp(pathItem, pr, idx, components.PathItems, buildPathItem)
-							if err != nil {
-								return
-							}
+							return checkReferenceAndBubbleUp(pathItem, cf.compositionConfig.Delimiter,
+								pr, idx, components.PathItems, buildPathItem)
 						}
 					}
 				}
 			}
 		}
 	}
+	return nil
 }
