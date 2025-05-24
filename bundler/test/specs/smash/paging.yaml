@@ -10,3 +10,6 @@ components:
     dtoTest:
       description: Test schema (SMASH)
       type: object
+      properties:
+        fishcake:
+          $ref: "../fishcake.yaml"

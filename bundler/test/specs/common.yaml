@@ -33,6 +33,12 @@ components:
       required: true
       example: "x837ant-000007"
   schemas:
+    lemons:
+      description: fresh
+      type: array
+      items:
+        type: object
+
     dtoTest:
       description: Test schema (original - common.yaml)
       type: object

@@ -1,0 +1,7 @@
+links:
+  aTestLink:
+    $ref: "./link_A.yaml"
+content:
+  application/json:
+    schema:
+      $ref: "./paging.yaml#/components/schemas/dtoTest"

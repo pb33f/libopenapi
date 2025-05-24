@@ -5,18 +5,52 @@ info:
 servers: []
 
 paths:
+  /bong:
+    $ref: "smash/pathItem_A.yaml"
   /bing:
     $ref: "common.yaml#/components/pathItems/bing"
   /test/{testId}:
+    patch:
+      operationId: Patch Test
+      requestBody:
+        $ref: "clash/requestbody_A.yaml"
+    post:
+      operationId: Post Test
+      requestBody:
+        $ref: "common.yaml#/components/requestBodies/testBody"
+      responses:
+        403:
+          # this can only be inlined, there is no way to know what type of object this is.
+          $ref: "clash/unknown.yaml"
+        404:
+          description: another test
+          content:
+            application/json:
+              examples:
+                lemonTest:
+                  $ref: "examples/example_A.yaml"
+              schema:
+                $ref: "common.yaml#/components/schemas/lemons"
+        200:
+          description: Test
+          content:
+            application/json:
+              schema:
+                $ref: "fishcake.yaml"
     get:
       operationId: GetTest
       callbacks:
+        doSomething:
+          $ref: "clash/callback_A.yaml"
         onData:
           "{$request.query.callbackUrl}/data":
             $ref: "common.yaml#/components/callbacks/testCallback"
       parameters:
         - $ref: "common.yaml#/components/parameters/query"
+        - $ref: "clash/param_A.yaml"
       responses:
+        500:
+          $ref: "smash/response_A.yaml"
         404:
           $ref: "common.yaml#/components/responses/404"
         200:
@@ -26,6 +60,8 @@ paths:
           headers:
             request-id:
               $ref: "common.yaml#/components/headers/request-id"
+            lost-pepsi:
+              $ref: "smash/header_A.yaml"
           description: Test 200
           content:
             application/json:
