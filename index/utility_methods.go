@@ -14,6 +14,7 @@ import (
 	"strings"
 	"sync"
 
+	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -403,11 +404,11 @@ func (index *SpecIndex) countUniqueInlineDuplicates() int {
 	return unique
 }
 
-func seekRefEnd(index *SpecIndex, refName string) *Reference {
-	ref, _ := index.SearchIndexForReference(refName)
+func seekRefEnd(ctx context.Context, index *SpecIndex, refName string) *Reference {
+	ref, _, nCtx := index.SearchIndexForReferenceWithContext(ctx, refName)
 	if ref != nil {
 		if ok, _, v := utils.IsNodeRefValue(ref.Node); ok {
-			return seekRefEnd(ref.Index, v)
+			return seekRefEnd(nCtx, ref.Index, v)
 		}
 	}
 	return ref
@@ -423,7 +424,9 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 			if paramRef == nil {
 				// could be in the rolodex
 				searchInIndex := findIndex(index, param.Content[1])
-				ref := seekRefEnd(searchInIndex, paramRefName)
+				ctx := context.WithValue(context.Background(), CurrentPathKey, searchInIndex.specAbsolutePath)
+
+				ref := seekRefEnd(ctx, searchInIndex, paramRefName)
 				if ref != nil {
 					paramRef = ref
 					if strings.Contains(paramRefName, "%") {

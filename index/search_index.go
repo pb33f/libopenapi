@@ -160,6 +160,15 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				refParsed = strings.ReplaceAll(ref, "./", "")
 			}
 
+			// if the reference starts with ../, then we need to create an absolute path from the current path context.
+			//if strings.HasPrefix(ref, "../") {
+			//
+			//	// check if there is a current path in the context and then create an absolute path from it.
+			//	if currentPath, ok := ctx.Value(CurrentPathKey).(string); ok {
+			//		refParsed = filepath.Join(filepath.Dir(currentPath), ref)
+			//	}
+			//}
+
 			if strings.HasSuffix(refParsed, n) {
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {

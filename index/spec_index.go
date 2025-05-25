@@ -26,6 +26,7 @@ import (
 
 	"github.com/pb33f/libopenapi/utils"
 
+	"context"
 	"gopkg.in/yaml.v3"
 )
 
@@ -1043,7 +1044,8 @@ func (index *SpecIndex) GetOperationCount() int {
 
 			// is the path a ref?
 			if isRef, _, ref := utils.IsNodeRefValue(method); isRef {
-				pNode := seekRefEnd(index, ref)
+				ctx := context.WithValue(context.Background(), CurrentPathKey, index.specAbsolutePath)
+				pNode := seekRefEnd(ctx, index, ref)
 				if pNode != nil {
 					method = pNode.Node
 				}
@@ -1118,7 +1120,8 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 
 			// is the path a ref?
 			if isRef, _, ref := utils.IsNodeRefValue(pathPropertyNode); isRef {
-				pNode := seekRefEnd(index, ref)
+				ctx := context.WithValue(context.Background(), CurrentPathKey, index.specAbsolutePath)
+				pNode := seekRefEnd(ctx, index, ref)
 				if pNode != nil {
 					pathPropertyNode = pNode.Node
 				}
