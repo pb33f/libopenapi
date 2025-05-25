@@ -359,6 +359,12 @@ func TestBundleDocument_BundleBytesComposed(t *testing.T) {
 	assert.NoError(t, e)
 
 	if runtime.GOOS != "windows" {
-		assert.Len(t, bundledBytes, 6912)
+
+		preBundled, _ := os.ReadFile("../test_specs/nested_files/openapi-bundled.yaml")
+
+		pre := len(preBundled)
+		bundled := len(bundledBytes)
+
+		assert.Equal(t, pre, bundled)
 	}
 }
