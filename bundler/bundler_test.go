@@ -348,7 +348,7 @@ func TestBundleBytes_RootDocumentRefs(t *testing.T) {
 	assert.Equal(t, string(spec), string(bundledSpec))
 }
 
-func TestBundleDocument_BundleBytesComposed(t *testing.T) {
+func TestBundleDocument_BundleBytesComposed_NestedFiles(t *testing.T) {
 	specBytes, _ := os.ReadFile("../test_specs/nested_files/openapi.yaml")
 
 	config := &datamodel.DocumentConfiguration{
@@ -374,4 +374,23 @@ func TestBundleDocument_BundleBytesComposed(t *testing.T) {
 		hash2 := low.HashToString(sha256.Sum256(bundledBytes))
 		assert.Equal(t, hash1, hash2)
 	}
+}
+
+func TestBundleDocument_BundleBytesComposed_ErrorDoc(t *testing.T) {
+	specBytes := []byte(`borked`)
+
+	_, e := BundleBytesComposed(specBytes, nil, nil)
+
+	assert.Error(t, e)
+}
+
+func TestBundleDocument_BundleBytesComposed_ErrorModel(t *testing.T) {
+	specBytes := []byte(`openapi: 3.1.0
+paths:
+  /cake:
+    $ref: '#/components/schemas/Cake'`)
+
+	_, e := BundleBytesComposed(specBytes, nil, nil)
+
+	assert.Error(t, e)
 }
