@@ -234,6 +234,12 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 					}
 				}
 			}
+		} else {
+			if l := cf.idx.GetLogger(); l != nil {
+				l.Warn("[bundler] unable to compose reference, not sure where it goes.", "$ref", pr.ref.FullDefinition)
+			}
+			// no idea what do with this, so we will inline it.
+			//cf.inlineRequired = append(cf.inlineRequired, pr)
 		}
 	}
 	return nil
