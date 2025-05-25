@@ -126,6 +126,9 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		var absoluteFileLocation, fileName string
 		fileName = filepath.Base(file)
 		absoluteFileLocation = file
+		if !filepath.IsAbs(file) && !strings.HasPrefix(file, "http") {
+			absoluteFileLocation, _ = filepath.Abs(filepath.Join(index.config.BasePath, file))
+		}
 
 		// if the absolute file location has no file ext, then get the rolodex root.
 		ext := filepath.Ext(absoluteFileLocation)
