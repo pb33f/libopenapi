@@ -352,8 +352,9 @@ func TestBundleDocument_BundleBytesComposed(t *testing.T) {
 	specBytes, _ := os.ReadFile("../test_specs/nested_files/openapi.yaml")
 
 	config := &datamodel.DocumentConfiguration{
-		AllowFileReferences: true,
-		BasePath:            "../test_specs/nested_files",
+		AllowFileReferences:     true,
+		BasePath:                "../test_specs/nested_files",
+		ExtractRefsSequentially: true,
 	}
 
 	bundledBytes, e := BundleBytesComposed(specBytes, config, nil)
