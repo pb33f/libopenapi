@@ -168,20 +168,34 @@ type LocalFile struct {
 	index         *SpecIndex
 	parsed        *yaml.Node
 	offset        int64
+	parseMutex    sync.Mutex
+	indexMutex    sync.RWMutex
 }
 
 // GetIndex returns the *SpecIndex for the file.
 func (l *LocalFile) GetIndex() *SpecIndex {
+	l.indexMutex.RLock()
+	defer l.indexMutex.RUnlock()
 	return l.index
 }
 
 // Index returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed)
 func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
+	// First check without locking for better performance
+	l.indexMutex.RLock()
+	if l.index != nil {
+		index := l.index
+		l.indexMutex.RUnlock()
+		return index, nil
+	}
+	l.indexMutex.RUnlock()
+
+	// Double-check after acquiring write lock
 	if l.index != nil {
 		return l.index, nil
 	}
-	content := l.data
 
+	content := l.data
 	// first, we must parse the content of the file,
 	// the check is bypassed, so as long as it's readable, we're good.
 	info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
@@ -192,6 +206,7 @@ func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
 	index.specAbsolutePath = l.fullPath
 
 	l.index = index
+
 	return index, nil
 }
 
@@ -206,6 +221,17 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 	if l.parsed != nil {
 		return l.parsed, nil
 	}
+
+	// Lock before proceeding with parsing or modifications
+	l.parseMutex.Lock()
+	defer l.parseMutex.Unlock()
+
+	// Check again after locking in case another goroutine completed parsing
+	// while we were waiting for the lock
+	if l.parsed != nil {
+		return l.parsed, nil
+	}
+
 	if l.index != nil && l.index.root != nil {
 		return l.index.root, nil
 	}
