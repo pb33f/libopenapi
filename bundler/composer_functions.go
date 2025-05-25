@@ -177,7 +177,9 @@ func rewireRef(ref *index.Reference, fullDef string, processedNodes *orderedmap.
 	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
 	rename := renameRef(fullDef, processedNodes)
 	if isRef {
-		ref.Node.Content[1].Value = rename
+		if ref.Node.Content[1].Value != rename {
+			ref.Node.Content[1].Value = rename
+		}
 		ref.FullDefinition = ref.Node.Content[1].Value
 	} else {
 		ref.FullDefinition = rename
