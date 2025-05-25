@@ -5,8 +5,10 @@ package bundler
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel/low"
 	"log"
 	"log/slog"
 	"net/http"
@@ -362,9 +364,13 @@ func TestBundleDocument_BundleBytesComposed(t *testing.T) {
 
 		preBundled, _ := os.ReadFile("../test_specs/nested_files/openapi-bundled.yaml")
 
-		pre := len(preBundled)
-		bundled := len(bundledBytes)
+		len1 := len(preBundled)
+		len2 := len(bundledBytes)
+		assert.Equal(t, len1, len2)
 
-		assert.Equal(t, pre, bundled)
+		// hash the two files and ensure they match
+		hash1 := low.HashToString(sha256.Sum256(preBundled))
+		hash2 := low.HashToString(sha256.Sum256(bundledBytes))
+		assert.Equal(t, hash1, hash2)
 	}
 }
