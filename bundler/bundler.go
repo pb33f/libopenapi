@@ -54,7 +54,7 @@ func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfigur
 
 	v3Doc, errs := doc.BuildV3Model()
 	err = errors.Join(errs...)
-	if v3Doc == nil {
+	if v3Doc == nil || len(errs) > 0 {
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
 
