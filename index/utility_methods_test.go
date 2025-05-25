@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"testing"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -22,7 +23,7 @@ bill:
 	var rootNode yaml.Node
 	_ = yaml.Unmarshal([]byte(d), &rootNode)
 	idx := NewSpecIndex(&rootNode)
-	r := seekRefEnd(idx, "#/rob")
+	r := seekRefEnd(context.Background(), idx, "#/rob")
 	assert.NotNil(t, r)
 }
 
