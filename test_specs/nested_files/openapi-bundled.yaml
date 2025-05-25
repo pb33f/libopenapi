@@ -1,0 +1,168 @@
+openapi: 3.1.0
+info:
+    description: Example API spec
+    version: v1
+    title: Example
+    contact:
+        name: Example
+        email: example@example.com
+        url: www.example.com
+    license:
+        name: Example
+        url: www.example.com
+tags:
+    - name: Account
+      description: Account
+servers:
+    - url: https://<hidden>
+paths:
+    /api/v1/Accounts:
+        $ref: "#/components/pathItems/v1_Accounts"
+components:
+    schemas:
+        AccountModel:
+            type: object
+            properties:
+                AccountId:
+                    type: string
+                    description: TODO
+                Name:
+                    type: string
+                    description: TODO
+                DepartmentId:
+                    type: string
+                    description: TODO
+                ForCustomerOperators:
+                    type: boolean
+                    description: TODO
+                ForPartIssues:
+                    type: boolean
+                    description: TODO
+                ForPurchaseOrders:
+                    type: boolean
+                    description: TODO
+                IsActive:
+                    type: boolean
+                    description: TODO
+                ExternalIdentifier:
+                    type: string
+                    description: TODO
+                Invalidated:
+                    type: boolean
+                    description: TODO
+                ExternalEntity:
+                    type: string
+                    description: TODO
+                ExternalFund:
+                    type: string
+                    description: TODO
+                ExternalOrganization:
+                    type: string
+                    description: TODO
+                ExternalAccount:
+                    type: string
+                    description: TODO
+                ExternalProject:
+                    type: string
+                    description: TODO
+                ExternalProgram:
+                    type: string
+                    description: TODO
+                ExternalSource:
+                    type: string
+                    description: TODO
+                ExternalOther1:
+                    type: string
+                    description: TODO
+                ExternalOther2:
+                    type: string
+                    description: TODO
+                SupportsAllTasks:
+                    type: boolean
+                    description: TODO
+                EnforceTasks:
+                    type: boolean
+                    description: TODO
+                MobileUniqueId:
+                    format: int32
+                    type: integer
+                    description: TODO
+                TypeName:
+                    type: string
+                    description: TODO
+                    readOnly: true
+                UID:
+                    type: string
+                    description: TODO
+    responses:
+        Unspecified200:
+            description: Unspecified 200 success object response
+            content:
+                application/json:
+                    schema:
+                        type: object
+    parameters:
+        $select:
+            name: $select
+            description: Selects the columns or properties in the result set. This cannot be combined with any other query params!
+            in: query
+            required: false
+            schema:
+                type: string
+            example: RowId,Description
+        page-size:
+            name: page-size
+            description: Specify the number of results to return per page.
+            in: header
+            schema:
+                type: integer
+    requestBodies:
+        AccountModel:
+            description: TODO
+            required: true
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/AccountModel'
+    pathItems:
+        v1_Accounts:
+            get:
+                summary: TODO
+                description: TODO
+                security:
+                    - BearerAuth: []
+                tags:
+                    - Account
+                operationId: getAccounts
+                parameters:
+                    - $ref: '#/components/parameters/$select'
+                    - $ref: '#/components/parameters/page-size'
+                responses:
+                    "200":
+                        $ref: '#/components/responses/Unspecified200'
+            post:
+                summary: TODO
+                description: TODO
+                security:
+                    - BearerAuth: []
+                tags:
+                    - Account
+                operationId: createAccounts
+                requestBody:
+                    $ref: '#/components/requestBodies/AccountModel'
+                responses:
+                    "200":
+                        $ref: '#/components/responses/Unspecified200'
+            put:
+                summary: TODO
+                description: TODO
+                security:
+                    - BearerAuth: []
+                tags:
+                    - Account
+                operationId: updateAccounts
+                requestBody:
+                    $ref: '#/components/requestBodies/AccountModel'
+                responses:
+                    "200":
+                        $ref: '#/components/responses/Unspecified200'
