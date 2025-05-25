@@ -44,6 +44,24 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 	return bundledBytes, errors.Join(err, e)
 }
 
+// BundleBytesComposed will take a byte slice of an OpenAPI specification and return a composed bundled version of it.
+// this is the same as BundleBytes, but it will compose the bundling instead of inline it.
+func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfiguration, compositionConfig *BundleCompositionConfig) ([]byte, error) {
+	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
+	if err != nil {
+		return nil, err
+	}
+
+	v3Doc, errs := doc.BuildV3Model()
+	err = errors.Join(errs...)
+	if v3Doc == nil {
+		return nil, errors.Join(ErrInvalidModel, err)
+	}
+
+	bundledBytes, e := compose(&v3Doc.Model, compositionConfig)
+	return bundledBytes, errors.Join(err, e)
+}
+
 // BundleDocument will take a v3.Document and return a bundled version of it.
 // This is useful for when you want to take a document that has been built
 // from a specification with external references, and you want to bundle it
@@ -110,9 +128,12 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	handleIndex(cf)
 
 	processedNodes := orderedmap.New[string, *processRef]()
-
+	var errs []error
 	for _, ref := range cf.refMap.FromOldest() {
-		processReference(model, ref, cf)
+		err := processReference(model, ref, cf)
+		if err != nil {
+			errs = append(errs, err)
+		}
 		processedNodes.Set(ref.ref.FullDefinition, ref)
 	}
 
@@ -135,7 +156,13 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		pr.seqRef.Node.Content = pr.ref.Node.Content
 	}
 
-	return model.Render()
+	b, err := model.Render()
+	if err != nil {
+		errs = append(errs, err)
+	}
+
+	return b, errors.Join(errs...)
+
 }
 
 func bundle(model *v3.Document) ([]byte, error) {
