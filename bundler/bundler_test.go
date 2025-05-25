@@ -345,3 +345,20 @@ func TestBundleBytes_RootDocumentRefs(t *testing.T) {
 
 	assert.Equal(t, string(spec), string(bundledSpec))
 }
+
+func TestBundleDocument_BundleBytesComposed(t *testing.T) {
+	specBytes, _ := os.ReadFile("../test_specs/nested_files/openapi.yaml")
+
+	config := &datamodel.DocumentConfiguration{
+		AllowFileReferences: true,
+		BasePath:            "../test_specs/nested_files",
+	}
+
+	bundledBytes, e := BundleBytesComposed(specBytes, config, nil)
+
+	assert.NoError(t, e)
+
+	if runtime.GOOS != "windows" {
+		assert.Len(t, bundledBytes, 6912)
+	}
+}
