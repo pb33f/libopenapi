@@ -1045,6 +1045,7 @@ func (index *SpecIndex) GetOperationCount() int {
 			// is the path a ref?
 			if isRef, _, ref := utils.IsNodeRefValue(method); isRef {
 				ctx := context.WithValue(context.Background(), CurrentPathKey, index.specAbsolutePath)
+				ctx = context.WithValue(ctx, RootIndexKey, index)
 				pNode := seekRefEnd(ctx, index, ref)
 				if pNode != nil {
 					method = pNode.Node
@@ -1121,6 +1122,7 @@ func (index *SpecIndex) GetOperationsParameterCount() int {
 			// is the path a ref?
 			if isRef, _, ref := utils.IsNodeRefValue(pathPropertyNode); isRef {
 				ctx := context.WithValue(context.Background(), CurrentPathKey, index.specAbsolutePath)
+				ctx = context.WithValue(ctx, RootIndexKey, index)
 				pNode := seekRefEnd(ctx, index, ref)
 				if pNode != nil {
 					pathPropertyNode = pNode.Node

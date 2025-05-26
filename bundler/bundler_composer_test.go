@@ -116,3 +116,33 @@ func TestBuildSchema(t *testing.T) {
 	_, err := buildSchema(nil, nil)
 	assert.Error(t, err)
 }
+
+func TestBundlerComposed_StrangeRefs(t *testing.T) {
+	specBytes, err := os.ReadFile("../test_specs/first.yaml")
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, &datamodel.DocumentConfiguration{
+		BasePath:                "../test_specs/",
+		ExtractRefsSequentially: true,
+		Logger:                  slog.Default(),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	v3Doc, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		panic(errs)
+	}
+
+	var bytes []byte
+
+	bytes, err = BundleDocumentComposed(&v3Doc.Model, &BundleCompositionConfig{Delimiter: "__"})
+	if err != nil {
+		panic(err)
+	}
+
+	// windows needs a different byte count
+	if runtime.GOOS != "windows" {
+		assert.Len(t, bytes, 3075)
+	}
+}
