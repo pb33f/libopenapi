@@ -16,6 +16,7 @@ type ContextKey string
 const (
 	CurrentPathKey ContextKey = "currentPath"
 	FoundIndexKey  ContextKey = "foundIndex"
+	RootIndexKey   ContextKey = "currentIndex"
 )
 
 func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) (*Reference, *SpecIndex) {
@@ -225,7 +226,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 						found = FindComponent(node, compId, exp[0], idx)
 					}
 					if found == nil {
-						found = idx.FindComponent(ref)
+						found = idx.FindComponent(ctx, ref)
 					}
 
 					if found != nil {

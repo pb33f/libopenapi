@@ -10,6 +10,7 @@ import (
 	"strings"
 	"sync"
 
+	"context"
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
@@ -181,7 +182,7 @@ func bundle(model *v3.Document) ([]byte, error) {
 					for _, i := range indexes {
 						if i.GetSpecAbsolutePath() == refExp[0] {
 							if mappedReference != nil && !mappedReference.Circular {
-								mr := i.FindComponent(sequenced.Definition)
+								mr := i.FindComponent(context.Background(), sequenced.Definition)
 								if mr != nil {
 									// found the component; this is the one we want to use.
 									mappedReference = mr

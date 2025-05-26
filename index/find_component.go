@@ -11,6 +11,7 @@ import (
 
 	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
+	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"gopkg.in/yaml.v3"
@@ -19,7 +20,7 @@ import (
 // FindComponent will locate a component by its reference, returns nil if nothing is found.
 // This method will recurse through remote, local and file references. For each new external reference
 // a new index will be created. These indexes can then be traversed recursively.
-func (index *SpecIndex) FindComponent(componentId string) *Reference {
+func (index *SpecIndex) FindComponent(ctx context.Context, componentId string) *Reference {
 	if index.root == nil {
 		return nil
 	}
@@ -40,6 +41,20 @@ func (index *SpecIndex) FindComponent(componentId string) *Reference {
 		// does it contain a file extension?
 		fileExt := filepath.Ext(componentId)
 		if fileExt != "" {
+
+			// check if the context has a root index set, if so this is a deep search that has moved through multiple
+			// indexes and we need to adjust the URI to reflect the location of the root index.
+			if ctx.Value(RootIndexKey) != nil {
+				rootIndex := ctx.Value(RootIndexKey).(*SpecIndex)
+				if rootIndex != nil && rootIndex.specAbsolutePath != "" {
+					dir := filepath.Dir(rootIndex.specAbsolutePath)
+					// create an absolute path to the file.
+					absoluteFilePath := filepath.Join(dir, componentId)
+					// split into a URI.
+					uri = []string{absoluteFilePath}
+				}
+			}
+
 			return index.lookupRolodex(uri)
 		}
 
