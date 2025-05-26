@@ -148,6 +148,14 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 		}
 	}
 
+	unknown := func(procRef *processRef, config *handleIndexConfig) {
+		if l := config.idx.GetLogger(); l != nil {
+			l.Warn("[bundler] unable to compose reference, not sure where it goes.", "$ref", procRef.ref.FullDefinition)
+		}
+		// no idea what do with this, so we will inline it.
+		config.inlineRequired = append(cf.inlineRequired, procRef)
+	}
+
 	if len(location) > 0 {
 		pr.location = location
 		if location[0] == v3low.ComponentsLabel {
@@ -235,12 +243,10 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 				}
 			}
 		} else {
-			if l := cf.idx.GetLogger(); l != nil {
-				l.Warn("[bundler] unable to compose reference, not sure where it goes.", "$ref", pr.ref.FullDefinition)
-			}
-			// no idea what do with this, so we will inline it.
-			cf.inlineRequired = append(cf.inlineRequired, pr)
+			unknown(pr, cf)
 		}
+	} else {
+		unknown(pr, cf)
 	}
 	return nil
 }
