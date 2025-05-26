@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"context"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -57,7 +58,7 @@ func handleIndex(c *handleIndexConfig) {
 					if !strings.Contains(lookup, "#/") {
 						lookup = sequenced.FullDefinition
 					}
-					mr := i.FindComponent(lookup)
+					mr := i.FindComponent(context.Background(), lookup)
 					if mr != nil {
 						// found the component; this is the one we want to use.
 						mappedReference = mr

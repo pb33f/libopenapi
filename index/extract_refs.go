@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
@@ -668,7 +669,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			if unsafeAsync {
 				index.refLock.Lock()
 			}
-			located := index.FindComponent(ref.FullDefinition)
+			located := index.FindComponent(context.Background(), ref.FullDefinition)
 			if unsafeAsync {
 				index.refLock.Unlock()
 			}

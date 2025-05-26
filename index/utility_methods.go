@@ -425,7 +425,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 				// could be in the rolodex
 				searchInIndex := findIndex(index, param.Content[1])
 				ctx := context.WithValue(context.Background(), CurrentPathKey, searchInIndex.specAbsolutePath)
-
+				ctx = context.WithValue(ctx, RootIndexKey, searchInIndex)
 				ref := seekRefEnd(ctx, searchInIndex, paramRefName)
 				if ref != nil {
 					paramRef = ref
