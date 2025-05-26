@@ -4,11 +4,11 @@
 package index
 
 import (
+	"context"
 	"net/url"
 	"runtime"
 	"testing"
 
-	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
