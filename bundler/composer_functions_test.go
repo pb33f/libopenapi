@@ -49,7 +49,7 @@ func TestProcessRef_UnknownLocation_TwoStep(t *testing.T) {
 	ref := &processRef{
 		idx: m.Index,
 		ref: &index.Reference{
-			FullDefinition: "#/blarp/blop",
+			FullDefinition: "blip.yaml#/blarp/blop",
 		},
 		seqRef:   nil,
 		name:     "test",
@@ -79,7 +79,8 @@ func TestProcessRef_UnknownLocation_ThreeStep(t *testing.T) {
 	ref := &processRef{
 		idx: m.Index,
 		ref: &index.Reference{
-			FullDefinition: "#/blarp/blop/blurp",
+			FullDefinition: "bleep.yaml#/blarp/blop/blurp",
+			Definition:     "#/blarp/blop/blurp",
 		},
 		seqRef:   nil,
 		name:     "test",
