@@ -15,11 +15,12 @@ import (
 )
 
 type processRef struct {
-	idx      *index.SpecIndex
-	ref      *index.Reference
-	seqRef   *index.Reference
-	name     string
-	location []string
+	idx        *index.SpecIndex
+	ref        *index.Reference
+	seqRef     *index.Reference
+	refPointer string
+	name       string
+	location   []string
 }
 
 type handleIndexConfig struct {

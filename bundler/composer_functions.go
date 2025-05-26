@@ -141,18 +141,20 @@ func checkForCollision[T any](schemaName, delimiter string, pr *processRef, comp
 func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *processRef]) {
 	seq := idx.GetRawReferencesSequenced()
 	for _, sequenced := range seq {
-		rewireRef(sequenced, sequenced.FullDefinition, processedNodes)
+		rewireRef(idx, sequenced, sequenced.FullDefinition, processedNodes)
 	}
+
 	mapped := idx.GetMappedReferences()
-	reMapped := make(map[string]*index.Reference)
+
 	for _, mRef := range mapped {
-		rewireRef(mRef, mRef.FullDefinition, processedNodes)
-		reMapped[mRef.FullDefinition] = mRef
+		origDef := mRef.FullDefinition
+		rewireRef(idx, mRef, mRef.FullDefinition, processedNodes)
+		mapped[mRef.FullDefinition] = mRef
+		mapped[origDef] = mRef
 	}
-	idx.SetMappedReferences(reMapped)
 }
 
-func renameRef(def string, processedNodes *orderedmap.Map[string, *processRef]) string {
+func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[string, *processRef]) string {
 	if strings.Contains(def, "#/") {
 
 		defSplit := strings.Split(def, "#/")
@@ -160,7 +162,17 @@ func renameRef(def string, processedNodes *orderedmap.Map[string, *processRef]) 
 			return def
 		}
 		split := strings.Split(defSplit[1], "/")
-		return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), processedNodes.GetOrZero(def).name)
+		if ref := processedNodes.GetOrZero(def); ref != nil {
+			return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), ref.name)
+		}
+		if ref, ok := idx.GetMappedReferences()[def]; ok {
+			ext := filepath.Ext(ref.Name)
+			name := ref.Name
+			if ext != "" {
+				name = strings.Replace(ref.Name, ext, "", 1)
+			}
+			return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), name)
+		}
 	}
 
 	// handle root file imports.
@@ -173,16 +185,29 @@ func renameRef(def string, processedNodes *orderedmap.Map[string, *processRef]) 
 	return name
 }
 
-func rewireRef(ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
+func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
 	isRef, _, _ := utils.IsNodeRefValue(ref.Node)
-	rename := renameRef(fullDef, processedNodes)
+
+	// extract the pr from the processed nodes.
+	if pr := processedNodes.GetOrZero(fullDef); pr != nil {
+		if kk, _, _ := utils.IsNodeRefValue(pr.ref.Node); kk {
+			if pr.refPointer == "" {
+				pr.refPointer = pr.ref.Node.Content[1].Value
+			}
+		}
+	}
+
+	rename := renameRef(idx, fullDef, processedNodes)
 	if isRef {
+
 		if ref.Node.Content[1].Value != rename {
 			ref.Node.Content[1].Value = rename
 		}
-		ref.FullDefinition = ref.Node.Content[1].Value
+		ref.FullDefinition = rename
+		ref.Definition = rename
 	} else {
 		ref.FullDefinition = rename
+		ref.Definition = rename
 	}
 }
 
