@@ -4,14 +4,14 @@
 package bundler
 
 import (
+	"testing"
+
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestProcessRef_UnknownLocation(t *testing.T) {
-
 	// create an empty doc
 	doc, _ := libopenapi.NewDocument([]byte("openapi: 3.1.1"))
 	m, _ := doc.BuildV3Model()
@@ -37,11 +37,9 @@ func TestProcessRef_UnknownLocation(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, config.inlineRequired, 1)
-
 }
 
 func TestProcessRef_UnknownLocation_TwoStep(t *testing.T) {
-
 	// create an empty doc
 	doc, _ := libopenapi.NewDocument([]byte("openapi: 3.1.1"))
 	m, _ := doc.BuildV3Model()
@@ -67,11 +65,9 @@ func TestProcessRef_UnknownLocation_TwoStep(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, config.inlineRequired, 1)
-
 }
 
 func TestProcessRef_UnknownLocation_ThreeStep(t *testing.T) {
-
 	// create an empty doc
 	doc, _ := libopenapi.NewDocument([]byte("openapi: 3.1.1"))
 	m, _ := doc.BuildV3Model()
@@ -98,5 +94,4 @@ func TestProcessRef_UnknownLocation_ThreeStep(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, config.inlineRequired, 1)
-
 }

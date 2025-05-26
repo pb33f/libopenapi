@@ -5,6 +5,7 @@ package index
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"log/slog"
@@ -19,7 +20,6 @@ import (
 	"testing"
 	"time"
 
-	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"

@@ -4,10 +4,10 @@
 package bundler
 
 import (
+	"context"
 	"strings"
 	"sync"
 
-	"context"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"

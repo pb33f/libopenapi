@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low"
 	"log"
 	"log/slog"
 	"net/http"
@@ -20,6 +19,8 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/pb33f/libopenapi/datamodel/low"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"

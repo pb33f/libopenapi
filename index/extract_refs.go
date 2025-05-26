@@ -4,6 +4,7 @@
 package index
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -12,7 +13,6 @@ import (
 	"slices"
 	"strings"
 
-	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
