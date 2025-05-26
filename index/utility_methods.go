@@ -4,6 +4,7 @@
 package index
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"hash"
@@ -14,7 +15,6 @@ import (
 	"strings"
 	"sync"
 
-	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )

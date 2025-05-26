@@ -13,6 +13,7 @@
 package index
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/pb33f/libopenapi/utils"
 
-	"context"
 	"gopkg.in/yaml.v3"
 )
 

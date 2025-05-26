@@ -4,6 +4,7 @@
 package index
 
 import (
+	"context"
 	"fmt"
 	"net/url"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 
 	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
-	"context"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"gopkg.in/yaml.v3"
