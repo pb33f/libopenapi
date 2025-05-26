@@ -218,8 +218,8 @@ func (l *LocalFile) GetContent() string {
 // GetContentAsYAMLNode returns the content of the file as a *yaml.Node. If something went wrong
 // then an error is returned.
 func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
-	if l.parsed != nil {
-		return l.parsed, nil
+	if l.index != nil && l.index.root != nil {
+		return l.index.root, nil
 	}
 
 	// Lock before proceeding with parsing or modifications
@@ -232,9 +232,6 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 		return l.parsed, nil
 	}
 
-	if l.index != nil && l.index.root != nil {
-		return l.index.root, nil
-	}
 	if l.data == nil {
 		return nil, fmt.Errorf("no data to parse for file: %s", l.fullPath)
 	}

@@ -109,7 +109,7 @@ func TestCheckReferenceAndBubbleUp(t *testing.T) {
 
 func TestRenameReference(t *testing.T) {
 	// test the rename reference function
-	assert.Equal(t, "#/_oh_#/_yeah", renameRef("#/_oh_#/_yeah", nil))
+	assert.Equal(t, "#/_oh_#/_yeah", renameRef(nil, "#/_oh_#/_yeah", nil))
 }
 
 func TestBuildSchema(t *testing.T) {
@@ -143,6 +143,6 @@ func TestBundlerComposed_StrangeRefs(t *testing.T) {
 
 	// windows needs a different byte count
 	if runtime.GOOS != "windows" {
-		assert.Len(t, bytes, 3075)
+		assert.Len(t, bytes, 3397)
 	}
 }

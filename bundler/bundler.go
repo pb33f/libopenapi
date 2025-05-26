@@ -7,6 +7,7 @@ package bundler
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -136,9 +137,6 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		processedNodes.Set(ref.ref.FullDefinition, ref)
 	}
 
-	rootIndex := rolodex.GetRootIndex()
-	remapIndex(rootIndex, processedNodes)
-
 	slices.SortFunc(indexes, func(i, j *index.SpecIndex) int {
 		if i.GetSpecAbsolutePath() < j.GetSpecAbsolutePath() {
 			return 1
@@ -146,12 +144,31 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		return 0
 	})
 
+	rootIndex := rolodex.GetRootIndex()
+	remapIndex(rootIndex, processedNodes)
+
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
 	}
 
 	// anything that could not be recomposed and needs inlining
 	for _, pr := range cf.inlineRequired {
+		if pr.refPointer != "" {
+
+			// if the ref is a pointer to an external pointer, then we need to stitch it.
+			uri := strings.Split(pr.refPointer, "#/")
+			if len(uri) == 2 {
+				if uri[0] != "" {
+					if !filepath.IsAbs(uri[0]) && !strings.HasPrefix(uri[0], "http") {
+						// if the uri is not absolute, then we need to make it absolute.
+						uri[0] = filepath.Join(filepath.Dir(pr.idx.GetSpecAbsolutePath()), uri[0])
+					}
+					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
+					pr.seqRef.Node.Content = pointerRef.Node.Content
+					continue
+				}
+			}
+		}
 		pr.seqRef.Node.Content = pr.ref.Node.Content
 	}
 
@@ -164,7 +181,6 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 func bundle(model *v3.Document) ([]byte, error) {
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
-	// indexMap := make(map[string]*index.SpecIndex)
 	// compact function.
 	compact := func(idx *index.SpecIndex, root bool) {
 		mappedReferences := idx.GetMappedReferences()

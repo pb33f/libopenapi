@@ -93,7 +93,7 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 				// until we hit something that isn't a ref.
 				if jh, _, _ := utils.IsNodeRefValue(found[rv].Node); jh {
 					// if this node is circular, stop drop and roll.
-					if !IsCircular(found[rv].Node, idx) {
+					if !IsCircular(found[rv].Node, idx) && found[rv].Node != root {
 						return LocateRefNodeWithContext(ctx, found[rv].Node, idx)
 					} else {
 
