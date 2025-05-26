@@ -131,9 +131,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	var errs []error
 	for _, ref := range cf.refMap.FromOldest() {
 		err := processReference(model, ref, cf)
-		if err != nil {
-			errs = append(errs, err)
-		}
+		errs = append(errs, err)
 		processedNodes.Set(ref.ref.FullDefinition, ref)
 	}
 
@@ -157,12 +155,9 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	}
 
 	b, err := model.Render()
-	if err != nil {
-		errs = append(errs, err)
-	}
+	errs = append(errs, err)
 
 	return b, errors.Join(errs...)
-
 }
 
 func bundle(model *v3.Document) ([]byte, error) {
