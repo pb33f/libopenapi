@@ -50,6 +50,9 @@ type SchemaChanges struct {
 }
 
 func (s *SchemaChanges) GetPropertyChanges() []*Change {
+	if s == nil {
+		return nil
+	}
 	changes := s.Changes
 	if s.SchemaPropertyChanges != nil {
 		for n := range s.SchemaPropertyChanges {
