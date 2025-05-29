@@ -1471,3 +1471,19 @@ func TestDocument_Issue418(t *testing.T) {
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Model.Index.GetResolver().GetResolvingErrors(), 0)
 }
+
+func TestDocument_Issue418_NoFile(t *testing.T) {
+
+	spec, _ := os.ReadFile("test_specs/nested_files/openapi-issue-418.yaml")
+
+	doc, err := NewDocumentWithConfiguration(spec, &datamodel.DocumentConfiguration{
+		AllowFileReferences: true,
+		BasePath:            "test_specs/nested_files",
+	})
+	if err != nil {
+		panic(err)
+	}
+	m, errs := doc.BuildV3Model()
+	assert.Len(t, errs, 0)
+	assert.Len(t, m.Model.Index.GetResolver().GetResolvingErrors(), 0)
+}
