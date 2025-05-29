@@ -1,0 +1,14 @@
+openapi: '3.0.3'
+paths:
+  '/foo':
+    $ref: './components/foo.yaml'
+components:
+  responses:
+    successResponse:
+      description: "success"
+      content:
+        application/json:
+          schema:
+            properties:
+              message:
+                type: string

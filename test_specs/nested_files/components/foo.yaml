@@ -1,0 +1,12 @@
+# https://github.com/pb33f/libopenapi/issues/418
+get:
+  parameters:
+    - name: id
+      in: path
+      description: user id
+      required: true
+      schema:
+        type: string
+  responses:
+    '200':
+      $ref: '../openapi-issue-418.yaml#/components/responses/successResponse'
