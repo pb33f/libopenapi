@@ -143,7 +143,12 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		abp := index.GetSpecAbsolutePath()
 
 		if b == sfn && roloLookup == abp {
-			return nil, index, ctx
+			// if the reference is the same as the spec file name, we should look through the index for the component
+			var r *Reference
+			if len(uri) == 2 {
+				r = index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+			}
+			return r, index, ctx
 		}
 		rFile, err := index.rolodex.Open(roloLookup)
 		if err != nil {
@@ -169,7 +174,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				}
 			}
 
-			if strings.HasSuffix(refParsed, n) {
+			if strings.HasSuffix(n, refParsed) {
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {
 					r := &Reference{
