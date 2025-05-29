@@ -3473,3 +3473,8 @@ components:
 	assert.Equal(t, changes.TotalBreakingChanges(), 0)
 	assert.Len(t, changes.GetPropertyChanges(), 1)
 }
+
+func TestCompareSchemas_CheckNPE(t *testing.T) {
+	var sc *SchemaChanges
+	assert.Nil(t, sc.GetPropertyChanges())
+}
