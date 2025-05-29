@@ -44,16 +44,20 @@ func (index *SpecIndex) FindComponent(ctx context.Context, componentId string) *
 
 			// check if the context has a root index set, if so this is a deep search that has moved through multiple
 			// indexes and we need to adjust the URI to reflect the location of the root index.
-			if ctx.Value(RootIndexKey) != nil {
-				rootIndex := ctx.Value(RootIndexKey).(*SpecIndex)
-				if rootIndex != nil && rootIndex.specAbsolutePath != "" {
-					dir := filepath.Dir(rootIndex.specAbsolutePath)
-					// create an absolute path to the file.
-					absoluteFilePath := filepath.Join(dir, componentId)
-					// split into a URI.
-					uri = []string{absoluteFilePath}
-				}
-			}
+			//
+			// the below code has been commended out due to being handled in the index. Keeping it for legacy and for
+			// future bugs.
+			//
+			//if ctx.Value(RootIndexKey) != nil {
+			//	rootIndex := ctx.Value(RootIndexKey).(*SpecIndex)
+			//	if rootIndex != nil && rootIndex.specAbsolutePath != "" {
+			//		dir := filepath.Dir(rootIndex.specAbsolutePath)
+			//		// create an absolute path to the file.
+			//		absoluteFilePath := filepath.Join(dir, componentId)
+			//		// split into a URI.
+			//		uri = []string{absoluteFilePath}
+			//	}
+			//}
 
 			return index.lookupRolodex(uri)
 		}
