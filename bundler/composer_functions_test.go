@@ -98,8 +98,6 @@ func TestProcessRef_UnknownLocation_ThreeStep(t *testing.T) {
 	assert.Len(t, config.inlineRequired, 1)
 }
 
-// ---- RenameRef Tests ----
-
 // A component key that contains a dot (“asdf.zxcv”) must *not* be shortened to
 // “asdf” when we re-wire references.
 func TestRenameRef_KeepsDotInComponentName(t *testing.T) {
