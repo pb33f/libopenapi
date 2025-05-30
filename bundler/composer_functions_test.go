@@ -172,3 +172,10 @@ func TestRenameRef_RootFileImport(t *testing.T) {
 
 	assert.Equal(t, "#/components/schemas/Pet", got)
 }
+
+// A JSON-pointer that has only one segment (e.g. "#/Foo") must be returned
+// unchanged
+func TestRenameRef_ShortPointerIsReturnedUnchanged(t *testing.T) {
+	got := renameRef(nil, "#/Foo", orderedmap.New[string, *processRef]())
+	assert.Equal(t, "#/Foo", got)
+}
