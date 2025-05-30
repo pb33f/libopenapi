@@ -160,7 +160,7 @@ func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[
 		if len(defSplit) != 2 {
 			return def
 		}
-		ptr := defSplit[1] // e.g. components/schemas/Foo
+		ptr := defSplit[1]
 		segs := strings.Split(ptr, "/")
 		if len(segs) < 2 {
 			return def
