@@ -4,6 +4,8 @@
 package bundler
 
 import (
+	"errors"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"testing"
 
 	"github.com/pb33f/libopenapi"
@@ -94,4 +96,81 @@ func TestProcessRef_UnknownLocation_ThreeStep(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Len(t, config.inlineRequired, 1)
+}
+
+// ---- RenameRef Tests ----
+
+// A component key that contains a dot (“asdf.zxcv”) must *not* be shortened to
+// “asdf” when we re-wire references.
+func TestRenameRef_KeepsDotInComponentName(t *testing.T) {
+	spec := []byte(`
+openapi: 3.1.0
+info:
+  title: Test
+  version: 0.0.0
+components:
+  schemas:
+    "asdf.zxcv":
+      type: object
+    Foo:
+      allOf:
+        - $ref: '#/components/schemas/asdf.zxcv'
+`)
+
+	doc, err := libopenapi.NewDocument(spec)
+	assert.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	assert.NoError(t, errors.Join(errs...))
+
+	idx := v3doc.Model.Index
+
+	processed := orderedmap.New[string, *processRef]()
+
+	got := renameRef(idx, "#/components/schemas/asdf.zxcv", processed)
+
+	assert.Equal(t,
+		"#/components/schemas/asdf.zxcv",
+		got,
+		"renameRef must not strip the .zxcv part from the component key")
+}
+
+// A reference that really *is* a filename + JSON-pointer must still have the
+// extension stripped
+func TestRenameRef_FilePointer_Extensions(t *testing.T) {
+	exts := []string{".yaml", ".yml", ".json"}
+
+	for _, ext := range exts {
+		def := "schemas/pet" + ext + "#/components/schemas/Pet"
+		got := renameRef(nil, def, orderedmap.New[string, *processRef]())
+		assert.Equal(t, "#/components/schemas/Pet", got,
+			"extension %s should not affect the pointer rewrite", ext)
+	}
+}
+
+// If a component name has already been changed during composition,
+// renameRef must return that new name.
+func TestRenameRef_RespectsAlreadyRenamedComponent(t *testing.T) {
+	ps := orderedmap.New[string, *processRef]()
+	ps.Set("#/components/schemas/asdf.zxcv",
+		&processRef{name: "asdf__1", location: []string{}})
+
+	got := renameRef(nil,
+		"#/components/schemas/asdf.zxcv",
+		ps)
+
+	assert.Equal(t,
+		"#/components/schemas/asdf__1",
+		got,
+		"renameRef should use the name stored in processedNodes")
+}
+
+func TestRenameRef_RootFileImport(t *testing.T) {
+	processed := orderedmap.New[string, *processRef]()
+	processed.Set("schemas/pet.yaml",
+		&processRef{location: []string{"components", "schemas", "Pet"}})
+
+	got := renameRef(nil, "schemas/pet.yaml", processed)
+
+	assert.Equal(t, "#/components/schemas/Pet", got)
 }

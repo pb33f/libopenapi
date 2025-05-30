@@ -156,33 +156,38 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 
 func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[string, *processRef]) string {
 	if strings.Contains(def, "#/") {
-
 		defSplit := strings.Split(def, "#/")
 		if len(defSplit) != 2 {
 			return def
 		}
-		split := strings.Split(defSplit[1], "/")
-		if ref := processedNodes.GetOrZero(def); ref != nil {
-			return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), ref.name)
+		ptr := defSplit[1] // e.g. components/schemas/Foo
+		segs := strings.Split(ptr, "/")
+		if len(segs) < 2 {
+			return def
 		}
-		if ref, ok := idx.GetMappedReferences()[def]; ok {
-			ext := filepath.Ext(ref.Name)
-			name := ref.Name
-			if ext != "" {
-				name = strings.Replace(ref.Name, ext, "", 1)
+		prefix := strings.Join(segs[:len(segs)-1], "/")
+
+		// reference already renamed during composition
+		if pr := processedNodes.GetOrZero(def); pr != nil {
+			return fmt.Sprintf("#/%s/%s", prefix, pr.name)
+		}
+
+		if idx != nil {
+			if ref, ok := idx.GetMappedReferences()[def]; ok && ref != nil {
+				return fmt.Sprintf("#/%s/%s", prefix, ref.Name)
 			}
-			return fmt.Sprintf("#/%s/%s", strings.Join(split[:len(split)-1], "/"), name)
 		}
+
+		// fallback – keep last segment
+		return fmt.Sprintf("#/%s/%s", prefix, segs[len(segs)-1])
 	}
 
-	// handle root file imports.
-	name := ""
-	if pn := processedNodes.GetOrZero(def); pn != nil {
-		if len(pn.location) > 0 {
-			name = fmt.Sprintf("#/%s", strings.Join(pn.location, "/"))
-		}
+	// root-file import lifted into components
+	if pn := processedNodes.GetOrZero(def); pn != nil && len(pn.location) > 0 {
+		return "#/" + strings.Join(pn.location, "/")
 	}
-	return name
+
+	return def
 }
 
 func rewireRef(idx *index.SpecIndex, ref *index.Reference, fullDef string, processedNodes *orderedmap.Map[string, *processRef]) {
