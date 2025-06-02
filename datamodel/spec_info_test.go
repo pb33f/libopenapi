@@ -24,9 +24,10 @@ const (
 )
 
 var (
-	goodJSON = `{"name":"kitty", "noises":["meow","purrrr","gggrrraaaaaooooww"]}`
-	badJSON  = `{"name":"kitty, "noises":[{"meow","purrrr","gggrrraaaaaooooww"]}}`
-	goodYAML = `name: kitty
+	goodJSON               = `{"name":"kitty", "noises":["meow","purrrr","gggrrraaaaaooooww"]}`
+	badJSON                = `{"name":"kitty, "noises":[{"meow","purrrr","gggrrraaaaaooooww"]}}`
+	badJSONContainingComma = `{"openapi":"3.0.3","info":{"title":"Broken API Spec","version":"1.0.0"},"paths":{"/ping":{"get":{"summary":"Ping endpoint","responses":{"200":{"description":"OK",}}}}}}`
+	goodYAML               = `name: kitty
 noises:
 - meow
 - purrr
@@ -116,6 +117,11 @@ func TestExtractSpecInfo_ValidJSON(t *testing.T) {
 func TestExtractSpecInfo_InvalidJSON(t *testing.T) {
 	_, e := ExtractSpecInfo([]byte(badJSON))
 	assert.Error(t, e)
+}
+
+func TestExtractSpecInfo_InvalidJSONContainingExtraComma(t *testing.T) {
+	_, e := ExtractSpecInfo([]byte(badJSONContainingComma))
+	assert.EqualError(t, e, "unable to parse specification: invalid character '}' looking for beginning of object key string")
 }
 
 func TestExtractSpecInfo_Nothing(t *testing.T) {

@@ -544,9 +544,9 @@ func TestDocument_BuildModelBad(t *testing.T) {
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
-	json := `{ 'openapi': '3.0',
- 'info': {
-   'title': 'The magic API'
+	json := `{ "openapi": "3.0",
+ "info": {
+   "title": "The magic API"
  }
 }
 `
