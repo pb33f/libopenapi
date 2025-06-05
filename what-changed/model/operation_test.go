@@ -925,6 +925,7 @@ func TestCompareOperations_V3_AddRequiredParam(t *testing.T) {
   - name: honey
   - name: bunny
     in: fridge
+    required: false
   - name: pb33fRequired
     in: the_ranch
     required: true`
