@@ -247,7 +247,7 @@ func CompareOperations(l, r any) *OperationChanges {
 			for n := range rv {
 				if _, ok := lv[n]; !ok {
 					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
-						nil, rv[n].Name.ValueNode, true, nil,
+						nil, rv[n].Name.ValueNode, rv[n].Required.Value, nil,
 						rv[n].Name.Value)
 				}
 			}
@@ -350,7 +350,7 @@ func CompareOperations(l, r any) *OperationChanges {
 			for n := range rv {
 				if _, ok := lv[n]; !ok {
 					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
-						nil, rv[n].Name.ValueNode, true, nil,
+						nil, rv[n].Name.ValueNode, rv[n].Required.Value, nil,
 						rv[n].Name.Value)
 				}
 			}
