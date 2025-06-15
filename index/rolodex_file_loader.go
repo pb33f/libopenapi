@@ -147,9 +147,6 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			if l.rolodex != nil {
 				l.rolodex.AddIndex(idx)
 			}
-			if processingWaiter.listeners > 0 {
-				l.logger.Debug("[rolodex file loader]: alerting file subscribers", "file", name, "subs", processingWaiter.listeners)
-			}
 		}
 
 		processingWaiter.file = extractedFile

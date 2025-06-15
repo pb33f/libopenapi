@@ -55,6 +55,10 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 	assert.NotNil(t, idx)
 	assert.NotNil(t, localFile.GetContent())
 
+	// can only be fired once, so this should be the same as before.
+	idx, ierr = lf.Index(CreateOpenAPIIndexConfig())
+	assert.NoError(t, ierr)
+
 	d, e := localFile.GetContentAsYAMLNode()
 	assert.NoError(t, e)
 	assert.NotNil(t, d)
