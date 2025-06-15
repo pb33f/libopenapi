@@ -1856,3 +1856,11 @@ components:
 	safeRefs := rolodex.GetSafeCircularReferences()
 	assert.Len(t, safeRefs, 1)
 }
+
+func TestSpecIndex_TestDoubleIndexAdd(t *testing.T) {
+	r := NewRolodex(CreateOpenAPIIndexConfig())
+	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
+	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
+	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
+	assert.Len(t, r.GetIndexes(), 1)
+}
