@@ -32,7 +32,7 @@ import (
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 	// test the mother of all exploded specs.
 	tmp, _ := os.MkdirTemp("", "openapi")
-	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
+	cmd := exec.Command("git", "clone", "-b", "asb/dedup-key-model", "https://github.com/digitalocean/openapi.git", tmp)
 	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
 
 	err := cmd.Run()
@@ -43,12 +43,12 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 	spec, _ := filepath.Abs(filepath.Join(tmp+"/specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)
 
-	doc, err := libopenapi.NewDocumentWithConfiguration([]byte(digi), &datamodel.DocumentConfiguration{
+	doc, err := libopenapi.NewDocumentWithConfiguration(digi, &datamodel.DocumentConfiguration{
 		SpecFilePath:            spec,
 		BasePath:                tmp + "/specification",
 		ExtractRefsSequentially: true,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelWarn,
+			Level: slog.LevelDebug,
 		})),
 	})
 	if err != nil {
@@ -63,7 +63,16 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 	bytes, e := BundleDocument(&v3Doc.Model)
 
 	assert.NoError(t, e)
-	assert.False(t, strings.Contains("$ref", string(bytes)), "should not contain $ref")
+	lines := strings.Split(string(bytes), "\n")
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "#") {
+			continue
+		}
+		if strings.Contains(trimmedLine, "$ref") {
+			t.Errorf("Found uncommented $ref in line: %s", line)
+		}
+	}
 }
 
 func TestBundleDocument_Circular(t *testing.T) {

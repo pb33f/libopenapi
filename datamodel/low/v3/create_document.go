@@ -105,7 +105,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 		config.Logger.Debug("indexing rolodex")
 	}
 	now := time.Now()
-	_ = rolodex.IndexTheRolodex()
+	_ = rolodex.IndexTheRolodex(context.Background())
 	done := time.Duration(time.Since(now).Milliseconds())
 	if config.Logger != nil {
 		config.Logger.Debug("rolodex indexed", "ms", done)

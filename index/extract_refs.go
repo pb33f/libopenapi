@@ -7,19 +7,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
-func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
+func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node, seenPath []string, level int, poly bool, pName string) []*Reference {
 	if node == nil {
 		return nil
 	}
@@ -39,7 +38,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 						polyName = prev
 					}
 				}
-				found = append(found, index.ExtractRefs(n, node, seenPath, level, poly, polyName)...)
+				found = append(found, index.ExtractRefs(ctx, n, node, seenPath, level, poly, polyName)...)
 			}
 
 			// check if we're dealing with an inline schema definition, that isn't part of an array
@@ -638,7 +637,7 @@ func (index *SpecIndex) ExtractRefs(node, parent *yaml.Node, seenPath []string, 
 
 // ExtractComponentsFromRefs returns located components from references. The returned nodes from here
 // can be used for resolving as they contain the actual object properties.
-func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Reference {
+func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*Reference) []*Reference {
 	var found []*Reference
 
 	// run this async because when things get recursive, it can take a while
@@ -657,9 +656,6 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 				FullDefinition:    index.allMappedRefs[ref.FullDefinition].FullDefinition,
 			}
 			sequence[refIndex] = rm
-			if !index.config.ExtractRefsSequentially {
-				c <- struct{}{}
-			}
 			index.refLock.Unlock()
 		} else {
 			index.refLock.Unlock()
@@ -669,7 +665,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 			if unsafeAsync {
 				index.refLock.Lock()
 			}
-			located := index.FindComponent(context.Background(), ref.FullDefinition)
+			located := index.FindComponent(ctx, ref.FullDefinition)
 			if unsafeAsync {
 				index.refLock.Unlock()
 			}
@@ -713,13 +709,15 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 					Path:    path,
 					KeyNode: ref.KeyNode,
 				}
+
 				index.errorLock.Lock()
 				index.refErrors = append(index.refErrors, indexError)
 				index.errorLock.Unlock()
 			}
-			if !index.config.ExtractRefsSequentially {
-				c <- struct{}{}
-			}
+
+		}
+		if !index.config.ExtractRefsSequentially {
+			c <- struct{}{}
 		}
 	}
 
@@ -737,8 +735,8 @@ func (index *SpecIndex) ExtractComponentsFromRefs(refs []*Reference) []*Referenc
 		}
 	}
 
+	completedRefs := 0
 	if !index.config.ExtractRefsSequentially {
-		completedRefs := 0
 		for completedRefs < len(refsToCheck) {
 			<-c
 			completedRefs++

@@ -55,10 +55,7 @@ func handleIndex(c *handleIndexConfig) {
 				foundIndex = i
 				if mappedReference != nil && !mappedReference.Circular {
 
-					lookup := sequenced.Definition
-					if !strings.Contains(lookup, "#/") {
-						lookup = sequenced.FullDefinition
-					}
+					lookup := sequenced.FullDefinition
 					mr := i.FindComponent(context.Background(), lookup)
 					if mr != nil {
 						// found the component; this is the one we want to use.
@@ -116,7 +113,10 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 
 	var location []string
 	if strings.Contains(pr.ref.FullDefinition, "#/") {
-		location = strings.Split(pr.ref.Definition, "/")[1:]
+
+		// extract fragment from the full definition.
+		segs := strings.Split(pr.ref.FullDefinition, "#/")
+		location = strings.Split(segs[1], "/")
 	} else {
 		// make sure the sequence ref and pr ref have the same full definition.
 		pr.ref.FullDefinition = pr.seqRef.FullDefinition

@@ -187,7 +187,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	rolo.AddRemoteFS(location, remoteFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, indexedErr)
 
 	// get all the files!
@@ -249,7 +249,7 @@ func TestSpecIndex_Redocly(t *testing.T) {
 	rolo.AddRemoteFS(location, remoteFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, indexedErr)
 
 	// get all the files!
@@ -321,7 +321,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 	rolo.AddLocalFS(basePath, fileFS)
 
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 
@@ -397,7 +397,7 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *test
 
 	rolo.AddLocalFS(basePath, fileFS)
 
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 	files := fileFS.GetFiles()
 	fileLen := len(files)
 
@@ -459,7 +459,7 @@ func TestSpecIndex_DigitalOcean_LookupsNotAllowed(t *testing.T) {
 	rolo.AddRemoteFS(location, remoteFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.Error(t, indexedErr)
 	assert.Len(t, utils.UnwrapErrors(indexedErr), 291)
 
@@ -523,7 +523,7 @@ func TestSpecIndex_BaseURLError(t *testing.T) {
 	rolo.AddRemoteFS(location, remoteFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.Error(t, indexedErr)
 	assert.Len(t, utils.UnwrapErrors(indexedErr), 291)
 
@@ -782,7 +782,7 @@ func TestSpecIndex_NoNameParam(t *testing.T) {
 
 func TestSpecIndex_NoRoot(t *testing.T) {
 	index := NewSpecIndex(nil)
-	refs := index.ExtractRefs(nil, nil, nil, 0, false, "")
+	refs := index.ExtractRefs(context.Background(), nil, nil, nil, 0, false, "")
 	docs := index.ExtractExternalDocuments(nil)
 	assert.Nil(t, docs)
 	assert.Nil(t, refs)
@@ -861,7 +861,7 @@ func TestSpecIndex_BurgerShopMixedRef(t *testing.T) {
 	rolo.AddRemoteFS(server.URL, remoteFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	rolo.BuildIndexes()
 
 	assert.NoError(t, indexedErr)
@@ -940,7 +940,7 @@ func TestTagsNoDescription(t *testing.T) {
 }
 
 func TestGlobalCallbacksNoIndexTest(t *testing.T) {
-	idx := NewTestSpecIndex()
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	assert.Equal(t, -1, idx.GetGlobalCallbacksCount())
 }
 
@@ -1075,7 +1075,7 @@ func TestSpecIndex_TestPathsNodeAsArray(t *testing.T) {
 	_ = yaml.Unmarshal([]byte(yml), &rootNode)
 
 	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
-	assert.Nil(t, index.lookupRolodex(nil))
+	assert.Nil(t, index.lookupRolodex(context.Background(), nil))
 }
 
 func TestSpecIndex_CheckBadURLRefNoRemoteAllowed(t *testing.T) {
@@ -1134,7 +1134,7 @@ paths:
 	rolo.SetRootNode(&coffee)
 
 	rolo.AddLocalFS(cf.BasePath, fileFS)
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 
@@ -1176,7 +1176,7 @@ func TestSpecIndex_lookupFileReference_MultiRes(t *testing.T) {
 	assert.NoError(t, err)
 
 	rolo.AddLocalFS(cf.BasePath, fileFS)
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 
@@ -1225,7 +1225,7 @@ func TestSpecIndex_lookupFileReference(t *testing.T) {
 	assert.NoError(t, err)
 
 	rolo.AddLocalFS(cf.BasePath, fileFS)
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 
@@ -1303,7 +1303,7 @@ components:
 	rolo.AddLocalFS(cf.BasePath, fileFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, indexedErr)
 	rolo.BuildIndexes()
 
@@ -1925,7 +1925,7 @@ func TestSpecIndex_GetAllComponentSchemas_NilIndex(t *testing.T) {
 }
 
 func TestSpecIndex_Cache(t *testing.T) {
-	idx := NewTestSpecIndex()
+	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	assert.NotNil(t, idx.GetHighCache())
 	assert.NotNil(t, uint(1), idx.HighCacheHit())
 	assert.NotNil(t, uint(1), idx.HighCacheMiss())

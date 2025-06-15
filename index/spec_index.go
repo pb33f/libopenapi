@@ -15,15 +15,14 @@ package index
 import (
 	"context"
 	"fmt"
+	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
 	"github.com/pb33f/libopenapi/utils"
 
@@ -35,10 +34,7 @@ const (
 	theoreticalRoot = "root.yaml"
 )
 
-// NewSpecIndexWithConfig will create a new index of an OpenAPI or Swagger spec. It uses the same logic as NewSpecIndex
-// except it sets a base URL for resolving relative references, except it also allows for granular control over
-// how the index is set up.
-func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
+func NewSpecIndexWithConfigAndContext(ctx context.Context, rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
 	index := new(SpecIndex)
 	boostrapIndexCollections(index)
 	index.InitHighCache()
@@ -57,7 +53,14 @@ func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecI
 		return index
 	}
 	index.root = rootNode
-	return createNewIndex(rootNode, index, config.AvoidBuildIndex)
+	return createNewIndex(ctx, rootNode, index, config.AvoidBuildIndex)
+}
+
+// NewSpecIndexWithConfig will create a new index of an OpenAPI or Swagger spec. It uses the same logic as NewSpecIndex
+// except it sets a base URL for resolving relative references, except it also allows for granular control over
+// how the index is set up.
+func NewSpecIndexWithConfig(rootNode *yaml.Node, config *SpecIndexConfig) *SpecIndex {
+	return NewSpecIndexWithConfigAndContext(context.Background(), rootNode, config)
 }
 
 // NewSpecIndex will create a new index of an OpenAPI or Swagger spec. It's not resolved or converted into anything
@@ -72,10 +75,10 @@ func NewSpecIndex(rootNode *yaml.Node) *SpecIndex {
 	index.config = CreateOpenAPIIndexConfig()
 	index.root = rootNode
 	boostrapIndexCollections(index)
-	return createNewIndex(rootNode, index, false)
+	return createNewIndex(context.Background(), rootNode, index, false)
 }
 
-func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *SpecIndex {
+func createNewIndex(ctx context.Context, rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *SpecIndex {
 	// there is no node! return an empty index.
 	if rootNode == nil {
 		return index
@@ -87,7 +90,17 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	index.cache = new(sync.Map)
 
 	// boot index.
-	results := index.ExtractRefs(index.root.Content[0], index.root, []string{}, 0, false, "")
+	results := index.ExtractRefs(ctx, index.root.Content[0], index.root, []string{}, 0, false, "")
+
+	// dedupe refs
+	dd := make(map[string]struct{})
+	var dedupedResults []*Reference
+	for _, ref := range results {
+		if _, ok := dd[ref.FullDefinition]; !ok {
+			dd[ref.FullDefinition] = struct{}{}
+			dedupedResults = append(dedupedResults, ref)
+		}
+	}
 
 	// map poly refs
 	poly := make([]*Reference, len(index.polymorphicRefs))
@@ -98,8 +111,12 @@ func createNewIndex(rootNode *yaml.Node, index *SpecIndex, avoidBuildOut bool) *
 	}
 
 	// pull out references
-	index.ExtractComponentsFromRefs(results)
-	index.ExtractComponentsFromRefs(poly)
+	if len(dedupedResults) > 0 {
+		index.ExtractComponentsFromRefs(ctx, dedupedResults)
+	}
+	if len(poly) > 0 {
+		index.ExtractComponentsFromRefs(ctx, poly)
+	}
 
 	index.ExtractExternalDocuments(index.root)
 	index.GetPathCount()
@@ -139,7 +156,6 @@ func (index *SpecIndex) BuildIndex() {
 		index.GetGlobalLinksCount,
 		index.GetGlobalCallbacksCount,
 	}
-
 	wg.Add(len(countFuncs))
 	runIndexFunction(countFuncs, &wg) // run as fast as we can.
 	wg.Wait()
@@ -158,6 +174,11 @@ func (index *SpecIndex) GetLogger() *slog.Logger {
 // GetRootNode returns document root node.
 func (index *SpecIndex) GetRootNode() *yaml.Node {
 	return index.root
+}
+
+// SetRootNode will override the root node with a supplied one. Be careful with this!
+func (index *SpecIndex) SetRootNode(node *yaml.Node) {
+	index.root = node
 }
 
 func (index *SpecIndex) GetRolodex() *Rolodex {
