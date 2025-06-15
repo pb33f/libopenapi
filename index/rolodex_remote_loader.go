@@ -384,9 +384,9 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 	}
 
-	mu := sync.Mutex{}
-	cond := sync.NewCond(&mu)
-	processingWaiter := &waiterRemote{f: remoteParsedURL.Path, mu: mu, cond: cond}
+	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}
+	processingWaiter.cond = sync.NewCond(&processingWaiter.mu)
+
 	processingWaiter.mu.Lock()
 	// add to processing
 	i.ProcessingFiles.Store(remoteParsedURL.Path, processingWaiter)
