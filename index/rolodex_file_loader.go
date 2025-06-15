@@ -13,8 +13,10 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"context"
 	"github.com/pb33f/libopenapi/datamodel"
 	"gopkg.in/yaml.v3"
 )
@@ -54,10 +56,15 @@ type waiterLocal struct {
 	done      bool
 	file      *LocalFile
 	listeners int
+	error     error
+	mu        sync.RWMutex
+	cond      *sync.Cond
 }
 
-// Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
-func (l *LocalFS) Open(name string) (fs.File, error) {
+// In LocalFS, add a map[uint64]map[string]struct{} to track goroutine-file
+var processingMap sync.Map // goroutine id => set of file names
+
+func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, error) {
 	if l.indexConfig != nil && !l.indexConfig.AllowFileLookup {
 		return nil, &fs.PathError{
 			Op: "open", Path: name,
@@ -72,88 +79,98 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 
 	if f, ok := l.Files.Load(name); ok {
 		return f.(*LocalFile), nil
-	} else {
-		if l.fsConfig != nil && l.fsConfig.DirFS == nil {
+	}
 
-			// if we're processing, we need to block and wait for the file to be processed
-			// try path first
-			if r, ko := l.processingFiles.Load(name); ko {
+	// Only enter new-file logic if DirFS is not set
+	if l.fsConfig != nil && l.fsConfig.DirFS == nil {
 
-				wait := r.(*waiterLocal)
-				wait.listeners++
+		// If we're processing, we need to block and wait for the file to be processed
+		if r, ko := l.processingFiles.Load(name); ko {
+			wait := r.(*waiterLocal)
 
-				l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
+			wait.mu.Lock()
+			wait.listeners++
+			l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
+			for !wait.done {
+				wait.cond.Wait()
+			}
+			f := wait.file
+			e := wait.error
+			wait.listeners--
+			l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
+			wait.mu.Unlock()
+			return f, e
+		}
 
-				for !wait.done {
-					l.logger.Debug("[rolodex file loader]: sleeping for 200ns", "file", name, "listeners", wait.listeners)
-					time.Sleep(200 * time.Nanosecond) // breathe for a few nanoseconds.
-				}
-				wait.listeners--
-				l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
-				return wait.file, nil
+		mu := sync.RWMutex{}
+		cond := sync.NewCond(&mu)
+
+		processingWaiter := &waiterLocal{f: name, mu: mu, cond: cond}
+		processingWaiter.mu.Lock()
+
+		l.processingFiles.Store(name, processingWaiter)
+
+		var extractedFile *LocalFile
+		var extErr error
+		l.logger.Debug("[rolodex file loader]: extracting file from OS", "file", name)
+		extractedFile, extErr = l.extractFile(name)
+
+		if extErr != nil {
+			processingWaiter.error = extErr
+			processingWaiter.done = true
+			if processingWaiter.cond != nil {
+				processingWaiter.cond.Broadcast()
+			}
+			l.processingFiles.Delete(name)
+			processingWaiter.mu.Unlock()
+
+			return nil, extErr
+		}
+		if extractedFile != nil && l.indexConfig != nil {
+			copiedCfg := *l.indexConfig
+			copiedCfg.SpecAbsolutePath = name
+			copiedCfg.AvoidBuildIndex = true
+			copiedCfg.SpecInfo = nil
+
+			idx, _ := extractedFile.IndexWithContext(ctx, &copiedCfg)
+			if idx != nil && l.rolodex != nil {
+				idx.rolodex = l.rolodex
 			}
 
-			processingWaiter := &waiterLocal{f: name}
-
-			// add to processing
-			l.processingFiles.Store(name, processingWaiter)
-
-			var extractedFile *LocalFile
-			var extErr error
-			// attempt to open the file from the local filesystem
-			l.logger.Debug("[rolodex file loader]: extracting file from OS", "file", name)
-			extractedFile, extErr = l.extractFile(name)
-			if extErr != nil {
-				l.processingFiles.Delete(name)
-				processingWaiter.done = true
-				return nil, extErr
+			if idx != nil {
+				resolver := NewResolver(idx)
+				idx.resolver = resolver
+				idx.BuildIndex()
 			}
-			if extractedFile != nil {
-				// in this mode, we need the index config to be set.
-				if l.indexConfig != nil {
-					copiedCfg := *l.indexConfig
-					copiedCfg.SpecAbsolutePath = name
-					copiedCfg.AvoidBuildIndex = true
-					copiedCfg.SpecInfo = nil
-
-					idx, _ := extractedFile.Index(&copiedCfg)
-
-					if idx != nil && l.rolodex != nil {
-						idx.rolodex = l.rolodex
-					}
-
-					// for each index, we need a resolver
-					if idx != nil {
-						resolver := NewResolver(idx)
-						idx.resolver = resolver
-						idx.BuildIndex()
-					}
-
-					if len(extractedFile.data) > 0 {
-						l.logger.Debug("[rolodex file loader]: successfully loaded and indexed file", "file", name)
-					}
-
-					// add index to rolodex indexes
-					if l.rolodex != nil {
-						l.rolodex.AddIndex(idx)
-					}
-					if processingWaiter.listeners > 0 {
-						l.logger.Debug("[rolodex file loader]: alerting file subscribers", "file", name, "subs", processingWaiter.listeners)
-					}
-					processingWaiter.file = extractedFile
-					processingWaiter.done = true
-					l.processingFiles.Delete(name)
-					return extractedFile, nil
-				}
+			if len(extractedFile.data) > 0 {
+				l.logger.Debug("[rolodex file loader]: successfully loaded and indexed file", "file", name)
+			}
+			if l.rolodex != nil {
+				l.rolodex.AddIndex(idx)
+			}
+			if processingWaiter.listeners > 0 {
+				l.logger.Debug("[rolodex file loader]: alerting file subscribers", "file", name, "subs", processingWaiter.listeners)
 			}
 		}
+
+		processingWaiter.file = extractedFile
+		processingWaiter.error = extErr
+		processingWaiter.done = true
+		if processingWaiter.cond != nil {
+			processingWaiter.cond.Broadcast()
+		}
+		l.processingFiles.Delete(name)
+		processingWaiter.mu.Unlock()
+
+		return extractedFile, nil
 	}
-	waiter, _ := l.processingFiles.Load(name)
-	if waiter != nil {
-		waiter.(*waiterLocal).done = true
-	}
-	l.processingFiles.Delete(name)
+
 	return nil, &fs.PathError{Op: "open", Path: name, Err: fs.ErrNotExist}
+}
+
+// Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
+func (l *LocalFS) Open(name string) (fs.File, error) {
+	return l.OpenWithContext(context.Background(), name)
 }
 
 // LocalFile is a file that has been indexed by the LocalFS. It implements the RolodexFile interface.
@@ -165,49 +182,53 @@ type LocalFile struct {
 	fullPath      string
 	lastModified  time.Time
 	readingErrors []error
-	index         *SpecIndex
+	index         atomic.Value
 	parsed        *yaml.Node
 	offset        int64
 	parseMutex    sync.Mutex
-	indexMutex    sync.RWMutex
+	indexOnce     sync.Once
 }
 
 // GetIndex returns the *SpecIndex for the file.
 func (l *LocalFile) GetIndex() *SpecIndex {
-	l.indexMutex.RLock()
-	defer l.indexMutex.RUnlock()
-	return l.index
+	if v := l.index.Load(); v != nil {
+		return v.(*SpecIndex)
+	}
+	return nil
 }
 
 // Index returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed)
 func (l *LocalFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
-	// First check without locking for better performance
-	l.indexMutex.RLock()
-	if l.index != nil {
-		index := l.index
-		l.indexMutex.RUnlock()
-		return index, nil
+	return l.IndexWithContext(context.Background(), config)
+}
+
+// // IndexWithContext returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed), also supplied context
+func (l *LocalFile) IndexWithContext(ctx context.Context, config *SpecIndexConfig) (*SpecIndex, error) {
+	var result *SpecIndex
+	var resultErr error
+	l.indexOnce.Do(func() {
+		if idx := l.GetIndex(); idx != nil {
+			result = idx
+			return
+		}
+
+		content := l.data
+		// first, we must parse the content of the file,
+		// the check is bypassed, so as long as it's readable, we're good.
+		info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
+		if config.SpecInfo == nil {
+			config.SpecInfo = info
+		}
+		index := NewSpecIndexWithConfigAndContext(ctx, info.RootNode, config)
+		index.specAbsolutePath = l.fullPath
+		l.index.Store(index)
+		result = index
+	})
+	if v := l.index.Load(); v != nil {
+		result = v.(*SpecIndex)
 	}
-	l.indexMutex.RUnlock()
+	return result, resultErr
 
-	// Double-check after acquiring write lock
-	if l.index != nil {
-		return l.index, nil
-	}
-
-	content := l.data
-	// first, we must parse the content of the file,
-	// the check is bypassed, so as long as it's readable, we're good.
-	info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
-	if config.SpecInfo == nil {
-		config.SpecInfo = info
-	}
-	index := NewSpecIndexWithConfig(info.RootNode, config)
-	index.specAbsolutePath = l.fullPath
-
-	l.index = index
-
-	return index, nil
 }
 
 // GetContent returns the content of the file as a string.
@@ -218,8 +239,9 @@ func (l *LocalFile) GetContent() string {
 // GetContentAsYAMLNode returns the content of the file as a *yaml.Node. If something went wrong
 // then an error is returned.
 func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
-	if l.index != nil && l.index.root != nil {
-		return l.index.root, nil
+	idx := l.GetIndex()
+	if idx != nil && idx.root != nil {
+		return idx.GetRootNode(), nil
 	}
 
 	// Lock before proceeding with parsing or modifications
@@ -250,8 +272,8 @@ func (l *LocalFile) GetContentAsYAMLNode() (*yaml.Node, error) {
 			},
 		}
 	}
-	if l.index != nil && l.index.root == nil {
-		l.index.root = &root
+	if idx != nil && idx.root == nil {
+		idx.root = &root
 	}
 	l.parsed = &root
 	return &root, err
@@ -433,11 +455,6 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 			file, _ = config.DirFS.Open(p)
 		} else {
 			l.logger.Debug("[rolodex file loader]: reading local file from OS", "file", extension, "location", abs)
-			file, fileError = os.Open(abs)
-		}
-
-		if config != nil && config.DirFS != nil {
-		} else {
 			file, fileError = os.Open(abs)
 		}
 

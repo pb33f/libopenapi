@@ -295,7 +295,7 @@ func TestSchemaProxy_MarshalYAML_MatchBasePath(t *testing.T) {
 
 	rolodex.AddLocalFS(basePath, fileFS)
 
-	indexingError := rolodex.IndexTheRolodex()
+	indexingError := rolodex.IndexTheRolodex(context.Background())
 	if indexingError != nil {
 		panic(indexingError)
 	}
@@ -373,7 +373,7 @@ func TestSchemaProxy_MarshalYAML_StripBasePath(t *testing.T) {
 
 	rolodex.AddLocalFS(basePath, fileFS)
 
-	indexingError := rolodex.IndexTheRolodex()
+	indexingError := rolodex.IndexTheRolodex(context.Background())
 	if indexingError != nil {
 		panic(indexingError)
 	}
@@ -446,7 +446,7 @@ properties:
 
 	rolodex := index.NewRolodex(cf)
 	rolodex.SetRootNode(&rootNode)
-	rErr := rolodex.IndexTheRolodex()
+	rErr := rolodex.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 
