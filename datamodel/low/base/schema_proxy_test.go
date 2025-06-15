@@ -125,7 +125,7 @@ properties:
 	c := index.CreateOpenAPIIndexConfig()
 	rolo := index.NewRolodex(c)
 	rolo.SetRootNode(&idxNodeA)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 
 	err := schA.Build(context.Background(), nil, idxNodeA.Content[0], rolo.GetRootIndex())
 	assert.NoError(t, err)

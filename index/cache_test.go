@@ -5,16 +5,19 @@ package index
 
 import (
 	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 // NewTestSpecIndex Test helper function to create a SpecIndex with initialised high cache.
-func NewTestSpecIndex() *SpecIndex {
+func NewTestSpecIndex() *atomic.Value {
 	index := &SpecIndex{}
 	index.InitHighCache()
-	return index
+	var value atomic.Value
+	value.Store(index)
+	return &value
 }
 
 // SimpleCache struct and methods are assumed to be imported from the respective package

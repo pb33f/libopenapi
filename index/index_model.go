@@ -320,6 +320,7 @@ type SpecIndex struct {
 	componentIndexChan                  chan struct{}
 	polyComponentIndexChan              chan struct{}
 	resolver                            *Resolver
+	resolverLock                        sync.Mutex
 	cache                               *sync.Map
 	built                               bool
 	uri                                 []string
@@ -333,6 +334,10 @@ type SpecIndex struct {
 // GetResolver returns the resolver for this index.
 func (index *SpecIndex) GetResolver() *Resolver {
 	return index.resolver
+}
+
+func (index *SpecIndex) SetResolver(resolver *Resolver) {
+	index.resolver = resolver
 }
 
 // GetConfig returns the SpecIndexConfig for this index.

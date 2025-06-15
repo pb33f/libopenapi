@@ -146,7 +146,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 			// if the reference is the same as the spec file name, we should look through the index for the component
 			var r *Reference
 			if len(uri) == 2 {
-				r = index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+				r = index.FindComponentInRoot(ctx, fmt.Sprintf("#/%s", uri[1]))
 			}
 			return r, index, ctx
 		}
@@ -193,7 +193,9 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 			idx := rFile.GetIndex()
 			if index.resolver != nil {
+				index.resolverLock.Lock()
 				index.resolver.indexesVisited++
+				index.resolverLock.Unlock()
 			}
 			if idx != nil {
 
@@ -227,7 +229,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 
 					if len(exp) == 2 {
 						compId = fmt.Sprintf("#/%s", exp[1])
-						found = FindComponent(node, compId, exp[0], idx)
+						found = FindComponent(ctx, node, compId, exp[0], idx)
 					}
 					if found == nil {
 						found = idx.FindComponent(ctx, ref)
