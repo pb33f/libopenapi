@@ -203,11 +203,6 @@ func (l *LocalFile) IndexWithContext(ctx context.Context, config *SpecIndexConfi
 	var result *SpecIndex
 	var resultErr error
 	l.indexOnce.Do(func() {
-		if idx := l.GetIndex(); idx != nil {
-			result = idx
-			return
-		}
-
 		content := l.data
 		// first, we must parse the content of the file,
 		// the check is bypassed, so as long as it's readable, we're good.
