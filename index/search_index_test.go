@@ -34,4 +34,9 @@ func TestSpecIndex_SearchIndexForReferenceWithContext(t *testing.T) {
 
 	ref, _, _ := idx.SearchIndexForReferenceWithContext(context.Background(), "#/components/schemas/Pet")
 	assert.NotNil(t, ref)
+
+	assert.NotNil(t, idx.GetRootNode())
+	idx.SetRootNode(nil)
+	assert.Nil(t, idx.GetRootNode())
+
 }
