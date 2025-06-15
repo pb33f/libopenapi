@@ -13,6 +13,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -53,6 +54,10 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 	assert.NoError(t, ierr)
 	assert.NotNil(t, idx)
 	assert.NotNil(t, localFile.GetContent())
+
+	// can only be fired once, so this should be the same as before.
+	idx, ierr = lf.IndexWithContext(context.Background(), CreateOpenAPIIndexConfig())
+	assert.NoError(t, ierr)
 
 	d, e := localFile.GetContentAsYAMLNode()
 	assert.NoError(t, e)
@@ -138,7 +143,7 @@ func TestRolodexLocalFile_BadParse(t *testing.T) {
 }
 
 func TestRolodexLocalFile_NoIndexRoot(t *testing.T) {
-	lf := &LocalFile{data: []byte("burders"), index: NewTestSpecIndex()}
+	lf := &LocalFile{data: []byte("burders"), index: *NewTestSpecIndex()}
 	n, e := lf.GetContentAsYAMLNode()
 	assert.NotNil(t, n)
 	assert.NoError(t, e)
@@ -262,7 +267,7 @@ func TestRecursiveLocalFile_IndexNonParsable(t *testing.T) {
 	assert.NoError(t, err)
 
 	rolo.AddLocalFS(cf.BasePath, fileFS)
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 

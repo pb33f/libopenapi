@@ -4,15 +4,18 @@
 package index
 
 import (
+	"fmt"
+	"github.com/stretchr/testify/require"
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 
+	"context"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,7 +46,7 @@ func TestRolodex_FindNodeOrigin_InRoot(t *testing.T) {
 
 	rolo.SetRootNode(node)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -79,7 +82,7 @@ func TestRolodex_FindNodeOrigin_InRoot_InMap(t *testing.T) {
 
 	rolo.SetRootNode(node)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -143,7 +146,7 @@ func TestRolodex_FindNodeOriginWithValue(t *testing.T) {
 
 	rolo.SetRootNode(node)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -180,7 +183,7 @@ func TestRolodex_FindNodeOriginWithValue_SimulateIsRef(t *testing.T) {
 
 	rolo.SetRootNode(node)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -224,7 +227,7 @@ func TestRolodex_FindNodeOriginWithValue_NonRoot(t *testing.T) {
 
 	rolo.SetRootNode(nodef)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -272,7 +275,7 @@ func TestRolodex_FindNodeOriginWithValue_BadKeyAndValue(t *testing.T) {
 	nodef, _ := f2.GetContentAsYAMLNode()
 
 	rolo.SetRootNode(nodef)
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	rolo.Resolve()
 
 	origin := rolo.FindNodeOriginWithValue(&yaml.Node{
@@ -321,7 +324,7 @@ func TestRolodex_FindNodeOriginWithValue_BadValue(t *testing.T) {
 	node, _ := f2.GetContentAsYAMLNode()
 
 	rolo.SetRootNode(node)
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	rolo.Resolve()
 
 	origin := rolo.FindNodeOriginWithValue(node.Content[0], &yaml.Node{
@@ -361,7 +364,7 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 
 	rolo.SetRootNode(node)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -402,6 +405,129 @@ func TestRolodex_FindNodeOrigin(t *testing.T) {
 	assert.Nil(t, origin)
 }
 
+func TestRolodex_FindNodeOrigin_Concurrent(t *testing.T) {
+	var wg sync.WaitGroup
+	failures := atomic.Int32{}
+	iterations := 1000 // run this like mad.
+	wg.Add(iterations)
+
+	// Create a channel to collect detailed error information
+	errorChan := make(chan string, iterations)
+
+	for i := 0; i < iterations; i++ {
+		go func(iteration int) {
+			defer wg.Done()
+
+			baseDir := "rolodex_test_data"
+
+			cf := CreateOpenAPIIndexConfig()
+			cf.BasePath = baseDir
+			cf.AvoidCircularReferenceCheck = true
+
+			fileFS, err := NewLocalFSWithConfig(&LocalFSConfig{
+				BaseDirectory: baseDir,
+				IndexConfig:   cf,
+			})
+			if err != nil {
+				errorChan <- fmt.Sprintf("Iteration %d: Failed to create LocalFS: %v", iteration, err)
+				failures.Add(1)
+				return
+			}
+
+			rolo := NewRolodex(cf)
+			rolo.AddLocalFS(baseDir, fileFS)
+
+			// open doc2
+			f, rerr := rolo.Open("doc2.yaml")
+			if rerr != nil {
+				errorChan <- fmt.Sprintf("Iteration %d: Failed to open doc2.yaml: %v", iteration, rerr)
+				failures.Add(1)
+				return
+			}
+			if f == nil {
+				errorChan <- fmt.Sprintf("Iteration %d: File is nil", iteration)
+				failures.Add(1)
+				return
+			}
+
+			node, nodeErr := f.GetContentAsYAMLNode()
+			if nodeErr != nil {
+				errorChan <- fmt.Sprintf("Iteration %d: Failed to get YAML node: %v", iteration, nodeErr)
+				failures.Add(1)
+				return
+			}
+
+			rolo.SetRootNode(node)
+
+			err = rolo.IndexTheRolodex(context.Background())
+			if err != nil {
+				errorChan <- fmt.Sprintf("Iteration %d: Failed to index rolodex: %v", iteration, err)
+				failures.Add(1)
+				return
+			}
+
+			rolo.Resolve()
+
+			if len(rolo.indexes) != 4 {
+				errorChan <- fmt.Sprintf("Iteration %d: Expected 4 indexes, got %d", iteration, len(rolo.indexes))
+				failures.Add(1)
+				return
+			}
+
+			// extract something that can only exist after resolution
+			path := "$.paths['/nested/files3'].get.responses['200'].content['application/json'].schema.properties['message'].properties['utilMessage'].properties['message'].description"
+			yp, _ := jsonpath.NewPath(path)
+			results := yp.Query(node)
+
+			if len(results) != 1 {
+				errorChan <- fmt.Sprintf("Iteration %d: Expected 1 result, got %d", iteration, len(results))
+				failures.Add(1)
+				return
+			}
+
+			if results[0].Value != "I am pointless dir2 utility, I am multiple levels deep." {
+				errorChan <- fmt.Sprintf("Iteration %d: Unexpected value: %s", iteration, results[0].Value)
+				failures.Add(1)
+				return
+			}
+
+			// now for the truth, where did this come from?
+			origin := rolo.FindNodeOrigin(results[0])
+
+			if origin == nil {
+				errorChan <- fmt.Sprintf("Iteration %d: Origin is nil", iteration)
+				failures.Add(1)
+				return
+			}
+
+			sep := string(filepath.Separator)
+			expectedSuffix := "index" + sep + "rolodex_test_data" + sep + "dir2" + sep + "utils" + sep + "utils.yaml"
+			if !strings.HasSuffix(origin.AbsoluteLocation, expectedSuffix) {
+				errorChan <- fmt.Sprintf("Iteration %d: Wrong suffix. Expected %s, got %s",
+					iteration, expectedSuffix, origin.AbsoluteLocation)
+				failures.Add(1)
+				return
+			}
+
+		}(i)
+	}
+
+	// Wait for all goroutines to complete
+	wg.Wait()
+	close(errorChan)
+
+	// Collect and report all errors
+	var errorMessages []string
+	for msg := range errorChan {
+		errorMessages = append(errorMessages, msg)
+	}
+
+	if failures.Load() > 0 {
+		t.Errorf("Test failed in %d/%d iterations with following errors:\n%s",
+			failures.Load(), iterations, strings.Join(errorMessages, "\n"))
+	}
+}
+
 func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 	baseDir := "rolodex_test_data"
 
@@ -429,7 +555,7 @@ func TestRolodex_FindNodeOrigin_ModifyLookup(t *testing.T) {
 
 	rolo.SetRootNode(node)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	rolo.Resolve()
 
@@ -454,8 +580,8 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 	wg := sync.WaitGroup{}
 	wg.Add(1000)
 	for i := 0; i < 1000; i++ {
-		go func(i int) {
-			defer wg.Done()
+		func(i int) {
+
 			yml := `paths:
   /test:
     $ref: 'rolodex_test_data/paths/paths.yaml#/~1some~1path'
@@ -485,10 +611,10 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 
 			rolo.SetRootNode(&rootNode)
 
-			err = rolo.IndexTheRolodex()
+			err = rolo.IndexTheRolodex(context.Background())
+
 			assert.NoError(t, err)
 			require.Len(t, rolo.indexes, 2)
-
 			rolo.Resolve()
 
 			require.Len(t, rolo.GetCaughtErrors(), 0)
@@ -504,6 +630,7 @@ func TestSpecIndex_TestPathsAsRefWithFiles(t *testing.T) {
 			require.True(t, ok)
 			require.Len(t, lookupRef, 1)
 			require.Equal(t, lookupRef[0].Name, "SomeParam")
+			wg.Done()
 		}(i)
 	}
 	wg.Wait()
@@ -565,7 +692,7 @@ func TestRolodex_FindNodeOrigin_NonRootToNonRootLookup(t *testing.T) {
 	assert.NotNil(t, key)
 	assert.NotNil(t, value)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 
 	origin := rolo.FindNodeOriginWithValue(key, value, nil, "")
 	assert.NotNil(t, origin)

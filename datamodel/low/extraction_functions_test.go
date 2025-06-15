@@ -1984,7 +1984,7 @@ func TestLocateRefEnd_Loop(t *testing.T) {
 	rolo := index.NewRolodex(cf)
 	rolo.AddLocalFS(cf.BasePath, localFs)
 	rolo.SetRootNode(&bsn)
-	rolo.IndexTheRolodex()
+	rolo.IndexTheRolodex(context.Background())
 
 	idx := rolo.GetRootIndex()
 	loop := yaml.Node{
@@ -2028,7 +2028,7 @@ func TestLocateRefEnd_Loop_WithResolve(t *testing.T) {
 	rolo := index.NewRolodex(cf)
 	rolo.AddLocalFS(cf.BasePath, localFs)
 	rolo.SetRootNode(&bsn)
-	rolo.IndexTheRolodex()
+	rolo.IndexTheRolodex(context.Background())
 	rolo.Resolve()
 	idx := rolo.GetRootIndex()
 	loop := yaml.Node{
@@ -2072,7 +2072,7 @@ func TestLocateRefEnd_Empty(t *testing.T) {
 	rolo := index.NewRolodex(cf)
 	rolo.AddLocalFS(cf.BasePath, localFs)
 	rolo.SetRootNode(&bsn)
-	rolo.IndexTheRolodex()
+	rolo.IndexTheRolodex(context.Background())
 	idx := rolo.GetRootIndex()
 	loop := yaml.Node{
 		Kind: yaml.MappingNode,

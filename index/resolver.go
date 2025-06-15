@@ -312,9 +312,9 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 
 	// map everything
 	for _, sequenced := range idx.GetAllSequencedReferences() {
-		locatedDef := mappedIndex[sequenced.Definition]
+		locatedDef := mappedIndex[sequenced.FullDefinition]
 		if locatedDef != nil {
-			if !locatedDef.Circular && locatedDef.Seen {
+			if !locatedDef.Circular {
 				sequenced.Node.Content = locatedDef.Node.Content
 			}
 		}
@@ -339,7 +339,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 
 		seen = make(map[string]bool)
 
-		seen[ref.Definition] = true
+		seen[ref.FullDefinition] = true
 		for _, r := range relatives {
 			// check if we have seen this on the journey before, if so! it's circular
 			skip := false
