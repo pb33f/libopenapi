@@ -208,10 +208,6 @@ func (f *RemoteFile) Index(ctx context.Context, config *SpecIndexConfig) (*SpecI
 	var result *SpecIndex
 	var resultErr error
 	f.indexOnce.Do(func() {
-		if idx := f.GetIndex(); idx != nil {
-			result = idx
-			return
-		}
 
 		content := f.data
 		// first, we must parse the content of the file,
