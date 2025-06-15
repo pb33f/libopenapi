@@ -102,10 +102,9 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			return f, e
 		}
 
-		mu := sync.RWMutex{}
-		cond := sync.NewCond(&mu)
+		processingWaiter := &waiterLocal{f: name}
+		processingWaiter.cond = sync.NewCond(&processingWaiter.mu)
 
-		processingWaiter := &waiterLocal{f: name, mu: mu, cond: cond}
 		processingWaiter.mu.Lock()
 
 		l.processingFiles.Store(name, processingWaiter)
