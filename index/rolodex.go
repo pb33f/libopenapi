@@ -209,9 +209,9 @@ func (r *Rolodex) SetRootNode(node *yaml.Node) {
 
 func (r *Rolodex) AddExternalIndex(idx *SpecIndex, location string) {
 	r.indexLock.Lock()
+	defer r.indexLock.Unlock()
 	for _, ix := range r.indexes {
 		if ix.specAbsolutePath == location {
-			r.indexLock.Unlock()
 			return // already exists, no need to add again.
 		}
 	}
@@ -220,7 +220,6 @@ func (r *Rolodex) AddExternalIndex(idx *SpecIndex, location string) {
 	if r.indexMap[location] == nil {
 		r.indexMap[location] = idx
 	}
-	r.indexLock.Unlock()
 }
 
 func (r *Rolodex) AddIndex(idx *SpecIndex) {
