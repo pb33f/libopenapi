@@ -195,9 +195,9 @@ func (r *Rolodex) GetCaughtErrors() []error {
 // AddLocalFS adds a local file system to the rolodex.
 func (r *Rolodex) AddLocalFS(baseDir string, fileSystem fs.FS) {
 	absBaseDir, _ := filepath.Abs(baseDir)
-	if f, ok := fileSystem.(*LocalFS); ok {
-		f.rolodex = r
-		f.logger = r.logger
+	if f, ok := fileSystem.(Rolodexable); ok {
+		f.SetRolodex(r)
+		f.SetLogger(r.logger)
 	}
 	r.localFS[absBaseDir] = fileSystem
 }
@@ -588,33 +588,64 @@ func (r *Rolodex) OpenWithContext(ctx context.Context, location string) (Rolodex
 			if lf, ko := interface{}(f).(*LocalFile); ko {
 				localFile = lf
 				break
-			} else {
-				// not a native FS, so we need to read the file and create a local file.
-				bytes, rErr := io.ReadAll(f)
-				if rErr != nil {
-					errorStack = append(errorStack, rErr)
-					continue
-				}
-				s, sErr := f.Stat()
-				if sErr != nil {
-					errorStack = append(errorStack, sErr)
-					continue
-				}
-				if len(bytes) > 0 {
-					var atm atomic.Value
-					atm.Store(r.rootIndex)
-					localFile = &LocalFile{
-						filename:     filepath.Base(fileLookup),
-						name:         filepath.Base(fileLookup),
-						extension:    ExtractFileType(fileLookup),
-						data:         bytes,
-						fullPath:     fileLookup,
-						lastModified: s.ModTime(),
-						index:        atm,
-					}
-					break
-				}
 			}
+
+			if lf, ko := f.(RolodexFile); ko {
+				var atm atomic.Value
+				atm.Store(lf.GetIndex())
+				var parsed *yaml.Node
+				if p, e := lf.GetContentAsYAMLNode(); e == nil {
+					parsed = p
+				} else {
+					errorStack = append(errorStack, e)
+				}
+				errorStack = append(errorStack, lf.GetErrors()...)
+
+				localFile = &LocalFile{
+					filename:      lf.Name(),
+					name:          lf.Name(),
+					extension:     ExtractFileType(lf.Name()),
+					data:          []byte(lf.GetContent()),
+					fullPath:      lf.GetFullPath(),
+					lastModified:  lf.ModTime(),
+					index:         atm,
+					readingErrors: errorStack,
+					parsed:        parsed,
+				}
+				break
+			}
+
+			// not a native FS, so we need to read the file and create a local file.
+			bytes, rErr := io.ReadAll(f)
+			if rErr != nil {
+				errorStack = append(errorStack, rErr)
+				continue
+			}
+			s, sErr := f.Stat()
+			if sErr != nil {
+				errorStack = append(errorStack, sErr)
+				continue
+			}
+			if len(bytes) > 0 {
+				var atm atomic.Value
+				idx := r.rootIndex
+				if hi, ok := f.(RolodexFile); ok {
+					idx = hi.GetIndex()
+				}
+				atm.Store(idx)
+
+				localFile = &LocalFile{
+					filename:     filepath.Base(fileLookup),
+					name:         filepath.Base(fileLookup),
+					extension:    ExtractFileType(fileLookup),
+					data:         bytes,
+					fullPath:     fileLookup,
+					lastModified: s.ModTime(),
+					index:        atm,
+				}
+				break
+			}
+
 		}
 
 	} else {
