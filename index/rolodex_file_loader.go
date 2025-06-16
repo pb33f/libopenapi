@@ -21,6 +21,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type Rolodexable interface {
+	SetRolodex(rolodex *Rolodex)
+	SetLogger(logger *slog.Logger)
+}
+
 // LocalFS is a file system that indexes local files.
 type LocalFS struct {
 	fsConfig            *LocalFSConfig
@@ -46,6 +51,14 @@ func (l *LocalFS) GetFiles() map[string]RolodexFile {
 	return files
 }
 
+func (l *LocalFS) SetRolodex(rolodex *Rolodex) {
+	l.rolodex = rolodex
+}
+
+func (l *LocalFS) SetLogger(logger *slog.Logger) {
+	l.logger = logger
+}
+
 // GetErrors returns any errors that occurred during the indexing process.
 func (l *LocalFS) GetErrors() []error {
 	return l.readingErrors
@@ -60,9 +73,6 @@ type waiterLocal struct {
 	mu        sync.RWMutex
 	cond      *sync.Cond
 }
-
-// In LocalFS, add a map[uint64]map[string]struct{} to track goroutine-file
-var processingMap sync.Map // goroutine id => set of file names
 
 func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, error) {
 	if l.indexConfig != nil && !l.indexConfig.AllowFileLookup {
