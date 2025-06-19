@@ -163,7 +163,8 @@ parameters:
   - in: code
     name: eggs
   - in: tune
-    name: melody`
+    name: melody
+    required: true`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -727,4 +728,47 @@ parameters:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V3_AddEndpointLevelOptionalQueryParam(t *testing.T) {
+	left := []byte(`get: {}
+parameters:
+  - in: query
+    name: test
+    required: true
+    schema:
+      type: string
+`)
+
+	right := []byte(`get: {}
+parameters:
+  - in: query
+    name: test
+    required: true
+    schema:
+      type: string
+  - in: query
+    name: test2
+    required: false
+    schema:
+      type: string
+`)
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
