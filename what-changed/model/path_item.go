@@ -445,7 +445,7 @@ func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters]
 	for n := range rv {
 		if _, ok := lv[n]; !ok {
 			CreateChange(changes, ObjectAdded, v3.ParametersLabel,
-				nil, rv[n].GetName().ValueNode, true, nil,
+				nil, rv[n].GetName().ValueNode, rv[n].GetRequired().Value, nil,
 				rv[n].GetName().Value)
 		}
 	}
