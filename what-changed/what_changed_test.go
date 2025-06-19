@@ -138,3 +138,26 @@ func ExampleCompareOpenAPIDocuments() {
 		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
 	// Output: There are 75 changes, of which 20 are breaking. 6 schemas have changes.
 }
+
+func TestCheckExplodedFileCheck(t *testing.T) {
+	original, _ := os.ReadFile("../test_specs/a.yaml")
+	modified, _ := os.ReadFile("../test_specs/a-alt.yaml")
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+
+	// set the basepath:
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = "../test_specs"
+	config.AllowFileReferences = true
+
+	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, config)
+	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, config)
+
+	changes := CompareOpenAPIDocuments(origDoc, modDoc)
+	assert.Equal(t, 3, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 3)
+
+}
