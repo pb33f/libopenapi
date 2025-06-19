@@ -167,6 +167,15 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			return [32]byte{}
 		}
 	}
+
+	// let's check the rolodex for a potential circular reference, and if there isn't a match, go ahead and hash the reference value.
+	if !CheckSchemaProxyForCircularRefs(sp) {
+		if sp.rendered == nil {
+			sp.rendered = sp.Schema()
+		}
+		return sp.rendered.Hash()
+	}
+
 	// hash reference value only, do not resolve!
 	return sha256.Sum256([]byte(sp.GetReference()))
 }
@@ -183,4 +192,8 @@ func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
 // GetIndex will return the index.SpecIndex pointer that was passed to the SchemaProxy during build.
 func (sp *SchemaProxy) GetIndex() *index.SpecIndex {
 	return sp.idx
+}
+
+type HasIndex interface {
+	GetIndex() *index.SpecIndex
 }

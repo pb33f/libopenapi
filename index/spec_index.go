@@ -185,6 +185,10 @@ func (index *SpecIndex) GetRolodex() *Rolodex {
 	return index.rolodex
 }
 
+func (index *SpecIndex) SetRolodex(rolodex *Rolodex) {
+	index.rolodex = rolodex
+}
+
 // GetSpecFileName returns the root spec filename, if it exists, otherwise returns the theoretical root spec
 func (index *SpecIndex) GetSpecFileName() string {
 	if index == nil || index.rolodex == nil || index.rolodex.indexConfig == nil || index.rolodex.indexConfig.SpecFilePath == "" {
