@@ -160,6 +160,11 @@ func (r *Rolodex) GetSafeCircularReferences() []*CircularReferenceResult {
 	return debouncedResults
 }
 
+// SetSafeCircularReferences sets the safe circular references for the rolodex.
+func (r *Rolodex) SetSafeCircularReferences(refs []*CircularReferenceResult) {
+	r.safeCircularReferences = refs
+}
+
 // GetIndexingDuration returns the duration it took to index the rolodex.
 func (r *Rolodex) GetIndexingDuration() time.Duration {
 	return r.indexingDuration
@@ -205,6 +210,11 @@ func (r *Rolodex) AddLocalFS(baseDir string, fileSystem fs.FS) {
 // SetRootNode sets the root node of the rolodex (the entry point, the main document)
 func (r *Rolodex) SetRootNode(node *yaml.Node) {
 	r.rootNode = node
+}
+
+// SetRootIndex sets the root index of the rolodex (the entry point, the main document).
+func (r *Rolodex) SetRootIndex(rootIndex *SpecIndex) {
+	r.rootIndex = rootIndex
 }
 
 func (r *Rolodex) AddExternalIndex(idx *SpecIndex, location string) {
