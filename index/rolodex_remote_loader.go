@@ -320,7 +320,6 @@ type waiterRemote struct {
 	listeners int
 	error     error
 	mu        sync.Mutex
-	cond      *sync.Cond
 }
 
 func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.File, error) {
@@ -354,14 +353,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		wait := r.(*waiterRemote)
 
 		wait.mu.Lock()
-		wait.listeners++
 		i.logger.Debug("[rolodex remote loader] waiting for existing fetch to complete", "file", remoteURL,
 			"remoteURL", remoteParsedURL.String())
-
-		for !wait.done {
-			wait.cond.Wait()
-		}
-		wait.listeners--
 		f := wait.file
 		e := wait.error
 		i.logger.Debug("[rolodex remote loader]: waiting done, remote completed, returning file", "file",
@@ -381,9 +374,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	}
 
 	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}
-	processingWaiter.cond = sync.NewCond(&processingWaiter.mu)
-
 	processingWaiter.mu.Lock()
+
 	// add to processing
 	i.ProcessingFiles.Store(remoteParsedURL.Path, processingWaiter)
 
@@ -402,9 +394,9 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	if remoteParsedURL.Scheme == "" {
 
 		processingWaiter.done = true
-		if processingWaiter.cond != nil {
-			processingWaiter.cond.Broadcast()
-		}
+		//if processingWaiter.cond != nil {
+		//	processingWaiter.cond.Broadcast()
+		//}
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		processingWaiter.mu.Unlock()
 		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
@@ -422,9 +414,6 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		// remove from processing
 		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-		if processingWaiter.cond != nil {
-			processingWaiter.cond.Broadcast()
-		}
 		processingWaiter.mu.Unlock()
 
 		if response != nil {
@@ -437,11 +426,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	if response == nil {
 		// remove from processing
 		processingWaiter.done = true
-		if processingWaiter.cond != nil {
-			processingWaiter.cond.Broadcast()
-		}
-		processingWaiter.mu.Unlock()
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+		processingWaiter.mu.Unlock()
 		return nil, fmt.Errorf("empty response from remote URL: %s", remoteParsedURL.String())
 	}
 	responseBytes, readError := io.ReadAll(response.Body)
@@ -450,12 +436,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		// remove from processing
 		processingWaiter.error = readError
 		processingWaiter.done = true
-		if processingWaiter.cond != nil {
-			processingWaiter.cond.Broadcast()
-		}
-		processingWaiter.mu.Unlock()
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-
+		processingWaiter.mu.Unlock()
 		return nil, fmt.Errorf("error reading bytes from remote file '%s': [%s]",
 			remoteParsedURL.String(), readError.Error())
 	}
@@ -465,14 +447,10 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		// remove from processing
 		processingWaiter.error = fmt.Errorf("remote file '%s' returned status code %d", remoteParsedURL.String(), response.StatusCode)
 		processingWaiter.done = true
-		if processingWaiter.cond != nil {
-			processingWaiter.cond.Broadcast()
-		}
-		processingWaiter.mu.Unlock()
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-
 		i.logger.Error("unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
+		processingWaiter.mu.Unlock()
 		return nil, fmt.Errorf("unable to fetch remote document '%s' (error %d)", remoteParsedURL.String(),
 			response.StatusCode)
 	}
@@ -537,11 +515,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	// remove from processing
 	processingWaiter.file = remoteFile
 	processingWaiter.done = true
-	if processingWaiter.cond != nil {
-		processingWaiter.cond.Broadcast()
-	}
-	processingWaiter.mu.Unlock()
 	i.ProcessingFiles.Delete(remoteParsedURL.Path)
+	processingWaiter.mu.Unlock()
 	return remoteFile, errors.Join(i.remoteErrors...)
 }
 

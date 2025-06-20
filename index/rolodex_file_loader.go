@@ -71,7 +71,7 @@ type waiterLocal struct {
 	listeners int
 	error     error
 	mu        sync.RWMutex
-	cond      *sync.Cond
+	//cond      *sync.Cond
 }
 
 func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, error) {
@@ -99,22 +99,15 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			wait := r.(*waiterLocal)
 
 			wait.mu.Lock()
-			wait.listeners++
 			l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
-			for !wait.done {
-				wait.cond.Wait()
-			}
 			f := wait.file
 			e := wait.error
-			wait.listeners--
 			l.logger.Debug("[rolodex file loader]: waiting done, OS load completed, returning file", "file", name, "listeners", wait.listeners)
 			wait.mu.Unlock()
 			return f, e
 		}
 
 		processingWaiter := &waiterLocal{f: name}
-		processingWaiter.cond = sync.NewCond(&processingWaiter.mu)
-
 		processingWaiter.mu.Lock()
 
 		l.processingFiles.Store(name, processingWaiter)
@@ -127,9 +120,6 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 		if extErr != nil {
 			processingWaiter.error = extErr
 			processingWaiter.done = true
-			if processingWaiter.cond != nil {
-				processingWaiter.cond.Broadcast()
-			}
 			l.processingFiles.Delete(name)
 			processingWaiter.mu.Unlock()
 
@@ -162,9 +152,6 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 		processingWaiter.file = extractedFile
 		processingWaiter.error = extErr
 		processingWaiter.done = true
-		if processingWaiter.cond != nil {
-			processingWaiter.cond.Broadcast()
-		}
 		l.processingFiles.Delete(name)
 		processingWaiter.mu.Unlock()
 
