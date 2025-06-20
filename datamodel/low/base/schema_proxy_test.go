@@ -197,3 +197,23 @@ description: cakes`
 	assert.True(t, f)
 	assert.NotNil(t, n)
 }
+
+func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
+	sp := new(SchemaProxy)
+
+	r := low.Reference{}
+	r.SetReference("hello", &yaml.Node{})
+	sp.Reference = r
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	cfg := &index.SpecIndexConfig{Logger: logger}
+	idx := index.NewSpecIndexWithConfig(nil, cfg)
+	sp.idx = idx
+
+	rolo := index.NewRolodex(cfg)
+	idx.SetRolodex(rolo)
+	rolo.SetRootIndex(idx)
+
+	v := sp.Hash()
+	assert.Equal(t, [32]byte{}, v)
+}
