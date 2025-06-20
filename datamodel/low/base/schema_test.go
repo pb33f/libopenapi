@@ -2023,7 +2023,7 @@ func TestSchema_QuickHash(t *testing.T) {
 	}
 	duration := timeStd.Since(now)
 	fmt.Printf("Quick Duration: %d microseconds\n", duration.Microseconds())
-	assert.Less(t, duration.Microseconds(), int64(100))
+	assert.Less(t, duration.Microseconds(), int64(250)) // github runners are slow!
 
 	// rehash each 50 times, should always be the same
 	// calculate how long loop takes to run
