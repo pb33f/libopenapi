@@ -25,13 +25,18 @@ const (
 var changeMutex sync.Mutex
 
 func checkLocation(ctx *ChangeContext, hs base.HasIndex) bool {
-	idx := hs.GetIndex()
-	if idx.GetRolodex() != nil {
-		r := idx.GetRolodex()
-		rIdx := r.GetRootIndex()
-		if rIdx.GetSpecAbsolutePath() != idx.GetSpecAbsolutePath() {
-			ctx.DocumentLocation = idx.GetSpecAbsolutePath()
-			return true
+	if !reflect.ValueOf(hs).IsNil() {
+		idx := hs.GetIndex()
+		if idx == nil {
+			return false
+		}
+		if idx.GetRolodex() != nil {
+			r := idx.GetRolodex()
+			rIdx := r.GetRootIndex()
+			if rIdx.GetSpecAbsolutePath() != idx.GetSpecAbsolutePath() {
+				ctx.DocumentLocation = idx.GetSpecAbsolutePath()
+				return true
+			}
 		}
 	}
 	return false

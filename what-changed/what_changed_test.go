@@ -154,10 +154,36 @@ func TestCheckExplodedFileCheck(t *testing.T) {
 	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, config)
 
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
-	assert.Equal(t, 3, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 
 	allChanges := changes.GetAllChanges()
-	assert.Len(t, allChanges, 3)
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, "b.yaml#/components/schemas/SchemaB", allChanges[0].OriginalObject)
+	assert.Equal(t, "b-alt.yaml#/components/schemas/SchemaB", allChanges[0].NewObject)
+
+}
+
+func TestCheckExplodedFileCheck_IdenticalNames(t *testing.T) {
+	original, _ := os.ReadFile("../test_specs/ref_test/orig/a.yaml")
+	modified, _ := os.ReadFile("../test_specs/ref_test/mod/a.yaml")
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+
+	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, &datamodel.DocumentConfiguration{
+		BasePath:            "../test_specs/ref_test/orig",
+		AllowFileReferences: true,
+	})
+	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, &datamodel.DocumentConfiguration{
+		BasePath:            "../test_specs/ref_test/mod",
+		AllowFileReferences: true,
+	})
+
+	changes := CompareOpenAPIDocuments(origDoc, modDoc)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
 
 }

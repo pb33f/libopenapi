@@ -3,22 +3,20 @@
 
 package base
 
-import (
-	"github.com/pb33f/libopenapi/index"
-)
-
 func CheckSchemaProxyForCircularRefs(s *SchemaProxy) bool {
-	allCircs := s.GetIndex().GetRolodex().GetRootIndex().GetCircularReferences()
-	safeCircularRefs := s.GetIndex().GetRolodex().GetSafeCircularReferences()
-	ignoredCircularRefs := s.GetIndex().GetRolodex().GetIgnoredCircularReferences()
+	rolo := s.GetIndex().GetRolodex()
+	if rolo == nil {
+		return false // no rolodex, so no circular references
+	}
+	allCircs := rolo.GetRootIndex().GetCircularReferences()
+	safeCircularRefs := rolo.GetSafeCircularReferences()
+	ignoredCircularRefs := rolo.GetIgnoredCircularReferences()
 	combinedCircularRefs := append(safeCircularRefs, ignoredCircularRefs...)
 	combinedCircularRefs = append(combinedCircularRefs, allCircs...)
 	for _, ref := range combinedCircularRefs {
 		// hash the root node of the schema reference
-		rh := index.HashNode(s.GetValueNode())
-		lph := index.HashNode(ref.LoopPoint.Node)
-		if rh == lph {
-			return true // nope
+		if ref.LoopPoint.FullDefinition == s.GetReference() || ref.LoopPoint.Definition == s.GetReference() {
+			return true
 		}
 	}
 	return false

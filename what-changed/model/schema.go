@@ -389,6 +389,14 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					return nil
 				}
 
+				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
+					r.GetIndex().GetSpecAbsolutePath() == "root.yaml" {
+					// local reference doesn't need following
+					return nil
+				}
+
+				// continue on because the external references are the same and we need to check things going forward.
+
 			} else {
 				// references are different, that's all we care to know.
 				CreateChange(&changes, Modified, v3.RefLabel,
@@ -401,6 +409,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					// if we have a circular reference, we can't do any more work here.
 					return nil
 				}
+				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
+					r.GetIndex().GetSpecAbsolutePath() != "root.yaml" {
+					return sc
+				}
+				return nil
 			}
 		}
 
@@ -420,6 +433,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					// if we have a circular reference, we can't do any more work here.
 					return nil
 				}
+				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
+					r.GetIndex().GetSpecAbsolutePath() != "root.yaml" {
+					return sc
+				}
+				return nil
 			}
 		}
 
@@ -439,7 +457,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					// if we have a circular reference, we can't do any more work here.
 					return nil
 				}
-
+				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
+					r.GetIndex().GetSpecAbsolutePath() == "root.yaml" {
+					return sc
+				}
+				return nil
 			}
 		}
 
