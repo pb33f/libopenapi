@@ -1815,6 +1815,25 @@ func TestRolodex_GetIgnoredCircularReferences_nil(t *testing.T) {
 	assert.Nil(t, circ)
 }
 
+func TestRolodex_SetSafeCircularRefs(t *testing.T) {
+	var r *Rolodex
+	r = NewRolodex(CreateOpenAPIIndexConfig())
+	r.SetSafeCircularReferences([]*CircularReferenceResult{{
+		LoopIndex: 1,
+		LoopPoint: &Reference{
+			FullDefinition: "test",
+		},
+	}})
+	assert.NotNil(t, r.GetSafeCircularReferences())
+}
+
+func TestRolodex_CheckSetRootIndex(t *testing.T) {
+	var r *Rolodex
+	r = NewRolodex(CreateOpenAPIIndexConfig())
+	r.SetRootIndex(&SpecIndex{})
+	assert.NotNil(t, r.GetRootIndex())
+}
+
 func TestRolodex_IndexCircularLookup_SafeCircular(t *testing.T) {
 	offToOz := `openapi: 3.1.0
 components:
