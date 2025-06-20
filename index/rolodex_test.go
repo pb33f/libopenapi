@@ -4,6 +4,7 @@
 package index
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -1863,4 +1864,117 @@ func TestSpecIndex_TestDoubleIndexAdd(t *testing.T) {
 	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
 	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
 	assert.Len(t, r.GetIndexes(), 1)
+}
+
+type testRolodexFS struct {
+	errorYaml bool
+}
+
+func (ts *testRolodexFS) Open(name string) (fs.File, error) {
+	return &testRolodexFile{errorYaml: ts.errorYaml}, nil
+}
+
+func (ts *testRolodexFS) GetFiles() map[string]RolodexFile {
+	return nil
+}
+
+type testRolodexFile struct {
+	offset    int64
+	errorYaml bool
+}
+
+func (trf *testRolodexFile) GetContent() string {
+	return "test content"
+}
+func (trf *testRolodexFile) GetFileExtension() FileExtension {
+	return YAML
+}
+func (trf *testRolodexFile) GetFullPath() string {
+	return "/test/path/spec.yaml"
+}
+func (trf *testRolodexFile) GetErrors() []error {
+	return nil
+}
+func (trf *testRolodexFile) GetContentAsYAMLNode() (*yaml.Node, error) {
+	if trf.errorYaml {
+		return nil, fmt.Errorf("error getting YAML node")
+	}
+	return &yaml.Node{}, nil
+}
+func (trf *testRolodexFile) GetIndex() *SpecIndex {
+	return &SpecIndex{
+		specAbsolutePath: "/test/path/spec.yaml",
+	}
+}
+func (trf *testRolodexFile) Name() string {
+	return "spec.yaml"
+}
+func (trf *testRolodexFile) ModTime() time.Time {
+	return time.Now()
+}
+func (trf *testRolodexFile) IsDir() bool {
+	return false
+}
+func (trf *testRolodexFile) Sys() any {
+	return nil
+}
+func (trf *testRolodexFile) Size() int64 {
+	return int64(len(trf.GetContent()))
+}
+
+func (trf *testRolodexFile) Mode() os.FileMode {
+	return 0
+}
+
+// Close closes the file (doesn't do anything, returns no error)
+func (trf *testRolodexFile) Close() error {
+	return nil
+}
+
+// Stat returns the FileInfo for the file.
+func (trf *testRolodexFile) Stat() (fs.FileInfo, error) {
+	return trf, nil
+}
+
+// Read reads the file into a byte slice, makes it compatible with io.Reader.
+func (trf *testRolodexFile) Read(b []byte) (int, error) {
+	if trf.offset >= int64(len(trf.GetContent())) {
+		return 0, io.EOF
+	}
+	if trf.offset < 0 {
+		return 0, &fs.PathError{Op: "read", Path: trf.GetFullPath(), Err: fs.ErrInvalid}
+	}
+	n := copy(b, trf.GetContent()[trf.offset:])
+	trf.offset += int64(n)
+	return n, nil
+}
+
+func TestRolodex_TestRolodexFileCompatibleFS(t *testing.T) {
+	t.Parallel()
+
+	// when using a custom FS, but also returning a RolodexFile compatible fs.File.
+
+	testFS := &testRolodexFS{}
+
+	baseDir := "/tmp"
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseDir, testFS)
+
+	f, rerr := rolo.Open("spec.yaml")
+	assert.NoError(t, rerr)
+	assert.Equal(t, "test content", f.GetContent())
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
+	rolo.indexes = append(rolo.indexes, rolo.rootIndex)
+	rolo.ClearIndexCaches()
+
+	testFS = &testRolodexFS{errorYaml: true}
+
+	rolo = NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseDir, testFS)
+
+	f, rerr = rolo.Open("spec.yaml")
+	assert.Error(t, rerr)
+	rolo.ClearIndexCaches()
+
 }
