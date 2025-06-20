@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -342,4 +343,42 @@ func TestRecursiveLocalFile_MultipleRequests(t *testing.T) {
 		<-c
 		completed++
 	}
+}
+
+func Test_LocalFSWaiter(t *testing.T) {
+
+	localFS, _ := NewLocalFSWithConfig(&LocalFSConfig{
+		IndexConfig: &SpecIndexConfig{
+			AllowFileLookup: true,
+		},
+	})
+
+	fileChan := make(chan *LocalFile)
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+	process := func() {
+		file, _ := localFS.OpenWithContext(context.Background(), "rolodex_test_data/doc1.yaml")
+		fileChan <- file.(*LocalFile)
+	}
+
+	go func() {
+		for {
+			select {
+			case file := <-fileChan:
+				if file != nil {
+					wg.Done()
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	total := 100
+	wg.Add(total)
+	for i := 0; i < total; i++ {
+		go process()
+	}
+	wg.Wait()
+	close(done)
 }
