@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -1241,7 +1242,7 @@ func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
 	b.Content = []*yaml.Node{a}
 
 	// now look for something that does not exist.
-	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10)
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10*time.Millisecond)
 	assert.Nil(t, nodes)
 	assert.Error(t, err)
 }

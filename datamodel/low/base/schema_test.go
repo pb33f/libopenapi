@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"testing"
 	timeStd "time"
@@ -2022,8 +2021,7 @@ func TestSchema_QuickHash(t *testing.T) {
 		assert.Equal(t, quickHash, quickHashCompare)
 	}
 	duration := timeStd.Since(now)
-	fmt.Printf("Quick Duration: %d microseconds\n", duration.Microseconds())
-	assert.Less(t, duration.Microseconds(), int64(250)) // github runners are slow!
+	//fmt.Printf("Quick Duration: %d microseconds\n", duration.Microseconds())
 
 	// rehash each 50 times, should always be the same
 	// calculate how long loop takes to run
@@ -2033,7 +2031,7 @@ func TestSchema_QuickHash(t *testing.T) {
 		assert.Equal(t, regularHash, regularHashCompare)
 	}
 	durationRegular := timeStd.Since(now)
-	fmt.Printf("Regular Duration: %d microseconds\n", durationRegular.Microseconds())
+	//fmt.Printf("Regular Duration: %d microseconds\n", durationRegular.Microseconds())
 
 	// quick is always quicker.
 	assert.Less(t, duration.Microseconds(), durationRegular.Microseconds())

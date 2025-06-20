@@ -148,7 +148,8 @@ type Schema struct {
 	RootNode *yaml.Node
 	index    *index.SpecIndex
 	context  context.Context
-	hashed   [32]byte // quick hash of the schema, used for quick equality checking
+	hashed   [32]byte   // quick hash of the schema, used for quick equality checking
+	hashLock sync.Mutex // lock to prevent concurrent hashing of the same schema
 	*low.Reference
 	low.NodeMap
 }
@@ -200,6 +201,8 @@ func (s *Schema) hash(quick bool) [32]byte {
 	if quick {
 		if v, ok := SchemaQuickHashMap.Load(key); ok {
 			if r, k := v.(*Schema); k {
+				r.hashLock.Lock()
+				defer r.hashLock.Unlock()
 				return r.hashed
 			}
 		}
@@ -457,7 +460,9 @@ func (s *Schema) hash(quick bool) [32]byte {
 		}
 	}
 	SchemaQuickHashMap.Store(key, s)
+	s.hashLock.Lock()
 	s.hashed = sha256.Sum256([]byte(strings.Join(d, "|")))
+	defer s.hashLock.Unlock()
 	return s.hashed
 }
 
