@@ -1949,3 +1949,22 @@ components:
 	pathItems := index.GetAllComponentPathItems()
 	assert.Equal(t, 1, len(pathItems))
 }
+
+func TestSpecIndex_SetRolodex(t *testing.T) {
+	yml := `openapi: 3.0.1
+components:
+  pathItems:
+    bingo:
+      operationId: bango`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	assert.Nil(t, index.GetRolodex())
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	index.SetRolodex(rolo)
+	assert.NotNil(t, index.GetRolodex())
+
+}
