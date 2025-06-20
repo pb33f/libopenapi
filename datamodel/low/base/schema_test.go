@@ -1971,3 +1971,45 @@ func TestSchema_Hash_Empty(t *testing.T) {
 	var s *Schema
 	assert.NotNil(t, s.Hash())
 }
+
+func TestSchema_QuickHash(t *testing.T) {
+	yml := `schema:
+  type: object
+  example:
+    ping: pong
+    jing:
+      jong: jang
+  examples:
+   - tang: bang
+   - bom: jog
+     ding: dong`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "test")
+
+	res, _ := ExtractSchema(ctx, idxNode.Content[0], idx)
+
+	quickHash := res.Value.Schema().QuickHash()
+	regularHash := res.Value.Schema().Hash()
+	assert.NotEmpty(t, quickHash)
+	assert.NotEmpty(t, regularHash)
+	assert.Equal(t, quickHash, regularHash)
+
+	// rehash each 50 times, should always be the same
+	for i := 0; i < 50; i++ {
+		quickHash = res.Value.Schema().QuickHash()
+		regularHash = res.Value.Schema().Hash()
+		assert.Equal(t, quickHash, quickHash)
+	}
+
+}
