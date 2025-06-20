@@ -169,11 +169,12 @@ func (sp *SchemaProxy) Hash() [32]byte {
 	}
 
 	// let's check the rolodex for a potential circular reference, and if there isn't a match, go ahead and hash the reference value.
-	if !CheckSchemaProxyForCircularRefs(sp) {
+	if sp.GetIndex() != nil && !CheckSchemaProxyForCircularRefs(sp) {
 		if sp.rendered == nil {
 			sp.rendered = sp.Schema()
 		}
-		return sp.rendered.Hash()
+		qh := sp.rendered.QuickHash() // quick hash uses a cache to keep things fast.
+		return qh
 	}
 
 	// hash reference value only, do not resolve!
