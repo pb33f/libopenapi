@@ -409,11 +409,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 					// if we have a circular reference, we can't do any more work here.
 					return nil
 				}
-				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
-					r.GetIndex().GetSpecAbsolutePath() != "root.yaml" {
-					return sc
-				}
-				return nil
+				return sc
 			}
 		}
 
@@ -429,15 +425,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				sc.PropertyChanges = NewPropertyChanges(changes)
 
 				// check if this is a circular ref.
-				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
+				if base.CheckSchemaProxyForCircularRefs(r) {
 					// if we have a circular reference, we can't do any more work here.
 					return nil
 				}
-				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
-					r.GetIndex().GetSpecAbsolutePath() != "root.yaml" {
-					return sc
-				}
-				return nil
+				return sc
 			}
 		}
 
@@ -453,15 +445,11 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				sc.PropertyChanges = NewPropertyChanges(changes)
 
 				// check if this is a circular ref.
-				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
+				if base.CheckSchemaProxyForCircularRefs(l) {
 					// if we have a circular reference, we can't do any more work here.
 					return nil
 				}
-				if r.GetIndex() != nil && r.GetIndex().GetSpecAbsolutePath() == "" ||
-					r.GetIndex().GetSpecAbsolutePath() == "root.yaml" {
-					return sc
-				}
-				return nil
+				return sc
 			}
 		}
 
