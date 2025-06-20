@@ -639,9 +639,6 @@ func (r *Rolodex) OpenWithContext(ctx context.Context, location string) (Rolodex
 			if len(bytes) > 0 {
 				var atm atomic.Value
 				idx := r.rootIndex
-				if hi, ok := f.(RolodexFile); ok {
-					idx = hi.GetIndex()
-				}
 				atm.Store(idx)
 
 				localFile = &LocalFile{
