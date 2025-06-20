@@ -3478,3 +3478,221 @@ func TestCompareSchemas_CheckNPE(t *testing.T) {
 	var sc *SchemaChanges
 	assert.Nil(t, sc.GetPropertyChanges())
 }
+
+func TestCompareSchemas_CheckRefChangeCircular_Right(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/OK'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/OK'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_CheckRefChangeCircular_Left(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/OK'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_CheckRefChangeCircular_HackIndex(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Ho:
+      type: int
+    OK:
+      $ref: '#/components/schemas/Ho'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+	rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+	changes = CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+}
+
+func TestCompareSchemas_CheckRefChange_HackIndex_LeftToRight(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Ho:
+      type: int
+    OK:
+      type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+	rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+	changes = CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+	rSchemaProxy.GetIndex().SetAbsolutePath("")
+	changes = CompareSchemas(rSchemaProxy, lSchemaProxy) // flip them back
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+}
+
+func TestCompareSchemas_CheckRefChangeCircular_HackIndex_LeftToRight(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Ho:
+      type: int
+    OK:
+      $ref: '#/components/schemas/OK'`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_CheckRefChange_HackIndex_RightToLeft(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Ho:
+      type: int
+    OK:
+      type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/Yo'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Len(t, changes.GetAllChanges(), 1)
+
+	rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+	changes = CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Len(t, changes.GetAllChanges(), 1)
+}
+
+func TestCompareSchemas_CheckRefChangeCircular_HackIndex_RightToLeft(t *testing.T) {
+	left := `openapi: 3.0
+components:
+  schemas:
+    Ho:
+      type: int
+    OK:
+      type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Yo:
+      type: int
+    OK:
+      $ref: '#/components/schemas/OK'`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	//rSchemaProxy.GetIndex().SetAbsolutePath("/something/else.yaml")
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+
+}
