@@ -377,19 +377,30 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 	if l != nil && r != nil {
 
-		// if left proxy is a reference and right is a reference (we won't recurse into them)
+		// if left proxy is a reference and right is a reference (we won't recurse into circular references here)
 		if l.IsReference() && r.IsReference() {
+
 			// points to the same schema
 			if l.GetReference() == r.GetReference() {
-				// there is nothing to be done at this point.
-				return nil
+
+				// check if this is a circular ref.
+				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
+					// if we have a circular reference, we can't do any more work here.
+					return nil
+				}
+
 			} else {
 				// references are different, that's all we care to know.
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode().Content[1], r.GetValueNode().Content[1], true, l.GetReference(),
+					l.GetValueNode().Content[1], r.GetValueNode().Content[1], false, l.GetReference(),
 					r.GetReference())
 				sc.PropertyChanges = NewPropertyChanges(changes)
-				return sc
+
+				// check if this is a circular ref.
+				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
+					// if we have a circular reference, we can't do any more work here.
+					return nil
+				}
 			}
 		}
 
@@ -403,7 +414,12 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				CreateChange(&changes, Modified, v3.RefLabel,
 					l.GetValueNode(), r.GetValueNode().Content[1], false, l, r.GetReference())
 				sc.PropertyChanges = NewPropertyChanges(changes)
-				return sc // we're done here
+
+				// check if this is a circular ref.
+				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
+					// if we have a circular reference, we can't do any more work here.
+					return nil
+				}
 			}
 		}
 
@@ -417,7 +433,13 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 				CreateChange(&changes, Modified, v3.RefLabel,
 					l.GetValueNode().Content[1], r.GetValueNode(), false, l.GetReference(), r)
 				sc.PropertyChanges = NewPropertyChanges(changes)
-				return sc // done, nothing else to do.
+
+				// check if this is a circular ref.
+				if base.CheckSchemaProxyForCircularRefs(l) || base.CheckSchemaProxyForCircularRefs(r) {
+					// if we have a circular reference, we can't do any more work here.
+					return nil
+				}
+
 			}
 		}
 

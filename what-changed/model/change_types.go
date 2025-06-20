@@ -38,10 +38,11 @@ type WhatChanged struct {
 
 // ChangeContext holds a reference to the line and column positions of original and new change.
 type ChangeContext struct {
-	OriginalLine   *int `json:"originalLine,omitempty" yaml:"originalLine,omitempty"`
-	OriginalColumn *int `json:"originalColumn,omitempty" yaml:"originalColumn,omitempty"`
-	NewLine        *int `json:"newLine,omitempty" yaml:"newLine,omitempty"`
-	NewColumn      *int `json:"newColumn,omitempty" yaml:"newColumn,omitempty"`
+	DocumentLocation string `json:"document,omitempty" yaml:"document,omitempty"`
+	OriginalLine     *int   `json:"originalLine,omitempty" yaml:"originalLine,omitempty"`
+	OriginalColumn   *int   `json:"originalColumn,omitempty" yaml:"originalColumn,omitempty"`
+	NewLine          *int   `json:"newLine,omitempty" yaml:"newLine,omitempty"`
+	NewColumn        *int   `json:"newColumn,omitempty" yaml:"newColumn,omitempty"`
 }
 
 // HasChanged determines if the line and column numbers of the original and new values have changed.
