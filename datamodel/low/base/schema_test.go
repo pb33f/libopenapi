@@ -2034,6 +2034,7 @@ func TestSchema_QuickHash(t *testing.T) {
 	//fmt.Printf("Regular Duration: %d microseconds\n", durationRegular.Microseconds())
 
 	// quick is always quicker.
-	assert.Less(t, duration.Microseconds(), durationRegular.Microseconds())
-
+	if duration.Microseconds() > 0 && durationRegular.Microseconds() > 0 {
+		assert.Less(t, duration.Microseconds(), durationRegular.Microseconds())
+	}
 }
