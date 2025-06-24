@@ -6,6 +6,7 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -155,23 +156,21 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			// only resolve this proxy if it's not a ref.
 			sch := sp.Schema()
 			sp.rendered = sch
-			var hashError error
+			hashError := fmt.Errorf("circular reference detected: %s", sp.GetReference())
 			if sch != nil {
 				if !CheckSchemaProxyForCircularRefs(sp) {
 					return sch.Hash()
 				}
-				hashError = fmt.Errorf("SchemaProxy.Hash() failed to resolve schema, circular reference detected: %s", sp.GetReference())
 			}
 			var logger *slog.Logger
 			if sp.idx != nil {
 				logger = sp.idx.GetLogger()
 			}
 			if logger != nil {
-				bErr := sp.GetBuildError()
-				if bErr == nil {
-					bErr = hashError
+				bErr := errors.Join(sp.GetBuildError(), hashError)
+				if bErr != nil {
+					logger.Warn("SchemaProxy.Hash() unable to complete hash: ", "error", bErr.Error())
 				}
-				logger.Warn("SchemaProxy.Hash() failed to resolve schema, returning empty hash", "error", bErr.Error())
 			}
 			return [32]byte{}
 		}

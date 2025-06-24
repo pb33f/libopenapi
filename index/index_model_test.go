@@ -23,7 +23,7 @@ func TestSpecIndex_Rolodex(t *testing.T) {
 	assert.Nil(t, idx1.GetResolver())
 	idx1.SetResolver(&Resolver{})
 	assert.NotNil(t, idx1.GetResolver())
-
+	assert.NotNil(t, idx1.GetConfig().GetId())
 }
 
 func Test_MarshalJSON(t *testing.T) {
