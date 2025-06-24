@@ -14,6 +14,8 @@ import (
 func TestSpecIndex_GetConfig(t *testing.T) {
 	idx1 := NewTestSpecIndex().Load().(*SpecIndex)
 	c := SpecIndexConfig{}
+	id := c.GetId()
+	assert.NotNil(t, id)
 	idx1.config = &c
 	assert.Equal(t, &c, idx1.GetConfig())
 }
