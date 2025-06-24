@@ -6,6 +6,7 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -147,24 +148,30 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 func (sp *SchemaProxy) Hash() [32]byte {
 	if sp.rendered != nil {
 		if !sp.IsReference() {
-			return sp.rendered.QuickHash()
+			return sp.rendered.Hash()
 		}
 	} else {
 		if !sp.IsReference() {
 			// only resolve this proxy if it's not a ref.
 			sch := sp.Schema()
 			sp.rendered = sch
+			var hashError error
 			if sch != nil {
 				if !CheckSchemaProxyForCircularRefs(sp) {
-					return sch.QuickHash()
+					return sch.Hash()
 				}
+				hashError = fmt.Errorf("SchemaProxy.Hash() failed to resolve schema, circular reference detected: %s", sp.GetReference())
 			}
 			var logger *slog.Logger
 			if sp.idx != nil {
 				logger = sp.idx.GetLogger()
 			}
 			if logger != nil {
-				logger.Warn("SchemaProxy.Hash() failed to resolve schema, returning empty hash", "error", sp.GetBuildError().Error())
+				bErr := sp.GetBuildError()
+				if bErr == nil {
+					bErr = hashError
+				}
+				logger.Warn("SchemaProxy.Hash() failed to resolve schema, returning empty hash", "error", bErr.Error())
 			}
 			return [32]byte{}
 		}
