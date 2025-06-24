@@ -1834,6 +1834,27 @@ func TestRolodex_CheckSetRootIndex(t *testing.T) {
 	assert.NotNil(t, r.GetRootIndex())
 }
 
+func TestRolodex_CheckID(t *testing.T) {
+	var r *Rolodex
+	r = NewRolodex(CreateOpenAPIIndexConfig())
+	id := r.GetId()
+	assert.NotNil(t, id)
+
+	r2 := NewRolodex(CreateOpenAPIIndexConfig())
+	assert.NotNil(t, id)
+	assert.NotEqual(t, r.GetId(), r2.GetId())
+
+	a := r.GetId()
+	b := r2.GetId()
+	c := r.RotateId()
+	d := r2.RotateId()
+
+	assert.NotEqual(t, a, b)
+	assert.NotEqual(t, a, c)
+	assert.NotEqual(t, a, d)
+
+}
+
 func TestRolodex_IndexCircularLookup_SafeCircular(t *testing.T) {
 	offToOz := `openapi: 3.1.0
 components:

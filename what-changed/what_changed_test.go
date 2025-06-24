@@ -164,7 +164,7 @@ func TestCheckExplodedFileCheck(t *testing.T) {
 
 }
 
-func TestCheckExplodedFileCheck_IdenticalNames(t *testing.T) {
+func TestCheckExplodedFileCheck_IdenticalRefNames(t *testing.T) {
 	original, _ := os.ReadFile("../test_specs/ref_test/orig/a.yaml")
 	modified, _ := os.ReadFile("../test_specs/ref_test/mod/a.yaml")
 	infoOrig, _ := datamodel.ExtractSpecInfo(original)
