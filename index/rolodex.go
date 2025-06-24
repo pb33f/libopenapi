@@ -6,6 +6,7 @@ package index
 import (
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -76,7 +77,7 @@ type Rolodex struct {
 	infiniteCircularReferences []*CircularReferenceResult
 	ignoredCircularReferences  []*CircularReferenceResult
 	logger                     *slog.Logger
-	inflight                   sync.Map // used to track inflight requests for files, to avoid duplicate requests.
+	id                         string // unique ID for the rolodex, can be used to identify it in logs or other contexts.
 }
 
 // NewRolodex creates a new rolodex with the provided index configuration.
@@ -94,6 +95,7 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 
 	r := &Rolodex{
 		indexConfig: indexConfig,
+		id:          utils.GenerateAlphanumericString(10),
 		localFS:     make(map[string]fs.FS),
 		remoteFS:    make(map[string]fs.FS),
 		logger:      logger,
@@ -101,6 +103,17 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 	}
 	indexConfig.Rolodex = r
 	return r
+}
+
+// RotateId generates a new unique ID for the rolodex.
+func (r *Rolodex) RotateId() string {
+	r.id = utils.GenerateAlphanumericString(10)
+	return r.id
+}
+
+// GetId returns the unique ID for the rolodex.
+func (r *Rolodex) GetId() string {
+	return r.id
 }
 
 // GetIgnoredCircularReferences returns a list of circular references that were ignored during the indexing process.

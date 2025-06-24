@@ -147,7 +147,7 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 func (sp *SchemaProxy) Hash() [32]byte {
 	if sp.rendered != nil {
 		if !sp.IsReference() {
-			return sp.rendered.Hash()
+			return sp.rendered.QuickHash()
 		}
 	} else {
 		if !sp.IsReference() {
@@ -155,7 +155,9 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			sch := sp.Schema()
 			sp.rendered = sch
 			if sch != nil {
-				return sch.Hash()
+				if !CheckSchemaProxyForCircularRefs(sp) {
+					return sch.QuickHash()
+				}
 			}
 			var logger *slog.Logger
 			if sp.idx != nil {
