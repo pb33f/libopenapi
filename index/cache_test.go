@@ -11,9 +11,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// NewTestSpecIndex Test helper function to create a SpecIndex with initialised high cache.
+// NewTestSpecIndex Test helper function to create a SpecIndex with initialized high cache.
 func NewTestSpecIndex() *atomic.Value {
-	index := &SpecIndex{}
+	index := &SpecIndex{config: CreateOpenAPIIndexConfig()}
 	index.InitHighCache()
 	var value atomic.Value
 	value.Store(index)
