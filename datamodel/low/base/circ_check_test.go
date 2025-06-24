@@ -65,8 +65,6 @@ func TestCheckSchemaProxyForCircularRefs_JourneyCheck(t *testing.T) {
 	rootIndex := index.NewSpecIndex(dummyNode)
 	_ = schema.Build(context.Background(), dummyNode, dummyNode, rootIndex)
 
-	assert.False(t, CheckSchemaProxyForCircularRefs(schema)) // no rolodex yet.
-
 	rootIndex.SetRolodex(rolo)
 	rolo.SetRootNode(dummyNode)
 	rolo.SetRootIndex(rootIndex)
@@ -85,4 +83,7 @@ func TestCheckSchemaProxyForCircularRefs_JourneyCheck(t *testing.T) {
 			},
 		},
 	})
+
+	assert.True(t, CheckSchemaProxyForCircularRefs(schema)) // no rolodex yet.
+
 }
