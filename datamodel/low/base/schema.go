@@ -197,7 +197,16 @@ func (s *Schema) hash(quick bool) [32]byte {
 	if idx != nil {
 		path = idx.GetSpecAbsolutePath()
 	}
-	cfId := s.Index.GetRolodex().GetId()
+	cfId := "root"
+	if s.Index != nil {
+		if s.Index.GetRolodex() != nil {
+			if s.Index.GetRolodex().GetId() != "" {
+				cfId = s.Index.GetRolodex().GetId()
+			}
+		} else {
+			cfId = s.Index.GetConfig().GetId()
+		}
+	}
 	key := fmt.Sprintf("%s:%d:%d:%s", path, s.RootNode.Line, s.RootNode.Column, cfId)
 	if quick {
 		if v, ok := SchemaQuickHashMap.Load(key); ok {

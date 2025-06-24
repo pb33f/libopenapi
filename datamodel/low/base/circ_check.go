@@ -6,10 +6,10 @@ package base
 // CheckSchemaProxyForCircularRefs checks if the provided SchemaProxy has any circular references, extracted from
 // The rolodex attached to the index.
 func CheckSchemaProxyForCircularRefs(s *SchemaProxy) bool {
-	rolo := s.GetIndex().GetRolodex()
-	if rolo == nil {
-		return false // no rolodex, so no circular references
+	if s.GetIndex() == nil || s.GetIndex().GetRolodex() == nil {
+		return false // no index or rolodex, so no circular references
 	}
+	rolo := s.GetIndex().GetRolodex()
 	allCircs := rolo.GetRootIndex().GetCircularReferences()
 	safeCircularRefs := rolo.GetSafeCircularReferences()
 	ignoredCircularRefs := rolo.GetIgnoredCircularReferences()

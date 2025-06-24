@@ -26,7 +26,9 @@ func (p *PathsChanges) GetAllChanges() []*Change {
 	var changes []*Change
 	changes = append(changes, p.Changes...)
 	for k := range p.PathItemsChanges {
-		changes = append(changes, p.PathItemsChanges[k].GetAllChanges()...)
+		if p.PathItemsChanges[k] != nil {
+			changes = append(changes, p.PathItemsChanges[k].GetAllChanges()...)
+		}
 	}
 	if p.ExtensionChanges != nil {
 		changes = append(changes, p.ExtensionChanges.GetAllChanges()...)
@@ -38,7 +40,9 @@ func (p *PathsChanges) GetAllChanges() []*Change {
 func (p *PathsChanges) TotalChanges() int {
 	c := p.PropertyChanges.TotalChanges()
 	for k := range p.PathItemsChanges {
-		c += p.PathItemsChanges[k].TotalChanges()
+		if p.PathItemsChanges[k] != nil {
+			c += p.PathItemsChanges[k].TotalChanges()
+		}
 	}
 	if p.ExtensionChanges != nil {
 		c += p.ExtensionChanges.TotalChanges()
@@ -50,7 +54,9 @@ func (p *PathsChanges) TotalChanges() int {
 func (p *PathsChanges) TotalBreakingChanges() int {
 	c := p.PropertyChanges.TotalBreakingChanges()
 	for k := range p.PathItemsChanges {
-		c += p.PathItemsChanges[k].TotalBreakingChanges()
+		if p.PathItemsChanges[k] != nil {
+			c += p.PathItemsChanges[k].TotalBreakingChanges()
+		}
 	}
 	return c
 }
