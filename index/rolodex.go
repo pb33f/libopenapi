@@ -95,7 +95,7 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 
 	r := &Rolodex{
 		indexConfig: indexConfig,
-		id:          utils.GenerateAlphanumericString(10),
+		id:          utils.GenerateAlphanumericString(6),
 		localFS:     make(map[string]fs.FS),
 		remoteFS:    make(map[string]fs.FS),
 		logger:      logger,
@@ -107,7 +107,7 @@ func NewRolodex(indexConfig *SpecIndexConfig) *Rolodex {
 
 // RotateId generates a new unique ID for the rolodex.
 func (r *Rolodex) RotateId() string {
-	r.id = utils.GenerateAlphanumericString(10)
+	r.id = utils.GenerateAlphanumericString(6)
 	return r.id
 }
 

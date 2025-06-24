@@ -185,7 +185,8 @@ type SpecIndexConfig struct {
 }
 
 // SetTheoreticalRoot sets the spec file paths to point to a theoretical spec file, which does not exist but is required
-// in order to formulate the absolute path to root references correctly.
+//
+//	to formulate the absolute path to root references correctly.
 func (s *SpecIndexConfig) SetTheoreticalRoot() {
 	s.SpecFilePath = filepath.Join(s.BasePath, theoreticalRoot)
 
@@ -196,22 +197,23 @@ func (s *SpecIndexConfig) SetTheoreticalRoot() {
 	s.SpecAbsolutePath = filepath.Join(basePath, theoreticalRoot)
 }
 
+// GetId returns the id of the SpecIndexConfig. If the id is not set, it will generate a random alphanumeric string
 func (s *SpecIndexConfig) GetId() string {
 	if s.id == "" {
-		s.id = utils.GenerateAlphanumericString(10)
+		s.id = utils.GenerateAlphanumericString(6)
 	}
 	return s.id
 }
 
 // CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
-// AllowFileLookup set to true. This is the default behaviour of the index in previous versions of libopenapi. (pre 0.6.0)
+// AllowFileLookup set to true. This is the default behavior of the index in previous versions of libopenapi. (pre 0.6.0)
 //
 // The default BasePath is the current working directory.
 func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 	return &SpecIndexConfig{
 		AllowRemoteLookup: true,
 		AllowFileLookup:   true,
-		id:                utils.GenerateAlphanumericString(10),
+		id:                utils.GenerateAlphanumericString(6),
 	}
 }
 
@@ -220,7 +222,7 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 //
 // The default BasePath is the current working directory.
 func CreateClosedAPIIndexConfig() *SpecIndexConfig {
-	return &SpecIndexConfig{id: utils.GenerateAlphanumericString(10)}
+	return &SpecIndexConfig{id: utils.GenerateAlphanumericString(6)}
 }
 
 // SpecIndex is a complete pre-computed index of the entire specification. Numbers are pre-calculated and
