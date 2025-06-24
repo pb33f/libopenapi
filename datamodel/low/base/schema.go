@@ -197,13 +197,12 @@ func (s *Schema) hash(quick bool) [32]byte {
 	if idx != nil {
 		path = idx.GetSpecAbsolutePath()
 	}
-	key := fmt.Sprintf("%s:%d:%d", path, s.RootNode.Line, s.RootNode.Column)
+	cfId := s.Index.GetRolodex().GetId()
+	key := fmt.Sprintf("%s:%d:%d:%s", path, s.RootNode.Line, s.RootNode.Column, cfId)
 	if quick {
 		if v, ok := SchemaQuickHashMap.Load(key); ok {
-			if r, k := v.(*Schema); k {
-				r.hashLock.Lock()
-				defer r.hashLock.Unlock()
-				return r.hashed
+			if r, k := v.([32]byte); k {
+				return r
 			}
 		}
 	}
@@ -459,11 +458,9 @@ func (s *Schema) hash(quick bool) [32]byte {
 			d = append(d, low.GenerateHashString(ex.Value))
 		}
 	}
-	SchemaQuickHashMap.Store(key, s)
-	s.hashLock.Lock()
-	s.hashed = sha256.Sum256([]byte(strings.Join(d, "|")))
-	defer s.hashLock.Unlock()
-	return s.hashed
+	h := sha256.Sum256([]byte(strings.Join(d, "|")))
+	SchemaQuickHashMap.Store(key, h)
+	return h
 }
 
 // FindProperty will return a ValueReference pointer containing a SchemaProxy pointer
