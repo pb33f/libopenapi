@@ -5,6 +5,7 @@ package index
 
 import (
 	"encoding/json"
+	"github.com/pb33f/libopenapi/utils"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -180,6 +181,7 @@ type SpecIndexConfig struct {
 
 	// private fields
 	uri []string
+	id  string
 }
 
 // SetTheoreticalRoot sets the spec file paths to point to a theoretical spec file, which does not exist but is required
@@ -194,6 +196,13 @@ func (s *SpecIndexConfig) SetTheoreticalRoot() {
 	s.SpecAbsolutePath = filepath.Join(basePath, theoreticalRoot)
 }
 
+func (s *SpecIndexConfig) GetId() string {
+	if s.id == "" {
+		s.id = utils.GenerateAlphanumericString(10)
+	}
+	return s.id
+}
+
 // CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
 // AllowFileLookup set to true. This is the default behaviour of the index in previous versions of libopenapi. (pre 0.6.0)
 //
@@ -202,6 +211,7 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 	return &SpecIndexConfig{
 		AllowRemoteLookup: true,
 		AllowFileLookup:   true,
+		id:                utils.GenerateAlphanumericString(10),
 	}
 }
 
@@ -210,7 +220,7 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 //
 // The default BasePath is the current working directory.
 func CreateClosedAPIIndexConfig() *SpecIndexConfig {
-	return &SpecIndexConfig{}
+	return &SpecIndexConfig{id: utils.GenerateAlphanumericString(10)}
 }
 
 // SpecIndex is a complete pre-computed index of the entire specification. Numbers are pre-calculated and
