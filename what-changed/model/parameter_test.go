@@ -54,6 +54,7 @@ func TestCompareParameters_V3(t *testing.T) {
 	// compare.
 	extChanges := CompareParametersV3(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, "a param", extChanges)
 }
 
 func TestCompareParameters_V3_Schema(t *testing.T) {
