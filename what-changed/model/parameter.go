@@ -208,7 +208,7 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 
 	// required
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
-		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, true)
+		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, right.GetRequired().Value)
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,
