@@ -218,7 +218,7 @@ func CreateOpenAPIIndexConfig() *SpecIndexConfig {
 }
 
 // CreateClosedAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
-// AllowFileLookup set to false. This is the default behaviour of the index in versions 0.6.0+
+// AllowFileLookup set to false. This is the default behavior of the index in versions 0.6.0+
 //
 // The default BasePath is the current working directory.
 func CreateClosedAPIIndexConfig() *SpecIndexConfig {
