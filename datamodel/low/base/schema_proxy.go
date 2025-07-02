@@ -163,7 +163,7 @@ func (sp *SchemaProxy) Hash() [32]byte {
 				}
 			}
 			var logger *slog.Logger
-			if sp.idx != nil {
+			if sp.idx != nil && sp.idx.GetLogger() != nil {
 				logger = sp.idx.GetLogger()
 			}
 			if logger != nil {
