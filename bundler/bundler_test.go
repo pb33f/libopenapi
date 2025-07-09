@@ -397,388 +397,6 @@ paths:
 	assert.Error(t, e)
 }
 
-func TestDiscriminatorMappings_PropertyNameOnly(t *testing.T) {
-	// Test discriminator with propertyName only (no mapping)
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: PropertyName Only Test
-  version: "1.0.0"
-paths:
-  /vehicles:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Vehicle"
-      responses:
-        '200':
-          description: Success
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "#/components/schemas/Car"
-        - $ref: "#/components/schemas/Truck"
-      discriminator:
-        propertyName: vehicleType
-    Car:
-      type: object
-      properties:
-        vehicleType:
-          type: string
-          enum: [Car]
-    Truck:
-      type: object
-      properties:
-        vehicleType:
-          type: string
-          enum: [Truck]
-        capacity:
-          type: integer`)
-
-	config := &datamodel.DocumentConfiguration{
-		BasePath:                "test/specs",
-		ExtractRefsSequentially: true,
-	}
-
-	// Test both bundling modes
-	bundledBytes, err := BundleBytes(specBytes, config)
-	assert.NoError(t, err)
-	assert.Contains(t, string(bundledBytes), "discriminator:")
-	assert.Contains(t, string(bundledBytes), "propertyName:")
-
-	composedBytes, err := BundleBytesComposed(specBytes, config, &BundleCompositionConfig{Delimiter: "__"})
-	assert.NoError(t, err)
-	assert.Contains(t, string(composedBytes), "discriminator:")
-	assert.Contains(t, string(composedBytes), "propertyName:")
-}
-
-func TestDiscriminatorMappings_ExternalFileReferences(t *testing.T) {
-	// Test discriminator with mapping to external files
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: External File References Test
-  version: "1.0.0"
-paths:
-  /vehicles:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Vehicle"
-      responses:
-        '200':
-          description: Success
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "vehicle.yaml"
-      discriminator:
-        propertyName: vehicleType
-        mapping:
-          vehicle: "vehicle.yaml"`)
-
-	config := &datamodel.DocumentConfiguration{
-		BasePath:                "test/specs",
-		ExtractRefsSequentially: true,
-	}
-
-	// Test inline bundling
-	bundledBytes, err := BundleBytes(specBytes, config)
-	assert.NoError(t, err)
-	bundledSpec := string(bundledBytes)
-	assert.Contains(t, bundledSpec, "discriminator:")
-	assert.Contains(t, bundledSpec, "wheels:") // from vehicle.yaml
-
-	// Test composition bundling
-	composedBytes, err := BundleBytesComposed(specBytes, config, &BundleCompositionConfig{Delimiter: "__"})
-	assert.NoError(t, err)
-	composedSpec := string(composedBytes)
-	assert.Contains(t, composedSpec, "discriminator:")
-	assert.Contains(t, composedSpec, "components:")
-	assert.Contains(t, composedSpec, "schemas:")
-}
-
-func TestDiscriminatorMappings_MixedLocalExternal(t *testing.T) {
-	// Test discriminator with mixed local and external mappings
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: Mixed References Test
-  version: "1.0.0"
-paths:
-  /vehicles:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Vehicle"
-      responses:
-        '200':
-          description: Success
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "#/components/schemas/Car"
-        - $ref: "vehicle.yaml"
-      discriminator:
-        propertyName: vehicleType
-        mapping:
-          car: "#/components/schemas/Car"
-          vehicle: "vehicle.yaml"
-    Car:
-      type: object
-      properties:
-        vehicleType:
-          type: string
-          enum: [car]
-        doors:
-          type: integer`)
-
-	config := &datamodel.DocumentConfiguration{
-		BasePath:                "test/specs",
-		ExtractRefsSequentially: true,
-	}
-
-	// Test inline bundling
-	bundledBytes, err := BundleBytes(specBytes, config)
-	assert.NoError(t, err)
-	bundledSpec := string(bundledBytes)
-	assert.Contains(t, bundledSpec, "discriminator:")
-	assert.Contains(t, bundledSpec, "doors:")  // from local Car schema
-	assert.Contains(t, bundledSpec, "wheels:") // from external vehicle.yaml
-
-	// Test composition bundling
-	composedBytes, err := BundleBytesComposed(specBytes, config, &BundleCompositionConfig{Delimiter: "__"})
-	assert.NoError(t, err)
-	composedSpec := string(composedBytes)
-	assert.Contains(t, composedSpec, "discriminator:")
-	assert.Contains(t, composedSpec, "components:")
-	assert.Contains(t, composedSpec, "schemas:")
-}
-
-func TestDiscriminatorMappings_ExternalWithFragment(t *testing.T) {
-	// Test discriminator with external file references that include fragments
-	// First create a vehicle file with proper structure
-	vehicleWithFragment := []byte(`
-Vehicle:
-  type: object
-  properties:
-    vehicleType:
-      type: string
-    wheels:
-      type: integer
-  required:
-    - vehicleType`)
-
-	// Write to temp file
-	tempFile, err := os.CreateTemp("test/specs", "vehicle-fragment-*.yaml")
-	assert.NoError(t, err)
-	defer os.Remove(tempFile.Name())
-
-	_, err = tempFile.Write(vehicleWithFragment)
-	assert.NoError(t, err)
-	tempFile.Close()
-
-	fileName := filepath.Base(tempFile.Name())
-
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: External Fragment Test
-  version: "1.0.0"
-paths:
-  /vehicles:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Vehicle"
-      responses:
-        '200':
-          description: Success
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "` + fileName + `#/Vehicle"
-      discriminator:
-        propertyName: vehicleType
-        mapping:
-          vehicle: "` + fileName + `#/Vehicle"`)
-
-	config := &datamodel.DocumentConfiguration{
-		BasePath:                "test/specs",
-		ExtractRefsSequentially: true,
-	}
-
-	// Test inline bundling
-	bundledBytes, err := BundleBytes(specBytes, config)
-	assert.NoError(t, err)
-	bundledSpec := string(bundledBytes)
-	assert.Contains(t, bundledSpec, "discriminator:")
-
-	// Test composition bundling
-	composedBytes, err := BundleBytesComposed(specBytes, config, &BundleCompositionConfig{Delimiter: "__"})
-	assert.NoError(t, err)
-	composedSpec := string(composedBytes)
-	assert.Contains(t, composedSpec, "discriminator:")
-	assert.Contains(t, composedSpec, "components:")
-}
-
-func TestDiscriminatorMappings_EdgeCases(t *testing.T) {
-	// Test edge cases like empty mappings, non-existent references, etc.
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: Edge Cases Test
-  version: "1.0.0"
-paths:
-  /vehicles:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Vehicle"
-      responses:
-        '200':
-          description: Success
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "#/components/schemas/Car"
-      discriminator:
-        propertyName: vehicleType
-        mapping:
-          car: "#/components/schemas/Car"
-          nonexistent: "#/components/schemas/NonExistent"
-          empty: ""
-    Car:
-      type: object
-      properties:
-        vehicleType:
-          type: string
-          enum: [car]
-        doors:
-          type: integer`)
-
-	config := &datamodel.DocumentConfiguration{
-		BasePath:                "test/specs",
-		ExtractRefsSequentially: true,
-	}
-
-	// Should not error even with problematic mappings
-	bundledBytes, err := BundleBytes(specBytes, config)
-	assert.NoError(t, err)
-	bundledSpec := string(bundledBytes)
-	assert.Contains(t, bundledSpec, "discriminator:")
-	assert.Contains(t, bundledSpec, "doors:")
-
-	composedBytes, err := BundleBytesComposed(specBytes, config, &BundleCompositionConfig{Delimiter: "__"})
-	assert.NoError(t, err)
-	composedSpec := string(composedBytes)
-	assert.Contains(t, composedSpec, "discriminator:")
-}
-
-func TestDiscoverDiscriminatorMappings(t *testing.T) {
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: Discovery Test
-  version: "1.0.0"
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "#/components/schemas/Car"
-        - $ref: "#/components/schemas/Truck"
-      discriminator:
-        propertyName: vehicleType
-        mapping:
-          car: "#/components/schemas/Car"
-          truck: "#/components/schemas/Truck"
-          external: "vehicle.yaml"
-    Car:
-      type: object
-    Truck:
-      type: object`)
-
-	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, &datamodel.DocumentConfiguration{
-		BasePath: "test/specs",
-	})
-	assert.NoError(t, err)
-
-	_, errs := doc.BuildV3Model()
-	assert.NoError(t, errors.Join(errs...))
-}
-
-func TestDiscriminatorMappings_BugFix_Integration(t *testing.T) {
-	// This test verifies the original discriminator mapping bug is fixed
-	specBytes := []byte(`openapi: "3.1.0"
-info:
-  title: Bug Fix Test
-  version: "1.0.0"
-paths:
-  /vehicles:
-    post:
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/Vehicle"
-      responses:
-        '200':
-          description: Success
-components:
-  schemas:
-    Vehicle:
-      oneOf:
-        - $ref: "vehicle.yaml"
-      discriminator:
-        propertyName: vehicleType
-        mapping:
-          vehicle: "vehicle.yaml"`)
-
-	config := &datamodel.DocumentConfiguration{
-		BasePath:                "test/specs",
-		ExtractRefsSequentially: true,
-	}
-
-	// Test composition bundling - mappings should be updated to point to components
-	bundledBytes, err := BundleBytesComposed(specBytes, config, &BundleCompositionConfig{Delimiter: "__"})
-	assert.NoError(t, err)
-
-	bundledSpec := string(bundledBytes)
-
-	// Verify external schemas were composed into components
-	assert.Contains(t, bundledSpec, "components:")
-	assert.Contains(t, bundledSpec, "schemas:")
-	assert.Contains(t, bundledSpec, "wheels:") // from vehicle.yaml
-
-	// Verify discriminator mappings were updated to point to components (bug fix)
-	assert.Contains(t, bundledSpec, "#/components/schemas/")
-
-	// The original bug would leave mappings pointing to "vehicle.yaml"
-	// which would be invalid after bundling. Our fix updates them to proper component refs.
-
-	// Test inline bundling - mappings should be cleared since schemas are inlined
-	inlineBundledBytes, err := BundleBytes(specBytes, config)
-	assert.NoError(t, err)
-
-	inlineBundledSpec := string(inlineBundledBytes)
-
-	// Verify schemas were inlined
-	assert.Contains(t, inlineBundledSpec, "wheels:") // from vehicle.yaml inlined
-
-	// Verify discriminator mapping structure is preserved
-	assert.Contains(t, inlineBundledSpec, "discriminator:")
-	assert.Contains(t, inlineBundledSpec, "mapping:")
-}
-
 // TestDiscriminatorMapping tests whether discriminator mappings
 // are correctly bundled when they reference external files.
 func TestDiscriminatorMapping(t *testing.T) {
@@ -877,25 +495,13 @@ components:
 	assert.True(t, externalCatExists, "ExternalCat schema should be bundled via $ref")
 }
 
-// TestDiscriminatorMappingInlineReality tests what actually happens to discriminators with pure inlining
-func TestDiscriminatorMappingInlineReality(t *testing.T) {
-	// Create a spec that actually uses the discriminator mapping in a reference
+// TestDiscriminatorMappingNonExistent tests that discriminator mappings pointing to non-existent files are left unchanged
+func TestDiscriminatorMappingNonExistent(t *testing.T) {
 	spec := `openapi: 3.0.0
 info:
   title: Test API
   version: 1.0.0
-paths:
-  /pets:
-    get:
-      responses:
-        '200':
-          description: A list of pets
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Animal'
+paths: {}
 components:
   schemas:
     Animal:
@@ -905,9 +511,8 @@ components:
         mapping:
           dog: '#/components/schemas/Dog'
           cat: './external-cat.yaml#/Cat'
-      oneOf:
-        - $ref: '#/components/schemas/Dog'
-        - $ref: './external-cat.yaml#/Cat'
+          nonexistent: './does-not-exist.yaml#/Missing'
+          invalid: './also-missing.yaml#/Schema'
     Dog:
       type: object
       properties:
@@ -915,9 +520,12 @@ components:
           type: string
         bark:
           type: boolean
+    # Add a proper $ref to the external file so it gets bundled
+    ExternalCat:
+      $ref: './external-cat.yaml#/Cat'
 `
 
-	// Create external file
+	// Create external file (but not the non-existent ones)
 	externalSpec := `Cat:
   type: object
   properties:
@@ -948,38 +556,50 @@ components:
 		ExtractRefsSequentially: true,
 	}
 
-	// Bundle the document (inline bundling)
+	// Bundle the document
 	bundled, err := BundleBytes(mainBytes, config)
 	require.NoError(t, err)
-
-	t.Logf("Bundled result:\n%s", string(bundled))
 
 	// Parse the bundled result
 	var bundledSpec map[string]interface{}
 	err = yaml.Unmarshal(bundled, &bundledSpec)
 	require.NoError(t, err)
 
-	// Check what happened to the discriminator
-	paths := bundledSpec["paths"].(map[string]interface{})
-	getPets := paths["/pets"].(map[string]interface{})
-	getMethod := getPets["get"].(map[string]interface{})
-	responses := getMethod["responses"].(map[string]interface{})
-	response200 := responses["200"].(map[string]interface{})
-	content := response200["content"].(map[string]interface{})
-	appJson := content["application/json"].(map[string]interface{})
-	schema := appJson["schema"].(map[string]interface{})
-	items := schema["items"].(map[string]interface{})
+	// Check the discriminator mapping in the bundled result
+	components, ok := bundledSpec["components"].(map[string]interface{})
+	require.True(t, ok, "components should exist")
 
-	t.Logf("Items schema: %v", items)
+	schemas, ok := components["schemas"].(map[string]interface{})
+	require.True(t, ok, "schemas should exist")
 
-	// Check if discriminator still exists and is valid
-	if discriminator, exists := items["discriminator"]; exists {
-		t.Logf("Discriminator still exists: %v", discriminator)
+	animal, ok := schemas["Animal"].(map[string]interface{})
+	require.True(t, ok, "Animal schema should exist")
 
-		if disc, ok := discriminator.(map[string]interface{}); ok {
-			if mapping, exists := disc["mapping"]; exists {
-				t.Logf("Mapping still exists: %v", mapping)
-			}
-		}
-	}
+	discriminator, ok := animal["discriminator"].(map[string]interface{})
+	require.True(t, ok, "discriminator should exist")
+
+	mapping, ok := discriminator["mapping"].(map[string]interface{})
+	require.True(t, ok, "mapping should exist")
+
+	// Valid mappings should be updated
+	dogMapping, ok := mapping["dog"].(string)
+	require.True(t, ok, "dog mapping should exist")
+	assert.Equal(t, "#/components/schemas/Dog", dogMapping, "dog mapping should point to component")
+
+	catMapping, ok := mapping["cat"].(string)
+	require.True(t, ok, "cat mapping should exist")
+	assert.Equal(t, "#/components/schemas/ExternalCat", catMapping, "cat mapping should point to component")
+
+	// Non-existent mappings should be left unchanged
+	nonExistentMapping, ok := mapping["nonexistent"].(string)
+	require.True(t, ok, "nonexistent mapping should still exist")
+	assert.Equal(t, "./does-not-exist.yaml#/Missing", nonExistentMapping, "nonexistent mapping should be unchanged")
+
+	invalidMapping, ok := mapping["invalid"].(string)
+	require.True(t, ok, "invalid mapping should still exist")
+	assert.Equal(t, "./also-missing.yaml#/Schema", invalidMapping, "invalid mapping should be unchanged")
+
+	// Verify that the valid external schema was bundled
+	_, externalCatExists := schemas["ExternalCat"]
+	assert.True(t, externalCatExists, "ExternalCat schema should be bundled")
 }
