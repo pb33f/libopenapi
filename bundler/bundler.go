@@ -376,6 +376,7 @@ func bundle(model *v3.Document) ([]byte, error) {
 			// if we're in the root document, don't bundle anything.
 			refExp := strings.Split(sequenced.FullDefinition, "#/")
 			if len(refExp) == 2 {
+
 				// make sure to use the correct index.
 				// https://github.com/pb33f/libopenapi/issues/397
 				if root {
