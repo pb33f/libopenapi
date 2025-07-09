@@ -248,6 +248,9 @@ components:
 	// Also verify that the ExternalCat schema was actually bundled
 	_, externalCatExists := schemas["ExternalCat"]
 	assert.True(t, externalCatExists, "ExternalCat schema should be bundled into the main document")
+
+	// Force garbage collection to close any open file handles (Windows fix)
+	runtime.GC()
 }
 
 // TestDiscriminatorMappingNonExistentComposed tests that discriminator mappings pointing to non-existent files are left unchanged during composed bundling
@@ -356,4 +359,7 @@ components:
 	// Verify that the valid external schema was bundled
 	_, externalCatExists := schemas["ExternalCat"]
 	assert.True(t, externalCatExists, "ExternalCat schema should be bundled into the main document")
+
+	// Force garbage collection to close any open file handles (Windows fix)
+	runtime.GC()
 }
