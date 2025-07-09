@@ -242,10 +242,6 @@ components:
 	// The external schema is placed as ExternalCat so the discriminator mapping should point to the correct location
 	assert.Equal(t, "#/components/schemas/ExternalCat", catMapping, "cat mapping should point to the correct component location")
 
-	t.Logf("Discriminator cat mapping: '%s'", catMapping)
-	t.Logf("Expected: '#/components/schemas/ExternalCat'")
-	t.Logf("Current behavior: '%s'", catMapping)
-
 	// Also verify that the ExternalCat schema was actually bundled
 	_, externalCatExists := schemas["ExternalCat"]
 	assert.True(t, externalCatExists, "ExternalCat schema should be bundled into the main document")
