@@ -24,14 +24,13 @@ type processRef struct {
 }
 
 type handleIndexConfig struct {
-	idx                   *index.SpecIndex
-	model                 *v3.Document
-	indexes               []*index.SpecIndex
-	refMap                *orderedmap.Map[string, *processRef]
-	seen                  sync.Map
-	inlineRequired        []*processRef
-	compositionConfig     *BundleCompositionConfig
-	discriminatorMappings map[string][]*discriminatorMapping
+	idx               *index.SpecIndex
+	model             *v3.Document
+	indexes           []*index.SpecIndex
+	refMap            *orderedmap.Map[string, *processRef]
+	seen              sync.Map
+	inlineRequired    []*processRef
+	compositionConfig *BundleCompositionConfig
 }
 
 // handleIndex will recursively explore the indexes and their references, building a map of references

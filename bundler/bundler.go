@@ -7,6 +7,8 @@ package bundler
 import (
 	"context"
 	"errors"
+	"fmt"
+	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -17,108 +19,10 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
 )
-
-// discriminatorMapping tracks a discriminator mapping that references a schema
-type discriminatorMapping struct {
-	mappingNode *yaml.Node
-	originalRef string
-}
 
 // ErrInvalidModel is returned when the model is not usable.
 var ErrInvalidModel = errors.New("invalid model")
-
-// discoverDiscriminatorMappings finds all discriminator mappings in schemas that reference other schemas
-func discoverDiscriminatorMappings(idx *index.SpecIndex) map[string][]*discriminatorMapping {
-	discriminatorMappings := make(map[string][]*discriminatorMapping)
-
-	for _, schema := range idx.GetAllSchemas() {
-		if schema.Node != nil {
-			findDiscriminatorMappingsInNode(schema.Node, discriminatorMappings)
-		}
-	}
-
-	return discriminatorMappings
-}
-
-// findDiscriminatorMappingsInNode recursively searches for discriminator mappings in a YAML node
-func findDiscriminatorMappingsInNode(node *yaml.Node, mappings map[string][]*discriminatorMapping) {
-	if node == nil {
-		return
-	}
-
-	switch node.Kind {
-	case yaml.MappingNode:
-		processMappingNode(node, mappings)
-	case yaml.SequenceNode:
-		for _, child := range node.Content {
-			findDiscriminatorMappingsInNode(child, mappings)
-		}
-	}
-}
-
-// processMappingNode handles discriminator discovery in mapping nodes
-func processMappingNode(node *yaml.Node, mappings map[string][]*discriminatorMapping) {
-	for i := 0; i < len(node.Content); i += 2 {
-		if i+1 >= len(node.Content) {
-			continue
-		}
-
-		keyNode := node.Content[i]
-		valueNode := node.Content[i+1]
-
-		if keyNode.Value == "discriminator" && valueNode.Kind == yaml.MappingNode {
-			processDiscriminatorNode(valueNode, mappings)
-		}
-
-		// Recursively search in child nodes
-		findDiscriminatorMappingsInNode(valueNode, mappings)
-	}
-}
-
-// processDiscriminatorNode processes a discriminator node to extract mappings
-func processDiscriminatorNode(discriminatorNode *yaml.Node, mappings map[string][]*discriminatorMapping) {
-	for i := 0; i < len(discriminatorNode.Content); i += 2 {
-		if i+1 >= len(discriminatorNode.Content) {
-			continue
-		}
-
-		keyNode := discriminatorNode.Content[i]
-		valueNode := discriminatorNode.Content[i+1]
-
-		if keyNode.Value == "mapping" && valueNode.Kind == yaml.MappingNode {
-			extractMappingReferences(valueNode, mappings)
-		}
-	}
-}
-
-// extractMappingReferences extracts all mapping references from a mapping node
-func extractMappingReferences(mappingNode *yaml.Node, mappings map[string][]*discriminatorMapping) {
-	for i := 0; i < len(mappingNode.Content); i += 2 {
-		if i+1 >= len(mappingNode.Content) {
-			continue
-		}
-
-		mappingValueNode := mappingNode.Content[i+1]
-		if mappingValueNode.Value != "" {
-			mapping := &discriminatorMapping{
-				mappingNode: mappingValueNode,
-				originalRef: mappingValueNode.Value,
-			}
-			mappings[mappingValueNode.Value] = append(mappings[mappingValueNode.Value], mapping)
-		}
-	}
-}
-
-// updateDiscriminatorMappings updates discriminator mappings when their referenced schemas are moved/inlined
-func updateDiscriminatorMappings(mappings []*discriminatorMapping, newRef string) {
-	for _, mapping := range mappings {
-		if mapping.mappingNode != nil {
-			mapping.mappingNode.Value = newRef
-		}
-	}
-}
 
 // BundleBytes will take a byte slice of an OpenAPI specification and return a bundled version of it.
 // This is useful for when you want to take a specification with external references, and you want to bundle it
@@ -215,33 +119,14 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
-	rootIndex := rolodex.GetRootIndex()
-
-	// discover discriminator mappings across all indexes
-	allDiscriminatorMappings := make(map[string][]*discriminatorMapping)
-
-	// First check the root index
-	rootMappings := discoverDiscriminatorMappings(rootIndex)
-	for ref, mappingList := range rootMappings {
-		allDiscriminatorMappings[ref] = append(allDiscriminatorMappings[ref], mappingList...)
-	}
-
-	// Then check all other indexes
-	for _, idx := range indexes {
-		mappings := discoverDiscriminatorMappings(idx)
-		for ref, mappingList := range mappings {
-			allDiscriminatorMappings[ref] = append(allDiscriminatorMappings[ref], mappingList...)
-		}
-	}
 
 	cf := &handleIndexConfig{
-		idx:                   rootIndex,
-		model:                 model,
-		indexes:               indexes,
-		seen:                  sync.Map{},
-		refMap:                orderedmap.New[string, *processRef](),
-		compositionConfig:     compositionConfig,
-		discriminatorMappings: allDiscriminatorMappings,
+		idx:               rolodex.GetRootIndex(),
+		model:             model,
+		indexes:           indexes,
+		seen:              sync.Map{},
+		refMap:            orderedmap.New[string, *processRef](),
+		compositionConfig: compositionConfig,
 	}
 	// recursive function to handle the indexes, we need a different approach to composition vs. inlining.
 	handleIndex(cf)
@@ -261,89 +146,11 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		return 0
 	})
 
+	rootIndex := rolodex.GetRootIndex()
 	remapIndex(rootIndex, processedNodes)
 
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
-	}
-
-	// update discriminator mappings after all references have been processed
-	for originalRef, mappings := range allDiscriminatorMappings {
-		if processedRef := processedNodes.GetOrZero(originalRef); processedRef != nil {
-			var newRef string
-			if len(processedRef.location) > 0 {
-				newRef = "#/" + strings.Join(processedRef.location, "/")
-			} else {
-				newRef = "#/components/schemas/" + processedRef.name
-			}
-			updateDiscriminatorMappings(mappings, newRef)
-		} else {
-			// Check for external file references that may match processed nodes
-			var bestMatch *processRef
-			for _, processedRef := range processedNodes.FromOldest() {
-				refExp := strings.Split(processedRef.ref.FullDefinition, "#/")
-				if len(refExp) == 2 {
-					externalFile := refExp[0]
-					if externalFile != "" {
-						matched := false
-
-						if originalRef == externalFile || strings.HasPrefix(originalRef, externalFile+"#/") {
-							matched = true
-						}
-
-						if !matched && strings.HasPrefix(originalRef, "./") {
-							rootIndexPath := rolodex.GetRootIndex().GetSpecAbsolutePath()
-							baseDir := filepath.Dir(rootIndexPath)
-
-							mappingRefParts := strings.Split(originalRef, "#/")
-							if len(mappingRefParts) == 2 {
-								relativeFile := mappingRefParts[0]
-								absFile := filepath.Join(baseDir, relativeFile)
-
-								if absFile == externalFile || strings.HasPrefix(processedRef.ref.FullDefinition, absFile+"#/") {
-									matched = true
-								}
-							}
-						}
-
-						if matched {
-							if bestMatch == nil ||
-								(len(processedRef.location) > len(bestMatch.location)) ||
-								(len(processedRef.location) == len(bestMatch.location) &&
-									len(processedRef.name) > len(bestMatch.name)) {
-								bestMatch = processedRef
-							}
-						}
-					}
-				}
-			}
-
-			if bestMatch != nil {
-				var newRef string
-				if len(bestMatch.location) > 0 && len(bestMatch.location) >= 3 &&
-					bestMatch.location[0] == "components" && bestMatch.location[1] == "schemas" {
-					newRef = "#/" + strings.Join(bestMatch.location, "/")
-				} else {
-					componentsSchemaName := ""
-					if model.Components != nil && model.Components.Schemas != nil {
-						for schemaName := range model.Components.Schemas.FromOldest() {
-							if strings.HasSuffix(schemaName, bestMatch.name) ||
-								strings.Contains(schemaName, bestMatch.name) {
-								componentsSchemaName = schemaName
-								break
-							}
-						}
-					}
-
-					if componentsSchemaName != "" {
-						newRef = "#/components/schemas/" + componentsSchemaName
-					} else {
-						newRef = "#/components/schemas/" + bestMatch.name
-					}
-				}
-				updateDiscriminatorMappings(mappings, newRef)
-			}
-		}
 	}
 
 	// anything that could not be recomposed and needs inlining
@@ -376,23 +183,11 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 func bundle(model *v3.Document) ([]byte, error) {
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
-	rootIndex := rolodex.GetRootIndex()
+	preserveRefs := map[string]struct{}{}
 
-	// discover discriminator mappings across all indexes
-	allDiscriminatorMappings := make(map[string][]*discriminatorMapping)
-
-	// First check the root index
-	rootMappings := discoverDiscriminatorMappings(rootIndex)
-	for ref, mappingList := range rootMappings {
-		allDiscriminatorMappings[ref] = append(allDiscriminatorMappings[ref], mappingList...)
-	}
-
-	// Then check all other indexes
+	collectDiscriminatorMappingValues(rolodex.GetRootIndex(), rolodex.GetRootIndex().GetRootNode(), preserveRefs)
 	for _, idx := range indexes {
-		mappings := discoverDiscriminatorMappings(idx)
-		for ref, mappingList := range mappings {
-			allDiscriminatorMappings[ref] = append(allDiscriminatorMappings[ref], mappingList...)
-		}
+		collectDiscriminatorMappingValues(idx, idx.GetRootNode(), preserveRefs)
 	}
 
 	// compact function.
@@ -402,14 +197,19 @@ func bundle(model *v3.Document) ([]byte, error) {
 		for _, sequenced := range sequencedReferences {
 			mappedReference := mappedReferences[sequenced.FullDefinition]
 
+			// if we're in the root document, don't bundle anything.
 			refExp := strings.Split(sequenced.FullDefinition, "#/")
 			if len(refExp) == 2 {
+
+				// make sure to use the correct index.
+				// https://github.com/pb33f/libopenapi/issues/397
 				if root {
 					for _, i := range indexes {
 						if i.GetSpecAbsolutePath() == refExp[0] {
 							if mappedReference != nil && !mappedReference.Circular {
 								mr := i.FindComponent(context.Background(), sequenced.Definition)
 								if mr != nil {
+									// found the component; this is the one we want to use.
 									mappedReference = mr
 									break
 								}
@@ -427,57 +227,13 @@ func bundle(model *v3.Document) ([]byte, error) {
 				}
 			}
 
+			if _, ok := preserveRefs[sequenced.FullDefinition]; ok {
+				idx.GetLogger().Debug("[bundler] skipping oneOf with discriminator mapping",
+					"ref", sequenced.Definition)
+				continue
+			}
+
 			if mappedReference != nil && !mappedReference.Circular {
-				hasDiscriminatorMapping := false
-
-				if _, exists := allDiscriminatorMappings[sequenced.FullDefinition]; exists {
-					hasDiscriminatorMapping = true
-				}
-
-				if !hasDiscriminatorMapping {
-					refExp := strings.Split(sequenced.FullDefinition, "#/")
-					if len(refExp) == 2 {
-						externalFile := refExp[0]
-						if externalFile != "" {
-							for mappingRef, _ := range allDiscriminatorMappings {
-								matched := false
-
-								if mappingRef == externalFile || strings.HasPrefix(mappingRef, externalFile+"#/") {
-									matched = true
-								}
-
-								if !matched && strings.HasPrefix(mappingRef, "./") {
-									rootIndexPath := rolodex.GetRootIndex().GetSpecAbsolutePath()
-									baseDir := filepath.Dir(rootIndexPath)
-
-									mappingRefParts := strings.Split(mappingRef, "#/")
-									if len(mappingRefParts) == 2 {
-										relativeFile := mappingRefParts[0]
-										absFile := filepath.Join(baseDir, relativeFile)
-
-										if absFile == externalFile || strings.HasPrefix(sequenced.FullDefinition, absFile+"#/") {
-											matched = true
-										}
-									}
-								}
-
-								if matched {
-									hasDiscriminatorMapping = true
-									break
-								}
-							}
-						}
-					}
-				}
-
-				if hasDiscriminatorMapping {
-					if idx.GetLogger() != nil {
-						idx.GetLogger().Debug("[bundler] preserving schema referenced by discriminator mapping",
-							"ref", sequenced.Definition)
-					}
-					continue
-				}
-
 				sequenced.Node.Content = mappedReference.Node.Content
 				continue
 			}
@@ -495,27 +251,85 @@ func bundle(model *v3.Document) ([]byte, error) {
 		compact(idx, false)
 	}
 	compact(rolodex.GetRootIndex(), true)
+	return model.Render()
+}
 
-	// Update discriminator mappings to point to components after bundling
-	for originalRef, mappings := range allDiscriminatorMappings {
-		if strings.HasPrefix(originalRef, "./") || strings.Contains(originalRef, "/") {
-			mappingRefParts := strings.Split(originalRef, "#/")
-			if len(mappingRefParts) == 2 {
-				fragmentName := mappingRefParts[1]
+func collectDiscriminatorMappingValues(idx *index.SpecIndex, n *yaml.Node, pinned map[string]struct{}) {
+	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+		n = n.Content[0]
+	}
 
-				if model.Components != nil && model.Components.Schemas != nil {
-					for schemaName := range model.Components.Schemas.FromOldest() {
-						if strings.Contains(schemaName, fragmentName) ||
-							strings.HasSuffix(schemaName, fragmentName) {
-							newRef := "#/components/schemas/" + schemaName
-							updateDiscriminatorMappings(mappings, newRef)
-							break
-						}
-					}
+	switch n.Kind {
+	case yaml.SequenceNode:
+		for _, c := range n.Content {
+			collectDiscriminatorMappingValues(idx, c, pinned)
+		}
+		return
+	case yaml.MappingNode:
+	default:
+		return
+	}
+
+	var discriminator, oneOf, anyOf *yaml.Node
+
+	for i := 0; i < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		switch k.Value {
+		case "discriminator":
+			discriminator = v
+		case "oneOf":
+			oneOf = v
+		case "anyOf":
+			anyOf = v
+		}
+		collectDiscriminatorMappingValues(idx, v, pinned)
+	}
+
+	if discriminator != nil {
+		walkDiscriminatorMapping(idx, discriminator, pinned)
+		walkUnionRefs(idx, oneOf, pinned)
+		walkUnionRefs(idx, anyOf, pinned)
+	}
+}
+
+func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node, pinned map[string]struct{}) {
+	if discriminatorNode.Kind != yaml.MappingNode {
+		return
+	}
+
+	for i := 0; i < len(discriminatorNode.Content); i += 2 {
+		if discriminatorNode.Content[i].Value == "mapping" {
+			mappingNode := discriminatorNode.Content[i+1]
+
+			for j := 0; j < len(mappingNode.Content); j += 2 {
+				refValue := mappingNode.Content[j+1].Value
+
+				if ref, refIdx := idx.SearchIndexForReference(refValue); ref != nil {
+					fullDef := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
+					pinned[fullDef] = struct{}{}
 				}
 			}
 		}
 	}
+}
 
-	return model.Render()
+func walkUnionRefs(idx *index.SpecIndex, seq *yaml.Node, pinned map[string]struct{}) {
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		return
+	}
+	for _, item := range seq.Content {
+		if item.Kind != yaml.MappingNode {
+			continue
+		}
+		for i := 0; i < len(item.Content); i += 2 {
+			k, v := item.Content[i], item.Content[i+1]
+			if k.Value != "$ref" || v.Kind != yaml.ScalarNode {
+				continue
+			}
+			if ref, refIdx := idx.SearchIndexForReference(v.Value); ref != nil {
+				full := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
+				pinned[full] = struct{}{}
+			}
+		}
+	}
 }
