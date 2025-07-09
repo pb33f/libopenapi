@@ -373,14 +373,18 @@ func bundle(model *v3.Document) ([]byte, error) {
 		for _, sequenced := range sequencedReferences {
 			mappedReference := mappedReferences[sequenced.FullDefinition]
 
+			// if we're in the root document, don't bundle anything.
 			refExp := strings.Split(sequenced.FullDefinition, "#/")
 			if len(refExp) == 2 {
+				// make sure to use the correct index.
+				// https://github.com/pb33f/libopenapi/issues/397
 				if root {
 					for _, i := range indexes {
 						if i.GetSpecAbsolutePath() == refExp[0] {
 							if mappedReference != nil && !mappedReference.Circular {
 								mr := i.FindComponent(context.Background(), sequenced.Definition)
 								if mr != nil {
+									// found the component; this is the one we want to use.
 									mappedReference = mr
 									break
 								}
