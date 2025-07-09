@@ -312,8 +312,9 @@ func updateDiscriminatorMappingsForComposition(allDiscriminatorMappings map[stri
 	for originalRef, mappings := range allDiscriminatorMappings {
 		bestMatch := findBestMatchForDiscriminatorMapping(originalRef, processedNodes, rolodex)
 		if bestMatch != nil {
-			newRef := buildComponentReference(bestMatch, model)
-			updateDiscriminatorMappings(mappings, newRef)
+			if newRef, found := buildComponentReference(bestMatch, model); found {
+				updateDiscriminatorMappings(mappings, newRef)
+			}
 		}
 	}
 }
@@ -337,16 +338,17 @@ func findBestMatchForDiscriminatorMapping(originalRef string, processedNodes *or
 }
 
 // buildComponentReference builds a component reference from a processed reference
-func buildComponentReference(processedRef *processRef, model *v3.Document) string {
+// Returns the reference and true if found, empty string and false if not found
+func buildComponentReference(processedRef *processRef, model *v3.Document) (string, bool) {
 	if model.Components != nil && model.Components.Schemas != nil {
 		for schemaName := range model.Components.Schemas.FromOldest() {
 			if strings.HasSuffix(schemaName, processedRef.name) || strings.Contains(schemaName, processedRef.name) {
-				return "#/components/schemas/" + schemaName
+				return "#/components/schemas/" + schemaName, true
 			}
 		}
 	}
 
-	return "#/components/schemas/" + processedRef.name
+	return "", false
 }
 
 // hasDiscriminatorReference checks if a reference is used by any discriminator mapping

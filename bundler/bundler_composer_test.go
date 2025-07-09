@@ -16,6 +16,7 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
@@ -362,4 +363,21 @@ components:
 
 	// Force garbage collection to close any open file handles (Windows fix)
 	runtime.GC()
+}
+
+// TestBuildComponentReferenceFallback tests the fallback case in buildComponentReference
+func TestBuildComponentReferenceFallback(t *testing.T) {
+	// Create a processRef with a name
+	processedRef := &processRef{
+		name: "TestSchema",
+	}
+
+	// Create a model with no components section
+	model := &v3.Document{}
+
+	// This should return "", false since there are no components
+	result, found := buildComponentReference(processedRef, model)
+
+	assert.Equal(t, "", result, "should return empty string when no components")
+	assert.False(t, found, "should return false when no components")
 }
