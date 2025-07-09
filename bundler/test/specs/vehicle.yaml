@@ -1,8 +1,0 @@
-type: object
-properties:
-  vehicleType:
-    type: string
-  wheels:
-    type: integer
-required:
-  - vehicleType 
