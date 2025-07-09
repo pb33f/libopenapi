@@ -5,8 +5,10 @@ package bundler
 
 import (
 	"errors"
+	"github.com/stretchr/testify/require"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"testing"
@@ -145,4 +147,113 @@ func TestBundlerComposed_StrangeRefs(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Len(t, bytes, 3397)
 	}
+}
+
+// TestDiscriminatorMappingComposed tests discriminator mapping with composed bundling.
+func TestDiscriminatorMappingComposed(t *testing.T) {
+	// Create a spec with external reference in discriminator mapping
+	spec := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          dog: '#/components/schemas/Dog'
+          cat: './external-cat.yaml#/Cat'
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+        bark:
+          type: boolean
+    # Add a proper $ref to the external file so it gets processed by composed bundling
+    ExternalCat:
+      $ref: './external-cat.yaml#/Cat'
+`
+
+	// Create external file
+	externalSpec := `Cat:
+  type: object
+  properties:
+    type:
+      type: string
+    meow:
+      type: boolean`
+
+	// Create temporary files
+	tempDir := t.TempDir()
+	mainFile := filepath.Join(tempDir, "main.yaml")
+	externalFile := filepath.Join(tempDir, "external-cat.yaml")
+
+	err := os.WriteFile(mainFile, []byte(spec), 0644)
+	require.NoError(t, err)
+
+	err = os.WriteFile(externalFile, []byte(externalSpec), 0644)
+	require.NoError(t, err)
+
+	// Load the document
+	mainBytes, err := os.ReadFile(mainFile)
+	require.NoError(t, err)
+
+	config := &datamodel.DocumentConfiguration{
+		BasePath: tempDir,
+	}
+
+	// Bundle the document using composed bundling
+	bundled, err := BundleBytesComposed(mainBytes, config, &BundleCompositionConfig{
+		Delimiter: "__",
+	})
+	require.NoError(t, err)
+
+	// Parse the bundled result
+	var bundledSpec map[string]interface{}
+	err = yaml.Unmarshal(bundled, &bundledSpec)
+	require.NoError(t, err)
+
+	// Check the discriminator mapping in the bundled result
+	components, ok := bundledSpec["components"].(map[string]interface{})
+	require.True(t, ok, "components should exist")
+
+	schemas, ok := components["schemas"].(map[string]interface{})
+	require.True(t, ok, "schemas should exist")
+
+	animal, ok := schemas["Animal"].(map[string]interface{})
+	require.True(t, ok, "Animal schema should exist")
+
+	discriminator, ok := animal["discriminator"].(map[string]interface{})
+	require.True(t, ok, "discriminator should exist")
+
+	mapping, ok := discriminator["mapping"].(map[string]interface{})
+	require.True(t, ok, "mapping should exist")
+
+	// after composed bundling, the external reference should point to the components
+	catMapping, ok := mapping["cat"].(string)
+	require.True(t, ok, "cat mapping should exist")
+
+	// The external schema is placed as ExternalCat so the discriminator mapping should point to the correct location
+	assert.Equal(t, "#/components/schemas/ExternalCat", catMapping, "cat mapping should point to the correct component location")
+
+	t.Logf("Discriminator cat mapping: '%s'", catMapping)
+	t.Logf("Expected: '#/components/schemas/ExternalCat'")
+	t.Logf("Current behavior: '%s'", catMapping)
+
+	// Also verify that the ExternalCat schema was actually bundled
+	_, externalCatExists := schemas["ExternalCat"]
+	assert.True(t, externalCatExists, "ExternalCat schema should be bundled into the main document")
+
+	// Log the actual structure to understand what's happening
+	t.Logf("Components schemas keys: %v", func() []string {
+		keys := make([]string, 0)
+		for k := range schemas {
+			keys = append(keys, k)
+		}
+		return keys
+	}())
 }
