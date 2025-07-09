@@ -65,10 +65,6 @@ func discoverDiscriminatorMappings(idx *index.SpecIndex) map[string][]*discrimin
 
 // findDiscriminatorMappingsInNode recursively searches for discriminator mappings in a YAML node
 func findDiscriminatorMappingsInNode(node *yaml.Node, mappings map[string][]*discriminatorMapping) {
-	if node == nil {
-		return
-	}
-
 	switch node.Kind {
 	case yaml.MappingNode:
 		processMappingNode(node, mappings)
@@ -82,10 +78,6 @@ func findDiscriminatorMappingsInNode(node *yaml.Node, mappings map[string][]*dis
 // processMappingNode handles discriminator discovery in mapping nodes
 func processMappingNode(node *yaml.Node, mappings map[string][]*discriminatorMapping) {
 	for i := 0; i < len(node.Content); i += 2 {
-		if i+1 >= len(node.Content) {
-			continue
-		}
-
 		keyNode := node.Content[i]
 		valueNode := node.Content[i+1]
 
@@ -93,7 +85,6 @@ func processMappingNode(node *yaml.Node, mappings map[string][]*discriminatorMap
 			processDiscriminatorNode(valueNode, mappings)
 		}
 
-		// Recursively search in child nodes
 		findDiscriminatorMappingsInNode(valueNode, mappings)
 	}
 }
@@ -101,10 +92,6 @@ func processMappingNode(node *yaml.Node, mappings map[string][]*discriminatorMap
 // processDiscriminatorNode processes a discriminator node to extract mappings
 func processDiscriminatorNode(discriminatorNode *yaml.Node, mappings map[string][]*discriminatorMapping) {
 	for i := 0; i < len(discriminatorNode.Content); i += 2 {
-		if i+1 >= len(discriminatorNode.Content) {
-			continue
-		}
-
 		keyNode := discriminatorNode.Content[i]
 		valueNode := discriminatorNode.Content[i+1]
 
@@ -117,10 +104,6 @@ func processDiscriminatorNode(discriminatorNode *yaml.Node, mappings map[string]
 // extractMappingReferences extracts all mapping references from a mapping node
 func extractMappingReferences(mappingNode *yaml.Node, mappings map[string][]*discriminatorMapping) {
 	for i := 0; i < len(mappingNode.Content); i += 2 {
-		if i+1 >= len(mappingNode.Content) {
-			continue
-		}
-
 		mappingValueNode := mappingNode.Content[i+1]
 		if mappingValueNode.Value != "" {
 			mapping := &discriminatorMapping{
@@ -135,34 +118,19 @@ func extractMappingReferences(mappingNode *yaml.Node, mappings map[string][]*dis
 // updateDiscriminatorMappings updates discriminator mappings when their referenced schemas are moved/inlined
 func updateDiscriminatorMappings(mappings []*discriminatorMapping, newRef string) {
 	for _, mapping := range mappings {
-		if mapping.mappingNode != nil {
-			mapping.mappingNode.Value = newRef
-		}
+		mapping.mappingNode.Value = newRef
 	}
 }
 
 // matchesDiscriminatorMapping checks if a reference matches a discriminator mapping
 func matchesDiscriminatorMapping(refFullDefinition, mappingRef string, rootIndexPath string) bool {
-	if mappingRef == refFullDefinition {
-		return true
-	}
-
 	refExp := strings.Split(refFullDefinition, "#/")
-	if len(refExp) != 2 {
+	if len(refExp) != 2 || refExp[0] == "" {
 		return false
 	}
 
 	externalFile := refExp[0]
-	if externalFile == "" {
-		return false
-	}
 
-	// Direct match
-	if mappingRef == externalFile || strings.HasPrefix(mappingRef, externalFile+"#/") {
-		return true
-	}
-
-	// Relative path match
 	if strings.HasPrefix(mappingRef, "./") {
 		baseDir := filepath.Dir(rootIndexPath)
 		mappingRefParts := strings.Split(mappingRef, "#/")
@@ -342,22 +310,10 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 // updateDiscriminatorMappingsForComposition handles updating discriminator mappings for composed bundling
 func updateDiscriminatorMappingsForComposition(allDiscriminatorMappings map[string][]*discriminatorMapping, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex, model *v3.Document) {
 	for originalRef, mappings := range allDiscriminatorMappings {
-		if processedRef := processedNodes.GetOrZero(originalRef); processedRef != nil {
-			// Direct match in processed nodes
-			var newRef string
-			if len(processedRef.location) > 0 {
-				newRef = "#/" + strings.Join(processedRef.location, "/")
-			} else {
-				newRef = "#/components/schemas/" + processedRef.name
-			}
+		bestMatch := findBestMatchForDiscriminatorMapping(originalRef, processedNodes, rolodex)
+		if bestMatch != nil {
+			newRef := buildComponentReference(bestMatch, model)
 			updateDiscriminatorMappings(mappings, newRef)
-		} else {
-			// Find best match among processed nodes
-			bestMatch := findBestMatchForDiscriminatorMapping(originalRef, processedNodes, rolodex)
-			if bestMatch != nil {
-				newRef := buildComponentReference(bestMatch, model)
-				updateDiscriminatorMappings(mappings, newRef)
-			}
 		}
 	}
 }
@@ -382,12 +338,6 @@ func findBestMatchForDiscriminatorMapping(originalRef string, processedNodes *or
 
 // buildComponentReference builds a component reference from a processed reference
 func buildComponentReference(processedRef *processRef, model *v3.Document) string {
-	if len(processedRef.location) > 0 && len(processedRef.location) >= 3 &&
-		processedRef.location[0] == "components" && processedRef.location[1] == "schemas" {
-		return "#/" + strings.Join(processedRef.location, "/")
-	}
-
-	// Search for matching component schema
 	if model.Components != nil && model.Components.Schemas != nil {
 		for schemaName := range model.Components.Schemas.FromOldest() {
 			if strings.HasSuffix(schemaName, processedRef.name) || strings.Contains(schemaName, processedRef.name) {
@@ -397,6 +347,16 @@ func buildComponentReference(processedRef *processRef, model *v3.Document) strin
 	}
 
 	return "#/components/schemas/" + processedRef.name
+}
+
+// hasDiscriminatorReference checks if a reference is used by any discriminator mapping
+func hasDiscriminatorReference(refFullDefinition string, allDiscriminatorMappings map[string][]*discriminatorMapping, rootIndexPath string) bool {
+	for mappingRef := range allDiscriminatorMappings {
+		if matchesDiscriminatorMapping(refFullDefinition, mappingRef, rootIndexPath) {
+			return true
+		}
+	}
+	return false
 }
 
 func bundle(model *v3.Document) ([]byte, error) {
@@ -472,22 +432,6 @@ func bundle(model *v3.Document) ([]byte, error) {
 	updateDiscriminatorMappingsForBundling(allDiscriminatorMappings, model)
 
 	return model.Render()
-}
-
-// hasDiscriminatorReference checks if a reference is used by any discriminator mapping
-func hasDiscriminatorReference(refFullDefinition string, allDiscriminatorMappings map[string][]*discriminatorMapping, rootIndexPath string) bool {
-	if _, exists := allDiscriminatorMappings[refFullDefinition]; exists {
-		return true
-	}
-
-	// Check for pattern matches
-	for mappingRef := range allDiscriminatorMappings {
-		if matchesDiscriminatorMapping(refFullDefinition, mappingRef, rootIndexPath) {
-			return true
-		}
-	}
-
-	return false
 }
 
 // updateDiscriminatorMappingsForBundling handles updating discriminator mappings for inline bundling
