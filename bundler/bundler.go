@@ -228,7 +228,7 @@ func bundle(model *v3.Document) ([]byte, error) {
 			}
 
 			if _, ok := preserveRefs[sequenced.FullDefinition]; ok {
-				idx.GetLogger().Debug("[bundler] skipping oneOf with discriminator mapping",
+				idx.GetLogger().Debug("[bundler] skipping union type (oneOf/anyOf) with discriminator mapping",
 					"ref", sequenced.Definition)
 				continue
 			}
