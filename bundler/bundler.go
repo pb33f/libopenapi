@@ -7,6 +7,8 @@ package bundler
 import (
 	"context"
 	"errors"
+	"fmt"
+	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -181,6 +183,13 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 func bundle(model *v3.Document) ([]byte, error) {
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
+	preserveRefs := map[string]struct{}{}
+
+	collectDiscriminatorMappingValues(rolodex.GetRootIndex(), rolodex.GetRootIndex().GetRootNode(), preserveRefs)
+	for _, idx := range indexes {
+		collectDiscriminatorMappingValues(idx, idx.GetRootNode(), preserveRefs)
+	}
+
 	// compact function.
 	compact := func(idx *index.SpecIndex, root bool) {
 		mappedReferences := idx.GetMappedReferences()
@@ -218,6 +227,12 @@ func bundle(model *v3.Document) ([]byte, error) {
 				}
 			}
 
+			if _, ok := preserveRefs[sequenced.FullDefinition]; ok {
+				idx.GetLogger().Debug("[bundler] skipping union type (oneOf/anyOf) with discriminator mapping",
+					"ref", sequenced.Definition)
+				continue
+			}
+
 			if mappedReference != nil && !mappedReference.Circular {
 				sequenced.Node.Content = mappedReference.Node.Content
 				continue
@@ -237,4 +252,84 @@ func bundle(model *v3.Document) ([]byte, error) {
 	}
 	compact(rolodex.GetRootIndex(), true)
 	return model.Render()
+}
+
+func collectDiscriminatorMappingValues(idx *index.SpecIndex, n *yaml.Node, pinned map[string]struct{}) {
+	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+		n = n.Content[0]
+	}
+
+	switch n.Kind {
+	case yaml.SequenceNode:
+		for _, c := range n.Content {
+			collectDiscriminatorMappingValues(idx, c, pinned)
+		}
+		return
+	case yaml.MappingNode:
+	default:
+		return
+	}
+
+	var discriminator, oneOf, anyOf *yaml.Node
+
+	for i := 0; i < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		switch k.Value {
+		case "discriminator":
+			discriminator = v
+		case "oneOf":
+			oneOf = v
+		case "anyOf":
+			anyOf = v
+		}
+		collectDiscriminatorMappingValues(idx, v, pinned)
+	}
+
+	if discriminator != nil {
+		walkDiscriminatorMapping(idx, discriminator, pinned)
+		walkUnionRefs(idx, oneOf, pinned)
+		walkUnionRefs(idx, anyOf, pinned)
+	}
+}
+
+func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node, pinned map[string]struct{}) {
+	if discriminatorNode.Kind != yaml.MappingNode {
+		return
+	}
+
+	for i := 0; i < len(discriminatorNode.Content); i += 2 {
+		if discriminatorNode.Content[i].Value == "mapping" {
+			mappingNode := discriminatorNode.Content[i+1]
+
+			for j := 0; j < len(mappingNode.Content); j += 2 {
+				refValue := mappingNode.Content[j+1].Value
+
+				if ref, refIdx := idx.SearchIndexForReference(refValue); ref != nil {
+					fullDef := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
+					pinned[fullDef] = struct{}{}
+				}
+			}
+		}
+	}
+}
+
+func walkUnionRefs(idx *index.SpecIndex, seq *yaml.Node, pinned map[string]struct{}) {
+	if seq == nil || seq.Kind != yaml.SequenceNode {
+		return
+	}
+	for _, item := range seq.Content {
+		if item.Kind != yaml.MappingNode {
+			continue
+		}
+		for i := 0; i < len(item.Content); i += 2 {
+			k, v := item.Content[i], item.Content[i+1]
+			if k.Value != "$ref" || v.Kind != yaml.ScalarNode {
+				continue
+			}
+			if ref, refIdx := idx.SearchIndexForReference(v.Value); ref != nil {
+				full := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
+				pinned[full] = struct{}{}
+			}
+		}
+	}
 }
