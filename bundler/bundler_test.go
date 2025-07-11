@@ -58,7 +58,29 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 
 	v3Doc, errs := doc.BuildV3Model()
 	if len(errs) > 0 {
-		panic(errs)
+		t.Fatal("Errors building V3 model:", errs)
+	}
+
+	// collect refs that are allowed to be preserved.
+	preservedRefs := map[string]struct{}{}
+	rootIdx := v3Doc.Model.Rolodex.GetRootIndex()
+	collectDiscriminatorMappingValues(rootIdx, rootIdx.GetRootNode(), preservedRefs)
+	for _, idx := range v3Doc.Model.Rolodex.GetIndexes() {
+		collectDiscriminatorMappingValues(idx, idx.GetRootNode(), preservedRefs)
+	}
+
+	isPreserved := func(line string) bool {
+		i := strings.Index(line, "$ref:")
+		if i == -1 {
+			return false
+		}
+		ref := strings.Trim(strings.TrimSpace(line[i+5:]), "'\"")
+		for uri := range preservedRefs {
+			if strings.HasSuffix(uri, ref) {
+				return true
+			}
+		}
+		return false
 	}
 
 	bytes, e := BundleDocument(&v3Doc.Model)
@@ -70,7 +92,7 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 		if trimmedLine == "" || strings.HasPrefix(trimmedLine, "#") {
 			continue
 		}
-		if strings.Contains(trimmedLine, "$ref") {
+		if strings.Contains(trimmedLine, "$ref") && !isPreserved(trimmedLine) {
 			t.Errorf("Found uncommented $ref in line: %s", line)
 		}
 	}
