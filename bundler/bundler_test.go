@@ -69,14 +69,26 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 		collectDiscriminatorMappingValues(idx, idx.GetRootNode(), preservedRefs)
 	}
 
-	isPreserved := func(line string) bool {
+	clean := func(s string) string {
+		// trim quotes and make slashes Unix-style
+		return filepath.ToSlash(strings.Trim(s, `"'`))
+	}
+
+	extractRef := func(line string) string {
 		i := strings.Index(line, "$ref:")
 		if i == -1 {
+			return ""
+		}
+		return clean(strings.TrimSpace(line[i+5:]))
+	}
+
+	isPreserved := func(line string) bool {
+		ref := extractRef(line)
+		if ref == "" {
 			return false
 		}
-		ref := strings.Trim(strings.TrimSpace(line[i+5:]), "'\"")
 		for uri := range preservedRefs {
-			if strings.HasSuffix(uri, ref) {
+			if strings.HasSuffix(clean(uri), ref) {
 				return true
 			}
 		}
