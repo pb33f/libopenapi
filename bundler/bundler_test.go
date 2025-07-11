@@ -587,7 +587,6 @@ components:
         wheels:
           type: integer`
 
-	// --- arrange ------------------------------------------------------------------
 	tmp := t.TempDir()
 	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "vehicles"), 0o755))
 	write := func(name, src string) {
@@ -599,31 +598,26 @@ components:
 
 	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
 
-	// --- act ----------------------------------------------------------------------
 	out, err := BundleBytes(mainBytes, &datamodel.DocumentConfiguration{
 		BasePath:            tmp,
 		AllowFileReferences: true,
 	})
 	require.NoError(t, err)
 
-	// --- assert -------------------------------------------------------------------
 	var doc map[string]any
 	require.NoError(t, yaml.Unmarshal(out, &doc))
 
 	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
 	vehicle := schemas["Vehicle"].(map[string]any)
 
-	// 1) mapping must STILL contain ONLY the explicit entry (“car”)
 	mp := vehicle["discriminator"].(map[string]any)["mapping"].(map[string]any)
 	assert.Equal(t, 1, len(mp), "no new mapping rows should have been synthesised")
 	assert.Equal(t, "./vehicles/car.yaml#/components/schemas/Car", mp["car"])
 
-	// 2) the un-mapped oneOf branch (“bike”) must remain a $ref
 	oneOf := vehicle["oneOf"].([]any)
 	assert.Equal(t, "./vehicles/car.yaml#/components/schemas/Car", oneOf[0].(map[string]any)["$ref"])
 	assert.Equal(t, "./vehicles/bike.yaml#/components/schemas/Bike", oneOf[1].(map[string]any)["$ref"])
 
-	// 3) neither Car nor Bike should have been inlined into components/schemas
 	_, carExists := schemas["Car"]
 	_, bikeExists := schemas["Bike"]
 	assert.False(t, carExists, "Car must not be duplicated in components")
