@@ -5,6 +5,7 @@ package model
 
 import (
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"reflect"
 	"strings"
 	"sync"
@@ -23,7 +24,25 @@ const (
 
 var changeMutex sync.Mutex
 
-// CreateChange is a generic function that will create a Change of type T, populate all properties if set, and then
+func checkLocation(ctx *ChangeContext, hs base.HasIndex) bool {
+	if !reflect.ValueOf(hs).IsNil() {
+		idx := hs.GetIndex()
+		if idx == nil {
+			return false
+		}
+		if idx.GetRolodex() != nil {
+			r := idx.GetRolodex()
+			rIdx := r.GetRootIndex()
+			if rIdx.GetSpecAbsolutePath() != idx.GetSpecAbsolutePath() {
+				ctx.DocumentLocation = idx.GetSpecAbsolutePath()
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// CreateChange is a generic function that will create a Change of type T, populate all properties if set and then
 // add a pointer to Change[T] in the slice of Change pointers provided
 func CreateChange(changes *[]*Change, changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
 	breaking bool, originalObject, newObject any,
@@ -36,12 +55,25 @@ func CreateChange(changes *[]*Change, changeType int, property string, leftValue
 		Property:   property,
 		Breaking:   breaking,
 	}
+
+	// lets find out if the objects are local to the root, or if it's come from another document in the tree.
+	if originalObject != nil {
+		if hs, ok := originalObject.(base.HasIndex); ok {
+			checkLocation(ctx, hs)
+		}
+	}
+	if newObject != nil {
+		if hs, ok := newObject.(base.HasIndex); ok {
+			checkLocation(ctx, hs)
+		}
+	}
+
 	// if the left is not nil, we have an original value
-	if leftValueNode != nil && leftValueNode.Value != "" {
+	if leftValueNode != nil && leftValueNode.Value != EMPTY_STR {
 		c.Original = leftValueNode.Value
 	}
 	// if the right is not nil, then we have a new value
-	if rightValueNode != nil && rightValueNode.Value != "" {
+	if rightValueNode != nil && rightValueNode.Value != EMPTY_STR {
 		c.New = rightValueNode.Value
 	}
 	// original and new objects
@@ -153,7 +185,7 @@ func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if l != nil && l.Value != "" && (r == nil || r.Value == "" && !utils.IsNodeArray(r) && !utils.IsNodeMap(r)) {
+	if l != nil && l.Value != EMPTY_STR && (r == nil || r.Value == EMPTY_STR && !utils.IsNodeArray(r) && !utils.IsNodeMap(r)) {
 		CreateChange(changes, PropertyRemoved, label, l, r, breaking, orig, new)
 		return
 	}
@@ -169,7 +201,7 @@ func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, b
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if (l == nil || l.Value == "") && (r != nil && (r.Value != "" || utils.IsNodeArray(r)) || utils.IsNodeMap(r)) {
+	if (l == nil || l.Value == EMPTY_STR) && (r != nil && (r.Value != EMPTY_STR || utils.IsNodeArray(r)) || utils.IsNodeMap(r)) {
 		if r != nil {
 			if l != nil && (len(l.Content) < len(r.Content)) && len(l.Content) <= 0 {
 				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
@@ -188,7 +220,7 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, 
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if l != nil && l.Value != "" && r != nil && r.Value != "" && (r.Value != l.Value || r.Tag != l.Tag) {
+	if l != nil && l.Value != EMPTY_STR && r != nil && r.Value != EMPTY_STR && (r.Value != l.Value || r.Tag != l.Tag) {
 		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
 		return
 	}
@@ -288,9 +320,9 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 
 	checkLeft := func(k string, doneChan chan struct{}, f, g map[string]string, p, h map[string]low.ValueReference[T]) {
 		rhash := g[k]
-		if rhash == "" {
+		if rhash == EMPTY_STR {
 			chLock.Lock()
-			if p[k].GetValueNode().Value == "" {
+			if p[k].GetValueNode().Value == EMPTY_STR {
 				p[k].GetValueNode().Value = k
 			}
 			CreateChange(changes, ObjectRemoved, label,
@@ -347,9 +379,9 @@ func checkRightValue[T any](k string, doneChan chan struct{}, f map[string]strin
 	changes *[]*Change, label string, lock *sync.Mutex,
 ) {
 	lhash := f[k]
-	if lhash == "" {
+	if lhash == EMPTY_STR {
 		lock.Lock()
-		if p[k].GetValueNode().Value == "" {
+		if p[k].GetValueNode().Value == EMPTY_STR {
 			p[k].GetValueNode().Value = k // this is kinda dirty, but I don't want to duplicate code so sue me.
 		}
 		CreateChange(changes, ObjectAdded, label,

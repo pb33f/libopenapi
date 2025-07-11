@@ -4,6 +4,7 @@
 package index
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -18,6 +19,7 @@ import (
 	"testing/fstest"
 	"time"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -83,7 +85,7 @@ func TestRolodex_LocalNativeFS(t *testing.T) {
 	f, rerr := rolo.Open("spec.yaml")
 	assert.NoError(t, rerr)
 	assert.Equal(t, "hip", f.GetContent())
-	rolo.rootIndex = NewTestSpecIndex()
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
 	rolo.indexes = append(rolo.indexes, rolo.rootIndex)
 	rolo.ClearIndexCaches()
 }
@@ -275,7 +277,7 @@ func TestRolodex_NotRolodexFS(t *testing.T) {
 	rolo := NewRolodex(cf)
 	rolo.AddLocalFS(".", nonRoloFS)
 
-	err := rolo.IndexTheRolodex()
+	err := rolo.IndexTheRolodex(context.Background())
 
 	assert.Error(t, err)
 	assert.Equal(t, "rolodex file system is not a RolodexFS", err.Error())
@@ -311,7 +313,7 @@ components:
 	cf.BasePath = baseDir
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.Error(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 3)
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 0)
@@ -365,7 +367,7 @@ components:
 	cf.BasePath = baseDir
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.Error(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 1)
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 0)
@@ -516,7 +518,7 @@ components:
 	assert.NoError(t, err)
 	rolodex.SetRootNode(&rootNode)
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
@@ -693,7 +695,7 @@ components:
 	_ = yaml.Unmarshal([]byte(first), &rootNode)
 	rolodex.SetRootNode(&rootNode)
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.Error(t, err)
 	assert.GreaterOrEqual(t, len(rolodex.GetCaughtErrors()), 1)
 	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing: $.['not_found.yaml'] [8:11]", rolodex.GetCaughtErrors()[0].Error())
@@ -798,7 +800,7 @@ components:
 	rolodex.SetRootNode(&rootNode)
 	assert.NotNil(t, rolodex.GetRootNode())
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
@@ -905,7 +907,7 @@ components:
 	rolodex.AddLocalFS(baseDir, fileFS)
 	rolodex.SetRootNode(&rootNode)
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	rolodex.BuildIndexes()
 
 	assert.NoError(t, err)
@@ -1015,7 +1017,7 @@ components:
 	rolodex.AddLocalFS(baseDir, fileFS)
 	rolodex.SetRootNode(&rootNode)
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
@@ -1150,7 +1152,7 @@ components:
 	rolodex.AddRemoteFS(srv.URL, remoteFS)
 	rolodex.SetRootNode(&rootNode)
 
-	err := rolodex.IndexTheRolodex()
+	err := rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
@@ -1265,7 +1267,7 @@ components:
 	rolodex.AddLocalFS(baseDir, fileFS)
 	rolodex.SetRootNode(&rootNode)
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 
@@ -1379,7 +1381,7 @@ components:
 
 	rolodex.AddRemoteFS(srv.URL, remoteFS)
 
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 	assert.Error(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 2)
 	assert.Equal(t, "cannot resolve reference `not_found.yaml`, it's missing: $.['not_found.yaml'] [8:11]", rolodex.GetCaughtErrors()[0].Error())
@@ -1412,7 +1414,7 @@ components:
 	rolodex.AddRemoteFS("", remoteFS)
 	rolodex.SetRootNode(&rootNode)
 
-	err := rolodex.IndexTheRolodex()
+	err := rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 }
@@ -1442,7 +1444,7 @@ components:
 	cf.IgnorePolymorphicCircularReferences = true
 	rolodex := NewRolodex(cf)
 	rolodex.SetRootNode(&rootNode)
-	err := rolodex.IndexTheRolodex()
+	err := rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
@@ -1473,7 +1475,7 @@ components:
 	cf.IgnoreArrayCircularReferences = true
 	rolodex := NewRolodex(cf)
 	rolodex.SetRootNode(&rootNode)
-	err := rolodex.IndexTheRolodex()
+	err := rolodex.IndexTheRolodex(context.Background())
 	assert.NoError(t, err)
 	assert.Len(t, rolodex.GetCaughtErrors(), 0)
 	assert.Len(t, rolodex.GetIgnoredCircularReferences(), 1)
@@ -1508,7 +1510,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	_ = yaml.Unmarshal(rootBytes, &rootNode)
 	rolo.SetRootNode(&rootNode)
 
-	err = rolo.IndexTheRolodex()
+	err = rolo.IndexTheRolodex(context.Background())
 
 	// assert.NotZero(t, rolo.GetIndexingDuration()) comes back as 0 on windows.
 	assert.NotNil(t, rolo.GetRootIndex())
@@ -1548,7 +1550,7 @@ func TestRolodex_SimpleTest_OneDoc(t *testing.T) {
 	assert.NotNil(t, idx.GetRolodex())
 
 	// re-run the index should be a no-op
-	assert.NoError(t, rolo.IndexTheRolodex())
+	assert.NoError(t, rolo.IndexTheRolodex(context.Background()))
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
 }
@@ -1585,7 +1587,7 @@ components:
 	c.IgnorePolymorphicCircularReferences = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	assert.NotNil(t, rolo.GetRootIndex())
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
@@ -1625,7 +1627,7 @@ components:
 	c.AvoidCircularReferenceCheck = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	assert.NotNil(t, rolo.GetRootIndex())
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
@@ -1665,7 +1667,7 @@ components:
 	c.AvoidCircularReferenceCheck = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	assert.NotNil(t, rolo.GetRootIndex())
 	rolo.Resolve()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
@@ -1691,7 +1693,7 @@ components:
 	c.AvoidCircularReferenceCheck = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	assert.NotNil(t, rolo.GetRootIndex())
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 0)
@@ -1725,7 +1727,7 @@ components:
 	c.IgnoreArrayCircularReferences = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
@@ -1756,7 +1758,7 @@ components:
 	c.IgnoreArrayCircularReferences = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	rolo.Resolve()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
@@ -1788,7 +1790,7 @@ components:
 	c.AvoidCircularReferenceCheck = true
 	rolo := NewRolodex(c)
 	rolo.SetRootNode(&rootNode)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 	rolo.CheckForCircularReferences()
 	assert.Len(t, rolo.GetIgnoredCircularReferences(), 1)
 	assert.Len(t, rolo.GetCaughtErrors(), 0)
@@ -1811,6 +1813,46 @@ func TestRolodex_GetIgnoredCircularReferences_nil(t *testing.T) {
 	var r *Rolodex
 	circ := r.GetIgnoredCircularReferences()
 	assert.Nil(t, circ)
+}
+
+func TestRolodex_SetSafeCircularRefs(t *testing.T) {
+	var r *Rolodex
+	r = NewRolodex(CreateOpenAPIIndexConfig())
+	r.SetSafeCircularReferences([]*CircularReferenceResult{{
+		LoopIndex: 1,
+		LoopPoint: &Reference{
+			FullDefinition: "test",
+		},
+	}})
+	assert.NotNil(t, r.GetSafeCircularReferences())
+}
+
+func TestRolodex_CheckSetRootIndex(t *testing.T) {
+	var r *Rolodex
+	r = NewRolodex(CreateOpenAPIIndexConfig())
+	r.SetRootIndex(&SpecIndex{})
+	assert.NotNil(t, r.GetRootIndex())
+}
+
+func TestRolodex_CheckID(t *testing.T) {
+	var r *Rolodex
+	r = NewRolodex(CreateOpenAPIIndexConfig())
+	id := r.GetId()
+	assert.NotNil(t, id)
+
+	r2 := NewRolodex(CreateOpenAPIIndexConfig())
+	assert.NotNil(t, id)
+	assert.NotEqual(t, r.GetId(), r2.GetId())
+
+	a := r.GetId()
+	b := r2.GetId()
+	c := r.RotateId()
+	d := r2.RotateId()
+
+	assert.NotEqual(t, a, b)
+	assert.NotEqual(t, a, c)
+	assert.NotEqual(t, a, d)
+
 }
 
 func TestRolodex_IndexCircularLookup_SafeCircular(t *testing.T) {
@@ -1850,8 +1892,129 @@ components:
 	cf.BasePath = baseDir
 	rolodex := NewRolodex(cf)
 	rolodex.AddLocalFS(baseDir, fileFS)
-	err = rolodex.IndexTheRolodex()
+	err = rolodex.IndexTheRolodex(context.Background())
 
 	safeRefs := rolodex.GetSafeCircularReferences()
 	assert.Len(t, safeRefs, 1)
+}
+
+func TestSpecIndex_TestDoubleIndexAdd(t *testing.T) {
+	r := NewRolodex(CreateOpenAPIIndexConfig())
+	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
+	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
+	r.AddExternalIndex(&SpecIndex{specAbsolutePath: "one"}, "one")
+	assert.Len(t, r.GetIndexes(), 1)
+}
+
+type testRolodexFS struct {
+	errorYaml bool
+}
+
+func (ts *testRolodexFS) Open(name string) (fs.File, error) {
+	return &testRolodexFile{errorYaml: ts.errorYaml}, nil
+}
+
+func (ts *testRolodexFS) GetFiles() map[string]RolodexFile {
+	return nil
+}
+
+type testRolodexFile struct {
+	offset    int64
+	errorYaml bool
+}
+
+func (trf *testRolodexFile) GetContent() string {
+	return "test content"
+}
+func (trf *testRolodexFile) GetFileExtension() FileExtension {
+	return YAML
+}
+func (trf *testRolodexFile) GetFullPath() string {
+	return "/test/path/spec.yaml"
+}
+func (trf *testRolodexFile) GetErrors() []error {
+	return nil
+}
+func (trf *testRolodexFile) GetContentAsYAMLNode() (*yaml.Node, error) {
+	if trf.errorYaml {
+		return nil, fmt.Errorf("error getting YAML node")
+	}
+	return &yaml.Node{}, nil
+}
+func (trf *testRolodexFile) GetIndex() *SpecIndex {
+	return &SpecIndex{
+		specAbsolutePath: "/test/path/spec.yaml",
+	}
+}
+func (trf *testRolodexFile) Name() string {
+	return "spec.yaml"
+}
+func (trf *testRolodexFile) ModTime() time.Time {
+	return time.Now()
+}
+func (trf *testRolodexFile) IsDir() bool {
+	return false
+}
+func (trf *testRolodexFile) Sys() any {
+	return nil
+}
+func (trf *testRolodexFile) Size() int64 {
+	return int64(len(trf.GetContent()))
+}
+
+func (trf *testRolodexFile) Mode() os.FileMode {
+	return 0
+}
+
+// Close closes the file (doesn't do anything, returns no error)
+func (trf *testRolodexFile) Close() error {
+	return nil
+}
+
+// Stat returns the FileInfo for the file.
+func (trf *testRolodexFile) Stat() (fs.FileInfo, error) {
+	return trf, nil
+}
+
+// Read reads the file into a byte slice, makes it compatible with io.Reader.
+func (trf *testRolodexFile) Read(b []byte) (int, error) {
+	if trf.offset >= int64(len(trf.GetContent())) {
+		return 0, io.EOF
+	}
+	if trf.offset < 0 {
+		return 0, &fs.PathError{Op: "read", Path: trf.GetFullPath(), Err: fs.ErrInvalid}
+	}
+	n := copy(b, trf.GetContent()[trf.offset:])
+	trf.offset += int64(n)
+	return n, nil
+}
+
+func TestRolodex_TestRolodexFileCompatibleFS(t *testing.T) {
+	t.Parallel()
+
+	// when using a custom FS, but also returning a RolodexFile compatible fs.File.
+
+	testFS := &testRolodexFS{}
+
+	baseDir := "/tmp"
+
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseDir, testFS)
+
+	f, rerr := rolo.Open("spec.yaml")
+	assert.NoError(t, rerr)
+	assert.Equal(t, "test content", f.GetContent())
+	rolo.rootIndex = NewTestSpecIndex().Load().(*SpecIndex)
+	rolo.indexes = append(rolo.indexes, rolo.rootIndex)
+	rolo.ClearIndexCaches()
+
+	testFS = &testRolodexFS{errorYaml: true}
+
+	rolo = NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS(baseDir, testFS)
+
+	f, rerr = rolo.Open("spec.yaml")
+	assert.Error(t, rerr)
+	rolo.ClearIndexCaches()
+
 }

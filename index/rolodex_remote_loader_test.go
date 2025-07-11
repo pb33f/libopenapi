@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -210,18 +211,18 @@ func TestRemoteFile_NoContent(t *testing.T) {
 }
 
 func TestRemoteFile_BadContent(t *testing.T) {
-	rf := &RemoteFile{data: []byte("bad: data: on: a single: line: makes: for: unhappy: yaml"), index: NewTestSpecIndex()}
+	rf := &RemoteFile{data: []byte("bad: data: on: a single: line: makes: for: unhappy: yaml"), index: *NewTestSpecIndex()}
 	x, y := rf.GetContentAsYAMLNode()
 	assert.Nil(t, x)
 	assert.Error(t, y)
 }
 
 func TestRemoteFile_GoodContent(t *testing.T) {
-	rf := &RemoteFile{data: []byte("good: data"), index: NewTestSpecIndex()}
+	rf := &RemoteFile{data: []byte("good: data"), index: *NewTestSpecIndex()}
 	x, y := rf.GetContentAsYAMLNode()
 	assert.NotNil(t, x)
 	assert.NoError(t, y)
-	assert.NotNil(t, rf.index.root)
+	assert.NotNil(t, rf.GetIndex().root)
 
 	// bad read
 	rf.offset = -1
@@ -231,15 +232,15 @@ func TestRemoteFile_GoodContent(t *testing.T) {
 }
 
 func TestRemoteFile_Index_AlreadySet(t *testing.T) {
-	rf := &RemoteFile{data: []byte("good: data"), index: NewTestSpecIndex()}
-	x, y := rf.Index(&SpecIndexConfig{})
+	rf := &RemoteFile{data: []byte("good: data"), index: *NewTestSpecIndex()}
+	x, y := rf.Index(context.Background(), &SpecIndexConfig{})
 	assert.NotNil(t, x)
 	assert.NoError(t, y)
 }
 
 func TestRemoteFile_Index_BadContent_Recover(t *testing.T) {
 	rf := &RemoteFile{data: []byte("no: sleep: until: the bugs: weep")}
-	x, y := rf.Index(&SpecIndexConfig{})
+	x, y := rf.Index(context.Background(), &SpecIndexConfig{})
 	assert.NotNil(t, x)
 	assert.NoError(t, y)
 }
@@ -420,7 +421,7 @@ func TestNewRemoteFS_RemoteBaseURL_EmptySpecFailIndex(t *testing.T) {
 	x, y := rfs.Open("http://pb33f.io/woof.yaml")
 	assert.NotNil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "there is nothing in the spec, it's empty - so there is nothing to be done", y.Error())
+	assert.Equal(t, "nothing was extracted from the file 'https://pb33f.io/woof.yaml'", y.Error())
 }
 
 func TestNewRemoteFS_Unsupported(t *testing.T) {

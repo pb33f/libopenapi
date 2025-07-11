@@ -16,6 +16,7 @@ package libopenapi
 import (
 	"errors"
 	"fmt"
+	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 
 	"github.com/pb33f/libopenapi/index"
 
@@ -290,6 +291,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}
+	lowbase.SchemaQuickHashMap.Clear()
 	return d.highSwaggerModel, errs
 }
 
@@ -344,7 +346,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		Model: *highDoc,
 		Index: lowDoc.Index,
 	}
-
+	lowbase.SchemaQuickHashMap.Clear()
 	return d.highOpenAPI3Model, errs
 }
 

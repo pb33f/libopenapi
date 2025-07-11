@@ -125,7 +125,7 @@ properties:
 	c := index.CreateOpenAPIIndexConfig()
 	rolo := index.NewRolodex(c)
 	rolo.SetRootNode(&idxNodeA)
-	_ = rolo.IndexTheRolodex()
+	_ = rolo.IndexTheRolodex(context.Background())
 
 	err := schA.Build(context.Background(), nil, idxNodeA.Content[0], rolo.GetRootIndex())
 	assert.NoError(t, err)
@@ -196,4 +196,45 @@ description: cakes`
 	n, f = s.Nodes.Load(4)
 	assert.True(t, f)
 	assert.NotNil(t, n)
+}
+
+func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
+	sp := new(SchemaProxy)
+
+	r := low.Reference{}
+	r.SetReference("hello", &yaml.Node{})
+	sp.Reference = r
+
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
+	cfg := &index.SpecIndexConfig{Logger: logger}
+	idx := index.NewSpecIndexWithConfig(nil, cfg)
+	sp.idx = idx
+
+	rolo := index.NewRolodex(cfg)
+	idx.SetRolodex(rolo)
+	rolo.SetRootIndex(idx)
+
+	v := sp.Hash()
+	assert.Equal(t, [32]byte{}, v)
+}
+
+func TestSchemaProxy_TestRolodexHasId(t *testing.T) {
+	yml := `type: int`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(idxNode.Content[0], &index.SpecIndexConfig{})
+	rolo := index.NewRolodex(&index.SpecIndexConfig{})
+	rolo.SetRootIndex(idx)
+	idx.SetRolodex(rolo)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.NoError(t, err)
+	assert.False(t, sch.IsReference())
+	assert.NotNil(t, sch.Schema())
+	assert.Equal(t, "6da88c34ba124c41f977db66a4fc5c1a951708d285c81bb0d47c3206f4c27ca8",
+		low.GenerateHashString(&sch))
 }

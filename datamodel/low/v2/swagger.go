@@ -196,7 +196,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	var errs []error
 
 	// index all the things!
-	_ = rolodex.IndexTheRolodex()
+	_ = rolodex.IndexTheRolodex(context.Background())
 
 	// check for circular references
 	if !config.SkipCircularReferenceCheck {

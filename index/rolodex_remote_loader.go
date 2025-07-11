@@ -15,8 +15,10 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
+	"context"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
@@ -45,6 +47,11 @@ const (
 // FileExtension is the type of file extension.
 type FileExtension int
 
+// RolodexFSWithContext is an interface like fs.FS, but with a context parameter for the Open method.
+type RolodexFSWithContext interface {
+	OpenWithContext(ctx context.Context, name string) (fs.File, error)
+}
+
 // RemoteFS is a file system that indexes remote files. It implements the fs.FS interface. Files are located remotely
 // and served via HTTP.
 type RemoteFS struct {
@@ -60,6 +67,7 @@ type RemoteFS struct {
 	logger            *slog.Logger
 	extractedFiles    map[string]RolodexFile
 	rolodex           *Rolodex
+	errMutex          sync.Mutex
 }
 
 // RemoteFile is a file that has been indexed by the RemoteFS. It implements the RolodexFile interface.
@@ -72,9 +80,11 @@ type RemoteFile struct {
 	URL           *url.URL
 	lastModified  time.Time
 	seekingErrors []error
-	index         *SpecIndex
+	index         atomic.Value // *SpecIndex
 	parsed        *yaml.Node
 	offset        int64
+	indexOnce     sync.Once
+	contentLock   sync.Mutex
 }
 
 // GetFileName returns the name of the file.
@@ -89,24 +99,30 @@ func (f *RemoteFile) GetContent() string {
 
 // GetContentAsYAMLNode returns the content of the file as a yaml.Node.
 func (f *RemoteFile) GetContentAsYAMLNode() (*yaml.Node, error) {
-	if f.parsed != nil {
-		return f.parsed, nil
-	}
-	if f.index != nil && f.index.root != nil {
-		return f.index.root, nil
+	f.contentLock.Lock()
+	idx := f.GetIndex()
+	if idx != nil && idx.root != nil {
+		f.contentLock.Unlock()
+		return idx.GetRootNode(), nil
 	}
 	if f.data == nil {
+		f.contentLock.Unlock()
 		return nil, fmt.Errorf("no data to parse for file: %s", f.fullPath)
 	}
 	var root yaml.Node
 	err := yaml.Unmarshal(f.data, &root)
+
 	if err != nil {
+		f.contentLock.Unlock()
 		return nil, err
 	}
-	if f.index != nil && f.index.root == nil {
-		f.index.root = &root
+	if idx != nil && idx.root == nil {
+		idx.root = &root
 	}
-	f.parsed = &root
+	if f.parsed == nil {
+		f.parsed = &root
+	}
+	f.contentLock.Unlock()
 	return &root, nil
 }
 
@@ -188,27 +204,40 @@ func (f *RemoteFile) Read(b []byte) (int, error) {
 }
 
 // Index indexes the file and returns a *SpecIndex, any errors are returned as well.
-func (f *RemoteFile) Index(config *SpecIndexConfig) (*SpecIndex, error) {
-	if f.index != nil {
-		return f.index, nil
-	}
-	content := f.data
+func (f *RemoteFile) Index(ctx context.Context, config *SpecIndexConfig) (*SpecIndex, error) {
+	var result *SpecIndex
+	var resultErr error
+	f.indexOnce.Do(func() {
 
-	// first, we must parse the content of the file
-	info, err := datamodel.ExtractSpecInfoWithDocumentCheckSync(content, true)
-	if err != nil {
-		return nil, err
-	}
+		content := f.data
+		// first, we must parse the content of the file,
+		// the check is bypassed, so as long as it's readable, we're good.
+		info, _ := datamodel.ExtractSpecInfoWithDocumentCheck(content, true)
+		if config.SpecInfo == nil {
+			config.SpecInfo = info
+		}
+		index := NewSpecIndexWithConfigAndContext(ctx, info.RootNode, config)
+		index.specAbsolutePath = config.SpecAbsolutePath
 
-	index := NewSpecIndexWithConfig(info.RootNode, config)
-	index.specAbsolutePath = config.SpecAbsolutePath
-	f.index = index
-	return index, nil
+		if info.RootNode == nil && index.root == nil {
+			resultErr = fmt.Errorf("nothing was extracted from the file '%s'", f.fullPath)
+		} else {
+			result = index
+			f.index.Store(index)
+		}
+	})
+	if v := f.index.Load(); v != nil {
+		result = v.(*SpecIndex)
+	}
+	return result, resultErr
 }
 
 // GetIndex returns the index for the file.
 func (f *RemoteFile) GetIndex() *SpecIndex {
-	return f.index
+	if v := f.index.Load(); v != nil {
+		return v.(*SpecIndex)
+	}
+	return nil
 }
 
 // NewRemoteFSWithConfig creates a new RemoteFS using the supplied SpecIndexConfig.
@@ -289,10 +318,11 @@ type waiterRemote struct {
 	done      bool
 	file      *RemoteFile
 	listeners int
+	error     error
+	mu        sync.Mutex
 }
 
-// Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
-func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
+func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.File, error) {
 	if i.indexConfig != nil && !i.indexConfig.AllowRemoteLookup {
 		return nil, fmt.Errorf("remote lookup for '%s' is not allowed, please set "+
 			"AllowRemoteLookup to true as part of the index configuration", remoteURL)
@@ -321,20 +351,16 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if r, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
 
 		wait := r.(*waiterRemote)
-		wait.listeners++
 
+		wait.mu.Lock()
 		i.logger.Debug("[rolodex remote loader] waiting for existing fetch to complete", "file", remoteURL,
 			"remoteURL", remoteParsedURL.String())
-
-		for !wait.done {
-			i.logger.Debug("[rolodex remote loader] sleeping, waiting for file to return", "file", remoteURL)
-			time.Sleep(500 * time.Nanosecond) // breathe for a few nanoseconds.
-		}
-
-		wait.listeners--
+		f := wait.file
+		e := wait.error
 		i.logger.Debug("[rolodex remote loader]: waiting done, remote completed, returning file", "file",
 			remoteParsedURL.String(), "listeners", wait.listeners)
-		return wait.file, nil
+		wait.mu.Unlock()
+		return f, e
 	}
 
 	fileExt := ExtractFileType(remoteParsedURL.Path)
@@ -348,6 +374,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	}
 
 	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}
+	processingWaiter.mu.Lock()
 
 	// add to processing
 	i.ProcessingFiles.Store(remoteParsedURL.Path, processingWaiter)
@@ -365,8 +392,13 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	}
 
 	if remoteParsedURL.Scheme == "" {
+
 		processingWaiter.done = true
+		//if processingWaiter.cond != nil {
+		//	processingWaiter.cond.Broadcast()
+		//}
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+		processingWaiter.mu.Unlock()
 		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
 	}
 
@@ -375,10 +407,15 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	response, clientErr := i.RemoteHandlerFunc(remoteParsedURL.String())
 	if clientErr != nil {
 
+		i.errMutex.Lock()
 		i.remoteErrors = append(i.remoteErrors, clientErr)
+		i.errMutex.Unlock()
+
 		// remove from processing
 		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+		processingWaiter.mu.Unlock()
+
 		if response != nil {
 			i.logger.Error("client error", "error", clientErr, "status", response.StatusCode)
 		} else {
@@ -390,15 +427,17 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 		// remove from processing
 		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
+		processingWaiter.mu.Unlock()
 		return nil, fmt.Errorf("empty response from remote URL: %s", remoteParsedURL.String())
 	}
 	responseBytes, readError := io.ReadAll(response.Body)
 	if readError != nil {
 
 		// remove from processing
+		processingWaiter.error = readError
 		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-
+		processingWaiter.mu.Unlock()
 		return nil, fmt.Errorf("error reading bytes from remote file '%s': [%s]",
 			remoteParsedURL.String(), readError.Error())
 	}
@@ -406,11 +445,12 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	if response.StatusCode >= 400 {
 
 		// remove from processing
+		processingWaiter.error = fmt.Errorf("remote file '%s' returned status code %d", remoteParsedURL.String(), response.StatusCode)
 		processingWaiter.done = true
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
-
 		i.logger.Error("unable to fetch remote document",
 			"file", remoteParsedURL.Path, "status", response.StatusCode, "resp", string(responseBytes))
+		processingWaiter.mu.Unlock()
 		return nil, fmt.Errorf("unable to fetch remote document '%s' (error %d)", remoteParsedURL.String(),
 			response.StatusCode)
 	}
@@ -457,7 +497,7 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 
 	i.Files.Store(absolutePath, remoteFile)
 
-	idx, idxError := remoteFile.Index(&copiedCfg)
+	idx, idxError := remoteFile.Index(ctx, &copiedCfg)
 
 	if idxError != nil && idx == nil {
 		i.remoteErrors = append(i.remoteErrors, idxError)
@@ -476,5 +516,11 @@ func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
 	processingWaiter.file = remoteFile
 	processingWaiter.done = true
 	i.ProcessingFiles.Delete(remoteParsedURL.Path)
+	processingWaiter.mu.Unlock()
 	return remoteFile, errors.Join(i.remoteErrors...)
+}
+
+// Open opens a file, returning it or an error. If the file is not found, the error is of type *PathError.
+func (i *RemoteFS) Open(remoteURL string) (fs.File, error) {
+	return i.OpenWithContext(context.Background(), remoteURL)
 }

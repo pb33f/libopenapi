@@ -15,6 +15,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -96,7 +97,7 @@ func Benchmark_ResolveDocumentStripe(b *testing.B) {
 		rolo := NewRolodex(cf)
 		rolo.SetRootNode(&rootNode)
 
-		indexedErr := rolo.IndexTheRolodex()
+		indexedErr := rolo.IndexTheRolodex(context.Background())
 		assert.Len(b, utils.UnwrapErrors(indexedErr), 1)
 
 	}
@@ -112,7 +113,7 @@ func TestResolver_ResolveComponents_CircularSpec(t *testing.T) {
 	rolo := NewRolodex(cf)
 	rolo.SetRootNode(&rootNode)
 
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, indexedErr)
 
 	rolo.Resolve()
@@ -132,7 +133,7 @@ func TestResolver_CheckForCircularReferences(t *testing.T) {
 	rolo := NewRolodex(cf)
 	rolo.SetRootNode(&rootNode)
 
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.Error(t, indexedErr)
 	assert.Len(t, utils.UnwrapErrors(indexedErr), 3)
 
@@ -527,7 +528,7 @@ func TestResolver_ResolveComponents_Stripe(t *testing.T) {
 	rolo := NewRolodex(cf)
 	rolo.SetRootNode(&stripeRoot)
 
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	assert.NoError(t, indexedErr)
 
 	// after resolving, the rolodex will have errors.
@@ -725,7 +726,7 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	rolo.AddRemoteFS("https://raw.githubusercontent.com/daveshanley/vacuum/main/model/test_files/", remoteFS)
 
 	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, indexedErr)
 
@@ -738,8 +739,13 @@ func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 
 	// in v0.8.2 a new check was added when indexing, to prevent re-indexing the same file multiple times.
 	assert.Equal(t, 6, resolver.GetRelativesSeen())
-	assert.Equal(t, 15, resolver.GetJourneysTaken())
-	assert.Equal(t, 17, resolver.GetReferenceVisited())
+	//assert.Equal(t, 15, resolver.GetJourneysTaken())
+	//assert.Equal(t, 17, resolver.GetReferenceVisited())
+
+	// in v0.23.0 the rolodex got a tune up and is more optimized, so the number of journeys taken is now less.
+	assert.Equal(t, 6, resolver.GetJourneysTaken())
+	assert.Equal(t, 8, resolver.GetReferenceVisited())
+
 }
 
 func TestResolver_ResolveComponents_k8s(t *testing.T) {
@@ -1156,7 +1162,7 @@ func TestLocateRefEnd_WithResolve(t *testing.T) {
 	rolo := NewRolodex(cf)
 	rolo.AddLocalFS(cf.BasePath, localFs)
 	rolo.SetRootNode(&bsn)
-	rolo.IndexTheRolodex()
+	rolo.IndexTheRolodex(context.Background())
 
 	wd, _ := os.Getwd()
 	cp, _ := filepath.Abs(filepath.Join(wd, "../test_specs/third.yaml"))
@@ -1216,7 +1222,7 @@ paths:
 	rolodex.SetRootNode(&rootNode)
 
 	// index the rolodex
-	indexingError := rolodex.IndexTheRolodex()
+	indexingError := rolodex.IndexTheRolodex(context.Background())
 	if indexingError != nil {
 		panic(indexingError)
 	}

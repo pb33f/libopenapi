@@ -6,7 +6,9 @@ package index
 import (
 	"os"
 	"testing"
+	"time"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -53,7 +55,7 @@ func TestSpecIndex_CheckCircularIndex(t *testing.T) {
 	assert.NoError(t, err)
 	rolo.AddLocalFS(cf.BasePath, fileFS)
 
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	rolo.BuildIndexes()
 
 	assert.NoError(t, indexedErr)
@@ -95,7 +97,7 @@ func TestSpecIndex_CheckCircularIndex_NoDirFS(t *testing.T) {
 	assert.NoError(t, err)
 	rolo.AddLocalFS(cf.BasePath, fileFS)
 
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	rolo.BuildIndexes()
 
 	assert.NoError(t, indexedErr)
@@ -107,7 +109,6 @@ func TestSpecIndex_CheckCircularIndex_NoDirFS(t *testing.T) {
 	a, _ := index.SearchIndexForReference("second.yaml#/properties/property2")
 	b, _ := index.SearchIndexForReference("second.yaml")
 	c, _ := index.SearchIndexForReference("fourth.yaml")
-
 	assert.NotNil(t, a)
 	assert.NotNil(t, b)
 	assert.Nil(t, c)
@@ -149,7 +150,7 @@ components:
 	assert.NoError(t, err)
 	rolo.AddLocalFS(cf.BasePath, fileFS)
 
-	indexedErr := rolo.IndexTheRolodex()
+	indexedErr := rolo.IndexTheRolodex(context.Background())
 	rolo.BuildIndexes()
 
 	// should no longer error
@@ -193,14 +194,14 @@ components:
 	c := CreateOpenAPIIndexConfig()
 	index := NewSpecIndexWithConfig(&rootNode, c)
 
-	thing := index.FindComponentInRoot("#/$splish/$.../slash#$///./")
+	thing := index.FindComponentInRoot(context.Background(), "#/$splish/$.../slash#$///./")
 	assert.Nil(t, thing)
 	assert.Len(t, index.GetReferenceIndexErrors(), 0)
 }
 
 func TestSpecIndex_FailFindComponentInRoot(t *testing.T) {
-	index := NewTestSpecIndex()
-	assert.Nil(t, index.FindComponentInRoot("does it even matter? of course not. no"))
+	index := NewTestSpecIndex().Load().(*SpecIndex)
+	assert.Nil(t, index.FindComponentInRoot(context.Background(), "does it even matter? of course not. no"))
 }
 
 func TestSpecIndex_LocateRemoteDocsWithRemoteURLHandler(t *testing.T) {
@@ -235,20 +236,39 @@ paths:
 	// add remote filesystem
 	rolo.AddRemoteFS("", remoteFS)
 
-	// index the rolodex.
-	indexedErr := rolo.IndexTheRolodex()
+	ctx, _ := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	var idx *SpecIndex
+	done := make(chan struct{})
+	go func() {
 
-	assert.NoError(t, indexedErr)
+		// index the rolodex.
+		indexedErr := rolo.IndexTheRolodex(ctx)
 
-	index := rolo.GetRootIndex()
+		assert.NoError(t, indexedErr)
+		idx = rolo.GetRootIndex()
+		done <- struct{}{}
+	}()
+
+	complete := false
+	for !complete {
+		select {
+		case <-ctx.Done():
+			complete = true
+
+			break
+		case <-done:
+			crsParam := idx.GetMappedReferences()["https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"]
+			assert.NotNil(t, crsParam)
+			assert.True(t, crsParam.IsRemote)
+			assert.Equal(t, "crs", crsParam.Node.Content[1].Value)
+			assert.Equal(t, "query", crsParam.Node.Content[3].Value)
+			assert.Equal(t, "form", crsParam.Node.Content[9].Value)
+			complete = true
+		}
+	}
 
 	// extract crs param from index
-	crsParam := index.GetMappedReferences()["https://schemas.opengis.net/ogcapi/features/part2/1.0/openapi/ogcapi-features-2.yaml#/components/parameters/crs"]
-	assert.NotNil(t, crsParam)
-	assert.True(t, crsParam.IsRemote)
-	assert.Equal(t, "crs", crsParam.Node.Content[1].Value)
-	assert.Equal(t, "query", crsParam.Node.Content[3].Value)
-	assert.Equal(t, "form", crsParam.Node.Content[9].Value)
+
 }
 
 func TestSpecIndex_LocateRemoteDocsWithMalformedEscapedCharacters(t *testing.T) {
@@ -312,7 +332,7 @@ components:
 	r := NewRolodex(c)
 	index.rolodex = r
 
-	n := index.lookupRolodex([]string{"bingobango"})
+	n := index.lookupRolodex(context.Background(), []string{"bingobango"})
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)
@@ -338,7 +358,7 @@ components:
 	r := NewRolodex(c)
 	index.rolodex = r
 
-	n := index.FindComponentInRoot("#/")
+	n := index.FindComponentInRoot(context.Background(), "#/")
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)
@@ -364,7 +384,7 @@ components:
 	r := NewRolodex(c)
 	index.rolodex = r
 
-	n := index.FindComponentInRoot(`C:\windows\you\annoy\me#\components\schemas\thang`)
+	n := index.FindComponentInRoot(context.Background(), `C:\windows\you\annoy\me#\components\schemas\thang`)
 
 	assert.NotNil(t, n)
 }
@@ -389,7 +409,7 @@ components:
 	r := NewRolodex(c)
 	index.rolodex = r
 
-	n := index.lookupRolodex(nil)
+	n := index.lookupRolodex(context.Background(), nil)
 
 	// no url, no ref.
 	assert.Nil(t, n)
@@ -407,7 +427,7 @@ func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
 	r := NewRolodex(c)
 	index.rolodex = r
 
-	n := index.lookupRolodex([]string{"bingobango"})
+	n := index.lookupRolodex(context.Background(), []string{"bingobango"})
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)

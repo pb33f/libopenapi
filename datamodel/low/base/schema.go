@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -147,6 +148,8 @@ type Schema struct {
 	RootNode *yaml.Node
 	index    *index.SpecIndex
 	context  context.Context
+	hashed   [32]byte   // quick hash of the schema, used for quick equality checking
+	hashLock sync.Mutex // lock to prevent concurrent hashing of the same schema
 	*low.Reference
 	low.NodeMap
 }
@@ -161,14 +164,59 @@ func (s *Schema) GetContext() context.Context {
 	return s.context
 }
 
+// QuickHash will calculate a SHA256 hash from the values of the schema, however the hash is not very deep
+// and is used for quick equality checking, This method exists because a full hash could end up churning through
+// thousands of polymorphic references. With a quick hash, polymorphic properties are not included.
+func (s *Schema) QuickHash() [32]byte {
+	return s.hash(true)
+}
+
 // Hash will calculate a SHA256 hash from the values of the schema, This allows equality checking against
 // Schemas defined inside an OpenAPI document. The only way to know if a schema has changed, is to hash it.
 func (s *Schema) Hash() [32]byte {
+	return s.hash(false)
+}
+
+// SchemaQuickHashMap is a sync.Map used to store quick hashes of schemas, used by quick hashing to prevent
+// over rotation on the same schema. This map is automatically reset each time `CompareDocuments` is called by the
+// `what-changed` package and each time a model is built via `BuildV3Model()` etc.
+//
+// This exists because to ensure deep equality checking when composing schemas using references. However this
+// can cause an exhaustive deep hash calculation that chews up compute like crazy, particularly with polymorphic refs.
+// The hash map means each schema is hashed once, and then the hash is reused for quick equality checking.
+var SchemaQuickHashMap sync.Map
+
+func (s *Schema) hash(quick bool) [32]byte {
 	if s == nil {
 		return [32]byte{}
 	}
-	// calculate a hash from every property in the schema.
 	var d []string
+	// create a key for the schema, this is used to quickly check if the schema has been hashed before, and prevent re-hashing.
+	idx := s.GetIndex()
+	path := ""
+	if idx != nil {
+		path = idx.GetSpecAbsolutePath()
+	}
+	cfId := "root"
+	if s.Index != nil {
+		if s.Index.GetRolodex() != nil {
+			if s.Index.GetRolodex().GetId() != "" {
+				cfId = s.Index.GetRolodex().GetId()
+			}
+		} else {
+			cfId = s.Index.GetConfig().GetId()
+		}
+	}
+	key := fmt.Sprintf("%s:%d:%d:%s", path, s.RootNode.Line, s.RootNode.Column, cfId)
+	if quick {
+		if v, ok := SchemaQuickHashMap.Load(key); ok {
+			if r, k := v.([32]byte); k {
+				return r
+			}
+		}
+	}
+
+	// calculate a hash from every property in the schema.
 	if !s.SchemaTypeRef.IsEmpty() {
 		d = append(d, fmt.Sprint(s.SchemaTypeRef.Value))
 	}
@@ -419,7 +467,9 @@ func (s *Schema) Hash() [32]byte {
 			d = append(d, low.GenerateHashString(ex.Value))
 		}
 	}
-	return sha256.Sum256([]byte(strings.Join(d, "|")))
+	h := sha256.Sum256([]byte(strings.Join(d, "|")))
+	SchemaQuickHashMap.Store(key, h)
+	return h
 }
 
 // FindProperty will return a ValueReference pointer containing a SchemaProxy pointer

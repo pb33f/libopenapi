@@ -29,12 +29,12 @@ func (index *SpecIndex) FindComponent(ctx context.Context, componentId string) *
 	if len(uri) == 2 {
 		if uri[0] != "" {
 			if index.specAbsolutePath == uri[0] {
-				return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+				return index.FindComponentInRoot(ctx, fmt.Sprintf("#/%s", uri[1]))
 			} else {
-				return index.lookupRolodex(uri)
+				return index.lookupRolodex(ctx, uri)
 			}
 		} else {
-			return index.FindComponentInRoot(fmt.Sprintf("#/%s", uri[1]))
+			return index.FindComponentInRoot(ctx, fmt.Sprintf("#/%s", uri[1]))
 		}
 	} else {
 
@@ -59,15 +59,15 @@ func (index *SpecIndex) FindComponent(ctx context.Context, componentId string) *
 			//	}
 			//}
 
-			return index.lookupRolodex(uri)
+			return index.lookupRolodex(ctx, uri)
 		}
 
 		// root search
-		return index.FindComponentInRoot(componentId)
+		return index.FindComponentInRoot(ctx, componentId)
 	}
 }
 
-func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index *SpecIndex) *Reference {
+func FindComponent(_ context.Context, root *yaml.Node, componentId, absoluteFilePath string, index *SpecIndex) *Reference {
 	// check component for url encoding.
 	if strings.Contains(componentId, "%") {
 		// decode the url.
@@ -114,7 +114,7 @@ func FindComponent(root *yaml.Node, componentId, absoluteFilePath string, index 
 	return nil
 }
 
-func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
+func (index *SpecIndex) FindComponentInRoot(ctx context.Context, componentId string) *Reference {
 	if index.root != nil {
 
 		componentId = utils.ReplaceWindowsDriveWithLinuxPath(componentId)
@@ -127,12 +127,12 @@ func (index *SpecIndex) FindComponentInRoot(componentId string) *Reference {
 			}
 		}
 
-		return FindComponent(index.root, componentId, index.specAbsolutePath, index)
+		return FindComponent(ctx, index.root, componentId, index.specAbsolutePath, index)
 	}
 	return nil
 }
 
-func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
+func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Reference {
 	if index.rolodex == nil {
 		return nil
 	}
@@ -155,7 +155,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 		idx := index
 		if ext != "" {
 			// extract the document from the rolodex.
-			rFile, rError := index.rolodex.Open(absoluteFileLocation)
+			rFile, rError := index.rolodex.OpenWithContext(ctx, absoluteFileLocation)
 
 			if rError != nil {
 				index.logger.Error("unable to open the rolodex file, check specification references and base path",
@@ -216,7 +216,7 @@ func (index *SpecIndex) lookupRolodex(uri []string) *Reference {
 			}
 			return foundRef
 		} else {
-			foundRef = FindComponent(parsedDocument, query, absoluteFileLocation, index)
+			foundRef = FindComponent(ctx, parsedDocument, query, absoluteFileLocation, index)
 			if foundRef != nil {
 				foundRef.IsRemote = true
 				foundRef.RemoteLocation = absoluteFileLocation

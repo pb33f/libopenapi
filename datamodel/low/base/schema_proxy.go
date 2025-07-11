@@ -6,6 +6,8 @@ package base
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 
@@ -154,19 +156,35 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			// only resolve this proxy if it's not a ref.
 			sch := sp.Schema()
 			sp.rendered = sch
+			hashError := fmt.Errorf("circular reference detected: %s", sp.GetReference())
 			if sch != nil {
-				return sch.Hash()
+				if !CheckSchemaProxyForCircularRefs(sp) {
+					return sch.Hash()
+				}
 			}
 			var logger *slog.Logger
-			if sp.idx != nil {
+			if sp.idx != nil && sp.idx.GetLogger() != nil {
 				logger = sp.idx.GetLogger()
 			}
 			if logger != nil {
-				logger.Warn("SchemaProxy.Hash() failed to resolve schema, returning empty hash", "error", sp.GetBuildError().Error())
+				bErr := errors.Join(sp.GetBuildError(), hashError)
+				if bErr != nil {
+					logger.Warn("SchemaProxy.Hash() unable to complete hash: ", "error", bErr.Error())
+				}
 			}
 			return [32]byte{}
 		}
 	}
+
+	// let's check the rolodex for a potential circular reference, and if there isn't a match, go ahead and hash the reference value.
+	if sp.GetIndex() != nil && !CheckSchemaProxyForCircularRefs(sp) {
+		if sp.rendered == nil {
+			sp.rendered = sp.Schema()
+		}
+		qh := sp.rendered.QuickHash() // quick hash uses a cache to keep things fast.
+		return qh
+	}
+
 	// hash reference value only, do not resolve!
 	return sha256.Sum256([]byte(sp.GetReference()))
 }
@@ -183,4 +201,8 @@ func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
 // GetIndex will return the index.SpecIndex pointer that was passed to the SchemaProxy during build.
 func (sp *SchemaProxy) GetIndex() *index.SpecIndex {
 	return sp.idx
+}
+
+type HasIndex interface {
+	GetIndex() *index.SpecIndex
 }

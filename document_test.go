@@ -4,6 +4,7 @@ package libopenapi
 
 import (
 	"bytes"
+	stdContext "context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -228,33 +229,47 @@ func TestDocument_RenderAndReload_ChangeCheck_Burgershop(t *testing.T) {
 
 func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 	bs, _ := os.ReadFile("test_specs/stripe.yaml")
-	doc, _ := NewDocument(bs)
+	doc, _ := NewDocumentWithConfiguration(bs, &datamodel.DocumentConfiguration{})
 	doc.BuildV3Model()
 
 	_, newDoc, _, _ := doc.RenderAndReload()
 
-	// compare documents
-	compReport, errs := CompareDocuments(doc, newDoc)
+	ctx, cancel := stdContext.WithTimeout(stdContext.Background(), 10*time.Second)
+	done := make(chan struct{})
+	defer cancel()
+	defer close(done)
 
-	// get flat list of changes.
-	flatChanges := compReport.GetAllChanges()
+	go func() {
+		// compare documents
+		compReport, errs := CompareDocuments(doc, newDoc)
 
-	// remove everything that is a description change (stripe has a lot of those from having 519 empty descriptions)
-	var filtered []*model.Change
-	for i := range flatChanges {
-		if flatChanges[i].Property != "description" {
-			filtered = append(filtered, flatChanges[i])
+		// get flat list of changes.
+		flatChanges := compReport.GetAllChanges()
+
+		// remove everything that is a description change (stripe has a lot of those from having 519 empty descriptions)
+		var filtered []*model.Change
+		for i := range flatChanges {
+			if flatChanges[i].Property != "description" {
+				filtered = append(filtered, flatChanges[i])
+			}
 		}
+
+		assert.Nil(t, errs)
+		tc := compReport.TotalChanges()
+		bc := compReport.TotalBreakingChanges()
+		assert.Equal(t, 0, bc)
+		assert.Equal(t, 819, tc)
+
+		// there should be no other changes than the 519 descriptions.
+		assert.Equal(t, 0, len(filtered))
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Fatalf("timed out waiting for changes to be compared: %v", ctx.Err())
 	}
-
-	assert.Nil(t, errs)
-	tc := compReport.TotalChanges()
-	bc := compReport.TotalBreakingChanges()
-	assert.Equal(t, 0, bc)
-	assert.Equal(t, 819, tc)
-
-	// there should be no other changes than the 519 descriptions.
-	assert.Equal(t, 0, len(filtered))
 }
 
 func TestDocument_ResolveStripe(t *testing.T) {
@@ -615,6 +630,7 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
+	assert.Len(t, errors, 6)
 	assert.Len(t, errors, 6)
 	assert.Nil(t, changes)
 }

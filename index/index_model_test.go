@@ -12,10 +12,20 @@ import (
 )
 
 func TestSpecIndex_GetConfig(t *testing.T) {
-	idx1 := NewTestSpecIndex()
+	idx1 := NewTestSpecIndex().Load().(*SpecIndex)
 	c := SpecIndexConfig{}
+	id := c.GetId()
+	assert.NotNil(t, id)
 	idx1.config = &c
 	assert.Equal(t, &c, idx1.GetConfig())
+}
+
+func TestSpecIndex_Rolodex(t *testing.T) {
+	idx1 := NewTestSpecIndex().Load().(*SpecIndex)
+	assert.Nil(t, idx1.GetResolver())
+	idx1.SetResolver(&Resolver{})
+	assert.NotNil(t, idx1.GetResolver())
+	assert.NotNil(t, idx1.GetConfig().GetId())
 }
 
 func Test_MarshalJSON(t *testing.T) {

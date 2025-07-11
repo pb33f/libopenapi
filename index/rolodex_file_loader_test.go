@@ -9,10 +9,12 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -53,6 +55,10 @@ func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {
 	assert.NoError(t, ierr)
 	assert.NotNil(t, idx)
 	assert.NotNil(t, localFile.GetContent())
+
+	// can only be fired once, so this should be the same as before.
+	idx, ierr = lf.IndexWithContext(context.Background(), CreateOpenAPIIndexConfig())
+	assert.NoError(t, ierr)
 
 	d, e := localFile.GetContentAsYAMLNode()
 	assert.NoError(t, e)
@@ -138,7 +144,7 @@ func TestRolodexLocalFile_BadParse(t *testing.T) {
 }
 
 func TestRolodexLocalFile_NoIndexRoot(t *testing.T) {
-	lf := &LocalFile{data: []byte("burders"), index: NewTestSpecIndex()}
+	lf := &LocalFile{data: []byte("burders"), index: *NewTestSpecIndex()}
 	n, e := lf.GetContentAsYAMLNode()
 	assert.NotNil(t, n)
 	assert.NoError(t, e)
@@ -262,7 +268,7 @@ func TestRecursiveLocalFile_IndexNonParsable(t *testing.T) {
 	assert.NoError(t, err)
 
 	rolo.AddLocalFS(cf.BasePath, fileFS)
-	rErr := rolo.IndexTheRolodex()
+	rErr := rolo.IndexTheRolodex(context.Background())
 
 	assert.NoError(t, rErr)
 
@@ -337,4 +343,42 @@ func TestRecursiveLocalFile_MultipleRequests(t *testing.T) {
 		<-c
 		completed++
 	}
+}
+
+func Test_LocalFSWaiter(t *testing.T) {
+
+	localFS, _ := NewLocalFSWithConfig(&LocalFSConfig{
+		IndexConfig: &SpecIndexConfig{
+			AllowFileLookup: true,
+		},
+	})
+
+	fileChan := make(chan *LocalFile)
+	var wg sync.WaitGroup
+	done := make(chan struct{})
+	process := func() {
+		file, _ := localFS.OpenWithContext(context.Background(), "rolodex_test_data/doc1.yaml")
+		fileChan <- file.(*LocalFile)
+	}
+
+	go func() {
+		for {
+			select {
+			case file := <-fileChan:
+				if file != nil {
+					wg.Done()
+				}
+			case <-done:
+				return
+			}
+		}
+	}()
+
+	total := 100
+	wg.Add(total)
+	for i := 0; i < total; i++ {
+		go process()
+	}
+	wg.Wait()
+	close(done)
 }

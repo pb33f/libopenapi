@@ -4,6 +4,7 @@
 package model
 
 import (
+	"github.com/pb33f/libopenapi/index"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -231,4 +232,46 @@ func TestCheckMapForAdditionRemoval(t *testing.T) {
 
 	CheckMapForAdditionRemoval(l, r, &changes, "label")
 	assert.Len(t, changes, 1)
+}
+
+type test_hasIndex struct {
+	index *index.SpecIndex
+}
+
+func (t *test_hasIndex) GetIndex() *index.SpecIndex {
+	return t.index
+}
+
+func Test_checkLocation(t *testing.T) {
+
+	idx := index.NewSpecIndex(&yaml.Node{Content: []*yaml.Node{{Content: []*yaml.Node{}}}})
+	idxB := index.NewSpecIndex(&yaml.Node{Content: []*yaml.Node{{Content: []*yaml.Node{}}}})
+	rolodex := index.NewRolodex(&index.SpecIndexConfig{})
+	idx.SetRolodex(rolodex)
+	idxB.SetRolodex(rolodex)
+	rolodex.SetRootIndex(idx)
+
+	testHasIndex := &test_hasIndex{
+		index: idxB,
+	}
+
+	// https://suno.com/s/FtPAc2SaXEw5vTsH
+	idxB.SetAbsolutePath("milly-milk-bottle")
+	assert.True(t, checkLocation(&ChangeContext{DocumentLocation: "sunny-spain"}, testHasIndex))
+
+}
+
+func Test_checkLocation_sameIdx(t *testing.T) {
+
+	idx := index.NewSpecIndex(&yaml.Node{Content: []*yaml.Node{{Content: []*yaml.Node{}}}})
+	rolodex := index.NewRolodex(&index.SpecIndexConfig{})
+	idx.SetRolodex(rolodex)
+	rolodex.SetRootIndex(idx)
+
+	testHasIndex := &test_hasIndex{
+		index: idx,
+	}
+	idx.SetAbsolutePath("milly-milk-bottle")
+	assert.False(t, checkLocation(&ChangeContext{DocumentLocation: ""}, testHasIndex))
+
 }

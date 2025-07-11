@@ -2,7 +2,9 @@ package base
 
 import (
 	"context"
+	"sync"
 	"testing"
+	timeStd "time"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -1970,4 +1972,69 @@ func TestExtractSchema_CheckExampleNodesExtracted(t *testing.T) {
 func TestSchema_Hash_Empty(t *testing.T) {
 	var s *Schema
 	assert.NotNil(t, s.Hash())
+}
+
+func TestSetup(t *testing.T) {
+	SchemaQuickHashMap = sync.Map{}
+}
+
+func TestSchema_QuickHash(t *testing.T) {
+	yml := `schema:
+  type: object
+  example:
+    ping: pong
+    jing:
+      jong: jang
+  examples:
+   - tang: bang
+   - bom: jog
+     ding: dong`
+
+	var iNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &iNode)
+	assert.NoError(t, mErr)
+
+	config := index.CreateOpenAPIIndexConfig()
+	config.SpecInfo = &datamodel.SpecInfo{
+		VersionNumeric: 3.0,
+	}
+	idx := index.NewSpecIndexWithConfig(&iNode, config)
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	ctx := context.WithValue(context.Background(), index.CurrentPathKey, "test")
+
+	res, _ := ExtractSchema(ctx, idxNode.Content[0], idx)
+
+	quickHash := res.Value.Schema().QuickHash()
+	quickHashCompare := quickHash
+	regularHash := res.Value.Schema().Hash()
+	regularHashCompare := regularHash
+	assert.NotEmpty(t, quickHash)
+	assert.NotEmpty(t, regularHash)
+	assert.Equal(t, quickHash, regularHash)
+
+	// rehash each 50 times, should always be the same
+	// calculate how long loop takes to run
+	now := timeStd.Now()
+	for i := 0; i < 50; i++ {
+		quickHashCompare = res.Value.Schema().QuickHash()
+		assert.Equal(t, quickHash, quickHashCompare)
+	}
+	duration := timeStd.Since(now)
+	//fmt.Printf("Quick Duration: %d microseconds\n", duration.Microseconds())
+
+	// rehash each 50 times, should always be the same
+	// calculate how long loop takes to run
+	now = timeStd.Now()
+	for i := 0; i < 50; i++ {
+		regularHashCompare = res.Value.Schema().Hash()
+		assert.Equal(t, regularHash, regularHashCompare)
+	}
+	durationRegular := timeStd.Since(now)
+	//fmt.Printf("Regular Duration: %d microseconds\n", durationRegular.Microseconds())
+
+	// quick is always quicker.
+	if duration.Microseconds() > 0 && durationRegular.Microseconds() > 0 {
+		assert.Less(t, duration.Microseconds(), durationRegular.Microseconds())
+	}
 }

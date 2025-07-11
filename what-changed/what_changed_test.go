@@ -138,3 +138,52 @@ func ExampleCompareOpenAPIDocuments() {
 		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
 	// Output: There are 75 changes, of which 20 are breaking. 6 schemas have changes.
 }
+
+func TestCheckExplodedFileCheck(t *testing.T) {
+	original, _ := os.ReadFile("../test_specs/a.yaml")
+	modified, _ := os.ReadFile("../test_specs/a-alt.yaml")
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+
+	// set the basepath:
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = "../test_specs"
+	config.AllowFileReferences = true
+
+	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, config)
+	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, config)
+
+	changes := CompareOpenAPIDocuments(origDoc, modDoc)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, "b.yaml#/components/schemas/SchemaB", allChanges[0].OriginalObject)
+	assert.Equal(t, "b-alt.yaml#/components/schemas/SchemaB", allChanges[0].NewObject)
+
+}
+
+func TestCheckExplodedFileCheck_IdenticalRefNames(t *testing.T) {
+	original, _ := os.ReadFile("../test_specs/ref_test/orig/a.yaml")
+	modified, _ := os.ReadFile("../test_specs/ref_test/mod/a.yaml")
+	infoOrig, _ := datamodel.ExtractSpecInfo(original)
+	infoMod, _ := datamodel.ExtractSpecInfo(modified)
+
+	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, &datamodel.DocumentConfiguration{
+		BasePath:            "../test_specs/ref_test/orig",
+		AllowFileReferences: true,
+	})
+	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, &datamodel.DocumentConfiguration{
+		BasePath:            "../test_specs/ref_test/mod",
+		AllowFileReferences: true,
+	})
+
+	changes := CompareOpenAPIDocuments(origDoc, modDoc)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+
+}

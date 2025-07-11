@@ -17,6 +17,7 @@ import (
 // ParameterChanges represents changes found between Swagger or OpenAPI Parameter objects.
 type ParameterChanges struct {
 	*PropertyChanges
+	Name             string            `json:"name,omitempty" yaml:"name,omitempty"`
 	SchemaChanges    *SchemaChanges    `json:"schemas,omitempty" yaml:"schemas,omitempty"`
 	ExtensionChanges *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 
@@ -208,7 +209,7 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 
 	// required
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
-		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, true)
+		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, right.GetRequired().Value)
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,
@@ -236,6 +237,7 @@ func CompareParameters(l, r any) *ParameterChanges {
 	if reflect.TypeOf(&v2.Parameter{}) == reflect.TypeOf(l) && reflect.TypeOf(&v2.Parameter{}) == reflect.TypeOf(r) {
 		lParam := l.(*v2.Parameter)
 		rParam := r.(*v2.Parameter)
+		pc.Name = lParam.Name.Value
 
 		// perform hash check to avoid further processing
 		if low.AreEqual(lParam, rParam) {
@@ -283,6 +285,7 @@ func CompareParameters(l, r any) *ParameterChanges {
 
 		lParam := l.(*v3.Parameter)
 		rParam := r.(*v3.Parameter)
+		pc.Name = lParam.Name.Value
 
 		// perform hash check to avoid further processing
 		if low.AreEqual(lParam, rParam) {
