@@ -150,12 +150,9 @@ func main() {
 	}
 
 	// The following fails after the first iteration
-	for schemaPairs := docModel.Model.Components.Schemas.First(); schemaPairs != nil; schemaPairs = schemaPairs.Next() {
-		schemaName := schemaPairs.Key()
-		schema := schemaPairs.Value()
-		properties := schema.Schema().Properties
-		if properties != nil {
-			fmt.Printf("Schema '%s' has %d properties\n", schemaName, properties.Len())
+	for schemaName, schema := range docModel.Model.Components.Schemas.FromOldest() {
+		if schema.Schema().Properties != nil {
+			fmt.Printf("Schema '%s' has %d properties\n", schemaName, schema.Schema().Properties.Len())
 		}
 	}
 }
