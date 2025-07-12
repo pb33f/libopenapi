@@ -153,7 +153,10 @@ func main() {
 	for schemaPairs := docModel.Model.Components.Schemas.First(); schemaPairs != nil; schemaPairs = schemaPairs.Next() {
 		schemaName := schemaPairs.Key()
 		schema := schemaPairs.Value()
-		fmt.Printf("Schema '%s' has %d properties\n", schemaName, schema.Schema().Properties.Len())
+		properties := schema.Schema().Properties
+		if properties != nil {
+			fmt.Printf("Schema '%s' has %d properties\n", schemaName, properties.Len())
+		}
 	}
 }
 ```
