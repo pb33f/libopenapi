@@ -15,7 +15,6 @@ package index
 import (
 	"context"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"log/slog"
@@ -688,8 +687,8 @@ func (index *SpecIndex) checkTagCircularReferences() {
 	tagNodes := make(map[string]*yaml.Node) // tagName -> yaml.Node
 
 	for x, tagNode := range index.tagsNode.Content {
-		_, nameNode := utils.FindKeyNode(base.NameLabel, tagNode.Content)
-		_, parentNode := utils.FindKeyNode(base.ParentLabel, tagNode.Content)
+		_, nameNode := utils.FindKeyNode("name", tagNode.Content)
+		_, parentNode := utils.FindKeyNode("parent", tagNode.Content)
 
 		if nameNode != nil {
 			tagName := nameNode.Value
