@@ -66,6 +66,8 @@ const (
 	WrappedLabel               = "wrapped"
 	PropertyNameLabel          = "propertyName"
 	SummaryLabel               = "summary"
+	ParentLabel                = "parent"
+	KindLabel                  = "kind"
 	ValueLabel                 = "value"
 	ExternalValue              = "externalValue"
 	SchemaDialectLabel         = "$schema"
