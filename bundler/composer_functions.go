@@ -27,7 +27,6 @@ func calculateCollisionName(name, pointer, delimiter string, iteration int) stri
 	jsonPointer := strings.Split(pointer, "#/")
 	if len(jsonPointer) == 2 {
 
-		// TODO: make delimiter configurable.
 		// count the number of collisions by splitting the name by the __ delimiter.
 		nameSegments := strings.Split(name, delimiter)
 		if len(nameSegments) > 1 {
@@ -52,7 +51,6 @@ func calculateCollisionName(name, pointer, delimiter string, iteration int) stri
 			return fileName
 
 		}
-
 	}
 
 	// split a path into segments and then create a new name by appending the iteration count.
@@ -62,7 +60,7 @@ func calculateCollisionName(name, pointer, delimiter string, iteration int) stri
 
 			lastSegment := segments[len(segments)-(iteration)]
 
-			// split the name by __ and append the last segment of the path
+			// split the name by the delimiter and append the last segment of the path
 			nameSegments := strings.Split(name, delimiter)
 			if len(nameSegments) > 1 {
 				if len(nameSegments) <= iteration {
