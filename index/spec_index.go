@@ -15,6 +15,7 @@ package index
 import (
 	"context"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
 	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"log/slog"
@@ -211,6 +212,12 @@ func (index *SpecIndex) SetCircularReferences(refs []*CircularReferenceResult) {
 // GetCircularReferences will return any circular reference results that were found by the resolver.
 func (index *SpecIndex) GetCircularReferences() []*CircularReferenceResult {
 	return index.circularReferences
+}
+
+// GetTagCircularReferences will return any circular reference results found in tag parent-child relationships.
+// This is used for OpenAPI 3.2+ tag hierarchies where a tag can reference another tag as its parent.
+func (index *SpecIndex) GetTagCircularReferences() []*CircularReferenceResult {
+	return index.tagCircularReferences
 }
 
 // SetIgnoredPolymorphicCircularReferences passes on any ignored poly circular refs captured using
@@ -658,11 +665,128 @@ func (index *SpecIndex) GetGlobalTagsCount() int {
 							index.globalTagRefs[name.Value] = ref
 						}
 					}
+
+					// Check for tag circular references (OpenAPI 3.2+)
+					index.checkTagCircularReferences()
 				}
 			}
 		}
 	}
 	return index.globalTagsCount
+}
+
+// checkTagCircularReferences performs circular reference detection for OpenAPI 3.2+ tag parent-child relationships.
+// It builds a parent-child map and then uses depth-first search to detect cycles.
+func (index *SpecIndex) checkTagCircularReferences() {
+	if index.tagsNode == nil {
+		return
+	}
+
+	// Build parent-child mapping from tag nodes
+	tagParentMap := make(map[string]string) // tagName -> parentName
+	tagRefs := make(map[string]*Reference)  // tagName -> Reference
+	tagNodes := make(map[string]*yaml.Node) // tagName -> yaml.Node
+
+	for x, tagNode := range index.tagsNode.Content {
+		_, nameNode := utils.FindKeyNode(base.NameLabel, tagNode.Content)
+		_, parentNode := utils.FindKeyNode(base.ParentLabel, tagNode.Content)
+
+		if nameNode != nil {
+			tagName := nameNode.Value
+			tagNodes[tagName] = tagNode
+			tagRefs[tagName] = &Reference{
+				Name: tagName,
+				Node: tagNode,
+				Path: fmt.Sprintf("$.tags[%d]", x),
+			}
+
+			if parentNode != nil {
+				parentName := parentNode.Value
+				tagParentMap[tagName] = parentName
+			}
+		}
+	}
+
+	// Perform circular reference detection using depth-first search
+	visited := make(map[string]bool)
+	recStack := make(map[string]bool) // recursion stack to detect cycles
+
+	for tagName := range tagRefs {
+		if !visited[tagName] {
+			// Only check tags that have parents - no point checking orphans
+			if _, hasParent := tagParentMap[tagName]; hasParent {
+				if path := index.detectTagCircularHelper(tagName, tagParentMap, tagRefs, visited, recStack, []string{}); len(path) > 0 {
+					// Circular reference detected, create CircularReferenceResult
+					journey := make([]*Reference, len(path))
+					for i, name := range path {
+						journey[i] = tagRefs[name]
+					}
+
+					loopIndex := -1
+					loopStart := path[len(path)-1] // The repeated tag name
+					for i, name := range path {
+						if name == loopStart {
+							loopIndex = i
+							break
+						}
+					}
+
+					circRef := &CircularReferenceResult{
+						Journey:             journey,
+						Start:               tagRefs[path[0]],
+						LoopIndex:           loopIndex,
+						LoopPoint:           tagRefs[loopStart],
+						ParentNode:          tagNodes[loopStart],
+						IsArrayResult:       false,
+						IsPolymorphicResult: false,
+						IsInfiniteLoop:      true, // Tag parent cycles are always problematic
+					}
+
+					index.tagCircularReferences = append(index.tagCircularReferences, circRef)
+				}
+			}
+		}
+	}
+}
+
+// detectTagCircularHelper is a recursive helper function for detecting circular references in tag hierarchies.
+// Returns the path to the circular reference if found, empty slice otherwise.
+func (index *SpecIndex) detectTagCircularHelper(tagName string, parentMap map[string]string, tagRefs map[string]*Reference, visited map[string]bool, recStack map[string]bool, path []string) []string {
+	// Check if this tag even exists - if not, we can't have a circular reference
+	if _, exists := tagRefs[tagName]; !exists {
+		return []string{}
+	}
+
+	visited[tagName] = true
+	recStack[tagName] = true
+	path = append(path, tagName)
+
+	// Check if this tag has a parent
+	if parentName, hasParent := parentMap[tagName]; hasParent {
+		// Validate that parent exists as a defined tag
+		if _, parentExists := tagRefs[parentName]; !parentExists {
+			// Parent doesn't exist - this is a validation error but not a circular reference
+			// Remove from recursion stack before returning
+			recStack[tagName] = false
+			return []string{}
+		}
+
+		// If parent is already in recursion stack, we found a cycle
+		if recStack[parentName] {
+			return append(path, parentName) // Return path including the cycle
+		}
+
+		// If parent not visited, recursively check it
+		if !visited[parentName] {
+			if cyclePath := index.detectTagCircularHelper(parentName, parentMap, tagRefs, visited, recStack, path); len(cyclePath) > 0 {
+				return cyclePath
+			}
+		}
+	}
+
+	// Remove from recursion stack when backtracking
+	recStack[tagName] = false
+	return []string{}
 }
 
 // GetOperationTagsCount will return the number of operation tags found (tags referenced in operations)
