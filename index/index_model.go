@@ -327,6 +327,7 @@ type SpecIndex struct {
 	circularReferences                  []*CircularReferenceResult // only available when the resolver has been used.
 	polyCircularReferences              []*CircularReferenceResult // only available when the resolver has been used.
 	arrayCircularReferences             []*CircularReferenceResult // only available when the resolver has been used.
+	tagCircularReferences               []*CircularReferenceResult // tag parent-child circular references for OpenAPI 3.2+
 	allowCircularReferences             bool                       // decide if you want to error out, or allow circular references, default is false.
 	config                              *SpecIndexConfig           // configuration for the index
 	componentIndexChan                  chan struct{}
