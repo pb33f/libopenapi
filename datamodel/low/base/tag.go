@@ -21,10 +21,14 @@ import (
 // tag defined in the Operation Object instances.
 //   - v2: https://swagger.io/specification/v2/#tagObject
 //   - v3: https://swagger.io/specification/#tag-object
+//   - v3.2: https://spec.openapis.org/oas/v3.2.0#tag-object
 type Tag struct {
 	Name         low.NodeReference[string]
+	Summary      low.NodeReference[string]
 	Description  low.NodeReference[string]
 	ExternalDocs low.NodeReference[*ExternalDoc]
+	Parent       low.NodeReference[string]
+	Kind         low.NodeReference[string]
 	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode      *yaml.Node
 	RootNode     *yaml.Node
@@ -84,17 +88,26 @@ func (t *Tag) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Valu
 	return t.Extensions
 }
 
-// Hash will return a consistent SHA256 Hash of the Info object
+// Hash will return a consistent SHA256 Hash of the Tag object
 func (t *Tag) Hash() [32]byte {
 	var f []string
 	if !t.Name.IsEmpty() {
 		f = append(f, t.Name.Value)
+	}
+	if !t.Summary.IsEmpty() {
+		f = append(f, t.Summary.Value)
 	}
 	if !t.Description.IsEmpty() {
 		f = append(f, t.Description.Value)
 	}
 	if !t.ExternalDocs.IsEmpty() {
 		f = append(f, low.GenerateHashString(t.ExternalDocs.Value))
+	}
+	if !t.Parent.IsEmpty() {
+		f = append(f, t.Parent.Value)
+	}
+	if !t.Kind.IsEmpty() {
+		f = append(f, t.Kind.Value)
 	}
 	f = append(f, low.HashExtensions(t.Extensions)...)
 	return sha256.Sum256([]byte(strings.Join(f, "|")))

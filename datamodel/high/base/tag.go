@@ -16,10 +16,14 @@ import (
 // tag defined in the Operation Object instances.
 //   - v2: https://swagger.io/specification/v2/#tagObject
 //   - v3: https://swagger.io/specification/#tag-object
+//   - v3.2: https://spec.openapis.org/oas/v3.2.0#tag-object
 type Tag struct {
 	Name         string       `json:"name,omitempty" yaml:"name,omitempty"`
+	Summary      string       `json:"summary,omitempty" yaml:"summary,omitempty"`
 	Description  string       `json:"description,omitempty" yaml:"description,omitempty"`
 	ExternalDocs *ExternalDoc `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
+	Parent       string       `json:"parent,omitempty" yaml:"parent,omitempty"`
+	Kind         string       `json:"kind,omitempty" yaml:"kind,omitempty"`
 	Extensions   *orderedmap.Map[string, *yaml.Node]
 	low          *low.Tag
 }
@@ -31,11 +35,20 @@ func NewTag(tag *low.Tag) *Tag {
 	if !tag.Name.IsEmpty() {
 		t.Name = tag.Name.Value
 	}
+	if !tag.Summary.IsEmpty() {
+		t.Summary = tag.Summary.Value
+	}
 	if !tag.Description.IsEmpty() {
 		t.Description = tag.Description.Value
 	}
 	if !tag.ExternalDocs.IsEmpty() {
 		t.ExternalDocs = NewExternalDoc(tag.ExternalDocs.Value)
+	}
+	if !tag.Parent.IsEmpty() {
+		t.Parent = tag.Parent.Value
+	}
+	if !tag.Kind.IsEmpty() {
+		t.Kind = tag.Kind.Value
 	}
 	t.Extensions = high.ExtractExtensions(tag.Extensions)
 	return t
