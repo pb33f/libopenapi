@@ -1503,3 +1503,21 @@ func TestDocument_Issue418_NoFile(t *testing.T) {
 	assert.Len(t, errs, 0)
 	assert.Len(t, m.Model.Index.GetResolver().GetResolvingErrors(), 0)
 }
+
+func TestDocument_RecursiveSchemaHash(t *testing.T) {
+	data, err := os.ReadFile("test_specs/recursive-expression-test.yaml")
+	assert.NoError(t, err)
+
+	document, err := NewDocument(data)
+	assert.NoError(t, err)
+
+	model, errs := document.BuildV3Model()
+	assert.Empty(t, errs)
+
+	schema, found := model.Model.Components.Schemas.Get("RecursiveExpression")
+	assert.True(t, found)
+	assert.NotNil(t, schema)
+
+	hash := schema.Schema().GoLow().Hash()
+	assert.NotEmpty(t, hash)
+}

@@ -653,9 +653,21 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 			}
 
 			if i%2 == 0 && n.Value != "$ref" && n.Value != "" {
-				if n.Value == "allOf" ||
+				// Check if we're inside a properties object
+				isInsideProperties := false
+				if parent != nil {
+					for j := 0; j < len(parent.Content); j += 2 {
+						if j < len(parent.Content) && parent.Content[j].Value == "properties" {
+							isInsideProperties = true
+							break
+						}
+					}
+				}
+				
+				// Only treat as polymorphic keywords if not inside properties
+				if !isInsideProperties && (n.Value == "allOf" ||
 					n.Value == "oneOf" ||
-					n.Value == "anyOf" {
+					n.Value == "anyOf") {
 
 					// if this is a polymorphic link, we want to follow it and see if it becomes circular
 					if i+1 < len(node.Content) && utils.IsNodeMap(node.Content[i+1]) { // check for nested items
