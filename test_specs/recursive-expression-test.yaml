@@ -1,0 +1,23 @@
+openapi: 3.0.1
+info:
+  title: Recursive Expression Test
+  version: 1
+servers:
+  - url: https://dev.url
+    variables:
+      basePath:
+        default: ""
+paths: {}
+components:
+  schemas:
+    RecursiveExpression:
+      description: RecursiveExpression
+      title: RecursiveExpression
+      properties:
+        allOf:
+          type: array
+          items:
+            anyOf:
+              - $ref: "#/components/schemas/RecursiveExpression"
+              - type: string
+
