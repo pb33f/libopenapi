@@ -42,6 +42,125 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 	assert.Equal(t, 27, changes.TotalBreakingChanges())
 }
 
+// TestCacheCollisionSelfReference reproduces the cache collision bug with self-referencing schemas
+// This is the key pattern that triggers the QuickHash cache collision issue
+func TestCacheCollisionSelfReference(t *testing.T) {
+	// Original spec - TreeNode schema with basic properties
+	original := `{
+  "openapi": "3.0.3",
+  "info": {"title": "Test API", "version": "1.0.0"},
+  "paths": {
+    "/tree": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreeNode"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TreeNode": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      }
+    }
+  }
+}`
+
+	// Modified spec - TreeNode schema with additional properties
+	modified := `{
+  "openapi": "3.0.3",
+  "info": {"title": "Test API", "version": "1.0.0"},
+  "paths": {
+    "/tree": {
+      "get": {
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreeNode"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TreeNode": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreeNode"
+            }
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ]
+      }
+    }
+  }
+}`
+
+	infoOrig, _ := datamodel.ExtractSpecInfo([]byte(original))
+	infoMod, _ := datamodel.ExtractSpecInfo([]byte(modified))
+
+	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, datamodel.NewDocumentConfiguration())
+	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, datamodel.NewDocumentConfiguration())
+
+	changes := CompareOpenAPIDocuments(origDoc, modDoc)
+
+	assert.True(t, changes.TotalChanges() >= 3, "Expected at least 3 changes but got %d", changes.TotalChanges())
+}
+
 func Benchmark_CompareOpenAPIDocuments(b *testing.B) {
 	original, _ := os.ReadFile("../test_specs/burgershop.openapi.yaml")
 	modified, _ := os.ReadFile("../test_specs/burgershop.openapi-modified.yaml")
