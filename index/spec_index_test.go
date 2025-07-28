@@ -1924,6 +1924,12 @@ func TestSpecIndex_GetAllComponentSchemas_NilIndex(t *testing.T) {
 	assert.Nil(t, schemas, "Expected GetAllComponentSchemas to return nil when index is nil")
 }
 
+func TestSpecIndex_ChecTagCircularRefNil(t *testing.T) {
+	index := &SpecIndex{}
+	index.checkTagCircularReferences()
+
+}
+
 func TestSpecIndex_Cache(t *testing.T) {
 	idx := NewTestSpecIndex().Load().(*SpecIndex)
 	assert.NotNil(t, idx.GetHighCache())
