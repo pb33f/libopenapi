@@ -135,11 +135,11 @@ func TestBundleDocument_Circular(t *testing.T) {
 	bytes, e := BundleDocument(&v3Doc.Model)
 	assert.NoError(t, e)
 	if runtime.GOOS != "windows" {
-		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1563)
+		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1692)
 	} else {
 		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1637)
 	}
-	assert.Len(t, bytes, 2016)
+	assert.Len(t, bytes, 2068)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {
@@ -230,7 +230,7 @@ func TestBundleBytes(t *testing.T) {
 
 	bytes, e := BundleBytes(digi, config)
 	assert.Error(t, e)
-	assert.Len(t, bytes, 2016)
+	assert.Len(t, bytes, 2068)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
 	if len(logEntries) == 1 && logEntries[0] == "" {
@@ -358,7 +358,7 @@ components:
 	assert.Len(t, bytes, 458)
 
 	logEntries := strings.Split(byteBuf.String(), "\n")
-	assert.Len(t, logEntries, 13)
+	assert.Len(t, logEntries, 17)
 }
 
 func TestBundleBytes_Bad(t *testing.T) {

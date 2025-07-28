@@ -21,8 +21,12 @@ components:
       properties:
         testThing:
           "$ref": "#/components/schemas/One"
+        oneOf:
+          - "$ref": "#/components/schemas/Three"
+        allOf:
+          - "$ref": "#/components/schemas/Three"
         anyOf:
-          - "$ref": "#/components/schemas/Four"
+          - "$ref": "#/components/schemas/Three"
       required:
         - testThing
         - anyOf
