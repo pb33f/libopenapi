@@ -44,6 +44,7 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 
 // TestCacheCollisionSelfReference reproduces the cache collision bug with self-referencing schemas
 // This is the key pattern that triggers the QuickHash cache collision issue
+// see: https://github.com/pb33f/libopenapi/pull/441
 func TestCacheCollisionSelfReference(t *testing.T) {
 	// Original spec - TreeNode schema with basic properties
 	original := `{
