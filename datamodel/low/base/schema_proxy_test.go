@@ -238,3 +238,43 @@ func TestSchemaProxy_TestRolodexHasId(t *testing.T) {
 	assert.Equal(t, "6da88c34ba124c41f977db66a4fc5c1a951708d285c81bb0d47c3206f4c27ca8",
 		low.GenerateHashString(&sch))
 }
+
+func TestSchemaProxy_Hash_UseSchemaQuickHash_NonCircular(t *testing.T) {
+	yml := `type: object
+properties:
+  name:
+    type: string
+  age:
+    type: integer`
+
+	var sch SchemaProxy
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	// Create index with UseSchemaQuickHash enabled
+	cfg := &index.SpecIndexConfig{UseSchemaQuickHash: true}
+	idx := index.NewSpecIndexWithConfig(idxNode.Content[0], cfg)
+	rolo := index.NewRolodex(cfg)
+	rolo.SetRootIndex(idx)
+	idx.SetRolodex(rolo)
+
+	err := sch.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	
+	// Ensure this is not a reference schema (to trigger the !sp.IsReference() path)
+	assert.False(t, sch.IsReference())
+	
+	// Pre-render the schema to ensure it's available
+	schema := sch.Schema()
+	assert.NotNil(t, schema)
+	
+	// This should trigger lines 162-164: UseSchemaQuickHash is true, 
+	// CheckSchemaProxyForCircularRefs returns false (no circular refs in simple object)
+	hash := sch.Hash()
+	
+	// Verify we get a valid hash (not empty)
+	assert.NotEqual(t, [32]byte{}, hash)
+	
+	// Verify the schema was rendered and available
+	assert.NotNil(t, sch.rendered)
+}

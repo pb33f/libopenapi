@@ -294,3 +294,66 @@ paths: {}`
 	circRefs := idx.GetTagCircularReferences()
 	assert.Len(t, circRefs, 0)
 }
+
+func TestSpecIndex_TagCircularReferences_NilTagsNode(t *testing.T) {
+	yml := `openapi: 3.2.0
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	idx := NewSpecIndex(&idxNode)
+	
+	// Explicitly set tagsNode to nil to test the early return
+	idx.tagsNode = nil
+	
+	// This should trigger checkTagCircularReferences() which should return early due to nil tagsNode
+	count := idx.GetGlobalTagsCount()
+	assert.Equal(t, 0, count)
+
+	// Should have no circular references due to early return
+	circRefs := idx.GetTagCircularReferences()
+	assert.Len(t, circRefs, 0)
+}
+
+func TestSpecIndex_detectTagCircularHelper_NonExistentTag(t *testing.T) {
+	yml := `openapi: 3.2.0
+info:
+  title: Test API
+  version: 1.0.0
+tags:
+  - name: existingTag
+    summary: Existing Tag
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	idx := NewSpecIndex(&idxNode)
+	
+	// Create the maps that would be passed to detectTagCircularHelper
+	parentMap := map[string]string{}
+	tagRefs := map[string]*Reference{
+		"existingTag": {
+			Name: "existingTag",
+			Node: &yaml.Node{Value: "existingTag"},
+			Path: "$.tags[0]",
+		},
+	}
+	visited := map[string]bool{}
+	recStack := map[string]bool{}
+	
+	// Test calling detectTagCircularHelper with a non-existent tag name
+	// This should trigger the early return on lines 756-757
+	path := idx.detectTagCircularHelper("nonExistentTag", parentMap, tagRefs, visited, recStack, []string{})
+	
+	// Should return empty slice since the tag doesn't exist
+	assert.Len(t, path, 0)
+	
+	// Verify that visited and recStack remain untouched
+	assert.Len(t, visited, 0)
+	assert.Len(t, recStack, 0)
+}
