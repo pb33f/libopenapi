@@ -195,10 +195,7 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	fileLen := len(files)
 
 	// if windows
-	if runtime.GOOS == "windows" {
-		assert.Equal(t, 1660, fileLen)
-	} else {
-		// if not windows
+	if runtime.GOOS != "windows" {
 		assert.Equal(t, 1660, fileLen)
 	}
 	assert.Len(t, remoteFS.GetErrors(), 0)
