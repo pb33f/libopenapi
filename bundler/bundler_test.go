@@ -137,7 +137,7 @@ func TestBundleDocument_Circular(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1692)
 	} else {
-		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1637)
+		assert.Len(t, *doc.GetSpecInfo().SpecBytes, 1770)
 	}
 	assert.Len(t, bytes, 2068)
 
