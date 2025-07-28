@@ -158,7 +158,7 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			sp.rendered = sch
 			hashError := fmt.Errorf("circular reference detected: %s", sp.GetReference())
 			if sch != nil {
-				if sp.idx.GetConfig().UseSchemaQuickHash {
+				if sp.idx != nil && sp.idx.GetConfig() != nil && sp.idx.GetConfig().UseSchemaQuickHash {
 					if !CheckSchemaProxyForCircularRefs(sp) {
 						return sch.Hash()
 					}
@@ -180,7 +180,7 @@ func (sp *SchemaProxy) Hash() [32]byte {
 	}
 
 	// let's check the rolodex for a potential circular reference, and if there isn't a match, go ahead and hash the reference value.
-	if sp.idx.GetConfig().UseSchemaQuickHash {
+	if sp.idx != nil && sp.idx.GetConfig() != nil && sp.idx.GetConfig().UseSchemaQuickHash {
 		if sp.idx != nil && !CheckSchemaProxyForCircularRefs(sp) {
 			if sp.rendered == nil {
 				sp.rendered = sp.Schema()

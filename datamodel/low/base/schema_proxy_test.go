@@ -206,7 +206,7 @@ func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
 	sp.Reference = r
 
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
-	cfg := &index.SpecIndexConfig{Logger: logger}
+	cfg := &index.SpecIndexConfig{Logger: logger, UseSchemaQuickHash: true}
 	idx := index.NewSpecIndexWithConfig(nil, cfg)
 	sp.idx = idx
 
