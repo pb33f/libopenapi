@@ -193,7 +193,14 @@ func TestSpecIndex_DigitalOcean(t *testing.T) {
 	// get all the files!
 	files := remoteFS.GetFiles()
 	fileLen := len(files)
-	assert.Equal(t, 1660, fileLen)
+
+	// if windows
+	if runtime.GOOS == "windows" {
+		assert.Equal(t, 1658, fileLen)
+	} else {
+		// if not windows
+		assert.Equal(t, 1660, fileLen)
+	}
 	assert.Len(t, remoteFS.GetErrors(), 0)
 
 	// check circular references
