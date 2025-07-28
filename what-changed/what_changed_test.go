@@ -269,6 +269,7 @@ func TestCheckExplodedFileCheck(t *testing.T) {
 	config := datamodel.NewDocumentConfiguration()
 	config.BasePath = "../test_specs"
 	config.AllowFileReferences = true
+	config.UseSchemaQuickHash = true
 
 	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, config)
 	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, config)
@@ -293,10 +294,12 @@ func TestCheckExplodedFileCheck_IdenticalRefNames(t *testing.T) {
 	origDoc, _ := v3.CreateDocumentFromConfig(infoOrig, &datamodel.DocumentConfiguration{
 		BasePath:            "../test_specs/ref_test/orig",
 		AllowFileReferences: true,
+		UseSchemaQuickHash:  true,
 	})
 	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, &datamodel.DocumentConfiguration{
 		BasePath:            "../test_specs/ref_test/mod",
 		AllowFileReferences: true,
+		UseSchemaQuickHash:  true,
 	})
 
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
