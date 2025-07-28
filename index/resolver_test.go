@@ -913,6 +913,46 @@ components:
 	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 1)
 }
 
+func TestDocument_NoIgnorePolyCircularReferences_NoArrayForRef(t *testing.T) {
+	d := `openapi: 3.1.0
+components:
+  schemas:
+    bingo:
+       type: object
+       properties:
+         bango:
+           $ref: "#/components/schemas/ProductCategory"
+    ProductCategory:
+      type: "object"
+      properties:
+        name:
+          type: "string"
+        children:
+          type: "object"
+          items:
+            anyOf:
+              items:
+                $ref: "#/components/schemas/ProductCategory"
+          description: "Array of sub-categories in the same format."
+      required:
+        - "name"
+        - "children"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(d), &rootNode)
+
+	idx := NewSpecIndexWithConfig(&rootNode, CreateClosedAPIIndexConfig())
+
+	resolver := NewResolver(idx)
+	//resolver.IgnorePolymorphicCircularReferences()
+	assert.NotNil(t, resolver)
+
+	circ := resolver.Resolve()
+	assert.Len(t, circ, 0)
+	assert.Len(t, resolver.GetIgnoredCircularPolyReferences(), 0)
+	assert.Len(t, resolver.GetSafeCircularReferences(), 1)
+}
+
 func TestResolver_isInfiniteCircularDep_NoRef(t *testing.T) {
 	resolver := NewResolver(nil)
 	a, b := resolver.isInfiniteCircularDependency(nil, nil, nil)
