@@ -179,6 +179,16 @@ type SpecIndexConfig struct {
 	// defaults to false (which means extensions will be included)
 	ExcludeExtensionRefs bool
 
+	// UseSchemaQuickHash will use a quick hash to determine if a schema is the same as another schema if its a reference.
+	// This is important when a root / entry document does not have a components/schemas node, and schemas are defined in
+	// external documents. Enabling this will allow the what-changed module to perform deeper schema reference checks.
+	// -- IMPORTANT --
+	// Enabling this (default is false) will stop changes from being detected if a schema is circular.
+	// As identified in https://github.com/pb33f/libopenapi/pull/441
+	// So, in the edge case where you have circular references in your root / entry components/schemas and you also
+	// want changes in them to be picked up, then you should not enable this.
+	UseSchemaQuickHash bool
+
 	// private fields
 	uri []string
 	id  string
