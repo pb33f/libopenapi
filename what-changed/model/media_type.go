@@ -7,7 +7,6 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 )
 
 // MediaTypeChanges represent changes made between two OpenAPI MediaType instances.
@@ -97,10 +96,10 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	if !l.Example.IsEmpty() && !r.Example.IsEmpty() {
 		if (utils.IsNodeMap(l.Example.ValueNode) && utils.IsNodeMap(r.Example.ValueNode)) ||
 			(utils.IsNodeArray(l.Example.ValueNode) && utils.IsNodeArray(r.Example.ValueNode)) {
-			render, _ := yaml.Marshal(l.Example.ValueNode)
+			render, _ := low.YAMLNodeToBytes(l.Example.ValueNode)
 			render, _ = utils.ConvertYAMLtoJSON(render)
 			l.Example.ValueNode.Value = string(render)
-			render, _ = yaml.Marshal(r.Example.ValueNode)
+			render, _ = low.YAMLNodeToBytes(r.Example.ValueNode)
 			render, _ = utils.ConvertYAMLtoJSON(render)
 			r.Example.ValueNode.Value = string(render)
 		}
@@ -110,13 +109,13 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	} else {
 
 		if utils.IsNodeMap(l.Example.ValueNode) || utils.IsNodeArray(l.Example.ValueNode) {
-			render, _ := yaml.Marshal(l.Example.ValueNode)
+			render, _ := low.YAMLNodeToBytes(l.Example.ValueNode)
 			render, _ = utils.ConvertYAMLtoJSON(render)
 			l.Example.ValueNode.Value = string(render)
 		}
 
 		if utils.IsNodeMap(r.Example.ValueNode) || utils.IsNodeArray(r.Example.ValueNode) {
-			render, _ := yaml.Marshal(r.Example.ValueNode)
+			render, _ := low.YAMLNodeToBytes(r.Example.ValueNode)
 			render, _ = utils.ConvertYAMLtoJSON(render)
 			r.Example.ValueNode.Value = string(render)
 		}
