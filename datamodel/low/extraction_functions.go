@@ -950,13 +950,9 @@ func GenerateHashString(v any) string {
 	
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
-			// Use string builder to avoid fmt.Sprintf allocation
-			sb := GetStringBuilder()
-			defer PutStringBuilder(sb)
-			
+			// Direct hex formatting is more efficient than string builder for single operation
 			hash := h.Hash()
-			sb.WriteString(fmt.Sprintf("%x", hash))
-			hashStr = sb.String()
+			hashStr = fmt.Sprintf("%x", hash)
 		}
 	} else if n, ok := v.(*yaml.Node); ok {
 		// Fast path for common YAML node types to avoid marshaling
@@ -968,11 +964,7 @@ func GenerateHashString(v any) string {
 			v = val.Elem().Interface()
 		}
 		
-		// Use string builder for primitive hashing instead of fmt.Sprint
-		sb := GetStringBuilder()
-		defer PutStringBuilder(sb)
-		
-		// Convert to string more efficiently
+		// Convert to string efficiently without string builder for primitives
 		var str string
 		switch val := v.(type) {
 		case string:
@@ -993,9 +985,9 @@ func GenerateHashString(v any) string {
 			str = fmt.Sprint(v)
 		}
 		
+		// Direct hex formatting without string builder for single operation
 		hash := sha256.Sum256([]byte(str))
-		sb.WriteString(fmt.Sprintf("%x", hash))
-		hashStr = sb.String()
+		hashStr = fmt.Sprintf("%x", hash)
 	}
 	
 	// Store in cache if we have a valid pointer and caching is enabled for this type
@@ -1026,10 +1018,8 @@ func hashYamlNodeFast(n *yaml.Node) string {
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, n, visited)
 	
-	sb := GetStringBuilder()
-	defer PutStringBuilder(sb)
-	sb.WriteString(fmt.Sprintf("%x", h.Sum(nil)))
-	result := sb.String()
+	// Directly format hex string without string builder for simple case
+	result := fmt.Sprintf("%x", h.Sum(nil))
 	
 	// Cache complex nodes
 	if n.Kind != yaml.ScalarNode {
@@ -1234,16 +1224,27 @@ func AppendMapHashes[v any](a []string, m *orderedmap.Map[KeyReference[string], 
 		})
 	}
 	
-	// Use string builder to avoid fmt.Sprintf allocations
-	sb := GetStringBuilder()
-	defer PutStringBuilder(sb)
-	
-	for _, entry := range entries {
-		sb.Reset()
-		sb.WriteString(entry.key)
-		sb.WriteByte('-')
-		sb.WriteString(GenerateHashString(entry.value))
-		a = append(a, sb.String())
+	// For small maps, avoid string builder overhead and use direct string concatenation
+	if len(entries) <= 5 {
+		for _, entry := range entries {
+			hashStr := entry.key + "-" + GenerateHashString(entry.value)
+			a = append(a, hashStr)
+		}
+	} else {
+		// Use string builder for larger maps with pre-allocated capacity
+		sb := GetStringBuilder()
+		defer PutStringBuilder(sb)
+		
+		for _, entry := range entries {
+			sb.Reset()
+			// Pre-size for this specific entry to avoid growth
+			expectedLen := len(entry.key) + 64 + 1 // key + hash + separator
+			sb.Grow(expectedLen)
+			sb.WriteString(entry.key)
+			sb.WriteByte('-')
+			sb.WriteString(GenerateHashString(entry.value))
+			a = append(a, sb.String())
+		}
 	}
 	
 	return a
