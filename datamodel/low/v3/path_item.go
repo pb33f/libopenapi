@@ -59,51 +59,82 @@ func (p *PathItem) GetContext() context.Context {
 
 // Hash will return a consistent SHA256 Hash of the PathItem object
 func (p *PathItem) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !p.Description.IsEmpty() {
-		f = append(f, p.Description.Value)
+		sb.WriteString(p.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !p.Summary.IsEmpty() {
-		f = append(f, p.Summary.Value)
+		sb.WriteString(p.Summary.Value)
+		sb.WriteByte('|')
 	}
 	if !p.Get.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", GetLabel, low.GenerateHashString(p.Get.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", GetLabel, low.GenerateHashString(p.Get.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Put.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Put.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Put.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Post.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", PutLabel, low.GenerateHashString(p.Post.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", PostLabel, low.GenerateHashString(p.Post.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Delete.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", DeleteLabel, low.GenerateHashString(p.Delete.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", DeleteLabel, low.GenerateHashString(p.Delete.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Options.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", OptionsLabel, low.GenerateHashString(p.Options.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", OptionsLabel, low.GenerateHashString(p.Options.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Head.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", HeadLabel, low.GenerateHashString(p.Head.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", HeadLabel, low.GenerateHashString(p.Head.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Patch.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", PatchLabel, low.GenerateHashString(p.Patch.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", PatchLabel, low.GenerateHashString(p.Patch.Value)))
+		sb.WriteByte('|')
 	}
 	if !p.Trace.IsEmpty() {
-		f = append(f, fmt.Sprintf("%s-%s", TraceLabel, low.GenerateHashString(p.Trace.Value)))
+		sb.WriteString(fmt.Sprintf("%s-%s", TraceLabel, low.GenerateHashString(p.Trace.Value)))
+		sb.WriteByte('|')
 	}
-	keys := make([]string, len(p.Parameters.Value))
-	for k := range p.Parameters.Value {
-		keys[k] = low.GenerateHashString(p.Parameters.Value[k].Value)
+	
+	// Process Parameters with pre-allocation and sorting
+	if len(p.Parameters.Value) > 0 {
+		keys := make([]string, len(p.Parameters.Value))
+		for k := range p.Parameters.Value {
+			keys[k] = low.GenerateHashString(p.Parameters.Value[k].Value)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(p.Servers.Value))
-	for k := range p.Servers.Value {
-		keys[k] = low.GenerateHashString(p.Servers.Value[k].Value)
+	
+	// Process Servers with pre-allocation and sorting
+	if len(p.Servers.Value) > 0 {
+		keys := make([]string, len(p.Servers.Value))
+		for k := range p.Servers.Value {
+			keys[k] = low.GenerateHashString(p.Servers.Value[k].Value)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	f = append(f, low.HashExtensions(p.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	
+	for _, ext := range low.HashExtensions(p.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // GetRootNode returns the root yaml node of the PathItem object

@@ -6,9 +6,8 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
 	"sort"
-	"strings"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -204,64 +203,103 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 
 // Hash will return a consistent SHA256 Hash of the Operation object
 func (o *Operation) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !o.Summary.IsEmpty() {
-		f = append(f, o.Summary.Value)
+		sb.WriteString(o.Summary.Value)
+		sb.WriteByte('|')
 	}
 	if !o.Description.IsEmpty() {
-		f = append(f, o.Description.Value)
+		sb.WriteString(o.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !o.OperationId.IsEmpty() {
-		f = append(f, o.OperationId.Value)
+		sb.WriteString(o.OperationId.Value)
+		sb.WriteByte('|')
 	}
 	if !o.RequestBody.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.RequestBody.Value))
-	}
-	if !o.Summary.IsEmpty() {
-		f = append(f, o.Summary.Value)
+		sb.WriteString(low.GenerateHashString(o.RequestBody.Value))
+		sb.WriteByte('|')
 	}
 	if !o.ExternalDocs.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.ExternalDocs.Value))
+		sb.WriteString(low.GenerateHashString(o.ExternalDocs.Value))
+		sb.WriteByte('|')
 	}
 	if !o.Responses.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.Responses.Value))
+		sb.WriteString(low.GenerateHashString(o.Responses.Value))
+		sb.WriteByte('|')
 	}
 	if !o.Security.IsEmpty() {
+		// Pre-allocate keys for sorting
+		secKeys := make([]string, len(o.Security.Value))
 		for k := range o.Security.Value {
-			f = append(f, low.GenerateHashString(o.Security.Value[k].Value))
+			secKeys[k] = low.GenerateHashString(o.Security.Value[k].Value)
+		}
+		sort.Strings(secKeys)
+		for _, key := range secKeys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
 		}
 	}
 	if !o.Deprecated.IsEmpty() {
-		f = append(f, fmt.Sprint(o.Deprecated.Value))
+		sb.WriteString(strconv.FormatBool(o.Deprecated.Value))
+		sb.WriteByte('|')
 	}
-	var keys []string
-	keys = make([]string, len(o.Tags.Value))
-	for k := range o.Tags.Value {
-		keys[k] = o.Tags.Value[k].Value
+	
+	// Tags array - pre-allocate and sort
+	if len(o.Tags.Value) > 0 {
+		tags := make([]string, len(o.Tags.Value))
+		for k := range o.Tags.Value {
+			tags[k] = o.Tags.Value[k].Value
+		}
+		sort.Strings(tags)
+		for _, tag := range tags {
+			sb.WriteString(tag)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
 
-	keys = make([]string, len(o.Servers.Value))
-	for k := range o.Servers.Value {
-		keys[k] = low.GenerateHashString(o.Servers.Value[k].Value)
+	// Servers array - pre-allocate and sort
+	if len(o.Servers.Value) > 0 {
+		servers := make([]string, len(o.Servers.Value))
+		for k := range o.Servers.Value {
+			servers[k] = low.GenerateHashString(o.Servers.Value[k].Value)
+		}
+		sort.Strings(servers)
+		for _, server := range servers {
+			sb.WriteString(server)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
 
-	keys = make([]string, len(o.Parameters.Value))
-	for k := range o.Parameters.Value {
-		keys[k] = low.GenerateHashString(o.Parameters.Value[k].Value)
+	// Parameters array - pre-allocate and sort
+	if len(o.Parameters.Value) > 0 {
+		params := make([]string, len(o.Parameters.Value))
+		for k := range o.Parameters.Value {
+			params[k] = low.GenerateHashString(o.Parameters.Value[k].Value)
+		}
+		sort.Strings(params)
+		for _, param := range params {
+			sb.WriteString(param)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
 
+	// Callbacks
 	for v := range orderedmap.SortAlpha(o.Callbacks.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(o.Extensions)...)
+	
+	// Extensions
+	for _, ext := range low.HashExtensions(o.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
 
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // methods to satisfy swagger operations interface

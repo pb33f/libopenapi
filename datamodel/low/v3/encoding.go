@@ -7,7 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -59,19 +59,32 @@ func (en *Encoding) GetKeyNode() *yaml.Node {
 
 // Hash will return a consistent SHA256 Hash of the Encoding object
 func (en *Encoding) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if en.ContentType.Value != "" {
-		f = append(f, en.ContentType.Value)
+		sb.WriteString(en.ContentType.Value)
+		sb.WriteByte('|')
 	}
 	for k, v := range orderedmap.SortAlpha(en.Headers.Value).FromOldest() {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
+		sb.WriteString(fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
+		sb.WriteByte('|')
 	}
 	if en.Style.Value != "" {
-		f = append(f, en.Style.Value)
+		sb.WriteString(en.Style.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(en.Explode.Value)))))
-	f = append(f, fmt.Sprint(sha256.Sum256([]byte(fmt.Sprint(en.AllowReserved.Value)))))
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	// Optimize boolean handling
+	explodeBytes := []byte(strconv.FormatBool(en.Explode.Value))
+	sb.WriteString(fmt.Sprint(sha256.Sum256(explodeBytes)))
+	sb.WriteByte('|')
+	
+	allowReservedBytes := []byte(strconv.FormatBool(en.AllowReserved.Value))
+	sb.WriteString(fmt.Sprint(sha256.Sum256(allowReservedBytes)))
+	sb.WriteByte('|')
+	
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // Build will extract all Header objects from supplied node.
