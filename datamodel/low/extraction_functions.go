@@ -4,6 +4,7 @@
 package low
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"fmt"
@@ -1127,6 +1128,63 @@ func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
 	}
 }
 
+// CompareYAMLNodes compares two YAML nodes for equality without marshaling to YAML.
+// This reuses the hashNodeTree logic to generate consistent hashes for comparison,
+// avoiding the expensive yaml.Marshal operations that cause massive allocations.
+func CompareYAMLNodes(left, right *yaml.Node) bool {
+	if left == nil && right == nil {
+		return true
+	}
+	if left == nil || right == nil {
+		return false
+	}
+	
+	// Use the existing hashNodeTree function to generate consistent hashes
+	leftHash := sha256.New()
+	rightHash := sha256.New()
+	
+	leftVisited := make(map[*yaml.Node]bool)
+	rightVisited := make(map[*yaml.Node]bool)
+	
+	hashNodeTree(leftHash, left, leftVisited)
+	hashNodeTree(rightHash, right, rightVisited)
+	
+	leftSum := leftHash.Sum(nil)
+	rightSum := rightHash.Sum(nil)
+	
+	// Compare the hash bytes directly
+	return bytes.Equal(leftSum, rightSum)
+}
+
+// YAMLNodeToBytes converts a YAML node to bytes in a more efficient way than yaml.Marshal
+// This function should be used when you actually need the marshaled bytes (like for JSON conversion)
+// rather than just comparing nodes (use CompareYAMLNodes for that)
+func YAMLNodeToBytes(n *yaml.Node) ([]byte, error) {
+	if n == nil {
+		return nil, nil
+	}
+	// For now, we still use yaml.Marshal for cases that actually need the bytes
+	// This can be optimized further in the future with a custom serializer
+	return yaml.Marshal(n)
+}
+
+// HashYAMLNodeSlice creates a hash for a slice of YAML nodes efficiently
+// This replaces the pattern of yaml.Marshal + sha256 that's used in example comparisons
+func HashYAMLNodeSlice(nodes []*yaml.Node) string {
+	if len(nodes) == 0 {
+		return ""
+	}
+	
+	h := sha256.New()
+	visited := make(map[*yaml.Node]bool)
+	
+	for _, node := range nodes {
+		hashNodeTree(h, node, visited)
+	}
+	
+	return fmt.Sprintf("%x", h.Sum(nil))
+}
+
 // AppendMapHashes will append all the hashes of a map to a slice of strings.
 // Optimized to avoid creating sorted copies on every call.
 func AppendMapHashes[v any](a []string, m *orderedmap.Map[KeyReference[string], ValueReference[v]]) []string {
@@ -1193,6 +1251,11 @@ func AppendMapHashes[v any](a []string, m *orderedmap.Map[KeyReference[string], 
 
 func ValueToString(v any) string {
 	if n, ok := v.(*yaml.Node); ok {
+		// For simple scalar nodes, return the value directly
+		if n.Kind == yaml.ScalarNode {
+			return n.Value
+		}
+		// For complex nodes, still need to marshal for string representation
 		b, _ := yaml.Marshal(n)
 		return string(b)
 	}
