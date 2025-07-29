@@ -146,11 +146,21 @@ func (r *Responses) FindResponseByCode(code string) *low.ValueReference[*Respons
 
 // Hash will return a consistent SHA256 Hash of the Examples object
 func (r *Responses) Hash() [32]byte {
-	var f []string
-	f = low.AppendMapHashes(f, r.Codes)
-	if !r.Default.IsEmpty() {
-		f = append(f, low.GenerateHashString(r.Default.Value))
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
+	for _, hash := range low.AppendMapHashes(nil, r.Codes) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(r.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	if !r.Default.IsEmpty() {
+		sb.WriteString(low.GenerateHashString(r.Default.Value))
+		sb.WriteByte('|')
+	}
+	for _, ext := range low.HashExtensions(r.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

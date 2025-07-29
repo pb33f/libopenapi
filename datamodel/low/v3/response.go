@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -150,13 +149,30 @@ func (r *Response) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 
 // Hash will return a consistent SHA256 Hash of the Response object
 func (r *Response) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if r.Description.Value != "" {
-		f = append(f, r.Description.Value)
+		sb.WriteString(r.Description.Value)
+		sb.WriteByte('|')
 	}
-	f = low.AppendMapHashes(f, r.Headers.Value)
-	f = low.AppendMapHashes(f, r.Content.Value)
-	f = low.AppendMapHashes(f, r.Links.Value)
-	f = append(f, low.HashExtensions(r.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	
+	for _, hash := range low.AppendMapHashes(nil, r.Headers.Value) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
+	for _, hash := range low.AppendMapHashes(nil, r.Content.Value) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
+	for _, hash := range low.AppendMapHashes(nil, r.Links.Value) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
+	for _, ext := range low.HashExtensions(r.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

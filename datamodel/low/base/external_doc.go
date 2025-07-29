@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -68,13 +67,24 @@ func (ex *ExternalDoc) GetExtensions() *orderedmap.Map[low.KeyReference[string],
 }
 
 func (ex *ExternalDoc) Hash() [32]byte {
-	// calculate a hash from every property.
-	f := []string{
-		ex.Description.Value,
-		ex.URL.Value,
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
+	if ex.Description.Value != "" {
+		sb.WriteString(ex.Description.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(ex.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	if ex.URL.Value != "" {
+		sb.WriteString(ex.URL.Value)
+		sb.WriteByte('|')
+	}
+	
+	for _, ext := range low.HashExtensions(ex.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // GetIndex returns the index.SpecIndex instance attached to the ExternalDoc object

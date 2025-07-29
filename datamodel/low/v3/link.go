@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -112,25 +111,37 @@ func (l *Link) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.S
 
 // Hash will return a consistent SHA256 Hash of the Link object
 func (l *Link) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if l.Description.Value != "" {
-		f = append(f, l.Description.Value)
+		sb.WriteString(l.Description.Value)
+		sb.WriteByte('|')
 	}
 	if l.OperationRef.Value != "" {
-		f = append(f, l.OperationRef.Value)
+		sb.WriteString(l.OperationRef.Value)
+		sb.WriteByte('|')
 	}
 	if l.OperationId.Value != "" {
-		f = append(f, l.OperationId.Value)
+		sb.WriteString(l.OperationId.Value)
+		sb.WriteByte('|')
 	}
 	if l.RequestBody.Value != "" {
-		f = append(f, l.RequestBody.Value)
+		sb.WriteString(l.RequestBody.Value)
+		sb.WriteByte('|')
 	}
 	if l.Server.Value != nil {
-		f = append(f, low.GenerateHashString(l.Server.Value))
+		sb.WriteString(low.GenerateHashString(l.Server.Value))
+		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(l.Parameters.Value).ValuesFromOldest() {
-		f = append(f, v.Value)
+		sb.WriteString(v.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(l.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(l.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

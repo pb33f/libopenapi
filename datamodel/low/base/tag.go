@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -90,25 +89,46 @@ func (t *Tag) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Valu
 
 // Hash will return a consistent SHA256 Hash of the Tag object
 func (t *Tag) Hash() [32]byte {
-	var f []string
+	// Pre-calculate field count for optimal allocation
+	fieldCount := 0
+	if !t.Name.IsEmpty() { fieldCount++ }
+	if !t.Summary.IsEmpty() { fieldCount++ }
+	if !t.Description.IsEmpty() { fieldCount++ }
+	if !t.ExternalDocs.IsEmpty() { fieldCount++ }
+	if !t.Parent.IsEmpty() { fieldCount++ }
+	if !t.Kind.IsEmpty() { fieldCount++ }
+	
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !t.Name.IsEmpty() {
-		f = append(f, t.Name.Value)
+		sb.WriteString(t.Name.Value)
+		sb.WriteByte('|')
 	}
 	if !t.Summary.IsEmpty() {
-		f = append(f, t.Summary.Value)
+		sb.WriteString(t.Summary.Value)
+		sb.WriteByte('|')
 	}
 	if !t.Description.IsEmpty() {
-		f = append(f, t.Description.Value)
+		sb.WriteString(t.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !t.ExternalDocs.IsEmpty() {
-		f = append(f, low.GenerateHashString(t.ExternalDocs.Value))
+		sb.WriteString(low.GenerateHashString(t.ExternalDocs.Value))
+		sb.WriteByte('|')
 	}
 	if !t.Parent.IsEmpty() {
-		f = append(f, t.Parent.Value)
+		sb.WriteString(t.Parent.Value)
+		sb.WriteByte('|')
 	}
 	if !t.Kind.IsEmpty() {
-		f = append(f, t.Kind.Value)
+		sb.WriteString(t.Kind.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(t.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(t.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

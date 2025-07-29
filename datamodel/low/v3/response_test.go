@@ -73,7 +73,7 @@ default:
 	assert.Equal(t, "a link", link.Value.Description.Value)
 
 	// check hash
-	assert.Equal(t, "37ae6a91f2260031e22bd6fbf2d286928dd910b14cb75d4239fb80651ac5ecff",
+	assert.Equal(t, "8ca141beea6bd2b93b850a8712198a3e7308084c53eb1a9bdb5d50901c64d878",
 		low.GenerateHashString(&n))
 }
 
@@ -106,7 +106,7 @@ x-shoes: old`
 	assert.NoError(t, err)
 
 	// check hash
-	assert.Equal(t, "3da5051dcd82a06f8e4c7698cdec03550ae1988ee54d96d4c4a90a5c8f9d7b2b",
+	assert.Equal(t, "9fc8294b7dcfc242fffe2586e10c9272fa2b9c828702a6b268ca68e8aa35cbbe",
 		low.GenerateHashString(&n))
 
 	assert.Equal(t, 1, orderedmap.Len(n.FindResponseByCode("200").Value.GetExtensions()))

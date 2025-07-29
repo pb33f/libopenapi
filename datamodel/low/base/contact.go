@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -64,17 +63,25 @@ func (c *Contact) GetKeyNode() *yaml.Node {
 
 // Hash will return a consistent SHA256 Hash of the Contact object
 func (c *Contact) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !c.Name.IsEmpty() {
-		f = append(f, c.Name.Value)
+		sb.WriteString(c.Name.Value)
+		sb.WriteByte('|')
 	}
 	if !c.URL.IsEmpty() {
-		f = append(f, c.URL.Value)
+		sb.WriteString(c.URL.Value)
+		sb.WriteByte('|')
 	}
 	if !c.Email.IsEmpty() {
-		f = append(f, c.Email.Value)
+		sb.WriteString(c.Email.Value)
+		sb.WriteByte('|')
 	}
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	
+	// Note: Extensions are not included in the hash for Contact
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // GetExtensions returns all extensions for Contact

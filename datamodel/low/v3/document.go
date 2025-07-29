@@ -12,7 +12,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -131,64 +130,111 @@ func (d *Document) GetIndex() *index.SpecIndex {
 
 // Hash will return a consistent SHA256 Hash of the Document object
 func (d *Document) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if d.Version.Value != "" {
-		f = append(f, d.Version.Value)
+		sb.WriteString(d.Version.Value)
+		sb.WriteByte('|')
 	}
 	if d.Info.Value != nil {
-		f = append(f, low.GenerateHashString(d.Info.Value))
+		sb.WriteString(low.GenerateHashString(d.Info.Value))
+		sb.WriteByte('|')
 	}
 	if d.JsonSchemaDialect.Value != "" {
-		f = append(f, d.JsonSchemaDialect.Value)
+		sb.WriteString(d.JsonSchemaDialect.Value)
+		sb.WriteByte('|')
 	}
-	keys := make([]string, d.Webhooks.GetValue().Len())
-	z := 0
-	for k, v := range d.Webhooks.GetValue().FromOldest() {
-		keys[z] = fmt.Sprintf("%s-%s", k.Value, low.GenerateHashString(v.Value))
-		z++
+	
+	// Webhooks - pre-allocate slice
+	if d.Webhooks.GetValue() != nil {
+		webhookLen := d.Webhooks.GetValue().Len()
+		if webhookLen > 0 {
+			keys := make([]string, 0, webhookLen)
+			for k, v := range d.Webhooks.GetValue().FromOldest() {
+				keys = append(keys, k.Value+"-"+low.GenerateHashString(v.Value))
+			}
+			sort.Strings(keys)
+			for _, key := range keys {
+				sb.WriteString(key)
+				sb.WriteByte('|')
+			}
+		}
 	}
-	z = 0
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(d.Servers.Value))
-	for k := range d.Servers.Value {
-		keys[z] = fmt.Sprintf("%s", low.GenerateHashString(d.Servers.Value[k].Value))
-		z++
+	
+	// Servers - pre-allocate slice
+	serverLen := len(d.Servers.Value)
+	if serverLen > 0 {
+		keys := make([]string, 0, serverLen)
+		for i := range d.Servers.Value {
+			keys = append(keys, low.GenerateHashString(d.Servers.Value[i].Value))
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	
 	if d.Paths.Value != nil {
-		f = append(f, low.GenerateHashString(d.Paths.Value))
+		sb.WriteString(low.GenerateHashString(d.Paths.Value))
+		sb.WriteByte('|')
 	}
 	if d.Components.Value != nil {
-		f = append(f, low.GenerateHashString(d.Components.Value))
+		sb.WriteString(low.GenerateHashString(d.Components.Value))
+		sb.WriteByte('|')
 	}
-	keys = make([]string, len(d.Security.Value))
-	z = 0
-	for k := range d.Security.Value {
-		keys[z] = fmt.Sprintf("%s", low.GenerateHashString(d.Security.Value[k].Value))
-		z++
+	
+	// Security - pre-allocate slice
+	securityLen := len(d.Security.Value)
+	if securityLen > 0 {
+		keys := make([]string, 0, securityLen)
+		for i := range d.Security.Value {
+			keys = append(keys, low.GenerateHashString(d.Security.Value[i].Value))
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	keys = make([]string, len(d.Tags.Value))
-	z = 0
-	for k := range d.Tags.Value {
-		keys[z] = fmt.Sprintf("%s", low.GenerateHashString(d.Tags.Value[k].Value))
-		z++
+	
+	// Tags - pre-allocate slice
+	tagLen := len(d.Tags.Value)
+	if tagLen > 0 {
+		keys := make([]string, 0, tagLen)
+		for i := range d.Tags.Value {
+			keys = append(keys, low.GenerateHashString(d.Tags.Value[i].Value))
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	
 	if d.ExternalDocs.Value != nil {
-		f = append(f, low.GenerateHashString(d.ExternalDocs.Value))
+		sb.WriteString(low.GenerateHashString(d.ExternalDocs.Value))
+		sb.WriteByte('|')
 	}
-	keys = make([]string, d.Extensions.Len())
-	z = 0
-	for k, v := range d.Extensions.FromOldest() {
-		keys[z] = fmt.Sprintf("%s-%x", k.Value, sha256.Sum256([]byte(fmt.Sprint(v.Value))))
-		z++
+	
+	// Extensions - pre-allocate slice
+	extLen := d.Extensions.Len()
+	if extLen > 0 {
+		keys := make([]string, 0, extLen)
+		for k, v := range d.Extensions.FromOldest() {
+			// Optimize extension hash generation
+			var nodeHash [32]byte
+			nodeHashStr := fmt.Sprint(v.Value)
+			nodeHash = sha256.Sum256([]byte(nodeHashStr))
+			keys = append(keys, k.Value+"-"+fmt.Sprintf("%x", nodeHash))
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	return sha256.Sum256([]byte(sb.String()))
 }

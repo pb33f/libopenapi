@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -115,18 +114,27 @@ func (s *Server) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index
 
 // Hash will return a consistent SHA256 Hash of the Server object
 func (s *Server) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if s.Variables.Value != nil {
 		for v := range orderedmap.SortAlpha(s.Variables.Value).ValuesFromOldest() {
-			f = append(f, low.GenerateHashString(v.Value))
+			sb.WriteString(low.GenerateHashString(v.Value))
+			sb.WriteByte('|')
 		}
 	}
 	if !s.URL.IsEmpty() {
-		f = append(f, s.URL.Value)
+		sb.WriteString(s.URL.Value)
+		sb.WriteByte('|')
 	}
 	if !s.Description.IsEmpty() {
-		f = append(f, s.Description.Value)
+		sb.WriteString(s.Description.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(s.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(s.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

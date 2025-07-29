@@ -7,7 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -82,32 +82,49 @@ func (h *Header) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.V
 
 // Hash will return a consistent SHA256 Hash of the Header object
 func (h *Header) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if h.Description.Value != "" {
-		f = append(f, h.Description.Value)
+		sb.WriteString(h.Description.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, fmt.Sprint(h.Required.Value))
-	f = append(f, fmt.Sprint(h.Deprecated.Value))
-	f = append(f, fmt.Sprint(h.AllowEmptyValue.Value))
+	sb.WriteString(strconv.FormatBool(h.Required.Value))
+	sb.WriteByte('|')
+	sb.WriteString(strconv.FormatBool(h.Deprecated.Value))
+	sb.WriteByte('|')
+	sb.WriteString(strconv.FormatBool(h.AllowEmptyValue.Value))
+	sb.WriteByte('|')
 	if h.Style.Value != "" {
-		f = append(f, h.Style.Value)
+		sb.WriteString(h.Style.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, fmt.Sprint(h.Explode.Value))
-	f = append(f, fmt.Sprint(h.AllowReserved.Value))
+	sb.WriteString(strconv.FormatBool(h.Explode.Value))
+	sb.WriteByte('|')
+	sb.WriteString(strconv.FormatBool(h.AllowReserved.Value))
+	sb.WriteByte('|')
 	if h.Schema.Value != nil {
-		f = append(f, low.GenerateHashString(h.Schema.Value))
+		sb.WriteString(low.GenerateHashString(h.Schema.Value))
+		sb.WriteByte('|')
 	}
 	if h.Example.Value != nil && !h.Example.Value.IsZero() {
-		f = append(f, low.GenerateHashString(h.Example.Value))
+		sb.WriteString(low.GenerateHashString(h.Example.Value))
+		sb.WriteByte('|')
 	}
 	for k, v := range orderedmap.SortAlpha(h.Examples.Value).FromOldest() {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
+		sb.WriteString(fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
+		sb.WriteByte('|')
 	}
 	for k, v := range orderedmap.SortAlpha(h.Content.Value).FromOldest() {
-		f = append(f, fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
+		sb.WriteString(fmt.Sprintf("%s-%x", k.Value, v.Value.Hash()))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(h.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(h.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // Build will extract extensions, examples, schema and content/media types from node.

@@ -5,7 +5,6 @@ package base
 
 import (
 	"crypto/sha256"
-	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -53,15 +52,19 @@ func (d *Discriminator) FindMappingValue(key string) *low.ValueReference[string]
 
 // Hash will return a consistent SHA256 Hash of the Discriminator object
 func (d *Discriminator) Hash() [32]byte {
-	// calculate a hash from every property.
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if d.PropertyName.Value != "" {
-		f = append(f, d.PropertyName.Value)
+		sb.WriteString(d.PropertyName.Value)
+		sb.WriteByte('|')
 	}
 
 	for v := range orderedmap.SortAlpha(d.Mapping.Value).ValuesFromOldest() {
-		f = append(f, v.Value)
+		sb.WriteString(v.Value)
+		sb.WriteByte('|')
 	}
 
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	return sha256.Sum256([]byte(sb.String()))
 }

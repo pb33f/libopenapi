@@ -23,6 +23,27 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// stringBuilderPool is a sync.Pool that reuses strings.Builder instances to reduce memory allocations
+// when generating hashes across the codebase.
+var stringBuilderPool = sync.Pool{
+	New: func() interface{} {
+		return new(strings.Builder)
+	},
+}
+
+// GetStringBuilder retrieves a strings.Builder from the pool, resets it, and returns it.
+// The caller must call PutStringBuilder when done to return it to the pool.
+func GetStringBuilder() *strings.Builder {
+	sb := stringBuilderPool.Get().(*strings.Builder)
+	sb.Reset()
+	return sb
+}
+
+// PutStringBuilder returns a strings.Builder to the pool for reuse.
+func PutStringBuilder(sb *strings.Builder) {
+	stringBuilderPool.Put(sb)
+}
+
 // FindItemInOrderedMap accepts a string key and a collection of KeyReference[string] and ValueReference[T].
 // Every KeyReference will have its value checked against the string key and if there is a match, it will be
 // returned.

@@ -36,7 +36,7 @@ variables:
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, n.GetRootNode())
-	assert.Equal(t, "25535d0a6dd30c609aeae6e08f9eaa82fef49df540fc048fe4adffbce7841c0b",
+	assert.Equal(t, "0c2c833ff3934ac3a0351f56e0ed42e5ffee1d5a7856fb0278857701ef52d6ae",
 		low.GenerateHashString(&n))
 
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
@@ -46,7 +46,7 @@ variables:
 
 	// test var hash
 	s := n.FindVariable("var1")
-	assert.Equal(t, "00eef99ee4a7b746be7b4ccdece59c5a96222c6206f846fafed782c9f3f9b46b",
+	assert.Equal(t, "c58f2e9eb6548e9ea9c3bd6ca3ff1f6c5ba850cdb20eb6f362eba5520fc3a011",
 		low.GenerateHashString(s.Value))
 
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
@@ -84,7 +84,7 @@ variables:
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, n.GetRootNode())
-	assert.Equal(t, "ec69dfcf68ad8988f3804e170ee6c4a7ad2e4ac51084796eea93168820827546",
+	assert.Equal(t, "841e49335ea4ae63b677544ae815f9605988f625d24fbaa0a1992ec97f71b00b",
 		low.GenerateHashString(&n))
 
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
@@ -102,7 +102,7 @@ variables:
 
 	// test var hash
 	s := n.FindVariable("var1")
-	assert.Equal(t, "00eef99ee4a7b746be7b4ccdece59c5a96222c6206f846fafed782c9f3f9b46b",
+	assert.Equal(t, "c58f2e9eb6548e9ea9c3bd6ca3ff1f6c5ba850cdb20eb6f362eba5520fc3a011",
 		low.GenerateHashString(s.Value))
 
 	assert.Equal(t, 0, orderedmap.Len(n.GetExtensions()))

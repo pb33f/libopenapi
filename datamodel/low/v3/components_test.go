@@ -106,7 +106,7 @@ func TestComponents_Build_Success(t *testing.T) {
 		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Post.Value.Description.Value)
 	assert.Equal(t, "nineteen of many", n.FindPathItem("/nineteen").Value.Get.Value.Description.Value)
 
-	assert.Equal(t, "c3f868ba89e4c5260831e1fc99dfcacc6e7e63299430bbb88dcfffd06d633e1c",
+	assert.Equal(t, "b3c622e2f1cd464a644ef13f5498a5d58f7da34166cec4f03d9cbe9fd6605a6f",
 		low.GenerateHashString(&n))
 
 	assert.NotNil(t, n.GetContext())
@@ -259,7 +259,7 @@ func TestComponents_Build_HashEmpty(t *testing.T) {
 
 	assert.Equal(t, "seagull", xCurry)
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
-	assert.Equal(t, "e45605d7361dbc9d4b9723257701bef1d283f8fe9566b9edda127fc66a6b8fdd",
+	assert.Equal(t, "678c1fd2ce9c85a24a88275b240ddd91db7fde985d8312d8e9721b176444f584",
 		low.GenerateHashString(&n))
 }
 

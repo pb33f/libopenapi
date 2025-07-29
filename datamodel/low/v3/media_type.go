@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"slices"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -154,19 +153,29 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 
 // Hash will return a consistent SHA256 Hash of the MediaType object
 func (mt *MediaType) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if mt.Schema.Value != nil {
-		f = append(f, low.GenerateHashString(mt.Schema.Value))
+		sb.WriteString(low.GenerateHashString(mt.Schema.Value))
+		sb.WriteByte('|')
 	}
 	if mt.Example.Value != nil && !mt.Example.Value.IsZero() {
-		f = append(f, low.GenerateHashString(mt.Example.Value))
+		sb.WriteString(low.GenerateHashString(mt.Example.Value))
+		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(mt.Examples.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(mt.Encoding.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(mt.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(mt.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

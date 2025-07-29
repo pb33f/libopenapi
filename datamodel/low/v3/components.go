@@ -80,26 +80,39 @@ func (co *Components) GetKeyNode() *yaml.Node {
 	return co.KeyNode
 }
 
-// Hash will return a consistent SHA256 Hash of the Encoding object
+// Hash will return a consistent SHA256 Hash of the Components object
 func (co *Components) Hash() [32]byte {
-	var f []string
-	generateHashForObjectMap(co.Schemas.Value, &f)
-	generateHashForObjectMap(co.Responses.Value, &f)
-	generateHashForObjectMap(co.Parameters.Value, &f)
-	generateHashForObjectMap(co.Examples.Value, &f)
-	generateHashForObjectMap(co.RequestBodies.Value, &f)
-	generateHashForObjectMap(co.Headers.Value, &f)
-	generateHashForObjectMap(co.SecuritySchemes.Value, &f)
-	generateHashForObjectMap(co.Links.Value, &f)
-	generateHashForObjectMap(co.Callbacks.Value, &f)
-	generateHashForObjectMap(co.PathItems.Value, &f)
-	f = append(f, low.HashExtensions(co.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
+	generateHashForObjectMapBuilder(co.Schemas.Value, sb)
+	generateHashForObjectMapBuilder(co.Responses.Value, sb)
+	generateHashForObjectMapBuilder(co.Parameters.Value, sb)
+	generateHashForObjectMapBuilder(co.Examples.Value, sb)
+	generateHashForObjectMapBuilder(co.RequestBodies.Value, sb)
+	generateHashForObjectMapBuilder(co.Headers.Value, sb)
+	generateHashForObjectMapBuilder(co.SecuritySchemes.Value, sb)
+	generateHashForObjectMapBuilder(co.Links.Value, sb)
+	generateHashForObjectMapBuilder(co.Callbacks.Value, sb)
+	generateHashForObjectMapBuilder(co.PathItems.Value, sb)
+	for _, ext := range low.HashExtensions(co.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 func generateHashForObjectMap[T any](collection *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], hash *[]string) {
 	for v := range orderedmap.SortAlpha(collection).ValuesFromOldest() {
 		*hash = append(*hash, low.GenerateHashString(v.Value))
+	}
+}
+
+func generateHashForObjectMapBuilder[T any](collection *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], sb *strings.Builder) {
+	for v := range orderedmap.SortAlpha(collection).ValuesFromOldest() {
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
 }
 

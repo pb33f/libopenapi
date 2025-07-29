@@ -3,8 +3,7 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -59,22 +58,33 @@ func (x *XML) GetRootNode() *yaml.Node {
 
 // Hash generates a SHA256 hash of the XML object using properties
 func (x *XML) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !x.Name.IsEmpty() {
-		f = append(f, x.Name.Value)
+		sb.WriteString(x.Name.Value)
+		sb.WriteByte('|')
 	}
 	if !x.Namespace.IsEmpty() {
-		f = append(f, x.Namespace.Value)
+		sb.WriteString(x.Namespace.Value)
+		sb.WriteByte('|')
 	}
 	if !x.Prefix.IsEmpty() {
-		f = append(f, x.Prefix.Value)
+		sb.WriteString(x.Prefix.Value)
+		sb.WriteByte('|')
 	}
 	if !x.Attribute.IsEmpty() {
-		f = append(f, fmt.Sprint(x.Attribute.Value))
+		sb.WriteString(strconv.FormatBool(x.Attribute.Value))
+		sb.WriteByte('|')
 	}
 	if !x.Wrapped.IsEmpty() {
-		f = append(f, fmt.Sprint(x.Wrapped.Value))
+		sb.WriteString(strconv.FormatBool(x.Wrapped.Value))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(x.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(x.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

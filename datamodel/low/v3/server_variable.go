@@ -2,9 +2,7 @@ package v3
 
 import (
 	"crypto/sha256"
-	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -46,20 +44,30 @@ func (s *ServerVariable) GetExtensions() *orderedmap.Map[low.KeyReference[string
 
 // Hash will return a consistent SHA256 Hash of the ServerVariable object
 func (s *ServerVariable) Hash() [32]byte {
-	var f []string
-	keys := make([]string, len(s.Enum))
-	z := 0
-	for k := range s.Enum {
-		keys[z] = fmt.Sprint(s.Enum[k].Value)
-		z++
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
+	// Pre-allocate and sort enum values
+	if len(s.Enum) > 0 {
+		keys := make([]string, len(s.Enum))
+		for i := range s.Enum {
+			keys[i] = s.Enum[i].Value
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	f = append(f, keys...)
+	
 	if !s.Default.IsEmpty() {
-		f = append(f, s.Default.Value)
+		sb.WriteString(s.Default.Value)
+		sb.WriteByte('|')
 	}
 	if !s.Description.IsEmpty() {
-		f = append(f, s.Description.Value)
+		sb.WriteString(s.Description.Value)
+		sb.WriteByte('|')
 	}
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	return sha256.Sum256([]byte(sb.String()))
 }

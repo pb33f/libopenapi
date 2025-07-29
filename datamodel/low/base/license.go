@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -69,17 +68,25 @@ func (l *License) GetKeyNode() *yaml.Node {
 
 // Hash will return a consistent SHA256 Hash of the License object
 func (l *License) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !l.Name.IsEmpty() {
-		f = append(f, l.Name.Value)
+		sb.WriteString(l.Name.Value)
+		sb.WriteByte('|')
 	}
 	if !l.URL.IsEmpty() {
-		f = append(f, l.URL.Value)
+		sb.WriteString(l.URL.Value)
+		sb.WriteByte('|')
 	}
 	if !l.Identifier.IsEmpty() {
-		f = append(f, l.Identifier.Value)
+		sb.WriteString(l.Identifier.Value)
+		sb.WriteByte('|')
 	}
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	
+	// Note: Extensions are not included in the hash for License
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // GetExtensions returns all extensions for License

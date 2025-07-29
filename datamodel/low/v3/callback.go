@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
@@ -94,11 +93,18 @@ func (cb *Callback) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 
 // Hash will return a consistent SHA256 Hash of the Callback object
 func (cb *Callback) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	for v := range orderedmap.SortAlpha(cb.Expression).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
 
-	f = append(f, low.HashExtensions(cb.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(cb.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

@@ -6,8 +6,7 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"fmt"
-	"strings"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -104,16 +103,25 @@ func (rb *RequestBody) Build(ctx context.Context, keyNode, root *yaml.Node, idx 
 
 // Hash will return a consistent SHA256 Hash of the RequestBody object
 func (rb *RequestBody) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if rb.Description.Value != "" {
-		f = append(f, rb.Description.Value)
+		sb.WriteString(rb.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !rb.Required.IsEmpty() {
-		f = append(f, fmt.Sprint(rb.Required.Value))
+		sb.WriteString(strconv.FormatBool(rb.Required.Value))
+		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(rb.Content.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(rb.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(rb.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
