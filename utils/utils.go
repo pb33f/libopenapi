@@ -693,8 +693,18 @@ func IsHttpVerb(verb string) bool {
 // define bracket name expression
 var (
 	bracketNameExp = regexp.MustCompile(`^(\w+)\['?([\w/]+)'?]$`)
-	pathCharExp    = regexp.MustCompile(`^[A-Za-z0-9_\\]*$`)
 )
+
+// isPathChar checks if a string contains only alphanumeric, underscore, or backslash characters
+// This is an optimized replacement for the pathCharExp regex
+func isPathChar(s string) bool {
+	for _, r := range s {
+		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '\\') {
+			return false
+		}
+	}
+	return true
+}
 
 func appendSegment(sb *strings.Builder, segs []string, cleaned []string, i int, wrapInQuotes bool) {
 	sb.Reset()
@@ -736,7 +746,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		if segs[i] == "" {
 			continue
 		}
-		if !pathCharExp.MatchString(segs[i]) {
+		if !isPathChar(segs[i]) {
 
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
 			sb.Reset()
