@@ -1555,7 +1555,7 @@ func TestGenerateHashString(t *testing.T) {
 	assert.Equal(t, "",
 		GenerateHashString(nil))
 
-	assert.Equal(t, "f2ca1bb6c7e907d06dafe4687e579fce76b37e4e93b7605022da52e6ccc26fd2", GenerateHashString(utils.CreateStringNode("test")))
+	assert.Equal(t, "72b82af97bdd376cf0f6486630c35bc33728d7c646df22524fc5a0731af4948f", GenerateHashString(utils.CreateStringNode("test")))
 }
 
 func TestGenerateHashString_Pointer(t *testing.T) {

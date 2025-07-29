@@ -61,7 +61,7 @@ func TestDefinitions_Hash(t *testing.T) {
 	assert.NoError(t, err)
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
-	assert.Equal(t, "26d23786e6873e1a337f8e9be85f7de1490e4ff6cd303c3b15e593a25a6a149d",
+	assert.Equal(t, "e32477b3f3c2dc0b95126b51a34564ad19d7d0b6b43cde4783fae4c4e04dfdf6",
 		low.GenerateHashString(&n))
 }
 

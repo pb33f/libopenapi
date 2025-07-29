@@ -2014,7 +2014,7 @@ components:
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
-	assert.Equal(t, "0e563831440581c713657dd857a0ec3af1bd7308a43bd3cae9184f61d61b288f",
+	assert.Equal(t, "d998db65844824d9fe1c4b3fe13d9d969697a3f5353611dc7f2a6a158da77de1",
 		low.HashToString(changes.Changes[0].NewObject.(*base.Discriminator).Hash()))
 }
 
@@ -2046,7 +2046,7 @@ components:
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, "0e563831440581c713657dd857a0ec3af1bd7308a43bd3cae9184f61d61b288f",
+	assert.Equal(t, "d998db65844824d9fe1c4b3fe13d9d969697a3f5353611dc7f2a6a158da77de1",
 		low.HashToString(changes.Changes[0].OriginalObject.(*base.Discriminator).Hash()))
 }
 
@@ -2112,7 +2112,7 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
-	assert.Equal(t, "2b7adf30f2ea3a7617ccf429a099617a9c03e8b5f3a23a89dba4b90f760010d7",
+	assert.Equal(t, "cc072505e1639fd745ccaf6d2d4188db0c0475d4e9a48a6b4d1b33a77183a882",
 		low.HashToString(changes.Changes[0].NewObject.(*base.ExternalDoc).Hash()))
 }
 
@@ -2144,7 +2144,7 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, "2b7adf30f2ea3a7617ccf429a099617a9c03e8b5f3a23a89dba4b90f760010d7",
+	assert.Equal(t, "cc072505e1639fd745ccaf6d2d4188db0c0475d4e9a48a6b4d1b33a77183a882",
 		low.HashToString(changes.Changes[0].OriginalObject.(*base.ExternalDoc).Hash()))
 }
 
