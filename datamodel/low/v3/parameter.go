@@ -8,7 +8,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"slices"
-	"strings"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -157,38 +157,57 @@ func (p *Parameter) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 
 // Hash will return a consistent SHA256 Hash of the Parameter object
 func (p *Parameter) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if p.Name.Value != "" {
-		f = append(f, p.Name.Value)
+		sb.WriteString(p.Name.Value)
+		sb.WriteByte('|')
 	}
 	if p.In.Value != "" {
-		f = append(f, p.In.Value)
+		sb.WriteString(p.In.Value)
+		sb.WriteByte('|')
 	}
 	if p.Description.Value != "" {
-		f = append(f, p.Description.Value)
+		sb.WriteString(p.Description.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, fmt.Sprint(p.Required.Value))
-	f = append(f, fmt.Sprint(p.Deprecated.Value))
-	f = append(f, fmt.Sprint(p.AllowEmptyValue.Value))
+	sb.WriteString(strconv.FormatBool(p.Required.Value))
+	sb.WriteByte('|')
+	sb.WriteString(strconv.FormatBool(p.Deprecated.Value))
+	sb.WriteByte('|')
+	sb.WriteString(strconv.FormatBool(p.AllowEmptyValue.Value))
+	sb.WriteByte('|')
 	if p.Style.Value != "" {
-		f = append(f, fmt.Sprint(p.Style.Value))
+		sb.WriteString(p.Style.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, fmt.Sprint(p.Explode.Value))
-	f = append(f, fmt.Sprint(p.AllowReserved.Value))
+	sb.WriteString(strconv.FormatBool(p.Explode.Value))
+	sb.WriteByte('|')
+	sb.WriteString(strconv.FormatBool(p.AllowReserved.Value))
+	sb.WriteByte('|')
 	if p.Schema.Value != nil && p.Schema.Value.Schema() != nil {
-		f = append(f, fmt.Sprintf("%x", p.Schema.Value.Schema().Hash()))
+		sb.WriteString(fmt.Sprintf("%x", p.Schema.Value.Schema().Hash()))
+		sb.WriteByte('|')
 	}
 	if p.Example.Value != nil && !p.Example.Value.IsZero() {
-		f = append(f, low.GenerateHashString(p.Example.Value))
+		sb.WriteString(low.GenerateHashString(p.Example.Value))
+		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(p.Examples.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(p.Content.Value).ValuesFromOldest() {
-		f = append(f, low.GenerateHashString(v.Value))
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(p.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(p.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // IsParameter compliance methods.

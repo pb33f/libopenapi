@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -131,15 +130,26 @@ func (s *SecurityRequirement) GetKeys() []string {
 
 // Hash will return a consistent SHA256 Hash of the SecurityRequirement object
 func (s *SecurityRequirement) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	for k, v := range orderedmap.SortAlpha(s.Requirements.Value).FromOldest() {
-		var vals []string
+		// Pre-allocate vals slice
+		vals := make([]string, len(v.Value))
 		for y := range v.Value {
-			vals = append(vals, v.Value[y].Value)
+			vals[y] = v.Value[y].Value
 		}
 		sort.Strings(vals)
 
-		f = append(f, fmt.Sprintf("%s-%s", k.Value, strings.Join(vals, "|")))
+		sb.WriteString(fmt.Sprintf("%s-", k.Value))
+		for i, val := range vals {
+			if i > 0 {
+				sb.WriteByte('|')
+			}
+			sb.WriteString(val)
+		}
+		sb.WriteByte('|')
 	}
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	return sha256.Sum256([]byte(sb.String()))
 }

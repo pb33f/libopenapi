@@ -6,7 +6,6 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -102,31 +101,45 @@ func (ss *SecurityScheme) Build(ctx context.Context, keyNode, root *yaml.Node, i
 
 // Hash will return a consistent SHA256 Hash of the SecurityScheme object
 func (ss *SecurityScheme) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !ss.Type.IsEmpty() {
-		f = append(f, ss.Type.Value)
+		sb.WriteString(ss.Type.Value)
+		sb.WriteByte('|')
 	}
 	if !ss.Description.IsEmpty() {
-		f = append(f, ss.Description.Value)
+		sb.WriteString(ss.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !ss.Name.IsEmpty() {
-		f = append(f, ss.Name.Value)
+		sb.WriteString(ss.Name.Value)
+		sb.WriteByte('|')
 	}
 	if !ss.In.IsEmpty() {
-		f = append(f, ss.In.Value)
+		sb.WriteString(ss.In.Value)
+		sb.WriteByte('|')
 	}
 	if !ss.Scheme.IsEmpty() {
-		f = append(f, ss.Scheme.Value)
+		sb.WriteString(ss.Scheme.Value)
+		sb.WriteByte('|')
 	}
 	if !ss.BearerFormat.IsEmpty() {
-		f = append(f, ss.BearerFormat.Value)
+		sb.WriteString(ss.BearerFormat.Value)
+		sb.WriteByte('|')
 	}
 	if !ss.Flows.IsEmpty() {
-		f = append(f, low.GenerateHashString(ss.Flows.Value))
+		sb.WriteString(low.GenerateHashString(ss.Flows.Value))
+		sb.WriteByte('|')
 	}
 	if !ss.OpenIdConnectUrl.IsEmpty() {
-		f = append(f, ss.OpenIdConnectUrl.Value)
+		sb.WriteString(ss.OpenIdConnectUrl.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(ss.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(ss.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

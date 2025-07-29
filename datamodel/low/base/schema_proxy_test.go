@@ -30,7 +30,7 @@ description: something`
 	assert.NoError(t, err)
 	assert.Equal(t, "value", sch.GetContext().Value("key"))
 
-	assert.Equal(t, "e20c009d370944d177c0b46e8fa29e15fadc3a6f9cca6bb251ff9e120265fc96",
+	assert.Equal(t, "be79763a610e8016259d370c7f286eb747ee2ada7add3d21634ba96f8aa99838",
 		low.GenerateHashString(&sch))
 
 	assert.Equal(t, "something", sch.Schema().Description.GetValue())
@@ -75,7 +75,7 @@ func TestSchemaProxy_Build_HashInline(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, sch.IsReference())
 	assert.NotNil(t, sch.Schema())
-	assert.Equal(t, "6da88c34ba124c41f977db66a4fc5c1a951708d285c81bb0d47c3206f4c27ca8",
+	assert.Equal(t, "5a5bb0d7677da2b3f5fa37fe78786e124568729675d0933b2a2982cd1410c14f",
 		low.GenerateHashString(&sch))
 }
 
@@ -235,7 +235,7 @@ func TestSchemaProxy_TestRolodexHasId(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, sch.IsReference())
 	assert.NotNil(t, sch.Schema())
-	assert.Equal(t, "6da88c34ba124c41f977db66a4fc5c1a951708d285c81bb0d47c3206f4c27ca8",
+	assert.Equal(t, "5a5bb0d7677da2b3f5fa37fe78786e124568729675d0933b2a2982cd1410c14f",
 		low.GenerateHashString(&sch))
 }
 

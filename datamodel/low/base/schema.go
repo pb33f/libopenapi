@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -190,7 +189,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 	if s == nil {
 		return [32]byte{}
 	}
-	var d []string
+
 	// create a key for the schema, this is used to quickly check if the schema has been hashed before, and prevent re-hashing.
 	idx := s.GetIndex()
 	path := ""
@@ -216,258 +215,342 @@ func (s *Schema) hash(quick bool) [32]byte {
 		}
 	}
 
+	// Use string builder pool for efficient string concatenation
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+
 	// calculate a hash from every property in the schema.
 	if !s.SchemaTypeRef.IsEmpty() {
-		d = append(d, fmt.Sprint(s.SchemaTypeRef.Value))
+		sb.WriteString(s.SchemaTypeRef.Value)
+		sb.WriteByte('|')
 	}
 	if !s.Title.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Title.Value))
+		sb.WriteString(s.Title.Value)
+		sb.WriteByte('|')
 	}
 	if !s.MultipleOf.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MultipleOf.Value))
+		sb.WriteString(fmt.Sprint(s.MultipleOf.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Maximum.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Maximum.Value))
+		sb.WriteString(fmt.Sprint(s.Maximum.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Minimum.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Minimum.Value))
+		sb.WriteString(fmt.Sprint(s.Minimum.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MaxLength.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MaxLength.Value))
+		sb.WriteString(fmt.Sprint(s.MaxLength.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MinLength.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MinLength.Value))
+		sb.WriteString(fmt.Sprint(s.MinLength.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Pattern.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Pattern.Value))
+		sb.WriteString(s.Pattern.Value)
+		sb.WriteByte('|')
 	}
 	if !s.Format.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Format.Value))
+		sb.WriteString(s.Format.Value)
+		sb.WriteByte('|')
 	}
 	if !s.MaxItems.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MaxItems.Value))
+		sb.WriteString(fmt.Sprint(s.MaxItems.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MinItems.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MinItems.Value))
+		sb.WriteString(fmt.Sprint(s.MinItems.Value))
+		sb.WriteByte('|')
 	}
 	if !s.UniqueItems.IsEmpty() {
-		d = append(d, fmt.Sprint(s.UniqueItems.Value))
+		sb.WriteString(fmt.Sprint(s.UniqueItems.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MaxProperties.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MaxProperties.Value))
+		sb.WriteString(fmt.Sprint(s.MaxProperties.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MinProperties.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MinProperties.Value))
+		sb.WriteString(fmt.Sprint(s.MinProperties.Value))
+		sb.WriteByte('|')
 	}
 	if !s.AdditionalProperties.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.AdditionalProperties.Value))
+		sb.WriteString(low.GenerateHashString(s.AdditionalProperties.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Description.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Description.Value))
+		sb.WriteString(s.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !s.ContentEncoding.IsEmpty() {
-		d = append(d, fmt.Sprint(s.ContentEncoding.Value))
+		sb.WriteString(s.ContentEncoding.Value)
+		sb.WriteByte('|')
 	}
 	if !s.ContentMediaType.IsEmpty() {
-		d = append(d, fmt.Sprint(s.ContentMediaType.Value))
+		sb.WriteString(s.ContentMediaType.Value)
+		sb.WriteByte('|')
 	}
 	if !s.Default.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.Default.Value))
+		sb.WriteString(low.GenerateHashString(s.Default.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Const.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.Const.Value))
+		sb.WriteString(low.GenerateHashString(s.Const.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Nullable.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Nullable.Value))
+		sb.WriteString(fmt.Sprint(s.Nullable.Value))
+		sb.WriteByte('|')
 	}
 	if !s.ReadOnly.IsEmpty() {
-		d = append(d, fmt.Sprint(s.ReadOnly.Value))
+		sb.WriteString(fmt.Sprint(s.ReadOnly.Value))
+		sb.WriteByte('|')
 	}
 	if !s.WriteOnly.IsEmpty() {
-		d = append(d, fmt.Sprint(s.WriteOnly.Value))
+		sb.WriteString(fmt.Sprint(s.WriteOnly.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Deprecated.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Deprecated.Value))
+		sb.WriteString(fmt.Sprint(s.Deprecated.Value))
+		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsA() {
-		d = append(d, fmt.Sprint(s.ExclusiveMaximum.Value.A))
+		sb.WriteString(fmt.Sprint(s.ExclusiveMaximum.Value.A))
+		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMaximum.IsEmpty() && s.ExclusiveMaximum.Value.IsB() {
-		d = append(d, fmt.Sprint(s.ExclusiveMaximum.Value.B))
+		sb.WriteString(fmt.Sprint(s.ExclusiveMaximum.Value.B))
+		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsA() {
-		d = append(d, fmt.Sprint(s.ExclusiveMinimum.Value.A))
+		sb.WriteString(fmt.Sprint(s.ExclusiveMinimum.Value.A))
+		sb.WriteByte('|')
 	}
 	if !s.ExclusiveMinimum.IsEmpty() && s.ExclusiveMinimum.Value.IsB() {
-		d = append(d, fmt.Sprint(s.ExclusiveMinimum.Value.B))
+		sb.WriteString(fmt.Sprint(s.ExclusiveMinimum.Value.B))
+		sb.WriteByte('|')
 	}
 	if !s.Type.IsEmpty() && s.Type.Value.IsA() {
-		d = append(d, fmt.Sprint(s.Type.Value.A))
+		sb.WriteString(s.Type.Value.A)
+		sb.WriteByte('|')
 	}
 	if !s.Type.IsEmpty() && s.Type.Value.IsB() {
+		// Pre-allocate slice for Type.B values
 		j := make([]string, len(s.Type.Value.B))
 		for h := range s.Type.Value.B {
 			j[h] = s.Type.Value.B[h].Value
 		}
 		sort.Strings(j)
-		d = append(d, strings.Join(j, "|"))
+		for i, val := range j {
+			if i > 0 {
+				sb.WriteByte('|')
+			}
+			sb.WriteString(val)
+		}
+		sb.WriteByte('|')
 	}
 
-	keys := make([]string, len(s.Required.Value))
-	for i := range s.Required.Value {
-		keys[i] = s.Required.Value[i].Value
+	// Process Required values
+	if len(s.Required.Value) > 0 {
+		keys := make([]string, len(s.Required.Value))
+		for i := range s.Required.Value {
+			keys[i] = s.Required.Value[i].Value
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	d = append(d, keys...)
 
-	keys = make([]string, len(s.Enum.Value))
-	for i := range s.Enum.Value {
-		keys[i] = low.ValueToString(s.Enum.Value[i].Value)
+	// Process Enum values
+	if len(s.Enum.Value) > 0 {
+		keys := make([]string, len(s.Enum.Value))
+		for i := range s.Enum.Value {
+			keys[i] = low.ValueToString(s.Enum.Value[i].Value)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
-	sort.Strings(keys)
-	d = append(d, keys...)
 
-	d = low.AppendMapHashes(d, s.Properties.Value)
+	// Append map hashes using helper function
+	for _, hash := range low.AppendMapHashes(nil, s.Properties.Value) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
+	
 	if s.XML.Value != nil {
-		d = append(d, low.GenerateHashString(s.XML.Value))
+		sb.WriteString(low.GenerateHashString(s.XML.Value))
+		sb.WriteByte('|')
 	}
 	if s.ExternalDocs.Value != nil {
-		d = append(d, low.GenerateHashString(s.ExternalDocs.Value))
+		sb.WriteString(low.GenerateHashString(s.ExternalDocs.Value))
+		sb.WriteByte('|')
 	}
 	if s.Discriminator.Value != nil {
-		d = append(d, low.GenerateHashString(s.Discriminator.Value))
+		sb.WriteString(low.GenerateHashString(s.Discriminator.Value))
+		sb.WriteByte('|')
 	}
 
-	// hash polymorphic data
+	// hash polymorphic data - OneOf
 	if len(s.OneOf.Value) > 0 {
 		oneOfKeys := make([]string, len(s.OneOf.Value))
-		oneOfEntities := make(map[string]*SchemaProxy)
-		z := 0
+		oneOfEntities := make(map[string]*SchemaProxy, len(s.OneOf.Value))
 		for i := range s.OneOf.Value {
 			g := s.OneOf.Value[i].Value
 			r := low.GenerateHashString(g)
 			oneOfEntities[r] = g
-			oneOfKeys[z] = r
-			z++
-
+			oneOfKeys[i] = r
 		}
 		sort.Strings(oneOfKeys)
-		for k := range oneOfKeys {
-			d = append(d, low.GenerateHashString(oneOfEntities[oneOfKeys[k]]))
+		for _, key := range oneOfKeys {
+			sb.WriteString(low.GenerateHashString(oneOfEntities[key]))
+			sb.WriteByte('|')
 		}
 	}
 
+	// hash polymorphic data - AllOf
 	if len(s.AllOf.Value) > 0 {
 		allOfKeys := make([]string, len(s.AllOf.Value))
-		allOfEntities := make(map[string]*SchemaProxy)
-		z := 0
+		allOfEntities := make(map[string]*SchemaProxy, len(s.AllOf.Value))
 		for i := range s.AllOf.Value {
 			g := s.AllOf.Value[i].Value
 			r := low.GenerateHashString(g)
 			allOfEntities[r] = g
-			allOfKeys[z] = r
-			z++
-
+			allOfKeys[i] = r
 		}
 		sort.Strings(allOfKeys)
-		for k := range allOfKeys {
-			d = append(d, low.GenerateHashString(allOfEntities[allOfKeys[k]]))
+		for _, key := range allOfKeys {
+			sb.WriteString(low.GenerateHashString(allOfEntities[key]))
+			sb.WriteByte('|')
 		}
 	}
 
+	// hash polymorphic data - AnyOf
 	if len(s.AnyOf.Value) > 0 {
 		anyOfKeys := make([]string, len(s.AnyOf.Value))
-		anyOfEntities := make(map[string]*SchemaProxy)
-		z := 0
+		anyOfEntities := make(map[string]*SchemaProxy, len(s.AnyOf.Value))
 		for i := range s.AnyOf.Value {
 			g := s.AnyOf.Value[i].Value
 			r := low.GenerateHashString(g)
 			anyOfEntities[r] = g
-			anyOfKeys[z] = r
-			z++
-
+			anyOfKeys[i] = r
 		}
 		sort.Strings(anyOfKeys)
-		for k := range anyOfKeys {
-			d = append(d, low.GenerateHashString(anyOfEntities[anyOfKeys[k]]))
+		for _, key := range anyOfKeys {
+			sb.WriteString(low.GenerateHashString(anyOfEntities[key]))
+			sb.WriteByte('|')
 		}
 	}
 
 	if !s.Not.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.Not.Value))
+		sb.WriteString(low.GenerateHashString(s.Not.Value))
+		sb.WriteByte('|')
 	}
 
 	// check if items is a schema or a bool.
 	if !s.Items.IsEmpty() && s.Items.Value.IsA() {
-		d = append(d, low.GenerateHashString(s.Items.Value.A))
+		sb.WriteString(low.GenerateHashString(s.Items.Value.A))
+		sb.WriteByte('|')
 	}
 	if !s.Items.IsEmpty() && s.Items.Value.IsB() {
-		d = append(d, fmt.Sprint(s.Items.Value.B))
+		sb.WriteString(fmt.Sprint(s.Items.Value.B))
+		sb.WriteByte('|')
 	}
 	// 3.1 only props
 	if !s.If.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.If.Value))
+		sb.WriteString(low.GenerateHashString(s.If.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Else.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.Else.Value))
+		sb.WriteString(low.GenerateHashString(s.Else.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Then.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.Then.Value))
+		sb.WriteString(low.GenerateHashString(s.Then.Value))
+		sb.WriteByte('|')
 	}
 	if !s.PropertyNames.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.PropertyNames.Value))
+		sb.WriteString(low.GenerateHashString(s.PropertyNames.Value))
+		sb.WriteByte('|')
 	}
 	if !s.UnevaluatedProperties.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.UnevaluatedProperties.Value))
+		sb.WriteString(low.GenerateHashString(s.UnevaluatedProperties.Value))
+		sb.WriteByte('|')
 	}
 	if !s.UnevaluatedItems.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.UnevaluatedItems.Value))
+		sb.WriteString(low.GenerateHashString(s.UnevaluatedItems.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Anchor.IsEmpty() {
-		d = append(d, fmt.Sprint(s.Anchor.Value))
+		sb.WriteString(s.Anchor.Value)
+		sb.WriteByte('|')
 	}
 
-	d = low.AppendMapHashes(d, orderedmap.SortAlpha(s.DependentSchemas.Value))
-	d = low.AppendMapHashes(d, orderedmap.SortAlpha(s.PatternProperties.Value))
+	// Process dependent schemas and pattern properties
+	for _, hash := range low.AppendMapHashes(nil, orderedmap.SortAlpha(s.DependentSchemas.Value)) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
+	for _, hash := range low.AppendMapHashes(nil, orderedmap.SortAlpha(s.PatternProperties.Value)) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
 
+	// Process PrefixItems
 	if len(s.PrefixItems.Value) > 0 {
 		itemsKeys := make([]string, len(s.PrefixItems.Value))
-		itemsEntities := make(map[string]*SchemaProxy)
-		z := 0
+		itemsEntities := make(map[string]*SchemaProxy, len(s.PrefixItems.Value))
 		for i := range s.PrefixItems.Value {
 			g := s.PrefixItems.Value[i].Value
 			r := low.GenerateHashString(g)
 			itemsEntities[r] = g
-			itemsKeys[z] = r
-			z++
+			itemsKeys[i] = r
 		}
 		sort.Strings(itemsKeys)
-		for k := range itemsKeys {
-			d = append(d, low.GenerateHashString(itemsEntities[itemsKeys[k]]))
+		for _, key := range itemsKeys {
+			sb.WriteString(low.GenerateHashString(itemsEntities[key]))
+			sb.WriteByte('|')
 		}
 	}
 
-	d = append(d, low.HashExtensions(s.Extensions)...)
+	// Process extensions
+	for _, ext := range low.HashExtensions(s.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	
 	if s.Example.Value != nil {
-		d = append(d, low.GenerateHashString(s.Example.Value))
+		sb.WriteString(low.GenerateHashString(s.Example.Value))
+		sb.WriteByte('|')
 	}
 
 	// contains
 	if !s.Contains.IsEmpty() {
-		d = append(d, low.GenerateHashString(s.Contains.Value))
+		sb.WriteString(low.GenerateHashString(s.Contains.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MinContains.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MinContains.Value))
+		sb.WriteString(fmt.Sprint(s.MinContains.Value))
+		sb.WriteByte('|')
 	}
 	if !s.MaxContains.IsEmpty() {
-		d = append(d, fmt.Sprint(s.MaxContains.Value))
+		sb.WriteString(fmt.Sprint(s.MaxContains.Value))
+		sb.WriteByte('|')
 	}
 	if !s.Examples.IsEmpty() {
 		for _, ex := range s.Examples.Value {
-			d = append(d, low.GenerateHashString(ex.Value))
+			sb.WriteString(low.GenerateHashString(ex.Value))
+			sb.WriteByte('|')
 		}
 	}
-	h := sha256.Sum256([]byte(strings.Join(d, "|")))
+	
+	h := sha256.Sum256([]byte(sb.String()))
 	SchemaQuickHashMap.Store(key, h)
 	return h
 }

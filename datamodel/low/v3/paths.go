@@ -119,10 +119,19 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 
 // Hash will return a consistent SHA256 Hash of the PathItem object
 func (p *Paths) Hash() [32]byte {
-	var f []string
-	f = low.AppendMapHashes(f, p.PathItems)
-	f = append(f, low.HashExtensions(p.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
+	for _, hash := range low.AppendMapHashes(nil, p.PathItems) {
+		sb.WriteString(hash)
+		sb.WriteByte('|')
+	}
+	for _, ext := range low.HashExtensions(p.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]], error) {

@@ -6,7 +6,6 @@ package base
 import (
 	"context"
 	"crypto/sha256"
-	"strings"
 
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
@@ -94,29 +93,41 @@ func (i *Info) GetContext() context.Context {
 
 // Hash will return a consistent SHA256 Hash of the Info object
 func (i *Info) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
 
 	if !i.Title.IsEmpty() {
-		f = append(f, i.Title.Value)
+		sb.WriteString(i.Title.Value)
+		sb.WriteByte('|')
 	}
 	if !i.Summary.IsEmpty() {
-		f = append(f, i.Summary.Value)
+		sb.WriteString(i.Summary.Value)
+		sb.WriteByte('|')
 	}
 	if !i.Description.IsEmpty() {
-		f = append(f, i.Description.Value)
+		sb.WriteString(i.Description.Value)
+		sb.WriteByte('|')
 	}
 	if !i.TermsOfService.IsEmpty() {
-		f = append(f, i.TermsOfService.Value)
+		sb.WriteString(i.TermsOfService.Value)
+		sb.WriteByte('|')
 	}
 	if !i.Contact.IsEmpty() {
-		f = append(f, low.GenerateHashString(i.Contact.Value))
+		sb.WriteString(low.GenerateHashString(i.Contact.Value))
+		sb.WriteByte('|')
 	}
 	if !i.License.IsEmpty() {
-		f = append(f, low.GenerateHashString(i.License.Value))
+		sb.WriteString(low.GenerateHashString(i.License.Value))
+		sb.WriteByte('|')
 	}
 	if !i.Version.IsEmpty() {
-		f = append(f, i.Version.Value)
+		sb.WriteString(i.Version.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(i.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(i.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }

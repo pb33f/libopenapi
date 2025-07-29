@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -48,25 +47,35 @@ func (ex *Example) GetKeyNode() *yaml.Node {
 	return ex.KeyNode
 }
 
-// Hash will return a consistent SHA256 Hash of the Discriminator object
+// Hash will return a consistent SHA256 Hash of the Example object
 func (ex *Example) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if ex.Summary.Value != "" {
-		f = append(f, ex.Summary.Value)
+		sb.WriteString(ex.Summary.Value)
+		sb.WriteByte('|')
 	}
 	if ex.Description.Value != "" {
-		f = append(f, ex.Description.Value)
+		sb.WriteString(ex.Description.Value)
+		sb.WriteByte('|')
 	}
 	if ex.Value.Value != nil && !ex.Value.Value.IsZero() {
 		// this could be anything!
 		b, _ := yaml.Marshal(ex.Value.Value)
-		f = append(f, fmt.Sprintf("%x", sha256.Sum256(b)))
+		sb.WriteString(fmt.Sprintf("%x", sha256.Sum256(b)))
+		sb.WriteByte('|')
 	}
 	if ex.ExternalValue.Value != "" {
-		f = append(f, ex.ExternalValue.Value)
+		sb.WriteString(ex.ExternalValue.Value)
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(ex.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(ex.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // Build extracts extensions and example value

@@ -7,7 +7,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"strings"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -102,21 +101,31 @@ func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 
 // Hash will return a consistent SHA256 Hash of the OAuthFlow object
 func (o *OAuthFlows) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !o.Implicit.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.Implicit.Value))
+		sb.WriteString(low.GenerateHashString(o.Implicit.Value))
+		sb.WriteByte('|')
 	}
 	if !o.Password.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.Password.Value))
+		sb.WriteString(low.GenerateHashString(o.Password.Value))
+		sb.WriteByte('|')
 	}
 	if !o.ClientCredentials.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.ClientCredentials.Value))
+		sb.WriteString(low.GenerateHashString(o.ClientCredentials.Value))
+		sb.WriteByte('|')
 	}
 	if !o.AuthorizationCode.IsEmpty() {
-		f = append(f, low.GenerateHashString(o.AuthorizationCode.Value))
+		sb.WriteString(low.GenerateHashString(o.AuthorizationCode.Value))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(o.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(o.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
 
 // OAuthFlow represents a low-level OpenAPI 3+ OAuthFlow object.
@@ -185,19 +194,29 @@ func (o *OAuthFlow) Build(ctx context.Context, _, root *yaml.Node, idx *index.Sp
 
 // Hash will return a consistent SHA256 Hash of the OAuthFlow object
 func (o *OAuthFlow) Hash() [32]byte {
-	var f []string
+	// Use string builder pool
+	sb := low.GetStringBuilder()
+	defer low.PutStringBuilder(sb)
+	
 	if !o.AuthorizationUrl.IsEmpty() {
-		f = append(f, o.AuthorizationUrl.Value)
+		sb.WriteString(o.AuthorizationUrl.Value)
+		sb.WriteByte('|')
 	}
 	if !o.TokenUrl.IsEmpty() {
-		f = append(f, o.TokenUrl.Value)
+		sb.WriteString(o.TokenUrl.Value)
+		sb.WriteByte('|')
 	}
 	if !o.RefreshUrl.IsEmpty() {
-		f = append(f, o.RefreshUrl.Value)
+		sb.WriteString(o.RefreshUrl.Value)
+		sb.WriteByte('|')
 	}
 	for k, v := range orderedmap.SortAlpha(o.Scopes.Value).FromOldest() {
-		f = append(f, fmt.Sprintf("%s-%s", k.Value, sha256.Sum256([]byte(fmt.Sprint(v.Value)))))
+		sb.WriteString(fmt.Sprintf("%s-%s", k.Value, sha256.Sum256([]byte(v.Value))))
+		sb.WriteByte('|')
 	}
-	f = append(f, low.HashExtensions(o.Extensions)...)
-	return sha256.Sum256([]byte(strings.Join(f, "|")))
+	for _, ext := range low.HashExtensions(o.Extensions) {
+		sb.WriteString(ext)
+		sb.WriteByte('|')
+	}
+	return sha256.Sum256([]byte(sb.String()))
 }
