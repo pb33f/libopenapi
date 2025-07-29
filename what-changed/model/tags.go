@@ -18,6 +18,9 @@ type TagChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Tag objects
 func (t *TagChanges) GetAllChanges() []*Change {
+	if t == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, t.Changes...)
 	if t.ExternalDocs != nil {
@@ -31,6 +34,9 @@ func (t *TagChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns a count of everything that changed within tags.
 func (t *TagChanges) TotalChanges() int {
+	if t == nil {
+		return 0
+	}
 	c := t.PropertyChanges.TotalChanges()
 	if t.ExternalDocs != nil {
 		c += t.ExternalDocs.TotalChanges()

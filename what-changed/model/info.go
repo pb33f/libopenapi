@@ -18,6 +18,9 @@ type InfoChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Info objects
 func (i *InfoChanges) GetAllChanges() []*Change {
+	if i == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, i.Changes...)
 	if i.ContactChanges != nil {
@@ -34,6 +37,9 @@ func (i *InfoChanges) GetAllChanges() []*Change {
 
 // TotalChanges represents the total number of changes made to an Info object.
 func (i *InfoChanges) TotalChanges() int {
+	if i == nil {
+		return 0
+	}
 	t := i.PropertyChanges.TotalChanges()
 	if i.ContactChanges != nil {
 		t += i.ContactChanges.TotalChanges()

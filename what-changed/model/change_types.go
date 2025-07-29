@@ -150,6 +150,9 @@ type PropertyChanges struct {
 
 // TotalChanges returns the total number of property changes made.
 func (p *PropertyChanges) TotalChanges() int {
+	if p == nil {
+		return 0
+	}
 	return len(p.Changes)
 }
 

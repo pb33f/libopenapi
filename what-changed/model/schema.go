@@ -83,6 +83,9 @@ func (s *SchemaChanges) GetPropertyChanges() []*Change {
 
 // GetAllChanges returns a slice of all changes made between Responses objects
 func (s *SchemaChanges) GetAllChanges() []*Change {
+	if s == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, s.Changes...)
 	if s.DiscriminatorChanges != nil {

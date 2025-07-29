@@ -23,6 +23,9 @@ type ExampleChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Example objects
 func (e *ExampleChanges) GetAllChanges() []*Change {
+	if e == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, e.Changes...)
 	if e.ExtensionChanges != nil {
@@ -33,6 +36,9 @@ func (e *ExampleChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes made to Example
 func (e *ExampleChanges) TotalChanges() int {
+	if e == nil {
+		return 0
+	}
 	l := e.PropertyChanges.TotalChanges()
 	if e.ExtensionChanges != nil {
 		l += e.ExtensionChanges.PropertyChanges.TotalChanges()

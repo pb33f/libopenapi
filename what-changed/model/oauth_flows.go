@@ -20,6 +20,9 @@ type OAuthFlowsChanges struct {
 
 // GetAllChanges returns a slice of all changes made between OAuthFlows objects
 func (o *OAuthFlowsChanges) GetAllChanges() []*Change {
+	if o == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, o.Changes...)
 	if o.ImplicitChanges != nil {
@@ -42,6 +45,9 @@ func (o *OAuthFlowsChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the number of changes made between two OAuthFlows instances.
 func (o *OAuthFlowsChanges) TotalChanges() int {
+	if o == nil {
+		return 0
+	}
 	c := o.PropertyChanges.TotalChanges()
 	if o.ImplicitChanges != nil {
 		c += o.ImplicitChanges.TotalChanges()
@@ -150,6 +156,9 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	oa.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	oa.PropertyChanges = NewPropertyChanges(changes)
+	if oa.TotalChanges() <= 0 {
+		return nil
+	}
 	return oa
 }
 
@@ -161,6 +170,9 @@ type OAuthFlowChanges struct {
 
 // GetAllChanges returns a slice of all changes made between OAuthFlow objects
 func (o *OAuthFlowChanges) GetAllChanges() []*Change {
+	if o == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, o.Changes...)
 	if o.ExtensionChanges != nil {
@@ -171,6 +183,9 @@ func (o *OAuthFlowChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes made between two OAuthFlow objects
 func (o *OAuthFlowChanges) TotalChanges() int {
+	if o == nil {
+		return 0
+	}
 	c := o.PropertyChanges.TotalChanges()
 	if o.ExtensionChanges != nil {
 		c += o.ExtensionChanges.TotalChanges()
@@ -249,5 +264,8 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 	oa := new(OAuthFlowChanges)
 	oa.PropertyChanges = NewPropertyChanges(changes)
 	oa.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
+	if oa.TotalChanges() <= 0 {
+		return nil
+	}
 	return oa
 }

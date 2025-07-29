@@ -21,6 +21,9 @@ type MediaTypeChanges struct {
 
 // GetAllChanges returns a slice of all changes made between MediaType objects
 func (m *MediaTypeChanges) GetAllChanges() []*Change {
+	if m == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, m.Changes...)
 	if m.SchemaChanges != nil {
@@ -40,6 +43,9 @@ func (m *MediaTypeChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes between two MediaType instances.
 func (m *MediaTypeChanges) TotalChanges() int {
+	if m == nil {
+		return 0
+	}
 	c := m.PropertyChanges.TotalChanges()
 	for k := range m.ExampleChanges {
 		c += m.ExampleChanges[k].TotalChanges()
@@ -144,5 +150,8 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
 	mc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	mc.PropertyChanges = NewPropertyChanges(changes)
+	if mc.TotalChanges() <= 0 {
+		return nil
+	}
 	return mc
 }

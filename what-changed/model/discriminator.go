@@ -16,6 +16,9 @@ type DiscriminatorChanges struct {
 
 // TotalChanges returns a count of everything changed within the Discriminator object
 func (d *DiscriminatorChanges) TotalChanges() int {
+	if d == nil {
+		return 0
+	}
 	l := 0
 	if k := d.PropertyChanges.TotalChanges(); k > 0 {
 		l += k
@@ -28,6 +31,9 @@ func (d *DiscriminatorChanges) TotalChanges() int {
 
 // GetAllChanges returns a slice of all changes made between Callback objects
 func (c *DiscriminatorChanges) GetAllChanges() []*Change {
+	if c == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, c.Changes...)
 	if c.MappingChanges != nil {
