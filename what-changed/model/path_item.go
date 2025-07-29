@@ -29,6 +29,9 @@ type PathItemChanges struct {
 
 // GetAllChanges returns a slice of all changes made between PathItem objects
 func (p *PathItemChanges) GetAllChanges() []*Change {
+	if p == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, p.Changes...)
 	if p.GetChanges != nil {
@@ -69,6 +72,9 @@ func (p *PathItemChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes found between two Swagger or OpenAPI PathItems
 func (p *PathItemChanges) TotalChanges() int {
+	if p == nil {
+		return 0
+	}
 	c := p.PropertyChanges.TotalChanges()
 	if p.GetChanges != nil {
 		c += p.GetChanges.TotalChanges()
@@ -214,6 +220,9 @@ func ComparePathItems(l, r any) *PathItemChanges {
 
 	CheckProperties(props)
 	pc.PropertyChanges = NewPropertyChanges(changes)
+	if pc.TotalChanges() <= 0 {
+		return nil
+	}
 	return pc
 }
 

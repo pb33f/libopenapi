@@ -18,11 +18,17 @@ type ExtensionChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Extension objects
 func (e *ExtensionChanges) GetAllChanges() []*Change {
+	if e == nil {
+		return nil
+	}
 	return e.Changes
 }
 
 // TotalChanges returns the total number of object extensions that were made.
 func (e *ExtensionChanges) TotalChanges() int {
+	if e == nil {
+		return 0
+	}
 	return e.PropertyChanges.TotalChanges()
 }
 

@@ -14,7 +14,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// cleanHashCacheForTest clears the hash cache and sets up cleanup for individual tests
+func cleanHashCacheForTest(t *testing.T) {
+	low.ClearHashCache()
+	t.Cleanup(func() {
+		low.ClearHashCache()
+	})
+}
+
 func TestResponses_Build(t *testing.T) {
+	cleanHashCacheForTest(t)
+	
 	yml := `"200":
   description: some response
   headers:

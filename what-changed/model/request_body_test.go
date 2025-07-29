@@ -46,6 +46,8 @@ content:
 }
 
 func TestCompareRequestBodies_Modified(t *testing.T) {
+	cleanHashCacheForTest(t)
+	
 	left := `description: something
 required: true
 x-pizza: thin

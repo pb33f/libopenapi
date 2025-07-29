@@ -255,6 +255,8 @@ example: a string`
 }
 
 func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
+	cleanHashCacheForTest(t)
+	
 	left := `examples:
   anExample:
     value: I love magic herbs`

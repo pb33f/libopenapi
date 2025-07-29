@@ -15,6 +15,9 @@ type EncodingChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Encoding objects
 func (e *EncodingChanges) GetAllChanges() []*Change {
+	if e == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, e.Changes...)
 	for k := range e.HeaderChanges {
@@ -25,6 +28,9 @@ func (e *EncodingChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes made between two Encoding objects
 func (e *EncodingChanges) TotalChanges() int {
+	if e == nil {
+		return 0
+	}
 	c := e.PropertyChanges.TotalChanges()
 	if e.HeaderChanges != nil {
 		for i := range e.HeaderChanges {

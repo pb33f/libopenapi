@@ -21,6 +21,9 @@ type ResponsesChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Responses objects
 func (r *ResponsesChanges) GetAllChanges() []*Change {
+	if r == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, r.Changes...)
 	for k := range r.ResponseChanges {
@@ -37,6 +40,9 @@ func (r *ResponsesChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes found between two Swagger or OpenAPI Responses objects
 func (r *ResponsesChanges) TotalChanges() int {
+	if r == nil {
+		return 0
+	}
 	c := r.PropertyChanges.TotalChanges()
 	for k := range r.ResponseChanges {
 		c += r.ResponseChanges[k].TotalChanges()
@@ -136,5 +142,8 @@ func CompareResponses(l, r any) *ResponsesChanges {
 	}
 
 	rc.PropertyChanges = NewPropertyChanges(changes)
+	if rc.TotalChanges() <= 0 {
+		return nil
+	}
 	return rc
 }

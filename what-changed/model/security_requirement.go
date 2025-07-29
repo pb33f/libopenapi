@@ -18,11 +18,17 @@ type SecurityRequirementChanges struct {
 
 // GetAllChanges returns a slice of all changes made between SecurityRequirement objects
 func (s *SecurityRequirementChanges) GetAllChanges() []*Change {
+	if s == nil {
+		return nil
+	}
 	return s.Changes
 }
 
 // TotalChanges returns the total number of changes between two SecurityRequirement Objects.
 func (s *SecurityRequirementChanges) TotalChanges() int {
+	if s == nil {
+		return 0
+	}
 	return s.PropertyChanges.TotalChanges()
 }
 
@@ -42,6 +48,9 @@ func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequire
 	}
 	checkSecurityRequirement(l.Requirements.Value, r.Requirements.Value, &changes)
 	sc.PropertyChanges = NewPropertyChanges(changes)
+	if sc.TotalChanges() <= 0 {
+		return nil
+	}
 	return sc
 }
 

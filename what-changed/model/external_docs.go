@@ -16,6 +16,9 @@ type ExternalDocChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Example objects
 func (e *ExternalDocChanges) GetAllChanges() []*Change {
+	if e == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, e.Changes...)
 	if e.ExtensionChanges != nil {
@@ -26,6 +29,9 @@ func (e *ExternalDocChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns a count of everything that changed
 func (e *ExternalDocChanges) TotalChanges() int {
+	if e == nil {
+		return 0
+	}
 	c := e.PropertyChanges.TotalChanges()
 	if e.ExtensionChanges != nil {
 		c += e.ExtensionChanges.TotalChanges()

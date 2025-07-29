@@ -17,6 +17,9 @@ type ScopesChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Scopes objects
 func (s *ScopesChanges) GetAllChanges() []*Change {
+	if s == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, s.Changes...)
 	if s.ExtensionChanges != nil {
@@ -27,6 +30,9 @@ func (s *ScopesChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total changes found between two Swagger Scopes objects.
 func (s *ScopesChanges) TotalChanges() int {
+	if s == nil {
+		return 0
+	}
 	c := s.PropertyChanges.TotalChanges()
 	if s.ExtensionChanges != nil {
 		c += s.ExtensionChanges.TotalChanges()
@@ -72,5 +78,8 @@ func CompareScopes(l, r *v2.Scopes) *ScopesChanges {
 	sc := new(ScopesChanges)
 	sc.PropertyChanges = NewPropertyChanges(changes)
 	sc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
+	if sc.TotalChanges() <= 0 {
+		return nil
+	}
 	return sc
 }

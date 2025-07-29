@@ -16,6 +16,9 @@ type LicenseChanges struct {
 
 // GetAllChanges returns a slice of all changes made between License objects
 func (l *LicenseChanges) GetAllChanges() []*Change {
+	if l == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, l.Changes...)
 	if l.ExtensionChanges != nil {
@@ -26,6 +29,9 @@ func (l *LicenseChanges) GetAllChanges() []*Change {
 
 // TotalChanges represents the total number of changes made to a License instance.
 func (l *LicenseChanges) TotalChanges() int {
+	if l == nil {
+		return 0
+	}
 	c := l.PropertyChanges.TotalChanges()
 
 	if l.ExtensionChanges != nil {

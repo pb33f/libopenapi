@@ -17,6 +17,9 @@ type ItemsChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Items objects
 func (i *ItemsChanges) GetAllChanges() []*Change {
+	if i == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, i.Changes...)
 	if i.ItemsChanges != nil {
@@ -28,6 +31,9 @@ func (i *ItemsChanges) GetAllChanges() []*Change {
 // TotalChanges returns the total number of changes found between two Items objects
 // This is a recursive function because Items can contain Items. Be careful!
 func (i *ItemsChanges) TotalChanges() int {
+	if i == nil {
+		return 0
+	}
 	c := i.PropertyChanges.TotalChanges()
 	if i.ItemsChanges != nil {
 		c += i.ItemsChanges.TotalChanges()

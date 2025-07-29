@@ -152,6 +152,9 @@ func CompareDocuments(l, r any) *DocumentChanges {
 
 	// reset schema hashmap
 	base.SchemaQuickHashMap.Clear()
+	
+	// clear hash cache to ensure clean state for comparison
+	low.ClearHashCache()
 
 	if reflect.TypeOf(&v2.Swagger{}) == reflect.TypeOf(l) && reflect.TypeOf(&v2.Swagger{}) == reflect.TypeOf(r) {
 		lDoc := l.(*v2.Swagger)

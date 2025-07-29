@@ -16,6 +16,9 @@ type XMLChanges struct {
 
 // GetAllChanges returns a slice of all changes made between XML objects
 func (x *XMLChanges) GetAllChanges() []*Change {
+	if x == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, x.Changes...)
 	if x.ExtensionChanges != nil {
@@ -26,6 +29,9 @@ func (x *XMLChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns a count of everything that was changed within an XML object.
 func (x *XMLChanges) TotalChanges() int {
+	if x == nil {
+		return 0
+	}
 	c := x.PropertyChanges.TotalChanges()
 	if x.ExtensionChanges != nil {
 		c += x.ExtensionChanges.TotalChanges()

@@ -67,6 +67,8 @@ func TestRequestBody_Fail(t *testing.T) {
 }
 
 func TestRequestBody_Hash(t *testing.T) {
+	cleanHashCacheForTest(t)
+	
 	yml := `description: nice toast
 content:
   jammy/toast:

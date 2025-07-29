@@ -7,12 +7,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"hash"
 	"net/url"
 	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
 	"sync"
+	"unsafe"
 
 	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 
@@ -30,6 +32,16 @@ var stringBuilderPool = sync.Pool{
 	New: func() interface{} {
 		return new(strings.Builder)
 	},
+}
+
+// hashCache is a global cache for computed hash values to avoid redundant calculations.
+// Uses sync.Map for thread-safe concurrent access.
+var hashCache sync.Map
+
+// ClearHashCache clears the global hash cache. This should be called before
+// starting a new document comparison to ensure clean state.
+func ClearHashCache() {
+	hashCache = sync.Map{}
 }
 
 // GetStringBuilder retrieves a strings.Builder from the pool, resets it, and returns it.
@@ -907,11 +919,34 @@ func AreEqual(l, r Hashable) bool {
 }
 
 // GenerateHashString will generate a SHA256 hash of any object passed in. If the object is Hashable
-// then the underlying Hash() method will be called. Optimized to avoid excessive allocations.
+// then the underlying Hash() method will be called. Optimized to avoid excessive allocations and
+// uses caching to eliminate redundant calculations.
 func GenerateHashString(v any) string {
 	if v == nil {
 		return ""
 	}
+	
+	// Try cache first using the pointer as key for non-primitives
+	// However, skip caching for types with mutable hash state like SchemaProxy
+	val := reflect.ValueOf(v)
+	shouldCache := true
+	if val.Kind() == reflect.Ptr && !val.IsNil() {
+		// Check if this is a type that has mutable hash state or complex comparison logic
+		typeName := val.Type().String()
+		if typeName == "*base.SchemaProxy" || typeName == "*base.Schema" {
+			shouldCache = false
+		}
+		
+		if shouldCache {
+			cacheKey := val.Pointer()
+			if cached, ok := hashCache.Load(cacheKey); ok {
+				return cached.(string)
+			}
+		}
+	}
+	
+	var hashStr string
+	
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
 			// Use string builder to avoid fmt.Sprintf allocation
@@ -920,73 +955,176 @@ func GenerateHashString(v any) string {
 			
 			hash := h.Hash()
 			sb.WriteString(fmt.Sprintf("%x", hash))
-			return sb.String()
+			hashStr = sb.String()
 		}
-	}
-	if n, ok := v.(*yaml.Node); ok {
+	} else if n, ok := v.(*yaml.Node); ok {
 		// Fast path for common YAML node types to avoid marshaling
-		return hashYamlNodeFast(n)
-	}
-	// if we get here, we're a primitive, check if we're a pointer and de-point
-	if reflect.TypeOf(v).Kind() == reflect.Ptr {
-		v = reflect.ValueOf(v).Elem().Interface()
-	}
-	
-	// Use string builder for primitive hashing instead of fmt.Sprint
-	sb := GetStringBuilder()
-	defer PutStringBuilder(sb)
-	
-	// Convert to string more efficiently
-	var str string
-	switch val := v.(type) {
-	case string:
-		str = val
-	case int, int8, int16, int32, int64:
-		str = fmt.Sprintf("%d", val)
-	case uint, uint8, uint16, uint32, uint64:
-		str = fmt.Sprintf("%d", val) 
-	case float32, float64:
-		str = fmt.Sprintf("%g", val)
-	case bool:
-		if val {
-			str = "true"
-		} else {
-			str = "false"
+		hashStr = hashYamlNodeFast(n)
+	} else {
+		// Primitive types
+		// if we get here, we're a primitive, check if we're a pointer and de-point
+		if val.Kind() == reflect.Ptr {
+			v = val.Elem().Interface()
 		}
-	default:
-		str = fmt.Sprint(v)
+		
+		// Use string builder for primitive hashing instead of fmt.Sprint
+		sb := GetStringBuilder()
+		defer PutStringBuilder(sb)
+		
+		// Convert to string more efficiently
+		var str string
+		switch val := v.(type) {
+		case string:
+			str = val
+		case int, int8, int16, int32, int64:
+			str = fmt.Sprintf("%d", val)
+		case uint, uint8, uint16, uint32, uint64:
+			str = fmt.Sprintf("%d", val) 
+		case float32, float64:
+			str = fmt.Sprintf("%g", val)
+		case bool:
+			if val {
+				str = "true"
+			} else {
+				str = "false"
+			}
+		default:
+			str = fmt.Sprint(v)
+		}
+		
+		hash := sha256.Sum256([]byte(str))
+		sb.WriteString(fmt.Sprintf("%x", hash))
+		hashStr = sb.String()
 	}
 	
-	hash := sha256.Sum256([]byte(str))
-	sb.WriteString(fmt.Sprintf("%x", hash))
-	return sb.String()
+	// Store in cache if we have a valid pointer and caching is enabled for this type
+	if shouldCache && val.Kind() == reflect.Ptr && !val.IsNil() && hashStr != "" {
+		cacheKey := val.Pointer()
+		hashCache.Store(cacheKey, hashStr)
+	}
+	
+	return hashStr
 }
 
-// hashYamlNodeFast provides fast hashing for YAML nodes without full marshaling
+// hashYamlNodeFast provides fast hashing for YAML nodes without ANY marshaling
 func hashYamlNodeFast(n *yaml.Node) string {
 	if n == nil {
 		return ""
 	}
 	
-	sb := GetStringBuilder()
-	defer PutStringBuilder(sb)
-	
-	// For simple scalar nodes, avoid marshaling entirely
-	if n.Kind == yaml.ScalarNode {
-		// Hash: kind + tag + value + anchor
-		sb.WriteString(fmt.Sprintf("%d:%s:%s:%s", n.Kind, n.Tag, n.Value, n.Anchor))
-		hash := sha256.Sum256([]byte(sb.String()))
-		sb.Reset()
-		sb.WriteString(fmt.Sprintf("%x", hash))
-		return sb.String()
+	// Try cache first for complex nodes
+	if n.Kind != yaml.ScalarNode {
+		cacheKey := uintptr(unsafe.Pointer(n))
+		if cached, ok := hashCache.Load(cacheKey); ok {
+			return cached.(string)
+		}
 	}
 	
-	// For complex nodes, we still need to marshal but cache the result
-	// This is better than the original but still needs improvement with caching
-	b, _ := yaml.Marshal(n)
-	hash := sha256.Sum256(b)
-	sb.WriteString(fmt.Sprintf("%x", hash))
-	return sb.String()
+	// Use a hasher instead of marshaling
+	h := sha256.New()
+	visited := make(map[*yaml.Node]bool)
+	hashNodeTree(h, n, visited)
+	
+	sb := GetStringBuilder()
+	defer PutStringBuilder(sb)
+	sb.WriteString(fmt.Sprintf("%x", h.Sum(nil)))
+	result := sb.String()
+	
+	// Cache complex nodes
+	if n.Kind != yaml.ScalarNode {
+		cacheKey := uintptr(unsafe.Pointer(n))
+		hashCache.Store(cacheKey, result)
+	}
+	
+	return result
+}
+
+// hashNodeTree walks the YAML tree and hashes it without marshaling
+func hashNodeTree(h hash.Hash, n *yaml.Node, visited map[*yaml.Node]bool) {
+	if n == nil {
+		return
+	}
+	
+	// Prevent circular reference infinite loops
+	if visited[n] {
+		h.Write([]byte("<<CIRCULAR>>"))
+		return
+	}
+	visited[n] = true
+	
+	// Hash node metadata
+	h.Write([]byte{byte(n.Kind)})
+	h.Write([]byte(n.Tag))
+	h.Write([]byte(n.Value))
+	if n.Anchor != "" {
+		h.Write([]byte(n.Anchor))
+	}
+	
+	// Hash based on node type
+	switch n.Kind {
+	case yaml.ScalarNode:
+		// Already hashed value above
+		
+	case yaml.SequenceNode:
+		h.Write([]byte("["))
+		for _, child := range n.Content {
+			hashNodeTree(h, child, visited)
+			h.Write([]byte(","))
+		}
+		h.Write([]byte("]"))
+		
+	case yaml.MappingNode:
+		h.Write([]byte("{"))
+		// For maps, we need consistent ordering
+		// Collect key-value pairs and sort by key hash
+		type kvPair struct {
+			keyHash   string
+			keyNode   *yaml.Node
+			valueNode *yaml.Node
+		}
+		pairs := make([]kvPair, 0, len(n.Content)/2)
+		
+		for i := 0; i < len(n.Content); i += 2 {
+			if i+1 < len(n.Content) {
+				// Hash the key for sorting
+				keyH := sha256.New()
+				hashNodeTree(keyH, n.Content[i], visited)
+				pairs = append(pairs, kvPair{
+					keyHash:   fmt.Sprintf("%x", keyH.Sum(nil)),
+					keyNode:   n.Content[i],
+					valueNode: n.Content[i+1],
+				})
+			}
+		}
+		
+		// Sort for consistent hashing
+		sort.Slice(pairs, func(i, j int) bool {
+			return pairs[i].keyHash < pairs[j].keyHash
+		})
+		
+		// Hash in sorted order
+		for _, pair := range pairs {
+			hashNodeTree(h, pair.keyNode, visited)
+			h.Write([]byte(":"))
+			hashNodeTree(h, pair.valueNode, visited)
+			h.Write([]byte(","))
+		}
+		h.Write([]byte("}"))
+		
+	case yaml.DocumentNode:
+		h.Write([]byte("DOC["))
+		for _, child := range n.Content {
+			hashNodeTree(h, child, visited)
+		}
+		h.Write([]byte("]"))
+		
+	case yaml.AliasNode:
+		h.Write([]byte("ALIAS["))
+		if n.Alias != nil {
+			hashNodeTree(h, n.Alias, visited)
+		}
+		h.Write([]byte("]"))
+	}
 }
 
 // AppendMapHashes will append all the hashes of a map to a slice of strings.

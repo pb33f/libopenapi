@@ -17,6 +17,9 @@ type LinkChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Link objects
 func (l *LinkChanges) GetAllChanges() []*Change {
+	if l == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, l.Changes...)
 	if l.ServerChanges != nil {
@@ -30,6 +33,9 @@ func (l *LinkChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total changes made between OpenAPI Link objects
 func (l *LinkChanges) TotalChanges() int {
+	if l == nil {
+		return 0
+	}
 	c := l.PropertyChanges.TotalChanges()
 	if l.ExtensionChanges != nil {
 		c += l.ExtensionChanges.TotalChanges()
@@ -156,5 +162,8 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	}
 
 	lc.PropertyChanges = NewPropertyChanges(changes)
+	if lc.TotalChanges() <= 0 {
+		return nil
+	}
 	return lc
 }
