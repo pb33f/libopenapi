@@ -246,23 +246,15 @@ func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Chan
 			return
 		}
 
-		// there is no way to know how to compare the content of the array, without
-		// rendering the yaml.Node to a string and comparing the string.
-		leftBytes, _ := yaml.Marshal(l)
-		rightBytes, _ := yaml.Marshal(r)
-
-		if string(leftBytes) != string(rightBytes) {
+		// Compare the YAML node trees directly without marshaling
+		if !low.CompareYAMLNodes(l, r) {
 			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
 		}
 		return
 	}
 	if l != nil && utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
-		// there is no way to know how to compare the content of the map, without
-		// rendering the yaml.Node to a string and comparing the string.
-		leftBytes, _ := yaml.Marshal(l)
-		rightBytes, _ := yaml.Marshal(r)
-
-		if string(leftBytes) != string(rightBytes) {
+		// Compare the YAML node trees directly without marshaling
+		if !low.CompareYAMLNodes(l, r) {
 			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
 		}
 		return
