@@ -57,6 +57,7 @@ type SchemaProxy struct {
 	rendered   *Schema
 	buildError error
 	ctx        context.Context
+	cachedHash *[32]byte // Cache computed hash to avoid recalculation
 	*low.NodeMap
 }
 
@@ -147,55 +148,78 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 
 // Hash will return a consistent SHA256 Hash of the SchemaProxy object (it will resolve it)
 func (sp *SchemaProxy) Hash() [32]byte {
+	// Return cached hash if available
+	if sp.cachedHash != nil {
+		return *sp.cachedHash
+	}
+	
+	var hash [32]byte
+	
 	if sp.rendered != nil {
 		if !sp.IsReference() {
-			return sp.rendered.Hash()
+			hash = sp.rendered.Hash()
+		} else {
+			// For references, hash the reference value
+			hash = sha256.Sum256([]byte(sp.GetReference()))
 		}
 	} else {
 		if !sp.IsReference() {
-			// only resolve this proxy if it's not a ref.
+			// Only resolve this proxy if it's not a ref.
 			sch := sp.Schema()
 			sp.rendered = sch
 			hashError := fmt.Errorf("circular reference detected: %s", sp.GetReference())
 			if sch != nil {
 				if sp.idx != nil && sp.idx.GetConfig() != nil && sp.idx.GetConfig().UseSchemaQuickHash {
 					if !CheckSchemaProxyForCircularRefs(sp) {
-						return sch.Hash()
+						hash = sch.Hash()
+					} else {
+						// For circular references, hash the reference value
+						hash = sha256.Sum256([]byte(sp.GetReference()))
+					}
+				} else {
+					hash = sch.Hash()
+				}
+			} else {
+				var logger *slog.Logger
+				if sp.idx != nil && sp.idx.GetLogger() != nil {
+					logger = sp.idx.GetLogger()
+				}
+				if logger != nil {
+					bErr := errors.Join(sp.GetBuildError(), hashError)
+					if bErr != nil {
+						logger.Warn("SchemaProxy.Hash() unable to complete hash: ", "error", bErr.Error())
 					}
 				}
-				return sch.Hash()
+				hash = [32]byte{}
 			}
-			var logger *slog.Logger
-			if sp.idx != nil && sp.idx.GetLogger() != nil {
-				logger = sp.idx.GetLogger()
-			}
-			if logger != nil {
-				bErr := errors.Join(sp.GetBuildError(), hashError)
-				if bErr != nil {
-					logger.Warn("SchemaProxy.Hash() unable to complete hash: ", "error", bErr.Error())
+		} else {
+			// Handle UseSchemaQuickHash case for references
+			if sp.idx != nil && sp.idx.GetConfig() != nil && sp.idx.GetConfig().UseSchemaQuickHash {
+				if sp.idx != nil && !CheckSchemaProxyForCircularRefs(sp) {
+					if sp.rendered == nil {
+						sp.rendered = sp.Schema()
+					}
+					hash = sp.rendered.QuickHash() // quick hash uses a cache to keep things fast.
+				} else {
+					hash = sha256.Sum256([]byte(sp.GetReference()))
 				}
+			} else {
+				// Hash reference value only, do not resolve!
+				hash = sha256.Sum256([]byte(sp.GetReference()))
 			}
-			return [32]byte{}
 		}
 	}
-
-	// let's check the rolodex for a potential circular reference, and if there isn't a match, go ahead and hash the reference value.
-	if sp.idx != nil && sp.idx.GetConfig() != nil && sp.idx.GetConfig().UseSchemaQuickHash {
-		if sp.idx != nil && !CheckSchemaProxyForCircularRefs(sp) {
-			if sp.rendered == nil {
-				sp.rendered = sp.Schema()
-			}
-			qh := sp.rendered.QuickHash() // quick hash uses a cache to keep things fast.
-			return qh
-		}
-	}
-
-	// hash reference value only, do not resolve!
-	return sha256.Sum256([]byte(sp.GetReference()))
+	
+	// Cache the computed hash for future calls
+	sp.cachedHash = &hash
+	return hash
 }
 
 // AddNode stores nodes in the underlying schema if rendered, otherwise holds in the proxy until build.
 func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
+	// Clear cached hash since content is being modified
+	sp.cachedHash = nil
+	
 	if sp.rendered != nil {
 		sp.rendered.AddNode(key, node)
 	} else {

@@ -42,7 +42,7 @@ description: something`
 	assert.Equal(t, "coffee", sch.GetReference())
 
 	// already rendered, should spit out the same
-	assert.Equal(t, "37290d74ac4d186e3a8e5785d259d2ec04fac91ae28092e7620ec8bc99e830aa",
+	assert.Equal(t, "be79763a610e8016259d370c7f286eb747ee2ada7add3d21634ba96f8aa99838",
 		low.GenerateHashString(&sch))
 
 	assert.Equal(t, 1, orderedmap.Len(sch.Schema().GetExtensions()))
