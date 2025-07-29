@@ -32,6 +32,9 @@ type OperationChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Operation objects
 func (o *OperationChanges) GetAllChanges() []*Change {
+	if o == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, o.Changes...)
 	if o.ExternalDocChanges != nil {
@@ -63,6 +66,9 @@ func (o *OperationChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes made between two Swagger or OpenAPI Operation objects.
 func (o *OperationChanges) TotalChanges() int {
+	if o == nil {
+		return 0
+	}
 	c := o.PropertyChanges.TotalChanges()
 	if o.ExternalDocChanges != nil {
 		c += o.ExternalDocChanges.TotalChanges()
@@ -419,6 +425,9 @@ func CompareOperations(l, r any) *OperationChanges {
 	}
 	CheckProperties(props)
 	oc.PropertyChanges = NewPropertyChanges(changes)
+	if oc.TotalChanges() <= 0 {
+		return nil
+	}
 	return oc
 }
 

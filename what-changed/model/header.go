@@ -26,6 +26,9 @@ type HeaderChanges struct {
 
 // GetAllChanges returns a slice of all changes made between Header objects
 func (h *HeaderChanges) GetAllChanges() []*Change {
+	if h == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, h.Changes...)
 	for k := range h.ExamplesChanges {
@@ -48,6 +51,9 @@ func (h *HeaderChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes made between two Header objects.
 func (h *HeaderChanges) TotalChanges() int {
+	if h == nil {
+		return 0
+	}
 	c := h.PropertyChanges.TotalChanges()
 	for k := range h.ExamplesChanges {
 		c += h.ExamplesChanges[k].TotalChanges()
@@ -276,5 +282,8 @@ func CompareHeaders(l, r any) *HeaderChanges {
 	}
 	CheckProperties(props)
 	hc.PropertyChanges = NewPropertyChanges(changes)
+	if hc.TotalChanges() <= 0 {
+		return nil
+	}
 	return hc
 }

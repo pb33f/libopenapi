@@ -194,6 +194,8 @@ func TestOperation_Build_FailServers(t *testing.T) {
 }
 
 func TestOperation_Hash_n_Grab(t *testing.T) {
+	cleanHashCacheForTest(t)
+	
 	yml := `tags:
   - nice
   - rice

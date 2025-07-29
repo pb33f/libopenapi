@@ -17,6 +17,9 @@ type RequestBodyChanges struct {
 
 // GetAllChanges returns a slice of all changes made between RequestBody objects
 func (rb *RequestBodyChanges) GetAllChanges() []*Change {
+	if rb == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, rb.Changes...)
 	for k := range rb.ContentChanges {
@@ -30,6 +33,9 @@ func (rb *RequestBodyChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes found between two OpenAPI RequestBody objects
 func (rb *RequestBodyChanges) TotalChanges() int {
+	if rb == nil {
+		return 0
+	}
 	c := rb.PropertyChanges.TotalChanges()
 	for k := range rb.ContentChanges {
 		c += rb.ContentChanges[k].TotalChanges()
@@ -89,5 +95,8 @@ func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 	rbc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	rbc.PropertyChanges = NewPropertyChanges(changes)
 
+	if rbc.TotalChanges() <= 0 {
+		return nil
+	}
 	return rbc
 }

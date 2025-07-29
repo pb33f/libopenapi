@@ -17,9 +17,14 @@ type CallbackChanges struct {
 
 // TotalChanges returns a total count of all changes made between Callback objects
 func (c *CallbackChanges) TotalChanges() int {
+	if c == nil {
+		return 0
+	}
 	d := c.PropertyChanges.TotalChanges()
 	for k := range c.ExpressionChanges {
-		d += c.ExpressionChanges[k].TotalChanges()
+		if c.ExpressionChanges[k] != nil {
+			d += c.ExpressionChanges[k].TotalChanges()
+		}
 	}
 	if c.ExtensionChanges != nil {
 		d += c.ExtensionChanges.TotalChanges()
@@ -29,6 +34,9 @@ func (c *CallbackChanges) TotalChanges() int {
 
 // GetAllChanges returns a slice of all changes made between Callback objects
 func (c *CallbackChanges) GetAllChanges() []*Change {
+	if c == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, c.Changes...)
 	for k := range c.ExpressionChanges {

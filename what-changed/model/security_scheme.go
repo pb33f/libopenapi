@@ -25,6 +25,9 @@ type SecuritySchemeChanges struct {
 
 // GetAllChanges returns a slice of all changes made between SecurityRequirement objects
 func (ss *SecuritySchemeChanges) GetAllChanges() []*Change {
+	if ss == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, ss.Changes...)
 	if ss.OAuthFlowChanges != nil {
@@ -41,6 +44,9 @@ func (ss *SecuritySchemeChanges) GetAllChanges() []*Change {
 
 // TotalChanges represents total changes found between two Swagger or OpenAPI SecurityScheme instances.
 func (ss *SecuritySchemeChanges) TotalChanges() int {
+	if ss == nil {
+		return 0
+	}
 	c := ss.PropertyChanges.TotalChanges()
 	if ss.OAuthFlowChanges != nil {
 		c += ss.OAuthFlowChanges.TotalChanges()
@@ -177,5 +183,8 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 	}
 	CheckProperties(props)
 	sc.PropertyChanges = NewPropertyChanges(changes)
+	if sc.TotalChanges() <= 0 {
+		return nil
+	}
 	return sc
 }

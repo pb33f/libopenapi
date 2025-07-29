@@ -232,6 +232,9 @@ func runComparison[T any, R any](l, r *orderedmap.Map[low.KeyReference[string], 
 
 // GetAllChanges returns a slice of all changes made between Callback objects
 func (c *ComponentsChanges) GetAllChanges() []*Change {
+	if c == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, c.Changes...)
 	for k := range c.SchemaChanges {
@@ -248,6 +251,9 @@ func (c *ComponentsChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns total changes for all Components and Definitions
 func (c *ComponentsChanges) TotalChanges() int {
+	if c == nil {
+		return 0
+	}
 	v := c.PropertyChanges.TotalChanges()
 	for k := range c.SchemaChanges {
 		v += c.SchemaChanges[k].TotalChanges()

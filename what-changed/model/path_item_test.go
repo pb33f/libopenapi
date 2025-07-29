@@ -5,6 +5,7 @@ package model
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -13,6 +14,28 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
+
+// TestMain clears the hash cache before and after running tests to prevent test pollution
+func TestMain(m *testing.M) {
+	// Clear hash cache before tests
+	low.ClearHashCache()
+	
+	// Run tests
+	code := m.Run()
+	
+	// Clean up after tests
+	low.ClearHashCache()
+	
+	os.Exit(code)
+}
+
+// cleanHashCacheForTest clears the hash cache and sets up cleanup for individual tests
+func cleanHashCacheForTest(t *testing.T) {
+	low.ClearHashCache()
+	t.Cleanup(func() {
+		low.ClearHashCache()
+	})
+}
 
 func TestComparePathItem_V2(t *testing.T) {
 	left := `get:
@@ -109,6 +132,8 @@ x-thing: ding-a-ling`
 }
 
 func TestComparePathItem_V2_ModifyParam(t *testing.T) {
+	cleanHashCacheForTest(t)
+	
 	left := `get:
   description: get me
 parameters:

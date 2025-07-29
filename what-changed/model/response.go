@@ -31,6 +31,9 @@ type ResponseChanges struct {
 
 // GetAllChanges returns a slice of all changes made between RequestBody objects
 func (r *ResponseChanges) GetAllChanges() []*Change {
+	if r == nil {
+		return nil
+	}
 	var changes []*Change
 	changes = append(changes, r.Changes...)
 	if r.ExtensionChanges != nil {
@@ -56,6 +59,9 @@ func (r *ResponseChanges) GetAllChanges() []*Change {
 
 // TotalChanges returns the total number of changes found between two Swagger or OpenAPI Response Objects
 func (r *ResponseChanges) TotalChanges() int {
+	if r == nil {
+		return 0
+	}
 	c := r.PropertyChanges.TotalChanges()
 	if r.ExtensionChanges != nil {
 		c += r.ExtensionChanges.TotalChanges()
@@ -191,5 +197,8 @@ func CompareResponse(l, r any) *ResponseChanges {
 
 	CheckProperties(props)
 	rc.PropertyChanges = NewPropertyChanges(changes)
+	if rc.TotalChanges() <= 0 {
+		return nil
+	}
 	return rc
 }
