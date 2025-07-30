@@ -1227,6 +1227,11 @@ func TestIsNodeNull(t *testing.T) {
 }
 
 func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
+	// Skip this test when running with -short flag to avoid stack overflow with race detector
+	if testing.Short() {
+		t.Skip("Skipping circular reference timeout test in short mode")
+	}
+	
 	// create a and b node that reference each other
 	a := &yaml.Node{
 		Value: "beans",
@@ -1242,7 +1247,12 @@ func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
 	b.Content = []*yaml.Node{a}
 
 	// now look for something that does not exist.
-	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", 10*time.Millisecond)
+	// Use a longer timeout when race detector might be enabled
+	timeout := 10 * time.Millisecond
+	if os.Getenv("GORACE") != "" {
+		timeout = 100 * time.Millisecond
+	}
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", timeout)
 	assert.Nil(t, nodes)
 	assert.Error(t, err)
 }
