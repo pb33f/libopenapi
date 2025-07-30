@@ -12,6 +12,7 @@ import (
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"gopkg.in/yaml.v3"
 )
 
 type processRef struct {
@@ -24,13 +25,14 @@ type processRef struct {
 }
 
 type handleIndexConfig struct {
-	idx               *index.SpecIndex
-	model             *v3.Document
-	indexes           []*index.SpecIndex
-	refMap            *orderedmap.Map[string, *processRef]
-	seen              sync.Map
-	inlineRequired    []*processRef
-	compositionConfig *BundleCompositionConfig
+	idx                   *index.SpecIndex
+	model                 *v3.Document
+	indexes               []*index.SpecIndex
+	refMap                *orderedmap.Map[string, *processRef]
+	seen                  sync.Map
+	inlineRequired        []*processRef
+	compositionConfig     *BundleCompositionConfig
+	discriminatorMappings []*yaml.Node
 }
 
 // handleIndex will recursively explore the indexes and their references, building a map of references
