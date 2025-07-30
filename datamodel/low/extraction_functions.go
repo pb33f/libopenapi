@@ -7,12 +7,14 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"hash"
 	"net/url"
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"unsafe"
@@ -950,9 +952,9 @@ func GenerateHashString(v any) string {
 	
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
-			// Direct hex formatting is more efficient than string builder for single operation
+			// Use hex.EncodeToString which is more efficient than fmt.Sprintf
 			hash := h.Hash()
-			hashStr = fmt.Sprintf("%x", hash)
+			hashStr = hex.EncodeToString(hash[:])
 		}
 	} else if n, ok := v.(*yaml.Node); ok {
 		// Fast path for common YAML node types to avoid marshaling
@@ -964,17 +966,35 @@ func GenerateHashString(v any) string {
 			v = val.Elem().Interface()
 		}
 		
-		// Convert to string efficiently without string builder for primitives
+		// Convert to string efficiently using strconv instead of fmt.Sprintf
 		var str string
 		switch val := v.(type) {
 		case string:
 			str = val
-		case int, int8, int16, int32, int64:
-			str = fmt.Sprintf("%d", val)
-		case uint, uint8, uint16, uint32, uint64:
-			str = fmt.Sprintf("%d", val) 
-		case float32, float64:
-			str = fmt.Sprintf("%g", val)
+		case int:
+			str = strconv.Itoa(val)
+		case int8:
+			str = strconv.FormatInt(int64(val), 10)
+		case int16:
+			str = strconv.FormatInt(int64(val), 10)
+		case int32:
+			str = strconv.FormatInt(int64(val), 10)
+		case int64:
+			str = strconv.FormatInt(val, 10)
+		case uint:
+			str = strconv.FormatUint(uint64(val), 10)
+		case uint8:
+			str = strconv.FormatUint(uint64(val), 10)
+		case uint16:
+			str = strconv.FormatUint(uint64(val), 10)
+		case uint32:
+			str = strconv.FormatUint(uint64(val), 10)
+		case uint64:
+			str = strconv.FormatUint(val, 10)
+		case float32:
+			str = strconv.FormatFloat(float64(val), 'g', -1, 32)
+		case float64:
+			str = strconv.FormatFloat(val, 'g', -1, 64)
 		case bool:
 			if val {
 				str = "true"
@@ -985,9 +1005,9 @@ func GenerateHashString(v any) string {
 			str = fmt.Sprint(v)
 		}
 		
-		// Direct hex formatting without string builder for single operation
+		// Use hex.EncodeToString which is more efficient than fmt.Sprintf
 		hash := sha256.Sum256([]byte(str))
-		hashStr = fmt.Sprintf("%x", hash)
+		hashStr = hex.EncodeToString(hash[:])
 	}
 	
 	// Store in cache if we have a valid pointer and caching is enabled for this type
@@ -1018,8 +1038,8 @@ func hashYamlNodeFast(n *yaml.Node) string {
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, n, visited)
 	
-	// Directly format hex string without string builder for simple case
-	result := fmt.Sprintf("%x", h.Sum(nil))
+	// Use hex.EncodeToString which is more efficient than fmt.Sprintf
+	result := hex.EncodeToString(h.Sum(nil))
 	
 	// Cache complex nodes
 	if n.Kind != yaml.ScalarNode {
