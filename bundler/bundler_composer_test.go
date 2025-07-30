@@ -522,6 +522,7 @@ components:
         mapping:
           cat: './external-cat.yaml#/components/schemas/Cat'
           dog: '#/components/schemas/Dog'
+          bird: 'Bird'
       oneOf:
         - $ref: './external-cat.yaml#/components/schemas/Cat'
         - $ref: '#/components/schemas/Dog'
@@ -572,6 +573,10 @@ components:
 	dogMapping := mapping["dog"].(string)
 	assert.Equal(t, "#/components/schemas/Dog", dogMapping,
 		"internal dog mapping should remain unchanged, got: %s", dogMapping)
+	
+	birdMapping := mapping["bird"].(string)
+	assert.Equal(t, "Bird", birdMapping,
+		"non-reference bird mapping should remain unchanged, got: %s", birdMapping)
 
 	oneOf := animal["oneOf"].([]any)
 	catRef := oneOf[0].(map[string]any)["$ref"].(string)
