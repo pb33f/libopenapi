@@ -706,22 +706,14 @@ func isPathChar(s string) bool {
 	return true
 }
 
-func appendSegment(sb *strings.Builder, segs []string, cleaned []string, i int, wrapInQuotes bool) {
-	sb.Reset()
+func appendSegment(segs []string, cleaned []string, i int, wrapInQuotes bool) {
+	var c string
 	if wrapInQuotes {
-		sb.WriteString("['")
-		sb.WriteString(segs[i])
-		sb.WriteString("']")
+		c = "['" + segs[i] + "']"
 	} else {
-		sb.WriteString("[")
-		sb.WriteString(segs[i])
-		sb.WriteString("]")
+		c = "[" + segs[i] + "]"
 	}
-	c := sb.String()
-	sb.Reset()
-	sb.WriteString(cleaned[len(cleaned)-1])
-	sb.WriteString(c)
-	cleaned[len(cleaned)-1] = sb.String()
+	cleaned[len(cleaned)-1] = cleaned[len(cleaned)-1] + c
 }
 
 // ConvertComponentIdIntoFriendlyPathSearch will convert a JSON Path into a friendly path search string.
@@ -738,8 +730,6 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
 	cleaned := make([]string, 0, len(segs))
 
-	// use a builder to prevent many pointless string allocations.
-	var sb strings.Builder
 
 	// check for strange spaces, chars and if found, wrap them up, clean them and create a new cleaned path.
 	for i := range segs {
@@ -749,17 +739,10 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		if !isPathChar(segs[i]) {
 
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
-			sb.Reset()
-			sb.WriteString("['")
-			sb.WriteString(segs[i])
-			sb.WriteString("']")
-			segs[i] = sb.String()
+			segs[i] = "['" + segs[i] + "']"
 
 			if len(cleaned) > 0 && i < len(segs)-1 {
-				sb.Reset()
-				sb.WriteString(segs[i-1])
-				sb.WriteString(segs[i])
-				cleaned[len(cleaned)-1] = sb.String()
+				cleaned[len(cleaned)-1] = segs[i-1] + segs[i]
 				continue
 			} else {
 				if i > 0 && i < len(segs)-1 {
@@ -767,12 +750,9 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 					continue
 				}
 				if i == len(segs)-1 {
-					sb.Reset()
 					l := len(cleaned)
 					if l > 0 {
-						sb.WriteString(cleaned[l-1])
-						sb.WriteString(segs[i])
-						cleaned[l-1] = sb.String()
+						cleaned[l-1] = cleaned[l-1] + segs[i]
 					} else {
 						cleaned = append(cleaned, segs[i])
 					}
@@ -791,11 +771,11 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			if err == nil {
 				if intVal <= 99 {
 					if len(cleaned) > 0 {
-						appendSegment(&sb, segs, cleaned, i, false)
+						appendSegment(segs, cleaned, i, false)
 					}
 				} else {
 					if len(cleaned) > 0 {
-						appendSegment(&sb, segs, cleaned, i, true)
+						appendSegment(segs, cleaned, i, true)
 					}
 				}
 				continue
@@ -807,15 +787,8 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 					cleaned = append(cleaned, segs[i])
 					continue
 				}
-				sb.Reset()
-				sb.WriteString("['")
-				sb.WriteString(segs[i])
-				sb.WriteString("']")
-				c := sb.String()
-				sb.Reset()
-				sb.WriteString(cleaned[len(cleaned)-1])
-				sb.WriteString(c)
-				cleaned[len(cleaned)-1] = sb.String()
+				c := "['" + segs[i] + "']"
+				cleaned[len(cleaned)-1] = cleaned[len(cleaned)-1] + c
 				continue
 			}
 
@@ -837,11 +810,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		if replaced[1] != '.' {
 
 			// the second rune needs to be a period, if it's not we need to insert one.
-			sb.Reset()
-			sb.WriteString(replaced[:1])
-			sb.WriteString(".")
-			sb.WriteString(replaced[1:])
-			replaced = sb.String()
+			replaced = replaced[:1] + "." + replaced[1:]
 		}
 	}
 	return name, replaced
