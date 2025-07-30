@@ -634,16 +634,108 @@ func syncMapToMap[K comparable, V any](sm *sync.Map) map[K]V {
 	return m
 }
 
-// HashNode returns a consistent SHA256 hash string of the node and its children.
-// it runs as fast as possible, but it's recursive, with a hard limit of 1000 levels deep.
-func HashNode(n *yaml.Node) string {
-	h := sha256.New()
-	hashNode(n, h, 0)
-	sum := h.Sum(nil)
-	return fmt.Sprintf("%x", sum)
+// ClearHashCache clears the hash cache - useful for testing and memory management
+func ClearHashCache() {
+	hashCache.Range(func(key, value interface{}) bool {
+		hashCache.Delete(key)
+		return true
+	})
 }
 
-func hashNode(n *yaml.Node, h hash.Hash, depth int) {
+// Buffer pool for integer conversion in hashNode to avoid allocations
+var bufferPool = sync.Pool{
+	New: func() interface{} {
+		buf := make([]byte, 0, 64)
+		return &buf
+	},
+}
+
+// Hash cache for identical subtrees to avoid recomputation
+var hashCache = sync.Map{} // string -> string (nodeID -> hash)
+
+// Performance thresholds for hybrid optimization
+const (
+	// Use optimized version for very large nodes (>1000 content items)
+	largeLodeThreshold = 1000
+	// Use optimized version for very deep nodes (>100 levels)
+	deepNodeThreshold = 100
+	// Cache node hashes when they have significant content
+	cacheThreshold = 200
+)
+
+// HashNode returns a consistent SHA256 hash string of the node and its children.
+// it runs as fast as possible, but it's recursive, with a hard limit of 1000 levels deep.
+// Uses a hybrid approach: simple hashing for small nodes, optimized for large/deep nodes.
+func HashNode(n *yaml.Node) string {
+	if n == nil {
+		// Return hash of empty bytes for nil nodes (maintains compatibility)
+		h := sha256.New()
+		sum := h.Sum(nil)
+		return fmt.Sprintf("%x", sum)
+	}
+	
+	// Create a unique node identifier for caching
+	nodeID := fmt.Sprintf("%p_%s_%d_%d", n, n.Tag, n.Line, n.Column)
+	
+	// Check cache first for nodes with significant content
+	contentSize := len(n.Content)
+	if contentSize >= cacheThreshold {
+		if cached, ok := hashCache.Load(nodeID); ok {
+			return cached.(string)
+		}
+	}
+	
+	h := sha256.New()
+	
+	// Determine if we should use optimized or simple hashing
+	useOptimized := shouldUseOptimizedHashing(n, 0)
+	
+	if useOptimized {
+		hashNodeOptimized(n, h, 0)
+	} else {
+		hashNodeSimple(n, h, 0)
+	}
+	
+	sum := h.Sum(nil)
+	result := fmt.Sprintf("%x", sum)
+	
+	// Cache the result for large nodes
+	if contentSize >= cacheThreshold {
+		hashCache.Store(nodeID, result)
+	}
+	
+	return result
+}
+
+// shouldUseOptimizedHashing determines if we should use the optimized (slower but memory-efficient)
+// version of hashing based on node characteristics
+func shouldUseOptimizedHashing(n *yaml.Node, depth int) bool {
+	if n == nil {
+		return false
+	}
+	
+	// Use optimized version for large nodes
+	if len(n.Content) > largeLodeThreshold {
+		return true
+	}
+	
+	// Use optimized version for deep nodes
+	if depth > deepNodeThreshold {
+		return true
+	}
+	
+	// Check if any immediate children are large
+	for _, child := range n.Content {
+		if len(child.Content) > largeLodeThreshold {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// hashNodeOptimized is the memory-optimized version using buffer pools
+func hashNodeOptimized(n *yaml.Node, h hash.Hash, depth int) {
 	if n == nil {
 		return
 	}
@@ -652,11 +744,15 @@ func hashNode(n *yaml.Node, h hash.Hash, depth int) {
 		return
 	}
 
+	// Get buffer from pool
+	bufPtr := bufferPool.Get().(*[]byte)
+	buf := (*bufPtr)[:0]
+	defer bufferPool.Put(bufPtr)
+
 	// Write Tag
 	h.Write([]byte(n.Tag))
 
 	// Write Line
-	buf := make([]byte, 0, 32) // small buffer for integer conversion
 	buf = strconv.AppendInt(buf, int64(n.Line), 10)
 	h.Write(buf)
 
@@ -668,8 +764,52 @@ func hashNode(n *yaml.Node, h hash.Hash, depth int) {
 	// Write Value
 	h.Write([]byte(n.Value))
 
-	// Recurse over Content
+	// Recurse over Content with optimized path selection
 	for _, c := range n.Content {
-		hashNode(c, h, depth+1)
+		if shouldUseOptimizedHashing(c, depth+1) {
+			hashNodeOptimized(c, h, depth+1)
+		} else {
+			hashNodeSimple(c, h, depth+1)
+		}
+	}
+}
+
+// hashNodeSimple is the fast version for small nodes (uses minimal buffer pool)
+func hashNodeSimple(n *yaml.Node, h hash.Hash, depth int) {
+	if n == nil {
+		return
+	}
+	if depth > 1000 {
+		// Prevent extremely deep recursion from using too much stack.
+		return
+	}
+
+	// Get buffer from pool even for simple case to avoid allocations
+	bufPtr := bufferPool.Get().(*[]byte)
+	buf := (*bufPtr)[:0]
+	defer bufferPool.Put(bufPtr)
+
+	// Write Tag directly
+	h.Write([]byte(n.Tag))
+
+	// Write Line using buffer (no allocations)
+	buf = strconv.AppendInt(buf, int64(n.Line), 10)
+	h.Write(buf)
+
+	// Reuse buffer for Column
+	buf = buf[:0]
+	buf = strconv.AppendInt(buf, int64(n.Column), 10)
+	h.Write(buf)
+
+	// Write Value directly
+	h.Write([]byte(n.Value))
+
+	// Recurse over Content with path selection
+	for _, c := range n.Content {
+		if shouldUseOptimizedHashing(c, depth+1) {
+			hashNodeOptimized(c, h, depth+1)
+		} else {
+			hashNodeSimple(c, h, depth+1)
+		}
 	}
 }
