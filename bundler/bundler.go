@@ -120,15 +120,17 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	rolodex := model.Rolodex
 	indexes := rolodex.GetIndexes()
 
+	discriminatorMappings := collectDiscriminatorMappingNodes(rolodex)
+
 	cf := &handleIndexConfig{
-		idx:               rolodex.GetRootIndex(),
-		model:             model,
-		indexes:           indexes,
-		seen:              sync.Map{},
-		refMap:            orderedmap.New[string, *processRef](),
-		compositionConfig: compositionConfig,
+		idx:                   rolodex.GetRootIndex(),
+		model:                 model,
+		indexes:               indexes,
+		seen:                  sync.Map{},
+		refMap:                orderedmap.New[string, *processRef](),
+		compositionConfig:     compositionConfig,
+		discriminatorMappings: discriminatorMappings,
 	}
-	// recursive function to handle the indexes, we need a different approach to composition vs. inlining.
 	handleIndex(cf)
 
 	processedNodes := orderedmap.New[string, *processRef]()
@@ -152,6 +154,8 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	for _, idx := range indexes {
 		remapIndex(idx, processedNodes)
 	}
+
+	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
 	// anything that could not be recomposed and needs inlining
 	for _, pr := range cf.inlineRequired {
@@ -292,7 +296,7 @@ func collectDiscriminatorMappingValues(idx *index.SpecIndex, n *yaml.Node, pinne
 	}
 }
 
-func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node, pinned map[string]struct{}) {
+func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node, pinned map[string]struct{}, mappingNodes *[]*yaml.Node) {
 	if discriminatorNode.Kind != yaml.MappingNode {
 		return
 	}
@@ -302,11 +306,18 @@ func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node
 			mappingNode := discriminatorNode.Content[i+1]
 
 			for j := 0; j < len(mappingNode.Content); j += 2 {
-				refValue := mappingNode.Content[j+1].Value
+				valueNode := mappingNode.Content[j+1]
+				refValue := valueNode.Value
 
-				if ref, refIdx := idx.SearchIndexForReference(refValue); ref != nil {
-					fullDef := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
-					pinned[fullDef] = struct{}{}
+				if pinned != nil {
+					if ref, refIdx := idx.SearchIndexForReference(refValue); ref != nil {
+						fullDef := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
+						pinned[fullDef] = struct{}{}
+					}
+				}
+				
+				if mappingNodes != nil {
+					*mappingNodes = append(*mappingNodes, valueNode)
 				}
 			}
 		}
@@ -329,6 +340,105 @@ func walkUnionRefs(idx *index.SpecIndex, seq *yaml.Node, pinned map[string]struc
 			if ref, refIdx := idx.SearchIndexForReference(v.Value); ref != nil {
 				full := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
 				pinned[full] = struct{}{}
+			}
+		}
+	}
+}
+
+// collectDiscriminatorMappingNodes gathers all discriminator mapping value nodes from the document tree.
+func collectDiscriminatorMappingNodes(rolodex *index.Rolodex) []*yaml.Node {
+	var mappingNodes []*yaml.Node
+
+	collectDiscriminatorMappingNodesFromIndex(rolodex.GetRootIndex(), rolodex.GetRootIndex().GetRootNode(), &mappingNodes)
+	for _, idx := range rolodex.GetIndexes() {
+		collectDiscriminatorMappingNodesFromIndex(idx, idx.GetRootNode(), &mappingNodes)
+	}
+
+	return mappingNodes
+}
+
+// collectDiscriminatorMappingNodesFromIndex recursively walks a YAML node tree to find discriminator mapping nodes.
+func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Node, mappingNodes *[]*yaml.Node) {
+	if n.Kind == yaml.DocumentNode && len(n.Content) > 0 {
+		n = n.Content[0]
+	}
+
+	switch n.Kind {
+	case yaml.SequenceNode:
+		for _, c := range n.Content {
+			collectDiscriminatorMappingNodesFromIndex(idx, c, mappingNodes)
+		}
+		return
+	case yaml.MappingNode:
+	default:
+		return
+	}
+
+	var discriminator *yaml.Node
+
+	for i := 0; i < len(n.Content); i += 2 {
+		k, v := n.Content[i], n.Content[i+1]
+		switch k.Value {
+		case "discriminator":
+			discriminator = v
+		}
+		collectDiscriminatorMappingNodesFromIndex(idx, v, mappingNodes)
+	}
+
+	if discriminator != nil {
+		walkDiscriminatorMappingNodes(discriminator, mappingNodes)
+	}
+}
+
+// walkDiscriminatorMappingNodes extracts mapping value nodes from a discriminator node.
+func walkDiscriminatorMappingNodes(discriminatorNode *yaml.Node, mappingNodes *[]*yaml.Node) {
+	if discriminatorNode.Kind != yaml.MappingNode {
+		return
+	}
+
+	for i := 0; i < len(discriminatorNode.Content); i += 2 {
+		if discriminatorNode.Content[i].Value == "mapping" {
+			mappingNode := discriminatorNode.Content[i+1]
+
+			for j := 0; j < len(mappingNode.Content); j += 2 {
+				*mappingNodes = append(*mappingNodes, mappingNode.Content[j+1])
+			}
+		}
+	}
+}
+
+
+// updateDiscriminatorMappingsComposed updates discriminator mapping references to point to composed component locations.
+func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex) {
+	for _, mappingNode := range mappingNodes {
+		if mappingNode == nil {
+			continue
+		}
+		originalValue := mappingNode.Value
+		
+		if !strings.Contains(originalValue, "#/") {
+			continue
+		}
+		
+		var matchingIdx *index.SpecIndex
+		
+		// Search root index first
+		if ref, refIdx := rolodex.GetRootIndex().SearchIndexForReference(originalValue); ref != nil {
+			matchingIdx = refIdx
+		} else {
+			// Search all other indexes
+			for _, idx := range rolodex.GetIndexes() {
+				if ref, refIdx := idx.SearchIndexForReference(originalValue); ref != nil {
+					matchingIdx = refIdx
+					break
+				}
+			}
+		}
+		
+		if matchingIdx != nil {
+			newRef := renameRef(matchingIdx, originalValue, processedNodes)
+			if newRef != originalValue {
+				mappingNode.Value = newRef
 			}
 		}
 	}
