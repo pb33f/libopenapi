@@ -656,3 +656,96 @@ components:
 
 	runtime.GC()
 }
+
+// TestBundleBytesComposed_DiscriminatorMappingDeepRef tests that composed bundling
+// correctly handles discriminator mappings that are deeply nested behind $refs.
+func TestBundleBytesComposed_DiscriminatorMappingDeepRef(t *testing.T) {
+	spec := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      $ref: './definitions/animal.yaml'`
+
+	animalDef := `type: object
+discriminator:
+  propertyName: type
+  mapping:
+    cat: './cat.yaml#/components/schemas/Cat'
+oneOf:
+  - $ref: './cat.yaml#/components/schemas/Cat'`
+
+	catDef := `components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "definitions"), 0755))
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", spec)
+	write("definitions/animal.yaml", animalDef)
+	write("definitions/cat.yaml", catDef)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	out, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	
+	// Find the composed Animal schema (might be renamed)
+	var animalSchema map[string]any
+	for _, schema := range schemas {
+		if s, ok := schema.(map[string]any); ok {
+			if _, hasDisc := s["discriminator"]; hasDisc {
+				animalSchema = s
+				break
+			}
+		}
+	}
+	require.NotNil(t, animalSchema, "Animal schema with discriminator should be found")
+
+	// discriminator mapping should be updated to point to the new component reference
+	mapping := animalSchema["discriminator"].(map[string]any)["mapping"].(map[string]any)
+	catMapping := mapping["cat"].(string)
+	assert.True(t, strings.HasPrefix(catMapping, "#/components/schemas/"), 
+		"discriminator mapping should point to component reference, got: %s", catMapping)
+	assert.False(t, strings.Contains(catMapping, "./cat.yaml"), 
+		"discriminator mapping should not contain external file path, got: %s", catMapping)
+
+	// oneOf should be updated to point to the new component reference  
+	oneOf := animalSchema["oneOf"].([]any)[0].(map[string]any)
+	oneOfRef := oneOf["$ref"].(string)
+	assert.True(t, strings.HasPrefix(oneOfRef, "#/components/schemas/"),
+		"oneOf reference should point to component reference, got: %s", oneOfRef)
+	assert.False(t, strings.Contains(oneOfRef, "./cat.yaml"),
+		"oneOf reference should not contain external file path, got: %s", oneOfRef)
+
+	// Cat schema should be moved to components
+	foundCat := false
+	for schemaName := range schemas {
+		if schemaName == "Cat" || strings.Contains(schemaName, "Cat") {
+			foundCat = true
+			break
+		}
+	}
+	assert.True(t, foundCat, "Cat schema should be moved to components")
+
+	runtime.GC()
+}
