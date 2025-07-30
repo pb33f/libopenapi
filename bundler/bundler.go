@@ -394,9 +394,6 @@ func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Nod
 // updateDiscriminatorMappingsComposed updates discriminator mapping references to point to composed component locations.
 func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex) {
 	for _, mappingNode := range mappingNodes {
-		if mappingNode == nil {
-			continue
-		}
 		originalValue := mappingNode.Value
 		
 		if !strings.Contains(originalValue, "#/") {
