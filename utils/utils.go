@@ -611,7 +611,7 @@ func FixContext(context string) string {
 		if v, err := strconv.Atoi(t); err == nil {
 			if v < 200 { // codes start here
 				if cleaned[i-1] != "" {
-					cleaned[i-1] += fmt.Sprintf("[%v]", t)
+					cleaned[i-1] += "[" + t + "]"
 				}
 			} else {
 				cleaned = append(cleaned, t)
@@ -832,13 +832,15 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 
 	if len(replaced) > 0 {
 		if replaced[0] != '$' {
-			replaced = fmt.Sprintf("$%s", replaced)
+			replaced = "$" + replaced
 		}
 		if replaced[1] != '.' {
 
 			// the second rune needs to be a period, if it's not we need to insert one.
 			sb.Reset()
-			sb.WriteString(fmt.Sprintf("%s.%s", replaced[:1], replaced[1:]))
+			sb.WriteString(replaced[:1])
+			sb.WriteString(".")
+			sb.WriteString(replaced[1:])
 			replaced = sb.String()
 		}
 	}
@@ -870,7 +872,7 @@ func ConvertComponentIdIntoPath(id string) (string, string) {
 			val := strings.ReplaceAll(bracketNameExp.ReplaceAllString(segs[i], "$2"), "/", "~1")
 			cleaned = append(
 				cleaned[:i],
-				append([]string{fmt.Sprintf("%s/%s", key, val)}, cleaned[i:]...)...,
+				append([]string{key + "/" + val}, cleaned[i:]...)...,
 			)
 			continue
 		}
@@ -905,7 +907,8 @@ func RenderCodeSnippet(startNode *yaml.Node, specData []string, before, after in
 		l := startLine + i
 		if l < len(specData) {
 			line := specData[l]
-			buf.WriteString(fmt.Sprintf("%s\n", line))
+			buf.WriteString(line)
+			buf.WriteString("\n")
 		}
 	}
 

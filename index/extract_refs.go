@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -52,8 +53,9 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				if len(seenPath) > 0 || n.Value != "" {
 					loc := append(seenPath, n.Value)
 					// create definition and full definition paths
-					definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
-					fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
+					locPath := strings.Join(loc, "/")
+					definitionPath = "#/" + locPath
+					fullDefinitionPath = index.specAbsolutePath + "#/" + locPath
 					_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 				}
 
@@ -130,8 +132,9 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 					var jsonPath, definitionPath, fullDefinitionPath string
 					if len(seenPath) > 0 || n.Value != "" && label != "" {
 						loc := append(seenPath, n.Value, label)
-						definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
-						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
+						locPath := strings.Join(loc, "/")
+						definitionPath = "#/" + locPath
+						fullDefinitionPath = index.specAbsolutePath + "#/" + locPath
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
 					ref := &Reference{
@@ -172,13 +175,14 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 
 					var jsonPath, definitionPath, fullDefinitionPath string
 					if len(seenPath) > 0 {
-						loc := append(seenPath, n.Value, fmt.Sprintf("%d", h))
-						definitionPath = fmt.Sprintf("#/%s", strings.Join(loc, "/"))
-						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, strings.Join(loc, "/"))
+						loc := append(seenPath, n.Value, strconv.Itoa(h))
+						locPath := strings.Join(loc, "/")
+						definitionPath = "#/" + locPath
+						fullDefinitionPath = index.specAbsolutePath + "#/" + locPath
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					} else {
-						definitionPath = fmt.Sprintf("#/%s", n.Value)
-						fullDefinitionPath = fmt.Sprintf("%s#/%s", index.specAbsolutePath, n.Value)
+						definitionPath = "#/" + n.Value
+						fullDefinitionPath = index.specAbsolutePath + "#/" + n.Value
 						_, jsonPath = utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 					}
 
@@ -458,7 +462,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				}
 
 				loc := append(seenPath, v)
-				definitionPath := fmt.Sprintf("#/%s", strings.Join(loc, "/"))
+				definitionPath := "#/" + strings.Join(loc, "/")
 				_, jsonPath := utils.ConvertComponentIdIntoFriendlyPathSearch(definitionPath)
 
 				// capture descriptions and summaries
