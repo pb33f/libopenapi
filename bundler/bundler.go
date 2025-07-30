@@ -296,7 +296,7 @@ func collectDiscriminatorMappingValues(idx *index.SpecIndex, n *yaml.Node, pinne
 	}
 }
 
-func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node, pinned map[string]struct{}, mappingNodes *[]*yaml.Node) {
+func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node, pinned map[string]struct{}) {
 	if discriminatorNode.Kind != yaml.MappingNode {
 		return
 	}
@@ -306,18 +306,11 @@ func walkDiscriminatorMapping(idx *index.SpecIndex, discriminatorNode *yaml.Node
 			mappingNode := discriminatorNode.Content[i+1]
 
 			for j := 0; j < len(mappingNode.Content); j += 2 {
-				valueNode := mappingNode.Content[j+1]
-				refValue := valueNode.Value
+				refValue := mappingNode.Content[j+1].Value
 
-				if pinned != nil {
-					if ref, refIdx := idx.SearchIndexForReference(refValue); ref != nil {
-						fullDef := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
-						pinned[fullDef] = struct{}{}
-					}
-				}
-				
-				if mappingNodes != nil {
-					*mappingNodes = append(*mappingNodes, valueNode)
+				if ref, refIdx := idx.SearchIndexForReference(refValue); ref != nil {
+					fullDef := fmt.Sprintf("%s%s", refIdx.GetSpecAbsolutePath(), ref.Definition)
+					pinned[fullDef] = struct{}{}
 				}
 			}
 		}
@@ -385,23 +378,13 @@ func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Nod
 		collectDiscriminatorMappingNodesFromIndex(idx, v, mappingNodes)
 	}
 
-	if discriminator != nil {
-		walkDiscriminatorMappingNodes(discriminator, mappingNodes)
-	}
-}
-
-// walkDiscriminatorMappingNodes extracts mapping value nodes from a discriminator node.
-func walkDiscriminatorMappingNodes(discriminatorNode *yaml.Node, mappingNodes *[]*yaml.Node) {
-	if discriminatorNode.Kind != yaml.MappingNode {
-		return
-	}
-
-	for i := 0; i < len(discriminatorNode.Content); i += 2 {
-		if discriminatorNode.Content[i].Value == "mapping" {
-			mappingNode := discriminatorNode.Content[i+1]
-
-			for j := 0; j < len(mappingNode.Content); j += 2 {
-				*mappingNodes = append(*mappingNodes, mappingNode.Content[j+1])
+	if discriminator != nil && discriminator.Kind == yaml.MappingNode {
+		for i := 0; i < len(discriminator.Content); i += 2 {
+			if discriminator.Content[i].Value == "mapping" {
+				mappingNode := discriminator.Content[i+1]
+				for j := 0; j < len(mappingNode.Content); j += 2 {
+					*mappingNodes = append(*mappingNodes, mappingNode.Content[j+1])
+				}
 			}
 		}
 	}
