@@ -755,7 +755,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 	}
 	segs := strings.Split(id, "/")
 	name, _ := url.QueryUnescape(strings.ReplaceAll(segs[len(segs)-1], "~1", "/"))
-	
+
 	// Pre-allocate with estimated capacity
 	estimatedCap := len(segs) + (len(segs) / 2)
 	cleaned := make([]string, 0, estimatedCap)
@@ -768,7 +768,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		if !isPathChar(segs[i]) {
 
 			segs[i], _ = url.QueryUnescape(strings.ReplaceAll(segs[i], "~1", "/"))
-			
+
 			// Use string builder for bracket wrapping
 			var bracketBuilder strings.Builder
 			bracketBuilder.Grow(len(segs[i]) + 4)
@@ -833,7 +833,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 					cleaned = append(cleaned, segs[i])
 					continue
 				}
-				
+
 				// Use string builder for plural wrapping
 				var pluralBuilder strings.Builder
 				pluralBuilder.Grow(len(cleaned[len(cleaned)-1]) + len(segs[i]) + 4)
@@ -858,7 +858,7 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			totalLen += len(seg)
 		}
 		finalBuilder.Grow(totalLen + len(cleaned) + 5) // segments + dots + $ + potential extra .
-		
+
 		finalBuilder.WriteByte('$')
 		for i, segment := range cleaned {
 			if i > 0 {
@@ -889,18 +889,11 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			finalBuilder.WriteString("$.")
 		}
 	}
-	
+
 	replaced := finalBuilder.String()
-	
+
 	// Ensure proper format
 	if len(replaced) > 0 {
-		if replaced[0] != '$' {
-			var prefixBuilder strings.Builder
-			prefixBuilder.Grow(len(replaced) + 1)
-			prefixBuilder.WriteByte('$')
-			prefixBuilder.WriteString(replaced)
-			replaced = prefixBuilder.String()
-		}
 		if len(replaced) > 1 && replaced[1] != '.' {
 			// Insert period after $
 			var dotBuilder strings.Builder

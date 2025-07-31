@@ -225,8 +225,5 @@ func ComparePaths(l, r any) *PathsChanges {
 		pc.ExtensionChanges = CompareExtensions(lExt, rExt)
 	}
 	pc.PropertyChanges = NewPropertyChanges(changes)
-	if pc.TotalChanges() <= 0 {
-		return nil
-	}
 	return pc
 }

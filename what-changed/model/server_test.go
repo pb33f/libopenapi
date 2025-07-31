@@ -193,3 +193,52 @@ x-coffee: cold`
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Empty(t, extChanges.PropertyChanges)
 }
+
+func TestCompareServers_NoExtensions(t *testing.T) {
+	left := `url: https://pb33f.io
+description: a server`
+
+	right := `url: https://pb33f.io
+description: a server`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Server
+	var rDoc v3.Server
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareServers(&lDoc, &rDoc)
+	assert.Nil(t, extChanges)
+}
+
+func TestCompareServers_ExtensionAddedRemoved(t *testing.T) {
+	left := `url: https://pb33f.io`
+
+	right := `url: https://pb33f.io
+x-custom: value`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Server
+	var rDoc v3.Server
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareServers(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.NotNil(t, extChanges.ExtensionChanges)
+	assert.Len(t, extChanges.ExtensionChanges.GetAllChanges(), 1)
+}

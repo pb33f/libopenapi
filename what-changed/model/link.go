@@ -162,8 +162,5 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	}
 
 	lc.PropertyChanges = NewPropertyChanges(changes)
-	if lc.TotalChanges() <= 0 {
-		return nil
-	}
 	return lc
 }

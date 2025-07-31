@@ -19,13 +19,13 @@ import (
 func TestMain(m *testing.M) {
 	// Clear hash cache before tests
 	low.ClearHashCache()
-	
+
 	// Run tests
 	code := m.Run()
-	
+
 	// Clean up after tests
 	low.ClearHashCache()
-	
+
 	os.Exit(code)
 }
 
@@ -133,7 +133,7 @@ x-thing: ding-a-ling`
 
 func TestComparePathItem_V2_ModifyParam(t *testing.T) {
 	cleanHashCacheForTest(t)
-	
+
 	left := `get:
   description: get me
 parameters:
@@ -437,7 +437,7 @@ x-thing: thang.`
 
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
-	assert.Nil(t, extChanges)
+	assert.Equal(t, 0, len(extChanges.GetAllChanges()))
 }
 
 func TestComparePathItem_V3_Modify(t *testing.T) {

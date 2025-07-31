@@ -81,8 +81,5 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 	CheckProperties(props)
 	sc := new(ServerVariableChanges)
 	sc.PropertyChanges = NewPropertyChanges(changes)
-	if sc.TotalChanges() <= 0 {
-		return nil
-	}
 	return sc
 }

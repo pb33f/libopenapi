@@ -94,9 +94,5 @@ func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 		&changes, v3.ContentLabel, CompareMediaTypes)
 	rbc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	rbc.PropertyChanges = NewPropertyChanges(changes)
-
-	if rbc.TotalChanges() <= 0 {
-		return nil
-	}
 	return rbc
 }

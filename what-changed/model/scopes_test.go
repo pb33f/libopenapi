@@ -124,3 +124,30 @@ x-nugget: soup`
 	assert.Equal(t, "sky", extChanges.Changes[0].Original)
 	assert.Equal(t, "lemon", extChanges.Changes[0].OriginalObject)
 }
+
+func TestCompareScopes_EmptyValues(t *testing.T) {
+	left := `pizza: pie
+lemon: sky`
+
+	right := `pizza: pie
+lemon: changed
+extra: value`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v2.Scopes
+	var rDoc v2.Scopes
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare - this should hit some edge cases
+	extChanges := CompareScopes(&lDoc, &rDoc)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}

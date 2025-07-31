@@ -94,8 +94,5 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 
 	sc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	sc.Server = r
-	if sc.TotalChanges() <= 0 {
-		return nil
-	}
 	return sc
 }

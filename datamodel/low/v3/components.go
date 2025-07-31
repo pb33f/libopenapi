@@ -85,7 +85,7 @@ func (co *Components) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	generateHashForObjectMapBuilder(co.Schemas.Value, sb)
 	generateHashForObjectMapBuilder(co.Responses.Value, sb)
 	generateHashForObjectMapBuilder(co.Parameters.Value, sb)
@@ -101,12 +101,6 @@ func (co *Components) Hash() [32]byte {
 		sb.WriteByte('|')
 	}
 	return sha256.Sum256([]byte(sb.String()))
-}
-
-func generateHashForObjectMap[T any](collection *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], hash *[]string) {
-	for v := range orderedmap.SortAlpha(collection).ValuesFromOldest() {
-		*hash = append(*hash, low.GenerateHashString(v.Value))
-	}
 }
 
 func generateHashForObjectMapBuilder[T any](collection *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]], sb *strings.Builder) {

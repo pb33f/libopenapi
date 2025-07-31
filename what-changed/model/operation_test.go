@@ -848,7 +848,7 @@ parameters:
 
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
-	assert.Nil(t, extChanges)
+	assert.Equal(t, 0, len(extChanges.GetAllChanges()))
 }
 
 func TestCompareOperations_V3_ModifyParam(t *testing.T) {

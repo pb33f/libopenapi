@@ -5,6 +5,8 @@ package base
 
 import (
 	"context"
+	"fmt"
+	"github.com/pb33f/libopenapi/utils"
 	"log/slog"
 	"os"
 	"testing"
@@ -198,6 +200,43 @@ description: cakes`
 	assert.NotNil(t, n)
 }
 
+func TestSchemaProxy_HashRef(t *testing.T) {
+	sp := new(SchemaProxy)
+	r := low.Reference{}
+	r.SetReference("chicken", &yaml.Node{})
+	sp.Reference = r
+	sp.rendered = &Schema{}
+
+	v := sp.Hash()
+	y := fmt.Sprintf("%x", v)
+	assert.Equal(t, "811eb81b9d11d65a36c53c3ebdb738ee303403cb79d781ccf4b40764e0a9d12a", y)
+}
+
+func TestSchemaProxy_HashRef_NoRender(t *testing.T) {
+	sp := new(SchemaProxy)
+	sp.vn = utils.CreateEmptyMapNode()
+
+	r := low.Reference{}
+	r.SetReference("jiggy_with_it", &yaml.Node{})
+	sp.Reference = r
+
+	idx := index.NewSpecIndexWithConfig(&yaml.Node{}, &index.SpecIndexConfig{UseSchemaQuickHash: true})
+	rolod := &index.Rolodex{}
+	idx.SetRolodex(rolod)
+	rolod.SetRootIndex(idx)
+	rolod.SetSafeCircularReferences([]*index.CircularReferenceResult{{
+		LoopPoint: &index.Reference{
+			FullDefinition: "jiggy_with_it",
+		},
+	}})
+
+	sp.idx = idx
+
+	v := sp.Hash()
+	y := fmt.Sprintf("%x", v)
+	assert.Equal(t, "7ebbb597617277b740e49886cf332de3de8c47baf1da4931cc59ff71944f81d9", y)
+}
+
 func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
 	sp := new(SchemaProxy)
 
@@ -260,21 +299,21 @@ properties:
 
 	err := sch.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-	
+
 	// Ensure this is not a reference schema (to trigger the !sp.IsReference() path)
 	assert.False(t, sch.IsReference())
-	
+
 	// Pre-render the schema to ensure it's available
 	schema := sch.Schema()
 	assert.NotNil(t, schema)
-	
-	// This should trigger lines 162-164: UseSchemaQuickHash is true, 
+
+	// This should trigger lines 162-164: UseSchemaQuickHash is true,
 	// CheckSchemaProxyForCircularRefs returns false (no circular refs in simple object)
 	hash := sch.Hash()
-	
+
 	// Verify we get a valid hash (not empty)
 	assert.NotEqual(t, [32]byte{}, hash)
-	
+
 	// Verify the schema was rendered and available
 	assert.NotNil(t, sch.rendered)
 }

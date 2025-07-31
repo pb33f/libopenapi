@@ -4,6 +4,7 @@
 package index
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"strings"
 	"testing"
@@ -709,6 +710,47 @@ func TestHashNode_ForceNilPaths(t *testing.T) {
 	// Should be consistent
 	hash2 := HashNode(complexNode)
 	assert.Equal(t, hash, hash2)
+}
+
+// Test hashNodeSimple with nil node (covers nil check)
+func TestHashNodeSimple_NilNode(t *testing.T) {
+	var h = sha256.New()
+	
+	// Call hashNodeSimple with nil node - should return early without error
+	hashNodeSimple(nil, h, 0)
+	
+	// Hash should remain unchanged (no data written)
+	sum := h.Sum(nil)
+	result := fmt.Sprintf("%x", sum)
+	
+	// Should be the hash of empty bytes
+	expected := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	assert.Equal(t, expected, result)
+}
+
+// Test hashNodeSimple with depth > 1000 (covers depth check)
+func TestHashNodeSimple_ExceedsDepthLimit(t *testing.T) {
+	var h = sha256.New()
+	
+	// Create a simple node
+	node := &yaml.Node{
+		Kind: yaml.ScalarNode,
+		Tag: "!!str",
+		Value: "test",
+		Line: 1,
+		Column: 1,
+	}
+	
+	// Call hashNodeSimple with depth > 1000 - should return early
+	hashNodeSimple(node, h, 1001)
+	
+	// Hash should remain unchanged (no data written due to depth limit)
+	sum := h.Sum(nil)
+	result := fmt.Sprintf("%x", sum)
+	
+	// Should be the hash of empty bytes
+	expected := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+	assert.Equal(t, expected, result)
 }
 
 // Test to trigger edge cases in hashNodeOptimized and hashNodeSimple

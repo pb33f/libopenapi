@@ -142,8 +142,5 @@ func CompareResponses(l, r any) *ResponsesChanges {
 	}
 
 	rc.PropertyChanges = NewPropertyChanges(changes)
-	if rc.TotalChanges() <= 0 {
-		return nil
-	}
 	return rc
 }

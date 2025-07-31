@@ -282,8 +282,5 @@ func CompareHeaders(l, r any) *HeaderChanges {
 	}
 	CheckProperties(props)
 	hc.PropertyChanges = NewPropertyChanges(changes)
-	if hc.TotalChanges() <= 0 {
-		return nil
-	}
 	return hc
 }

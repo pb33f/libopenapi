@@ -149,8 +149,5 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
 	mc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	mc.PropertyChanges = NewPropertyChanges(changes)
-	if mc.TotalChanges() <= 0 {
-		return nil
-	}
 	return mc
 }

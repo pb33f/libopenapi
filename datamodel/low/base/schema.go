@@ -343,10 +343,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 			j[h] = s.Type.Value.B[h].Value
 		}
 		sort.Strings(j)
-		for i, val := range j {
-			if i > 0 {
-				sb.WriteByte('|')
-			}
+		for _, val := range j {
 			sb.WriteString(val)
 		}
 		sb.WriteByte('|')
@@ -383,7 +380,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 		sb.WriteString(hash)
 		sb.WriteByte('|')
 	}
-	
+
 	if s.XML.Value != nil {
 		sb.WriteString(low.GenerateHashString(s.XML.Value))
 		sb.WriteByte('|')
@@ -524,7 +521,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 		sb.WriteString(ext)
 		sb.WriteByte('|')
 	}
-	
+
 	if s.Example.Value != nil {
 		sb.WriteString(low.GenerateHashString(s.Example.Value))
 		sb.WriteByte('|')
@@ -549,7 +546,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	h := sha256.Sum256([]byte(sb.String()))
 	SchemaQuickHashMap.Store(key, h)
 	return h

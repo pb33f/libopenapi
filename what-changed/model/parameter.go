@@ -339,9 +339,6 @@ func CompareParameters(l, r any) *ParameterChanges {
 
 	pc.PropertyChanges = NewPropertyChanges(changes)
 	pc.ExtensionChanges = CompareExtensions(lext, rext)
-	if pc.TotalChanges() <= 0 {
-		return nil
-	}
 	return pc
 }
 

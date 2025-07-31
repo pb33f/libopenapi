@@ -425,9 +425,6 @@ func CompareOperations(l, r any) *OperationChanges {
 	}
 	CheckProperties(props)
 	oc.PropertyChanges = NewPropertyChanges(changes)
-	if oc.TotalChanges() <= 0 {
-		return nil
-	}
 	return oc
 }
 
