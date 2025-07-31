@@ -156,9 +156,6 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	oa.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	oa.PropertyChanges = NewPropertyChanges(changes)
-	if oa.TotalChanges() <= 0 {
-		return nil
-	}
 	return oa
 }
 
@@ -264,8 +261,5 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 	oa := new(OAuthFlowChanges)
 	oa.PropertyChanges = NewPropertyChanges(changes)
 	oa.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
-	if oa.TotalChanges() <= 0 {
-		return nil
-	}
 	return oa
 }

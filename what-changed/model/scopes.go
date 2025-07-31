@@ -78,8 +78,5 @@ func CompareScopes(l, r *v2.Scopes) *ScopesChanges {
 	sc := new(ScopesChanges)
 	sc.PropertyChanges = NewPropertyChanges(changes)
 	sc.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
-	if sc.TotalChanges() <= 0 {
-		return nil
-	}
 	return sc
 }
