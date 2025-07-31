@@ -152,9 +152,9 @@ func (sp *SchemaProxy) Hash() [32]byte {
 	if sp.cachedHash != nil {
 		return *sp.cachedHash
 	}
-	
+
 	var hash [32]byte
-	
+
 	if sp.rendered != nil {
 		if !sp.IsReference() {
 			hash = sp.rendered.Hash()
@@ -172,9 +172,6 @@ func (sp *SchemaProxy) Hash() [32]byte {
 				if sp.idx != nil && sp.idx.GetConfig() != nil && sp.idx.GetConfig().UseSchemaQuickHash {
 					if !CheckSchemaProxyForCircularRefs(sp) {
 						hash = sch.Hash()
-					} else {
-						// For circular references, hash the reference value
-						hash = sha256.Sum256([]byte(sp.GetReference()))
 					}
 				} else {
 					hash = sch.Hash()
@@ -209,7 +206,7 @@ func (sp *SchemaProxy) Hash() [32]byte {
 			}
 		}
 	}
-	
+
 	// Cache the computed hash for future calls
 	sp.cachedHash = &hash
 	return hash
@@ -219,7 +216,7 @@ func (sp *SchemaProxy) Hash() [32]byte {
 func (sp *SchemaProxy) AddNode(key int, node *yaml.Node) {
 	// Clear cached hash since content is being modified
 	sp.cachedHash = nil
-	
+
 	if sp.rendered != nil {
 		sp.rendered.AddNode(key, node)
 	} else {

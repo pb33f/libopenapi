@@ -48,9 +48,6 @@ func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequire
 	}
 	checkSecurityRequirement(l.Requirements.Value, r.Requirements.Value, &changes)
 	sc.PropertyChanges = NewPropertyChanges(changes)
-	if sc.TotalChanges() <= 0 {
-		return nil
-	}
 	return sc
 }
 

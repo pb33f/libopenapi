@@ -183,8 +183,5 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 	}
 	CheckProperties(props)
 	sc.PropertyChanges = NewPropertyChanges(changes)
-	if sc.TotalChanges() <= 0 {
-		return nil
-	}
 	return sc
 }

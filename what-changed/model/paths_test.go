@@ -42,7 +42,7 @@ func TestComparePaths_v2(t *testing.T) {
 
 	// compare.
 	extChanges := ComparePaths(&rDoc, &lDoc)
-	assert.Nil(t, extChanges)
+	assert.Equal(t, 0, extChanges.TotalChanges())
 }
 
 func TestComparePaths_v2_ModifyOp(t *testing.T) {
@@ -196,7 +196,7 @@ func TestComparePaths_v3(t *testing.T) {
 
 	// compare.
 	extChanges := ComparePaths(&rDoc, &lDoc)
-	assert.Nil(t, extChanges)
+	assert.Equal(t, 0, len(extChanges.GetAllChanges()))
 }
 
 func TestComparePaths_v3_ModifyOp(t *testing.T) {
