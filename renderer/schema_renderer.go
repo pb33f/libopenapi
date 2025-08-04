@@ -482,7 +482,9 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	return true
 }
 
-func readFile(file io.Reader) []string {
+func readFile(file io.ReadCloser) []string {
+	defer file.Close()
+
 	bytes, err := io.ReadAll(file)
 	if err != nil {
 		return []string{}

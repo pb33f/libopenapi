@@ -32,9 +32,8 @@ import (
 
 func TestBundleDocument_DigitalOcean(t *testing.T) {
 	// test the mother of all exploded specs.
-	tmp, _ := os.MkdirTemp("", "openapi")
+	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "-b", "asb/dedup-key-model", "https://github.com/digitalocean/openapi.git", tmp)
-	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
 
 	err := cmd.Run()
 	if err != nil {

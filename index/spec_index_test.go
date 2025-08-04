@@ -270,9 +270,8 @@ func TestSpecIndex_Redocly(t *testing.T) {
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 	// this is a full checkout of the digitalocean API repo.
-	tmp, _ := os.MkdirTemp("", "openapi")
+	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
-	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
 
 	err := cmd.Run()
 	if err != nil {
@@ -352,9 +351,8 @@ func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve(t *testing.T) {
 
 func TestSpecIndex_DigitalOcean_FullCheckoutLocalResolve_RecursiveLookup(t *testing.T) {
 	// this is a full checkout of the digitalocean API repo.
-	tmp, _ := os.MkdirTemp("", "openapi")
+	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
-	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
 
 	err := cmd.Run()
 	if err != nil {
