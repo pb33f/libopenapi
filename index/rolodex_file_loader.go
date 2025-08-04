@@ -437,18 +437,18 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 	switch extension {
 	case YAML, JSON, JS, GO, TS, CS, C, CPP, PHP, PY, HTML, MD, JAVA, RS, ZIG, RB:
 		var file fs.File
-		var fileError error
 		if config != nil && config.DirFS != nil {
 			l.logger.Debug("[rolodex file loader]: collecting file from dirFS", "file", extension, "location", abs)
 			file, _ = config.DirFS.Open(p)
 		} else {
 			l.logger.Debug("[rolodex file loader]: reading local file from OS", "file", extension, "location", abs)
+			var fileError error
 			file, fileError = os.Open(abs)
-		}
-
-		// if reading without a directory FS, error out on any error, do not continue.
-		if fileError != nil {
-			return nil, fileError
+			// if reading without a directory FS, error out on any error, do not continue.
+			if fileError != nil {
+				return nil, fileError
+			}
+			defer file.Close()
 		}
 
 		modTime := time.Now()

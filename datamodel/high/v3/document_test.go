@@ -468,9 +468,8 @@ func TestAsanaAsDoc(t *testing.T) {
 
 func TestDigitalOceanAsDocViaCheckout(t *testing.T) {
 	// this is a full checkout of the digitalocean API repo.
-	tmp, _ := os.MkdirTemp("", "openapi")
+	tmp := t.TempDir()
 	cmd := exec.Command("git", "clone", "https://github.com/digitalocean/openapi", tmp)
-	defer os.RemoveAll(filepath.Join(tmp, "openapi"))
 
 	err := cmd.Run()
 	if err != nil {
