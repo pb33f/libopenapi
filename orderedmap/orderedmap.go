@@ -12,7 +12,7 @@ import (
 	"slices"
 	"strings"
 
-	wk8orderedmap "github.com/wk8/go-ordered-map/v2"
+	wk8orderedmap "github.com/pb33f/ordered-map/v2"
 )
 
 // Pair represents a key/value pair in an ordered map returned for iteration.
