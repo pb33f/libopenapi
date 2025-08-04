@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"regexp"
@@ -2179,8 +2180,12 @@ func TestReadDictionary(t *testing.T) {
 
 func TestCreateFakeDictionary(t *testing.T) {
 	// create a temp file and create a simple temp dictionary
-	tmpFile, _ := os.CreateTemp("", "pb33f")
+	tmpFile, err := os.CreateTemp("", "pb33f")
+	if err != nil {
+		t.Fatal(err)
+	}
 	tmpFile.Write([]byte("one\nfive\nthree"))
+	defer tmpFile.Close()
 	words := ReadDictionary(tmpFile.Name())
 	renderer := CreateRendererUsingDictionary(tmpFile.Name())
 	assert.Len(t, words, 3)
@@ -2202,7 +2207,7 @@ func (errReader) Read(p []byte) (n int, err error) {
 }
 
 func TestReadDictionary_BadReader(t *testing.T) {
-	words := readFile(errReader(0))
+	words := readFile(io.NopCloser(errReader(0)))
 	assert.LessOrEqual(t, len(words), 0)
 }
 
