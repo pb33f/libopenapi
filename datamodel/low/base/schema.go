@@ -497,12 +497,22 @@ func (s *Schema) hash(quick bool) [32]byte {
 
 	// Process dependent required
 	if s.DependentRequired.Value != nil {
+		// Sort keys for deterministic hashing
+		var depReqKeys []string
+		depReqMap := make(map[string][]string)
 		for prop, requiredProps := range s.DependentRequired.Value.FromOldest() {
-			sb.WriteString(prop.Value)
+			depReqKeys = append(depReqKeys, prop.Value)
+			depReqMap[prop.Value] = requiredProps.Value
+		}
+		sort.Strings(depReqKeys)
+		
+		for _, prop := range depReqKeys {
+			sb.WriteString(prop)
 			sb.WriteByte(':')
-			for i, reqProp := range requiredProps.Value {
+			requiredProps := depReqMap[prop]
+			for i, reqProp := range requiredProps {
 				sb.WriteString(reqProp)
-				if i < len(requiredProps.Value)-1 {
+				if i < len(requiredProps)-1 {
 					sb.WriteByte(',')
 				}
 			}
