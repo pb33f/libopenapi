@@ -94,11 +94,11 @@ type Schema struct {
 	Items low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]
 
 	// 3.1 only
-	If               low.NodeReference[*SchemaProxy]
-	Else             low.NodeReference[*SchemaProxy]
-	Then             low.NodeReference[*SchemaProxy]
-	DependentSchemas low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
-	// TODO: add DependentRequired.
+	If                low.NodeReference[*SchemaProxy]
+	Else              low.NodeReference[*SchemaProxy]
+	Then              low.NodeReference[*SchemaProxy]
+	DependentSchemas  low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
+	DependentRequired low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]]]
 
 	PatternProperties     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]
 	PropertyNames         low.NodeReference[*SchemaProxy]
@@ -494,6 +494,22 @@ func (s *Schema) hash(quick bool) [32]byte {
 		sb.WriteString(hash)
 		sb.WriteByte('|')
 	}
+
+	// Process dependent required
+	if s.DependentRequired.Value != nil {
+		for prop, requiredProps := range s.DependentRequired.Value.FromOldest() {
+			sb.WriteString(prop.Value)
+			sb.WriteByte(':')
+			for i, reqProp := range requiredProps.Value {
+				sb.WriteString(reqProp)
+				if i < len(requiredProps.Value)-1 {
+					sb.WriteByte(',')
+				}
+			}
+			sb.WriteByte('|')
+		}
+	}
+
 	for _, hash := range low.AppendMapHashes(nil, orderedmap.SortAlpha(s.PatternProperties.Value)) {
 		sb.WriteString(hash)
 		sb.WriteByte('|')
@@ -912,6 +928,15 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		s.DependentSchemas = *props
 	}
 
+	// handle dependent required
+	depReq, err := buildDependentRequiredMap(root, DependentRequiredLabel)
+	if err != nil {
+		return err
+	}
+	if depReq != nil {
+		s.DependentRequired = *depReq
+	}
+
 	// handle pattern properties
 	props, err = buildPropertyMap(ctx, s, root, idx, PatternPropertiesLabel)
 	if err != nil {
@@ -1257,6 +1282,51 @@ func buildPropertyMap(ctx context.Context, parent *Schema, root *yaml.Node, idx 
 
 		return &low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*SchemaProxy]]]{
 			Value:     propertyMap,
+			KeyNode:   propLabel,
+			ValueNode: propsNode,
+		}, nil
+	}
+	return nil, nil
+}
+
+// buildDependentRequiredMap builds an ordered map of string arrays for the dependentRequired property
+func buildDependentRequiredMap(root *yaml.Node, label string) (*low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]]], error) {
+	_, propLabel, propsNode := utils.FindKeyNodeFullTop(label, root.Content)
+	if propsNode != nil {
+		dependentRequiredMap := orderedmap.New[low.KeyReference[string], low.ValueReference[[]string]]()
+		var currentKey *yaml.Node
+		for i, node := range propsNode.Content {
+			if i%2 == 0 {
+				currentKey = node
+				continue
+			}
+
+			// node should be an array of strings
+			if !utils.IsNodeArray(node) {
+				return nil, fmt.Errorf("dependentRequired value must be an array, found %v at line %d, col %d",
+					node.Kind, node.Line, node.Column)
+			}
+
+			var requiredProps []string
+			for _, propNode := range node.Content {
+				if propNode.Kind != yaml.ScalarNode {
+					return nil, fmt.Errorf("dependentRequired array items must be strings, found %v at line %d, col %d",
+						propNode.Kind, propNode.Line, propNode.Column)
+				}
+				requiredProps = append(requiredProps, propNode.Value)
+			}
+
+			dependentRequiredMap.Set(low.KeyReference[string]{
+				KeyNode: currentKey,
+				Value:   currentKey.Value,
+			}, low.ValueReference[[]string]{
+				Value:     requiredProps,
+				ValueNode: node,
+			})
+		}
+
+		return &low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]]]{
+			Value:     dependentRequiredMap,
 			KeyNode:   propLabel,
 			ValueNode: propsNode,
 		}, nil

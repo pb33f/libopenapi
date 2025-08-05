@@ -3696,3 +3696,347 @@ components:
 	assert.Nil(t, changes)
 
 }
+
+func TestCompareSchemas_DependentRequired_Added(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+        creditCard:
+          - billing_address
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, len(changes.DependentRequiredChanges))
+
+	// Check both properties were added
+	foundBilling := false
+	foundCredit := false
+	for _, change := range changes.DependentRequiredChanges {
+		if change.Property == "billingAddress" {
+			assert.Equal(t, PropertyAdded, change.ChangeType)
+			assert.False(t, change.Breaking)
+			foundBilling = true
+		}
+		if change.Property == "creditCard" {
+			assert.Equal(t, PropertyAdded, change.ChangeType)
+			assert.False(t, change.Breaking)
+			foundCredit = true
+		}
+	}
+	assert.True(t, foundBilling)
+	assert.True(t, foundCredit)
+}
+
+func TestCompareSchemas_DependentRequired_Removed(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+        creditCard:
+          - billing_address
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 2, len(changes.DependentRequiredChanges))
+
+	// Check both properties were removed and marked as breaking
+	foundBilling := false
+	foundCredit := false
+	for _, change := range changes.DependentRequiredChanges {
+		if change.Property == "billingAddress" {
+			assert.Equal(t, PropertyRemoved, change.ChangeType)
+			assert.True(t, change.Breaking) // Removing dependencies is breaking
+			foundBilling = true
+		}
+		if change.Property == "creditCard" {
+			assert.Equal(t, PropertyRemoved, change.ChangeType)
+			assert.True(t, change.Breaking) // Removing dependencies is breaking
+			foundCredit = true
+		}
+	}
+	assert.True(t, foundBilling)
+	assert.True(t, foundCredit)
+}
+
+func TestCompareSchemas_DependentRequired_Modified(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+          - region
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, len(changes.DependentRequiredChanges))
+
+	change := changes.DependentRequiredChanges[0]
+	assert.Equal(t, "billingAddress", change.Property)
+	assert.Equal(t, Modified, change.ChangeType)
+	assert.True(t, change.Breaking) // Adding new dependencies is breaking
+}
+
+func TestCompareSchemas_DependentRequired_NoChanges(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
+
+func TestCompareSchemas_DependentRequired_EmptyArray(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress: []
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, len(changes.DependentRequiredChanges))
+
+	change := changes.DependentRequiredChanges[0]
+	assert.Equal(t, "billingAddress", change.Property)
+	assert.Equal(t, Modified, change.ChangeType)
+	assert.True(t, change.Breaking) // Adding dependencies is breaking
+}
+
+func TestCompareSchemas_DependentRequired_OrderMatters(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+          - locality
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - locality
+          - street_address
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, len(changes.DependentRequiredChanges))
+
+	change := changes.DependentRequiredChanges[0]
+	assert.Equal(t, "billingAddress", change.Property)
+	assert.Equal(t, Modified, change.ChangeType)
+	assert.True(t, change.Breaking) // Order change is breaking as it changes validation behavior
+}
+
+func TestCompareSchemas_DependentRequired_TotalChangesCount(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+        creditCard:
+          - billing_address
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+
+	// Test TotalChanges includes DependentRequired changes
+	totalChanges := changes.TotalChanges()
+	assert.Equal(t, 2, totalChanges) // 2 DependentRequired additions
+
+	// Test TotalBreakingChanges doesn't include non-breaking additions
+	totalBreaking := changes.TotalBreakingChanges()
+	assert.Equal(t, 0, totalBreaking) // Adding dependencies is non-breaking
+}
+
+func TestCompareSchemas_DependentRequired_TotalBreakingChangesCount(t *testing.T) {
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      dependentRequired:
+        billingAddress:
+          - street_address
+        creditCard:
+          - billing_address
+      properties:
+        name:
+          type: string`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+
+	// Test TotalBreakingChanges includes DependentRequired removals
+	totalBreaking := changes.TotalBreakingChanges()
+	assert.Equal(t, 2, totalBreaking) // 2 DependentRequired removals
+}
