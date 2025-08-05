@@ -1372,3 +1372,139 @@ func TestSchema_RenderProxyWithConfig_Corrected_3(t *testing.T) {
 	schemaBytes, _ = compiled.RenderInline()
 	assert.Equal(t, testSpecCorrect, strings.TrimSpace(string(schemaBytes)))
 }
+
+func TestNewSchema_DependentRequired_Success(t *testing.T) {
+	yml := `type: object
+description: something object
+dependentRequired:
+  billingAddress:
+    - street_address
+    - locality
+    - region
+  creditCard:
+    - billing_address
+properties:
+  name:
+    type: string
+  billingAddress:
+    type: object
+  creditCard:
+    type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowSchema lowbase.Schema
+	_ = lowSchema.Build(context.Background(), idxNode.Content[0], idx)
+
+	// Create high-level schema
+	schema := NewSchema(&lowSchema)
+
+	// Check that DependentRequired was mapped correctly
+	assert.NotNil(t, schema.DependentRequired)
+	assert.Equal(t, 2, schema.DependentRequired.Len())
+
+	// Check billingAddress dependency
+	billingReq := schema.DependentRequired.GetOrZero("billingAddress")
+	assert.Equal(t, []string{"street_address", "locality", "region"}, billingReq)
+
+	// Check creditCard dependency
+	creditReq := schema.DependentRequired.GetOrZero("creditCard")
+	assert.Equal(t, []string{"billing_address"}, creditReq)
+}
+
+func TestNewSchema_DependentRequired_Empty(t *testing.T) {
+	yml := `type: object
+description: something object
+properties:
+  name:
+    type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowSchema lowbase.Schema
+	_ = lowSchema.Build(context.Background(), idxNode.Content[0], idx)
+
+	// Create high-level schema
+	schema := NewSchema(&lowSchema)
+
+	// Check that DependentRequired is nil when not present
+	assert.Nil(t, schema.DependentRequired)
+}
+
+func TestNewSchema_DependentRequired_EmptyArray(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  billingAddress: []`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowSchema lowbase.Schema
+	_ = lowSchema.Build(context.Background(), idxNode.Content[0], idx)
+
+	// Create high-level schema
+	schema := NewSchema(&lowSchema)
+
+	// Check that DependentRequired has empty array (nil is equivalent to empty slice in Go)
+	assert.NotNil(t, schema.DependentRequired)
+	billingReq := schema.DependentRequired.GetOrZero("billingAddress")
+	assert.Empty(t, billingReq) // Use Empty() which handles both nil and empty slices
+}
+
+func TestNewSchema_DependentRequired_SingleProperty(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  creditCard:
+    - billing_address`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowSchema lowbase.Schema
+	_ = lowSchema.Build(context.Background(), idxNode.Content[0], idx)
+
+	// Create high-level schema
+	schema := NewSchema(&lowSchema)
+
+	// Check that DependentRequired is mapped correctly for single property
+	assert.NotNil(t, schema.DependentRequired)
+	assert.Equal(t, 1, schema.DependentRequired.Len())
+
+	creditReq := schema.DependentRequired.GetOrZero("creditCard")
+	assert.Equal(t, []string{"billing_address"}, creditReq)
+}
+
+func TestNewSchema_DependentRequired_MultipleProperties_SingleDependency(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  firstName:
+    - lastName
+  lastName:
+    - firstName
+  email:
+    - username`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var lowSchema lowbase.Schema
+	_ = lowSchema.Build(context.Background(), idxNode.Content[0], idx)
+
+	// Create high-level schema
+	schema := NewSchema(&lowSchema)
+
+	// Check that all DependentRequired mappings are correct
+	assert.NotNil(t, schema.DependentRequired)
+	assert.Equal(t, 3, schema.DependentRequired.Len())
+
+	assert.Equal(t, []string{"lastName"}, schema.DependentRequired.GetOrZero("firstName"))
+	assert.Equal(t, []string{"firstName"}, schema.DependentRequired.GetOrZero("lastName"))
+	assert.Equal(t, []string{"username"}, schema.DependentRequired.GetOrZero("email"))
+}

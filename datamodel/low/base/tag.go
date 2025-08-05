@@ -91,17 +91,29 @@ func (t *Tag) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Valu
 func (t *Tag) Hash() [32]byte {
 	// Pre-calculate field count for optimal allocation
 	fieldCount := 0
-	if !t.Name.IsEmpty() { fieldCount++ }
-	if !t.Summary.IsEmpty() { fieldCount++ }
-	if !t.Description.IsEmpty() { fieldCount++ }
-	if !t.ExternalDocs.IsEmpty() { fieldCount++ }
-	if !t.Parent.IsEmpty() { fieldCount++ }
-	if !t.Kind.IsEmpty() { fieldCount++ }
-	
+	if !t.Name.IsEmpty() {
+		fieldCount++
+	}
+	if !t.Summary.IsEmpty() {
+		fieldCount++
+	}
+	if !t.Description.IsEmpty() {
+		fieldCount++
+	}
+	if !t.ExternalDocs.IsEmpty() {
+		fieldCount++
+	}
+	if !t.Parent.IsEmpty() {
+		fieldCount++
+	}
+	if !t.Kind.IsEmpty() {
+		fieldCount++
+	}
+
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !t.Name.IsEmpty() {
 		sb.WriteString(t.Name.Value)
 		sb.WriteByte('|')

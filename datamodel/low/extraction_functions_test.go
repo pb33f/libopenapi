@@ -2241,18 +2241,18 @@ func TestGetStringBuilder_PutStringBuilder(t *testing.T) {
 	sb1 := GetStringBuilder()
 	assert.NotNil(t, sb1)
 	assert.Equal(t, 0, sb1.Len(), "New string builder should be empty")
-	
+
 	// Write some data
 	sb1.WriteString("test data")
 	assert.Equal(t, 9, sb1.Len())
-	
+
 	// Put it back
 	PutStringBuilder(sb1)
-	
+
 	// Get another one - should be reset
 	sb2 := GetStringBuilder()
 	assert.Equal(t, 0, sb2.Len(), "Reused string builder should be reset")
-	
+
 	PutStringBuilder(sb2)
 }
 
@@ -2260,19 +2260,19 @@ func TestGetStringBuilder_Concurrent(t *testing.T) {
 	// Test concurrent access to string builder pool
 	const numGoroutines = 10
 	var wg sync.WaitGroup
-	
+
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
-			
+
 			sb := GetStringBuilder()
 			sb.WriteString(fmt.Sprintf("goroutine-%d", id))
 			assert.True(t, sb.Len() > 0)
 			PutStringBuilder(sb)
 		}(i)
 	}
-	
+
 	wg.Wait()
 }
 
@@ -2281,25 +2281,25 @@ func TestClearHashCache_Functionality(t *testing.T) {
 	type testStruct struct {
 		value string
 	}
-	
+
 	obj1 := &testStruct{value: "test1"}
 	obj2 := &testStruct{value: "test2"}
-	
+
 	// Generate hashes to populate cache
 	hash1 := GenerateHashString(obj1)
 	hash2 := GenerateHashString(obj2)
-	
+
 	assert.NotEmpty(t, hash1)
 	assert.NotEmpty(t, hash2)
 	assert.NotEqual(t, hash1, hash2)
-	
+
 	// Clear the cache
 	ClearHashCache()
-	
+
 	// Should still work but recalculate
 	hash1After := GenerateHashString(obj1)
 	hash2After := GenerateHashString(obj2)
-	
+
 	assert.Equal(t, hash1, hash1After, "Hash should be same after cache clear")
 	assert.Equal(t, hash2, hash2After, "Hash should be same after cache clear")
 }
@@ -2327,7 +2327,7 @@ func TestGenerateHashString_OptimizedPaths(t *testing.T) {
 		{"bool_false", false, "fcbcf165908dd18a9e49f7ff27810176db8e9f63b4352213741664245224f8aa"},
 		{"string", "hello", "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"},
 	}
-	
+
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			result := GenerateHashString(tc.input)
@@ -2340,20 +2340,20 @@ func TestGenerateHashString_Caching(t *testing.T) {
 	type cacheableStruct struct {
 		value string
 	}
-	
+
 	// Clear cache first
 	ClearHashCache()
-	
+
 	obj := &cacheableStruct{value: "test"}
-	
+
 	// First call should calculate and cache
 	hash1 := GenerateHashString(obj)
 	assert.NotEmpty(t, hash1)
-	
+
 	// Second call should use cache (same result)
 	hash2 := GenerateHashString(obj)
 	assert.Equal(t, hash1, hash2)
-	
+
 	// Different object should have different hash
 	obj2 := &cacheableStruct{value: "different"}
 	hash3 := GenerateHashString(obj2)
@@ -2367,18 +2367,18 @@ func TestHashYamlNodeFast_ScalarNode(t *testing.T) {
 		Value:  "test",
 		Anchor: "anchor1",
 	}
-	
+
 	hash := hashYamlNodeFast(node)
 	assert.NotEmpty(t, hash)
-	
+
 	// Same node should produce same hash
 	hash2 := hashYamlNodeFast(node)
 	assert.Equal(t, hash, hash2)
-	
+
 	// Different value should produce different hash
 	node2 := &yaml.Node{
 		Kind:   yaml.ScalarNode,
-		Tag:    "!!str", 
+		Tag:    "!!str",
 		Value:  "different",
 		Anchor: "anchor1",
 	}
@@ -2403,10 +2403,10 @@ func TestHashYamlNodeFast_ComplexNode(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value2"},
 		},
 	}
-	
+
 	hash := hashYamlNodeFast(node)
 	assert.NotEmpty(t, hash)
-	
+
 	// Should be cached and return same result
 	hash2 := hashYamlNodeFast(node)
 	assert.Equal(t, hash, hash2)
@@ -2416,17 +2416,17 @@ func TestHashNodeTree_CircularReference(t *testing.T) {
 	// Create nodes with circular references
 	node1 := &yaml.Node{Kind: yaml.MappingNode, Value: "node1"}
 	node2 := &yaml.Node{Kind: yaml.MappingNode, Value: "node2"}
-	
+
 	// Create circular reference
 	node1.Content = []*yaml.Node{node2}
 	node2.Content = []*yaml.Node{node1}
-	
+
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
-	
+
 	// Should not infinite loop
 	hashNodeTree(h, node1, visited)
-	
+
 	result := h.Sum(nil)
 	assert.NotNil(t, result)
 }
@@ -2441,11 +2441,11 @@ func TestHashNodeTree_SequenceNode(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "item3"},
 		},
 	}
-	
+
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	
+
 	result := h.Sum(nil)
 	assert.NotEmpty(t, result)
 }
@@ -2461,11 +2461,11 @@ func TestHashNodeTree_MappingNode(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value2"},
 		},
 	}
-	
+
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	
+
 	result := h.Sum(nil)
 	assert.NotEmpty(t, result)
 }
@@ -2477,11 +2477,11 @@ func TestHashNodeTree_DocumentNode(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "document content"},
 		},
 	}
-	
+
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	
+
 	result := h.Sum(nil)
 	assert.NotEmpty(t, result)
 }
@@ -2492,11 +2492,11 @@ func TestHashNodeTree_AliasNode(t *testing.T) {
 		Kind:  yaml.AliasNode,
 		Alias: aliasTarget,
 	}
-	
+
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
 	hashNodeTree(h, node, visited)
-	
+
 	result := h.Sum(nil)
 	assert.NotEmpty(t, result)
 }
@@ -2504,10 +2504,10 @@ func TestHashNodeTree_AliasNode(t *testing.T) {
 func TestHashNodeTree_NilNode(t *testing.T) {
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
-	
+
 	// Should not crash
 	hashNodeTree(h, nil, visited)
-	
+
 	// Hash should be unchanged (only initial state)
 	result := h.Sum(nil)
 	assert.NotNil(t, result)
@@ -2520,10 +2520,10 @@ func TestCompareYAMLNodes_BothNil(t *testing.T) {
 
 func TestCompareYAMLNodes_OneNil(t *testing.T) {
 	node := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
-	
+
 	result1 := CompareYAMLNodes(nil, node)
 	assert.False(t, result1)
-	
+
 	result2 := CompareYAMLNodes(node, nil)
 	assert.False(t, result2)
 }
@@ -2531,7 +2531,7 @@ func TestCompareYAMLNodes_OneNil(t *testing.T) {
 func TestCompareYAMLNodes_SameNodes(t *testing.T) {
 	node1 := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
 	node2 := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
-	
+
 	result := CompareYAMLNodes(node1, node2)
 	assert.True(t, result)
 }
@@ -2539,7 +2539,7 @@ func TestCompareYAMLNodes_SameNodes(t *testing.T) {
 func TestCompareYAMLNodes_DifferentNodes(t *testing.T) {
 	node1 := &yaml.Node{Kind: yaml.ScalarNode, Value: "test1"}
 	node2 := &yaml.Node{Kind: yaml.ScalarNode, Value: "test2"}
-	
+
 	result := CompareYAMLNodes(node1, node2)
 	assert.False(t, result)
 }
@@ -2553,7 +2553,7 @@ func TestCompareYAMLNodes_ComplexNodes(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value1"},
 		},
 	}
-	
+
 	node2 := &yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -2561,10 +2561,10 @@ func TestCompareYAMLNodes_ComplexNodes(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value1"},
 		},
 	}
-	
+
 	result := CompareYAMLNodes(node1, node2)
 	assert.True(t, result)
-	
+
 	// Modify one node
 	node2.Content[1].Value = "different_value"
 	result2 := CompareYAMLNodes(node1, node2)
@@ -2575,33 +2575,33 @@ func TestGenerateHashString_SchemaProxyNoCache(t *testing.T) {
 	// Test that SchemaProxy types don't get cached (shouldCache = false)
 	// We can't easily test this without creating actual SchemaProxy objects
 	// but we can test the general caching bypass logic
-	
+
 	type nonCacheableType struct {
 		value string
 	}
-	
+
 	obj := &nonCacheableType{value: "test"}
-	
+
 	// Clear cache
 	ClearHashCache()
-	
+
 	hash1 := GenerateHashString(obj)
 	hash2 := GenerateHashString(obj)
-	
+
 	// Should be same (correct calculation) even without caching
 	assert.Equal(t, hash1, hash2)
 }
 
 func TestHashYamlNodeFast_Caching(t *testing.T) {
 	// Test that complex nodes get cached but scalar nodes don't
-	
+
 	// Scalar node (should not be cached)
 	scalarNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
 	hash1 := hashYamlNodeFast(scalarNode)
 	hash2 := hashYamlNodeFast(scalarNode)
 	assert.Equal(t, hash1, hash2)
-	
-	// Complex node (should be cached)  
+
+	// Complex node (should be cached)
 	complexNode := &yaml.Node{
 		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
@@ -2609,7 +2609,7 @@ func TestHashYamlNodeFast_Caching(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value"},
 		},
 	}
-	
+
 	hash3 := hashYamlNodeFast(complexNode)
 	hash4 := hashYamlNodeFast(complexNode)
 	assert.Equal(t, hash3, hash4)
@@ -2617,7 +2617,7 @@ func TestHashYamlNodeFast_Caching(t *testing.T) {
 
 func TestHashNodeTree_MappingNodeSorting(t *testing.T) {
 	// Test that mapping nodes are sorted consistently for hashing
-	
+
 	// Create two identical mappings with different key orders
 	node1 := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -2628,9 +2628,9 @@ func TestHashNodeTree_MappingNodeSorting(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value2"},
 		},
 	}
-	
+
 	node2 := &yaml.Node{
-		Kind: yaml.MappingNode, 
+		Kind: yaml.MappingNode,
 		Content: []*yaml.Node{
 			{Kind: yaml.ScalarNode, Value: "alpha"},
 			{Kind: yaml.ScalarNode, Value: "value2"},
@@ -2638,17 +2638,17 @@ func TestHashNodeTree_MappingNodeSorting(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value1"},
 		},
 	}
-	
+
 	hash1 := hashYamlNodeFast(node1)
 	hash2 := hashYamlNodeFast(node2)
-	
+
 	// Should be equal because of consistent sorting
 	assert.Equal(t, hash1, hash2)
 }
 
 func TestHashNodeTree_EdgeCases(t *testing.T) {
 	// Test edge cases in hashNodeTree
-	
+
 	// Mapping with odd number of content items (missing value)
 	node := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -2659,10 +2659,10 @@ func TestHashNodeTree_EdgeCases(t *testing.T) {
 			// Missing value for key2
 		},
 	}
-	
+
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
-	
+
 	// Should not crash
 	hashNodeTree(h, node, visited)
 	result := h.Sum(nil)
@@ -2673,26 +2673,26 @@ func TestGenerateHashString_PointerDereference(t *testing.T) {
 	// Test pointer dereferencing for primitives
 	val := "test"
 	ptr := &val
-	
+
 	hash1 := GenerateHashString(val)
 	hash2 := GenerateHashString(ptr)
-	
+
 	assert.Equal(t, hash1, hash2, "Pointer and value should produce same hash")
 }
 
 func TestHashNodeTree_VisitedTracking(t *testing.T) {
 	// Test that visited map prevents infinite loops
-	
+
 	node := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
 	h := sha256.New()
 	visited := make(map[*yaml.Node]bool)
-	
+
 	// Mark as visited
 	visited[node] = true
-	
+
 	// Should detect as visited and add circular marker
 	hashNodeTree(h, node, visited)
-	
+
 	result := h.Sum(nil)
 	assert.NotNil(t, result)
 }
@@ -2701,21 +2701,21 @@ func TestConcurrentHashGeneration(t *testing.T) {
 	// Test thread safety of hash generation with caching
 	const numGoroutines = 20
 	var wg sync.WaitGroup
-	
+
 	// Clear cache first
 	ClearHashCache()
-	
+
 	type testObj struct {
 		id int
 	}
-	
+
 	objects := make([]*testObj, numGoroutines)
 	for i := 0; i < numGoroutines; i++ {
 		objects[i] = &testObj{id: i}
 	}
-	
+
 	results := make([]string, numGoroutines)
-	
+
 	// Generate hashes concurrently
 	for i := 0; i < numGoroutines; i++ {
 		wg.Add(1)
@@ -2724,9 +2724,9 @@ func TestConcurrentHashGeneration(t *testing.T) {
 			results[idx] = GenerateHashString(objects[idx])
 		}(i)
 	}
-	
+
 	wg.Wait()
-	
+
 	// All results should be non-empty and unique
 	seen := make(map[string]bool)
 	for i, hash := range results {
@@ -2750,7 +2750,7 @@ func TestYAMLNodeToBytes_ValidNode(t *testing.T) {
 		Tag:   "!!str",
 		Value: "test value",
 	}
-	
+
 	result, err := YAMLNodeToBytes(node)
 	assert.NoError(t, err)
 	assert.Contains(t, string(result), "test value")
@@ -2764,7 +2764,7 @@ func TestYAMLNodeToBytes_ComplexNode(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value"},
 		},
 	}
-	
+
 	result, err := YAMLNodeToBytes(node)
 	assert.NoError(t, err)
 	assert.NotEmpty(t, result)
@@ -2779,7 +2779,7 @@ func TestHashYAMLNodeSlice_SingleNode(t *testing.T) {
 	nodes := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Value: "test"},
 	}
-	
+
 	result := HashYAMLNodeSlice(nodes)
 	assert.NotEmpty(t, result)
 	assert.Len(t, result, 64) // SHA256 hex length
@@ -2791,14 +2791,14 @@ func TestHashYAMLNodeSlice_MultipleNodes(t *testing.T) {
 		{Kind: yaml.ScalarNode, Value: "second"},
 		{Kind: yaml.ScalarNode, Value: "third"},
 	}
-	
+
 	result := HashYAMLNodeSlice(nodes)
 	assert.NotEmpty(t, result)
-	
+
 	// Same nodes should produce same hash
 	result2 := HashYAMLNodeSlice(nodes)
 	assert.Equal(t, result, result2)
-	
+
 	// Different order should produce different hash
 	reorderedNodes := []*yaml.Node{
 		{Kind: yaml.ScalarNode, Value: "second"},
@@ -2815,7 +2815,7 @@ func TestHashYAMLNodeSlice_NilNodes(t *testing.T) {
 		nil,
 		{Kind: yaml.ScalarNode, Value: "test2"},
 	}
-	
+
 	result := HashYAMLNodeSlice(nodes)
 	assert.NotEmpty(t, result)
 }
@@ -2830,16 +2830,16 @@ func TestAppendMapHashes_SmallMap_InsertionSort(t *testing.T) {
 	// Test with <= 10 entries to trigger insertion sort
 	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
 	for i := 9; i >= 0; i-- { // Add in reverse order to test sorting
-		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%d", i)}, 
-			  ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
+		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%d", i)},
+			ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
 	}
-	
+
 	initial := []string{"existing"}
 	result := AppendMapHashes(initial, m)
-	
+
 	assert.Len(t, result, 11) // 1 existing + 10 new
 	assert.Equal(t, "existing", result[0])
-	
+
 	// Verify sorted order (keys should be processed in alphabetical order)
 	for i := 1; i < len(result); i++ {
 		assert.Contains(t, result[i], fmt.Sprintf("key%d", i-1))
@@ -2850,15 +2850,15 @@ func TestAppendMapHashes_LargeMap_QuickSort(t *testing.T) {
 	// Test with > 10 entries to trigger quicksort
 	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
 	for i := 15; i >= 0; i-- { // Add in reverse order to test sorting
-		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%02d", i)}, 
-			  ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
+		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%02d", i)},
+			ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
 	}
-	
+
 	initial := []string{}
 	result := AppendMapHashes(initial, m)
-	
+
 	assert.Len(t, result, 16)
-	
+
 	// Verify sorted order
 	for i := 0; i < len(result)-1; i++ {
 		// Extract key from hash string (format: "key-hash")
@@ -2872,13 +2872,13 @@ func TestAppendMapHashes_VerySmallMap_DirectConcat(t *testing.T) {
 	// Test with <= 5 entries to trigger direct string concatenation
 	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
 	for i := 4; i >= 0; i-- {
-		m.Set(KeyReference[string]{Value: fmt.Sprintf("k%d", i)}, 
-			  ValueReference[string]{Value: fmt.Sprintf("v%d", i)})
+		m.Set(KeyReference[string]{Value: fmt.Sprintf("k%d", i)},
+			ValueReference[string]{Value: fmt.Sprintf("v%d", i)})
 	}
-	
+
 	result := AppendMapHashes([]string{}, m)
 	assert.Len(t, result, 5)
-	
+
 	// Should be sorted
 	for i := 0; i < len(result); i++ {
 		assert.Contains(t, result[i], fmt.Sprintf("k%d", i))
@@ -2889,13 +2889,13 @@ func TestAppendMapHashes_MediumMap_StringBuilder(t *testing.T) {
 	// Test with > 5 and <= 10 entries to trigger string builder path
 	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
 	for i := 7; i >= 0; i-- {
-		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%d", i)}, 
-			  ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
+		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%d", i)},
+			ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
 	}
-	
+
 	result := AppendMapHashes([]string{}, m)
 	assert.Len(t, result, 8)
-	
+
 	// Verify each entry has correct format
 	for _, hash := range result {
 		parts := strings.Split(hash, "-")
@@ -2909,15 +2909,15 @@ func TestAppendMapHashes_PreAllocation(t *testing.T) {
 	// Test the capacity pre-allocation logic
 	m := orderedmap.New[KeyReference[string], ValueReference[string]]()
 	for i := 0; i < 20; i++ {
-		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%02d", i)}, 
-			  ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
+		m.Set(KeyReference[string]{Value: fmt.Sprintf("key%02d", i)},
+			ValueReference[string]{Value: fmt.Sprintf("value%d", i)})
 	}
-	
+
 	// Start with a slice that has limited capacity
 	initial := make([]string, 2, 3) // len=2, cap=3
 	initial[0] = "first"
 	initial[1] = "second"
-	
+
 	result := AppendMapHashes(initial, m)
 	assert.Len(t, result, 22) // 2 initial + 20 from map
 	assert.Equal(t, "first", result[0])
@@ -2929,7 +2929,7 @@ func TestValueToString_YAMLScalarNode(t *testing.T) {
 		Kind:  yaml.ScalarNode,
 		Value: "test value",
 	}
-	
+
 	result := ValueToString(node)
 	assert.Equal(t, "test value", result)
 }
@@ -2942,7 +2942,7 @@ func TestValueToString_YAMLComplexNode(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "value"},
 		},
 	}
-	
+
 	result := ValueToString(node)
 	assert.Contains(t, result, "key")
 	assert.Contains(t, result, "value")
@@ -2958,7 +2958,7 @@ func TestValueToString_NonYAMLValue(t *testing.T) {
 		{true, "true"},
 		{3.14, "3.14"},
 	}
-	
+
 	for _, tc := range testCases {
 		result := ValueToString(tc.input)
 		assert.Equal(t, tc.expected, result)
@@ -2970,7 +2970,7 @@ func TestGenerateHashString_DefaultCase(t *testing.T) {
 	type customType struct {
 		field string
 	}
-	
+
 	obj := customType{field: "test"}
 	result := GenerateHashString(obj)
 	assert.NotEmpty(t, result)
@@ -2982,7 +2982,7 @@ func TestGenerateHashString_PointerToNonPrimitive(t *testing.T) {
 	type customStruct struct {
 		value string
 	}
-	
+
 	obj := &customStruct{value: "test"}
 	result := GenerateHashString(obj)
 	assert.NotEmpty(t, result)
@@ -2993,14 +2993,14 @@ func TestGenerateHashString_CachingPathCoverage(t *testing.T) {
 	type testStruct struct {
 		value string
 	}
-	
+
 	ClearHashCache()
-	
+
 	// Test struct that should get cached
 	obj := &testStruct{value: "test"}
 	hash1 := GenerateHashString(obj)
 	assert.NotEmpty(t, hash1)
-	
+
 	// Should hit cache on second call
 	hash2 := GenerateHashString(obj)
 	assert.Equal(t, hash1, hash2)
@@ -3025,7 +3025,7 @@ func TestGenerateHashString_EmptyHashStr(t *testing.T) {
 
 func TestExtractMapExtensions_RefError(t *testing.T) {
 	// Hit the reference error branch in ExtractMapExtensions (line ~711-712)
-	
+
 	// Create a node with a $ref that cannot be found
 	refNode := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -3034,9 +3034,9 @@ func TestExtractMapExtensions_RefError(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "#/nonexistent/reference"},
 		},
 	}
-	
+
 	idx := index.NewSpecIndexWithConfig(refNode, index.CreateClosedAPIIndexConfig())
-	
+
 	// This should hit the "reference cannot be found" error path
 	result, _, _, err := ExtractMapExtensions[*test_Good](context.Background(), "test", refNode, idx, false)
 	assert.Nil(t, result)
@@ -3046,7 +3046,7 @@ func TestExtractMapExtensions_RefError(t *testing.T) {
 
 func TestGetCircularReferenceResult_JourneyMatch(t *testing.T) {
 	// Hit the Journey[k].Node == node branch (line ~326-328)
-	
+
 	// Create a spec with circular references to get refs populated
 	yml := `
 components:
@@ -3056,17 +3056,17 @@ components:
     B:
       $ref: "#/components/schemas/A"
 `
-	
+
 	var rootNode yaml.Node
 	err := yaml.Unmarshal([]byte(yml), &rootNode)
 	require.NoError(t, err)
-	
+
 	// Create index and build it to detect circular references
 	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateOpenAPIIndexConfig())
-	
+
 	// Create a test node that matches something in the journey
 	testNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
-	
+
 	// Manually create a circular reference result to ensure the journey path is hit
 	circRef := &index.CircularReferenceResult{
 		Journey: []*index.Reference{
@@ -3074,18 +3074,18 @@ components:
 		},
 		LoopPoint: &index.Reference{Node: &yaml.Node{Kind: yaml.ScalarNode, Value: "other"}},
 	}
-	
+
 	// Add this to the index manually to test the journey matching
 	refs := []*index.CircularReferenceResult{circRef}
 	idx.SetCircularReferences(refs)
-	
+
 	result := GetCircularReferenceResult(testNode, idx)
 	assert.Equal(t, circRef, result)
 }
 
 func TestGetCircularReferenceResult_RefValueMatch(t *testing.T) {
 	// Hit the refs[i].Journey[k].Definition == refValue branch (line ~330-332)
-	
+
 	// Create a node with a $ref value
 	refNode := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -3094,10 +3094,10 @@ func TestGetCircularReferenceResult_RefValueMatch(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "#/components/schemas/Test"},
 		},
 	}
-	
+
 	// Create a minimal index
 	idx := index.NewSpecIndexWithConfig(refNode, index.CreateOpenAPIIndexConfig())
-	
+
 	// Manually create a circular reference that matches the definition
 	circRef := &index.CircularReferenceResult{
 		Journey: []*index.Reference{
@@ -3105,18 +3105,18 @@ func TestGetCircularReferenceResult_RefValueMatch(t *testing.T) {
 		},
 		LoopPoint: &index.Reference{Node: &yaml.Node{}},
 	}
-	
+
 	// Force the circular reference into the index
 	refs := []*index.CircularReferenceResult{circRef}
 	idx.SetCircularReferences(refs)
-	
+
 	result := GetCircularReferenceResult(refNode, idx)
 	assert.Equal(t, circRef, result)
 }
 
 func TestGetCircularReferenceResult_MappedRefMatch(t *testing.T) {
 	// Hit the mapped reference branch (line ~339-341)
-	
+
 	// Create a node with $ref
 	refNode := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -3125,9 +3125,9 @@ func TestGetCircularReferenceResult_MappedRefMatch(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "#/test/definition"},
 		},
 	}
-	
+
 	idx := index.NewSpecIndexWithConfig(refNode, index.CreateOpenAPIIndexConfig())
-	
+
 	// Create circular reference that matches the definition
 	circRef := &index.CircularReferenceResult{
 		LoopPoint: &index.Reference{
@@ -3136,17 +3136,17 @@ func TestGetCircularReferenceResult_MappedRefMatch(t *testing.T) {
 		},
 		Journey: []*index.Reference{}, // Empty journey to avoid other matches
 	}
-	
+
 	refs := []*index.CircularReferenceResult{circRef}
 	idx.SetCircularReferences(refs)
-	
+
 	result := GetCircularReferenceResult(refNode, idx)
 	assert.Equal(t, circRef, result)
 }
 
 func TestExtractMapExtensions_CircularRefError(t *testing.T) {
 	// Hit the circError assignment path (line ~708)
-	
+
 	// This is complex to set up, but we can create a minimal scenario
 	// Create a self-referencing node
 	refNode := &yaml.Node{
@@ -3156,7 +3156,7 @@ func TestExtractMapExtensions_CircularRefError(t *testing.T) {
 			{Kind: yaml.ScalarNode, Value: "#/components/schemas/Self"},
 		},
 	}
-	
+
 	// Create a spec that has the self-reference
 	specYml := `
 components:
@@ -3164,13 +3164,13 @@ components:
     Self:
       $ref: "#/components/schemas/Self"
 `
-	
+
 	var rootNode yaml.Node
 	err := yaml.Unmarshal([]byte(specYml), &rootNode)
 	require.NoError(t, err)
-	
+
 	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateOpenAPIIndexConfig())
-	
+
 	// This should trigger the circular error path
 	_, _, _, err = ExtractMapExtensions[*test_Good](context.Background(), "test", refNode, idx, false)
 	// The error could be circular reference or other reference issues
@@ -3190,12 +3190,12 @@ func (t testHashable) Hash() [32]byte {
 
 func TestGenerateHashString_EdgeCaseCoverage(t *testing.T) {
 	// Test edge cases to hit remaining uncovered lines
-	
+
 	// Test with a very specific case that might hit uncovered branches
 	type specialStruct struct {
 		value interface{}
 	}
-	
+
 	obj := &specialStruct{value: nil}
 	result := GenerateHashString(obj)
 	assert.NotEmpty(t, result)
@@ -3207,21 +3207,21 @@ func TestGenerateHashString_SchemaProxyTypeCheck(t *testing.T) {
 	type fakeSchemaProxy struct {
 		field string
 	}
-	
+
 	ClearHashCache()
 	obj := &fakeSchemaProxy{field: "test"}
-	
+
 	// This should bypass caching due to type name check
 	result1 := GenerateHashString(obj)
 	result2 := GenerateHashString(obj)
-	
+
 	assert.Equal(t, result1, result2) // Should still be equal, just not cached
 	assert.NotEmpty(t, result1)
 }
 
 func TestExtractMapExtensions_ValueNodeAssignment(t *testing.T) {
 	// Hit specific branches in ExtractMapExtensions
-	
+
 	// Create a valid reference that can be found
 	specYml := `
 components:
@@ -3229,11 +3229,11 @@ components:
     ValidSchema:
       type: string
 `
-	
+
 	var rootNode yaml.Node
 	err := yaml.Unmarshal([]byte(specYml), &rootNode)
 	require.NoError(t, err)
-	
+
 	// Create a reference node that points to a valid location
 	refNode := &yaml.Node{
 		Kind: yaml.MappingNode,
@@ -3242,12 +3242,12 @@ components:
 			{Kind: yaml.ScalarNode, Value: "#/components/schemas/ValidSchema"},
 		},
 	}
-	
+
 	idx := index.NewSpecIndexWithConfig(&rootNode, index.CreateOpenAPIIndexConfig())
-	
+
 	// This should hit the successful reference resolution path
 	result, labelNode, valueNode, err := ExtractMapExtensions[*test_Good](context.Background(), "test", refNode, idx, false)
-	
+
 	// We expect this to either succeed or fail gracefully, but not panic
 	if err != nil {
 		// Reference resolution can fail for various reasons, that's OK
@@ -3256,7 +3256,7 @@ components:
 		// If it succeeds, we should have some result
 		assert.NotNil(t, result)
 	}
-	
+
 	// labelNode and valueNode should be set regardless
 	_ = labelNode
 	_ = valueNode

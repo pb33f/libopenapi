@@ -2038,3 +2038,186 @@ func TestSchema_QuickHash(t *testing.T) {
 		assert.LessOrEqual(t, duration.Microseconds(), durationRegular.Microseconds())
 	}
 }
+
+func TestSchema_Build_DependentRequired_Success(t *testing.T) {
+	yml := `type: object
+description: something object
+dependentRequired:
+  billingAddress:
+    - street_address
+    - locality
+    - region
+  creditCard:
+    - billing_address
+properties:
+  name:
+    type: string
+  billingAddress:
+    type: object
+  creditCard:
+    type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Check that DependentRequired was parsed correctly
+	assert.NotNil(t, n.DependentRequired.Value)
+	assert.Equal(t, 2, n.DependentRequired.Value.Len())
+
+	// Check billingAddress dependency by iterating through the map
+	foundBilling := false
+	foundCredit := false
+	for key, value := range n.DependentRequired.Value.FromOldest() {
+		if key.Value == "billingAddress" {
+			assert.Equal(t, []string{"street_address", "locality", "region"}, value.Value)
+			foundBilling = true
+		}
+		if key.Value == "creditCard" {
+			assert.Equal(t, []string{"billing_address"}, value.Value)
+			foundCredit = true
+		}
+	}
+	assert.True(t, foundBilling)
+	assert.True(t, foundCredit)
+}
+
+func TestSchema_Build_DependentRequired_Empty(t *testing.T) {
+	yml := `type: object
+description: something object
+properties:
+  name:
+    type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Check that DependentRequired is empty
+	assert.Nil(t, n.DependentRequired.Value)
+}
+
+func TestSchema_Build_DependentRequired_EmptyArray(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  billingAddress: []`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Check that DependentRequired has empty array (nil is equivalent to empty slice in Go)
+	assert.NotNil(t, n.DependentRequired.Value)
+	found := false
+	for key, value := range n.DependentRequired.Value.FromOldest() {
+		if key.Value == "billingAddress" {
+			assert.Empty(t, value.Value) // Use Empty() which handles both nil and empty slices
+			found = true
+		}
+	}
+	assert.True(t, found)
+}
+
+func TestSchema_Build_DependentRequired_InvalidValue_NotArray(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  billingAddress: "not_an_array"`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependentRequired value must be an array")
+}
+
+func TestSchema_Build_DependentRequired_InvalidValue_NonStringArrayItem(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  billingAddress:
+    - street_address
+    - nested:
+        invalid: true  # This should be a string, not an object`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Schema
+	err := n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "dependentRequired array items must be strings")
+}
+
+func TestSchema_Hash_IncludesDependentRequired(t *testing.T) {
+	yml1 := `type: object
+dependentRequired:
+  billingAddress:
+    - street_address
+    - locality`
+
+	yml2 := `type: object
+dependentRequired:
+  billingAddress:
+    - street_address
+    - region`
+
+	// Parse first schema
+	var idxNode1 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml1), &idxNode1)
+	idx1 := index.NewSpecIndex(&idxNode1)
+	var schema1 Schema
+	_ = schema1.Build(context.Background(), idxNode1.Content[0], idx1)
+
+	// Parse second schema
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+	var schema2 Schema
+	_ = schema2.Build(context.Background(), idxNode2.Content[0], idx2)
+
+	// Hashes should be different because DependentRequired is different
+	hash1 := schema1.Hash()
+	hash2 := schema2.Hash()
+	assert.NotEqual(t, hash1, hash2)
+}
+
+func TestSchema_Hash_SameDependentRequired(t *testing.T) {
+	yml := `type: object
+dependentRequired:
+  billingAddress:
+    - street_address
+    - locality`
+
+	// Parse same schema twice
+	var idxNode1 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode1)
+	idx1 := index.NewSpecIndex(&idxNode1)
+	var schema1 Schema
+	_ = schema1.Build(context.Background(), idxNode1.Content[0], idx1)
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+	var schema2 Schema
+	_ = schema2.Build(context.Background(), idxNode2.Content[0], idx2)
+
+	// Hashes should be the same
+	hash1 := schema1.Hash()
+	hash2 := schema2.Hash()
+	assert.Equal(t, hash1, hash2)
+}

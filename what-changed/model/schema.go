@@ -46,6 +46,7 @@ type SchemaChanges struct {
 	UnevaluatedItemsChanges      *SchemaChanges            `json:"unevaluatedItems,omitempty" yaml:"unevaluatedItems,omitempty"`
 	UnevaluatedPropertiesChanges *SchemaChanges            `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
 	DependentSchemasChanges      map[string]*SchemaChanges `json:"dependentSchemas,omitempty" yaml:"dependentSchemas,omitempty"`
+	DependentRequiredChanges     []*Change                 `json:"dependentRequired,omitempty" yaml:"dependentRequired,omitempty"`
 	PatternPropertiesChanges     map[string]*SchemaChanges `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 }
 
@@ -67,6 +68,9 @@ func (s *SchemaChanges) GetPropertyChanges() []*Change {
 				changes = append(changes, s.DependentSchemasChanges[n].GetAllChanges()...)
 			}
 		}
+	}
+	if len(s.DependentRequiredChanges) > 0 {
+		changes = append(changes, s.DependentRequiredChanges...)
 	}
 	if s.PatternPropertiesChanges != nil {
 		for n := range s.PatternPropertiesChanges {
@@ -163,6 +167,9 @@ func (s *SchemaChanges) GetAllChanges() []*Change {
 			}
 		}
 	}
+	if len(s.DependentRequiredChanges) > 0 {
+		changes = append(changes, s.DependentRequiredChanges...)
+	}
 	if s.PatternPropertiesChanges != nil {
 		for n := range s.PatternPropertiesChanges {
 			if s.PatternPropertiesChanges[n] != nil {
@@ -256,6 +263,9 @@ func (s *SchemaChanges) TotalChanges() int {
 			t += s.DependentSchemasChanges[n].TotalChanges()
 		}
 	}
+	if len(s.DependentRequiredChanges) > 0 {
+		t += len(s.DependentRequiredChanges)
+	}
 	if s.PatternPropertiesChanges != nil {
 		for n := range s.PatternPropertiesChanges {
 			t += s.PatternPropertiesChanges[n].TotalChanges()
@@ -340,6 +350,14 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	if s.DependentSchemasChanges != nil {
 		for n := range s.DependentSchemasChanges {
 			t += s.DependentSchemasChanges[n].TotalBreakingChanges()
+		}
+	}
+	if len(s.DependentRequiredChanges) > 0 {
+		// Count breaking changes in dependent required changes
+		for _, change := range s.DependentRequiredChanges {
+			if change.Breaking {
+				t++
+			}
 		}
 	}
 	if s.PatternPropertiesChanges != nil {
@@ -501,6 +519,20 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 
 		deps := checkMappedSchemaOfASchema(lDepSchemas, rDepSchemas, &changes)
 		sc.DependentSchemasChanges = deps
+
+		// Check dependent required changes
+		var lDepRequired, rDepRequired *orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]]
+		if lSchema != nil {
+			lDepRequired = lSchema.DependentRequired.Value
+		}
+		if rSchema != nil {
+			rDepRequired = rSchema.DependentRequired.Value
+		}
+
+		depRequiredChanges := checkDependentRequiredChanges(lDepRequired, rDepRequired)
+		if len(depRequiredChanges) > 0 {
+			sc.DependentRequiredChanges = depRequiredChanges
+		}
 
 		patterns := checkMappedSchemaOfASchema(lPattProp, rPattProp, &changes)
 		sc.PatternPropertiesChanges = patterns
@@ -1668,4 +1700,87 @@ func extractSchemaChanges(
 			}
 		}
 	}
+}
+
+// checkDependentRequiredChanges compares two DependentRequired maps and returns any changes found
+func checkDependentRequiredChanges(
+	left, right *orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]],
+) []*Change {
+	// If both are nil, no changes
+	if left == nil && right == nil {
+		return nil
+	}
+
+	var changes []*Change
+
+	leftMap := make(map[string][]string)
+	rightMap := make(map[string][]string)
+
+	// Build left map
+	if left != nil {
+		for prop, reqArray := range left.FromOldest() {
+			leftMap[prop.Value] = reqArray.Value
+		}
+	}
+
+	// Build right map
+	if right != nil {
+		for prop, reqArray := range right.FromOldest() {
+			rightMap[prop.Value] = reqArray.Value
+		}
+	}
+
+	// Check for property additions and modifications
+	for prop, rightReqs := range rightMap {
+		if leftReqs, exists := leftMap[prop]; exists {
+			// Property exists in both, check if requirements changed
+			if !slicesEqual(leftReqs, rightReqs) {
+				CreateChange(&changes, Modified, prop,
+					getNodeForProperty(left, prop), getNodeForProperty(right, prop),
+					true, leftReqs, rightReqs)
+			}
+		} else {
+			// Property added
+			CreateChange(&changes, PropertyAdded, prop,
+				nil, getNodeForProperty(right, prop),
+				false, nil, rightReqs)
+		}
+	}
+
+	// Check for property removals
+	for prop, leftReqs := range leftMap {
+		if _, exists := rightMap[prop]; !exists {
+			CreateChange(&changes, PropertyRemoved, prop,
+				getNodeForProperty(left, prop), nil,
+				true, leftReqs, nil)
+		}
+	}
+
+	return changes
+}
+
+// slicesEqual compares two string slices for equality (order matters)
+func slicesEqual(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if b[i] != v {
+			return false
+		}
+	}
+	return true
+}
+
+// getNodeForProperty gets the YAML node for a specific property in a DependentRequired map
+func getNodeForProperty(depMap *orderedmap.Map[low.KeyReference[string], low.ValueReference[[]string]], prop string) *yaml.Node {
+	if depMap == nil {
+		return nil
+	}
+	for key, value := range depMap.FromOldest() {
+		if key.Value == prop {
+			return value.ValueNode
+		}
+	}
+	return nil
 }
