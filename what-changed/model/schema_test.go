@@ -4187,3 +4187,53 @@ components:
 		assert.NotNil(t, node)
 	}
 }
+
+func TestSchemaChanges_GetPropertyChanges_WithDependentRequired(t *testing.T) {
+	// This test specifically targets lines 73-74 in GetPropertyChanges() method
+	left := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      properties:
+        name:
+          type: string
+        billing:
+          type: object`
+
+	right := `openapi: 3.1.0
+components:
+  schemas:
+    Something:
+      type: object
+      properties:
+        name:
+          type: string
+        billing:
+          type: object
+      dependentRequired:
+        billing: ["name"]`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Greater(t, len(changes.DependentRequiredChanges), 0)
+	
+	// This specifically calls GetPropertyChanges() which contains lines 73-74
+	propertyChanges := changes.GetPropertyChanges()
+	assert.Greater(t, len(propertyChanges), 0)
+	
+	// Verify that DependentRequired changes are included in property changes
+	foundDepReq := false
+	for _, change := range propertyChanges {
+		if change.Property == "billing" {
+			foundDepReq = true
+			break
+		}
+	}
+	assert.True(t, foundDepReq)
+}
