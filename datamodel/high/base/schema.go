@@ -60,6 +60,7 @@ type Schema struct {
 	Else              *SchemaProxy                          `json:"else,omitempty" yaml:"else,omitempty"`
 	Then              *SchemaProxy                          `json:"then,omitempty" yaml:"then,omitempty"`
 	DependentSchemas  *orderedmap.Map[string, *SchemaProxy] `json:"dependentSchemas,omitempty" yaml:"dependentSchemas,omitempty"`
+	DependentRequired *orderedmap.Map[string, []string]     `json:"dependentRequired,omitempty" yaml:"dependentRequired,omitempty"`
 	PatternProperties *orderedmap.Map[string, *SchemaProxy] `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
 	PropertyNames     *SchemaProxy                          `json:"propertyNames,omitempty" yaml:"propertyNames,omitempty"`
 	UnevaluatedItems  *SchemaProxy                          `json:"unevaluatedItems,omitempty" yaml:"unevaluatedItems,omitempty"`
@@ -384,6 +385,15 @@ func NewSchema(schema *base.Schema) *Schema {
 	dependents := orderedmap.New[string, *SchemaProxy]()
 	for name, schemaProxy := range schema.DependentSchemas.Value.FromOldest() {
 		buildProps(name, schemaProxy, dependents, 1)
+	}
+
+	// Handle DependentRequired
+	if schema.DependentRequired.Value != nil {
+		depRequired := orderedmap.New[string, []string]()
+		for prop, requiredProps := range schema.DependentRequired.Value.FromOldest() {
+			depRequired.Set(prop.Value, requiredProps.Value)
+		}
+		s.DependentRequired = depRequired
 	}
 
 	patternProps := orderedmap.New[string, *SchemaProxy]()

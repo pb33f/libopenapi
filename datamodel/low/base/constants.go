@@ -27,6 +27,7 @@ const (
 	LicenseLabel               = "license"
 	PropertiesLabel            = "properties"
 	DependentSchemasLabel      = "dependentSchemas"
+	DependentRequiredLabel     = "dependentRequired"
 	PatternPropertiesLabel     = "patternProperties"
 	IfLabel                    = "if"
 	ElseLabel                  = "else"
