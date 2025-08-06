@@ -4,8 +4,12 @@
 package index
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -18,9 +22,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"context"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,11 +42,200 @@ const (
 	RS
 	ZIG
 	RB
+	UNKNOWN
 	UNSUPPORTED
 )
 
 // FileExtension is the type of file extension.
 type FileExtension int
+
+// contentDetectionCache is a simple cache for content type detection results
+// to avoid repeated fetches of the same URL
+var contentDetectionCache = make(map[string]FileExtension)
+var contentDetectionMutex sync.RWMutex
+
+// detectContentType attempts to identify if the data contains JSON or YAML content
+// by analyzing patterns in the first ~1KB of data
+func detectContentType(data []byte) FileExtension {
+	if len(data) == 0 {
+		return UNSUPPORTED
+	}
+
+	// Trim leading whitespace
+	data = bytes.TrimLeft(data, " \t\r\n")
+	if len(data) == 0 {
+		return UNSUPPORTED
+	}
+
+	// Check for JSON patterns
+	if data[0] == '{' || data[0] == '[' {
+		// Quick validation - count braces/brackets to ensure it's not malformed
+		if data[0] == '{' {
+			openBraces := 0
+			for _, b := range data {
+				if b == '{' {
+					openBraces++
+				} else if b == '}' {
+					openBraces--
+				}
+			}
+			if openBraces >= 0 {
+				return JSON
+			}
+		} else if data[0] == '[' {
+			openBrackets := 0
+			for _, b := range data {
+				if b == '[' {
+					openBrackets++
+				} else if b == ']' {
+					openBrackets--
+				}
+			}
+			if openBrackets >= 0 {
+				return JSON
+			}
+		}
+	}
+
+	// Check for YAML patterns
+	dataStr := string(data)
+	// YAML document markers
+	if strings.HasPrefix(dataStr, "---") {
+		return YAML
+	}
+	
+	// Look for key-value patterns common in YAML
+	lines := strings.Split(dataStr, "\n")
+	yamlPatterns := 0
+	for i, line := range lines {
+		if i > 10 {
+			break // Only check first few lines for efficiency
+		}
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue // Skip empty lines and comments
+		}
+		// Look for key: value patterns
+		if strings.Contains(line, ":") && !strings.HasPrefix(line, "http") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				// Ensure it looks like a YAML key (not a URL)
+				if key != "" && !strings.Contains(key, " ") && !strings.Contains(key, "/") {
+					yamlPatterns++
+				}
+			}
+		}
+	}
+	
+	// If we found multiple YAML-like patterns, it's probably YAML
+	if yamlPatterns >= 2 {
+		return YAML
+	}
+
+	return UNSUPPORTED
+}
+
+// fetchWithRetry fetches content from URL with retry logic
+func fetchWithRetry(url string, handler utils.RemoteURLHandler, maxSize int, logger *slog.Logger) ([]byte, error) {
+	const maxRetries = 3
+	const retryDelay = time.Second
+	
+	var lastErr error
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		if logger != nil {
+			logger.Debug("fetching content for type detection", "url", url, "attempt", attempt)
+		}
+		
+		resp, err := handler(url)
+		if err != nil {
+			lastErr = err
+			if attempt < maxRetries {
+				time.Sleep(retryDelay)
+				continue
+			}
+			break
+		}
+		defer resp.Body.Close()
+		
+		if resp.StatusCode != http.StatusOK {
+			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
+			if attempt < maxRetries {
+				time.Sleep(retryDelay)
+				continue
+			}
+			break
+		}
+		
+		// Create a limited reader to avoid reading huge files
+		limitedReader := io.LimitReader(resp.Body, int64(maxSize))
+		data, err := io.ReadAll(limitedReader)
+		if err != nil {
+			lastErr = err
+			if attempt < maxRetries {
+				time.Sleep(retryDelay)
+				continue
+			}
+			break
+		}
+		
+		return data, nil
+	}
+	
+	return nil, fmt.Errorf("failed to fetch after %d attempts: %v", maxRetries, lastErr)
+}
+
+// detectRemoteContentType fetches a small portion of remote content to determine its type
+func detectRemoteContentType(url string, handler utils.RemoteURLHandler, logger *slog.Logger) FileExtension {
+	// Check cache first
+	contentDetectionMutex.RLock()
+	if cached, exists := contentDetectionCache[url]; exists {
+		contentDetectionMutex.RUnlock()
+		return cached
+	}
+	contentDetectionMutex.RUnlock()
+
+	// Fetch content with retry logic
+	const maxDetectionSize = 2048 // 2KB should be enough for detection
+	data, err := fetchWithRetry(url, handler, maxDetectionSize, logger)
+	if err != nil {
+		if logger != nil {
+			logger.Warn("failed to fetch content for type detection", "url", url, "error", err)
+		}
+		// Cache the failure to avoid repeated attempts
+		contentDetectionMutex.Lock()
+		contentDetectionCache[url] = UNSUPPORTED
+		contentDetectionMutex.Unlock()
+		return UNSUPPORTED
+	}
+
+	// Detect content type
+	detectedType := detectContentType(data)
+	
+	// Cache the result
+	contentDetectionMutex.Lock()
+	contentDetectionCache[url] = detectedType
+	contentDetectionMutex.Unlock()
+	
+	if logger != nil {
+		typeStr := "UNSUPPORTED"
+		if detectedType == JSON {
+			typeStr = "JSON"
+		} else if detectedType == YAML {
+			typeStr = "YAML"
+		}
+		logger.Debug("detected content type", "url", url, "type", typeStr)
+	}
+	
+	return detectedType
+}
+
+// clearContentDetectionCache clears the content detection cache
+func clearContentDetectionCache() {
+	contentDetectionMutex.Lock()
+	contentDetectionCache = make(map[string]FileExtension)
+	contentDetectionMutex.Unlock()
+}
 
 // RolodexFSWithContext is an interface like fs.FS, but with a context parameter for the Open method.
 type RolodexFSWithContext interface {
@@ -364,6 +554,47 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	}
 
 	fileExt := ExtractFileType(remoteParsedURL.Path)
+
+	// Handle unknown file extensions with content detection if enabled
+	if fileExt == UNKNOWN {
+		if i.indexConfig != nil && i.indexConfig.AllowUnknownExtensionContentDetection {
+			if i.logger != nil {
+				i.logger.Debug("[rolodex remote loader] attempting content detection for unknown file extension", "url", remoteParsedURL.String())
+			}
+			// Attempt to detect content type
+			fileExt = detectRemoteContentType(remoteParsedURL.String(), i.RemoteHandlerFunc, i.logger)
+			if fileExt == UNSUPPORTED {
+				// Clear cache entry on completion to keep memory usage low
+				defer func() {
+					contentDetectionMutex.Lock()
+					delete(contentDetectionCache, remoteParsedURL.String())
+					contentDetectionMutex.Unlock()
+				}()
+				
+				i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
+				if i.logger != nil {
+					i.logger.Warn("[rolodex remote loader] content detection failed, unsupported content type", "url", remoteParsedURL.String())
+				}
+				return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
+			}
+			if i.logger != nil {
+				typeStr := "UNSUPPORTED"
+				if fileExt == JSON {
+					typeStr = "JSON"
+				} else if fileExt == YAML {
+					typeStr = "YAML"
+				}
+				i.logger.Debug("[rolodex remote loader] content detection successful", "url", remoteParsedURL.String(), "detectedType", typeStr)
+			}
+		} else {
+			// Content detection disabled, treat as unsupported
+			i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
+			if i.logger != nil {
+				i.logger.Warn("[rolodex remote loader] unknown file extension and content detection disabled", "file", remoteURL, "remoteURL", remoteParsedURL.String())
+			}
+			return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
+		}
+	}
 
 	if fileExt == UNSUPPORTED {
 		i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
