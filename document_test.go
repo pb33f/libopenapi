@@ -1521,3 +1521,49 @@ func TestDocument_RecursiveSchemaHash(t *testing.T) {
 	hash := schema.Schema().GoLow().Hash()
 	assert.NotEmpty(t, hash)
 }
+
+// https://github.com/pb33f/libopenapi/issues/426
+func TestDocument_MinimumZero(t *testing.T) {
+	d := `openapi: "3.1"`
+
+	doc, err := NewDocument([]byte(d))
+	if err != nil {
+		panic(err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	if len(errs) > 0 {
+		panic(errs)
+	}
+
+	schema := &base.Schema{
+		Type:       []string{"object"},
+		Properties: orderedmap.New[string, *base.SchemaProxy](),
+	}
+
+	result.Model.Components = &v3high.Components{Schemas: orderedmap.New[string, *base.SchemaProxy]()}
+
+	minimum := float64(0)
+	fieldSchema := &base.Schema{
+		Type:    []string{"number"},
+		Minimum: &minimum,
+	}
+
+	schema.Properties.Set("minZeroField", base.CreateSchemaProxy(fieldSchema))
+
+	result.Model.Components.Schemas.Set("minZeroSchema", base.CreateSchemaProxy(schema))
+
+	rend, _ := result.Model.Render()
+
+	expected := `openapi: "3.1"
+components:
+    schemas:
+        minZeroSchema:
+            type: object
+            properties:
+                minZeroField:
+                    type: number
+                    minimum: 0`
+
+	assert.Equal(t, expected, strings.TrimSpace(string(rend)))
+}
