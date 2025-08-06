@@ -114,6 +114,9 @@ func TestMediaType_Build_Fail_Encoding(t *testing.T) {
 }
 
 func TestMediaType_Hash(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	
 	yml := `schema:
   type: string
 example: a thing
