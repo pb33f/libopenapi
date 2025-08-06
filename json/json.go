@@ -51,7 +51,7 @@ func handleMappingNode(node *yaml.Node) (any, error) {
 		if reflect.TypeOf(kv).Kind() != reflect.String {
 			keyData, err := json.Marshal(kv)
 			if err != nil {
-				return nil, err
+				return nil, err // unreachable code in test case, but kept for safety
 			}
 			kv = string(keyData)
 		}
@@ -71,7 +71,7 @@ func handleSequenceNode(node *yaml.Node) (any, error) {
 	var s []yaml.Node
 
 	if err := node.Decode(&s); err != nil {
-		return nil, err
+		return nil, err // unreachable code in test case, but kept for safety
 	}
 
 	v := make([]any, len(s))
