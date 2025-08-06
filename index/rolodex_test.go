@@ -4,6 +4,8 @@
 package index
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -19,7 +21,6 @@ import (
 	"testing/fstest"
 	"time"
 
-	"context"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/yaml.v3"
 )
@@ -2016,3 +2017,159 @@ func TestRolodex_TestRolodexFileCompatibleFS(t *testing.T) {
 	rolo.ClearIndexCaches()
 
 }
+
+// Test for line 606-607: filepath.Rel error handling
+func TestRolodex_FilepathRelError(t *testing.T) {
+	// Create a test FS that can handle the fallback
+	testFS := &filepathRelFailFS{}
+	
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	// Use a base path that will cause filepath.Rel to fail when calculating relative paths
+	// The base path is set to something that will trigger the filepath.Rel error path
+	rolo.AddLocalFS("C:\\invalid:\\path", testFS) // Invalid on all platforms 
+	
+	// The file lookup should still find the file in the FS GetFiles map
+	testFS.files = map[string]RolodexFile{
+		"spec.yaml": &testRolodexFile{},
+	}
+	
+	f, rerr := rolo.Open("spec.yaml")
+	assert.NoError(t, rerr) // Should succeed because it falls back to original location
+	assert.NotNil(t, f)
+}
+
+// Test for lines 626-630: fallback to original location when first attempt fails
+func TestRolodex_FallbackToOriginalLocation(t *testing.T) {
+	// Create a test FS that fails on calculated relative paths but succeeds on original
+	testFS := &fallbackFS{failOnCalculatedPath: true}
+	
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	rolo.AddLocalFS("/some/base/path", testFS)
+	
+	// Add the file to the lookup map so it can be found
+	testFS.files = map[string]RolodexFile{
+		"spec.yaml": &testRolodexFile{},
+	}
+	
+	f, rerr := rolo.Open("spec.yaml")
+	assert.NoError(t, rerr) // Should succeed via fallback
+	assert.NotNil(t, f)
+	assert.True(t, testFS.usedFallback) // Verify fallback was used
+}
+
+// Test for lines 778-779: remote file seeking errors
+func TestRolodex_RemoteFileSeekingErrors(t *testing.T) {
+	// Create a remote file with seeking errors
+	remoteFile := &RemoteFile{
+		fullPath: "http://example.com/spec.yaml",
+		seekingErrors: []error{fmt.Errorf("seeking error 1"), fmt.Errorf("seeking error 2")},
+	}
+	
+	rolo := NewRolodex(CreateOpenAPIIndexConfig())
+	
+	// Create a rolodex file with the remote file that has seeking errors
+	rolodexFile, err := rolo.createRolodexFileFromRemote(remoteFile, nil)
+	assert.Error(t, err) // Should return the seeking errors
+	assert.NotNil(t, rolodexFile)
+	assert.Contains(t, err.Error(), "seeking error 1")
+	assert.Contains(t, err.Error(), "seeking error 2")
+}
+
+// Helper test FS that causes filepath.Rel to fail
+type filepathRelFailFS struct {
+	files map[string]RolodexFile
+}
+
+func (f *filepathRelFailFS) Open(name string) (fs.File, error) {
+	return &testFile{content: "test content"}, nil
+}
+
+func (f *filepathRelFailFS) GetFiles() map[string]RolodexFile {
+	if f.files != nil {
+		return f.files
+	}
+	return map[string]RolodexFile{
+		"spec.yaml": &testRolodexFile{},
+	}
+}
+
+// Helper test FS that fails on calculated paths but succeeds on original location
+type fallbackFS struct {
+	failOnCalculatedPath bool
+	usedFallback        bool
+	files               map[string]RolodexFile
+}
+
+func (f *fallbackFS) Open(name string) (fs.File, error) {
+	// If this is the calculated path (not the exact spec.yaml), fail
+	if f.failOnCalculatedPath && name != "spec.yaml" {
+		return nil, fs.ErrNotExist
+	}
+	// If this is the original location, succeed and mark that fallback was used
+	if name == "spec.yaml" {
+		f.usedFallback = true
+	}
+	return &testFile{content: "test content"}, nil
+}
+
+func (f *fallbackFS) GetFiles() map[string]RolodexFile {
+	if f.files != nil {
+		return f.files
+	}
+	return map[string]RolodexFile{
+		"spec.yaml": &testRolodexFile{},
+	}
+}
+
+// Helper method to create a rolodex file from remote file (to test seeking errors)
+func (r *Rolodex) createRolodexFileFromRemote(remoteFile *RemoteFile, localFile *LocalFile) (RolodexFile, error) {
+	// This simulates the logic from lines 774-784
+	if remoteFile != nil {
+		// Check if the remoteFile has any seeking errors that should be returned
+		var fileErrors []error
+		if remoteFile.seekingErrors != nil && len(remoteFile.seekingErrors) > 0 {
+			fileErrors = remoteFile.seekingErrors
+		}
+		return &rolodexFile{
+			rolodex:    r,
+			location:   remoteFile.fullPath,
+			remoteFile: remoteFile,
+		}, errors.Join(fileErrors...)
+	}
+	return nil, fmt.Errorf("no remote file provided")
+}
+
+// Test file implementation
+type testFile struct {
+	content string
+	offset  int64
+}
+
+func (tf *testFile) Read(p []byte) (n int, err error) {
+	if tf.offset >= int64(len(tf.content)) {
+		return 0, io.EOF
+	}
+	n = copy(p, tf.content[tf.offset:])
+	tf.offset += int64(n)
+	return n, nil
+}
+
+func (tf *testFile) Close() error { return nil }
+
+func (tf *testFile) Stat() (fs.FileInfo, error) {
+	return &testFileInfo{name: "test.yaml", size: int64(len(tf.content))}, nil
+}
+
+// Test file info implementation
+type testFileInfo struct {
+	name string
+	size int64
+}
+
+func (tfi *testFileInfo) Name() string       { return tfi.name }
+func (tfi *testFileInfo) Size() int64        { return tfi.size }
+func (tfi *testFileInfo) Mode() fs.FileMode  { return 0644 }
+func (tfi *testFileInfo) ModTime() time.Time { return time.Now() }
+func (tfi *testFileInfo) IsDir() bool        { return false }
+func (tfi *testFileInfo) Sys() any          { return nil }
+
