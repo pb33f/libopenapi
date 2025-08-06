@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareServers(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: a server
 variables:
@@ -50,6 +52,8 @@ variables:
 }
 
 func TestCompareServers_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: a server
 variables:
@@ -88,6 +92,8 @@ variables:
 }
 
 func TestCompareServers_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 variables:
   thing:
@@ -128,6 +134,8 @@ variables:
 }
 
 func TestCompareServers_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 variables:
   thing:
@@ -168,6 +176,8 @@ variables:
 }
 
 func TestCompareServers_Extensions(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 x-coffee: hot`
 
@@ -195,6 +205,8 @@ x-coffee: cold`
 }
 
 func TestCompareServers_NoExtensions(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: a server`
 
@@ -219,6 +231,8 @@ description: a server`
 }
 
 func TestCompareServers_ExtensionAddedRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io

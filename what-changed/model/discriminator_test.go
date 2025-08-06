@@ -13,6 +13,8 @@ import (
 )
 
 func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken`
 
 	right := `propertyName: nuggets`
@@ -35,6 +37,8 @@ func TestCompareDiscriminator_PropertyNameChanged(t *testing.T) {
 }
 
 func TestCompareDiscriminator_PropertyNameRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `mapping:
   cake: burger
 propertyName: chicken`
@@ -60,6 +64,8 @@ propertyName: chicken`
 }
 
 func TestCompareDiscriminator_PropertyNameAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `mapping:
   cake: burger
 propertyName: chicken`
@@ -85,6 +91,8 @@ propertyName: chicken`
 }
 
 func TestCompareDiscriminator_MappingAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken`
 
 	right := `propertyName: chicken
@@ -119,6 +127,8 @@ mapping:
 }
 
 func TestCompareDiscriminator_MappingRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing
@@ -147,6 +157,8 @@ mapping:
 }
 
 func TestCompareDiscriminator_SingleMappingAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing`
@@ -175,6 +187,8 @@ mapping:
 }
 
 func TestCompareDiscriminator_MultiMappingAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing`
@@ -212,6 +226,8 @@ mapping:
 }
 
 func TestCompareDiscriminator_SingleMappingModified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken
 mapping:
   chuffing: puffing`
@@ -243,6 +259,8 @@ mapping:
 }
 
 func TestCompareDiscriminator_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `propertyName: chicken`
 
 	right := `propertyName: chicken`

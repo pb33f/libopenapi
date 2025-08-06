@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareResponses_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coffee: roasty
 default:
   schema:
@@ -47,6 +49,8 @@ default:
 }
 
 func TestCompareResponses_V2_ModifyCode(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `200:
   description: OK response
   schema:
@@ -88,6 +92,8 @@ x-ting: tang`
 }
 
 func TestCompareResponses_V2_AddSchema(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-hack: code
 200:
   description: OK response
@@ -128,6 +134,8 @@ x-apple: pie`
 }
 
 func TestCompareResponses_V2_RemoveSchema(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `200:
   description: OK response
   schema:
@@ -164,6 +172,8 @@ func TestCompareResponses_V2_RemoveSchema(t *testing.T) {
 }
 
 func TestCompareResponses_V2_AddDefault(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `200:
   description: OK response
   schema:
@@ -198,6 +208,8 @@ default:
 }
 
 func TestCompareResponses_V2_RemoveDefault(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `200:
   description: OK response
   schema:
@@ -232,6 +244,8 @@ default:
 }
 
 func TestCompareResponses_V2_ModifyDefault(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `200:
   description: OK response
   schema:
@@ -269,6 +283,8 @@ default:
 }
 
 func TestCompareResponses_V3(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coffee: roasty
 default:
   description: a thing
@@ -296,6 +312,8 @@ default:
 }
 
 func TestCompareResponses_V3_ModifyCode(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coffee: roasty
 default:
   description: a thing
@@ -331,6 +349,8 @@ x-coffee: yum
 }
 
 func TestCompareResponses_V3_AddDefault(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coffee: roasty
 200:
   description: OK response
@@ -365,6 +385,8 @@ default:
 }
 
 func TestCompareResponses_V3_RemoveDefault(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coffee: roasty
 200:
   description: OK response
@@ -399,6 +421,8 @@ default:
 }
 
 func TestCompareResponses_V3_ModifyDefault(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coffee: roasty
 200:
   description: OK response
@@ -435,6 +459,8 @@ default:
 }
 
 func TestCompareResponses_V3_AddRemoveMediaType(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `200:
   content:
     application/json:

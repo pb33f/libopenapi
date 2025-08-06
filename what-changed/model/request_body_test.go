@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareRequestBodies(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something
 required: true
 content:
@@ -46,6 +48,8 @@ content:
 }
 
 func TestCompareRequestBodies_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	cleanHashCacheForTest(t)
 	
 	left := `description: something

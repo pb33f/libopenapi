@@ -8,8 +8,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
 	"io"
 	"io/fs"
 	"log/slog"
@@ -21,6 +19,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/utils"
 
 	"gopkg.in/yaml.v3"
 )
@@ -42,7 +43,6 @@ const (
 	RS
 	ZIG
 	RB
-	UNKNOWN
 	UNSUPPORTED
 )
 
@@ -103,7 +103,7 @@ func detectContentType(data []byte) FileExtension {
 	if strings.HasPrefix(dataStr, "---") {
 		return YAML
 	}
-	
+
 	// Look for key-value patterns common in YAML
 	lines := strings.Split(dataStr, "\n")
 	yamlPatterns := 0
@@ -127,7 +127,7 @@ func detectContentType(data []byte) FileExtension {
 			}
 		}
 	}
-	
+
 	// If we found multiple YAML-like patterns, it's probably YAML
 	if yamlPatterns >= 2 {
 		return YAML
@@ -140,13 +140,13 @@ func detectContentType(data []byte) FileExtension {
 func fetchWithRetry(url string, handler utils.RemoteURLHandler, maxSize int, logger *slog.Logger) ([]byte, error) {
 	const maxRetries = 3
 	const retryDelay = time.Second
-	
+
 	var lastErr error
 	for attempt := 1; attempt <= maxRetries; attempt++ {
 		if logger != nil {
 			logger.Debug("fetching content for type detection", "url", url, "attempt", attempt)
 		}
-		
+
 		resp, err := handler(url)
 		if err != nil {
 			lastErr = err
@@ -157,7 +157,7 @@ func fetchWithRetry(url string, handler utils.RemoteURLHandler, maxSize int, log
 			break
 		}
 		defer resp.Body.Close()
-		
+
 		if resp.StatusCode != http.StatusOK {
 			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, resp.Status)
 			if attempt < maxRetries {
@@ -166,7 +166,7 @@ func fetchWithRetry(url string, handler utils.RemoteURLHandler, maxSize int, log
 			}
 			break
 		}
-		
+
 		// Create a limited reader to avoid reading huge files
 		limitedReader := io.LimitReader(resp.Body, int64(maxSize))
 		data, err := io.ReadAll(limitedReader)
@@ -178,10 +178,10 @@ func fetchWithRetry(url string, handler utils.RemoteURLHandler, maxSize int, log
 			}
 			break
 		}
-		
+
 		return data, nil
 	}
-	
+
 	return nil, fmt.Errorf("failed to fetch after %d attempts: %v", maxRetries, lastErr)
 }
 
@@ -211,12 +211,12 @@ func detectRemoteContentType(url string, handler utils.RemoteURLHandler, logger 
 
 	// Detect content type
 	detectedType := detectContentType(data)
-	
+
 	// Cache the result
 	contentDetectionMutex.Lock()
 	contentDetectionCache[url] = detectedType
 	contentDetectionMutex.Unlock()
-	
+
 	if logger != nil {
 		typeStr := "UNSUPPORTED"
 		if detectedType == JSON {
@@ -226,7 +226,7 @@ func detectRemoteContentType(url string, handler utils.RemoteURLHandler, logger 
 		}
 		logger.Debug("detected content type", "url", url, "type", typeStr)
 	}
-	
+
 	return detectedType
 }
 
@@ -555,8 +555,8 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 
 	fileExt := ExtractFileType(remoteParsedURL.Path)
 
-	// Handle unknown file extensions with content detection if enabled
-	if fileExt == UNKNOWN {
+	// Handle unsupported file extensions with content detection if enabled
+	if fileExt == UNSUPPORTED {
 		if i.indexConfig != nil && i.indexConfig.AllowUnknownExtensionContentDetection {
 			if i.logger != nil {
 				i.logger.Debug("[rolodex remote loader] attempting content detection for unknown file extension", "url", remoteParsedURL.String())
@@ -570,7 +570,7 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 					delete(contentDetectionCache, remoteParsedURL.String())
 					contentDetectionMutex.Unlock()
 				}()
-				
+
 				i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
 				if i.logger != nil {
 					i.logger.Warn("[rolodex remote loader] content detection failed, unsupported content type", "url", remoteParsedURL.String())
@@ -594,14 +594,6 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 			}
 			return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 		}
-	}
-
-	if fileExt == UNSUPPORTED {
-		i.remoteErrors = append(i.remoteErrors, fs.ErrInvalid)
-		if i.logger != nil {
-			i.logger.Warn("[rolodex remote loader] unsupported file in reference will be ignored", "file", remoteURL, "remoteURL", remoteParsedURL.String())
-		}
-		return nil, &fs.PathError{Op: "open", Path: remoteURL, Err: fs.ErrInvalid}
 	}
 
 	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}

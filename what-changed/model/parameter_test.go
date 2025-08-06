@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareParameters(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: a param`
 	right := `name: a param`
 
@@ -36,6 +38,8 @@ func TestCompareParameters(t *testing.T) {
 }
 
 func TestCompareParameters_V3(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: a param`
 	right := `name: a parama`
 
@@ -58,6 +62,8 @@ func TestCompareParameters_V3(t *testing.T) {
 }
 
 func TestCompareParameters_V3_Schema(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `schema:
   description: something new`
 	right := `schema:
@@ -84,6 +90,8 @@ func TestCompareParameters_V3_Schema(t *testing.T) {
 }
 
 func TestCompareParameters_V3_SchemaAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hello`
 	right := `description: hello
 schema:
@@ -110,6 +118,8 @@ schema:
 }
 
 func TestCompareParameters_V3_SchemaRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hello`
 	right := `description: hello
 schema:
@@ -136,6 +146,8 @@ schema:
 }
 
 func TestCompareParameters_V3_Extensions(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-thing: thang`
 	right := `x-thing: dang`
 
@@ -160,6 +172,8 @@ func TestCompareParameters_V3_Extensions(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ExampleChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `example: a string`
 	right := `example:
  now: an object`
@@ -184,6 +198,8 @@ func TestCompareParameters_V3_ExampleChange(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ExampleEqual(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `example: a string`
 	right := `example: a string`
 
@@ -205,6 +221,8 @@ func TestCompareParameters_V3_ExampleEqual(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ExampleAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something`
 	right := `description: something
 example: a string`
@@ -230,6 +248,8 @@ example: a string`
 }
 
 func TestCompareParameters_V3_ExampleRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something`
 	right := `description: something
 example: a string`
@@ -255,6 +275,8 @@ example: a string`
 }
 
 func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	cleanHashCacheForTest(t)
 	
 	left := `examples:
@@ -285,6 +307,8 @@ func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ExamplesAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `examples:
   anExample:
     value: I love magic herbs
@@ -316,6 +340,8 @@ func TestCompareParameters_V3_ExamplesAdded(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `examples:
   anExample:
     value: I love magic herbs
@@ -347,6 +373,8 @@ func TestCompareParameters_V3_ExamplesRemoved(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ContentChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `content:
   application/json:
     schema:
@@ -379,6 +407,8 @@ func TestCompareParameters_V3_ContentChanged(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ContentAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `content:
   application/json:
     schema:
@@ -413,6 +443,8 @@ func TestCompareParameters_V3_ContentAdded(t *testing.T) {
 }
 
 func TestCompareParameters_V2_DefaultChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `default: wat?`
 	right := `default: why?`
 
@@ -436,6 +468,8 @@ func TestCompareParameters_V2_DefaultChange(t *testing.T) {
 }
 
 func TestCompareParameters_V2_DefaultRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hello
 default: wat?`
 	right := `description: hello`
@@ -460,6 +494,8 @@ default: wat?`
 }
 
 func TestCompareParameters_V2_EnumChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `enum:
   - one`
 	right := `enum:
@@ -485,6 +521,8 @@ func TestCompareParameters_V2_EnumChange(t *testing.T) {
 }
 
 func TestCompareParameters_V2_EnumEqual_Reorder(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `enum:
   - one
   - two`
@@ -510,6 +548,8 @@ func TestCompareParameters_V2_EnumEqual_Reorder(t *testing.T) {
 }
 
 func TestCompareParameters_V3_ContentChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something`
 	right := `description: something
 example: a string`
@@ -535,6 +575,8 @@ example: a string`
 }
 
 func TestCompareParameters_V2_Equal(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: a param`
 	right := `name: a param`
 
@@ -556,6 +598,8 @@ func TestCompareParameters_V2_Equal(t *testing.T) {
 }
 
 func TestCompareParameters_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: a param`
 	right := `name: a parama`
 
@@ -577,6 +621,8 @@ func TestCompareParameters_V2(t *testing.T) {
 }
 
 func TestCompareParameters_V2_ItemsChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `items:
   type: string`
 	right := `items:
@@ -603,6 +649,8 @@ func TestCompareParameters_V2_ItemsChange(t *testing.T) {
 }
 
 func TestCompareParameters_V2_ItemsAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something`
 	right := `description: something
 items:
@@ -629,6 +677,8 @@ items:
 }
 
 func TestCompareParameters_V2_ItemsRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something`
 	right := `description: something
 items:
@@ -655,6 +705,8 @@ items:
 }
 
 func TestCompareParameters_V2_Extensions(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-thing: thang`
 	right := `x-thing: dang`
 
@@ -679,6 +731,8 @@ func TestCompareParameters_V2_Extensions(t *testing.T) {
 }
 
 func TestCompareParameters_V3_OptionalToRequired(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `in: query
 name: burgerId
 required: false`
@@ -707,6 +761,8 @@ required: true`
 }
 
 func TestCompareParameters_V2_OptionalToRequired(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `in: query
 name: burgerId
 required: false`
@@ -735,6 +791,8 @@ required: true`
 }
 
 func TestCompareParameters_V3_RequiredToOptional(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `in: query
 name: burgerId
 required: true`
@@ -763,6 +821,8 @@ required: false`
 }
 
 func TestCompareParameters_V2_RequiredToOptional(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `in: query
 name: burgerId
 required: true`

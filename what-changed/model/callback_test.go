@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareCallback(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `'{$request.query.queryUrl}':
     post:
       requestBody:
@@ -46,6 +48,8 @@ func TestCompareCallback(t *testing.T) {
 }
 
 func TestCompareCallback_Add(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `'{$request.query.queryUrl}':
     post:
       requestBody:
@@ -95,6 +99,8 @@ func TestCompareCallback_Add(t *testing.T) {
 }
 
 func TestCompareCallback_Modify(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-pizza: tasty
 '{$request.query.queryUrl}':
     post:
@@ -145,6 +151,8 @@ func TestCompareCallback_Modify(t *testing.T) {
 }
 
 func TestCompareCallback_Remove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `'{$request.query.queryUrl}':
     post:
       requestBody:

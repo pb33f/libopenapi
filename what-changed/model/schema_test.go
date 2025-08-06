@@ -26,6 +26,8 @@ import (
 // in our model, components/definitions will be checked independently for changes
 // and references will be checked only for value changes (points to a different reference)
 func TestCompareSchemas_PropertyModification(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -54,6 +56,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -83,6 +87,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -112,6 +118,8 @@ components:
 }
 
 func TestCompareSchemas_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -137,6 +145,8 @@ components:
 }
 
 func TestCompareSchemas_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -190,6 +200,8 @@ func test_BuildDocv2(l, r string) (*v2.Swagger, *v2.Swagger) {
 }
 
 func TestCompareSchemas_RefIgnore(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -217,6 +229,8 @@ components:
 }
 
 func TestCompareSchemas_RefChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -252,6 +266,8 @@ components:
 }
 
 func TestCompareSchemas_RefToInline(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -284,6 +300,8 @@ components:
 }
 
 func TestCompareSchemas_InlineToRef(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -316,6 +334,8 @@ components:
 }
 
 func TestCompareSchemas_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -343,6 +363,8 @@ components:
 }
 
 func TestCompareSchemas_Identical_Ref(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -370,6 +392,8 @@ components:
 }
 
 func TestCompareSchemas_RequiredAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -405,6 +429,8 @@ components:
 }
 
 func TestCompareSchemas_RequiredRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -436,6 +462,8 @@ components:
 }
 
 func TestCompareSchemas_EnumSimilar(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -459,6 +487,8 @@ components:
 }
 
 func TestCompareSchemas_EnumAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -489,6 +519,8 @@ components:
 }
 
 func TestCompareSchemas_EnumRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -519,6 +551,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -553,6 +587,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -587,6 +623,8 @@ components:
 }
 
 func TestCompareSchemas_If(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -616,6 +654,8 @@ components:
 }
 
 func TestCompareSchemas_If_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -645,6 +685,8 @@ components:
 }
 
 func TestCompareSchemas_If_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -674,6 +716,8 @@ components:
 }
 
 func TestCompareSchemas_Else(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -703,6 +747,8 @@ components:
 }
 
 func TestCompareSchemas_Else_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -732,6 +778,8 @@ components:
 }
 
 func TestCompareSchemas_Else_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -761,6 +809,8 @@ components:
 }
 
 func TestCompareSchemas_Then(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -790,6 +840,8 @@ components:
 }
 
 func TestCompareSchemas_Then_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -819,6 +871,8 @@ components:
 }
 
 func TestCompareSchemas_Then_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -848,6 +902,8 @@ components:
 }
 
 func TestCompareSchemas_DependentSchemas(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -879,6 +935,8 @@ components:
 }
 
 func TestCompareSchemas_PatternProperties(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -910,6 +968,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyNames(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -939,6 +999,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyNames_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -968,6 +1030,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyNames_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -997,6 +1061,8 @@ components:
 }
 
 func TestCompareSchemas_Contains(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1026,6 +1092,8 @@ components:
 }
 
 func TestCompareSchemas_Contains_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1055,6 +1123,8 @@ components:
 }
 
 func TestCompareSchemas_Contains_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1084,6 +1154,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedProperties_Bool(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1110,6 +1182,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedProperties_Bool_Schema(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1137,6 +1211,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedProperties_Schema_Bool(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1164,6 +1240,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedProperties(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1193,6 +1271,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedProperties_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1222,6 +1302,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedProperties_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1251,6 +1333,8 @@ components:
 }
 
 func TestCompareSchemas_AdditionalProperties(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1280,6 +1364,8 @@ components:
 }
 
 func TestCompareSchemas_AdditionalProperties_Boolean(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1307,6 +1393,8 @@ components:
 }
 
 func TestCompareSchemas_AdditionalProperties_Boolean_To_Schema(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1335,6 +1423,8 @@ components:
 }
 
 func TestCompareSchemas_AdditionalProperties_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1364,6 +1454,8 @@ components:
 }
 
 func TestCompareSchemas_AdditionalProperties_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1393,6 +1485,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1422,6 +1516,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedItems_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1451,6 +1547,8 @@ components:
 }
 
 func TestCompareSchemas_UnevaluatedItems_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1480,6 +1578,8 @@ components:
 }
 
 func TestCompareSchemas_ItemsBoolean(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1506,6 +1606,8 @@ components:
 }
 
 func TestCompareSchemas_ItemsAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1533,6 +1635,8 @@ components:
 }
 
 func TestCompareSchemas_ItemsRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1560,6 +1664,8 @@ components:
 }
 
 func TestCompareSchemas_NotAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1588,6 +1694,8 @@ components:
 }
 
 func TestCompareSchemas_NotRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -1616,6 +1724,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1649,6 +1759,8 @@ components:
 }
 
 func TestCompareSchemas_PropertySwap(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1685,6 +1797,8 @@ components:
 }
 
 func TestCompareSchemas_AnyOfModifyAndAddItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1719,6 +1833,8 @@ components:
 }
 
 func TestCompareSchemas_AnyOfModifyAndRemoveItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1753,6 +1869,8 @@ components:
 }
 
 func TestCompareSchemas_AnyOfModified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1784,6 +1902,8 @@ components:
 }
 
 func TestCompareSchemas_OneOfModifyAndAddItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1818,6 +1938,8 @@ components:
 }
 
 func TestCompareSchemas_AllOfModifyAndAddItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1852,6 +1974,8 @@ components:
 }
 
 func TestCompareSchemas_ItemsModifyAndAddItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1886,6 +2010,8 @@ components:
 }
 
 func TestCompareSchemas_ItemsModifyAndAddItemArray(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1920,6 +2046,8 @@ components:
 }
 
 func TestCompareSchemas_NotModifyAndAddItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1954,6 +2082,8 @@ components:
 }
 
 func TestCompareSchemas_DiscriminatorChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -1988,6 +2118,8 @@ components:
 }
 
 func TestCompareSchemas_DiscriminatorAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2020,6 +2152,8 @@ components:
 }
 
 func TestCompareSchemas_DiscriminatorRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2052,6 +2186,8 @@ components:
 }
 
 func TestCompareSchemas_ExternalDocsChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2086,6 +2222,8 @@ components:
 }
 
 func TestCompareSchemas_ExternalDocsAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2118,6 +2256,8 @@ components:
 }
 
 func TestCompareSchemas_ExternalDocsRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2150,6 +2290,8 @@ components:
 }
 
 func TestCompareSchemas_AddExtension(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2180,6 +2322,8 @@ components:
 }
 
 func TestCompareSchemas_ExampleChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2209,6 +2353,8 @@ components:
 }
 
 func TestCompareSchemas_ExampleAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2239,6 +2385,8 @@ components:
 }
 
 func TestCompareSchemas_ExampleRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2269,6 +2417,8 @@ components:
 }
 
 func TestCompareSchemas_ExamplesChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2303,6 +2453,8 @@ components:
 }
 
 func TestCompareSchemas_ExamplesAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2334,6 +2486,8 @@ components:
 }
 
 func TestCompareSchemas_ExamplesAddAndModify(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2371,6 +2525,8 @@ components:
 }
 
 func TestCompareSchemas_ExamplesRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2402,6 +2558,8 @@ components:
 }
 
 func TestCompareSchemas_ExamplesRemoveAndModify(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2439,6 +2597,8 @@ components:
 }
 
 func TestCompareSchemas_XMLChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
  schemas:
@@ -2471,6 +2631,8 @@ components:
 }
 
 func TestCompareSchemas_XMLAdd(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2501,6 +2663,8 @@ components:
 }
 
 func TestCompareSchemas_XMLRemove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
  schemas:
@@ -2530,6 +2694,8 @@ components:
 }
 
 func TestCompareSchemas_SchemaRefChecks(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2570,6 +2736,8 @@ components:
 }
 
 func TestCompareSchemas_SchemaAdditionalPropertiesCheck(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2599,6 +2767,8 @@ components:
 }
 
 func TestCompareSchemas_Schema_DeletePoly(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2632,6 +2802,8 @@ components:
 }
 
 func TestCompareSchemas_Schema_AddExamplesArray_AllOf(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2664,6 +2836,8 @@ components:
 }
 
 func TestCompareSchemas_Schema_AddExampleMap_AllOf(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2698,6 +2872,8 @@ components:
 }
 
 func TestCompareSchemas_Schema_AddExamplesArray(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2730,6 +2906,8 @@ components:
 }
 
 func TestCompareSchemas_Schema_AddExamplesMap(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2764,6 +2942,8 @@ components:
 }
 
 func TestCompareSchemas_Schema_AddExamples(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2823,6 +3003,8 @@ components:
 }
 
 func TestCompareSchemas_CheckIssue_170(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
  schemas:
@@ -2868,21 +3050,29 @@ components:
 }
 
 func TestSchemaChanges_TotalChanges_NoNilPanic(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	var changes *SchemaChanges
 	assert.Equal(t, 0, changes.TotalChanges())
 }
 
 func TestSchemaChanges_TotalBreakingChanges_NoNilPanic(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	var changes *SchemaChanges
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 }
 
 func TestCompareSchemas_Nil(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	assert.Nil(t, CompareSchemas(nil, nil))
 }
 
 // Test for issue https://github.com/pb33f/libopenapi/issues/218
 func TestCompareSchemas_PropertyRefChange_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2910,6 +3100,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyRefChange_IdenticalReverse(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2937,6 +3129,8 @@ components:
 }
 
 func TestCompareSchemas_PropertyRefChange_Fail(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -2966,6 +3160,8 @@ components:
 
 // https://github.com/pb33f/openapi-changes/issues/104
 func TestCompareSchemas_CheckOrderingDoesNotCreateChanges(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3015,6 +3211,8 @@ components:
 
 // https://github.com/pb33f/openapi-changes/issues/108
 func TestCompareSchemas_CheckRequiredOrdering(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3053,6 +3251,8 @@ components:
 }
 
 func TestCompareSchemas_CheckEnums(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3094,6 +3294,8 @@ components:
 
 // https://github.com/pb33f/openapi-changes/issues/160
 func TestCompareSchemas_CheckAddProp(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3133,6 +3335,8 @@ components:
 
 // https://github.com/pb33f/openapi-changes/issues/177
 func TestCompareSchemas_CheckOneOfIdenticalChange(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3180,6 +3384,8 @@ components:
 }
 
 func TestCompareSchemas_TestSchemaLockIssue(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3226,6 +3432,8 @@ components:
 }
 
 func TestCompareSchemas_TestGetPropertiesChanges(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -3270,6 +3478,8 @@ components:
 }
 
 func TestCompareSchemas_PrefixItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -3300,12 +3510,16 @@ components:
 }
 
 func TestCompareSchemas_fireNilCheck(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	checkSchemaXML(nil, nil, nil, nil)
 	checkSchemaPropertyChanges(nil, nil, nil, nil)
 	checkExamples(nil, nil, nil)
 }
 
 func TestCompareSchemas_TestProps(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -3378,6 +3592,8 @@ components:
 }
 
 func TestCompareSchemas_CheckXML(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -3410,6 +3626,8 @@ components:
 
 // https://github.com/pb33f/openapi-changes/issues/203
 func TestCompareSchemas_CheckRogueDescription(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.3
 paths:
   "/test-url":
@@ -3476,11 +3694,15 @@ components:
 }
 
 func TestCompareSchemas_CheckNPE(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	var sc *SchemaChanges
 	assert.Nil(t, sc.GetPropertyChanges())
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_Right(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3508,6 +3730,8 @@ components:
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_Left(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3535,6 +3759,8 @@ components:
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_HackIndex(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3569,6 +3795,8 @@ components:
 }
 
 func TestCompareSchemas_CheckRefChange_HackIndex_LeftToRight(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3607,6 +3835,8 @@ components:
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_HackIndex_LeftToRight(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3636,6 +3866,8 @@ components:
 }
 
 func TestCompareSchemas_CheckRefChange_HackIndex_RightToLeft(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3669,6 +3901,8 @@ components:
 }
 
 func TestCompareSchemas_CheckRefChangeCircular_HackIndex_RightToLeft(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0
 components:
   schemas:
@@ -3699,6 +3933,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3752,6 +3988,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3805,6 +4043,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3848,6 +4088,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_NoChanges(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3884,6 +4126,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_EmptyArray(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3923,6 +4167,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_OrderMatters(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -3965,6 +4211,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_TotalChangesCount(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -4006,6 +4254,8 @@ components:
 }
 
 func TestCompareSchemas_DependentRequired_TotalBreakingChangesCount(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -4043,6 +4293,8 @@ components:
 }
 
 func TestSchemaChanges_GetAllChanges_WithDependentRequired(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -4091,6 +4343,8 @@ components:
 }
 
 func TestSchemaChanges_TotalBreakingChanges_WithDependentRequired(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1.0
 components:
   schemas:
@@ -4129,6 +4383,8 @@ components:
 }
 
 func TestSlicesEqual_AllCases(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	// Test equal slices (this covers the return true case - line 1772)
 	a := []string{"name", "email"}
 	b := []string{"name", "email"}
@@ -4147,6 +4403,8 @@ func TestSlicesEqual_AllCases(t *testing.T) {
 }
 
 func TestGetNodeForProperty_EdgeCases(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	// Test with nil map (line 1778-1779)
 	node := getNodeForProperty(nil, "test")
 	assert.Nil(t, node)
@@ -4166,6 +4424,8 @@ func TestGetNodeForProperty_EdgeCases(t *testing.T) {
 }
 
 func TestGetNodeForProperty_WithActualDocument(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	// Create a test with actual YAML nodes to hit the success path
 	spec := `openapi: 3.1.0
 components:
@@ -4189,6 +4449,8 @@ components:
 }
 
 func TestSchemaChanges_GetPropertyChanges_WithDependentRequired(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	// This test specifically targets lines 73-74 in GetPropertyChanges() method
 	left := `openapi: 3.1.0
 components:

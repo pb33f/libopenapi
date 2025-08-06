@@ -125,12 +125,12 @@ func TestExtractFileType(t *testing.T) {
 		{
 			name: "Unknown extension",
 			ref:  "unknown.xyz",
-			want: UNKNOWN,
+			want: UNSUPPORTED,
 		},
 		{
 			name: "No extension at all",
 			ref:  "Makefile",
-			want: UNKNOWN,
+			want: UNSUPPORTED,
 		},
 	}
 

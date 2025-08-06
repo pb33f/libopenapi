@@ -7,11 +7,14 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/low"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestCompareTags(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: a tag
@@ -54,6 +57,8 @@ tags:
 }
 
 func TestCompareTags_AddNewTag(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: a tag
@@ -93,6 +98,8 @@ tags:
 }
 
 func TestCompareTags_AddDeleteTag(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: a tag
@@ -125,6 +132,8 @@ tags:
 }
 
 func TestCompareTags_DescriptionMoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -157,6 +166,8 @@ tags:
 }
 
 func TestCompareTags_NameMoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -189,6 +200,8 @@ tags:
 }
 
 func TestCompareTags_ModifiedAndMoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -228,6 +241,8 @@ tags:
 }
 
 func TestCompareTags_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - description: a lovelier tag description
@@ -260,6 +275,8 @@ tags:
 }
 
 func TestCompareTags_AddExternalDocs(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: something else`
@@ -287,6 +304,8 @@ tags:
 }
 
 func TestCompareTags_RemoveExternalDocs(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: something else`
@@ -314,6 +333,8 @@ tags:
 }
 
 func TestCompareTags_OpenAPI32_NewFields(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: partner
@@ -376,6 +397,8 @@ tags:
 }
 
 func TestCompareTags_OpenAPI32_ModifiedFields(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: partner
@@ -439,6 +462,8 @@ tags:
 }
 
 func TestCompareTags_OpenAPI32_RemovedFields(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.1
 tags:
   - name: partner

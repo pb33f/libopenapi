@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareLicense_URLAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo`
 
 	right := `name: buckaroo
@@ -40,6 +42,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareLicense_URLRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -65,6 +69,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareLicense_NameAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -90,6 +96,8 @@ name: buckaroo`
 }
 
 func TestCompareLicense_NameRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -115,6 +123,8 @@ name: buckaroo`
 }
 
 func TestCompareLicense_URLModified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io/new`
@@ -139,6 +149,8 @@ func TestCompareLicense_URLModified(t *testing.T) {
 }
 
 func TestCompareLicense_URLModifiedAndMoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -165,6 +177,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareLicense_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -189,6 +203,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareLicense_Identifier(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo
 identifier: https://pb33f.io`
 
@@ -216,6 +232,8 @@ identifier: https://pb33f.io2`
 }
 
 func TestCompareLicense_extension(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo
 identifier: https://pb33f.io
 x-truc: hello`

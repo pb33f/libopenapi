@@ -96,5 +96,5 @@ func ExtractFileType(ref string) FileExtension {
 	if strings.HasSuffix(ref, ".rb") {
 		return RB
 	}
-	return UNKNOWN
+	return UNSUPPORTED
 }

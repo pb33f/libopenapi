@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareContact_URLAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo`
 
 	right := `name: buckaroo
@@ -39,6 +41,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareContact_URLRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: buckaroo
 url: https://pb33f.io`
 
@@ -63,6 +67,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareContact_NameAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -87,6 +93,8 @@ name: buckaroo`
 }
 
 func TestCompareContact_NameRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 name: buckaroo`
 
@@ -111,6 +119,8 @@ name: buckaroo`
 }
 
 func TestCompareContact_EmailAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io`
 
 	right := `url: https://pb33f.io
@@ -135,6 +145,8 @@ email: buckaroo@pb33f.io`
 }
 
 func TestCompareContact_EmailRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 email: buckaroo@pb33f.io`
 
@@ -159,6 +171,8 @@ email: buckaroo@pb33f.io`
 }
 
 func TestCompareContact_EmailModified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 email: buckaroo@pb33f.io`
 
@@ -185,6 +199,8 @@ email: dave@quobix.com`
 }
 
 func TestCompareContact_EmailModifiedAndMoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `email: buckaroo@pb33f.io
 url: https://pb33f.io`
 
@@ -209,6 +225,8 @@ email: dave@quobix.com`
 }
 
 func TestCompareContact_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `email: buckaroo@pb33f.io
 url: https://pb33f.io`
 

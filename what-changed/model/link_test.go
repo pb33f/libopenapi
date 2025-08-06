@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareLinks(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -42,6 +44,8 @@ parameters:
 }
 
 func TestCompareLinks_ModifyExtension(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -81,6 +85,8 @@ x-cake: very tasty`
 }
 
 func TestCompareLinks_ModifyServer(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -118,6 +124,8 @@ parameters:
 }
 
 func TestCompareLinks_AddServer(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -153,6 +161,8 @@ parameters:
 }
 
 func TestCompareLinks_RemoveServer(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -188,6 +198,8 @@ parameters:
 }
 
 func TestCompareLinks_ModifyParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -228,6 +240,8 @@ parameters:
 }
 
 func TestCompareLinks_AddParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link
@@ -268,6 +282,8 @@ parameters:
 }
 
 func TestCompareLinks_RemoveParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: someOperation
 requestBody: expression-says-what
 description: a nice link

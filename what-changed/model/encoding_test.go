@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareEncoding(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `contentType: application/json
 headers:
   aHeader:
@@ -48,6 +50,8 @@ allowReserved: true`
 }
 
 func TestCompareEncoding_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `contentType: application/xml
 headers:
   aHeader:
@@ -85,6 +89,8 @@ allowReserved: true`
 }
 
 func TestCompareEncoding_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `contentType: application/json
 explode: true
 allowReserved: true`
@@ -120,6 +126,8 @@ allowReserved: true`
 }
 
 func TestCompareEncoding_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `contentType: application/json
 explode: true
 allowReserved: true`

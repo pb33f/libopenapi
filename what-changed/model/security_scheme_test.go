@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareSecuritySchemes_v2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: string
 description: a thing
 flow: heavy
@@ -47,6 +49,8 @@ x-beer: tasty`
 }
 
 func TestCompareSecuritySchemes_v2_ModifyProps(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: int
 description: who cares if this changes?
 flow: very heavy
@@ -81,6 +85,8 @@ x-beer: very tasty`
 }
 
 func TestCompareSecuritySchemes_v2_AddScope(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: I am a thing`
 
 	right := `description: I am a thing
@@ -110,6 +116,8 @@ scopes:
 }
 
 func TestCompareSecuritySchemes_v2_RemoveScope(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: I am a thing`
 
 	right := `description: I am a thing
@@ -139,6 +147,8 @@ scopes:
 }
 
 func TestCompareSecuritySchemes_v2_ModifyScope(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `scopes:
   pizza: pie`
 
@@ -168,6 +178,8 @@ func TestCompareSecuritySchemes_v2_ModifyScope(t *testing.T) {
 }
 
 func TestCompareSecuritySchemes_v3(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: string
 description: a thing
 scheme: fishy
@@ -198,6 +210,8 @@ description: a thing`
 }
 
 func TestCompareSecuritySchemes_v3_ModifyProps(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: string
 description: a thing
 scheme: fishy
@@ -235,6 +249,8 @@ x-beer: cool`
 }
 
 func TestCompareSecuritySchemes_v3_AddFlows(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: oauth`
 
 	right := `type: oauth
@@ -263,6 +279,8 @@ flows:
 }
 
 func TestCompareSecuritySchemes_v3_RemoveFlows(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: oauth`
 
 	right := `type: oauth
@@ -291,6 +309,8 @@ flows:
 }
 
 func TestCompareSecuritySchemes_v3_ModifyFlows(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: oauth
 flows:
   implicit:

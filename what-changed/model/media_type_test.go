@@ -14,6 +14,9 @@ import (
 )
 
 func TestCompareMediaTypes(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	
 	left := `schema:
   type: string
 example: tasty herbs in the morning
