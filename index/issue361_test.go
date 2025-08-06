@@ -4,6 +4,8 @@
 package index
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"testing/fstest"
 	"time"
@@ -50,7 +52,13 @@ properties:
 	// Add the fs.FS with a base directory
 	// The fix ensures that when opening files, relative paths are used
 	// with the fs.FS interface, not absolute paths
-	rolo.AddLocalFS("/api/v1", testFS)
+	// Use a temporary directory to ensure cross-platform compatibility
+	tempDir, err := os.MkdirTemp("", "rolodex-test")
+	require.NoError(t, err, "Should be able to create temp dir")
+	defer os.RemoveAll(tempDir)
+	
+	baseDir := filepath.Join(tempDir, "api", "v1")
+	rolo.AddLocalFS(baseDir, testFS)
 	
 	// Test 1: Open a file at the root of the FS
 	f1, err := rolo.Open("openapi.yaml")
@@ -65,7 +73,8 @@ properties:
 	// Test 3: Verify absolute paths are converted correctly
 	// Even if we pass an absolute path matching the base + relative path,
 	// it should work by converting to relative
-	f3, err := rolo.Open("/api/v1/openapi.yaml")
+	absolutePath := filepath.Join(baseDir, "openapi.yaml")
+	f3, err := rolo.Open(absolutePath)
 	require.NoError(t, err, "Should handle absolute paths by converting to relative")
 	assert.Contains(t, f3.GetContent(), "Test API")
 }
@@ -86,8 +95,14 @@ func TestIssue361_MultipleFileSystems(t *testing.T) {
 	// Create Rolodex with multiple file systems
 	config := CreateOpenAPIIndexConfig()
 	rolo := NewRolodex(config)
-	rolo.AddLocalFS("/apis", apiFS)
-	rolo.AddLocalFS("/schemas", schemaFS)
+	
+	// Use temporary directories for cross-platform compatibility
+	tempDir, err := os.MkdirTemp("", "rolodex-multi-test")
+	require.NoError(t, err, "Should be able to create temp dir")
+	defer os.RemoveAll(tempDir)
+	
+	rolo.AddLocalFS(filepath.Join(tempDir, "apis"), apiFS)
+	rolo.AddLocalFS(filepath.Join(tempDir, "schemas"), schemaFS)
 	
 	// Files should be found in their respective file systems
 	f1, err := rolo.Open("api.yaml")
