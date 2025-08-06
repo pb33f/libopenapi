@@ -65,6 +65,9 @@ externalDocs:
 }
 
 func TestTag_Hash(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	
 	left := `name: melody
 description: my princess
 externalDocs:
