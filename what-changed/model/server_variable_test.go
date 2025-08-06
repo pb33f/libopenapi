@@ -13,6 +13,8 @@ import (
 )
 
 func TestCompareServerVariables(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi
 default: hello
 enum:
@@ -41,6 +43,8 @@ enum:
 }
 
 func TestCompareServerVariables_EnumRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi
 default: hello
 enum:
@@ -71,6 +75,8 @@ enum:
 }
 
 func TestCompareServerVariables_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi
 default: hello
 enum:
@@ -102,6 +108,8 @@ enum:
 }
 
 func TestCompareServerVariables_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi
 enum:
   - one
@@ -132,6 +140,8 @@ enum:
 }
 
 func TestCompareServerVariables_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi
 default: hello
 enum:
@@ -162,6 +172,8 @@ enum:
 }
 
 func TestCompareServerVariables_EnumAddedEdgeCase(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi
 default: hello
 enum:

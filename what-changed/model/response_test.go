@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareResponse_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: response
 schema:
   type: string
@@ -45,6 +47,8 @@ x-toot: poot`
 }
 
 func TestCompareResponse_V2_Modify(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: response
 schema:
   type: string
@@ -83,6 +87,8 @@ x-toot: poot`
 }
 
 func TestCompareResponse_V2_Add(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: response
 headers:
   thing:
@@ -116,6 +122,8 @@ examples:
 }
 
 func TestCompareResponse_V2_Remove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: response
 headers:
   thing:
@@ -149,6 +157,8 @@ examples:
 }
 
 func TestCompareResponse_V3(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: response
 content:
   application/json:
@@ -180,6 +190,8 @@ x-toot: poot`
 }
 
 func TestCompareResponse_V3_Modify(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: response
 content:
   application/json:

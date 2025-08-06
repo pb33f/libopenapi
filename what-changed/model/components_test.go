@@ -953,6 +953,9 @@ func TestCompareComponents_OpenAPI_SecuritySchemes_Equal(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_SecuritySchemes_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	
 	left := `securitySchemes:
   scheme1:
     description: a scheme

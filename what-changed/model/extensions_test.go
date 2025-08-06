@@ -12,6 +12,8 @@ import (
 )
 
 func TestCompareExtensions(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-test: 1`
 	right := `x-test: 2`
 
@@ -34,6 +36,8 @@ func TestCompareExtensions(t *testing.T) {
 }
 
 func TestCompareExtensions_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: pie
 x-test: 1`
 
@@ -58,6 +62,8 @@ x-test: 1`
 }
 
 func TestCompareExtensions_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: pie`
 
 	right := `pizza: pie
@@ -82,6 +88,8 @@ x-test: 1`
 }
 
 func TestCompareExtensions_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-test: 1`
 
 	right := `x-test: 1`

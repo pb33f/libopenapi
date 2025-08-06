@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareScopes(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: pie
 lemon: sky
 x-nugget: chicken`
@@ -39,6 +41,8 @@ x-nugget: chicken`
 }
 
 func TestCompareScopes_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: sky
 lemon: sky
 x-nugget: chicken`
@@ -68,6 +72,8 @@ x-nugget: chicken`
 }
 
 func TestCompareScopes_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: sky
 x-nugget: chicken`
 	right := `pizza: sky
@@ -97,6 +103,8 @@ x-nugget: chicken`
 }
 
 func TestCompareScopes_Removed_ChangeExt(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: sky
 x-nugget: chicken`
 	right := `pizza: sky
@@ -126,6 +134,8 @@ x-nugget: soup`
 }
 
 func TestCompareScopes_EmptyValues(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `pizza: pie
 lemon: sky`
 

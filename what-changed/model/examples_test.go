@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareExamplesV2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `summary: magic herbs`
 	right := `summary: cure all`
 
@@ -41,6 +43,8 @@ func TestCompareExamplesV2(t *testing.T) {
 }
 
 func TestCompareExamplesV2_Add(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `summary: magic herbs`
 	right := `summary: magic herbs
 yummy: coffee`
@@ -65,6 +69,8 @@ yummy: coffee`
 }
 
 func TestCompareExamplesV2_Remove(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `summary: magic herbs`
 	right := `summary: magic herbs
 yummy: coffee`
@@ -89,6 +95,8 @@ yummy: coffee`
 }
 
 func TestCompareExamplesV2_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `summary: magic herbs`
 	right := left
 

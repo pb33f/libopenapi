@@ -60,6 +60,8 @@ x-beer: yummy`
 }
 
 func TestCompareHeaders_v2_identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := left
@@ -82,6 +84,8 @@ func TestCompareHeaders_v2_identical(t *testing.T) {
 }
 
 func TestCompareHeaders_v2_modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `description: header desc
@@ -127,6 +131,8 @@ x-beer: really yummy`
 }
 
 func TestCompareHeaders_v2_addedItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `description: header desc
@@ -171,6 +177,8 @@ x-beer: yummy`
 }
 
 func TestCompareHeaders_v2_removedItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `description: header desc
@@ -215,6 +223,8 @@ x-beer: yummy`
 }
 
 func TestCompareHeaders_v2_ItemsModified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := left
@@ -237,6 +247,8 @@ func TestCompareHeaders_v2_ItemsModified(t *testing.T) {
 }
 
 func TestCompareHeaders_v3_identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := left
@@ -259,6 +271,8 @@ func TestCompareHeaders_v3_identical(t *testing.T) {
 }
 
 func TestCompareHeaders_v3_modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := test_buildUltraGlobOfHeaders()
 
 	right := `required: true

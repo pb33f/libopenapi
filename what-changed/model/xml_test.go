@@ -13,6 +13,8 @@ import (
 )
 
 func TestCompareXML_NameChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -45,6 +47,8 @@ wrapped: true`
 }
 
 func TestCompareXML_NameRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -77,6 +81,8 @@ namespace: something`
 }
 
 func TestCompareXML_ExtensionAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: xml thing
 namespace: something
 prefix: another
@@ -110,6 +116,8 @@ x-coffee: time`
 }
 
 func TestCompareXML_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `name: xml thing
 namespace: something
 prefix: another

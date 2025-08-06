@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareDocuments_Swagger_BaseProperties_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 x-diet: tough
 host: https://pb33f.io
@@ -47,6 +49,8 @@ produces:
 }
 
 func TestCompareDocuments_Swagger_BaseProperties_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 x-diet: coke
 host: https://pb33f.io
@@ -90,6 +94,8 @@ produces:
 }
 
 func TestCompareDocuments_Swagger_BaseProperties_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 host: https://pb33f.io
 basePath: /api`
@@ -119,6 +125,8 @@ produces:
 }
 
 func TestCompareDocuments_Swagger_BaseProperties_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 host: https://pb33f.io
 basePath: /api
@@ -148,6 +156,8 @@ basePath: /api`
 }
 
 func TestCompareDocuments_Swagger_Info_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 info:
  title: a doc
@@ -180,6 +190,8 @@ info:
 }
 
 func TestCompareDocuments_Swagger_Info_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0`
 
 	right := `swagger: 2.0
@@ -207,6 +219,8 @@ info:
 }
 
 func TestCompareDocuments_Swagger_Info_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0`
 
 	right := `swagger: 2.0
@@ -234,6 +248,8 @@ info:
 }
 
 func TestCompareDocuments_Swagger_ExternalDocs_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 externalDocs:
  url: https://pb33f.io
@@ -260,6 +276,8 @@ externalDocs:
 }
 
 func TestCompareDocuments_Swagger_ExternalDocs_Added(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0`
 
 	right := `swagger: 2.0
@@ -285,6 +303,8 @@ externalDocs:
 }
 
 func TestCompareDocuments_Swagger_ExternalDocs_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0`
 
 	right := `swagger: 2.0
@@ -309,6 +329,8 @@ externalDocs:
 }
 
 func TestCompareDocuments_Swagger_Security_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 security:
  - nice:
@@ -344,6 +366,8 @@ security:
 }
 
 func TestCompareDocuments_Swagger_Security_Changed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 security:
  - nice:
@@ -381,6 +405,8 @@ security:
 }
 
 func TestCompareDocuments_Swagger_Components_Schemas(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 definitions:
  burgers:
@@ -414,6 +440,8 @@ definitions:
 }
 
 func TestCompareDocuments_Swagger_Components_SecurityDefinitions_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 securityDefinitions:
  letMeIn:
@@ -445,6 +473,8 @@ securityDefinitions:
 }
 
 func TestCompareDocuments_Swagger_Components_SecurityDefinitions_Changed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 securityDefinitions:
  letMeIn:
@@ -475,6 +505,8 @@ securityDefinitions:
 }
 
 func TestCompareDocuments_Swagger_Components_Parameters_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 parameters:
  letMeIn:
@@ -510,6 +542,8 @@ parameters:
 }
 
 func TestCompareDocuments_Swagger_Components_Parameters_Changed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 parameters:
  letMeIn:
@@ -544,6 +578,8 @@ parameters:
 }
 
 func TestCompareDocuments_Swagger_Components_Responses_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 responses:
  tacos:
@@ -579,6 +615,8 @@ responses:
 }
 
 func TestCompareDocuments_Swagger_Components_Responses_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 responses:
  tacos:
@@ -612,6 +650,8 @@ responses:
 }
 
 func TestCompareDocuments_Swagger_Components_Paths_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 paths:
  /nice/rice:
@@ -643,6 +683,8 @@ paths:
 }
 
 func TestCompareDocuments_Swagger_Components_Paths_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 paths:
  /nice/rice:
@@ -676,6 +718,8 @@ paths:
 }
 
 func TestCompareDocuments_Swagger_Components_Paths_Modified_AgainForFun(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 paths:
  /nice/rice:
@@ -709,6 +753,8 @@ paths:
 }
 
 func TestCompareDocuments_Swagger_Components_Tags_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 tags:
  - name: a tag
@@ -737,6 +783,8 @@ tags:
 }
 
 func TestCompareDocuments_Swagger_Components_Tags_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 tags:
  - name: a tag
@@ -769,6 +817,8 @@ tags:
 }
 
 func TestCompareDocuments_OpenAPI_BaseProperties_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 x-diet: tough
 jsonSchemaDialect: https://pb33f.io/schema`
@@ -794,6 +844,8 @@ jsonSchemaDialect: https://pb33f.io/schema`
 }
 
 func TestCompareDocuments_OpenAPI_BaseProperties_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 x-diet: tough
 jsonSchemaDialect: https://pb33f.io/schema`
@@ -822,6 +874,8 @@ jsonSchemaDialect: https://pb33f.io/schema/changed`
 }
 
 func TestCompareDocuments_OpenAPI_AddComponents(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1`
 
 	right := `openapi: 3.1
@@ -851,6 +905,8 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_Removed(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1`
 
 	right := `openapi: 3.1
@@ -880,6 +936,8 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyPaths(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 paths:
   /brown/cow:
@@ -918,6 +976,8 @@ paths:
 }
 
 func TestCompareDocuments_OpenAPI_Identical_Security(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 security:
   - cakes:
@@ -953,6 +1013,8 @@ security:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyComponents(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   schemas:
@@ -989,6 +1051,8 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyServers(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 servers:
   - url: https://pb33f.io
@@ -1020,6 +1084,8 @@ servers:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyExamples(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 components:
   examples:
@@ -1054,6 +1120,8 @@ components:
 }
 
 func TestCompareDocuments_OpenAPI_ModifyWebhooks(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.1
 webhooks:
   bHook:
@@ -1092,6 +1160,8 @@ webhooks:
 }
 
 func TestCompareDocuments_OpenAPIExampleMapChanges(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.0
 paths:
   /:
@@ -1135,6 +1205,8 @@ paths:
 }
 
 func TestCompareDocuments_OpenAPIExampleNoExampleMapChanges(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `openapi: 3.0.0
 paths:
   /:
@@ -1176,6 +1248,8 @@ paths:
 }
 
 func TestDocumentChanges_Nil(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	var dc *DocumentChanges
 	assert.Equal(t, 0, dc.TotalChanges())
 	assert.Equal(t, 0, dc.TotalBreakingChanges())
