@@ -428,10 +428,11 @@ func TestNewRemoteFS_Unsupported(t *testing.T) {
 	cf := CreateOpenAPIIndexConfig()
 	rfs, _ := NewRemoteFSWithConfig(cf)
 
-	x, y := rfs.Open("http://pb33f.io/woof.png")
+	x, y := rfs.Open("https://pb33f.io/images/libopenapi-logo.webp")
 	assert.Nil(t, x)
 	assert.Error(t, y)
-	assert.Equal(t, "open http://pb33f.io/woof.png: invalid argument", y.Error())
+	// .webp is now UNKNOWN, so without content detection enabled, it should be treated as unknown extension
+	assert.Equal(t, "open https://pb33f.io/images/libopenapi-logo.webp: invalid argument", y.Error())
 }
 
 func TestNewRemoteFS_BadURL(t *testing.T) {

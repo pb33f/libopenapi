@@ -189,6 +189,14 @@ type SpecIndexConfig struct {
 	// want changes in them to be picked up, then you should not enable this.
 	UseSchemaQuickHash bool
 
+	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have 
+	// a known file extension. When enabled, libopenapi will fetch the first 1-2KB of unknown URLs to determine
+	// if they contain valid JSON or YAML content. This is disabled by default for security and performance.
+	//
+	// If disabled, URLs without recognized extensions (.yaml, .yml, .json) will be rejected.
+	// If enabled, unknown URLs will be fetched and analyzed for JSON/YAML content with retry logic.
+	AllowUnknownExtensionContentDetection bool
+
 	// private fields
 	uri []string
 	id  string

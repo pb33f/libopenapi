@@ -144,6 +144,14 @@ type DocumentConfiguration struct {
 	// By default schemas as references are ignored and only the root / entry document's components/schemas are
 	// used to determine changes.
 	UseSchemaQuickHash bool
+
+	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have 
+	// a known file extension. When enabled, libopenapi will fetch the first 1-2KB of unknown URLs to determine
+	// if they contain valid JSON or YAML content. This is disabled by default for security and performance.
+	//
+	// If disabled, URLs without recognized extensions (.yaml, .yml, .json) will be rejected.
+	// If enabled, unknown URLs will be fetched and analyzed for JSON/YAML content with retry logic.
+	AllowUnknownExtensionContentDetection bool
 }
 
 func NewDocumentConfiguration() *DocumentConfiguration {
