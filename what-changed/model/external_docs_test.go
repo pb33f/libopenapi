@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareExternalDocs(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: this is a test
 x-testing: hello`
@@ -70,6 +72,8 @@ x-testing: hiya!`
 }
 
 func TestCompareExternalDocs_Moved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: this is a test
 x-testing: hello`
@@ -120,6 +124,8 @@ url: https://quobix.com`
 }
 
 func TestCompareExternalDocs_Identical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: this is a test
 x-testing: hello`
@@ -146,6 +152,8 @@ x-testing: hello`
 }
 
 func TestCompareExternalDocs_DescriptionAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 x-testing: hello`
 
@@ -173,6 +181,8 @@ x-testing: hello`
 }
 
 func TestCompareExternalDocs_URLAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: hi!`
 
 	right := `description: hi!
@@ -198,6 +208,8 @@ url: https://pb33f.io`
 }
 
 func TestCompareExternalDocs_DescriptionRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `url: https://pb33f.io
 description: something`
 
@@ -223,6 +235,8 @@ description: something`
 }
 
 func TestCompareExternalDocs_URLRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `description: something
 url: https://pb33f.io`
 

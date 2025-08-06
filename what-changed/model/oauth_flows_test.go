@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareOAuthFlow(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `authorizationUrl: cheese
 tokenUrl: biscuits
 refreshUrl: cake
@@ -44,6 +46,8 @@ scopes:
 }
 
 func TestCompareOAuthFlow_Modified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -78,6 +82,8 @@ x-burgers: crispy`
 }
 
 func TestCompareOAuthFlow_AddScope(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -115,6 +121,8 @@ x-burgers: nice`
 }
 
 func TestCompareOAuthFlow_RemoveScope(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -152,6 +160,8 @@ x-burgers: nice`
 }
 
 func TestCompareOAuthFlow_ModifyScope(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `authorizationUrl: toast
 tokenUrl: biscuits
 refreshUrl: roast
@@ -190,6 +200,8 @@ x-burgers: nice`
 }
 
 func TestCompareOAuthFlows(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `implicit:
   authorizationUrl: cheese
 password: 
@@ -228,6 +240,8 @@ x-coke: cola`
 }
 
 func TestCompareOAuthFlows_AddEverything(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coke: cola`
 
 	right := `implicit:
@@ -260,6 +274,8 @@ x-coke: cola`
 }
 
 func TestCompareOAuthFlows_RemoveEverything(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-coke: cola`
 
 	right := `implicit:
@@ -292,6 +308,8 @@ x-coke: cola`
 }
 
 func TestCompareOAuthFlows_ModifyEverything(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `implicit:
   authorizationUrl: cheese
 password: 

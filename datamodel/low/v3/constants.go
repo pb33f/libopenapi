@@ -34,6 +34,7 @@ const (
 	OptionsLabel               = "options"
 	HeadLabel                  = "head"
 	TraceLabel                 = "trace"
+	QueryLabel                 = "query"
 	LinksLabel                 = "links"
 	DefaultLabel               = "default"
 	ConstLabel                 = "const"

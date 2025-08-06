@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: string`
 
 	right := `type: int`
@@ -41,6 +43,8 @@ func TestCompareItems(t *testing.T) {
 }
 
 func TestCompareItems_RecursiveCheck(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: string
 items:
   type: string`
@@ -72,6 +76,8 @@ items:
 }
 
 func TestCompareItems_AddItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: int`
 
 	right := `type: int
@@ -101,6 +107,8 @@ items:
 }
 
 func TestCompareItems_RemoveItems(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `type: int`
 
 	right := `type: int
@@ -130,6 +138,8 @@ items:
 }
 
 func TestCompareItems_RefVsInlineIdentical(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `swagger: 2.0
 definitions:
   thing:

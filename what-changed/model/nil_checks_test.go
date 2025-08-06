@@ -16,6 +16,8 @@ import (
 // TestAllChangesModels_NilChecks tests that all *Changes models handle nil properly
 // This comprehensive test ensures that nil checks added to prevent panics have full coverage
 func TestAllChangesModels_NilChecks(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	testCases := []struct {
 		name string
 		test func(t *testing.T)
@@ -307,6 +309,8 @@ func TestAllChangesModels_NilChecks(t *testing.T) {
 // TestComparisonFunctions_NilReturnPatterns tests the TotalChanges() <= 0 return nil pattern
 // This ensures coverage for the optimization that returns nil when there are no changes
 func TestComparisonFunctions_NilReturnPatterns(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	// Test all comparison functions that have TotalChanges() <= 0 nil return patterns
 	
 	// Create identical objects for comparison (should result in no changes)
@@ -500,6 +504,8 @@ func TestComparisonFunctions_NilReturnPatterns(t *testing.T) {
 // TestTotalChangesZeroReturnNil tests ALL instances of the TotalChanges() <= 0 pattern
 // This ensures coverage for every single case found in the what-changed/model package
 func TestTotalChangesZeroReturnNil(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	// Test all 31 instances of the TotalChanges() <= 0 pattern found by grep
 	
 	// 1. components.go:203

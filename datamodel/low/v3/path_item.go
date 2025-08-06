@@ -62,7 +62,7 @@ func (p *PathItem) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !p.Description.IsEmpty() {
 		sb.WriteString(p.Description.Value)
 		sb.WriteByte('|')
@@ -103,7 +103,7 @@ func (p *PathItem) Hash() [32]byte {
 		sb.WriteString(fmt.Sprintf("%s-%s", TraceLabel, low.GenerateHashString(p.Trace.Value)))
 		sb.WriteByte('|')
 	}
-	
+
 	// Process Parameters with pre-allocation and sorting
 	if len(p.Parameters.Value) > 0 {
 		keys := make([]string, len(p.Parameters.Value))
@@ -116,7 +116,7 @@ func (p *PathItem) Hash() [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	// Process Servers with pre-allocation and sorting
 	if len(p.Servers.Value) > 0 {
 		keys := make([]string, len(p.Servers.Value))
@@ -129,7 +129,7 @@ func (p *PathItem) Hash() [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	for _, ext := range low.HashExtensions(p.Extensions) {
 		sb.WriteString(ext)
 		sb.WriteByte('|')

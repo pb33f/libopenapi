@@ -15,6 +15,8 @@ import (
 )
 
 func TestCompareOperations_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -52,6 +54,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_ModifyParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -106,6 +110,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_AddParamProperty(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -158,6 +164,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_RemoveParamProperty(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -210,6 +218,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_AddParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -267,6 +277,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_AddRequiredParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -323,6 +335,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_RemoveParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -381,6 +395,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_ModifyTag(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -437,6 +453,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_AddTag(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -494,6 +512,8 @@ parameters:
 }
 
 func TestCompareOperations_V2_Modify_ProducesConsumesSchemes(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `produces:
   - electricity
 consumes:
@@ -528,6 +548,8 @@ schemes:
 }
 
 func TestCompareOperations_V2_Modify_ExtDocs_Responses(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `externalDocs:
   url: https://pb33f.io/old
 responses:
@@ -563,6 +585,8 @@ responses:
 }
 
 func TestCompareOperations_V2_AddRemoveResponses(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: updatePet
 responses:
   '400':
@@ -601,6 +625,8 @@ responses:
 }
 
 func TestCompareOperations_V2_Add_ExtDocs_Responses(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: nuggets`
 
 	right := `operationId: nuggets
@@ -632,6 +658,8 @@ responses:
 }
 
 func TestCompareOperations_V2_Remove_ExtDocs_Responses(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: nuggets`
 
 	right := `operationId: nuggets
@@ -663,6 +691,8 @@ responses:
 }
 
 func TestCompareOperations_V2_AddSecurityReq_Role(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: nuggets
 security:
   - things:
@@ -698,6 +728,8 @@ security:
 }
 
 func TestCompareOperations_V2_RemoveSecurityReq_Role(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: nuggets
 security:
   - things:
@@ -733,6 +765,8 @@ security:
 }
 
 func TestCompareOperations_V2_AddSecurityRequirement(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: nuggets
 security:
   - things:
@@ -770,6 +804,8 @@ security:
 }
 
 func TestCompareOperations_V2_RemoveSecurityRequirement(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: nuggets
 security:
   - things:
@@ -807,6 +843,8 @@ security:
 }
 
 func TestCompareOperations_V3(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -852,6 +890,8 @@ parameters:
 }
 
 func TestCompareOperations_V3_ModifyParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -883,6 +923,8 @@ func TestCompareOperations_V3_ModifyParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -916,6 +958,8 @@ func TestCompareOperations_V3_AddParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddRequiredParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -949,6 +993,8 @@ func TestCompareOperations_V3_AddRequiredParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `parameters:
   - name: honey
   - name: bunny
@@ -982,6 +1028,8 @@ func TestCompareOperations_V3_RemoveParam(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveParams(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: ohNoes
 parameters:
   - name: honey
@@ -1011,6 +1059,8 @@ parameters:
 }
 
 func TestCompareOperations_V3_AddParams(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: ohNoes
 parameters:
   - name: honey
@@ -1040,6 +1090,8 @@ parameters:
 }
 
 func TestCompareOperations_V3_ModifyTag(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -1078,6 +1130,8 @@ operationId: mintyFresh
 }
 
 func TestCompareOperations_V3_AddTag(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tags:
   - one
   - two
@@ -1117,6 +1171,8 @@ operationId: mintyFresh
 }
 
 func TestCompareOperations_V3_ModifyServers(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `servers:
   - url: https://pb33f.io
   - description: nourl!`
@@ -1147,6 +1203,8 @@ func TestCompareOperations_V3_ModifyServers(t *testing.T) {
 }
 
 func TestCompareOperations_V3_ModifyCallback(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `callbacks:
   myCallback:
     '{$request.query.queryUrl}':
@@ -1183,6 +1241,8 @@ func TestCompareOperations_V3_ModifyCallback(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddCallback(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `callbacks:
   myCallback:
     '{$request.query.queryUrl}':
@@ -1220,6 +1280,8 @@ func TestCompareOperations_V3_AddCallback(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddCallbacks(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: 123`
 
 	right := `operationId: 123
@@ -1254,6 +1316,8 @@ callbacks:
 }
 
 func TestCompareOperations_V3_RemoveCallbacks(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: 123`
 
 	right := `operationId: 123
@@ -1288,6 +1352,8 @@ callbacks:
 }
 
 func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `callbacks:
   myCallback:
     '{$request.query.queryUrl}':
@@ -1325,6 +1391,8 @@ func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddServer(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `servers:
   - url: https://pb33f.io`
 
@@ -1353,6 +1421,8 @@ func TestCompareOperations_V3_AddServer(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveServer(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `servers:
   - url: https://pb33f.io`
 
@@ -1381,6 +1451,8 @@ func TestCompareOperations_V3_RemoveServer(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddServerToOp(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: noServers!`
 
 	right := `operationId: noServers!
@@ -1409,6 +1481,8 @@ servers:
 }
 
 func TestCompareOperations_V3_RemoveServerFromOp(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: noServers!`
 
 	right := `operationId: noServers!
@@ -1437,6 +1511,8 @@ servers:
 }
 
 func TestCompareOperations_V3_ModifySecurity(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: coldSecurity
 security:
   - winter:
@@ -1469,6 +1545,8 @@ security:
 }
 
 func TestCompareOperations_V3_AddSecurity(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: coldSecurity
 security: []`
 
@@ -1498,6 +1576,8 @@ security:
 }
 
 func TestCompareOperations_V3_RemoveSecurity(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: coldSecurity
 security:
   - winter:
@@ -1527,6 +1607,8 @@ security: []`
 }
 
 func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `requestBody:
   description: jammy`
 
@@ -1554,6 +1636,8 @@ func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {
 }
 
 func TestCompareOperations_V3_AddRequestBody(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: noRequestBody`
 
 	right := `operationId: noRequestBody
@@ -1581,6 +1665,8 @@ requestBody:
 }
 
 func TestCompareOperations_V3_ModifyExtension(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `x-pizza: yummy`
 
 	right := `x-pizza: yammy!`
@@ -1606,6 +1692,8 @@ func TestCompareOperations_V3_ModifyExtension(t *testing.T) {
 }
 
 func TestCompareOperations_V3_RemoveRequestBody(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: noRequestBody`
 
 	right := `operationId: noRequestBody
@@ -1633,6 +1721,8 @@ requestBody:
 }
 
 func TestComparePathItem_V3_AddOptionalParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings
@@ -1661,6 +1751,8 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddOptionalParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings
@@ -1689,6 +1781,8 @@ parameters:
 }
 
 func TestComparePathItem_V3_AddRequiredParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings
@@ -1717,6 +1811,8 @@ parameters:
 }
 
 func TestComparePathItem_V2_AddRequiredParam(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `operationId: listBurgerDressings`
 
 	right := `operationId: listBurgerDressings

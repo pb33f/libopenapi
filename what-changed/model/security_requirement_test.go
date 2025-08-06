@@ -14,6 +14,8 @@ import (
 )
 
 func TestCompareSecurityRequirement_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `auth:
  - pizza
  - pie`
@@ -40,6 +42,8 @@ func TestCompareSecurityRequirement_V2(t *testing.T) {
 }
 
 func TestCompareSecurityRequirement_NewReq_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `tip:
   - tap
 auth:
@@ -76,6 +80,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_RemoveReq_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `auth:
   - pizza
   - pie`
@@ -137,6 +143,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_SwapOut_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -173,6 +181,8 @@ milk:
 }
 
 func TestCompareSecurityRequirement_SwapLeft_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -206,6 +216,8 @@ milk:
 }
 
 func TestCompareSecurityRequirement_AddedRole_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -240,6 +252,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_AddedMultiple_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -276,6 +290,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_ReplaceRole_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -308,6 +324,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_Identical_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -340,6 +358,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_RemovedRole_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `cheese:
   - pizza
   - pie
@@ -374,6 +394,8 @@ biscuit:
 }
 
 func TestCompareSecurityRequirement_Add_V2(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `
 biscuit:
   - biscotti
