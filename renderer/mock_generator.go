@@ -69,6 +69,12 @@ func (mg *MockGenerator) DisableRequiredCheck() {
 	mg.renderer.DisableRequiredCheck()
 }
 
+// SetSeed sets a specific seed for the random number generator used by this mock generator.
+// This is useful for generating deterministic mocks for testing purposes.
+func (mg *MockGenerator) SetSeed(seed int64) {
+	mg.renderer.SetSeed(seed)
+}
+
 // GenerateMock generates a mock for a given high-level mockable struct. The mockable struct must contain the following fields:
 // Example: any type, this is the default example to use if no examples are present.
 // Examples: *orderedmap.Map[string, *base.Example], this is a map of examples keyed by name.
