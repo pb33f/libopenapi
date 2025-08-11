@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/url"
 	"os"
 	"regexp"
@@ -50,7 +51,9 @@ func createSchemaRenderer() *SchemaRenderer {
 	}
 
 	// return empty renderer, will generate random strings
-	return &SchemaRenderer{}
+	return &SchemaRenderer{
+		rand: rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
 }
 
 func getSchema(schema []byte) *highbase.Schema {
