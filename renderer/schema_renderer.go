@@ -54,16 +54,12 @@ const (
 // used to generate random words if there is no dictionary applied.
 const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-func init() {
-	// create a new random seed
-	rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
 // SchemaRenderer is a renderer that will generate random words, numbers and values based on a dictionary file.
 // The dictionary is just a slice of strings that is used to generate random words.
 type SchemaRenderer struct {
 	words           []string
 	disableRequired bool
+	rand            *rand.Rand
 }
 
 // CreateRendererUsingDictionary will create a new SchemaRenderer using a custom dictionary file.
@@ -71,7 +67,10 @@ type SchemaRenderer struct {
 func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
 	// try and read in the dictionary file
 	words := ReadDictionary(dictionaryLocation)
-	return &SchemaRenderer{words: words}
+	return &SchemaRenderer{
+		words: words,
+		rand:  rand.New(rand.NewSource(time.Now().UnixNano())),
+	}
 }
 
 // CreateRendererUsingDefaultDictionary will create a new SchemaRenderer using the default dictionary file.
@@ -80,6 +79,7 @@ func CreateRendererUsingDictionary(dictionaryLocation string) *SchemaRenderer {
 func CreateRendererUsingDefaultDictionary() *SchemaRenderer {
 	wr := new(SchemaRenderer)
 	wr.words = ReadDictionary("/usr/share/dict/words")
+	wr.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
 	return wr
 }
 
@@ -97,6 +97,12 @@ func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 // https://github.com/pb33f/libopenapi/issues/200
 func (wr *SchemaRenderer) DisableRequiredCheck() {
 	wr.disableRequired = true
+}
+
+// SetSeed sets a specific seed for the random number generator used by this renderer.
+// This is useful for generating deterministic mocks for testing purposes.
+func (wr *SchemaRenderer) SetSeed(seed int64) {
+	wr.rand = rand.New(rand.NewSource(seed))
 }
 
 // DiveIntoSchema will dive into a schema and inject values from examples into a map. If there are no examples in
@@ -121,7 +127,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 	if slices.Contains(schema.Type, stringType) {
 		// check for an enum, if there is one, then pick a random value from it.
 		if schema.Enum != nil && len(schema.Enum) > 0 {
-			enum := schema.Enum[rand.Int()%len(schema.Enum)]
+			enum := schema.Enum[wr.rand.Int()%len(schema.Enum)]
 
 			var example any
 			_ = enum.Decode(&example)
@@ -184,11 +190,11 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 				structure[key] = fmt.Sprintf("%s.com", wr.RandomWord(minLength, maxLength, 0))
 			case ipv4Type:
 				structure[key] = fmt.Sprintf("%d.%d.%d.%d",
-					rand.Int()%255, rand.Int()%255, rand.Int()%255, rand.Int()%255)
+					wr.rand.Int()%255, wr.rand.Int()%255, wr.rand.Int()%255, wr.rand.Int()%255)
 			case ipv6Type:
 				structure[key] = fmt.Sprintf("%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-					rand.Intn(65535), rand.Intn(65535), rand.Intn(65535), rand.Intn(65535),
-					rand.Intn(65535), rand.Intn(65535), rand.Intn(65535), rand.Intn(65535),
+					wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535),
+					wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535), wr.rand.Intn(65535),
 				)
 			case uriType:
 				structure[key] = fmt.Sprintf("https://%s-%s-%s.com/%s",
@@ -235,7 +241,7 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 		slices.Contains(schema.Type, decimalType) {
 
 		if schema.Enum != nil && len(schema.Enum) > 0 {
-			enum := schema.Enum[rand.Int()%len(schema.Enum)]
+			enum := schema.Enum[wr.rand.Int()%len(schema.Enum)]
 
 			var example any
 			_ = enum.Decode(&example)
@@ -269,9 +275,9 @@ func (wr *SchemaRenderer) DiveIntoSchema(schema *base.Schema, key string, struct
 
 			switch schema.Format {
 			case floatType:
-				structure[key] = rand.Float32()
+				structure[key] = wr.rand.Float32()
 			case doubleType:
-				structure[key] = rand.Float64()
+				structure[key] = wr.rand.Float64()
 			case int32Type:
 				structure[key] = int(wr.RandomInt(minimum, maximum))
 			case bigIntType:
@@ -525,12 +531,12 @@ func (wr *SchemaRenderer) RandomWord(min, max int64, depth int) string {
 		}
 		b := make([]byte, min)
 		for i := range b {
-			b[i] = letterBytes[rand.Intn(len(letterBytes))]
+			b[i] = letterBytes[wr.rand.Intn(len(letterBytes))]
 		}
 		return string(b)
 	}
 
-	word := wr.words[rand.Int()%len(wr.words)]
+	word := wr.words[wr.rand.Int()%len(wr.words)]
 	if min == 0 && max == 0 {
 		return word
 	}
@@ -542,12 +548,12 @@ func (wr *SchemaRenderer) RandomWord(min, max int64, depth int) string {
 
 // RandomInt will return a random int between the min and max values.
 func (wr *SchemaRenderer) RandomInt(min, max int64) int64 {
-	return rand.Int63n(max-min) + min
+	return wr.rand.Int63n(max-min) + min
 }
 
 // RandomFloat64 will return a random float64 between 0 and 1.
 func (wr *SchemaRenderer) RandomFloat64() float64 {
-	return rand.Float64()
+	return wr.rand.Float64()
 }
 
 // PseudoUUID will return a random UUID, it's not a real UUID, but it's good enough for mock /example data.

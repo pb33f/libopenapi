@@ -2304,3 +2304,41 @@ properties:
 	loopMe(root, 0)
 	return root
 }
+
+func TestSchemaRenderer_SetSeed_Deterministic(t *testing.T) {
+	testObject := `type: object
+properties:
+  name:
+    type: string
+    minLength: 5
+    maxLength: 10
+  age:
+    type: integer
+    minimum: 18
+    maximum: 99`
+
+	compiled := getSchema([]byte(testObject))
+
+	// Generate two schemas with the same seed
+	wr1 := CreateRendererUsingDefaultDictionary()
+	wr1.SetSeed(42)
+	schema1 := wr1.RenderSchema(compiled)
+	rendered1, _ := json.Marshal(schema1)
+
+	wr2 := CreateRendererUsingDefaultDictionary()
+	wr2.SetSeed(42)
+	schema2 := wr2.RenderSchema(compiled)
+	rendered2, _ := json.Marshal(schema2)
+
+	// They should be identical
+	assert.Equal(t, string(rendered1), string(rendered2))
+
+	// Generate a third schema with a different seed
+	wr3 := CreateRendererUsingDefaultDictionary()
+	wr3.SetSeed(123)
+	schema3 := wr3.RenderSchema(compiled)
+	rendered3, _ := json.Marshal(schema3)
+
+	// It should be different from the first two
+	assert.NotEqual(t, string(rendered1), string(rendered3))
+}
