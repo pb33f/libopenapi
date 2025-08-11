@@ -485,3 +485,41 @@ properties:
 		})
 	}
 }
+
+func TestMockGenerator_SetSeed_Deterministic(t *testing.T) {
+	objectSchema := `type: object
+properties:
+  name:
+    type: string
+    minLength: 5
+    maxLength: 10
+  age:
+    type: integer
+    minimum: 18
+    maximum: 99`
+
+	fake := createFakeMock(objectSchema, nil, nil)
+
+	// Generate two mocks with the same seed
+	mg1 := NewMockGenerator(JSON)
+	mg1.SetSeed(42)
+	mock1, err := mg1.GenerateMock(fake, "")
+	assert.NoError(t, err)
+
+	mg2 := NewMockGenerator(JSON)
+	mg2.SetSeed(42)
+	mock2, err := mg2.GenerateMock(fake, "")
+	assert.NoError(t, err)
+
+	// They should be identical
+	assert.Equal(t, string(mock1), string(mock2))
+
+	// Generate a third mock with a different seed
+	mg3 := NewMockGenerator(JSON)
+	mg3.SetSeed(123)
+	mock3, err := mg3.GenerateMock(fake, "")
+	assert.NoError(t, err)
+
+	// It should be different from the first two
+	assert.NotEqual(t, string(mock1), string(mock3))
+}
