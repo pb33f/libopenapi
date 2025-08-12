@@ -4,12 +4,12 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowmodel "github.com/pkg-base/libopenapi/datamodel/low"
+	lowv3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Encoding represents an OpenAPI 3+ Encoding object

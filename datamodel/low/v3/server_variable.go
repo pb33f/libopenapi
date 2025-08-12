@@ -4,9 +4,9 @@ import (
 	"crypto/sha256"
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // ServerVariable represents a low-level OpenAPI 3+ ServerVariable object.
@@ -47,7 +47,7 @@ func (s *ServerVariable) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	// Pre-allocate and sort enum values
 	if len(s.Enum) > 0 {
 		keys := make([]string, len(s.Enum))
@@ -60,7 +60,7 @@ func (s *ServerVariable) Hash() [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	if !s.Default.IsEmpty() {
 		sb.WriteString(s.Default.Value)
 		sb.WriteByte('|')

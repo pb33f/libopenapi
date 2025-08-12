@@ -4,8 +4,8 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/v3"
 )
 
 // ServerChanges represents changes found between two OpenAPI Server Objects

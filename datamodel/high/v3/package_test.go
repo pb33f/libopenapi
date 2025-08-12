@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	lowv3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 // An example of how to create a new high-level OpenAPI 3+ document from an OpenAPI specification.

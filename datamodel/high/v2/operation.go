@@ -4,11 +4,11 @@
 package v2
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	low "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	"github.com/pkg-base/libopenapi/datamodel/high/base"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Operation represents a high-level Swagger / OpenAPI 2 Operation object, backed by a low-level one.

@@ -10,11 +10,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

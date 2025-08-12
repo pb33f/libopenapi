@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 type petstore []byte
@@ -816,7 +816,7 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Slashes(t *testing.T) {
 	assert.Equal(t, "$.nice.rice.and.spice", path)
 }
 
-// https://github.com/pb33f/libopenapi/issues/112
+// https://github.com/pkg-base/libopenapi/issues/112
 func TestConvertComponentIdIntoFriendlyPathSearch_BracketInName(t *testing.T) {
 	_, path := ConvertComponentIdIntoFriendlyPathSearch(`#/oo/missus/hows/your/fa[ther]`)
 	assert.Equal(t, "$.oo.missus['hows']['your']['fa[ther]']", path)

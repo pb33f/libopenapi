@@ -13,10 +13,10 @@ package model
 import (
 	"reflect"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 )
 
 // DocumentChanges represents all the changes made to an OpenAPI document.
@@ -152,7 +152,7 @@ func CompareDocuments(l, r any) *DocumentChanges {
 
 	// reset schema hashmap
 	base.SchemaQuickHashMap.Clear()
-	
+
 	// clear hash cache to ensure clean state for comparison
 	low.ClearHashCache()
 

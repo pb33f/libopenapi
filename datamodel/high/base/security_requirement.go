@@ -6,11 +6,11 @@ package base
 import (
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // SecurityRequirement is a high-level representation of a Swagger / OpenAPI 3 SecurityRequirement object.

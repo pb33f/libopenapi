@@ -5,7 +5,6 @@ package index
 
 import (
 	"encoding/json"
-	"github.com/pb33f/libopenapi/utils"
 	"io/fs"
 	"log/slog"
 	"net/http"
@@ -13,8 +12,10 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/utils"
+
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/yaml"
 )
 
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing
@@ -72,7 +73,7 @@ func (rm *ReferenceMapped) MarshalJSON() ([]byte, error) {
 // SpecIndexConfig is a configuration struct for the SpecIndex introduced in 0.6.0 that provides an expandable
 // set of granular options. The first being the ability to set the Base URL for resolving relative references, and
 // allowing or disallowing remote or local file lookups.
-//   - https://github.com/pb33f/libopenapi/issues/73
+//   - https://github.com/pkg-base/libopenapi/issues/73
 type SpecIndexConfig struct {
 	// The BaseURL will be the root from which relative references will be resolved from if they can't be found locally.
 	//
@@ -85,12 +86,12 @@ type SpecIndexConfig struct {
 	// If our baseURL is set to https://pb33f.io/libopenapi then our reference will try to be resolved from:
 	//  - $ref: https://pb33f.io/libopenapi/somefile.yaml#/components/schemas/SomeSchema
 	//
-	// More details on relative references can be found in issue #73: https://github.com/pb33f/libopenapi/issues/73
+	// More details on relative references can be found in issue #73: https://github.com/pkg-base/libopenapi/issues/73
 	BaseURL *url.URL // set the Base URL for resolving relative references if the spec is exploded.
 
 	// If resolving remotely, the RemoteURLHandler will be used to fetch the remote document.
 	// If not set, the default http client will be used.
-	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
+	// Resolves [#132]: https://github.com/pkg-base/libopenapi/issues/132
 	// deprecated: Use the Rolodex instead
 	RemoteURLHandler func(url string) (*http.Response, error)
 
@@ -105,7 +106,7 @@ type SpecIndexConfig struct {
 	// Is the FSHandler is set, it will be used for all lookups, regardless of whether they are local or remote.
 	// it also overrides the RemoteURLHandler if set.
 	//
-	// Resolves[#85] https://github.com/pb33f/libopenapi/issues/85
+	// Resolves[#85] https://github.com/pkg-base/libopenapi/issues/85
 	// deprecated: Use the Rolodex instead
 	FSHandler fs.FS
 
@@ -120,7 +121,7 @@ type SpecIndexConfig struct {
 	// There was a potential for a remote exploit if a remote reference was malicious. There aren't any known
 	// exploits, but it's better to be safe than sorry.
 	//
-	// To read more about this, you can find a discussion here: https://github.com/pb33f/libopenapi/pull/64
+	// To read more about this, you can find a discussion here: https://github.com/pkg-base/libopenapi/pull/64
 	AllowRemoteLookup bool // Allow remote lookups for references. Defaults to false
 	AllowFileLookup   bool // Allow file lookups for references. Defaults to false
 
@@ -184,12 +185,12 @@ type SpecIndexConfig struct {
 	// external documents. Enabling this will allow the what-changed module to perform deeper schema reference checks.
 	// -- IMPORTANT --
 	// Enabling this (default is false) will stop changes from being detected if a schema is circular.
-	// As identified in https://github.com/pb33f/libopenapi/pull/441
+	// As identified in https://github.com/pkg-base/libopenapi/pull/441
 	// So, in the edge case where you have circular references in your root / entry components/schemas and you also
 	// want changes in them to be picked up, then you should not enable this.
 	UseSchemaQuickHash bool
 
-	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have 
+	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have
 	// a known file extension. When enabled, libopenapi will fetch the first 1-2KB of unknown URLs to determine
 	// if they contain valid JSON or YAML content. This is disabled by default for security and performance.
 	//

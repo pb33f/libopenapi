@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func Test_NodeMapExtractNodes(t *testing.T) {

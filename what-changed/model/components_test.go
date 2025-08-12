@@ -7,12 +7,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/index"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestCompareComponents_Swagger_Definitions_Equal(t *testing.T) {
@@ -955,7 +955,7 @@ func TestCompareComponents_OpenAPI_SecuritySchemes_Equal(t *testing.T) {
 func TestCompareComponents_OpenAPI_SecuritySchemes_Modified(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	left := `securitySchemes:
   scheme1:
     description: a scheme

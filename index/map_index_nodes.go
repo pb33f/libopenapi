@@ -4,7 +4,7 @@
 package index
 
 import (
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/yaml"
 )
 
 type nodeMap struct {

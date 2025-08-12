@@ -4,8 +4,8 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 )
 
 // CallbackChanges represents all changes made between two Callback OpenAPI objects.

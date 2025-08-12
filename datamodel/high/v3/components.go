@@ -6,14 +6,14 @@ package v3
 import (
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	highbase "github.com/pkg-base/libopenapi/datamodel/high/base"
+	lowmodel "github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Components represents a high-level OpenAPI 3+ Components Object, that is backed by a low-level one.

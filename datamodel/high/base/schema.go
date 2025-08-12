@@ -6,11 +6,11 @@ package base
 import (
 	"encoding/json"
 
-	"github.com/pb33f/libopenapi/datamodel/high"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	lowmodel "github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Schema represents a JSON Schema that support Swagger, OpenAPI 3 and OpenAPI 3.1
@@ -66,7 +66,7 @@ type Schema struct {
 	UnevaluatedItems  *SchemaProxy                          `json:"unevaluatedItems,omitempty" yaml:"unevaluatedItems,omitempty"`
 
 	// in 3.1 UnevaluatedProperties can be a Schema or a boolean
-	// https://github.com/pb33f/libopenapi/issues/118
+	// https://github.com/pkg-base/libopenapi/issues/118
 	UnevaluatedProperties *DynamicValue[*SchemaProxy, bool] `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
 
 	// in 3.1 Items can be a Schema or a boolean
@@ -98,8 +98,8 @@ type Schema struct {
 	Default              *yaml.Node                            `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
 	Const                *yaml.Node                            `json:"const,omitempty" yaml:"const,renderZero,omitempty"`
 	Nullable             *bool                                 `json:"nullable,omitempty" yaml:"nullable,omitempty"`
-	ReadOnly             *bool                                 `json:"readOnly,renderZero,omitempty" yaml:"readOnly,renderZero,omitempty"`   // https://github.com/pb33f/libopenapi/issues/30
-	WriteOnly            *bool                                 `json:"writeOnly,renderZero,omitempty" yaml:"writeOnly,renderZero,omitempty"` // https://github.com/pb33f/libopenapi/issues/30
+	ReadOnly             *bool                                 `json:"readOnly,renderZero,omitempty" yaml:"readOnly,renderZero,omitempty"`   // https://github.com/pkg-base/libopenapi/issues/30
+	WriteOnly            *bool                                 `json:"writeOnly,renderZero,omitempty" yaml:"writeOnly,renderZero,omitempty"` // https://github.com/pkg-base/libopenapi/issues/30
 	XML                  *XML                                  `json:"xml,omitempty" yaml:"xml,omitempty"`
 	ExternalDocs         *ExternalDoc                          `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
 	Example              *yaml.Node                            `json:"example,omitempty" yaml:"example,omitempty"`

@@ -4,10 +4,10 @@
 package base
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	low "github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // ExternalDoc represents a high-level External Documentation object as defined by OpenAPI 2 and 3

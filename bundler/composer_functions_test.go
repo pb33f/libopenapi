@@ -5,11 +5,12 @@ package bundler
 
 import (
 	"errors"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"testing"
 
-	"github.com/pb33f/libopenapi"
-	"github.com/pb33f/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+
+	"github.com/pkg-base/libopenapi"
+	"github.com/pkg-base/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 )
 

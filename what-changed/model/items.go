@@ -4,8 +4,8 @@
 package model
 
 import (
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 )
 
 // ItemsChanges represent changes found between a left (original) and right (modified) object. Items is only

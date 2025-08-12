@@ -4,10 +4,10 @@
 package v2
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	low "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	lowmodel "github.com/pkg-base/libopenapi/datamodel/low"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 // SecurityDefinitions is a high-level representation of a Swagger / OpenAPI 2 Security Definitions object, that

@@ -7,11 +7,11 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // PathsChanges represents changes found between two Swagger or OpenAPI Paths Objects.

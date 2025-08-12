@@ -6,9 +6,9 @@ package bundler
 import (
 	"testing"
 
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestDetectOpenAPIComponentType_NilNode(t *testing.T) {

@@ -5,18 +5,20 @@ package index
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"path/filepath"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"context"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+
+	"github.com/pkg-base/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestRolodex_FindNodeOrigin_InRoot(t *testing.T) {

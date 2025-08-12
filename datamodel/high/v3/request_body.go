@@ -4,10 +4,10 @@
 package v3
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // RequestBody represents a high-level OpenAPI 3+ RequestBody object, backed by a low-level one.

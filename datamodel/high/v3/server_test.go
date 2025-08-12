@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 )
 

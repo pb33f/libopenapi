@@ -6,11 +6,11 @@ package base
 import (
 	"encoding/json"
 
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowBase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowBase "github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Example represents a high-level Example object as defined by OpenAPI 3+

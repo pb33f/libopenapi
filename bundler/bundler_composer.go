@@ -8,11 +8,11 @@ import (
 	"strings"
 	"sync"
 
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
-	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	v3 "github.com/pkg-base/libopenapi/datamodel/high/v3"
+	v3low "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 type processRef struct {
@@ -51,7 +51,6 @@ func handleIndex(c *handleIndexConfig) {
 		var foundIndex *index.SpecIndex
 
 		// make sure to use the correct index.
-		// https://github.com/pb33f/libopenapi/issues/397
 		for _, i := range c.indexes {
 			if i.GetSpecAbsolutePath() == refExp[0] {
 				foundIndex = i

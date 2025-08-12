@@ -6,12 +6,12 @@ package v3
 import (
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowv3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // Callback represents a high-level Callback object for OpenAPI 3+.

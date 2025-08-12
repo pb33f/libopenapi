@@ -4,7 +4,7 @@
 package model
 
 import (
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 )
 
 // EncodingChanges represent all the changes made to an Encoding object

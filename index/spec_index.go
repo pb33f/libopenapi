@@ -15,8 +15,6 @@ package index
 import (
 	"context"
 	"fmt"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -24,9 +22,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/pkg-base/jsonpath/pkg/jsonpath/config"
 
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/utils"
+
+	"github.com/pkg-base/yaml"
 )
 
 const (

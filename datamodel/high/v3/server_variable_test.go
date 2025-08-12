@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestServerVariable_MarshalYAML(t *testing.T) {

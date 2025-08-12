@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_SearchIndexForReference(t *testing.T) {

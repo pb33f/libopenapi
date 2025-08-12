@@ -16,12 +16,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/pb33f/libopenapi/what-changed/model"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/high/base"
+	v3high "github.com/pkg-base/libopenapi/datamodel/high/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -1522,7 +1522,6 @@ func TestDocument_RecursiveSchemaHash(t *testing.T) {
 	assert.NotEmpty(t, hash)
 }
 
-// https://github.com/pb33f/libopenapi/issues/426
 func TestDocument_MinimumZero(t *testing.T) {
 	d := `openapi: "3.1"`
 

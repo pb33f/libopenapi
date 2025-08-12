@@ -7,10 +7,10 @@ import (
 	"context"
 	"crypto/sha256"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Contact represents a low-level representation of the Contact definitions found at
@@ -66,7 +66,7 @@ func (c *Contact) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !c.Name.IsEmpty() {
 		sb.WriteString(c.Name.Value)
 		sb.WriteByte('|')
@@ -79,7 +79,7 @@ func (c *Contact) Hash() [32]byte {
 		sb.WriteString(c.Email.Value)
 		sb.WriteByte('|')
 	}
-	
+
 	// Note: Extensions are not included in the hash for Contact
 	return sha256.Sum256([]byte(sb.String()))
 }

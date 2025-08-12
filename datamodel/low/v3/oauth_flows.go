@@ -8,11 +8,11 @@ import (
 	"crypto/sha256"
 	"fmt"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // OAuthFlows represents a low-level OpenAPI 3+ OAuthFlows object.
@@ -104,7 +104,7 @@ func (o *OAuthFlows) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !o.Implicit.IsEmpty() {
 		sb.WriteString(low.GenerateHashString(o.Implicit.Value))
 		sb.WriteByte('|')
@@ -197,7 +197,7 @@ func (o *OAuthFlow) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !o.AuthorizationUrl.IsEmpty() {
 		sb.WriteString(o.AuthorizationUrl.Value)
 		sb.WriteByte('|')

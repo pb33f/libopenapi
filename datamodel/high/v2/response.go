@@ -4,12 +4,12 @@
 package v2
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	"github.com/pkg-base/libopenapi/datamodel/high/base"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowv2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 // Response is a representation of a high-level Swagger / OpenAPI 2 Response object, backed by a low-level one.

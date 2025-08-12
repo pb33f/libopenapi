@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

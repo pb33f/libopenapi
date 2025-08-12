@@ -12,17 +12,17 @@ import (
 	"strings"
 	"testing"
 
-	what_changed "github.com/pb33f/libopenapi/what-changed"
+	what_changed "github.com/pkg-base/libopenapi/what-changed"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
 
-	"github.com/pb33f/libopenapi/datamodel/high"
-	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
-	low "github.com/pb33f/libopenapi/datamodel/low/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	v3high "github.com/pkg-base/libopenapi/datamodel/high/v3"
+	low "github.com/pkg-base/libopenapi/datamodel/low/base"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 )
 

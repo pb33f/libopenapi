@@ -7,12 +7,12 @@ import (
 	"context"
 	"crypto/sha256"
 
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/yaml"
 )
 
 // Callback represents a low-level Callback object for OpenAPI 3+.
@@ -96,7 +96,7 @@ func (cb *Callback) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	for v := range orderedmap.SortAlpha(cb.Expression).ValuesFromOldest() {
 		sb.WriteString(low.GenerateHashString(v.Value))
 		sb.WriteByte('|')

@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func Test_seekRefEnd(t *testing.T) {

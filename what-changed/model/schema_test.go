@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -3069,7 +3069,7 @@ func TestCompareSchemas_Nil(t *testing.T) {
 	assert.Nil(t, CompareSchemas(nil, nil))
 }
 
-// Test for issue https://github.com/pb33f/libopenapi/issues/218
+// Test for issue https://github.com/pkg-base/libopenapi/issues/218
 func TestCompareSchemas_PropertyRefChange_Identical(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
@@ -4326,11 +4326,11 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
-	
+
 	// Test GetAllChanges includes DependentRequired changes
 	allChanges := changes.GetAllChanges()
 	assert.Greater(t, len(allChanges), 0)
-	
+
 	// Verify at least one DependentRequired change is included
 	foundDepReq := false
 	for _, change := range allChanges {
@@ -4376,7 +4376,7 @@ components:
 
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
-	
+
 	// Test TotalBreakingChanges includes DependentRequired breaking changes
 	totalBreaking := changes.TotalBreakingChanges()
 	assert.Greater(t, totalBreaking, 0)
@@ -4389,15 +4389,15 @@ func TestSlicesEqual_AllCases(t *testing.T) {
 	a := []string{"name", "email"}
 	b := []string{"name", "email"}
 	assert.True(t, slicesEqual(a, b))
-	
+
 	// Test different lengths
 	c := []string{"name"}
 	assert.False(t, slicesEqual(a, c))
-	
+
 	// Test different content
 	d := []string{"name", "phone"}
 	assert.False(t, slicesEqual(a, d))
-	
+
 	// Test empty slices
 	assert.True(t, slicesEqual([]string{}, []string{}))
 }
@@ -4408,14 +4408,14 @@ func TestGetNodeForProperty_EdgeCases(t *testing.T) {
 	// Test with nil map (line 1778-1779)
 	node := getNodeForProperty(nil, "test")
 	assert.Nil(t, node)
-	
+
 	// Test with property not found (line 1785)
 	depMap := orderedmap.New[low.KeyReference[string], low.ValueReference[[]string]]()
 	depMap.Set(low.KeyReference[string]{Value: "billing"}, low.ValueReference[[]string]{Value: []string{"name"}})
-	
+
 	node = getNodeForProperty(depMap, "nonexistent")
 	assert.Nil(t, node)
-	
+
 	// Test with property found (should return the node)
 	node = getNodeForProperty(depMap, "billing")
 	// Note: In this test case the node will be nil since we didn't set ValueNode,
@@ -4437,7 +4437,7 @@ components:
 
 	leftDoc, _ := test_BuildDoc(spec, spec)
 	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
-	
+
 	// Access the low-level DependentRequired to test with real nodes
 	lowSchema := lSchemaProxy.Schema()
 	if lowSchema.DependentRequired.Value != nil {
@@ -4484,11 +4484,11 @@ components:
 	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
 	assert.NotNil(t, changes)
 	assert.Greater(t, len(changes.DependentRequiredChanges), 0)
-	
+
 	// This specifically calls GetPropertyChanges() which contains lines 73-74
 	propertyChanges := changes.GetPropertyChanges()
 	assert.Greater(t, len(propertyChanges), 0)
-	
+
 	// Verify that DependentRequired changes are included in property changes
 	foundDepReq := false
 	for _, change := range propertyChanges {

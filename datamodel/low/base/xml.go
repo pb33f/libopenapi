@@ -5,11 +5,11 @@ import (
 	"crypto/sha256"
 	"strconv"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // XML represents a low-level representation of an XML object defined by all versions of OpenAPI.
@@ -61,7 +61,7 @@ func (x *XML) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !x.Name.IsEmpty() {
 		sb.WriteString(x.Name.Value)
 		sb.WriteByte('|')

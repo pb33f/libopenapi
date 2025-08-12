@@ -17,14 +17,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
-	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/datamodel"
+	v2 "github.com/pkg-base/libopenapi/datamodel/high/v2"
+	lowv2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	lowv3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 var lowDoc *lowv3.Document

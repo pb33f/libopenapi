@@ -8,10 +8,10 @@ import (
 	"strings"
 	"testing"
 
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	lowmodel "github.com/pkg-base/libopenapi/datamodel/low"
+	lowbase "github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func ExampleNewXML() {

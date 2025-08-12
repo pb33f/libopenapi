@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low"
-	low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	lowbase "github.com/pkg-base/libopenapi/datamodel/low"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // Responses represents a high-level OpenAPI 3+ Responses object that is backed by a low-level one.

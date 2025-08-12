@@ -11,10 +11,10 @@ import (
 	"log/slog"
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called.
@@ -98,7 +98,7 @@ func (sp *SchemaProxy) Schema() *Schema {
 		sp.buildError = err
 		return nil
 	}
-	schema.ParentProxy = sp // https://github.com/pb33f/libopenapi/issues/29
+	schema.ParentProxy = sp // https://github.com/pkg-base/libopenapi/issues/29
 	sp.rendered = schema
 
 	// for all the nodes added, copy them over to the schema

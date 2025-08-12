@@ -11,13 +11,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/utils"
 
 	"context"
+
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestNewResolver(t *testing.T) {

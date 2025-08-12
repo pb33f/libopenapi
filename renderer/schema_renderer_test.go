@@ -17,13 +17,13 @@ import (
 	"testing"
 	"time"
 
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/index"
+	highbase "github.com/pkg-base/libopenapi/datamodel/high/base"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowbase "github.com/pkg-base/libopenapi/datamodel/low/base"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestRenderSchema(t *testing.T) {

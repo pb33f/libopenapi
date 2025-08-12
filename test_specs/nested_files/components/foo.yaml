@@ -1,4 +1,4 @@
-# https://github.com/pb33f/libopenapi/issues/418
+# https://github.com/pkg-base/libopenapi/issues/418
 get:
   parameters:
     - name: id

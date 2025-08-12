@@ -6,8 +6,8 @@ package index
 import (
 	"testing"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_ExtractRefs_CheckDescriptionNotMap(t *testing.T) {
@@ -125,7 +125,7 @@ components:
 	assert.Len(t, idx.allInlineSchemaObjectDefinitions, 7)
 }
 
-// https://github.com/pb33f/libopenapi/issues/112
+// https://github.com/pkg-base/libopenapi/issues/112
 func TestSpecIndex_ExtractRefs_CheckReferencesWithBracketsInName(t *testing.T) {
 	yml := `openapi: 3.0.0
 components:

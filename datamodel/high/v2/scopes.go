@@ -4,9 +4,9 @@
 package v2
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowv2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowv2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 // Scopes is a high-level representation of a Swagger / OpenAPI 2 OAuth2 Scopes object, that is backed by a low-level one.

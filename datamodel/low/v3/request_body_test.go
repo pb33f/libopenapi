@@ -7,11 +7,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestRequestBody_Build(t *testing.T) {
@@ -68,7 +68,7 @@ func TestRequestBody_Fail(t *testing.T) {
 
 func TestRequestBody_Hash(t *testing.T) {
 	cleanHashCacheForTest(t)
-	
+
 	yml := `description: nice toast
 content:
   jammy/toast:

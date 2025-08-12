@@ -11,8 +11,8 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // ResolvingError represents an issue the resolver had trying to stitch the tree together.

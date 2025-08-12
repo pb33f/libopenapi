@@ -8,17 +8,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
 
-	"github.com/pb33f/libopenapi"
-	"github.com/pb33f/libopenapi/datamodel"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
+
+	"github.com/pkg-base/libopenapi"
+	"github.com/pkg-base/libopenapi/datamodel"
+	v3 "github.com/pkg-base/libopenapi/datamodel/high/v3"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
@@ -206,7 +207,7 @@ func bundle(model *v3.Document) ([]byte, error) {
 			if len(refExp) == 2 {
 
 				// make sure to use the correct index.
-				// https://github.com/pb33f/libopenapi/issues/397
+				// https://github.com/pkg-base/libopenapi/issues/397
 				if root {
 					for _, i := range indexes {
 						if i.GetSpecAbsolutePath() == refExp[0] {
@@ -390,18 +391,17 @@ func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Nod
 	}
 }
 
-
 // updateDiscriminatorMappingsComposed updates discriminator mapping references to point to composed component locations.
 func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex) {
 	for _, mappingNode := range mappingNodes {
 		originalValue := mappingNode.Value
-		
+
 		if !strings.Contains(originalValue, "#/") {
 			continue
 		}
-		
+
 		var matchingIdx *index.SpecIndex
-		
+
 		// Search root index first
 		if ref, refIdx := rolodex.GetRootIndex().SearchIndexForReference(originalValue); ref != nil {
 			matchingIdx = refIdx
@@ -414,7 +414,7 @@ func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNod
 				}
 			}
 		}
-		
+
 		if matchingIdx != nil {
 			newRef := renameRef(matchingIdx, originalValue, processedNodes)
 			if newRef != originalValue {

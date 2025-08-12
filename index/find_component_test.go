@@ -9,8 +9,9 @@ import (
 	"time"
 
 	"context"
+
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_performExternalLookup(t *testing.T) {

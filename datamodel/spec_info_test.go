@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 )
 

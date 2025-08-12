@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/utils"
 )
 
 // DocumentConfiguration is used to configure the document creation process. It was added in v0.6.0 to allow
@@ -30,7 +30,7 @@ type DocumentConfiguration struct {
 	// The remote handler is only used if the BaseURL is set. If the BaseURL is not set, then the remote handler
 	// will not be used, as there will be nothing to use it against.
 	//
-	// Resolves [#132]: https://github.com/pb33f/libopenapi/issues/132
+	// Resolves [#132]: https://github.com/pkg-base/libopenapi/issues/132
 	RemoteURLHandler utils.RemoteURLHandler
 
 	// If resolving locally, the BasePath will be the root from which relative references will be resolved from.
@@ -134,7 +134,7 @@ type DocumentConfiguration struct {
 	// -- IMPORTANT --
 	///
 	// Enabling this (default is false) will stop changes from being detected if a schema is circular.
-	// As identified in https://github.com/pb33f/libopenapi/pull/441
+	// As identified in https://github.com/pkg-base/libopenapi/pull/441
 	//
 	// In the edge case where you have circular references in your root / entry components/schemas and you also
 	// want changes in them to be picked up, then you should not enable this.
@@ -145,7 +145,7 @@ type DocumentConfiguration struct {
 	// used to determine changes.
 	UseSchemaQuickHash bool
 
-	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have 
+	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have
 	// a known file extension. When enabled, libopenapi will fetch the first 1-2KB of unknown URLs to determine
 	// if they contain valid JSON or YAML content. This is disabled by default for security and performance.
 	//

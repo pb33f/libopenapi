@@ -1,6 +1,6 @@
 package nodes
 
-import "gopkg.in/yaml.v3"
+import "github.com/pkg-base/yaml"
 
 // NodeEntry represents a single node used by NodeBuilder.
 type NodeEntry struct {

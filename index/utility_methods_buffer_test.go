@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 // Test that buffer pool optimization maintains identical hash outputs
@@ -108,7 +108,7 @@ func TestHashNode_ConcurrentAccess(t *testing.T) {
 func TestClearHashCache(t *testing.T) {
 	// Ensure we start with a clean cache
 	ClearHashCache()
-	
+
 	// Create multiple large nodes that will definitely be cached
 	nodes := make([]*yaml.Node, 5)
 	for n := 0; n < 5; n++ {
@@ -149,10 +149,10 @@ func TestClearHashCache(t *testing.T) {
 		hash := HashNode(node)
 		assert.Equal(t, hashes[i], hash, "Hash should still be consistent")
 	}
-	
+
 	// Clear the now-populated cache again to test the function multiple times
 	ClearHashCache()
-	
+
 	// Final verification
 	finalHash := HashNode(nodes[0])
 	assert.Equal(t, hashes[0], finalHash, "Hash should work after multiple cache clears")
@@ -162,7 +162,7 @@ func TestClearHashCache(t *testing.T) {
 func TestClearHashCache_EmptyCache(t *testing.T) {
 	// Clear cache when it's already empty
 	ClearHashCache()
-	
+
 	// Create small nodes that won't be cached (< 200 content items)
 	smallYaml := `small:
   item1: value1
@@ -188,54 +188,54 @@ func TestClearHashCache_EmptyCache(t *testing.T) {
 func TestClearHashCache_ComprehensiveTest(t *testing.T) {
 	// Start completely clean
 	ClearHashCache()
-	
+
 	// Create nodes that will definitely be cached by manually creating large content
 	largeNodes := make([]*yaml.Node, 10)
 	expectedHashes := make([]string, 10)
-	
+
 	for i := 0; i < 10; i++ {
 		// Manually create large nodes to guarantee caching
 		node := &yaml.Node{
-			Kind: yaml.MappingNode,
-			Tag: "!!map",
-			Value: fmt.Sprintf("large_root_%d", i),
+			Kind:    yaml.MappingNode,
+			Tag:     "!!map",
+			Value:   fmt.Sprintf("large_root_%d", i),
 			Content: make([]*yaml.Node, 250), // Above cacheThreshold
 		}
-		
+
 		// Fill with content that varies per node
 		for j := 0; j < 250; j++ {
 			node.Content[j] = &yaml.Node{
-				Kind: yaml.ScalarNode,
-				Tag: "!!str",
-				Value: fmt.Sprintf("item_%d_%d", i, j),
-				Line: j + 1,
+				Kind:   yaml.ScalarNode,
+				Tag:    "!!str",
+				Value:  fmt.Sprintf("item_%d_%d", i, j),
+				Line:   j + 1,
 				Column: (j % 10) + 1,
 			}
 		}
-		
+
 		largeNodes[i] = node
 		expectedHashes[i] = HashNode(node) // This should populate cache
 		assert.NotEmpty(t, expectedHashes[i])
 	}
-	
+
 	// At this point, cache should have entries for all large nodes
 	// Now test clearing the cache
 	ClearHashCache()
-	
+
 	// Re-hash all nodes - they should produce the same hashes but from scratch
 	for i, node := range largeNodes {
 		hash := HashNode(node)
 		assert.Equal(t, expectedHashes[i], hash, "Hash %d should be consistent after cache clear", i)
 	}
-	
+
 	// Populate cache again
 	for _, node := range largeNodes {
 		HashNode(node)
 	}
-	
+
 	// Clear once more to ensure the Range function executes multiple times
 	ClearHashCache()
-	
+
 	// Final verification
 	for i, node := range largeNodes {
 		hash := HashNode(node)
@@ -247,7 +247,7 @@ func TestClearHashCache_ComprehensiveTest(t *testing.T) {
 func TestShouldUseOptimizedHashing_LargeNode(t *testing.T) {
 	// Create a node with > 1000 content items (largeLodeThreshold)
 	largeNode := &yaml.Node{
-		Kind: yaml.MappingNode,
+		Kind:    yaml.MappingNode,
 		Content: make([]*yaml.Node, 1001),
 	}
 	for i := 0; i < 1001; i++ {
@@ -261,10 +261,10 @@ func TestShouldUseOptimizedHashing_LargeNode(t *testing.T) {
 // Test shouldUseOptimizedHashing with deep node threshold
 func TestShouldUseOptimizedHashing_DeepNode(t *testing.T) {
 	smallNode := &yaml.Node{Kind: yaml.ScalarNode, Value: "test"}
-	
+
 	// Should use optimized hashing for deep nodes (depth > 100)
 	assert.True(t, shouldUseOptimizedHashing(smallNode, 101))
-	
+
 	// Should not use optimized for shallow nodes
 	assert.False(t, shouldUseOptimizedHashing(smallNode, 50))
 }
@@ -273,12 +273,12 @@ func TestShouldUseOptimizedHashing_DeepNode(t *testing.T) {
 func TestShouldUseOptimizedHashing_LargeChildren(t *testing.T) {
 	// Create parent with small content but large child
 	largeChild := &yaml.Node{
-		Kind: yaml.MappingNode,
+		Kind:    yaml.MappingNode,
 		Content: make([]*yaml.Node, 1001), // Above threshold
 	}
-	
+
 	parentNode := &yaml.Node{
-		Kind: yaml.MappingNode,
+		Kind:    yaml.MappingNode,
 		Content: []*yaml.Node{largeChild}, // Only one child, but it's large
 	}
 
@@ -343,17 +343,17 @@ func TestHashNode_VeryDeepRecursion(t *testing.T) {
 	// Create a chain of nodes that exceeds the 1000 depth limit
 	root := &yaml.Node{Kind: yaml.MappingNode}
 	current := root
-	
+
 	for i := 0; i < 1100; i++ {
 		child := &yaml.Node{
-			Kind: yaml.MappingNode,
-			Tag: fmt.Sprintf("level%d", i),
+			Kind:  yaml.MappingNode,
+			Tag:   fmt.Sprintf("level%d", i),
 			Value: fmt.Sprintf("value%d", i),
 		}
 		current.Content = []*yaml.Node{child}
 		current = child
 	}
-	
+
 	// Should handle deep recursion gracefully
 	hash := HashNode(root)
 	assert.NotEmpty(t, hash)
@@ -396,7 +396,7 @@ func TestHashNode_EdgeCases(t *testing.T) {
 			node: &yaml.Node{Kind: yaml.MappingNode, Content: []*yaml.Node{}},
 		},
 		{
-			name: "empty sequence node", 
+			name: "empty sequence node",
 			node: &yaml.Node{Kind: yaml.SequenceNode, Content: []*yaml.Node{}},
 		},
 		{
@@ -418,7 +418,7 @@ func TestHashNode_EdgeCases(t *testing.T) {
 			ClearHashCache()
 			hash := HashNode(tc.node)
 			assert.NotEmpty(t, hash, "Hash should not be empty for %s", tc.name)
-			
+
 			// Hash should be consistent
 			hash2 := HashNode(tc.node)
 			assert.Equal(t, hash, hash2, "Hash should be consistent for %s", tc.name)
@@ -430,51 +430,51 @@ func TestHashNode_EdgeCases(t *testing.T) {
 func TestHashNode_ForceBranches(t *testing.T) {
 	// Create a node that will trigger optimized hashing (large content)
 	largeNode := &yaml.Node{
-		Kind: yaml.MappingNode,
-		Tag: "!!map",
-		Value: "root",
-		Line: 1,
-		Column: 1,
+		Kind:    yaml.MappingNode,
+		Tag:     "!!map",
+		Value:   "root",
+		Line:    1,
+		Column:  1,
 		Content: make([]*yaml.Node, 1100), // Above largeLodeThreshold
 	}
-	
+
 	// Fill with alternating small and large nodes to test both paths
 	for i := 0; i < 1100; i++ {
 		if i%2 == 0 {
 			// Small node - will use simple hashing
 			largeNode.Content[i] = &yaml.Node{
-				Kind: yaml.ScalarNode,
-				Tag: "!!str",
-				Value: fmt.Sprintf("small%d", i),
-				Line: i + 2,
+				Kind:   yaml.ScalarNode,
+				Tag:    "!!str",
+				Value:  fmt.Sprintf("small%d", i),
+				Line:   i + 2,
 				Column: 1,
 			}
 		} else {
 			// Large node - will use optimized hashing
 			child := &yaml.Node{
-				Kind: yaml.MappingNode,
-				Tag: "!!map", 
-				Value:  fmt.Sprintf("large%d", i),
-				Line: i + 2,
-				Column: 1,
+				Kind:    yaml.MappingNode,
+				Tag:     "!!map",
+				Value:   fmt.Sprintf("large%d", i),
+				Line:    i + 2,
+				Column:  1,
 				Content: make([]*yaml.Node, 1001),
 			}
 			for j := 0; j < 1001; j++ {
 				child.Content[j] = &yaml.Node{
-					Kind: yaml.ScalarNode,
+					Kind:  yaml.ScalarNode,
 					Value: fmt.Sprintf("item%d", j),
 				}
 			}
 			largeNode.Content[i] = child
 		}
 	}
-	
+
 	ClearHashCache()
-	
+
 	// This should exercise both optimized and simple code paths
 	hash := HashNode(largeNode)
 	assert.NotEmpty(t, hash)
-	
+
 	// Should be consistent
 	hash2 := HashNode(largeNode)
 	assert.Equal(t, hash, hash2)
@@ -488,12 +488,12 @@ func TestHashNode_EmptyContentArrays(t *testing.T) {
 		{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{}},
 		{Kind: yaml.ScalarNode, Tag: "!!str", Value: "scalar", Content: nil},
 	}
-	
+
 	for i, node := range testNodes {
 		t.Run(fmt.Sprintf("node_%d", i), func(t *testing.T) {
 			hash := HashNode(node)
 			assert.NotEmpty(t, hash)
-			
+
 			// Should be consistent
 			hash2 := HashNode(node)
 			assert.Equal(t, hash, hash2)
@@ -506,28 +506,28 @@ func TestHashNode_ExactDepthThreshold(t *testing.T) {
 	// Create a chain exactly 1000 levels deep
 	root := &yaml.Node{Kind: yaml.MappingNode, Value: "root"}
 	current := root
-	
+
 	for i := 0; i < 999; i++ { // 999 + root = 1000 total
 		child := &yaml.Node{
-			Kind: yaml.MappingNode,
-			Tag: fmt.Sprintf("!!level%d", i),
+			Kind:  yaml.MappingNode,
+			Tag:   fmt.Sprintf("!!level%d", i),
 			Value: fmt.Sprintf("value%d", i),
 		}
 		current.Content = []*yaml.Node{child}
 		current = child
 	}
-	
+
 	// At exactly 1000 depth, should still process
 	hash := HashNode(root)
 	assert.NotEmpty(t, hash)
-	
+
 	// Add one more level to exceed threshold
 	finalChild := &yaml.Node{
-		Kind: yaml.ScalarNode,
+		Kind:  yaml.ScalarNode,
 		Value: "final",
 	}
 	current.Content = []*yaml.Node{finalChild}
-	
+
 	// Should still work (depth limit prevents infinite recursion)
 	hash2 := HashNode(root)
 	assert.NotEmpty(t, hash2)
@@ -538,18 +538,18 @@ func TestHashNode_LargeValues(t *testing.T) {
 	// Create node with very large tag and value strings
 	largeTag := fmt.Sprintf("!!%s", strings.Repeat("tag", 1000))
 	largeValue := strings.Repeat("value", 1000)
-	
+
 	nodeWithLargeValues := &yaml.Node{
-		Kind: yaml.ScalarNode,
-		Tag: largeTag,
-		Value: largeValue,
-		Line: 999999,
+		Kind:   yaml.ScalarNode,
+		Tag:    largeTag,
+		Value:  largeValue,
+		Line:   999999,
 		Column: 999999,
 	}
-	
+
 	hash := HashNode(nodeWithLargeValues)
 	assert.NotEmpty(t, hash)
-	
+
 	// Should be consistent
 	hash2 := HashNode(nodeWithLargeValues)
 	assert.Equal(t, hash, hash2)
@@ -560,20 +560,20 @@ func TestHashNode_InternalNilHandling(t *testing.T) {
 	// Create a large node that will trigger optimized hashing but has mixed content
 	// including scenarios that might result in nil checks in the internal functions
 	rootNode := &yaml.Node{
-		Kind: yaml.MappingNode,
-		Tag: "!!map",
-		Value: "root",
+		Kind:    yaml.MappingNode,
+		Tag:     "!!map",
+		Value:   "root",
 		Content: make([]*yaml.Node, 1100), // Forces optimized path
 	}
-	
+
 	// Fill with mix of content that exercises different code paths
 	for i := 0; i < 1100; i++ {
 		if i%100 == 0 {
 			// Create nodes that will trigger different hash paths with empty content
 			rootNode.Content[i] = &yaml.Node{
-				Kind: yaml.MappingNode,
-				Tag: "!!map",
-				Value: fmt.Sprintf("empty_%d", i),
+				Kind:    yaml.MappingNode,
+				Tag:     "!!map",
+				Value:   fmt.Sprintf("empty_%d", i),
 				Content: []*yaml.Node{}, // Empty content - exercises edge case
 			}
 		} else if i%50 == 0 {
@@ -583,7 +583,7 @@ func TestHashNode_InternalNilHandling(t *testing.T) {
 			// Create chain that approaches but doesn't exceed depth limit
 			for j := 0; j < 500; j++ {
 				child := &yaml.Node{
-					Kind: yaml.ScalarNode,
+					Kind:  yaml.ScalarNode,
 					Value: fmt.Sprintf("depth_%d_%d", i, j),
 				}
 				current.Content = []*yaml.Node{child}
@@ -593,20 +593,20 @@ func TestHashNode_InternalNilHandling(t *testing.T) {
 		} else {
 			// Regular nodes
 			rootNode.Content[i] = &yaml.Node{
-				Kind: yaml.ScalarNode,
-				Tag: "!!str",
-				Value: fmt.Sprintf("item_%d", i),
-				Line: i,
+				Kind:   yaml.ScalarNode,
+				Tag:    "!!str",
+				Value:  fmt.Sprintf("item_%d", i),
+				Line:   i,
 				Column: i % 100,
 			}
 		}
 	}
-	
+
 	// This should exercise both hashNodeOptimized and hashNodeSimple
 	// with various edge cases including empty content and deep nesting
 	hash := HashNode(rootNode)
 	assert.NotEmpty(t, hash)
-	
+
 	// Should be consistent
 	hash2 := HashNode(rootNode)
 	assert.Equal(t, hash, hash2)
@@ -616,48 +616,48 @@ func TestHashNode_InternalNilHandling(t *testing.T) {
 func TestHashNode_ExtremeDepthLimits(t *testing.T) {
 	// Create a node structure that will definitely hit the >1000 depth limit
 	// This should exercise the depth check returns in both hash functions
-	
+
 	// Start with a large root that forces optimized hashing
 	root := &yaml.Node{
-		Kind: yaml.MappingNode,
-		Tag: "!!map", 
-		Value: "root",
+		Kind:    yaml.MappingNode,
+		Tag:     "!!map",
+		Value:   "root",
 		Content: make([]*yaml.Node, 1200), // Forces optimized path
 	}
-	
+
 	// Create one extremely deep branch that will hit the depth limit
 	deepBranch := &yaml.Node{Kind: yaml.MappingNode, Value: "deep_start"}
 	current := deepBranch
-	
+
 	// Create a chain that goes well beyond the 1000 depth limit
 	for i := 0; i < 1200; i++ {
 		child := &yaml.Node{
-			Kind: yaml.MappingNode,
-			Tag: fmt.Sprintf("!!level_%d", i),
-			Value: fmt.Sprintf("depth_%d", i),
-			Line: i,
+			Kind:   yaml.MappingNode,
+			Tag:    fmt.Sprintf("!!level_%d", i),
+			Value:  fmt.Sprintf("depth_%d", i),
+			Line:   i,
 			Column: i % 100,
 		}
 		current.Content = []*yaml.Node{child}
 		current = child
 	}
-	
+
 	// Add the deep branch as first element
 	root.Content[0] = deepBranch
-	
+
 	// Fill remaining slots with smaller nodes that will use simple hashing
 	for i := 1; i < 1200; i++ {
 		root.Content[i] = &yaml.Node{
-			Kind: yaml.ScalarNode,
+			Kind:  yaml.ScalarNode,
 			Value: fmt.Sprintf("shallow_%d", i),
 		}
 	}
-	
+
 	// This will exercise both optimized and simple hash functions
 	// and specifically test the depth > 1000 early returns
 	hash := HashNode(root)
 	assert.NotEmpty(t, hash)
-	
+
 	// Should be consistent even with depth limits
 	hash2 := HashNode(root)
 	assert.Equal(t, hash, hash2)
@@ -668,45 +668,45 @@ func TestHashNode_ForceNilPaths(t *testing.T) {
 	// Create a structure that might exercise nil handling in recursive calls
 	// This is tricky since we can't directly pass nil to the internal functions,
 	// but we can create scenarios where the functions handle edge cases
-	
+
 	// Create a node that forces optimized hashing
 	complexNode := &yaml.Node{
-		Kind: yaml.MappingNode,
-		Tag: "!!map",
+		Kind:    yaml.MappingNode,
+		Tag:     "!!map",
 		Content: make([]*yaml.Node, 1001), // Above threshold
 	}
-	
+
 	// Fill with nodes that have various edge case properties
 	for i := 0; i < 1001; i++ {
 		if i%3 == 0 {
 			// Node with nil content (valid case)
 			complexNode.Content[i] = &yaml.Node{
-				Kind: yaml.ScalarNode,
-				Tag: "",  // Empty tag
-				Value: "", // Empty value
+				Kind:    yaml.ScalarNode,
+				Tag:     "",  // Empty tag
+				Value:   "",  // Empty value
 				Content: nil, // Explicitly nil content
 			}
 		} else if i%3 == 1 {
 			// Node with empty content slice
 			complexNode.Content[i] = &yaml.Node{
-				Kind: yaml.MappingNode,
-				Tag: "!!map",
-				Value: "",
+				Kind:    yaml.MappingNode,
+				Tag:     "!!map",
+				Value:   "",
 				Content: []*yaml.Node{}, // Empty but not nil
 			}
 		} else {
 			// Regular node
 			complexNode.Content[i] = &yaml.Node{
-				Kind: yaml.ScalarNode,
+				Kind:  yaml.ScalarNode,
 				Value: fmt.Sprintf("regular_%d", i),
 			}
 		}
 	}
-	
+
 	// Hash the complex structure
 	hash := HashNode(complexNode)
 	assert.NotEmpty(t, hash)
-	
+
 	// Should be consistent
 	hash2 := HashNode(complexNode)
 	assert.Equal(t, hash, hash2)
@@ -715,14 +715,14 @@ func TestHashNode_ForceNilPaths(t *testing.T) {
 // Test hashNodeSimple with nil node (covers nil check)
 func TestHashNodeSimple_NilNode(t *testing.T) {
 	var h = sha256.New()
-	
+
 	// Call hashNodeSimple with nil node - should return early without error
 	hashNodeSimple(nil, h, 0)
-	
+
 	// Hash should remain unchanged (no data written)
 	sum := h.Sum(nil)
 	result := fmt.Sprintf("%x", sum)
-	
+
 	// Should be the hash of empty bytes
 	expected := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 	assert.Equal(t, expected, result)
@@ -731,23 +731,23 @@ func TestHashNodeSimple_NilNode(t *testing.T) {
 // Test hashNodeSimple with depth > 1000 (covers depth check)
 func TestHashNodeSimple_ExceedsDepthLimit(t *testing.T) {
 	var h = sha256.New()
-	
+
 	// Create a simple node
 	node := &yaml.Node{
-		Kind: yaml.ScalarNode,
-		Tag: "!!str",
-		Value: "test",
-		Line: 1,
+		Kind:   yaml.ScalarNode,
+		Tag:    "!!str",
+		Value:  "test",
+		Line:   1,
 		Column: 1,
 	}
-	
+
 	// Call hashNodeSimple with depth > 1000 - should return early
 	hashNodeSimple(node, h, 1001)
-	
+
 	// Hash should remain unchanged (no data written due to depth limit)
 	sum := h.Sum(nil)
 	result := fmt.Sprintf("%x", sum)
-	
+
 	// Should be the hash of empty bytes
 	expected := "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 	assert.Equal(t, expected, result)
@@ -764,17 +764,17 @@ func TestHashNode_TriggerAllPaths(t *testing.T) {
 			node: func() *yaml.Node {
 				// Create a large node that forces optimized path
 				n := &yaml.Node{
-					Kind: yaml.MappingNode,
-					Tag: "!!map",
-					Value: "optimized_root",
+					Kind:    yaml.MappingNode,
+					Tag:     "!!map",
+					Value:   "optimized_root",
 					Content: make([]*yaml.Node, 1001),
 				}
 				// Fill with real nodes - we can't put nil in Content as it would cause panic
 				for i := 0; i < 1001; i++ {
 					n.Content[i] = &yaml.Node{
-						Kind: yaml.ScalarNode,
-						Value: fmt.Sprintf("opt_%d", i),
-						Line: i,
+						Kind:   yaml.ScalarNode,
+						Value:  fmt.Sprintf("opt_%d", i),
+						Line:   i,
 						Column: i % 100,
 					}
 				}
@@ -784,11 +784,11 @@ func TestHashNode_TriggerAllPaths(t *testing.T) {
 		{
 			name: "SimplePath_WithMinimalContent",
 			node: &yaml.Node{
-				Kind: yaml.ScalarNode,
-				Tag: "!!str",
-				Value: "simple_node",
-				Line: 42,
-				Column: 13,
+				Kind:    yaml.ScalarNode,
+				Tag:     "!!str",
+				Value:   "simple_node",
+				Line:    42,
+				Column:  13,
 				Content: nil, // Nil content for scalar
 			},
 		},
@@ -796,16 +796,16 @@ func TestHashNode_TriggerAllPaths(t *testing.T) {
 			name: "EmptyNode_OptimizedPath",
 			node: func() *yaml.Node {
 				n := &yaml.Node{
-					Kind: yaml.MappingNode,
-					Tag: "",
-					Value: "",
+					Kind:    yaml.MappingNode,
+					Tag:     "",
+					Value:   "",
 					Content: make([]*yaml.Node, 1100),
 				}
 				// Fill with empty nodes
 				for i := 0; i < 1100; i++ {
 					n.Content[i] = &yaml.Node{
-						Kind: yaml.ScalarNode,
-						Tag: "",
+						Kind:  yaml.ScalarNode,
+						Tag:   "",
 						Value: "",
 					}
 				}
@@ -817,26 +817,26 @@ func TestHashNode_TriggerAllPaths(t *testing.T) {
 			node: func() *yaml.Node {
 				// Create a structure that will use both optimized and simple paths
 				root := &yaml.Node{
-					Kind: yaml.MappingNode,
+					Kind:    yaml.MappingNode,
 					Content: make([]*yaml.Node, 1200), // Force optimized
 				}
-				
+
 				for i := 0; i < 1200; i++ {
 					if i < 600 {
 						// Small nodes that will use simple path when recursed into
 						root.Content[i] = &yaml.Node{
-							Kind: yaml.ScalarNode,
+							Kind:  yaml.ScalarNode,
 							Value: fmt.Sprintf("simple_%d", i),
 						}
 					} else {
 						// Large nodes that will use optimized path when recursed into
 						child := &yaml.Node{
-							Kind: yaml.MappingNode,
+							Kind:    yaml.MappingNode,
 							Content: make([]*yaml.Node, 1001),
 						}
 						for j := 0; j < 1001; j++ {
 							child.Content[j] = &yaml.Node{
-								Kind: yaml.ScalarNode,
+								Kind:  yaml.ScalarNode,
 								Value: fmt.Sprintf("deep_%d_%d", i, j),
 							}
 						}
@@ -852,10 +852,10 @@ func TestHashNode_TriggerAllPaths(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Clear cache before each test
 			ClearHashCache()
-			
+
 			hash1 := HashNode(tc.node)
 			assert.NotEmpty(t, hash1, "Hash should not be empty for %s", tc.name)
-			
+
 			hash2 := HashNode(tc.node)
 			assert.Equal(t, hash1, hash2, "Hash should be consistent for %s", tc.name)
 		})

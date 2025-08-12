@@ -8,10 +8,10 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestSpecIndex_MapNodes(t *testing.T) {

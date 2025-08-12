@@ -4,8 +4,8 @@
 package reports
 
 import (
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/what-changed/model"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/what-changed/model"
 )
 
 // Changed provides a simple wrapper for changed counts

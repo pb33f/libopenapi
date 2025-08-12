@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/datamodel"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -44,7 +44,7 @@ func TestCompareSwaggerDocuments(t *testing.T) {
 
 // TestCacheCollisionSelfReference reproduces the cache collision bug with self-referencing schemas
 // This is the key pattern that triggers the QuickHash cache collision issue
-// see: https://github.com/pb33f/libopenapi/pull/441
+// see: https://github.com/pkg-base/libopenapi/pull/441
 func TestCacheCollisionSelfReference(t *testing.T) {
 	// Original spec - TreeNode schema with basic properties
 	original := `{

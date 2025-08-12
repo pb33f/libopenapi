@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/utils"
 )
 
 // ExampleChanges represent changes to an Example object, part of an OpenAPI specification.
@@ -87,7 +87,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		for k := range l.Value.ValueNode.Content {
 			if k%2 == 0 {
 				// if there is no value (value is another map or something else), render the node into yaml and hash it.
-				// https://github.com/pb33f/libopenapi/issues/61
+				// https://github.com/pkg-base/libopenapi/issues/61
 				val := l.Value.ValueNode.Content[k+1].Value
 				if val == "" {
 					val = low.HashYAMLNodeSlice(l.Value.ValueNode.Content[k+1].Content)
@@ -105,7 +105,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		for k := range r.Value.ValueNode.Content {
 			if k%2 == 0 {
 				// if there is no value (value is another map or something else), render the node into yaml and hash it.
-				// https://github.com/pb33f/libopenapi/issues/61
+				// https://github.com/pkg-base/libopenapi/issues/61
 				val := r.Value.ValueNode.Content[k+1].Value
 				if val == "" {
 					val = low.HashYAMLNodeSlice(r.Value.ValueNode.Content[k+1].Content)

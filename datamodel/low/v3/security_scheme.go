@@ -7,11 +7,11 @@ import (
 	"context"
 	"crypto/sha256"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // SecurityScheme represents a low-level OpenAPI 3+ SecurityScheme object.
@@ -104,7 +104,7 @@ func (ss *SecurityScheme) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !ss.Type.IsEmpty() {
 		sb.WriteString(ss.Type.Value)
 		sb.WriteByte('|')

@@ -8,12 +8,12 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -282,7 +282,7 @@ func TestCreateDocument(t *testing.T) {
 func TestCreateDocumentHash(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	data, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	d, _ := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{

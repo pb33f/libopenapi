@@ -4,12 +4,12 @@
 package v2
 
 import (
-	"github.com/pb33f/libopenapi/datamodel"
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	low "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	highbase "github.com/pkg-base/libopenapi/datamodel/high/base"
+	lowmodel "github.com/pkg-base/libopenapi/datamodel/low"
+	lowbase "github.com/pkg-base/libopenapi/datamodel/low/base"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 // Definitions is a high-level represents of a Swagger / OpenAPI 2 Definitions object, backed by a low-level one.

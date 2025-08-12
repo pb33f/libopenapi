@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"sync"
 
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 type (

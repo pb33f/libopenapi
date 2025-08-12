@@ -4,9 +4,9 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	v2 "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	v2 "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 )
 
 // ScopesChanges represents changes between two Swagger Scopes Objects

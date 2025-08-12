@@ -15,8 +15,8 @@ import (
 	"time"
 
 	"github.com/lucasjones/reggen"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/high/base"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 const (
@@ -94,7 +94,7 @@ func (wr *SchemaRenderer) RenderSchema(schema *base.Schema) any {
 
 // DisableRequiredCheck will disable the required check when rendering a schema. This means that all properties
 // will be rendered, not just the required ones.
-// https://github.com/pb33f/libopenapi/issues/200
+// https://github.com/pkg-base/libopenapi/issues/200
 func (wr *SchemaRenderer) DisableRequiredCheck() {
 	wr.disableRequired = true
 }

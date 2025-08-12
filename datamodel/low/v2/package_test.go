@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel"
 )
 
 // How to create a low-level Swagger / OpenAPI 2 Document from a specification

@@ -7,11 +7,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestPathItem_Hash(t *testing.T) {
@@ -88,7 +88,7 @@ summary: it's another path item`
 	assert.NotNil(t, n.GetIndex())
 }
 
-// https://github.com/pb33f/libopenapi/issues/388
+// https://github.com/pkg-base/libopenapi/issues/388
 func TestPathItem_CheckExtensionWithParametersValue_NoPanic(t *testing.T) {
 	yml := `x-user_extension: parameters
 get:

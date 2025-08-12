@@ -9,11 +9,11 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // SecurityRequirement is a low-level representation of a Swagger / OpenAPI 3 SecurityRequirement object.
@@ -133,7 +133,7 @@ func (s *SecurityRequirement) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	for k, v := range orderedmap.SortAlpha(s.Requirements.Value).FromOldest() {
 		// Pre-allocate vals slice
 		vals := make([]string, len(v.Value))

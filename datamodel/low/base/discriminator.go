@@ -6,10 +6,10 @@ package base
 import (
 	"crypto/sha256"
 
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/yaml"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/orderedmap"
 )
 
 // Discriminator is only used by OpenAPI 3+ documents, it represents a polymorphic discriminator used for schemas
@@ -55,7 +55,7 @@ func (d *Discriminator) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if d.PropertyName.Value != "" {
 		sb.WriteString(d.PropertyName.Value)
 		sb.WriteByte('|')

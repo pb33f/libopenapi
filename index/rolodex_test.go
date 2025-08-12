@@ -21,8 +21,8 @@ import (
 	"testing/fstest"
 	"time"
 
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestRolodex_NewRolodex(t *testing.T) {

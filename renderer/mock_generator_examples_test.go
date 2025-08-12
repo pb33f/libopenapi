@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/pb33f/libopenapi"
+	"github.com/pkg-base/libopenapi"
 )
 
 func ExampleMockGenerator_generateBurgerMock_yaml() {

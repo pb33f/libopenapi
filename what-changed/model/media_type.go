@@ -4,9 +4,9 @@
 package model
 
 import (
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/utils"
 )
 
 // MediaTypeChanges represent changes made between two OpenAPI MediaType instances.

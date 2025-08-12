@@ -17,8 +17,9 @@ import (
 	"time"
 
 	"context"
-	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
+
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/yaml"
 )
 
 type Rolodexable interface {

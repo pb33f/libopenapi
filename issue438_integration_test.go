@@ -6,7 +6,7 @@ package libopenapi
 import (
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -35,7 +35,7 @@ paths:
 		assert.NoError(t, err)
 		assert.NotNil(t, doc)
 
-		// Verify the document was created successfully  
+		// Verify the document was created successfully
 		model, errs := doc.BuildV3Model()
 		assert.Len(t, errs, 0)
 		assert.NotNil(t, model)

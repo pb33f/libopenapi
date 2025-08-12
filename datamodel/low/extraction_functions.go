@@ -19,14 +19,14 @@ import (
 	"sync"
 	"unsafe"
 
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
+	jsonpathconfig "github.com/pkg-base/jsonpath/pkg/jsonpath/config"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // stringBuilderPool is a sync.Pool that reuses strings.Builder instances to reduce memory allocations

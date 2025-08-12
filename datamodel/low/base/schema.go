@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // SchemaDynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
@@ -505,7 +505,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 			depReqMap[prop.Value] = requiredProps.Value
 		}
 		sort.Strings(depReqKeys)
-		
+
 		for _, prop := range depReqKeys {
 			sb.WriteString(prop)
 			sb.WriteByte(':')

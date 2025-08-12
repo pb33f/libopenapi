@@ -3,10 +3,10 @@ package json_test
 import (
 	"testing"
 
-	"github.com/pb33f/libopenapi/json"
+	"github.com/pkg-base/libopenapi/json"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 func TestYAMLNodeToJSON(t *testing.T) {

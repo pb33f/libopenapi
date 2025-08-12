@@ -10,11 +10,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
+	jsonpathconfig "github.com/pkg-base/jsonpath/pkg/jsonpath/config"
 
-	"github.com/pb33f/libopenapi/utils"
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/jsonpath/pkg/jsonpath"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // FindComponent will locate a component by its reference, returns nil if nothing is found.

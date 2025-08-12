@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // BuildModel accepts a yaml.Node pointer and a model, which can be any struct. Using reflection, the model is

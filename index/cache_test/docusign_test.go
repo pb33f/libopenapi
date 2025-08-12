@@ -6,12 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pb33f/libopenapi"
+	"github.com/pkg-base/libopenapi"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/high/base"
+	v3 "github.com/pkg-base/libopenapi/datamodel/high/v3"
+	"github.com/pkg-base/libopenapi/orderedmap"
 	"github.com/stretchr/testify/require"
 )
 

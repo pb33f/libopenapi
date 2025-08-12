@@ -6,9 +6,9 @@ package model
 import (
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowv3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
 )
 

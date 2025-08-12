@@ -9,12 +9,12 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // Operation is a low-level representation of an OpenAPI 3+ Operation object.
@@ -175,7 +175,7 @@ func (o *Operation) Build(ctx context.Context, keyNode, root *yaml.Node, idx *in
 	}
 
 	// if security is set, but no requirements are defined.
-	// https://github.com/pb33f/libopenapi/issues/111
+	// https://github.com/pkg-base/libopenapi/issues/111
 	if sln != nil && len(svn.Content) == 0 && sec == nil {
 		o.Security = low.NodeReference[[]low.ValueReference[*base.SecurityRequirement]]{
 			Value:     []low.ValueReference[*base.SecurityRequirement]{}, // empty
@@ -206,7 +206,7 @@ func (o *Operation) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !o.Summary.IsEmpty() {
 		sb.WriteString(o.Summary.Value)
 		sb.WriteByte('|')
@@ -247,7 +247,7 @@ func (o *Operation) Hash() [32]byte {
 		sb.WriteString(strconv.FormatBool(o.Deprecated.Value))
 		sb.WriteByte('|')
 	}
-	
+
 	// Tags array - pre-allocate and sort
 	if len(o.Tags.Value) > 0 {
 		tags := make([]string, len(o.Tags.Value))
@@ -292,7 +292,7 @@ func (o *Operation) Hash() [32]byte {
 		sb.WriteString(low.GenerateHashString(v.Value))
 		sb.WriteByte('|')
 	}
-	
+
 	// Extensions
 	for _, ext := range low.HashExtensions(o.Extensions) {
 		sb.WriteString(ext)

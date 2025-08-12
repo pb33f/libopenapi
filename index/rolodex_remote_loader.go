@@ -20,10 +20,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/utils"
 
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/yaml"
 )
 
 const (

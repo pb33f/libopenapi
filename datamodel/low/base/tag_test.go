@@ -7,11 +7,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestTag_Build(t *testing.T) {
@@ -67,7 +67,7 @@ externalDocs:
 func TestTag_Hash(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	left := `name: melody
 description: my princess
 externalDocs:
@@ -116,7 +116,7 @@ x-custom: value`
 
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
-	
+
 	assert.Equal(t, "partner", n.Name.Value)
 	assert.Equal(t, "Partner", n.Summary.Value)
 	assert.Equal(t, "Operations available to the partners network", n.Description.Value)
@@ -170,7 +170,7 @@ x-custom: value`
 	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	assert.Equal(t, lDoc.Hash(), rDoc.Hash())
-	
+
 	// test hash difference when fields change
 	right2 := `name: partner
 summary: Partner API

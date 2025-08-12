@@ -7,14 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -44,7 +45,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 
 			// check if we're dealing with an inline schema definition, that isn't part of an array
 			// (which means it's being used as a value in an array, and it's not a label)
-			// https://github.com/pb33f/libopenapi/issues/76
+			// https://github.com/pkg-base/libopenapi/issues/76
 			schemaContainingNodes := []string{"schema", "items", "additionalProperties", "contains", "not", "unevaluatedItems", "unevaluatedProperties"}
 			if i%2 == 0 && slices.Contains(schemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 
@@ -95,12 +96,12 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 			}
 
 			// Perform the same check for all maps of schemas like properties and patternProperties
-			// https://github.com/pb33f/libopenapi/issues/76
+			// https://github.com/pkg-base/libopenapi/issues/76
 			mapOfSchemaContainingNodes := []string{"properties", "patternProperties"}
 			if i%2 == 0 && slices.Contains(mapOfSchemaContainingNodes, n.Value) && !utils.IsNodeArray(node) && (i+1 < len(node.Content)) {
 
 				// if 'examples' or 'example' exists in the seenPath, skip this 'properties' node.
-				// https://github.com/pb33f/libopenapi/issues/160
+				// https://github.com/pkg-base/libopenapi/issues/160
 				if len(seenPath) > 0 {
 					skip := false
 

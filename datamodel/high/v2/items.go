@@ -4,8 +4,8 @@
 package v2
 
 import (
-	low "github.com/pb33f/libopenapi/datamodel/low/v2"
-	"gopkg.in/yaml.v3"
+	low "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	"github.com/pkg-base/yaml"
 )
 
 // Items is a high-level representation of a Swagger / OpenAPI 2 Items object, backed by a low level one.

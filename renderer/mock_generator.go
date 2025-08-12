@@ -9,9 +9,9 @@ import (
 	"reflect"
 	"strconv"
 
-	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	highbase "github.com/pkg-base/libopenapi/datamodel/high/base"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 )
 
 const (

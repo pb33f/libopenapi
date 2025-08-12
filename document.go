@@ -16,19 +16,20 @@ package libopenapi
 import (
 	"errors"
 	"fmt"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 
-	"github.com/pb33f/libopenapi/index"
+	lowbase "github.com/pkg-base/libopenapi/datamodel/low/base"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	v2high "github.com/pb33f/libopenapi/datamodel/high/v2"
-	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
-	v2low "github.com/pb33f/libopenapi/datamodel/low/v2"
-	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"github.com/pb33f/libopenapi/utils"
-	what_changed "github.com/pb33f/libopenapi/what-changed"
-	"github.com/pb33f/libopenapi/what-changed/model"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/index"
+
+	"github.com/pkg-base/libopenapi/datamodel"
+	v2high "github.com/pkg-base/libopenapi/datamodel/high/v2"
+	v3high "github.com/pkg-base/libopenapi/datamodel/high/v3"
+	v2low "github.com/pkg-base/libopenapi/datamodel/low/v2"
+	v3low "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/libopenapi/utils"
+	what_changed "github.com/pkg-base/libopenapi/what-changed"
+	"github.com/pkg-base/libopenapi/what-changed/model"
+	"github.com/pkg-base/yaml"
 )
 
 // Document Represents an OpenAPI specification that can then be rendered into a model or serialized back into

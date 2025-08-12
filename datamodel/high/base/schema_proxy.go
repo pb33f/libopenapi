@@ -11,12 +11,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel/high"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/high"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -92,7 +92,7 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 // It's important to note that this method will return nil on a pointer created using NewSchemaProxy or CreateSchema* methods
 // there is no low-level SchemaProxy backing it, and therefore no schema to build, so this will fail. Use BuildSchema
 // instead for proxies created using NewSchemaProxy or CreateSchema* methods.
-// https://github.com/pb33f/libopenapi/issues/403
+// https://github.com/pkg-base/libopenapi/issues/403
 func (sp *SchemaProxy) Schema() *Schema {
 	if sp == nil || sp.lock == nil {
 		return nil

@@ -3,7 +3,7 @@
 
 package what_changed
 
-import "github.com/pb33f/libopenapi/what-changed/model"
+import "github.com/pkg-base/libopenapi/what-changed/model"
 
 // Changed represents an object that was changed
 type Changed interface {

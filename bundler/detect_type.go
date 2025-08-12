@@ -6,8 +6,8 @@ package bundler
 import (
 	"strings"
 
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"gopkg.in/yaml.v3"
+	v3 "github.com/pkg-base/libopenapi/datamodel/low/v3"
+	"github.com/pkg-base/yaml"
 )
 
 // DetectOpenAPIComponentType attempts to determine what type of OpenAPI component a node represents.

@@ -11,12 +11,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // PathItem represents a low-level OpenAPI 3+ PathItem object.
@@ -225,7 +225,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			prevExt = true
 			continue
 		}
-		// https://github.com/pb33f/libopenapi/issues/388
+		// https://github.com/pkg-base/libopenapi/issues/388
 		// in the case where a user has an extension with the value 'parameters', make sure we handle
 		// it correctly, by not skipping.
 		if strings.HasPrefix(strings.ToLower(pathNode.Value), "parameters") {

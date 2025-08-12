@@ -7,11 +7,11 @@ import (
 	"context"
 	"crypto/sha256"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 )
 
 // ExternalDoc represents a low-level External Documentation object as defined by OpenAPI 2 and 3
@@ -70,7 +70,7 @@ func (ex *ExternalDoc) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if ex.Description.Value != "" {
 		sb.WriteString(ex.Description.Value)
 		sb.WriteByte('|')
@@ -79,7 +79,7 @@ func (ex *ExternalDoc) Hash() [32]byte {
 		sb.WriteString(ex.URL.Value)
 		sb.WriteByte('|')
 	}
-	
+
 	for _, ext := range low.HashExtensions(ex.Extensions) {
 		sb.WriteString(ext)
 		sb.WriteByte('|')

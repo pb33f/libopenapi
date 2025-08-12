@@ -15,8 +15,9 @@ import (
 	"time"
 
 	"context"
+
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {

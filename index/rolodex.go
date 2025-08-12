@@ -20,11 +20,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/utils"
 
 	"context"
 
-	"gopkg.in/yaml.v3"
+	"github.com/pkg-base/yaml"
 )
 
 // CanBeIndexed is an interface that allows a file to be indexed.

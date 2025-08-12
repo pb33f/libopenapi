@@ -9,14 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pkg-base/libopenapi/datamodel"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/utils"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	lowbase "github.com/pkg-base/libopenapi/datamodel/low/base"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/utils"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 func TestDynamicValue_IsA(t *testing.T) {

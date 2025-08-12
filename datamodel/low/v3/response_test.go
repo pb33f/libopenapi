@@ -7,11 +7,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pkg-base/libopenapi/datamodel/low"
+	"github.com/pkg-base/libopenapi/index"
+	"github.com/pkg-base/libopenapi/orderedmap"
+	"github.com/pkg-base/yaml"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
 )
 
 // cleanHashCacheForTest clears the hash cache and sets up cleanup for individual tests
@@ -24,7 +24,7 @@ func cleanHashCacheForTest(t *testing.T) {
 
 func TestResponses_Build(t *testing.T) {
 	cleanHashCacheForTest(t)
-	
+
 	yml := `"200":
   description: some response
   headers:
