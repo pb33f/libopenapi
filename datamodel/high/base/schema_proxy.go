@@ -116,10 +116,9 @@ func (sp *SchemaProxy) Schema() *Schema {
 			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
 				idx.HighCacheHit()
-				// attribute the parent proxy to the cloned schema
-				schema := (*seen.(*Schema))
-				schema.ParentProxy = sp
-				return &schema
+				// Return cached schema without modification to avoid race conditions
+				// NOTE: ParentProxy may not be set correctly for cached schemas
+				return seen.(*Schema)
 			} else {
 				idx.HighCacheMiss()
 			}

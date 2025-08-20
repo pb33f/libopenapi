@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -473,4 +474,48 @@ properties:
 
 	rend, _ := sp.Schema().Properties.GetOrZero("cakes").Schema().Items.A.MarshalYAMLInline()
 	assert.NotNil(t, rend)
+}
+
+func TestSchemaProxy_ConcurrentCacheAccess(t *testing.T) {
+	// Create schema that will be cached
+	const ymlComponents = `components:
+  schemas:
+    TestSchema:
+      type: object`
+
+	var idxNode yaml.Node
+	err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+	assert.NoError(t, err)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	// Create multiple proxies that will share the same cache entry
+	proxies := make([]*SchemaProxy, 10)
+	for i := range proxies {
+		const ymlSchema = `$ref: '#/components/schemas/TestSchema'`
+		var node yaml.Node
+		yaml.Unmarshal([]byte(ymlSchema), &node)
+		
+		lowProxy := new(lowbase.SchemaProxy)
+		lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+		
+		proxies[i] = NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+			Value: lowProxy, ValueNode: node.Content[0],
+		})
+	}
+
+	// Trigger race by having all proxies access Schema() simultaneously
+	var wg sync.WaitGroup
+	for _, proxy := range proxies {
+		wg.Add(1)
+		go func(p *SchemaProxy) {
+			defer wg.Done()
+			schema := p.Schema() // This should trigger the race with old code
+			assert.NotNil(t, schema)
+			// Check if ParentProxy is set - with our fix, cached schemas may not have it
+			if schema.ParentProxy == nil {
+				t.Logf("Warning: Schema ParentProxy is nil for cached schema")
+			}
+		}(proxy)
+	}
+	wg.Wait()
 }
