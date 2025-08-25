@@ -65,6 +65,13 @@ func NewSchemaProxy(schema *low.NodeReference[*base.SchemaProxy]) *SchemaProxy {
 	return &SchemaProxy{schema: schema, lock: &sync.Mutex{}}
 }
 
+// copySchemaWithParentProxy creates a shallow copy of a schema and sets the ParentProxy
+func (sp *SchemaProxy) copySchemaWithParentProxy(schema *Schema) *Schema {
+	schemaCopy := *schema
+	schemaCopy.ParentProxy = sp
+	return &schemaCopy
+}
+
 // CreateSchemaProxy will create a new high-level SchemaProxy from a high-level Schema, this acts the same
 // as if the SchemaProxy is pre-rendered.
 func CreateSchemaProxy(schema *Schema) *SchemaProxy {
@@ -116,11 +123,7 @@ func (sp *SchemaProxy) Schema() *Schema {
 			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
 				idx.HighCacheHit()
-				// Create a copy of the cached schema with the correct ParentProxy
-				cachedSchema := seen.(*Schema)
-				schemaCopy := *cachedSchema // shallow copy
-				schemaCopy.ParentProxy = sp
-				return &schemaCopy
+				return sp.copySchemaWithParentProxy(seen.(*Schema))
 			} else {
 				idx.HighCacheMiss()
 			}
@@ -148,11 +151,8 @@ func (sp *SchemaProxy) Schema() *Schema {
 		}
 	}
 
-	// Create a copy of the schema to avoid race conditions when setting ParentProxy
-	schemaCopy := *sch // shallow copy
-	schemaCopy.ParentProxy = sp
-	sp.rendered = &schemaCopy
-	return &schemaCopy
+	sp.rendered = sp.copySchemaWithParentProxy(sch)
+	return sp.rendered
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
