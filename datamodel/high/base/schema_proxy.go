@@ -116,7 +116,11 @@ func (sp *SchemaProxy) Schema() *Schema {
 			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
 				idx.HighCacheHit()
-				return seen.(*Schema)
+				// Create a copy of the cached schema with the correct ParentProxy
+				cachedSchema := seen.(*Schema)
+				schemaCopy := *cachedSchema // shallow copy
+				schemaCopy.ParentProxy = sp
+				return &schemaCopy
 			} else {
 				idx.HighCacheMiss()
 			}
@@ -144,9 +148,11 @@ func (sp *SchemaProxy) Schema() *Schema {
 		}
 	}
 
-	sch.ParentProxy = sp
-	sp.rendered = sch
-	return sch
+	// Create a copy of the schema to avoid race conditions when setting ParentProxy
+	schemaCopy := *sch // shallow copy
+	schemaCopy.ParentProxy = sp
+	sp.rendered = &schemaCopy
+	return &schemaCopy
 }
 
 // IsReference returns true if the SchemaProxy is a reference to another Schema.
