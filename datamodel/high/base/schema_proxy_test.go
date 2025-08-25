@@ -521,7 +521,6 @@ func TestSchemaProxy_ConcurrentCacheAccess(t *testing.T) {
 }
 
 func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
-	// Create schema that will be cached
 	const ymlComponents = `components:
   schemas:
     TestSchema:
@@ -535,7 +534,6 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 	assert.NoError(t, err)
 	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
 
-	// Create first proxy and get schema (this will cache it)
 	const ymlSchema = `$ref: '#/components/schemas/TestSchema'`
 	var node1 yaml.Node
 	yaml.Unmarshal([]byte(ymlSchema), &node1)
@@ -547,12 +545,10 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 		Value: lowProxy1, ValueNode: node1.Content[0],
 	})
 
-	// Get schema from first proxy (this should cache it)
 	schema1 := proxy1.Schema()
 	assert.NotNil(t, schema1)
 	assert.Equal(t, proxy1, schema1.ParentProxy, "First schema should have correct ParentProxy")
 
-	// Create second proxy for same schema reference
 	var node2 yaml.Node
 	yaml.Unmarshal([]byte(ymlSchema), &node2)
 	
@@ -563,12 +559,8 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 		Value: lowProxy2, ValueNode: node2.Content[0],
 	})
 
-	// Get schema from second proxy (this should return cached schema)
 	schema2 := proxy2.Schema()
 	assert.NotNil(t, schema2)
-	
-	// CRITICAL TEST: Each proxy should have its own parent relationship
-	// Currently fails due to the race condition fix
 	assert.Equal(t, proxy2, schema2.ParentProxy, "Second schema should have its own ParentProxy, not the first proxy's")
 	assert.NotEqual(t, schema1.ParentProxy, schema2.ParentProxy, "Different proxies should have different parent relationships")
 }
