@@ -378,12 +378,12 @@ func TestExampleCompareDocuments_swagger(t *testing.T) {
 func TestDocument_Paths_As_Array(t *testing.T) {
 	// paths can now be wrapped in an array.
 	spec := `{
-    "openapi": "3.1.0",
-    "paths": [
-        "/": {
-            "get": {}
-        }
-    ]
+  "openapi": "3.1.0",
+  "paths": {
+    "/": {
+      "get": {}
+    }
+  }
 }
 `
 	// create a new document from specification bytes
