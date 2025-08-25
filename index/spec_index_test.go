@@ -731,6 +731,85 @@ paths:
 	assert.Equal(t, 1, len(index.GetOperationParametersIndexErrors()))
 }
 
+func TestSpecIndex_ParametersWithSameNameDifferentIn(t *testing.T) {
+	spec1 := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - name: random_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: random_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: random_id
+          in: header
+          required: false
+          schema:
+            type: boolean`
+
+	spec2 := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - name: random_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: random_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: random_id
+          in: header
+          required: false
+          schema:
+            type: boolean`
+
+	var rootNode1 yaml.Node
+	_ = yaml.Unmarshal([]byte(spec1), &rootNode1)
+	index1 := NewSpecIndexWithConfig(&rootNode1, CreateOpenAPIIndexConfig())
+	params1 := index1.GetAllParametersFromOperations()
+
+	var rootNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(spec2), &rootNode2)
+	index2 := NewSpecIndexWithConfig(&rootNode2, CreateOpenAPIIndexConfig())
+	params2 := index2.GetAllParametersFromOperations()
+
+	count1 := countParametersFromOperations(params1)
+	count2 := countParametersFromOperations(params2)
+
+	assert.Equal(t, 3, count1)
+	assert.Equal(t, 3, count2)
+	assert.Equal(t, count1, count2)
+}
+
+func countParametersFromOperations(params map[string]map[string]map[string][]*Reference) int {
+	total := 0
+	for _, pathParams := range params {
+		for _, methodParams := range pathParams {
+			for _, refs := range methodParams {
+				total += len(refs)
+			}
+		}
+	}
+	return total
+}
+
 func TestSpecIndex_BurgerShop_AllTheComponents(t *testing.T) {
 	burgershop, _ := os.ReadFile("../test_specs/all-the-components.yaml")
 	var rootNode yaml.Node

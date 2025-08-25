@@ -510,26 +510,20 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 				checkNodes := index.paramOpRefs[pathItemNode.Value][method][ref.Name]
 				_, currentIn := utils.FindKeyNodeTop("in", currentNode.Content)
 
-				for _, checkNode := range checkNodes {
-
-					_, checkIn := utils.FindKeyNodeTop("in", checkNode.Node.Content)
-
-					if currentIn != nil && checkIn != nil && currentIn.Value == checkIn.Value {
-
-						path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
-						if method == "top" {
-							path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
-						}
-
-						index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
-							Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
-								"index %d has a duplicate name `%s` and `in` type", strings.ToUpper(method), pathItemNode.Value, i, vn.Value),
-							Node: param,
-							Path: path,
-						})
-					} else {
-						index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
+				if hasDuplicateInType(currentIn, checkNodes) {
+					path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
+					if method == "top" {
+						path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
 					}
+
+					index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
+						Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
+							"index %d has a duplicate name `%s` and `in` type", strings.ToUpper(method), pathItemNode.Value, i, vn.Value),
+						Node: param,
+						Path: path,
+					})
+				} else {
+					index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
 				}
 			} else {
 				index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
@@ -812,4 +806,14 @@ func hashNodeSimple(n *yaml.Node, h hash.Hash, depth int) {
 			hashNodeSimple(c, h, depth+1)
 		}
 	}
+}
+
+func hasDuplicateInType(currentIn *yaml.Node, existingRefs []*Reference) bool {
+	for _, ref := range existingRefs {
+		_, existingIn := utils.FindKeyNodeTop("in", ref.Node.Content)
+		if currentIn != nil && existingIn != nil && currentIn.Value == existingIn.Value {
+			return true
+		}
+	}
+	return false
 }
