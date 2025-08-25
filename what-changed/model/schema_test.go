@@ -3591,6 +3591,45 @@ components:
 	changes.PropertiesOnly() // this does nothing in this lib.
 }
 
+func TestCompareSchemas_ExclusiveMaximumNodeSwap(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `openapi: 3.1
+components:
+  schemas:
+    TestSchema:
+      type: number
+      exclusiveMaximum: 100`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    TestSchema:
+      type: number
+      exclusiveMaximum: 200`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	// extract left reference schema and non reference schema.
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TestSchema").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TestSchema").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, changes.TotalChanges(), 1)
+	assert.Equal(t, changes.TotalBreakingChanges(), 1)
+
+	// Find the exclusiveMaximum change
+	exclusiveMaxChange := changes.GetPropertyChanges()[0]
+	assert.Equal(t, "exclusiveMaximum", exclusiveMaxChange.Property)
+	assert.Equal(t, Modified, exclusiveMaxChange.ChangeType)
+
+	// Test the values are correct
+	assert.Equal(t, "100", exclusiveMaxChange.Original)
+	assert.Equal(t, "200", exclusiveMaxChange.New)
+}
+
 func TestCompareSchemas_CheckXML(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
