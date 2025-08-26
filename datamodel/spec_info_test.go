@@ -41,13 +41,19 @@ var badYAML = `name: kitty
     - gggggrrraaaaaaaaaooooooowwwwwww
 `
 
-var OpenApiWat = `openapi: 3.2
+var OpenApiWat = `openapi: 3.3
 info:
   title: Test API, valid, but not quite valid
 servers:
   - url: https://quobix.com/api`
 
 var OpenApi31 = `openapi: 3.1
+info:
+  title: Test API, valid, but not quite valid
+servers:
+  - url: https://quobix.com/api`
+
+var OpenApi32 = `openapi: 3.2
 info:
   title: Test API, valid, but not quite valid
 servers:
@@ -152,7 +158,7 @@ func TestExtractSpecInfo_OpenAPIWat(t *testing.T) {
 	r, e := ExtractSpecInfo([]byte(OpenApiWat))
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
-	assert.Equal(t, "3.2", r.Version)
+	assert.Equal(t, "3.3", r.Version)
 }
 
 func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
@@ -160,6 +166,14 @@ func TestExtractSpecInfo_OpenAPI31(t *testing.T) {
 	assert.Nil(t, e)
 	assert.Equal(t, OpenApi3, r.SpecType)
 	assert.Equal(t, "3.1", r.Version)
+	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-10-07")
+}
+
+func TestExtractSpecInfo_OpenAPI32(t *testing.T) {
+	r, e := ExtractSpecInfo([]byte(OpenApi32))
+	assert.Nil(t, e)
+	assert.Equal(t, OpenApi3, r.SpecType)
+	assert.Equal(t, "3.2", r.Version)
 	assert.Contains(t, r.APISchema, "https://spec.openapis.org/oas/3.1/schema/2022-10-07")
 }
 
