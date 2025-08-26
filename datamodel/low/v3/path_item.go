@@ -36,6 +36,7 @@ type PathItem struct {
 	Head        low.NodeReference[*Operation]
 	Patch       low.NodeReference[*Operation]
 	Trace       low.NodeReference[*Operation]
+	Query       low.NodeReference[*Operation]
 	Servers     low.NodeReference[[]low.ValueReference[*Server]]
 	Parameters  low.NodeReference[[]low.ValueReference[*Parameter]]
 	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
@@ -101,6 +102,10 @@ func (p *PathItem) Hash() [32]byte {
 	}
 	if !p.Trace.IsEmpty() {
 		sb.WriteString(fmt.Sprintf("%s-%s", TraceLabel, low.GenerateHashString(p.Trace.Value)))
+		sb.WriteByte('|')
+	}
+	if !p.Query.IsEmpty() {
+		sb.WriteString(fmt.Sprintf("%s-%s", QueryLabel, low.GenerateHashString(p.Query.Value)))
 		sb.WriteByte('|')
 	}
 
@@ -255,6 +260,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 		case HeadLabel:
 		case OptionsLabel:
 		case TraceLabel:
+		case QueryLabel:
 		default:
 			continue // ignore everything else.
 		}
@@ -335,6 +341,8 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			p.Options = opRef
 		case TraceLabel:
 			p.Trace = opRef
+		case QueryLabel:
+			p.Query = opRef
 		}
 	}
 

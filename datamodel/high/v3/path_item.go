@@ -23,6 +23,7 @@ const (
 	head
 	patch
 	trace
+	query
 )
 
 // PathItem represents a high-level OpenAPI 3+ PathItem object backed by a low-level one.
@@ -42,6 +43,7 @@ type PathItem struct {
 	Head        *Operation                          `json:"head,omitempty" yaml:"head,omitempty"`
 	Patch       *Operation                          `json:"patch,omitempty" yaml:"patch,omitempty"`
 	Trace       *Operation                          `json:"trace,omitempty" yaml:"trace,omitempty"`
+	Query       *Operation                          `json:"query,omitempty" yaml:"query,omitempty"`
 	Servers     []*Server                           `json:"servers,omitempty" yaml:"servers,omitempty"`
 	Parameters  []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
@@ -83,6 +85,7 @@ func NewPathItem(pathItem *lowV3.PathItem) *PathItem {
 	go buildOperation(head, pathItem.Head.Value, opChan)
 	go buildOperation(patch, pathItem.Patch.Value, opChan)
 	go buildOperation(trace, pathItem.Trace.Value, opChan)
+	go buildOperation(query, pathItem.Query.Value, opChan)
 
 	if !pathItem.Parameters.IsEmpty() {
 		params := make([]*Parameter, len(pathItem.Parameters.Value))
@@ -113,10 +116,12 @@ func NewPathItem(pathItem *lowV3.PathItem) *PathItem {
 			pi.Patch = opRes.op
 		case trace:
 			pi.Trace = opRes.op
+		case query:
+			pi.Query = opRes.op
 		}
 
 		opCount++
-		if opCount == 8 {
+		if opCount == 9 {
 			complete = true
 		}
 	}
@@ -182,6 +187,9 @@ func (p *PathItem) GetOperations() *orderedmap.Map[string, *Operation] {
 	}
 	if p.Trace != nil {
 		ops = append(ops, op{name: lowV3.TraceLabel, op: p.Trace, line: getLine("Trace", -1)})
+	}
+	if p.Query != nil {
+		ops = append(ops, op{name: lowV3.QueryLabel, op: p.Query, line: getLine("Query", 0)})
 	}
 
 	slices.SortStableFunc(ops, func(a op, b op) int {
