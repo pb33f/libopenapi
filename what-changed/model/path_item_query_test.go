@@ -244,3 +244,112 @@ query:
 	assert.True(t, changes.PostChanges.TotalChanges() > 0)
 	assert.True(t, changes.QueryChanges.TotalChanges() > 0)
 }
+
+// TestPathItemChanges_QueryChangesNotNil ensures we hit the branches where QueryChanges is not nil
+// This test covers lines 63, 108, and 150 in path_item.go
+func TestPathItemChanges_QueryChangesNotNil(t *testing.T) {
+	// Create a PathItemChanges with QueryChanges present
+	pc := &PathItemChanges{
+		PropertyChanges: &PropertyChanges{
+			Changes: []*Change{
+				{
+					ChangeType: PropertyAdded,
+					Property:   "description",
+					Breaking:   false,
+				},
+			},
+		},
+		QueryChanges: &OperationChanges{
+			PropertyChanges: &PropertyChanges{
+				Changes: []*Change{
+					{
+						ChangeType: Modified,
+						Property:   "summary",
+						Breaking:   false,
+					},
+					{
+						ChangeType: PropertyRemoved,
+						Property:   "operationId",
+						Breaking:   true,
+					},
+				},
+			},
+		},
+		TraceChanges: &OperationChanges{
+			PropertyChanges: &PropertyChanges{
+				Changes: []*Change{
+					{
+						ChangeType: Modified,
+						Property:   "deprecated",
+						Breaking:   false,
+					},
+				},
+			},
+		},
+	}
+
+	// Test GetAllChanges() - this covers line 63 where QueryChanges is not nil
+	allChanges := pc.GetAllChanges()
+	assert.NotNil(t, allChanges)
+	assert.Equal(t, 4, len(allChanges)) // 1 from PropertyChanges + 2 from QueryChanges + 1 from TraceChanges
+	
+	// Verify QueryChanges were included
+	queryChangeCount := 0
+	for _, change := range allChanges {
+		if (change.Property == "summary" && change.ChangeType == Modified) ||
+		   (change.Property == "operationId" && change.ChangeType == PropertyRemoved) {
+			queryChangeCount++
+		}
+	}
+	assert.Equal(t, 2, queryChangeCount, "Both QueryChanges should be in the result")
+
+	// Test TotalChanges() - this covers line 108 where QueryChanges is not nil
+	total := pc.TotalChanges()
+	assert.Equal(t, 4, total) // Should include all changes
+
+	// Test TotalBreakingChanges() - this covers line 150 where QueryChanges is not nil
+	breaking := pc.TotalBreakingChanges()
+	assert.Equal(t, 1, breaking) // Only the operationId removal is breaking
+}
+
+// TestPathItemChanges_QueryChangesNil ensures we hit the branches where QueryChanges is nil
+// This test covers the nil checks at lines 62, 107, and 149 in path_item.go
+func TestPathItemChanges_QueryChangesNil(t *testing.T) {
+	// Create a PathItemChanges with QueryChanges nil
+	pc := &PathItemChanges{
+		PropertyChanges: &PropertyChanges{
+			Changes: []*Change{
+				{
+					ChangeType: PropertyAdded,
+					Property:   "summary",
+					Breaking:   false,
+				},
+			},
+		},
+		QueryChanges: nil, // Explicitly nil
+		TraceChanges: &OperationChanges{
+			PropertyChanges: &PropertyChanges{
+				Changes: []*Change{
+					{
+						ChangeType: Modified,
+						Property:   "tags",
+						Breaking:   false,
+					},
+				},
+			},
+		},
+	}
+
+	// Test GetAllChanges() with nil QueryChanges - covers the if statement at line 62
+	allChanges := pc.GetAllChanges()
+	assert.NotNil(t, allChanges)
+	assert.Equal(t, 2, len(allChanges)) // 1 from PropertyChanges + 1 from TraceChanges (QueryChanges skipped)
+
+	// Test TotalChanges() with nil QueryChanges - covers the if statement at line 107
+	total := pc.TotalChanges()
+	assert.Equal(t, 2, total) // Should not include QueryChanges
+
+	// Test TotalBreakingChanges() with nil QueryChanges - covers the if statement at line 149
+	breaking := pc.TotalBreakingChanges()
+	assert.Equal(t, 0, breaking) // No breaking changes in our test data
+}
