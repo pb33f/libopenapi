@@ -5,13 +5,14 @@ package index
 
 import (
 	"encoding/json"
-	"github.com/pb33f/libopenapi/utils"
 	"io/fs"
 	"log/slog"
 	"net/http"
 	"net/url"
 	"path/filepath"
 	"sync"
+
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"gopkg.in/yaml.v3"
@@ -189,7 +190,7 @@ type SpecIndexConfig struct {
 	// want changes in them to be picked up, then you should not enable this.
 	UseSchemaQuickHash bool
 
-	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have 
+	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have
 	// a known file extension. When enabled, libopenapi will fetch the first 1-2KB of unknown URLs to determine
 	// if they contain valid JSON or YAML content. This is disabled by default for security and performance.
 	//
