@@ -6,7 +6,7 @@ require (
 	github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb
 	github.com/pb33f/ordered-map/v2 v2.2.0
 	github.com/speakeasy-api/jsonpath v0.6.2
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 
