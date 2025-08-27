@@ -2055,3 +2055,86 @@ components:
 	assert.NotNil(t, index.GetRolodex())
 
 }
+
+func TestSpecIndex_DuplicateParameterHandling(t *testing.T) {
+	// Test duplicate parameter detection: two query params + one path param with same name
+	// Should return 2 parameters (1 path + 1 query) and record 1 duplicate error
+	spec1 := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /items/{random_id}:
+    get:
+      parameters:
+        - name: random_id
+          in: path
+          required: true
+          schema:
+            type: boolean
+        - name: random_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: random_id
+          in: query
+          required: true
+          schema:
+            type: boolean`
+
+	// Test with different parameter order to ensure consistency
+	spec2 := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /items/{random_id}:
+    get:
+      parameters:
+        - name: random_id
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: random_id
+          in: query
+          required: true
+          schema:
+            type: boolean
+        - name: random_id
+          in: path
+          required: true
+          schema:
+            type: boolean`
+
+	var rootNode1 yaml.Node
+	_ = yaml.Unmarshal([]byte(spec1), &rootNode1)
+	index1 := NewSpecIndexWithConfig(&rootNode1, CreateOpenAPIIndexConfig())
+	params1 := index1.GetAllParametersFromOperations()
+	errors1 := index1.GetOperationParametersIndexErrors()
+
+	var rootNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(spec2), &rootNode2)
+	index2 := NewSpecIndexWithConfig(&rootNode2, CreateOpenAPIIndexConfig())
+	params2 := index2.GetAllParametersFromOperations()
+	errors2 := index2.GetOperationParametersIndexErrors()
+
+	count1 := countParametersFromOperations(params1)
+	count2 := countParametersFromOperations(params2)
+
+	// Should have 2 parameters total (1 path + 1 query, second query rejected as duplicate)
+	assert.Equal(t, 2, count1, "Spec1 should have 2 parameters (1 path + 1 query), not 3")
+	assert.Equal(t, 2, count2, "Spec2 should have 2 parameters (1 path + 1 query), not 3")
+	assert.Equal(t, count1, count2, "Both specs should return same parameter count regardless of order")
+
+	// Should have exactly 1 duplicate error for the second query parameter
+	assert.Equal(t, 1, len(errors1), "Spec1 should have 1 duplicate parameter error")
+	assert.Equal(t, 1, len(errors2), "Spec2 should have 1 duplicate parameter error")
+
+	// Verify the error message mentions duplicate name and in type
+	assert.Contains(t, errors1[0].Error(), "duplicate name")
+	assert.Contains(t, errors1[0].Error(), "random_id")
+	assert.Contains(t, errors2[0].Error(), "duplicate name")
+	assert.Contains(t, errors2[0].Error(), "random_id")
+}
