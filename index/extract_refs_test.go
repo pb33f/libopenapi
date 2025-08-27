@@ -49,6 +49,268 @@ func TestSpecIndex_ExtractRefs_CheckSummarySummary(t *testing.T) {
 	assert.Equal(t, 3, idx.summaryCount)
 }
 
+// https://github.com/pb33f/libopenapi/issues/457
+func TestSpecIndex_ExtractRefs_SkipSummaryInSchemaProperties(t *testing.T) {
+	// Test case for issue #457
+	// When a schema has a property named "summary", it should NOT be extracted as a summary description
+	yml := `openapi: 3.1.1
+info:
+  title: Test API
+  version: 1.0.0
+  summary: This is an API summary
+paths:
+  /tasks:
+    get:
+      summary: Get all tasks
+      description: Returns all tasks
+      responses:
+        200:
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+components:
+  schemas:
+    Task:
+      type: object
+      description: A task object
+      properties:
+        id:
+          type: string
+          description: Task ID
+        summary:
+          type: boolean
+          description: Whether this is a summary task
+        name:
+          type: string
+          description: Task name
+    Project:
+      type: object
+      properties:
+        summary:
+          type: boolean
+          description: Project summary flag
+        description:
+          type: string
+          description: Project description text`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// Should only capture summaries from info and operations, NOT from schema properties
+	assert.Equal(t, 2, idx.summaryCount, "Should only have 2 summaries (info.summary and path operation summary)")
+
+	// Verify that the captured summaries are the correct ones
+	summaryContents := []string{}
+	for _, summary := range idx.allSummaries {
+		summaryContents = append(summaryContents, summary.Content)
+	}
+	assert.Contains(t, summaryContents, "This is an API summary", "Should contain info.summary")
+	assert.Contains(t, summaryContents, "Get all tasks", "Should contain operation summary")
+
+	// Should not contain the boolean property names as summaries
+	for _, summary := range idx.allSummaries {
+		assert.NotEqual(t, "boolean", summary.Content, "Should not extract schema property type as summary")
+	}
+
+	// Check descriptions - should have proper descriptions but not property "description" fields
+	descriptionCount := idx.descriptionCount
+	assert.Greater(t, descriptionCount, 0, "Should have some descriptions")
+
+	// Verify descriptions are from the right places (API descriptions, not property names)
+	descriptionContents := []string{}
+	for _, desc := range idx.allDescriptions {
+		descriptionContents = append(descriptionContents, desc.Content)
+	}
+	assert.Contains(t, descriptionContents, "Returns all tasks", "Should contain operation description")
+	assert.Contains(t, descriptionContents, "A task object", "Should contain schema description")
+}
+
+// https://github.com/pb33f/libopenapi/issues/457
+func TestSpecIndex_ExtractRefs_SkipDescriptionInSchemaProperties(t *testing.T) {
+	// Test that description properties in schemas are not extracted as API descriptions
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+  description: Main API description
+paths:
+  /items:
+    get:
+      description: Get items operation description
+      responses:
+        200:
+          description: Success response description
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  description:
+                    type: string
+                    description: The item's description field
+                  title:
+                    type: string
+                    description: The item's title`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// Count descriptions - should not include the "description" property name
+	expectedDescriptions := []string{
+		"Main API description",
+		"Get items operation description",
+		"Success response description",
+		"The item's description field",
+		"The item's title",
+	}
+
+	assert.Equal(t, len(expectedDescriptions), idx.descriptionCount,
+		"Should only count actual descriptions, not property names")
+
+	// Verify the content
+	actualContents := []string{}
+	for _, desc := range idx.allDescriptions {
+		actualContents = append(actualContents, desc.Content)
+	}
+
+	for _, expected := range expectedDescriptions {
+		assert.Contains(t, actualContents, expected,
+			"Should contain description: %s", expected)
+	}
+}
+
+// https://github.com/pb33f/libopenapi/issues/457
+func TestSpecIndex_ExtractRefs_Issue457_SummaryPropertyConfusion(t *testing.T) {
+	// Direct test for GitHub issue #457
+	// Schema properties named "summary" should not be confused with API summary fields
+	yml := `openapi: 3.1.1
+info:
+  title: Issue 457 Test
+  version: 1.0.0
+paths:
+  /items:
+    get:
+      summary: List items
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              examples:
+                taskExample:
+                  value:
+                    id: task-1
+                    summary: true
+                    name: Important task
+                projectExample:
+                  value:
+                    id: project-1
+                    summary: false
+                    description: Project description
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      oneOf:
+                        - $ref: '#/components/schemas/Task'
+                        - $ref: '#/components/schemas/Project'
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - summary
+      properties:
+        id:
+          type: string
+        summary:
+          type: boolean
+          description: Is this a summary task
+        name:
+          type: string
+    Project:
+      type: object
+      required:
+        - id
+        - summary
+      properties:
+        id:
+          type: string
+        summary:
+          type: boolean
+          description: Is this a summary project
+        description:
+          type: string
+          description: The project description`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// The key assertion: should only have 1 summary (from the operation)
+	// NOT from the schema properties named "summary"
+	assert.Equal(t, 1, idx.summaryCount, "Should only extract operation summary, not schema property names")
+
+	if idx.summaryCount > 0 {
+		assert.Equal(t, "List items", idx.allSummaries[0].Content, "The only summary should be 'List items'")
+	}
+
+	// Check that descriptions are properly counted
+	// Should have: "Success", "Is this a summary task", "Is this a summary project", "The project description"
+	assert.Equal(t, 4, idx.descriptionCount, "Should have 4 descriptions total")
+}
+
+// https://github.com/pb33f/libopenapi/issues/457
+func TestSpecIndex_ExtractRefs_SkipSummaryInPatternProperties(t *testing.T) {
+	// Test that summary/description in patternProperties are also skipped
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /items:
+    get:
+      summary: Get items
+      responses:
+        200:
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                patternProperties:
+                  "^S_":
+                    type: string
+                  summary:
+                    type: boolean
+                    description: Pattern property named summary
+                  description:
+                    type: string
+                    description: Pattern property named description`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// Should only have 1 summary from the operation
+	assert.Equal(t, 1, idx.summaryCount, "Should only have operation summary, not patternProperties property names")
+	assert.Equal(t, "Get items", idx.allSummaries[0].Content)
+
+	// Should have 3 descriptions: "Success", plus the two pattern property descriptions
+	assert.Equal(t, 3, idx.descriptionCount, "Should have 3 descriptions")
+}
+
 func TestSpecIndex_ExtractRefs_CheckPropertiesForInlineSchema(t *testing.T) {
 	yml := `openapi: 3.1.0
 servers:
