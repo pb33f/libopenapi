@@ -761,8 +761,8 @@ func checkSchemaPropertyChanges(
 	}
 	// ExclusiveMaximum
 	props = append(props, &PropertyCheck{
-		LeftNode:  rnv,
-		RightNode: lnv,
+		LeftNode:  lnv,
+		RightNode: rnv,
 		Label:     v3.ExclusiveMaximumLabel,
 		Changes:   changes,
 		Breaking:  true,

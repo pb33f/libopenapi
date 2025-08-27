@@ -22,6 +22,7 @@ type PathItemChanges struct {
 	HeadChanges      *OperationChanges   `json:"head,omitempty" yaml:"head,omitempty"`
 	PatchChanges     *OperationChanges   `json:"patch,omitempty" yaml:"patch,omitempty"`
 	TraceChanges     *OperationChanges   `json:"trace,omitempty" yaml:"trace,omitempty"`
+	QueryChanges     *OperationChanges   `json:"query,omitempty" yaml:"query,omitempty"`
 	ServerChanges    []*ServerChanges    `json:"servers,omitempty" yaml:"servers,omitempty"`
 	ParameterChanges []*ParameterChanges `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 	ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
@@ -57,6 +58,9 @@ func (p *PathItemChanges) GetAllChanges() []*Change {
 	}
 	if p.TraceChanges != nil {
 		changes = append(changes, p.TraceChanges.GetAllChanges()...)
+	}
+	if p.QueryChanges != nil {
+		changes = append(changes, p.QueryChanges.GetAllChanges()...)
 	}
 	for i := range p.ServerChanges {
 		changes = append(changes, p.ServerChanges[i].GetAllChanges()...)
@@ -100,6 +104,9 @@ func (p *PathItemChanges) TotalChanges() int {
 	if p.TraceChanges != nil {
 		c += p.TraceChanges.TotalChanges()
 	}
+	if p.QueryChanges != nil {
+		c += p.QueryChanges.TotalChanges()
+	}
 	for i := range p.ServerChanges {
 		c += p.ServerChanges[i].TotalChanges()
 	}
@@ -138,6 +145,9 @@ func (p *PathItemChanges) TotalBreakingChanges() int {
 	}
 	if p.TraceChanges != nil {
 		c += p.TraceChanges.TotalBreakingChanges()
+	}
+	if p.QueryChanges != nil {
+		c += p.QueryChanges.TotalBreakingChanges()
 	}
 	for i := range p.ServerChanges {
 		c += p.ServerChanges[i].TotalBreakingChanges()
@@ -576,6 +586,20 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			nil, rPath.Trace.ValueNode, false, nil, lPath.Trace.Value)
 	}
 
+	// query
+	if !lPath.Query.IsEmpty() && !rPath.Query.IsEmpty() {
+		totalOps++
+		go checkOperation(lPath.Query.Value, rPath.Query.Value, opChan, v3.QueryLabel)
+	}
+	if !lPath.Query.IsEmpty() && rPath.Query.IsEmpty() {
+		CreateChange(changes, PropertyRemoved, v3.QueryLabel,
+			lPath.Query.ValueNode, nil, true, lPath.Query.Value, nil)
+	}
+	if lPath.Query.IsEmpty() && !rPath.Query.IsEmpty() {
+		CreateChange(changes, PropertyAdded, v3.QueryLabel,
+			nil, rPath.Query.ValueNode, false, nil, lPath.Query.Value)
+	}
+
 	// servers
 	pc.ServerChanges = checkServers(lPath.Servers, rPath.Servers)
 
@@ -627,6 +651,8 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			pc.PatchChanges = n.changes
 		case v3.TraceLabel:
 			pc.TraceChanges = n.changes
+		case v3.QueryLabel:
+			pc.QueryChanges = n.changes
 		}
 		completedOperations++
 	}
