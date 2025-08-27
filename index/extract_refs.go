@@ -7,14 +7,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
 	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/pb33f/libopenapi/utils"
+	"gopkg.in/yaml.v3"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
@@ -472,6 +473,15 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 					if utils.IsNodeArray(node) {
 						continue
 					}
+					// Skip if "description" is a property name inside schema properties
+					// We check if the previous element in seenPath is "properties" and this is at an even index
+					// (property names are at even indices, values at odd)
+					if len(seenPath) > 0 && (seenPath[len(seenPath)-1] == "properties" || seenPath[len(seenPath)-1] == "patternProperties") {
+						// This means "description" is a property name, not a description field, skip extraction
+						seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
+						prev = n.Value
+						continue
+					}
 					if !slices.Contains(seenPath, "example") && !slices.Contains(seenPath, "examples") {
 						ref := &DescriptionReference{
 							ParentNode: parent,
@@ -490,6 +500,16 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				}
 
 				if n.Value == "summary" {
+
+					// Skip if "summary" is a property name inside schema properties
+					// We check if the previous element in seenPath is "properties" and this is at an even index
+					// (property names are at even indices, values at odd)
+					if len(seenPath) > 0 && (seenPath[len(seenPath)-1] == "properties" || seenPath[len(seenPath)-1] == "patternProperties") {
+						// This means "summary" is a property name, not a summary field, skip extraction
+						seenPath = append(seenPath, strings.ReplaceAll(n.Value, "/", "~1"))
+						prev = n.Value
+						continue
+					}
 
 					if slices.Contains(seenPath, "example") || slices.Contains(seenPath, "examples") {
 						continue
