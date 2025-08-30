@@ -891,3 +891,116 @@ components:
 
 	runtime.GC()
 }
+
+// TestBundleComposed_DuplicateNonComposableReferences tests the fix for issue #464
+// When a file that cannot be composed into a component is referenced multiple times,
+// all references should be properly inlined and no absolute paths should remain.
+func TestBundleComposed_DuplicateNonComposableReferences(t *testing.T) {
+	// Create test directory structure
+	tmpDir := t.TempDir()
+
+	// Main spec file - simplified version of the issue example
+	mainSpec := `openapi: 3.0.1
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /foos:
+    post:
+      requestBody:
+        $ref: "./components/requests/foo.yaml"
+  /bars:
+    put:
+      requestBody:
+        $ref: "./components/requests/bar.yaml"`
+
+	// Request files that reference schemas
+	fooRequest := `content:
+  application/json:
+    schema:
+      $ref: "../schemas/foo.yaml"`
+
+	barRequest := `content:
+  application/json:
+    schema:
+      $ref: "../schemas/bar.yaml"`
+
+	// Schema files that both reference the same example
+	// This is the key part - both schemas reference the same file
+	fooSchema := `type: object
+properties:
+  foo:
+    type: string
+example:
+  $ref: ../examples/bar.yaml`
+
+	barSchema := `type: object
+properties:
+  bar:
+    type: string
+example:
+  $ref: ../examples/bar.yaml`
+
+	// Example file that is NOT a valid OpenAPI Example component
+	// (missing 'value' or 'externalValue' field required for Example objects)
+	// This forces it to be inlined rather than composed
+	invalidExample := `foo: "bar"`
+
+	// Create directory structure
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "components", "requests"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "components", "schemas"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "components", "examples"), 0755))
+
+	// Write files
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "requests", "foo.yaml"), []byte(fooRequest), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "requests", "bar.yaml"), []byte(barRequest), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "schemas", "foo.yaml"), []byte(fooSchema), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "schemas", "bar.yaml"), []byte(barSchema), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "examples", "bar.yaml"), []byte(invalidExample), 0644))
+
+	// Load and bundle the spec
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "main.yaml"))
+	require.NoError(t, err)
+
+	cfg := datamodel.DocumentConfiguration{
+		BasePath:                tmpDir,
+		ExtractRefsSequentially: true,
+		AllowFileReferences:     true,
+	}
+
+	// Use the composed bundler
+	bundled, err := BundleBytesComposed(specBytes, &cfg, &BundleCompositionConfig{})
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+
+	// The main assertion: no absolute paths should remain in the output
+	assert.NotContains(t, bundledStr, tmpDir,
+		"Bundled output should not contain absolute paths to temp directory")
+	assert.NotContains(t, bundledStr, "/components/examples/bar.yaml",
+		"Bundled output should not contain file path references")
+
+	// Verify both schemas have the example content inlined
+	lines := strings.Split(bundledStr, "\n")
+	exampleCount := 0
+	for _, line := range lines {
+		// Count occurrences of the inlined content
+		if strings.Contains(line, `foo: "bar"`) {
+			exampleCount++
+		}
+	}
+
+	// Should find the example content inlined twice (once for each schema)
+	assert.GreaterOrEqual(t, exampleCount, 2,
+		"Example content should be inlined in both schemas that reference it")
+
+	// Additional verification: the bundled document should be valid
+	doc, err := libopenapi.NewDocumentWithConfiguration(bundled, &cfg)
+	require.NoError(t, err, "Bundled document should be valid OpenAPI")
+
+	// Build the model to ensure it's processable
+	v3Model, errs := doc.BuildV3Model()
+	assert.Empty(t, errs, "Should build v3 model without errors")
+	assert.NotNil(t, v3Model, "V3 model should not be nil")
+}

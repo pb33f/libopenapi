@@ -8,17 +8,19 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v3"
 	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
@@ -158,6 +160,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
 	// anything that could not be recomposed and needs inlining
+	inlinedPaths := make(map[string]*yaml.Node)
 	for _, pr := range cf.inlineRequired {
 		if pr.refPointer != "" {
 
@@ -171,11 +174,53 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 					}
 					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
 					pr.seqRef.Node.Content = pointerRef.Node.Content
+					// Track this inlined content for reuse
+					if pr.ref != nil {
+						inlinedPaths[pr.ref.FullDefinition] = pointerRef.Node
+					}
 					continue
 				}
 			}
 		}
 		pr.seqRef.Node.Content = pr.ref.Node.Content
+		// Track this inlined content for reuse
+		if pr.ref != nil {
+			inlinedPaths[pr.ref.FullDefinition] = pr.ref.Node
+		}
+	}
+	
+	// Fix any remaining absolute path references that match inlined content
+	// Also check the root index
+	allIndexes := append(indexes, rolodex.GetRootIndex())
+	for _, idx := range allIndexes {
+		for _, seqRef := range idx.GetRawReferencesSequenced() {
+			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
+				// Check if this is an absolute path that should have been inlined
+				if filepath.IsAbs(refVal) {
+					// Try to find matching inlined content
+					found := false
+					for inlinedPath, inlinedNode := range inlinedPaths {
+						// Match if paths are the same or if they refer to the same file
+						if refVal == inlinedPath {
+							seqRef.Node.Content = inlinedNode.Content
+							found = true
+							break
+						}
+					}
+					// If not found in exact match, try to find by checking if any inline was for this file
+					if !found {
+						for _, inlineReq := range cf.inlineRequired {
+							if inlineReq.ref != nil && inlineReq.ref.FullDefinition == refVal {
+								if inlineReq.ref.Node != nil {
+									seqRef.Node.Content = inlineReq.ref.Node.Content
+									break
+								}
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	b, err := model.Render()
