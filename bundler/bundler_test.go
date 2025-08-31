@@ -1004,3 +1004,163 @@ example:
 	assert.Empty(t, errs, "Should build v3 model without errors")
 	assert.NotNil(t, v3Model, "V3 model should not be nil")
 }
+
+// TestBundleComposed_FallbackInlineResolution tests the fallback mechanism for inline resolution
+// This ensures the code at lines 212-216 is covered when inlinedPaths doesn't have exact match
+func TestBundleComposed_FallbackInlineResolution(t *testing.T) {
+	// Create test directory structure
+	tmpDir := t.TempDir()
+
+	// Main spec that references a component file that itself has an external reference
+	mainSpec := `openapi: 3.0.1
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    post:
+      requestBody:
+        $ref: "./components/request.yaml"`
+
+	// Request file with a complex reference structure
+	requestFile := `content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        data:
+          $ref: "./schema.yaml#/definitions/MyType"`
+
+	// Schema file with definitions
+	schemaFile := `definitions:
+  MyType:
+    type: object
+    properties:
+      example:
+        $ref: "../invalid/example.yaml"`
+
+	// Invalid example that needs inlining 
+	invalidExample := `invalid: "test"`
+
+	// Create directories
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "components"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "invalid"), 0755))
+
+	// Write files
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "request.yaml"), []byte(requestFile), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "components", "schema.yaml"), []byte(schemaFile), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "invalid", "example.yaml"), []byte(invalidExample), 0644))
+
+	// Load and bundle the spec
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "main.yaml"))
+	require.NoError(t, err)
+
+	cfg := datamodel.DocumentConfiguration{
+		BasePath:                tmpDir,
+		ExtractRefsSequentially: true,
+		AllowFileReferences:     true,
+	}
+
+	// Use the composed bundler
+	bundled, err := BundleBytesComposed(specBytes, &cfg, &BundleCompositionConfig{})
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+
+	// No absolute paths should remain
+	assert.NotContains(t, bundledStr, tmpDir,
+		"Bundled output should not contain absolute paths")
+	assert.NotContains(t, bundledStr, "/invalid/example.yaml",
+		"Bundled output should not contain file path references")
+}
+
+// TestBundleComposed_EdgeCaseCoverage tests additional edge cases for complete coverage
+func TestBundleComposed_EdgeCaseCoverage(t *testing.T) {
+	// Test case specifically designed to trigger the fallback path (lines 212-216)
+	// This happens when a file has multiple references but only gets processed once
+	tmpDir := t.TempDir()
+	
+	// Create a more complex scenario with nested references
+	mainSpec := `openapi: 3.0.1
+info:
+  title: Test API  
+  version: 1.0.0
+paths:
+  /test1:
+    get:
+      responses:
+        200:
+          $ref: "./responses/r1.yaml"
+  /test2:
+    get:
+      responses:
+        200:
+          $ref: "./responses/r2.yaml"`
+
+	// Response files that both eventually reference the same non-composable file
+	r1 := `description: "Response 1"
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/s1.yaml"`
+      
+	r2 := `description: "Response 2"
+content:
+  application/json:
+    schema:
+      $ref: "../schemas/s2.yaml"`
+
+	// Schema files that both reference a shared non-composable file
+	s1 := `type: object
+properties:
+  data:
+    $ref: "../shared/invalid.yaml"`
+    
+	s2 := `type: object  
+properties:
+  info:
+    $ref: "../shared/invalid.yaml"`
+
+	// Invalid file that can't be composed (not a valid OpenAPI component)
+	invalid := `notAValidComponent: true
+someData: "test"`
+
+	// Create directories
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "responses"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "schemas"), 0755))
+	require.NoError(t, os.MkdirAll(filepath.Join(tmpDir, "shared"), 0755))
+
+	// Write files
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "main.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "responses", "r1.yaml"), []byte(r1), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "responses", "r2.yaml"), []byte(r2), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "s1.yaml"), []byte(s1), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "schemas", "s2.yaml"), []byte(s2), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "shared", "invalid.yaml"), []byte(invalid), 0644))
+
+	cfg := datamodel.DocumentConfiguration{
+		BasePath:                tmpDir,
+		ExtractRefsSequentially: true,
+		AllowFileReferences:     true,
+	}
+
+	bundled, err := BundleBytesComposed([]byte(mainSpec), &cfg, &BundleCompositionConfig{})
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+	
+	// The bundled output should not contain absolute paths
+	assert.NotContains(t, bundledStr, filepath.Join(tmpDir, "shared", "invalid.yaml"),
+		"Should not contain absolute path to invalid.yaml")
+	assert.NotContains(t, bundledStr, tmpDir,
+		"No absolute paths should remain in output")
+		
+	// Check the actual output structure
+	// The shared/invalid.yaml should be inlined somewhere
+	// It might be represented differently depending on how it was processed
+	
+	// Since our invalid file can't be composed, verify it doesn't remain as external ref
+	// and that the processing completes without errors
+	assert.NotNil(t, bundled, "Bundled output should not be nil")
+}
