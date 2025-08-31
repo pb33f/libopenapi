@@ -198,24 +198,11 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 				// Check if this is an absolute path that should have been inlined
 				if filepath.IsAbs(refVal) {
 					// Try to find matching inlined content
-					found := false
 					for inlinedPath, inlinedNode := range inlinedPaths {
 						// Match if paths are the same or if they refer to the same file
 						if refVal == inlinedPath {
 							seqRef.Node.Content = inlinedNode.Content
-							found = true
 							break
-						}
-					}
-					// If not found in exact match, try to find by checking if any inline was for this file
-					if !found {
-						for _, inlineReq := range cf.inlineRequired {
-							if inlineReq.ref != nil && inlineReq.ref.FullDefinition == refVal {
-								if inlineReq.ref.Node != nil {
-									seqRef.Node.Content = inlineReq.ref.Node.Content
-									break
-								}
-							}
 						}
 					}
 				}
