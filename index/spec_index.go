@@ -22,12 +22,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/speakeasy-api/jsonpath/pkg/jsonpath"
-	jsonpathconfig "github.com/speakeasy-api/jsonpath/pkg/jsonpath/config"
+	"github.com/pb33f/jsonpath/pkg/jsonpath"
+	jsonpathconfig "github.com/pb33f/jsonpath/pkg/jsonpath/config"
 
 	"github.com/pb33f/libopenapi/utils"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 const (

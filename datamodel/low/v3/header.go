@@ -14,7 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Header represents a low-level OpenAPI 3+ Header object.
@@ -85,7 +85,7 @@ func (h *Header) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if h.Description.Value != "" {
 		sb.WriteString(h.Description.Value)
 		sb.WriteByte('|')

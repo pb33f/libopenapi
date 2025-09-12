@@ -12,7 +12,7 @@ import (
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Callback represents a low-level Callback object for OpenAPI 3+.
@@ -96,7 +96,7 @@ func (cb *Callback) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	for v := range orderedmap.SortAlpha(cb.Expression).ValuesFromOldest() {
 		sb.WriteString(low.GenerateHashString(v.Value))
 		sb.WriteByte('|')

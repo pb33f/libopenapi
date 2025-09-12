@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // HasNodes is an interface that defines a method to get a map of nodes

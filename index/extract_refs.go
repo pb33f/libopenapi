@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.

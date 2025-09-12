@@ -14,11 +14,14 @@ import (
 	"strings"
 	"sync"
 
+	"go.yaml.in/yaml/v4"
+
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 )
 
 // ErrInvalidModel is returned when the model is not usable.
@@ -158,6 +161,7 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 	updateDiscriminatorMappingsComposed(discriminatorMappings, processedNodes, rolodex)
 
 	// anything that could not be recomposed and needs inlining
+	inlinedPaths := make(map[string]*yaml.Node)
 	for _, pr := range cf.inlineRequired {
 		if pr.refPointer != "" {
 
@@ -171,11 +175,40 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 					}
 					pointerRef := pr.idx.FindComponent(context.Background(), strings.Join(uri, "#/"))
 					pr.seqRef.Node.Content = pointerRef.Node.Content
+					// Track this inlined content for reuse
+					if pr.ref != nil {
+						inlinedPaths[pr.ref.FullDefinition] = pointerRef.Node
+					}
 					continue
 				}
 			}
 		}
 		pr.seqRef.Node.Content = pr.ref.Node.Content
+		// Track this inlined content for reuse
+		if pr.ref != nil {
+			inlinedPaths[pr.ref.FullDefinition] = pr.ref.Node
+		}
+	}
+
+	// Fix any remaining absolute path references that match inlined content
+	// Also check the root index
+	allIndexes := append(indexes, rolodex.GetRootIndex())
+	for _, idx := range allIndexes {
+		for _, seqRef := range idx.GetRawReferencesSequenced() {
+			if isRef, _, refVal := utils.IsNodeRefValue(seqRef.Node); isRef {
+				// Check if this is an absolute path that should have been inlined
+				if filepath.IsAbs(refVal) {
+					// Try to find matching inlined content
+					for inlinedPath, inlinedNode := range inlinedPaths {
+						// Match if paths are the same or if they refer to the same file
+						if refVal == inlinedPath {
+							seqRef.Node.Content = inlinedNode.Content
+							break
+						}
+					}
+				}
+			}
+		}
 	}
 
 	b, err := model.Render()
@@ -390,18 +423,17 @@ func collectDiscriminatorMappingNodesFromIndex(idx *index.SpecIndex, n *yaml.Nod
 	}
 }
 
-
 // updateDiscriminatorMappingsComposed updates discriminator mapping references to point to composed component locations.
 func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNodes *orderedmap.Map[string, *processRef], rolodex *index.Rolodex) {
 	for _, mappingNode := range mappingNodes {
 		originalValue := mappingNode.Value
-		
+
 		if !strings.Contains(originalValue, "#/") {
 			continue
 		}
-		
+
 		var matchingIdx *index.SpecIndex
-		
+
 		// Search root index first
 		if ref, refIdx := rolodex.GetRootIndex().SearchIndexForReference(originalValue); ref != nil {
 			matchingIdx = refIdx
@@ -414,7 +446,7 @@ func updateDiscriminatorMappingsComposed(mappingNodes []*yaml.Node, processedNod
 				}
 			}
 		}
-		
+
 		if matchingIdx != nil {
 			newRef := renameRef(matchingIdx, originalValue, processedNodes)
 			if newRef != originalValue {

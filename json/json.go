@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // YAMLNodeToJSON converts yaml/json stored in a yaml.Node to json ordered matching the original yaml/json
