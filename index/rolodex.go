@@ -24,7 +24,7 @@ import (
 
 	"context"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // CanBeIndexed is an interface that allows a file to be indexed.

@@ -12,7 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Example represents a low-level Example object as defined by OpenAPI 3+
@@ -52,7 +52,7 @@ func (ex *Example) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if ex.Summary.Value != "" {
 		sb.WriteString(ex.Summary.Value)
 		sb.WriteByte('|')

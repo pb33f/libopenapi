@@ -17,7 +17,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestSchemaProxy_MarshalYAML(t *testing.T) {
@@ -494,10 +494,10 @@ func TestSchemaProxy_ConcurrentCacheAccess(t *testing.T) {
 		const ymlSchema = `$ref: '#/components/schemas/TestSchema'`
 		var node yaml.Node
 		yaml.Unmarshal([]byte(ymlSchema), &node)
-		
+
 		lowProxy := new(lowbase.SchemaProxy)
 		lowProxy.Build(context.Background(), nil, node.Content[0], idx)
-		
+
 		proxies[i] = NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
 			Value: lowProxy, ValueNode: node.Content[0],
 		})
@@ -537,10 +537,10 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 	const ymlSchema = `$ref: '#/components/schemas/TestSchema'`
 	var node1 yaml.Node
 	yaml.Unmarshal([]byte(ymlSchema), &node1)
-	
+
 	lowProxy1 := new(lowbase.SchemaProxy)
 	lowProxy1.Build(context.Background(), nil, node1.Content[0], idx)
-	
+
 	proxy1 := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
 		Value: lowProxy1, ValueNode: node1.Content[0],
 	})
@@ -551,10 +551,10 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 
 	var node2 yaml.Node
 	yaml.Unmarshal([]byte(ymlSchema), &node2)
-	
+
 	lowProxy2 := new(lowbase.SchemaProxy)
 	lowProxy2.Build(context.Background(), nil, node2.Content[0], idx)
-	
+
 	proxy2 := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
 		Value: lowProxy2, ValueNode: node2.Content[0],
 	})

@@ -19,7 +19,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/json"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Document represents a high-level OpenAPI 3 document (both 3.0 & 3.1). A Document is the root of the specification.

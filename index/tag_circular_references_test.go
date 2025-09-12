@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestSpecIndex_TagCircularReferences_SimpleCircle(t *testing.T) {
@@ -44,7 +44,7 @@ paths: {}`
 
 	// Check the journey path - should be 3 items forming a circle
 	assert.Len(t, circRef.Journey, 3)
-	
+
 	// Extract journey names for easier checking
 	journeyNames := make([]string, len(circRef.Journey))
 	for i, ref := range circRef.Journey {
@@ -54,7 +54,7 @@ paths: {}`
 	// Should contain both tags and form a circle
 	assert.Contains(t, journeyNames, "tagA")
 	assert.Contains(t, journeyNames, "tagB")
-	
+
 	// First and last elements should be the same (forming a circle)
 	assert.Equal(t, journeyNames[0], journeyNames[2])
 
@@ -306,10 +306,10 @@ paths: {}`
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	idx := NewSpecIndex(&idxNode)
-	
+
 	// Explicitly set tagsNode to nil to test the early return
 	idx.tagsNode = nil
-	
+
 	// This should trigger checkTagCircularReferences() which should return early due to nil tagsNode
 	count := idx.GetGlobalTagsCount()
 	assert.Equal(t, 0, count)
@@ -333,7 +333,7 @@ paths: {}`
 	_ = yaml.Unmarshal([]byte(yml), &idxNode)
 
 	idx := NewSpecIndex(&idxNode)
-	
+
 	// Create the maps that would be passed to detectTagCircularHelper
 	parentMap := map[string]string{}
 	tagRefs := map[string]*Reference{
@@ -345,14 +345,14 @@ paths: {}`
 	}
 	visited := map[string]bool{}
 	recStack := map[string]bool{}
-	
+
 	// Test calling detectTagCircularHelper with a non-existent tag name
 	// This should trigger the early return on lines 756-757
 	path := idx.detectTagCircularHelper("nonExistentTag", parentMap, tagRefs, visited, recStack, []string{})
-	
+
 	// Should return empty slice since the tag doesn't exist
 	assert.Len(t, path, 0)
-	
+
 	// Verify that visited and recStack remain untouched
 	assert.Len(t, visited, 0)
 	assert.Len(t, recStack, 0)

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 type rolodexFile struct {

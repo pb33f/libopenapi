@@ -13,7 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // MediaType represents a low-level OpenAPI MediaType object.
@@ -156,7 +156,7 @@ func (mt *MediaType) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if mt.Schema.Value != nil {
 		sb.WriteString(low.GenerateHashString(mt.Schema.Value))
 		sb.WriteByte('|')

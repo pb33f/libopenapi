@@ -16,7 +16,7 @@ import (
 
 	"context"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestRolodexLoadsFilesCorrectly_NoErrors(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestRequestBody_Build(t *testing.T) {
@@ -68,7 +68,7 @@ func TestRequestBody_Fail(t *testing.T) {
 
 func TestRequestBody_Hash(t *testing.T) {
 	cleanHashCacheForTest(t)
-	
+
 	yml := `description: nice toast
 content:
   jammy/toast:

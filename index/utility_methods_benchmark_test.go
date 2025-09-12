@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"testing"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Benchmark buffer pool optimization vs original allocation pattern
@@ -95,7 +95,7 @@ components:
 	}
 
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		_ = HashNode(&rootNode)
 	}
@@ -137,7 +137,7 @@ paths:
 	}
 
 	b.ResetTimer()
-	
+
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			_ = HashNode(&rootNode)

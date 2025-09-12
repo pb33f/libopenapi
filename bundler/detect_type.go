@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // DetectOpenAPIComponentType attempts to determine what type of OpenAPI component a node represents.

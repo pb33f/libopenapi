@@ -10,7 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestCompareRequestBodies(t *testing.T) {
@@ -51,7 +51,7 @@ func TestCompareRequestBodies_Modified(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	cleanHashCacheForTest(t)
-	
+
 	left := `description: something
 required: true
 x-pizza: thin
