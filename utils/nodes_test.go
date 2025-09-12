@@ -11,7 +11,7 @@ import (
 
 func TestCreateBoolNode(t *testing.T) {
 	b := CreateBoolNode("true")
-	assert.Equal(t, "!!bool", b.Tag)
+	assert.Equal(t, "", b.Tag) // No explicit tag - let YAML infer type
 	assert.Equal(t, "true", b.Value)
 }
 
@@ -35,13 +35,13 @@ func TestCreateEmptyScalarNode(t *testing.T) {
 
 func TestCreateFloatNode(t *testing.T) {
 	f := CreateFloatNode("3.14")
-	assert.Equal(t, "!!float", f.Tag)
+	assert.Equal(t, "", f.Tag) // No explicit tag - let YAML infer type
 	assert.Equal(t, "3.14", f.Value)
 }
 
 func TestCreateIntNode(t *testing.T) {
 	i := CreateIntNode("42")
-	assert.Equal(t, "!!int", i.Tag)
+	assert.Equal(t, "", i.Tag) // No explicit tag - let YAML infer type
 	assert.Equal(t, "42", i.Value)
 }
 
@@ -57,6 +57,6 @@ func TestCreateRefNode(t *testing.T) {
 
 func TestCreateYamlNode(t *testing.T) {
 	y := CreateYamlNode("foo")
-	assert.Equal(t, "!!str", y.Tag)
+	assert.Equal(t, "!!str", y.Tag) // Encode() sets appropriate tag
 	assert.Equal(t, "foo", y.Value)
 }

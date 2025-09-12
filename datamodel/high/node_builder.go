@@ -5,7 +5,6 @@ package high
 
 import (
 	"fmt"
-	"math"
 	"reflect"
 	"sort"
 	"strconv"
@@ -328,12 +327,11 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 		precision := -1
 		if entry.StringValue != "" && strings.Contains(entry.StringValue, ".") {
 			precision = len(strings.Split(fmt.Sprint(entry.StringValue), ".")[1])
-			val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
-			valueNode = utils.CreateFloatNode(val)
-		} else {
-			val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
-			valueNode = utils.CreateIntNode(val)
 		}
+		val := strconv.FormatFloat(value.(float64), 'f', precision, 64)
+		// Always create float node for float64 values, even if they don't contain decimal points
+		// This handles cases like negative zero (-0.0) which formats as "-0" but should remain float
+		valueNode = utils.CreateFloatNode(val)
 		valueNode.Line = line
 	case reflect.Slice:
 		var rawNode yaml.Node
@@ -510,11 +508,9 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 				if *b != 0 || entry.RenderZero {
 					formatFloat := strconv.FormatFloat(*b, 'f', -1, 64)
 
-					if *b == math.Trunc(*b) {
-						valueNode = utils.CreateIntNode(formatFloat)
-					} else {
-						valueNode = utils.CreateFloatNode(formatFloat)
-					}
+					// Always create float node for float64 values, even if they're whole numbers
+					// This handles cases like negative zero (-0.0) and ensures type consistency
+					valueNode = utils.CreateFloatNode(formatFloat)
 
 					valueNode.Line = line
 				}

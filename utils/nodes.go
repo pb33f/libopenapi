@@ -52,7 +52,6 @@ func CreateStringNode(str string) *yaml.Node {
 func CreateBoolNode(str string) *yaml.Node {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
-		Tag:   "!!bool",
 		Value: str,
 	}
 	return n
@@ -61,7 +60,6 @@ func CreateBoolNode(str string) *yaml.Node {
 func CreateIntNode(str string) *yaml.Node {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
-		Tag:   "!!int",
 		Value: str,
 	}
 	return n
@@ -79,7 +77,6 @@ func CreateEmptyScalarNode() *yaml.Node {
 func CreateFloatNode(str string) *yaml.Node {
 	n := &yaml.Node{
 		Kind:  yaml.ScalarNode,
-		Tag:   "!!float",
 		Value: str,
 	}
 	return n
