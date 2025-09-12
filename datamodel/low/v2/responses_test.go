@@ -65,7 +65,7 @@ func TestResponses_Build_WrongType(t *testing.T) {
 
 func TestResponses_Hash(t *testing.T) {
 	// Clear any cached hashes to ensure clean test
-	index.ClearHashCache()
+	low.ClearHashCache()
 
 	yml := `default:
   description: I am a potato
