@@ -16,7 +16,7 @@ import (
 	"sync"
 
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func (index *SpecIndex) extractDefinitionsAndSchemas(schemasNode *yaml.Node, pathPrefix string) {
@@ -673,10 +673,10 @@ func HashNode(n *yaml.Node) string {
 		sum := h.Sum(nil)
 		return fmt.Sprintf("%x", sum)
 	}
-	
+
 	// Create a unique node identifier for caching
 	nodeID := fmt.Sprintf("%p_%s_%d_%d", n, n.Tag, n.Line, n.Column)
-	
+
 	// Check cache first for nodes with significant content
 	contentSize := len(n.Content)
 	if contentSize >= cacheThreshold {
@@ -684,26 +684,26 @@ func HashNode(n *yaml.Node) string {
 			return cached.(string)
 		}
 	}
-	
+
 	h := sha256.New()
-	
+
 	// Determine if we should use optimized or simple hashing
 	useOptimized := shouldUseOptimizedHashing(n, 0)
-	
+
 	if useOptimized {
 		hashNodeOptimized(n, h, 0)
 	} else {
 		hashNodeSimple(n, h, 0)
 	}
-	
+
 	sum := h.Sum(nil)
 	result := fmt.Sprintf("%x", sum)
-	
+
 	// Cache the result for large nodes
 	if contentSize >= cacheThreshold {
 		hashCache.Store(nodeID, result)
 	}
-	
+
 	return result
 }
 
@@ -713,24 +713,24 @@ func shouldUseOptimizedHashing(n *yaml.Node, depth int) bool {
 	if n == nil {
 		return false
 	}
-	
+
 	// Use optimized version for large nodes
 	if len(n.Content) > largeLodeThreshold {
 		return true
 	}
-	
+
 	// Use optimized version for deep nodes
 	if depth > deepNodeThreshold {
 		return true
 	}
-	
+
 	// Check if any immediate children are large
 	for _, child := range n.Content {
 		if len(child.Content) > largeLodeThreshold {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

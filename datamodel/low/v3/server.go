@@ -11,7 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Server represents a low-level OpenAPI 3+ Server object.
@@ -117,7 +117,7 @@ func (s *Server) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if s.Variables.Value != nil {
 		for v := range orderedmap.SortAlpha(s.Variables.Value).ValuesFromOldest() {
 			sb.WriteString(low.GenerateHashString(v.Value))

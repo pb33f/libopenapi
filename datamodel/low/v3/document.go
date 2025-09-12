@@ -17,7 +17,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 type Document struct {
@@ -133,7 +133,7 @@ func (d *Document) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if d.Version.Value != "" {
 		sb.WriteString(d.Version.Value)
 		sb.WriteByte('|')
@@ -146,7 +146,7 @@ func (d *Document) Hash() [32]byte {
 		sb.WriteString(d.JsonSchemaDialect.Value)
 		sb.WriteByte('|')
 	}
-	
+
 	// Webhooks - pre-allocate slice
 	if d.Webhooks.GetValue() != nil {
 		webhookLen := d.Webhooks.GetValue().Len()
@@ -162,7 +162,7 @@ func (d *Document) Hash() [32]byte {
 			}
 		}
 	}
-	
+
 	// Servers - pre-allocate slice
 	serverLen := len(d.Servers.Value)
 	if serverLen > 0 {
@@ -176,7 +176,7 @@ func (d *Document) Hash() [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	if d.Paths.Value != nil {
 		sb.WriteString(low.GenerateHashString(d.Paths.Value))
 		sb.WriteByte('|')
@@ -185,7 +185,7 @@ func (d *Document) Hash() [32]byte {
 		sb.WriteString(low.GenerateHashString(d.Components.Value))
 		sb.WriteByte('|')
 	}
-	
+
 	// Security - pre-allocate slice
 	securityLen := len(d.Security.Value)
 	if securityLen > 0 {
@@ -199,7 +199,7 @@ func (d *Document) Hash() [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	// Tags - pre-allocate slice
 	tagLen := len(d.Tags.Value)
 	if tagLen > 0 {
@@ -213,12 +213,12 @@ func (d *Document) Hash() [32]byte {
 			sb.WriteByte('|')
 		}
 	}
-	
+
 	if d.ExternalDocs.Value != nil {
 		sb.WriteString(low.GenerateHashString(d.ExternalDocs.Value))
 		sb.WriteByte('|')
 	}
-	
+
 	// Extensions - pre-allocate slice
 	extLen := d.Extensions.Len()
 	if extLen > 0 {

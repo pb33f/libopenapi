@@ -18,7 +18,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestBundlerComposed(t *testing.T) {
@@ -206,12 +206,12 @@ components:
 	// discriminator mapping should be updated to point to the new component reference
 	mapping := animal["discriminator"].(map[string]any)["mapping"].(map[string]any)
 	catMapping := mapping["cat"].(string)
-	assert.True(t, strings.HasPrefix(catMapping, "#/components/schemas/"), 
+	assert.True(t, strings.HasPrefix(catMapping, "#/components/schemas/"),
 		"discriminator mapping should point to component reference, got: %s", catMapping)
-	assert.False(t, strings.Contains(catMapping, "./external-cat.yaml"), 
+	assert.False(t, strings.Contains(catMapping, "./external-cat.yaml"),
 		"discriminator mapping should not contain external file path, got: %s", catMapping)
 
-	// oneOf should be updated to point to the new component reference  
+	// oneOf should be updated to point to the new component reference
 	oneOf := animal["oneOf"].([]any)[0].(map[string]any)
 	oneOfRef := oneOf["$ref"].(string)
 	assert.True(t, strings.HasPrefix(oneOfRef, "#/components/schemas/"),
@@ -232,7 +232,7 @@ components:
 	runtime.GC()
 }
 
-// TestBundleBytesComposed_DiscriminatorMappingMultiple tests that composed bundling 
+// TestBundleBytesComposed_DiscriminatorMappingMultiple tests that composed bundling
 // correctly updates discriminator mappings for multiple external schemas.
 func TestBundleBytesComposed_DiscriminatorMappingMultiple(t *testing.T) {
 	spec := `openapi: 3.0.0
@@ -303,7 +303,7 @@ components:
 	assert.False(t, strings.Contains(bikeMapping, "./vehicles/bike.yaml"),
 		"bike mapping should not contain external file path, got: %s", bikeMapping)
 
-	// oneOf should be updated 
+	// oneOf should be updated
 	oneOf := vehicle["oneOf"].([]any)
 	carRef := oneOf[0].(map[string]any)["$ref"].(string)
 	bikeRef := oneOf[1].(map[string]any)["$ref"].(string)
@@ -393,7 +393,7 @@ components:
 
 	mp := vehicle["discriminator"].(map[string]any)["mapping"].(map[string]any)
 	assert.Equal(t, 1, len(mp), "no new mapping rows should have been synthesised")
-	
+
 	carMapping := mp["car"].(string)
 	assert.True(t, strings.HasPrefix(carMapping, "#/components/schemas/"),
 		"car mapping should point to component reference, got: %s", carMapping)
@@ -402,7 +402,7 @@ components:
 
 	// Both oneOf entries should be updated to component references
 	oneOf := vehicle["oneOf"].([]any)
-	carRef := oneOf[0].(map[string]any)["$ref"].(string) 
+	carRef := oneOf[0].(map[string]any)["$ref"].(string)
 	bikeRef := oneOf[1].(map[string]any)["$ref"].(string)
 	assert.True(t, strings.HasPrefix(carRef, "#/components/schemas/"),
 		"car oneOf reference should point to component reference, got: %s", carRef)
@@ -565,15 +565,15 @@ components:
 	animal := schemas["Animal"].(map[string]any)
 
 	mapping := animal["discriminator"].(map[string]any)["mapping"].(map[string]any)
-	
+
 	catMapping := mapping["cat"].(string)
 	assert.True(t, strings.HasPrefix(catMapping, "#/components/schemas/"),
 		"external cat mapping should point to component reference, got: %s", catMapping)
-	
+
 	dogMapping := mapping["dog"].(string)
 	assert.Equal(t, "#/components/schemas/Dog", dogMapping,
 		"internal dog mapping should remain unchanged, got: %s", dogMapping)
-	
+
 	birdMapping := mapping["bird"].(string)
 	assert.Equal(t, "Bird", birdMapping,
 		"non-reference bird mapping should remain unchanged, got: %s", birdMapping)
@@ -588,7 +588,7 @@ components:
 
 	_, dogExists := schemas["Dog"]
 	assert.True(t, dogExists, "Dog schema should exist in components")
-	
+
 	foundCat := false
 	for schemaName := range schemas {
 		if schemaName == "Cat" || (schemaName != "Animal" && schemaName != "Dog" && strings.Contains(schemaName, "Cat")) {
@@ -650,11 +650,11 @@ components:
 	animal := schemas["Animal"].(map[string]any)
 
 	mapping := animal["discriminator"].(map[string]any)["mapping"].(map[string]any)
-	
+
 	catMapping := mapping["cat"].(string)
 	assert.Equal(t, "./nonexistent.yaml#/components/schemas/Cat", catMapping,
 		"invalid cat mapping should remain unchanged, got: %s", catMapping)
-	
+
 	dogMapping := mapping["dog"].(string)
 	assert.True(t, strings.HasPrefix(dogMapping, "#/components/schemas/"),
 		"valid dog mapping should be updated, got: %s", dogMapping)
@@ -713,7 +713,7 @@ oneOf:
 	require.NoError(t, yaml.Unmarshal(out, &doc))
 
 	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
-	
+
 	// Find the composed Animal schema (might be renamed)
 	var animalSchema map[string]any
 	for _, schema := range schemas {
@@ -729,12 +729,12 @@ oneOf:
 	// discriminator mapping should be updated to point to the new component reference
 	mapping := animalSchema["discriminator"].(map[string]any)["mapping"].(map[string]any)
 	catMapping := mapping["cat"].(string)
-	assert.True(t, strings.HasPrefix(catMapping, "#/components/schemas/"), 
+	assert.True(t, strings.HasPrefix(catMapping, "#/components/schemas/"),
 		"discriminator mapping should point to component reference, got: %s", catMapping)
-	assert.False(t, strings.Contains(catMapping, "./cat.yaml"), 
+	assert.False(t, strings.Contains(catMapping, "./cat.yaml"),
 		"discriminator mapping should not contain external file path, got: %s", catMapping)
 
-	// oneOf should be updated to point to the new component reference  
+	// oneOf should be updated to point to the new component reference
 	oneOf := animalSchema["oneOf"].([]any)[0].(map[string]any)
 	oneOfRef := oneOf["$ref"].(string)
 	assert.True(t, strings.HasPrefix(oneOfRef, "#/components/schemas/"),

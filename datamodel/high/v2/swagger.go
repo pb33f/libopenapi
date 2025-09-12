@@ -18,7 +18,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Swagger represents a high-level Swagger / OpenAPI 2 document. An instance of Swagger is the root of the specification.

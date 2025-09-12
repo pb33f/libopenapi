@@ -9,7 +9,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // XML represents a low-level representation of an XML object defined by all versions of OpenAPI.
@@ -61,7 +61,7 @@ func (x *XML) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !x.Name.IsEmpty() {
 		sb.WriteString(x.Name.Value)
 		sb.WriteByte('|')

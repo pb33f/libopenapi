@@ -11,7 +11,7 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestComparePathItems_QueryAdded(t *testing.T) {
@@ -292,12 +292,12 @@ func TestPathItemChanges_QueryChangesNotNil(t *testing.T) {
 	allChanges := pc.GetAllChanges()
 	assert.NotNil(t, allChanges)
 	assert.Equal(t, 4, len(allChanges)) // 1 from PropertyChanges + 2 from QueryChanges + 1 from TraceChanges
-	
+
 	// Verify QueryChanges were included
 	queryChangeCount := 0
 	for _, change := range allChanges {
 		if (change.Property == "summary" && change.ChangeType == Modified) ||
-		   (change.Property == "operationId" && change.ChangeType == PropertyRemoved) {
+			(change.Property == "operationId" && change.ChangeType == PropertyRemoved) {
 			queryChangeCount++
 		}
 	}

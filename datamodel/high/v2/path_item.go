@@ -12,7 +12,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV2 "github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // PathItem represents a high-level Swagger / OpenAPI 2 PathItem object backed by a low-level one.

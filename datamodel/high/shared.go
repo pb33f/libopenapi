@@ -16,7 +16,7 @@ package high
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // GoesLow is used to represent any high-level model. All high level models meet this interface and can be used to

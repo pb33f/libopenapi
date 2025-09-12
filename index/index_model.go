@@ -15,7 +15,7 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Reference is a wrapper around *yaml.Node results to make things more manageable when performing

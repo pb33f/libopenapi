@@ -13,7 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Encoding represents a low-level OpenAPI 3+ Encoding object
@@ -62,7 +62,7 @@ func (en *Encoding) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if en.ContentType.Value != "" {
 		sb.WriteString(en.ContentType.Value)
 		sb.WriteByte('|')
@@ -79,11 +79,11 @@ func (en *Encoding) Hash() [32]byte {
 	explodeBytes := []byte(strconv.FormatBool(en.Explode.Value))
 	sb.WriteString(fmt.Sprint(sha256.Sum256(explodeBytes)))
 	sb.WriteByte('|')
-	
+
 	allowReservedBytes := []byte(strconv.FormatBool(en.AllowReserved.Value))
 	sb.WriteString(fmt.Sprint(sha256.Sum256(allowReservedBytes)))
 	sb.WriteByte('|')
-	
+
 	return sha256.Sum256([]byte(sb.String()))
 }
 

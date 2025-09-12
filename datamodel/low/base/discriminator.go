@@ -6,7 +6,7 @@ package base
 import (
 	"crypto/sha256"
 
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -55,7 +55,7 @@ func (d *Discriminator) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if d.PropertyName.Value != "" {
 		sb.WriteString(d.PropertyName.Value)
 		sb.WriteByte('|')

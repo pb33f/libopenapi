@@ -13,7 +13,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Responses represents a low-level OpenAPI 3+ Responses object.
@@ -149,7 +149,7 @@ func (r *Responses) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	for _, hash := range low.AppendMapHashes(nil, r.Codes) {
 		sb.WriteString(hash)
 		sb.WriteByte('|')

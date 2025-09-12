@@ -10,13 +10,13 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestCompareMediaTypes(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	left := `schema:
   type: string
 example: tasty herbs in the morning
@@ -272,7 +272,7 @@ encoding:
 func TestCompareMediaTypes_ModifyObjects(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	left := `schema:
   type: string
 example: tasty herbs in the morning

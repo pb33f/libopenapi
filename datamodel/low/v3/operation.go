@@ -14,7 +14,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Operation is a low-level representation of an OpenAPI 3+ Operation object.
@@ -206,7 +206,7 @@ func (o *Operation) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !o.Summary.IsEmpty() {
 		sb.WriteString(o.Summary.Value)
 		sb.WriteByte('|')
@@ -247,7 +247,7 @@ func (o *Operation) Hash() [32]byte {
 		sb.WriteString(strconv.FormatBool(o.Deprecated.Value))
 		sb.WriteByte('|')
 	}
-	
+
 	// Tags array - pre-allocate and sort
 	if len(o.Tags.Value) > 0 {
 		tags := make([]string, len(o.Tags.Value))
@@ -292,7 +292,7 @@ func (o *Operation) Hash() [32]byte {
 		sb.WriteString(low.GenerateHashString(v.Value))
 		sb.WriteByte('|')
 	}
-	
+
 	// Extensions
 	for _, ext := range low.HashExtensions(o.Extensions) {
 		sb.WriteString(ext)

@@ -12,29 +12,32 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
-// SchemaDynamicValue is used to hold multiple possible values for a schema property. There are two values, a left
-// value (A) and a right value (B). The left value (A) is a 3.0 schema property value, the right value (B) is a 3.1
-// schema value.
+// SchemaDynamicValue is used to hold multiple possible types for a schema property. There are two values, a left
+// value (A) and a right value (B). The A and B values represent different types that a property can have,
+// not necessarily different OpenAPI versions.
 //
-// OpenAPI 3.1 treats a Schema as a real JSON schema, which means some properties become incompatible, or others
-// now support more than one primitive type or structure.
-// The N value is a bit to make it each to know which value (A or B) is used, this prevents having to
-// if/else on the value to determine which one is set.
+// For example:
+//   - additionalProperties: A = *SchemaProxy (when it's a schema), B = bool (when it's a boolean)
+//   - items: A = *SchemaProxy (when it's a schema), B = bool (when it's a boolean in 3.1)
+//   - type: A = string (single type), B = []ValueReference[string] (multiple types in 3.1)
+//   - exclusiveMinimum: A = bool (in 3.0), B = float64 (in 3.1)
+//
+// The N value indicates which value is set (0 = A, 1 = B), preventing the need to check both values.
 type SchemaDynamicValue[A any, B any] struct {
 	N int // 0 == A, 1 == B
 	A A
 	B B
 }
 
-// IsA will return true if the 'A' or left value is set. (OpenAPI 3)
+// IsA will return true if the 'A' or left value is set.
 func (s *SchemaDynamicValue[A, B]) IsA() bool {
 	return s.N == 0
 }
 
-// IsB will return true if the 'B' or right value is set (OpenAPI 3.1)
+// IsB will return true if the 'B' or right value is set.
 func (s *SchemaDynamicValue[A, B]) IsB() bool {
 	return s.N == 1
 }
@@ -505,7 +508,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 			depReqMap[prop.Value] = requiredProps.Value
 		}
 		sort.Strings(depReqKeys)
-		
+
 		for _, prop := range depReqKeys {
 			sb.WriteString(prop)
 			sb.WriteByte(':')

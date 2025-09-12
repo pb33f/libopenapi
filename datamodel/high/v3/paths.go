@@ -12,7 +12,7 @@ import (
 	v3low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Paths represents a high-level OpenAPI 3+ Paths object, that is backed by a low-level one.

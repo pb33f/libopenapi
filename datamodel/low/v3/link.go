@@ -11,7 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // Link represents a low-level OpenAPI 3+ Link object.
@@ -114,7 +114,7 @@ func (l *Link) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if l.Description.Value != "" {
 		sb.WriteString(l.Description.Value)
 		sb.WriteByte('|')

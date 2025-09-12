@@ -11,7 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestComparePaths_v2(t *testing.T) {
@@ -202,7 +202,7 @@ func TestComparePaths_v3(t *testing.T) {
 func TestComparePaths_v3_ModifyOp(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	left := `/fresh/cake:
   get:
     description: a thing?

@@ -11,7 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low/v2"
 	"github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestCompareParameters(t *testing.T) {
@@ -278,7 +278,7 @@ func TestCompareParameters_V3_ExamplesChanged(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	cleanHashCacheForTest(t)
-	
+
 	left := `examples:
   anExample:
     value: I love magic herbs`

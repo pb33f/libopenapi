@@ -11,7 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 // SecurityScheme represents a low-level OpenAPI 3+ SecurityScheme object.
@@ -104,7 +104,7 @@ func (ss *SecurityScheme) Hash() [32]byte {
 	// Use string builder pool
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
-	
+
 	if !ss.Type.IsEmpty() {
 		sb.WriteString(ss.Type.Value)
 		sb.WriteByte('|')
