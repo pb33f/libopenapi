@@ -491,7 +491,7 @@ func (s *Schema) RenderInline() ([]byte, error) {
 	return yaml.Marshal(d)
 }
 
-// MarshalYAML will create a ready to render YAML representation of the ExternalDoc object.
+// MarshalYAML will create a ready to render YAML representation of the Schema object.
 func (s *Schema) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(s, s.low)
 

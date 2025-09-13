@@ -52,13 +52,14 @@ import (
 // when a schema is needed, so the rest of the document is parsed and ready to use.
 type SchemaProxy struct {
 	low.Reference
-	kn         *yaml.Node
-	vn         *yaml.Node
-	idx        *index.SpecIndex
-	rendered   *Schema
-	buildError error
-	ctx        context.Context
-	cachedHash *[32]byte // Cache computed hash to avoid recalculation
+	kn            *yaml.Node
+	vn            *yaml.Node
+	idx           *index.SpecIndex
+	rendered      *Schema
+	buildError    error
+	ctx           context.Context
+	cachedHash    *[32]byte // Cache computed hash to avoid recalculation
+	TransformedRef *yaml.Node // Original node that contained the ref before transformation
 	*low.NodeMap
 }
 
@@ -66,12 +67,39 @@ type SchemaProxy struct {
 // Key maybe nil if absent.
 func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *index.SpecIndex) error {
 	sp.kn = key
-	sp.vn = value
 	sp.idx = idx
 	sp.ctx = ctx
-	if rf, _, r := utils.IsNodeRefValue(value); rf {
-		sp.SetReference(r, value)
+
+	// transform sibling refs to allOf structure if enabled and applicable
+	// this ensures sp.vn contains the pre-transformed YAML as the source of truth
+	transformedValue := value
+	wasTransformed := false
+	if idx != nil && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs {
+		transformer := NewSiblingRefTransformer(idx)
+		if transformer.ShouldTransform(value) {
+			transformed, err := transformer.TransformSiblingRef(value)
+			if err != nil {
+				return fmt.Errorf("sibling ref transformation failed: %w", err)
+			}
+			if transformed != nil {
+				transformedValue = transformed
+				wasTransformed = true
+				sp.TransformedRef = value // store original node that had the ref
+			}
+		}
 	}
+
+	sp.vn = transformedValue
+
+	// handle reference detection
+	if !wasTransformed {
+		// for non-transformed schemas, handle reference normally
+		if rf, _, r := utils.IsNodeRefValue(transformedValue); rf {
+			sp.SetReference(r, transformedValue)
+		}
+	}
+	// for transformed schemas, don't set reference since it's now an allOf structure
+	// the reference is embedded within the allOf, but the schema itself is not a pure reference
 	var m sync.Map
 	sp.NodeMap = &low.NodeMap{Nodes: &m}
 	return nil

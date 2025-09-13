@@ -24,6 +24,7 @@ import (
 	"github.com/pb33f/libopenapi/what-changed/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestLoadDocument_Simple_V2(t *testing.T) {
@@ -1566,4 +1567,233 @@ components:
                     minimum: 0`
 
 	assert.Equal(t, expected, strings.TrimSpace(string(rend)))
+}
+
+// Test sibling ref transformation - demonstrates how sibling properties with $ref
+// get transformed into allOf structure when TransformSiblingRefs is enabled
+func TestDocument_SiblingRefTransformation_LowLevel(t *testing.T) {
+	// openapi spec with sibling ref (title alongside $ref)
+	spec := `openapi: 3.1.0
+info:
+  title: Sibling Ref Test
+  version: 1.0.0
+components:
+  schemas:
+    destination-base:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+    destination-amazon-sqs:
+      title: destination-amazon-sqs
+      $ref: '#/components/schemas/destination-base'`
+
+	// create document with transformation enabled
+	config := datamodel.NewDocumentConfiguration()
+	config.TransformSiblingRefs = true
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	assert.NoError(t, err)
+
+	// debug: verify configuration was set correctly
+	assert.True(t, config.TransformSiblingRefs, "configuration should have TransformSiblingRefs enabled")
+
+	// build v3 model
+	v3Doc, docErrs := doc.BuildV3Model()
+	assert.Empty(t, docErrs)
+	assert.NotNil(t, v3Doc)
+
+	// debug: check if transformation occurred at low level
+	lowDoc := v3Doc.Model.GoLow()
+	if !lowDoc.Components.IsEmpty() && !lowDoc.Components.Value.Schemas.IsEmpty() {
+		for pair := orderedmap.First(lowDoc.Components.Value.Schemas.Value); pair != nil; pair = pair.Next() {
+			if pair.Key().Value == "destination-amazon-sqs" {
+				lowSchema := pair.Value().Value.Schema()
+				if lowSchema != nil {
+					t.Logf("Low-level schema RootNode content: %v", lowSchema.RootNode)
+					if lowSchema.RootNode != nil && len(lowSchema.RootNode.Content) > 0 {
+						t.Logf("First element value: %v", lowSchema.RootNode.Content[0].Value)
+					}
+					// check if AllOf is populated at low level
+					t.Logf("Low-level AllOf isEmpty: %v", lowSchema.AllOf.IsEmpty())
+				}
+
+				// also check the high-level schema
+				if v3Doc.Model.Components != nil && v3Doc.Model.Components.Schemas != nil {
+					if schema, found := v3Doc.Model.Components.Schemas.Get("destination-amazon-sqs"); found {
+						highSchema := schema.Schema()
+						if highSchema != nil {
+							t.Logf("High-level schema AllOf length: %v", len(highSchema.AllOf))
+							t.Logf("High-level schema Title: %v", highSchema.Title)
+						}
+					}
+				}
+				break
+			}
+		}
+	}
+
+	// The key verification: demonstrate that transformation works at low level
+	// This shows the sibling ref was transformed from:
+	//   title: destination-amazon-sqs
+	//   $ref: '#/components/schemas/destination-base'
+	// to:
+	//   allOf:
+	//     - title: destination-amazon-sqs
+	//     - $ref: '#/components/schemas/destination-base'
+
+	// First, verify transformation was applied at the low level
+	found := false
+	transformedContent := ""
+	if !lowDoc.Components.IsEmpty() && !lowDoc.Components.Value.Schemas.IsEmpty() {
+		for pair := orderedmap.First(lowDoc.Components.Value.Schemas.Value); pair != nil; pair = pair.Next() {
+			if pair.Key().Value == "destination-amazon-sqs" {
+				lowSchema := pair.Value().Value.Schema()
+				if lowSchema != nil && lowSchema.RootNode != nil && len(lowSchema.RootNode.Content) > 0 {
+					if lowSchema.RootNode.Content[0].Value == "allOf" {
+						found = true
+						// render the transformed node to show the structure
+						transformedBytes, _ := yaml.Marshal(lowSchema.RootNode)
+						transformedContent = string(transformedBytes)
+					}
+				}
+				break
+			}
+		}
+	}
+
+	assert.True(t, found, "Transformation should have created allOf structure in low-level schema")
+	assert.Contains(t, transformedContent, "allOf:")
+	assert.Contains(t, transformedContent, "title: destination-amazon-sqs")
+	assert.Contains(t, transformedContent, "$ref: '#/components/schemas/destination-base'")
+}
+
+// Test complete sibling ref transformation with full rendering support
+// https://github.com/pb33f/libopenapi/issues/90
+func TestDocument_SiblingRefTransformation_FullRender(t *testing.T) {
+	// openapi spec with sibling ref (title alongside $ref)
+	spec := `openapi: 3.1.0
+info:
+  title: Sibling Ref Test
+  version: 1.0.0
+components:
+  schemas:
+    destination-base:
+      type: string
+    destination-amazon-sqs:
+      title: destination-amazon-sqs
+      $ref: '#/components/schemas/destination-base'`
+
+	// create document with transformation enabled
+	config := datamodel.NewDocumentConfiguration()
+	config.TransformSiblingRefs = true
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	assert.NoError(t, err)
+
+	// build v3 model
+	v3Doc, docErrs := doc.BuildV3Model()
+	assert.Empty(t, docErrs)
+	assert.NotNil(t, v3Doc)
+
+	// use RenderAndReload to render and reload the model
+	renderedBytes, reloadedDoc, reloadedV3Doc, docErrs := doc.RenderAndReload()
+	assert.Empty(t, docErrs)
+	assert.NotNil(t, reloadedDoc)
+	assert.NotNil(t, reloadedV3Doc)
+
+	renderedStr := string(renderedBytes)
+
+	// verify the rendered spec contains the transformed structure
+	assert.Contains(t, renderedStr, "allOf:")
+	assert.Contains(t, renderedStr, "- title: destination-amazon-sqs")
+	assert.Contains(t, renderedStr, "- $ref: '#/components/schemas/destination-base'")
+
+	// verify the reloaded model has the correct structure
+	if reloadedV3Doc.Model.Components != nil && reloadedV3Doc.Model.Components.Schemas != nil {
+		if destinationSchema, found := reloadedV3Doc.Model.Components.Schemas.Get("destination-amazon-sqs"); found {
+			schema := destinationSchema.Schema()
+			assert.NotNil(t, schema, "destination-amazon-sqs schema should exist")
+			assert.Len(t, schema.AllOf, 2, "should have 2 allOf items")
+
+			// verify first allOf item has title
+			firstItem := schema.AllOf[0].Schema()
+			assert.NotNil(t, firstItem)
+			assert.Equal(t, "destination-amazon-sqs", firstItem.Title)
+
+			// verify second allOf item is reference
+			secondItem := schema.AllOf[1]
+			assert.True(t, secondItem.IsReference())
+			assert.Equal(t, "#/components/schemas/destination-base", secondItem.GetReference())
+		} else {
+			t.Fatal("destination-amazon-sqs schema not found in reloaded model")
+		}
+	} else {
+		t.Fatal("components or schemas not found in reloaded model")
+	}
+}
+
+func TestDocument_SiblingRefTransformation_FlippedOrder(t *testing.T) {
+	spec := `openapi: 3.1.0
+info:
+  title: Sibling Ref Test
+  version: 1.0.0
+components:
+  schemas:
+    destination-base:
+      description: hello
+      type: string
+    destination-amazon-sqs:
+      $ref: '#/components/schemas/destination-base'
+      description: destination-amazon-sqs`
+
+	// create document with transformation enabled
+	config := datamodel.NewDocumentConfiguration()
+	config.TransformSiblingRefs = true
+
+	doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+	assert.NoError(t, err)
+
+	// build v3 model
+	v3Doc, docErrs := doc.BuildV3Model()
+	assert.Empty(t, docErrs)
+	assert.NotNil(t, v3Doc)
+
+	// use RenderAndReload to render and reload the model
+	renderedBytes, reloadedDoc, reloadedV3Doc, docErrs := doc.RenderAndReload()
+	assert.Empty(t, docErrs)
+	assert.NotNil(t, reloadedDoc)
+	assert.NotNil(t, reloadedV3Doc)
+
+	renderedStr := string(renderedBytes)
+
+	// verify the rendered spec contains the transformed structure
+	assert.Contains(t, renderedStr, "allOf:")
+	assert.Contains(t, renderedStr, "- description: destination-amazon-sqs")
+	assert.Contains(t, renderedStr, "- $ref: '#/components/schemas/destination-base'")
+
+	// verify the reloaded model has the correct structure
+	if reloadedV3Doc.Model.Components != nil && reloadedV3Doc.Model.Components.Schemas != nil {
+		if destinationSchema, found := reloadedV3Doc.Model.Components.Schemas.Get("destination-amazon-sqs"); found {
+			schema := destinationSchema.Schema()
+			assert.NotNil(t, schema, "destination-amazon-sqs schema should exist")
+			assert.Len(t, schema.AllOf, 2, "should have 2 allOf items")
+
+			// verify first allOf item has title
+			firstItem := schema.AllOf[0].Schema()
+			assert.NotNil(t, firstItem)
+			assert.Equal(t, "destination-amazon-sqs", firstItem.Description)
+
+			// verify second allOf item is reference
+			secondItem := schema.AllOf[1]
+			assert.True(t, secondItem.IsReference())
+			assert.Equal(t, "#/components/schemas/destination-base", secondItem.GetReference())
+		} else {
+			t.Fatal("destination-amazon-sqs schema not found in reloaded model")
+		}
+	} else {
+		t.Fatal("components or schemas not found in reloaded model")
+	}
 }

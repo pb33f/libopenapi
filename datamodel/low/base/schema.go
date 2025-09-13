@@ -640,19 +640,8 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 
-	// transform sibling refs to allOf structure if enabled and applicable
-	if idx != nil && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs {
-		transformer := NewSiblingRefTransformer(idx)
-		if transformer.ShouldTransform(root) {
-			transformed, err := transformer.TransformSiblingRef(root)
-			if err != nil {
-				return fmt.Errorf("sibling ref transformation failed: %w", err)
-			}
-			if transformed != nil {
-				root = transformed
-			}
-		}
-	}
+	// Note: sibling ref transformation now happens in SchemaProxy.Build()
+	// so the root node should already be pre-transformed if needed
 
 	s.Reference = new(low.Reference)
 	no := low.ExtractNodes(ctx, root)
@@ -662,21 +651,30 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	s.context = ctx
 	s.index = idx
 
-	if h, _, _ := utils.IsNodeRefValue(root); h {
-		ref, _, err, fctx := low.LocateRefNodeWithContext(ctx, root, idx)
-		if ref != nil {
-			root = ref
-			if fctx != nil {
-				ctx = fctx
-			}
-			if err != nil {
-				if !idx.AllowCircularReferenceResolving() {
-					return fmt.Errorf("build schema failed: %s", err.Error())
+	// check if this schema was transformed from a sibling ref
+	// if so, skip reference dereferencing to preserve the allOf structure
+	isTransformed := false
+	if s.ParentProxy != nil && s.ParentProxy.TransformedRef != nil {
+		isTransformed = true
+	}
+
+	if !isTransformed {
+		if h, _, _ := utils.IsNodeRefValue(root); h {
+			ref, _, err, fctx := low.LocateRefNodeWithContext(ctx, root, idx)
+			if ref != nil {
+				root = ref
+				if fctx != nil {
+					ctx = fctx
 				}
+				if err != nil {
+					if !idx.AllowCircularReferenceResolving() {
+						return fmt.Errorf("build schema failed: %s", err.Error())
+					}
+				}
+			} else {
+				return fmt.Errorf("build schema failed: reference cannot be found: '%s', line %d, col %d",
+					root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
 			}
-		} else {
-			return fmt.Errorf("build schema failed: reference cannot be found: '%s', line %d, col %d",
-				root.Content[1].Value, root.Content[1].Line, root.Content[1].Column)
 		}
 	}
 
@@ -1299,12 +1297,17 @@ func buildPropertyMap(ctx context.Context, parent *Schema, root *yaml.Node, idx 
 			sp := &SchemaProxy{ctx: foundCtx, kn: currentProp, vn: prop, idx: foundIdx}
 			sp.SetReference(refString, refNode)
 
+			err := sp.Build(foundCtx, currentProp, prop, foundIdx)
+			if err != nil {
+				return nil, fmt.Errorf("schema proxy build failed: %w", err)
+			}
+
 			propertyMap.Set(low.KeyReference[string]{
 				KeyNode: currentProp,
 				Value:   currentProp.Value,
 			}, low.ValueReference[*SchemaProxy]{
 				Value:     sp,
-				ValueNode: prop,
+				ValueNode: sp.vn, // use transformed node
 			})
 		}
 
@@ -1384,12 +1387,56 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 	s.Extensions = low.ExtractExtensions(root)
 }
 
+// buildAllOfFromTransformedNode manually builds the AllOf field from a transformed allOf node structure
+// This is used when transformation creates an allOf structure but BuildModel doesn't pick it up
+func (s *Schema) buildAllOfFromTransformedNode(root *yaml.Node) error {
+	if len(root.Content) < 2 || root.Content[0].Value != "allOf" {
+		return fmt.Errorf("invalid allOf structure")
+	}
+
+	allOfArray := root.Content[1] // the array node containing allOf items
+	if allOfArray.Kind != yaml.SequenceNode {
+		return fmt.Errorf("allOf value is not an array")
+	}
+
+	var allOfSchemas []low.ValueReference[*SchemaProxy]
+	for _, item := range allOfArray.Content {
+		// create a schema proxy for each allOf item and build it
+		schemaProxy := &SchemaProxy{
+			vn:  item,
+			idx: s.index,
+			ctx: s.context,
+		}
+
+		// build the schema proxy so it has proper content
+		err := schemaProxy.Build(s.context, nil, item, s.index)
+		if err != nil {
+			return fmt.Errorf("failed to build schema proxy for allOf item: %w", err)
+		}
+
+		allOfSchemas = append(allOfSchemas, low.ValueReference[*SchemaProxy]{
+			Value:     schemaProxy,
+			ValueNode: item,
+		})
+	}
+
+	// set the AllOf field
+	s.AllOf = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
+		Value:     allOfSchemas,
+		KeyNode:   root.Content[0], // "allOf" key
+		ValueNode: root.Content[1], // array value
+	}
+
+	return nil
+}
+
 // build out a child schema for parent schema.
 func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
 	if valueNode != nil {
 		type buildResult struct {
 			res *low.ValueReference[*SchemaProxy]
 			idx int
+			err error
 		}
 
 		syncChan := make(chan buildResult)
@@ -1405,16 +1452,19 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			// In order to combat this, we need a schema proxy that will only resolve the schema when asked, and then
 			// it will only do it one level at a time.
 			sp := new(SchemaProxy)
-			sp.kn = kn
-			sp.vn = vn
-			sp.idx = fIdx
-			sp.ctx = pctx
+
+			// call Build to ensure transformation happens
+			err := sp.Build(pctx, kn, vn, fIdx)
+			if err != nil {
+				return buildResult{err: err}
+			}
+
 			if isRef {
 				sp.SetReference(refLocation, rf)
 			}
 			res := &low.ValueReference[*SchemaProxy]{
 				Value:     sp,
-				ValueNode: vn,
+				ValueNode: sp.vn, // use transformed node
 			}
 			return buildResult{
 				res: res,
@@ -1446,6 +1496,10 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
 			r := build(foundCtx, foundIdx, labelNode, valueNode, refNode, -1, syncChan, isRef, refLocation)
+			if r.err != nil {
+				errors <- r.err
+				return
+			}
 			schemas <- schemaProxyBuildResult{
 				k: low.KeyReference[string]{
 					KeyNode: labelNode,
@@ -1479,6 +1533,10 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 				}
 				refBuilds++
 				r := build(foundCtx, foundIdx, vn, vn, refNode, i, syncChan, isRef, refLocation)
+				if r.err != nil {
+					errors <- r.err
+					return
+				}
 				results[r.idx] = r.res
 			}
 
@@ -1554,12 +1612,19 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 	if schNode != nil {
 		// check if schema has already been built.
 		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: foundIndex, ctx: foundCtx}
+
+		// call Build to ensure transformation happens
+		err := schema.Build(foundCtx, schLabel, schNode, foundIndex)
+		if err != nil {
+			return nil, fmt.Errorf("schema proxy build failed in ExtractSchema: %w", err)
+		}
+
 		schema.SetReference(refLocation, refNode)
 
 		n := &low.NodeReference[*SchemaProxy]{
 			Value:     schema,
 			KeyNode:   schLabel,
-			ValueNode: schNode,
+			ValueNode: schema.vn, // use transformed node
 		}
 		n.SetReference(refLocation, refNode)
 		return n, nil

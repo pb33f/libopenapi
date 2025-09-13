@@ -24,8 +24,9 @@ func NewSiblingRefTransformer(idx *index.SpecIndex) *SiblingRefTransformer {
 
 // TransformSiblingRef transforms a node with $ref and sibling properties into an allOf structure
 // Example transformation:
-//   Input:  {title: "MySchema", $ref: "#/components/schemas/Base"}
-//   Output: {allOf: [{title: "MySchema"}, {$ref: "#/components/schemas/Base"}]}
+//
+//	Input:  {title: "MySchema", $ref: "#/components/schemas/Base"}
+//	Output: {allOf: [{title: "MySchema"}, {$ref: "#/components/schemas/Base"}]}
 func (srt *SiblingRefTransformer) TransformSiblingRef(node *yaml.Node) (*yaml.Node, error) {
 	if !srt.ShouldTransform(node) {
 		return node, nil // no transformation needed
@@ -37,12 +38,13 @@ func (srt *SiblingRefTransformer) TransformSiblingRef(node *yaml.Node) (*yaml.No
 
 // CreateAllOfStructure creates an allOf node structure from ref value and sibling properties
 func (srt *SiblingRefTransformer) CreateAllOfStructure(refValue string, siblings map[string]*yaml.Node) *yaml.Node {
-	// create the allOf array node
+
 	allOfNode := &yaml.Node{
 		Kind: yaml.MappingNode,
+		Tag:  "!!map",
 		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Value: "allOf"},
-			{Kind: yaml.SequenceNode, Content: []*yaml.Node{}},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "allOf"},
+			{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{}},
 		},
 	}
 
@@ -50,9 +52,9 @@ func (srt *SiblingRefTransformer) CreateAllOfStructure(refValue string, siblings
 
 	// first element: schema with sibling properties (excluding $ref)
 	if len(siblings) > 0 {
-		siblingSchemaNode := &yaml.Node{Kind: yaml.MappingNode}
+		siblingSchemaNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 		for key, valueNode := range siblings {
-			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+			keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: key}
 			// create a copy of the value node to avoid modifying original
 			copiedValueNode := srt.copyNode(valueNode)
 			siblingSchemaNode.Content = append(siblingSchemaNode.Content, keyNode, copiedValueNode)
@@ -63,9 +65,10 @@ func (srt *SiblingRefTransformer) CreateAllOfStructure(refValue string, siblings
 	// second element: the reference schema
 	refSchemaNode := &yaml.Node{
 		Kind: yaml.MappingNode,
+		Tag:  "!!map",
 		Content: []*yaml.Node{
-			{Kind: yaml.ScalarNode, Value: "$ref"},
-			{Kind: yaml.ScalarNode, Value: refValue},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: "$ref"},
+			{Kind: yaml.ScalarNode, Tag: "!!str", Value: refValue},
 		},
 	}
 	allOfArrayNode.Content = append(allOfArrayNode.Content, refSchemaNode)

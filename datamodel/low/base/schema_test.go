@@ -2,6 +2,7 @@ package base
 
 import (
 	"context"
+	"crypto/sha256"
 	"sync"
 	"testing"
 	timeStd "time"
@@ -2224,20 +2225,63 @@ dependentRequired:
 
 func TestSchema_Build_SiblingRefTransformation(t *testing.T) {
 	t.Run("sibling ref transformation enabled", func(t *testing.T) {
-		yml := `title: "destination-amazon-sqs"
-description: "amazon sqs configuration"
-example: {"queueUrl": "test"}
-$ref: "#/components/schemas/destination-base"`
+		// create a complete spec with both schemas to avoid reference resolution errors
+		completeSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    destination-base:
+      type: object
+      properties:
+        id:
+          type: string
+    destination-amazon-sqs:
+      title: "destination-amazon-sqs"
+      description: "amazon sqs configuration"
+      example: {"queueUrl": "test"}
+      $ref: "#/components/schemas/destination-base"`
 
 		var idxNode yaml.Node
-		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		_ = yaml.Unmarshal([]byte(completeSpec), &idxNode)
 		config := index.CreateOpenAPIIndexConfig()
 		config.TransformSiblingRefs = true
 		idx := index.NewSpecIndexWithConfig(&idxNode, config)
 
-		var schema Schema
-		err := schema.Build(context.Background(), idxNode.Content[0], idx)
+		// find the destination-amazon-sqs schema node
+		var customerAddressNode *yaml.Node
+		if idxNode.Content[0].Content != nil {
+			for i, node := range idxNode.Content[0].Content {
+				if node.Value == "components" && i+1 < len(idxNode.Content[0].Content) {
+					componentsNode := idxNode.Content[0].Content[i+1]
+					for j, compNode := range componentsNode.Content {
+						if compNode.Value == "schemas" && j+1 < len(componentsNode.Content) {
+							schemasNode := componentsNode.Content[j+1]
+							for k, schemaNode := range schemasNode.Content {
+								if schemaNode.Value == "destination-amazon-sqs" && k+1 < len(schemasNode.Content) {
+									customerAddressNode = schemasNode.Content[k+1]
+									break
+								}
+							}
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+
+		assert.NotNil(t, customerAddressNode)
+
+		// build schema proxy which should trigger transformation, then get the schema
+		schemaProxy := &SchemaProxy{}
+		err := schemaProxy.Build(context.Background(), nil, customerAddressNode, idx)
 		assert.NoError(t, err)
+
+		// get the transformed schema
+		schema := schemaProxy.Schema()
+		assert.NotNil(t, schema)
 
 		// verify transformation occurred - root node should now be allOf
 		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value, "transformation should create allOf structure")
@@ -2311,19 +2355,61 @@ $ref: "#/components/schemas/destination-base"`
 
 func TestSchema_Build_EndToEndSiblingRefSupport(t *testing.T) {
 	t.Run("complete github issue 90 example", func(t *testing.T) {
-		// this is the exact example from issue #90
-		yml := `title: destination-amazon-sqs
-$ref: '#/components/schemas/destination-amazon-sqs'`
+		// create a complete spec to avoid reference resolution issues
+		completeSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    destination-base:
+      type: object
+      properties:
+        id:
+          type: string
+    destination-amazon-sqs:
+      title: destination-amazon-sqs
+      $ref: '#/components/schemas/destination-base'`
 
 		var idxNode yaml.Node
-		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		_ = yaml.Unmarshal([]byte(completeSpec), &idxNode)
 		config := index.CreateOpenAPIIndexConfig()
 		config.TransformSiblingRefs = true
 		idx := index.NewSpecIndexWithConfig(&idxNode, config)
 
-		var schema Schema
-		err := schema.Build(context.Background(), idxNode.Content[0], idx)
+		// find the destination-amazon-sqs schema node
+		var targetSchemaNode *yaml.Node
+		if idxNode.Content[0].Content != nil {
+			for i, node := range idxNode.Content[0].Content {
+				if node.Value == "components" && i+1 < len(idxNode.Content[0].Content) {
+					componentsNode := idxNode.Content[0].Content[i+1]
+					for j, compNode := range componentsNode.Content {
+						if compNode.Value == "schemas" && j+1 < len(componentsNode.Content) {
+							schemasNode := componentsNode.Content[j+1]
+							for k, schemaNode := range schemasNode.Content {
+								if schemaNode.Value == "destination-amazon-sqs" && k+1 < len(schemasNode.Content) {
+									targetSchemaNode = schemasNode.Content[k+1]
+									break
+								}
+							}
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+
+		assert.NotNil(t, targetSchemaNode)
+
+		// build schema proxy which should trigger transformation, then get the schema
+		schemaProxy := &SchemaProxy{}
+		err := schemaProxy.Build(context.Background(), nil, targetSchemaNode, idx)
 		assert.NoError(t, err)
+
+		// get the transformed schema
+		schema := schemaProxy.Schema()
+		assert.NotNil(t, schema)
 
 		// verify transformation to allOf occurred
 		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value)
@@ -2340,24 +2426,66 @@ $ref: '#/components/schemas/destination-amazon-sqs'`
 		// second element should be the reference
 		secondElement := allOfArray.Content[1]
 		assert.Equal(t, "$ref", secondElement.Content[0].Value)
-		assert.Equal(t, "#/components/schemas/destination-amazon-sqs", secondElement.Content[1].Value)
+		assert.Equal(t, "#/components/schemas/destination-base", secondElement.Content[1].Value)
 	})
 
 	t.Run("github issue 262 style example", func(t *testing.T) {
-		// example with property that should be preserved
-		yml := `example: {"addressLine1": "123 Example Road", "city": "Somewhere"}
-description: "Custom address description"
-$ref: "#/components/schemas/address"`
+		// create complete spec for issue 262 style testing
+		completeSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    address:
+      type: object
+      properties:
+        street:
+          type: string
+    customer-address:
+      example: {"addressLine1": "123 Example Road", "city": "Somewhere"}
+      description: "Custom address description"
+      $ref: "#/components/schemas/address"`
 
 		var idxNode yaml.Node
-		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		_ = yaml.Unmarshal([]byte(completeSpec), &idxNode)
 		config := index.CreateOpenAPIIndexConfig()
 		config.TransformSiblingRefs = true
 		idx := index.NewSpecIndexWithConfig(&idxNode, config)
 
-		var schema Schema
-		err := schema.Build(context.Background(), idxNode.Content[0], idx)
+		// find the customer-address schema node
+		var targetSchemaNode *yaml.Node
+		if idxNode.Content[0].Content != nil {
+			for i, node := range idxNode.Content[0].Content {
+				if node.Value == "components" && i+1 < len(idxNode.Content[0].Content) {
+					componentsNode := idxNode.Content[0].Content[i+1]
+					for j, compNode := range componentsNode.Content {
+						if compNode.Value == "schemas" && j+1 < len(componentsNode.Content) {
+							schemasNode := componentsNode.Content[j+1]
+							for k, schemaNode := range schemasNode.Content {
+								if schemaNode.Value == "customer-address" && k+1 < len(schemasNode.Content) {
+									targetSchemaNode = schemasNode.Content[k+1]
+									break
+								}
+							}
+							break
+						}
+					}
+					break
+				}
+			}
+		}
+
+		assert.NotNil(t, targetSchemaNode)
+
+		// build schema proxy which should trigger transformation, then get the schema
+		schemaProxy := &SchemaProxy{}
+		err := schemaProxy.Build(context.Background(), nil, targetSchemaNode, idx)
 		assert.NoError(t, err)
+
+		// get the transformed schema
+		schema := schemaProxy.Schema()
+		assert.NotNil(t, schema)
 
 		// verify transformation preserves example and description
 		allOfArray := schema.RootNode.Content[1]
@@ -2432,10 +2560,14 @@ components:
 
 		assert.NotNil(t, customerAddressNode)
 
-		// build schema which should trigger transformation
-		schema := &Schema{}
-		err := schema.Build(context.Background(), customerAddressNode, idx)
+		// build schema proxy which should trigger transformation, then get the schema
+		schemaProxy := &SchemaProxy{}
+		err := schemaProxy.Build(context.Background(), nil, customerAddressNode, idx)
 		assert.NoError(t, err)
+
+		// get the transformed schema
+		schema := schemaProxy.Schema()
+		assert.NotNil(t, schema)
 
 		// verify transformation occurred
 		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value)
@@ -2457,4 +2589,42 @@ components:
 		assert.True(t, hasExample, "example should be preserved in allOf structure")
 		assert.True(t, hasDescription, "description should be preserved in allOf structure")
 	})
+}
+
+func TestSchemaDynamicValue_Hash_IsA(t *testing.T) {
+	// test when IsA() returns true (N=0, A has value)
+	value := &SchemaDynamicValue[string, int]{
+		N: 0,
+		A: "test value",
+		B: 42,
+	}
+
+	hash := value.Hash()
+
+	// verify it uses the A value (string)
+	expectedHashString := low.GenerateHashString("test value")
+	expectedHash := sha256.Sum256([]byte(expectedHashString))
+
+	assert.Equal(t, expectedHash, hash)
+	assert.True(t, value.IsA())
+	assert.False(t, value.IsB())
+}
+
+func TestSchemaDynamicValue_Hash_IsB(t *testing.T) {
+	// test when IsB() returns true (N=1, B has value)
+	value := &SchemaDynamicValue[string, int]{
+		N: 1,
+		A: "test value",
+		B: 42,
+	}
+
+	hash := value.Hash()
+
+	// verify it uses the B value (int)
+	expectedHashString := low.GenerateHashString(42)
+	expectedHash := sha256.Sum256([]byte(expectedHashString))
+
+	assert.Equal(t, expectedHash, hash)
+	assert.False(t, value.IsA())
+	assert.True(t, value.IsB())
 }
