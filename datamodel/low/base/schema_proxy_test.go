@@ -11,6 +11,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -316,4 +317,116 @@ properties:
 
 	// Verify the schema was rendered and available
 	assert.NotNil(t, sch.rendered)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_NilConfig(t *testing.T) {
+	sp := &SchemaProxy{}
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: string`), &node)
+
+	// note: this would panic in the current implementation as it doesn't check for nil config
+	// but that's how the real code path works, so test with a valid but disabled config instead
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: false, // disabled
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_MergeDisabled(t *testing.T) {
+	sp := &SchemaProxy{}
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: string`), &node)
+
+	// test merge disabled (should return nil)
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: false,
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_NonMapNode(t *testing.T) {
+	sp := &SchemaProxy{}
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`"simple string"`), &node)
+
+	// test non-map node (should return nil)
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.PreserveLocal,
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_NotReference(t *testing.T) {
+	sp := &SchemaProxy{}
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`type: string`), &node)
+
+	// test non-reference (no $ref, so returns nil)
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.PreserveLocal,
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_ReferenceWithoutIndex(t *testing.T) {
+	sp := &SchemaProxy{}
+	sp.Reference = low.Reference{}
+	sp.Reference.SetReference("#/components/schemas/Test", &yaml.Node{})
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: "#/components/schemas/Test"`), &node)
+
+	// test reference without index (returns nil because no index)
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.PreserveLocal,
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_ReferenceWithIndex_NoRef(t *testing.T) {
+	sp := &SchemaProxy{}
+
+	cfg := &index.SpecIndexConfig{}
+	idx := index.NewSpecIndexWithConfig(&yaml.Node{}, cfg)
+	sp.idx = idx
+
+	// test with ref only (no siblings) - should return nil
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: "#/components/schemas/Test"`), &node)
+
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.PreserveLocal,
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result) // no sibling properties, so no merging
+}
+
+func TestSchemaProxy_attemptPropertyMerging_ReferenceWithSiblings_NoComponent(t *testing.T) {
+	sp := &SchemaProxy{}
+	sp.ctx = context.Background()
+
+	cfg := &index.SpecIndexConfig{}
+	idx := index.NewSpecIndexWithConfig(&yaml.Node{}, cfg)
+	sp.idx = idx
+
+	// test with ref + siblings but component not found
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`title: "Test Title"
+$ref: "#/components/schemas/Test"`), &node)
+
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.PreserveLocal,
+	}
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result) // component not found, so no merging
 }

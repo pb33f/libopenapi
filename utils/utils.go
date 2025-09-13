@@ -538,7 +538,10 @@ func IsNodeArray(node *yaml.Node) bool {
 		return false
 	}
 	n := NodeAlias(node)
-	return n.Tag == "!!seq"
+	if n.Tag == "!!seq" {
+		return true
+	}
+	return n.Kind == yaml.SequenceNode
 }
 
 // IsNodeStringValue checks if a node is a string value

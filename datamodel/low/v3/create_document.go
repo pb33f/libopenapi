@@ -47,6 +47,7 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.IgnoreArrayCircularReferences = config.IgnoreArrayCircularReferences
 	idxConfig.IgnorePolymorphicCircularReferences = config.IgnorePolymorphicCircularReferences
 	idxConfig.AllowUnknownExtensionContentDetection = config.AllowUnknownExtensionContentDetection
+	idxConfig.TransformSiblingRefs = config.TransformSiblingRefs
 	idxConfig.AvoidCircularReferenceCheck = true
 	idxConfig.BaseURL = urlWithoutTrailingSlash(config.BaseURL)
 	idxConfig.BasePath = config.BasePath

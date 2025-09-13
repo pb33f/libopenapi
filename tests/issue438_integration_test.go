@@ -1,11 +1,12 @@
 // Copyright 2023 Princess B33f Heavy Industries / Dave Shanley
 // SPDX-License-Identifier: MIT
 
-package libopenapi
+package tests
 
 import (
 	"testing"
 
+	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,11 +32,11 @@ paths:
 		config.AllowRemoteReferences = true
 
 		// Test that the configuration flows through correctly
-		doc, err := NewDocumentWithConfiguration([]byte(simpleSpec), config)
+		doc, err := libopenapi.NewDocumentWithConfiguration([]byte(simpleSpec), config)
 		assert.NoError(t, err)
 		assert.NotNil(t, doc)
 
-		// Verify the document was created successfully  
+		// Verify the document was created successfully
 		model, errs := doc.BuildV3Model()
 		assert.Len(t, errs, 0)
 		assert.NotNil(t, model)
@@ -53,7 +54,7 @@ paths:
 		config.AllowRemoteReferences = true
 
 		// Test that the configuration flows through correctly
-		doc, err := NewDocumentWithConfiguration([]byte(simpleSpec), config)
+		doc, err := libopenapi.NewDocumentWithConfiguration([]byte(simpleSpec), config)
 		assert.NoError(t, err)
 		assert.NotNil(t, doc)
 
@@ -89,7 +90,7 @@ paths:
 		config.AllowUnknownExtensionContentDetection = true
 		config.AllowRemoteReferences = true
 
-		doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+		doc, err := libopenapi.NewDocumentWithConfiguration([]byte(spec), config)
 		assert.NoError(t, err)
 		assert.NotNil(t, doc)
 
@@ -107,7 +108,7 @@ paths:
 		config.AllowUnknownExtensionContentDetection = false
 		config.AllowRemoteReferences = false
 
-		doc, err := NewDocumentWithConfiguration([]byte(spec), config)
+		doc, err := libopenapi.NewDocumentWithConfiguration([]byte(spec), config)
 		assert.NoError(t, err)
 		assert.NotNil(t, doc)
 
