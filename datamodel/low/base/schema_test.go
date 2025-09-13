@@ -2221,3 +2221,90 @@ dependentRequired:
 	hash2 := schema2.Hash()
 	assert.Equal(t, hash1, hash2)
 }
+
+func TestSchema_Build_SiblingRefTransformation(t *testing.T) {
+	t.Run("sibling ref transformation enabled", func(t *testing.T) {
+		yml := `title: "destination-amazon-sqs"
+description: "amazon sqs configuration"
+example: {"queueUrl": "test"}
+$ref: "#/components/schemas/destination-base"`
+
+		var idxNode yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		config := index.CreateOpenAPIIndexConfig()
+		config.TransformSiblingRefs = true
+		idx := index.NewSpecIndexWithConfig(&idxNode, config)
+
+		var schema Schema
+		err := schema.Build(context.Background(), idxNode.Content[0], idx)
+		assert.NoError(t, err)
+
+		// verify transformation occurred - root node should now be allOf
+		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value, "transformation should create allOf structure")
+
+		// verify the RootNode has the correct allOf structure
+		allOfArrayNode := schema.RootNode.Content[1]
+		assert.Equal(t, yaml.SequenceNode, allOfArrayNode.Kind)
+		assert.Len(t, allOfArrayNode.Content, 2, "allOf should have 2 elements")
+
+		// verify structure integrity
+		firstElement := allOfArrayNode.Content[0]
+		secondElement := allOfArrayNode.Content[1]
+		assert.Equal(t, yaml.MappingNode, firstElement.Kind)
+		assert.Equal(t, yaml.MappingNode, secondElement.Kind)
+
+		// check that first element has the sibling properties
+		hasTitle := false
+		for i := 0; i < len(firstElement.Content); i += 2 {
+			if firstElement.Content[i].Value == "title" {
+				hasTitle = true
+				assert.Equal(t, "destination-amazon-sqs", firstElement.Content[i+1].Value)
+			}
+		}
+		assert.True(t, hasTitle, "first allOf element should contain title")
+
+		// check that second element is the reference
+		assert.Equal(t, "$ref", secondElement.Content[0].Value)
+		assert.Equal(t, "#/components/schemas/destination-base", secondElement.Content[1].Value)
+	})
+
+	t.Run("sibling ref transformation disabled maintains compatibility", func(t *testing.T) {
+		yml := `title: "destination-amazon-sqs"
+$ref: "#/components/schemas/destination-base"`
+
+		var idxNode yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		config := index.CreateOpenAPIIndexConfig()
+		config.TransformSiblingRefs = false
+		idx := index.NewSpecIndexWithConfig(&idxNode, config)
+
+		// when transformation is disabled, the original node structure should be preserved
+		originalNode := idxNode.Content[0]
+		assert.Equal(t, "title", originalNode.Content[0].Value)
+		assert.Equal(t, "$ref", originalNode.Content[2].Value)
+
+		// verify transformer correctly identifies no transformation needed
+		transformer := NewSiblingRefTransformer(idx)
+		assert.False(t, transformer.ShouldTransform(originalNode))
+	})
+
+	t.Run("ref only schema unchanged", func(t *testing.T) {
+		yml := `$ref: "#/components/schemas/destination-base"`
+
+		var idxNode yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		config := index.CreateOpenAPIIndexConfig()
+		config.TransformSiblingRefs = true
+		idx := index.NewSpecIndexWithConfig(&idxNode, config)
+
+		// ref-only schemas should not be transformed
+		originalNode := idxNode.Content[0]
+		transformer := NewSiblingRefTransformer(idx)
+		assert.False(t, transformer.ShouldTransform(originalNode), "ref-only should not be transformed")
+
+		// verify no transformation occurs
+		result, err := transformer.TransformSiblingRef(originalNode)
+		assert.NoError(t, err)
+		assert.Equal(t, originalNode, result, "ref-only should return original node")
+	})
+}
