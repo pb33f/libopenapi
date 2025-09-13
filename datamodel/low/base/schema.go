@@ -1297,10 +1297,7 @@ func buildPropertyMap(ctx context.Context, parent *Schema, root *yaml.Node, idx 
 			sp := &SchemaProxy{ctx: foundCtx, kn: currentProp, vn: prop, idx: foundIdx}
 			sp.SetReference(refString, refNode)
 
-			err := sp.Build(foundCtx, currentProp, prop, foundIdx)
-			if err != nil {
-				return nil, fmt.Errorf("schema proxy build failed: %w", err)
-			}
+			_ = sp.Build(foundCtx, currentProp, prop, foundIdx)
 
 			propertyMap.Set(low.KeyReference[string]{
 				KeyNode: currentProp,
@@ -1387,56 +1384,12 @@ func (s *Schema) extractExtensions(root *yaml.Node) {
 	s.Extensions = low.ExtractExtensions(root)
 }
 
-// buildAllOfFromTransformedNode manually builds the AllOf field from a transformed allOf node structure
-// This is used when transformation creates an allOf structure but BuildModel doesn't pick it up
-func (s *Schema) buildAllOfFromTransformedNode(root *yaml.Node) error {
-	if len(root.Content) < 2 || root.Content[0].Value != "allOf" {
-		return fmt.Errorf("invalid allOf structure")
-	}
-
-	allOfArray := root.Content[1] // the array node containing allOf items
-	if allOfArray.Kind != yaml.SequenceNode {
-		return fmt.Errorf("allOf value is not an array")
-	}
-
-	var allOfSchemas []low.ValueReference[*SchemaProxy]
-	for _, item := range allOfArray.Content {
-		// create a schema proxy for each allOf item and build it
-		schemaProxy := &SchemaProxy{
-			vn:  item,
-			idx: s.index,
-			ctx: s.context,
-		}
-
-		// build the schema proxy so it has proper content
-		err := schemaProxy.Build(s.context, nil, item, s.index)
-		if err != nil {
-			return fmt.Errorf("failed to build schema proxy for allOf item: %w", err)
-		}
-
-		allOfSchemas = append(allOfSchemas, low.ValueReference[*SchemaProxy]{
-			Value:     schemaProxy,
-			ValueNode: item,
-		})
-	}
-
-	// set the AllOf field
-	s.AllOf = low.NodeReference[[]low.ValueReference[*SchemaProxy]]{
-		Value:     allOfSchemas,
-		KeyNode:   root.Content[0], // "allOf" key
-		ValueNode: root.Content[1], // array value
-	}
-
-	return nil
-}
-
 // build out a child schema for parent schema.
 func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, labelNode, valueNode *yaml.Node, errors chan error, idx *index.SpecIndex) {
 	if valueNode != nil {
 		type buildResult struct {
 			res *low.ValueReference[*SchemaProxy]
 			idx int
-			err error
 		}
 
 		syncChan := make(chan buildResult)
@@ -1454,10 +1407,7 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			sp := new(SchemaProxy)
 
 			// call Build to ensure transformation happens
-			err := sp.Build(pctx, kn, vn, fIdx)
-			if err != nil {
-				return buildResult{err: err}
-			}
+			_ = sp.Build(pctx, kn, vn, fIdx)
 
 			if isRef {
 				sp.SetReference(refLocation, rf)
@@ -1496,10 +1446,6 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 			// this only runs once, however to keep things consistent, it makes sense to use the same async method
 			// that arrays will use.
 			r := build(foundCtx, foundIdx, labelNode, valueNode, refNode, -1, syncChan, isRef, refLocation)
-			if r.err != nil {
-				errors <- r.err
-				return
-			}
 			schemas <- schemaProxyBuildResult{
 				k: low.KeyReference[string]{
 					KeyNode: labelNode,
@@ -1533,10 +1479,6 @@ func buildSchema(ctx context.Context, schemas chan schemaProxyBuildResult, label
 				}
 				refBuilds++
 				r := build(foundCtx, foundIdx, vn, vn, refNode, i, syncChan, isRef, refLocation)
-				if r.err != nil {
-					errors <- r.err
-					return
-				}
 				results[r.idx] = r.res
 			}
 
