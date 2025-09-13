@@ -2308,3 +2308,74 @@ $ref: "#/components/schemas/destination-base"`
 		assert.Equal(t, originalNode, result, "ref-only should return original node")
 	})
 }
+
+func TestSchema_Build_EndToEndSiblingRefSupport(t *testing.T) {
+	t.Run("complete github issue 90 example", func(t *testing.T) {
+		// this is the exact example from issue #90
+		yml := `title: destination-amazon-sqs
+$ref: '#/components/schemas/destination-amazon-sqs'`
+
+		var idxNode yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		config := index.CreateOpenAPIIndexConfig()
+		config.TransformSiblingRefs = true
+		idx := index.NewSpecIndexWithConfig(&idxNode, config)
+
+		var schema Schema
+		err := schema.Build(context.Background(), idxNode.Content[0], idx)
+		assert.NoError(t, err)
+
+		// verify transformation to allOf occurred
+		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value)
+
+		// verify structure matches expected allOf format
+		allOfArray := schema.RootNode.Content[1]
+		assert.Len(t, allOfArray.Content, 2)
+
+		// first element should have title
+		firstElement := allOfArray.Content[0]
+		assert.Equal(t, "title", firstElement.Content[0].Value)
+		assert.Equal(t, "destination-amazon-sqs", firstElement.Content[1].Value)
+
+		// second element should be the reference
+		secondElement := allOfArray.Content[1]
+		assert.Equal(t, "$ref", secondElement.Content[0].Value)
+		assert.Equal(t, "#/components/schemas/destination-amazon-sqs", secondElement.Content[1].Value)
+	})
+
+	t.Run("github issue 262 style example", func(t *testing.T) {
+		// example with property that should be preserved
+		yml := `example: {"addressLine1": "123 Example Road", "city": "Somewhere"}
+description: "Custom address description"
+$ref: "#/components/schemas/address"`
+
+		var idxNode yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &idxNode)
+		config := index.CreateOpenAPIIndexConfig()
+		config.TransformSiblingRefs = true
+		idx := index.NewSpecIndexWithConfig(&idxNode, config)
+
+		var schema Schema
+		err := schema.Build(context.Background(), idxNode.Content[0], idx)
+		assert.NoError(t, err)
+
+		// verify transformation preserves example and description
+		allOfArray := schema.RootNode.Content[1]
+		firstElement := allOfArray.Content[0]
+
+		// check that example and description are preserved
+		hasExample := false
+		hasDescription := false
+		for i := 0; i < len(firstElement.Content); i += 2 {
+			if firstElement.Content[i].Value == "example" {
+				hasExample = true
+			}
+			if firstElement.Content[i].Value == "description" {
+				hasDescription = true
+				assert.Equal(t, "Custom address description", firstElement.Content[i+1].Value)
+			}
+		}
+		assert.True(t, hasExample, "example should be preserved")
+		assert.True(t, hasDescription, "description should be preserved")
+	})
+}

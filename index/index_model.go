@@ -231,6 +231,29 @@ func (s *SpecIndexConfig) GetId() string {
 	return s.id
 }
 
+// ToDocumentConfiguration converts SpecIndexConfig to DocumentConfiguration for compatibility
+func (s *SpecIndexConfig) ToDocumentConfiguration() *datamodel.DocumentConfiguration {
+	if s == nil {
+		return nil
+	}
+	return &datamodel.DocumentConfiguration{
+		BaseURL:                               s.BaseURL,
+		BasePath:                              s.BasePath,
+		SpecFilePath:                          s.SpecFilePath,
+		AllowFileReferences:                   s.AllowFileLookup,
+		AllowRemoteReferences:                 s.AllowRemoteLookup,
+		BypassDocumentCheck:                   s.SkipDocumentCheck,
+		IgnorePolymorphicCircularReferences:   s.IgnorePolymorphicCircularReferences,
+		IgnoreArrayCircularReferences:         s.IgnoreArrayCircularReferences,
+		UseSchemaQuickHash:                    s.UseSchemaQuickHash,
+		AllowUnknownExtensionContentDetection: s.AllowUnknownExtensionContentDetection,
+		TransformSiblingRefs:                  s.TransformSiblingRefs,
+		MergeReferencedProperties:             false,         // default disabled for index configs
+		PropertyMergeStrategy:                 datamodel.PreserveLocal,
+		Logger:                                s.Logger,
+	}
+}
+
 // CreateOpenAPIIndexConfig is a helper function to create a new SpecIndexConfig with the AllowRemoteLookup and
 // AllowFileLookup set to true. This is the default behavior of the index in previous versions of libopenapi. (pre 0.6.0)
 //

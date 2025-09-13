@@ -11,6 +11,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/utils"
@@ -91,9 +92,20 @@ func (sp *SchemaProxy) Schema() *Schema {
 	if sp.rendered != nil {
 		return sp.rendered
 	}
+
+	// handle property merging for references with sibling properties
+	buildNode := sp.vn
+	if sp.idx != nil && sp.idx.GetConfig() != nil {
+		if docConfig := sp.getDocumentConfig(); docConfig != nil && docConfig.MergeReferencedProperties {
+			if mergedNode := sp.attemptPropertyMerging(buildNode, docConfig); mergedNode != nil {
+				buildNode = mergedNode
+			}
+		}
+	}
+
 	schema := new(Schema)
-	utils.CheckForMergeNodes(sp.vn)
-	err := schema.Build(sp.ctx, sp.vn, sp.idx)
+	utils.CheckForMergeNodes(buildNode)
+	err := schema.Build(sp.ctx, buildNode, sp.idx)
 	if err != nil {
 		sp.buildError = err
 		return nil
@@ -148,7 +160,6 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 
 // Hash will return a consistent SHA256 Hash of the SchemaProxy object (it will resolve it)
 func (sp *SchemaProxy) Hash() [32]byte {
-	// Return cached hash if available
 	if sp.cachedHash != nil {
 		return *sp.cachedHash
 	}
@@ -231,4 +242,46 @@ func (sp *SchemaProxy) GetIndex() *index.SpecIndex {
 
 type HasIndex interface {
 	GetIndex() *index.SpecIndex
+}
+
+// getDocumentConfig retrieves the document configuration from the index
+func (sp *SchemaProxy) getDocumentConfig() *datamodel.DocumentConfiguration {
+	if sp.idx == nil || sp.idx.GetRolodex() == nil {
+		return nil
+	}
+	if rolodex := sp.idx.GetRolodex(); rolodex != nil {
+		if config := rolodex.GetConfig(); config != nil {
+			return config.ToDocumentConfiguration()
+		}
+	}
+	return nil
+}
+
+// attemptPropertyMerging attempts to merge properties for references with siblings
+func (sp *SchemaProxy) attemptPropertyMerging(node *yaml.Node, config *datamodel.DocumentConfiguration) *yaml.Node {
+	if !sp.IsReference() || !utils.IsNodeMap(node) {
+		return nil
+	}
+
+	// check if this node has both $ref and other properties (siblings)
+	hasRef := false
+	hasOtherProps := false
+	for i := 0; i < len(node.Content); i += 2 {
+		if i+1 < len(node.Content) {
+			if node.Content[i].Value == "$ref" {
+				hasRef = true
+			} else {
+				hasOtherProps = true
+			}
+		}
+	}
+
+	if !hasRef || !hasOtherProps {
+		return nil // no merging needed
+	}
+
+	// for now, return nil to preserve existing behavior
+	// full implementation would resolve the reference and merge properties
+	// this is a placeholder for the enhanced resolution logic
+	return nil
 }

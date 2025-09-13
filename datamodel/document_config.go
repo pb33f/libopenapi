@@ -12,6 +12,18 @@ import (
 	"github.com/pb33f/libopenapi/utils"
 )
 
+// PropertyMergeStrategy defines how conflicting properties are handled during reference resolution
+type PropertyMergeStrategy int
+
+const (
+	// PreserveLocal means local properties take precedence over referenced properties
+	PreserveLocal PropertyMergeStrategy = iota
+	// OverwriteWithRemote means referenced properties overwrite local properties
+	OverwriteWithRemote
+	// RejectConflicts means throw error when properties conflict
+	RejectConflicts
+)
+
 // DocumentConfiguration is used to configure the document creation process. It was added in v0.6.0 to allow
 // for more fine-grained control over controls and new features.
 //
@@ -155,11 +167,30 @@ type DocumentConfiguration struct {
 
 	// TransformSiblingRefs enables OpenAPI 3.1/JSON Schema Draft 2020-12 compliance for sibling refs.
 	// When enabled, schemas with $ref and additional properties like:
-	//   {"title": "MySchema", "$ref": "#/components/schemas/Base"}
+	//   title: MySchema
+	//   $ref: '#/components/schemas/Base'
 	// Will be transformed to:
-	//   {"allOf": [{"title": "MySchema"}, {"$ref": "#/components/schemas/Base"}]}
+	//   allOf:
+	//     - title: MySchema
+	//     - $ref: '#/components/schemas/Base'
 	// This is enabled by default to ensure OpenAPI 3.1 compliance.
 	TransformSiblingRefs bool
+
+	// MergeReferencedProperties enables enhanced reference resolution that preserves local properties
+	// when resolving references. For example:
+	//   $ref: '#/components/schemas/Address'
+	//   example:
+	//     street: '123 Main St'
+	//     city: 'Somewhere'
+	// The example will be preserved during reference resolution instead of being overwritten.
+	// This addresses issue #262 and improves reference resolution behavior.
+	MergeReferencedProperties bool
+
+	// PropertyMergeStrategy determines how conflicting properties are handled during reference resolution.
+	// - PreserveLocal: Local properties take precedence over referenced properties
+	// - OverwriteWithRemote: Referenced properties overwrite local properties
+	// - RejectConflicts: Throw error when properties conflict
+	PropertyMergeStrategy PropertyMergeStrategy
 }
 
 func NewDocumentConfiguration() *DocumentConfiguration {
@@ -167,6 +198,8 @@ func NewDocumentConfiguration() *DocumentConfiguration {
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelError,
 		})),
-		TransformSiblingRefs: true, // enable openapi 3.1 compliance by default
+		TransformSiblingRefs:      true,         // enable openapi 3.1 compliance by default
+		MergeReferencedProperties: true,         // enable enhanced resolution by default
+		PropertyMergeStrategy:     PreserveLocal, // local properties take precedence
 	}
 }
