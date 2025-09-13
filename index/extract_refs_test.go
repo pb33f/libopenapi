@@ -475,3 +475,111 @@ components:
 	assert.Len(t, idx.allRefs, 0)
 	assert.Len(t, idx.refErrors, 0)
 }
+
+func TestSpecIndex_ExtractRefs_SiblingPropertiesDetection(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        id:
+          type: string
+    WithSiblings:
+      title: "Custom Title"
+      description: "Custom Description"
+      $ref: "#/components/schemas/Base"
+    OnlyRef:
+      $ref: "#/components/schemas/Base"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// check that at least one ref with siblings is detected
+	assert.GreaterOrEqual(t, len(idx.refsWithSiblings), 1)
+
+	// check that we have the expected refs
+	assert.Contains(t, idx.refsWithSiblings, "#/components/schemas/Base")
+
+	// verify the sibling ref properties
+	siblingRef := idx.refsWithSiblings["#/components/schemas/Base"]
+	assert.True(t, siblingRef.HasSiblingProperties)
+	assert.NotEmpty(t, siblingRef.SiblingProperties)
+
+	// should have title and description from WithSiblings
+	assert.Contains(t, siblingRef.SiblingProperties, "title")
+	assert.Contains(t, siblingRef.SiblingProperties, "description")
+	assert.Equal(t, "Custom Title", siblingRef.SiblingProperties["title"].Value)
+	assert.Equal(t, "Custom Description", siblingRef.SiblingProperties["description"].Value)
+}
+
+func TestSpecIndex_ExtractRefs_SiblingPropertiesVariousTypes(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Base:
+      type: object
+    WithMultipleSiblings:
+      title: "String Value"
+      nullable: true
+      example: {"key": "value"}
+      enum: ["one", "two", "three"]
+      $ref: "#/components/schemas/Base"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// should detect refs with siblings
+	assert.GreaterOrEqual(t, len(idx.refsWithSiblings), 1)
+
+	// check the multisibling ref
+	if ref, exists := idx.refsWithSiblings["#/components/schemas/Base"]; exists {
+		assert.True(t, ref.HasSiblingProperties)
+		assert.Equal(t, 4, len(ref.SiblingProperties)) // title, nullable, example, enum
+		assert.Contains(t, ref.SiblingProperties, "title")
+		assert.Contains(t, ref.SiblingProperties, "nullable")
+		assert.Contains(t, ref.SiblingProperties, "example")
+		assert.Contains(t, ref.SiblingProperties, "enum")
+	}
+}
+
+func TestSpecIndex_ExtractRefs_BackwardsCompatibility(t *testing.T) {
+	// test that existing behavior is unchanged when TransformSiblingRefs is false
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Base:
+      type: object
+    WithSiblings:
+      title: "Custom Title"
+      $ref: "#/components/schemas/Base"`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+	c := CreateOpenAPIIndexConfig()
+	c.TransformSiblingRefs = false // explicitly disable
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// should still detect siblings for backwards compatibility with existing tooling
+	assert.Len(t, idx.refsWithSiblings, 1)
+
+	// check that sibling properties are still captured even when transformation is disabled
+	for _, ref := range idx.refsWithSiblings {
+		assert.True(t, ref.HasSiblingProperties)
+		assert.Contains(t, ref.SiblingProperties, "title")
+		assert.Equal(t, "Custom Title", ref.SiblingProperties["title"].Value)
+	}
+}

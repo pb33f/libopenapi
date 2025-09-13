@@ -145,13 +145,21 @@ type DocumentConfiguration struct {
 	// used to determine changes.
 	UseSchemaQuickHash bool
 
-	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have 
+	// AllowUnknownExtensionContentDetection will enable content detection for remote URLs that don't have
 	// a known file extension. When enabled, libopenapi will fetch the first 1-2KB of unknown URLs to determine
 	// if they contain valid JSON or YAML content. This is disabled by default for security and performance.
 	//
 	// If disabled, URLs without recognized extensions (.yaml, .yml, .json) will be rejected.
 	// If enabled, unknown URLs will be fetched and analyzed for JSON/YAML content with retry logic.
 	AllowUnknownExtensionContentDetection bool
+
+	// TransformSiblingRefs enables OpenAPI 3.1/JSON Schema Draft 2020-12 compliance for sibling refs.
+	// When enabled, schemas with $ref and additional properties like:
+	//   {"title": "MySchema", "$ref": "#/components/schemas/Base"}
+	// Will be transformed to:
+	//   {"allOf": [{"title": "MySchema"}, {"$ref": "#/components/schemas/Base"}]}
+	// This is enabled by default to ensure OpenAPI 3.1 compliance.
+	TransformSiblingRefs bool
 }
 
 func NewDocumentConfiguration() *DocumentConfiguration {
@@ -159,5 +167,6 @@ func NewDocumentConfiguration() *DocumentConfiguration {
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelError,
 		})),
+		TransformSiblingRefs: true, // enable openapi 3.1 compliance by default
 	}
 }
