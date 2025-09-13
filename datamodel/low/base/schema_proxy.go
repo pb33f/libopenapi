@@ -259,29 +259,54 @@ func (sp *SchemaProxy) getDocumentConfig() *datamodel.DocumentConfiguration {
 
 // attemptPropertyMerging attempts to merge properties for references with siblings
 func (sp *SchemaProxy) attemptPropertyMerging(node *yaml.Node, config *datamodel.DocumentConfiguration) *yaml.Node {
-	if !sp.IsReference() || !utils.IsNodeMap(node) {
+	if !config.MergeReferencedProperties || !utils.IsNodeMap(node) {
 		return nil
 	}
 
-	// check if this node has both $ref and other properties (siblings)
-	hasRef := false
-	hasOtherProps := false
+	// extract ref value and sibling properties
+	var refValue string
+	siblings := make(map[string]*yaml.Node)
+
 	for i := 0; i < len(node.Content); i += 2 {
 		if i+1 < len(node.Content) {
 			if node.Content[i].Value == "$ref" {
-				hasRef = true
+				refValue = node.Content[i+1].Value
 			} else {
-				hasOtherProps = true
+				siblings[node.Content[i].Value] = node.Content[i+1]
 			}
 		}
 	}
 
-	if !hasRef || !hasOtherProps {
+	if refValue == "" || len(siblings) == 0 {
 		return nil // no merging needed
 	}
 
-	// for now, return nil to preserve existing behavior
-	// full implementation would resolve the reference and merge properties
-	// this is a placeholder for the enhanced resolution logic
-	return nil
+	// resolve the reference to get the target schema
+	if sp.idx == nil {
+		return nil
+	}
+
+	referencedComponent := sp.idx.FindComponentInRoot(sp.ctx, refValue)
+	if referencedComponent == nil || referencedComponent.Node == nil {
+		return nil // cannot resolve reference
+	}
+
+	// create property merger and merge
+	merger := NewPropertyMerger(config.PropertyMergeStrategy)
+
+	// create a local node with just the sibling properties
+	localNode := &yaml.Node{Kind: yaml.MappingNode}
+	for key, value := range siblings {
+		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: key}
+		localNode.Content = append(localNode.Content, keyNode, value)
+	}
+
+	// merge local properties with referenced schema
+	merged, err := merger.MergeProperties(localNode, referencedComponent.Node)
+	if err != nil {
+		// if merging fails, return original node to preserve existing behavior
+		return nil
+	}
+
+	return merged
 }
