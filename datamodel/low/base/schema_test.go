@@ -2379,3 +2379,82 @@ $ref: "#/components/schemas/address"`
 		assert.True(t, hasDescription, "description should be preserved")
 	})
 }
+
+func TestSchema_Build_PropertyMerging_Issue262(t *testing.T) {
+	t.Run("property merging with reference resolution", func(t *testing.T) {
+		// create a complete spec with the target schema to resolve to
+		specYml := `openapi: 3.1.0
+info:
+  title: Property Merging Test
+  version: 1.0.0
+components:
+  schemas:
+    Address:
+      type: object
+      description: "Base address schema"
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+    CustomerAddress:
+      example:
+        street: "123 Example Road"
+        city: "Test City"
+      description: "Customer specific address"
+      $ref: "#/components/schemas/Address"`
+
+		var rootDoc yaml.Node
+		_ = yaml.Unmarshal([]byte(specYml), &rootDoc)
+
+		config := index.CreateOpenAPIIndexConfig()
+		config.TransformSiblingRefs = true
+		idx := index.NewSpecIndexWithConfig(&rootDoc, config)
+
+		// find the CustomerAddress schema node
+		var customerAddressNode *yaml.Node
+		for i, node := range rootDoc.Content[0].Content {
+			if node.Value == "components" {
+				components := rootDoc.Content[0].Content[i+1]
+				for j, compNode := range components.Content {
+					if compNode.Value == "schemas" {
+						schemas := components.Content[j+1]
+						for k, schemaKey := range schemas.Content {
+							if schemaKey.Value == "CustomerAddress" {
+								customerAddressNode = schemas.Content[k+1]
+								break
+							}
+						}
+					}
+				}
+			}
+		}
+
+		assert.NotNil(t, customerAddressNode)
+
+		// build schema which should trigger transformation
+		schema := &Schema{}
+		err := schema.Build(context.Background(), customerAddressNode, idx)
+		assert.NoError(t, err)
+
+		// verify transformation occurred
+		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value)
+
+		// verify sibling properties are preserved in first allOf element
+		allOfArray := schema.RootNode.Content[1]
+		firstElement := allOfArray.Content[0]
+
+		hasExample := false
+		hasDescription := false
+		for i := 0; i < len(firstElement.Content); i += 2 {
+			if firstElement.Content[i].Value == "example" {
+				hasExample = true
+			}
+			if firstElement.Content[i].Value == "description" {
+				hasDescription = true
+			}
+		}
+		assert.True(t, hasExample, "example should be preserved in allOf structure")
+		assert.True(t, hasDescription, "description should be preserved in allOf structure")
+	})
+}
