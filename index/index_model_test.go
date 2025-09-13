@@ -5,6 +5,7 @@ package index
 
 import (
 	"encoding/json"
+	"net/url"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -66,4 +67,43 @@ func Test_MarshalJSON(t *testing.T) {
 
 	bytes, _ := json.Marshal(rm)
 	assert.Len(t, bytes, 173)
+}
+
+func TestSpecIndexConfig_ToDocumentConfiguration_Nil(t *testing.T) {
+	var config *SpecIndexConfig = nil
+	result := config.ToDocumentConfiguration()
+	assert.Nil(t, result)
+}
+
+func TestSpecIndexConfig_ToDocumentConfiguration_AllFields(t *testing.T) {
+	baseURL, _ := url.Parse("https://example.com")
+	config := &SpecIndexConfig{
+		BaseURL:                               baseURL,
+		BasePath:                              "/api",
+		SpecFilePath:                          "/path/to/spec.yaml",
+		AllowFileLookup:                       true,
+		AllowRemoteLookup:                     true,
+		SkipDocumentCheck:                     true,
+		IgnorePolymorphicCircularReferences:   true,
+		IgnoreArrayCircularReferences:         true,
+		UseSchemaQuickHash:                    true,
+		AllowUnknownExtensionContentDetection: true,
+		TransformSiblingRefs:                  true,
+	}
+
+	result := config.ToDocumentConfiguration()
+
+	assert.NotNil(t, result)
+	assert.Equal(t, baseURL, result.BaseURL)
+	assert.Equal(t, "/api", result.BasePath)
+	assert.Equal(t, "/path/to/spec.yaml", result.SpecFilePath)
+	assert.True(t, result.AllowFileReferences)
+	assert.True(t, result.AllowRemoteReferences)
+	assert.True(t, result.BypassDocumentCheck)
+	assert.True(t, result.IgnorePolymorphicCircularReferences)
+	assert.True(t, result.IgnoreArrayCircularReferences)
+	assert.True(t, result.UseSchemaQuickHash)
+	assert.True(t, result.AllowUnknownExtensionContentDetection)
+	assert.True(t, result.TransformSiblingRefs)
+	assert.False(t, result.MergeReferencedProperties) // default disabled for index configs
 }

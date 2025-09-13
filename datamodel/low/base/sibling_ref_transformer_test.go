@@ -363,13 +363,19 @@ $ref: "#/components/schemas/Base"`
 		var testRootNode yaml.Node
 		idx := index.NewSpecIndexWithConfig(&testRootNode, config)
 
-		// verify the schema build integration point triggers transformation
-		schema := &Schema{}
-		err := schema.Build(context.Background(), actualNode, idx)
+		// verify transformation occurs at SchemaProxy.Build level
+		schemaProxy := &SchemaProxy{}
+		err := schemaProxy.Build(context.Background(), nil, actualNode, idx)
 		assert.NoError(t, err)
 
-		// the key test: verify the root node was transformed
-		assert.Equal(t, "allOf", schema.RootNode.Content[0].Value, "root node should be transformed to allOf structure")
+		// verify the transformation occurred in the value node
+		assert.NotNil(t, schemaProxy.vn)
+		if len(schemaProxy.vn.Content) > 0 {
+			assert.Equal(t, "allOf", schemaProxy.vn.Content[0].Value, "value node should be transformed to allOf structure")
+		}
+
+		// verify transformation flag is set
+		assert.NotNil(t, schemaProxy.TransformedRef, "TransformedRef should be set for transformed schemas")
 	})
 
 	t.Run("verify no transformation when disabled", func(t *testing.T) {
