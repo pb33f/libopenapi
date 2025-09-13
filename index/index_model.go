@@ -37,6 +37,9 @@ type Reference struct {
 	RemoteLocation        string              `json:"remoteLocation,omitempty"`
 	Path                  string              `json:"path,omitempty"`               // this won't always be available.
 	RequiredRefProperties map[string][]string `json:"requiredProperties,omitempty"` // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition
+	HasSiblingProperties  bool                `json:"-"`                            // indicates if ref has sibling properties
+	SiblingProperties     map[string]*yaml.Node `json:"-"`                          // stores sibling property nodes
+	SiblingKeys           []*yaml.Node        `json:"-"`                            // stores sibling key nodes
 }
 
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
@@ -197,6 +200,10 @@ type SpecIndexConfig struct {
 	// If disabled, URLs without recognized extensions (.yaml, .yml, .json) will be rejected.
 	// If enabled, unknown URLs will be fetched and analyzed for JSON/YAML content with retry logic.
 	AllowUnknownExtensionContentDetection bool
+
+	// TransformSiblingRefs enables OpenAPI 3.1/JSON Schema Draft 2020-12 compliance for sibling refs.
+	// When enabled, schemas with $ref and additional properties will be transformed to use allOf.
+	TransformSiblingRefs bool
 
 	// private fields
 	uri []string
