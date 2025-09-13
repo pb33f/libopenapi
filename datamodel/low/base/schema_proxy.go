@@ -77,10 +77,7 @@ func (sp *SchemaProxy) Build(ctx context.Context, key, value *yaml.Node, idx *in
 	if idx != nil && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs {
 		transformer := NewSiblingRefTransformer(idx)
 		if transformer.ShouldTransform(value) {
-			transformed, err := transformer.TransformSiblingRef(value)
-			if err != nil {
-				return fmt.Errorf("sibling ref transformation failed: %w", err)
-			}
+			transformed, _ := transformer.TransformSiblingRef(value)
 			if transformed != nil {
 				transformedValue = transformed
 				wasTransformed = true
