@@ -639,6 +639,21 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	}
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
+
+	// transform sibling refs to allOf structure if enabled and applicable
+	if idx != nil && idx.GetConfig() != nil && idx.GetConfig().TransformSiblingRefs {
+		transformer := NewSiblingRefTransformer(idx)
+		if transformer.ShouldTransform(root) {
+			transformed, err := transformer.TransformSiblingRef(root)
+			if err != nil {
+				return fmt.Errorf("sibling ref transformation failed: %w", err)
+			}
+			if transformed != nil {
+				root = transformed
+			}
+		}
+	}
+
 	s.Reference = new(low.Reference)
 	no := low.ExtractNodes(ctx, root)
 	s.Nodes = no
