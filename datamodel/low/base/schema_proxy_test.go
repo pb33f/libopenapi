@@ -6,10 +6,11 @@ package base
 import (
 	"context"
 	"fmt"
-	"github.com/pb33f/libopenapi/utils"
 	"log/slog"
 	"os"
 	"testing"
+
+	"github.com/pb33f/libopenapi/utils"
 
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/low"
@@ -521,4 +522,36 @@ $ref: "#/components/schemas/Base"`), &node)
 	// the merging logic should be exercised
 	// result may be nil if component isn't found, but the path is tested
 	t.Logf("Merge result: %v", result != nil)
+}
+
+func TestSchemaProxy_attemptPropertyMerging_MergeError(t *testing.T) {
+	// test that lines 332-334 in schema_proxy.go are covered (merge error path)
+	sp := &SchemaProxy{
+		ctx: context.Background(),
+	}
+
+	specYml := `openapi: 3.1.0
+components:
+  schemas:
+    Base:
+      type: object`
+
+	var specNode yaml.Node
+	_ = yaml.Unmarshal([]byte(specYml), &specNode)
+	idx := index.NewSpecIndexWithConfig(&specNode, &index.SpecIndexConfig{})
+	sp.idx = idx
+
+	// create conflicting node that will cause merge to fail
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Base'
+type: array`), &node)
+
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.RejectConflicts, // this will cause merge to fail
+	}
+
+	// this should trigger lines 332-334 (error path)
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result) // when merge fails, nil is returned
 }

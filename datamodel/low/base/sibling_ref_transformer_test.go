@@ -295,6 +295,27 @@ $ref: "#/components/schemas/Base"`
 		should := transformer.ShouldTransform(actualNode)
 		assert.False(t, should)
 	})
+
+	t.Run("should handle odd Content length", func(t *testing.T) {
+		// test that line 91 in sibling_ref_transformer.go is covered (break on odd content)
+		transformer := NewSiblingRefTransformer(nil)
+
+		// create a node with odd number of content items (malformed YAML mapping)
+		node := &yaml.Node{
+			Kind: yaml.MappingNode,
+			Content: []*yaml.Node{
+				{Kind: yaml.ScalarNode, Value: "$ref"},
+				{Kind: yaml.ScalarNode, Value: "#/components/schemas/Base"},
+				{Kind: yaml.ScalarNode, Value: "title"}, // odd item without value
+			},
+		}
+
+		// this should trigger the break at line 91
+		siblings, _ := transformer.ExtractSiblingProperties(node)
+
+		// should extract ref but not the incomplete title property
+		assert.Empty(t, siblings)
+	})
 }
 
 func TestSiblingRefTransformer_IntegrationWorks(t *testing.T) {
