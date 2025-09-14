@@ -329,6 +329,7 @@ components:
 	})
 }
 
+
 func TestSiblingRefs_Integration_BackwardsCompatibility(t *testing.T) {
 	t.Run("existing behavior preserved when features disabled", func(t *testing.T) {
 		spec := `openapi: 3.0.0

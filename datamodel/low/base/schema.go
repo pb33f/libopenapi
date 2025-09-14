@@ -1556,10 +1556,7 @@ func ExtractSchema(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (
 		schema := &SchemaProxy{kn: schLabel, vn: schNode, idx: foundIndex, ctx: foundCtx}
 
 		// call Build to ensure transformation happens
-		err := schema.Build(foundCtx, schLabel, schNode, foundIndex)
-		if err != nil {
-			return nil, fmt.Errorf("schema proxy build failed in ExtractSchema: %w", err)
-		}
+		_ = schema.Build(foundCtx, schLabel, schNode, foundIndex)
 
 		schema.SetReference(refLocation, refNode)
 
