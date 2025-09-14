@@ -432,9 +432,9 @@ func TestSiblingRefTransformer_copyNode(t *testing.T) {
 
 	t.Run("copy simple scalar node", func(t *testing.T) {
 		original := &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Value: "test value",
-			Line:  10,
+			Kind:   yaml.ScalarNode,
+			Value:  "test value",
+			Line:   10,
 			Column: 5,
 		}
 
@@ -475,4 +475,36 @@ func TestSiblingRefTransformer_copyNode(t *testing.T) {
 		copied := transformer.copyNode(nil)
 		assert.Nil(t, copied)
 	})
+}
+
+func TestSiblingRefTransformer_ChecBreak(t *testing.T) {
+	transformer := NewSiblingRefTransformer(nil)
+	result, str := transformer.ExtractSiblingProperties(&yaml.Node{
+		Kind: yaml.MappingNode,
+		Tag:  "!!map",
+		Content: []*yaml.Node{
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "cake",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "burgers",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "beer",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "ice cream",
+			},
+			{
+				Kind:  yaml.ScalarNode,
+				Value: "hot dogs",
+			},
+		},
+	})
+	assert.Equal(t, str, "")
+	assert.Len(t, result, 0)
 }
