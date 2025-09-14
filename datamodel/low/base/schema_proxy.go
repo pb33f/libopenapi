@@ -52,13 +52,13 @@ import (
 // when a schema is needed, so the rest of the document is parsed and ready to use.
 type SchemaProxy struct {
 	low.Reference
-	kn            *yaml.Node
-	vn            *yaml.Node
-	idx           *index.SpecIndex
-	rendered      *Schema
-	buildError    error
-	ctx           context.Context
-	cachedHash    *[32]byte // Cache computed hash to avoid recalculation
+	kn             *yaml.Node
+	vn             *yaml.Node
+	idx            *index.SpecIndex
+	rendered       *Schema
+	buildError     error
+	ctx            context.Context
+	cachedHash     *[32]byte  // Cache computed hash to avoid recalculation
 	TransformedRef *yaml.Node // Original node that contained the ref before transformation
 	*low.NodeMap
 }
@@ -303,11 +303,6 @@ func (sp *SchemaProxy) attemptPropertyMerging(node *yaml.Node, config *datamodel
 
 	if refValue == "" || len(siblings) == 0 {
 		return nil // no merging needed
-	}
-
-	// resolve the reference to get the target schema
-	if sp.idx == nil {
-		return nil
 	}
 
 	referencedComponent := sp.idx.FindComponentInRoot(sp.ctx, refValue)
