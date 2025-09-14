@@ -588,12 +588,44 @@ components:
 	schema := sp.Schema()
 	assert.NotNil(t, schema)
 
-	// just verify the schema was built - the important thing is coverage
-	// title may not be preserved depending on how merging works
+	sp.idx.SetRolodex(&index.Rolodex{}) // set a rolodex to avoid nil deref
+	assert.Nil(t, sp.getDocumentConfig())
 }
 
 func TestSchemaProxy_attemptPropertyMerging_MergeError(t *testing.T) {
 	// test that lines 332-334 in schema_proxy.go are covered (merge error path)
+	sp := &SchemaProxy{
+		ctx: context.Background(),
+	}
+
+	specYml := `openapi: 3.1.0
+components:
+  schemas:
+    Base:
+      type: object`
+
+	var specNode yaml.Node
+	_ = yaml.Unmarshal([]byte(specYml), &specNode)
+	idx := index.NewSpecIndexWithConfig(&specNode, &index.SpecIndexConfig{})
+	sp.idx = idx
+
+	// create conflicting node that will cause merge to fail
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(`$ref: '#/components/schemas/Base'
+type: array`), &node)
+
+	config := &datamodel.DocumentConfiguration{
+		MergeReferencedProperties: true,
+		PropertyMergeStrategy:     datamodel.RejectConflicts, // this will cause merge to fail
+	}
+
+	// this should trigger lines 332-334 (error path)
+	result := sp.attemptPropertyMerging(node.Content[0], config)
+	assert.Nil(t, result) // when merge fails, nil is returned
+}
+
+func TestSchemaProxy_NoDocumentConfig(t *testing.T) {
+
 	sp := &SchemaProxy{
 		ctx: context.Background(),
 	}
