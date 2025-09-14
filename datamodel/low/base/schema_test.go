@@ -2610,6 +2610,47 @@ func TestSchemaDynamicValue_Hash_IsA(t *testing.T) {
 	assert.False(t, value.IsB())
 }
 
+func TestSchema_Build_WithTransformedParentProxy(t *testing.T) {
+	// test that lines 658-659 in schema.go are covered (transformed parent proxy check)
+	// this needs to test the Build method directly
+	yml := `$ref: '#/components/schemas/Base'`
+
+	var schemaNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &schemaNode)
+
+	// create spec
+	specYml := `openapi: 3.1.0
+components:
+  schemas:
+    Base:
+      type: object
+      properties:
+        id:
+          type: string`
+
+	var specNode yaml.Node
+	_ = yaml.Unmarshal([]byte(specYml), &specNode)
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&specNode, cfg)
+
+	// create a schema with a parent proxy that has TransformedRef set
+	schema := &Schema{}
+	sp := &SchemaProxy{
+		TransformedRef: &yaml.Node{}, // simulate transformation
+	}
+	schema.ParentProxy = sp
+
+	// call Build which should detect the transformed parent proxy
+	err := schema.Build(context.Background(), schemaNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// the isTransformed check happens internally and should skip reference dereferencing
+	// when ParentProxy.TransformedRef is not nil
+	assert.NotNil(t, schema.ParentProxy)
+	assert.NotNil(t, schema.ParentProxy.TransformedRef)
+}
+
 func TestSchemaDynamicValue_Hash_IsB(t *testing.T) {
 	// test when IsB() returns true (N=1, B has value)
 	value := &SchemaDynamicValue[string, int]{

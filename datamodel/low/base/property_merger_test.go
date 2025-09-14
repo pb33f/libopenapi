@@ -234,3 +234,11 @@ func TestPropertyMerger_ShouldMergeProperties(t *testing.T) {
 		assert.False(t, should)
 	})
 }
+
+func TestPropertyMerger_copyNode_Nil(t *testing.T) {
+	// test that copyNode handles nil input correctly (lines 113-114)
+	merger := NewPropertyMerger(datamodel.PreserveLocal)
+
+	result := merger.copyNode(nil)
+	assert.Nil(t, result)
+}

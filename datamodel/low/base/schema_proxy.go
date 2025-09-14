@@ -274,10 +274,9 @@ func (sp *SchemaProxy) getDocumentConfig() *datamodel.DocumentConfiguration {
 	if sp.idx == nil || sp.idx.GetRolodex() == nil {
 		return nil
 	}
-	if rolodex := sp.idx.GetRolodex(); rolodex != nil {
-		if config := rolodex.GetConfig(); config != nil {
-			return config.ToDocumentConfiguration()
-		}
+	rolodex := sp.idx.GetRolodex()
+	if config := rolodex.GetConfig(); config != nil {
+		return config.ToDocumentConfiguration()
 	}
 	return nil
 }
