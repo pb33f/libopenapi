@@ -205,6 +205,13 @@ type SpecIndexConfig struct {
 	// When enabled, schemas with $ref and additional properties will be transformed to use allOf.
 	TransformSiblingRefs bool
 
+	// MergeReferencedProperties enables merging of properties from referenced schemas with local properties.
+	// When enabled, properties from referenced schemas will be merged with local sibling properties.
+	MergeReferencedProperties bool
+
+	// PropertyMergeStrategy defines how to handle conflicts when merging properties.
+	PropertyMergeStrategy datamodel.PropertyMergeStrategy
+
 	// private fields
 	uri []string
 	id  string
@@ -236,6 +243,11 @@ func (s *SpecIndexConfig) ToDocumentConfiguration() *datamodel.DocumentConfigura
 	if s == nil {
 		return nil
 	}
+	// default strategy if not set
+	strategy := s.PropertyMergeStrategy
+	if strategy == 0 {
+		strategy = datamodel.PreserveLocal
+	}
 	return &datamodel.DocumentConfiguration{
 		BaseURL:                               s.BaseURL,
 		BasePath:                              s.BasePath,
@@ -248,8 +260,8 @@ func (s *SpecIndexConfig) ToDocumentConfiguration() *datamodel.DocumentConfigura
 		UseSchemaQuickHash:                    s.UseSchemaQuickHash,
 		AllowUnknownExtensionContentDetection: s.AllowUnknownExtensionContentDetection,
 		TransformSiblingRefs:                  s.TransformSiblingRefs,
-		MergeReferencedProperties:             false,         // default disabled for index configs
-		PropertyMergeStrategy:                 datamodel.PreserveLocal,
+		MergeReferencedProperties:             s.MergeReferencedProperties,
+		PropertyMergeStrategy:                 strategy,
 		Logger:                                s.Logger,
 	}
 }
