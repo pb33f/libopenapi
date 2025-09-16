@@ -26,6 +26,7 @@ type NodeBuilder struct {
 	High    any
 	Low     any
 	Resolve bool // If set to true, all references will be rendered inline
+	Errors  []error
 }
 
 const renderZero = "renderZero"
@@ -287,9 +288,11 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 	value := entry.Value
 	line := entry.Line
 
+	var nodeErrors []error
+	var ne error
+
 	var valueNode *yaml.Node
 	switch t.Kind() {
-
 	case reflect.String:
 		val := value.(string)
 		valueNode = utils.CreateStringNode(val)
@@ -364,13 +367,16 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 				if er, ko := sqi.(Renderable); ko {
 					var rend interface{}
 					if !n.Resolve {
-						rend, _ = er.MarshalYAML()
+						rend, ne = er.MarshalYAML()
+						nodeErrors = append(nodeErrors, ne)
 					} else {
 						// try and render inline, if we can, otherwise treat as normal.
 						if _, ko := er.(RenderableInline); ko {
-							rend, _ = er.(RenderableInline).MarshalYAMLInline()
+							rend, ne = er.(RenderableInline).MarshalYAMLInline()
+							nodeErrors = append(nodeErrors, ne)
 						} else {
-							rend, _ = er.MarshalYAML()
+							rend, ne = er.MarshalYAML()
+							nodeErrors = append(nodeErrors, ne)
 						}
 					}
 					// check if this is a pointer or not.
@@ -460,15 +466,18 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			}
 			var rawRender interface{}
 			if !n.Resolve {
-				rawRender, _ = r.MarshalYAML()
+				rawRender, ne = r.MarshalYAML()
+				nodeErrors = append(nodeErrors, ne)
 			} else {
 				// try an inline render if we can, otherwise there is no option but to default to the
 				// full render.
 
 				if _, ko := r.(RenderableInline); ko {
-					rawRender, _ = r.(RenderableInline).MarshalYAMLInline()
+					rawRender, ne = r.(RenderableInline).MarshalYAMLInline()
+					nodeErrors = append(nodeErrors, ne)
 				} else {
-					rawRender, _ = r.MarshalYAML()
+					rawRender, ne = r.MarshalYAML()
+					nodeErrors = append(nodeErrors, ne)
 				}
 			}
 			if rawRender != nil {
@@ -541,6 +550,9 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 			}
 		}
 
+	}
+	if nodeErrors != nil && len(nodeErrors) > 0 {
+		n.Errors = append(n.Errors, nodeErrors...)
 	}
 	if valueNode == nil {
 		return parent

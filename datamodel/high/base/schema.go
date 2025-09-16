@@ -6,6 +6,7 @@ package base
 import (
 	"encoding/json"
 
+	"errors"
 	"github.com/pb33f/libopenapi/datamodel/high"
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
@@ -487,7 +488,10 @@ func (s *Schema) Render() ([]byte, error) {
 //
 // Make sure you don't have any circular references!
 func (s *Schema) RenderInline() ([]byte, error) {
-	d, _ := s.MarshalYAMLInline()
+	d, err := s.MarshalYAMLInline()
+	if err != nil {
+		return nil, err
+	}
 	return yaml.Marshal(d)
 }
 
@@ -538,7 +542,7 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 			nb.Version = idx.GetConfig().SpecInfo.VersionNumeric
 		}
 	}
-	return nb.Render(), nil
+	return nb.Render(), errors.Join(nb.Errors...)
 }
 
 // MarshalJSONInline will render out the Schema pointer as JSON, and all refs will be inlined fully
