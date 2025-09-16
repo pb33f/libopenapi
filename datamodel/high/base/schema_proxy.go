@@ -278,12 +278,17 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 		safe := s.GoLow().Index.GetRolodex().GetSafeCircularReferences()
 		circ = append(circ, ignored...)
 		circ = append(circ, safe...)
+
+		cirError := func(str string) error {
+			return fmt.Errorf("schema render failure, circular reference: `%s`", str)
+		}
+
 		for _, c := range circ {
 			if sp.IsReference() {
 				if sp.GetReference() == c.LoopPoint.Definition {
 					// nope
 					return sp.GetReferenceNode(),
-						fmt.Errorf("cannot render circular reference: %s", c.LoopPoint.Definition)
+						cirError((c.LoopPoint.Definition))
 				}
 				basePath := sp.GoLow().GetIndex().GetSpecAbsolutePath()
 
@@ -293,7 +298,8 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 
 				if basePath == c.LoopPoint.FullDefinition {
 					// we loop on our-self
-					return sp.GetReferenceNode(), nil
+					return sp.GetReferenceNode(),
+						cirError((c.LoopPoint.Definition))
 				}
 				a := utils.ReplaceWindowsDriveWithLinuxPath(strings.Replace(c.LoopPoint.FullDefinition, basePath, "", 1))
 				b := sp.GetReference()
@@ -312,7 +318,8 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 				}
 				if a == b {
 					// nope
-					return sp.GetReferenceNode(), nil
+					return sp.GetReferenceNode(),
+						cirError((c.LoopPoint.Definition))
 				}
 			}
 		}
