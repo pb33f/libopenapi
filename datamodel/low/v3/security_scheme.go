@@ -6,6 +6,7 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -144,7 +145,7 @@ func (ss *SecurityScheme) Hash() [32]byte {
 		sb.WriteByte('|')
 	}
 	if !ss.Deprecated.IsEmpty() {
-		sb.WriteString(low.BoolToString(ss.Deprecated.Value))
+		sb.WriteString(strconv.FormatBool(ss.Deprecated.Value))
 		sb.WriteByte('|')
 	}
 	for _, ext := range low.HashExtensions(ss.Extensions) {

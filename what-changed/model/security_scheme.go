@@ -166,6 +166,13 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 		addPropertyCheck(&props, lSS.OpenIdConnectUrl.ValueNode, rSS.OpenIdConnectUrl.ValueNode,
 			lSS.OpenIdConnectUrl.Value, rSS.OpenIdConnectUrl.Value, &changes, v3.OpenIdConnectUrlLabel, false)
 
+		// OpenAPI 3.2+ fields
+		addPropertyCheck(&props, lSS.OAuth2MetadataUrl.ValueNode, rSS.OAuth2MetadataUrl.ValueNode,
+			lSS.OAuth2MetadataUrl.Value, rSS.OAuth2MetadataUrl.Value, &changes, v3.OAuth2MetadataUrlLabel, false)
+
+		addPropertyCheck(&props, lSS.Deprecated.ValueNode, rSS.Deprecated.ValueNode,
+			lSS.Deprecated.Value, rSS.Deprecated.Value, &changes, v3.DeprecatedLabel, true)
+
 		if !lSS.Flows.IsEmpty() && !rSS.Flows.IsEmpty() {
 			if !low.AreEqual(lSS.Flows.Value, rSS.Flows.Value) {
 				sc.OAuthFlowChanges = CompareOAuthFlows(lSS.Flows.Value, rSS.Flows.Value)

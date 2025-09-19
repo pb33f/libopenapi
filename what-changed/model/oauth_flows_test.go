@@ -348,3 +348,39 @@ x-coke: cherry`
 	assert.Len(t, extChanges.GetAllChanges(), 5)
 	assert.Equal(t, 4, extChanges.TotalBreakingChanges())
 }
+
+func TestCompareOAuthFlows_DeviceFlowAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `implicit:
+  authorizationUrl: https://auth.example.com`
+
+	right := `implicit:
+  authorizationUrl: https://auth.example.com
+device:
+  tokenUrl: https://oauth2.example.com/device/token
+  scopes:
+    read: read access`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.OAuthFlows
+	var rDoc v3.OAuthFlows
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareOAuthFlows(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges()) // adding device flow is not breaking
+
+	allChanges := extChanges.GetAllChanges()
+	assert.Equal(t, ObjectAdded, allChanges[0].ChangeType)
+	assert.Equal(t, v3.DeviceLabel, allChanges[0].Property)
+}
