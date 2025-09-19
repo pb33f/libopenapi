@@ -29,6 +29,8 @@ type SecurityScheme struct {
 	BearerFormat     string                              `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
 	Flows            *OAuthFlows                         `json:"flows,omitempty" yaml:"flows,omitempty"`
 	OpenIdConnectUrl string                              `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
+	OAuth2MetadataUrl string                             `json:"oauth2MetadataUrl,omitempty" yaml:"oauth2MetadataUrl,omitempty"` // OpenAPI 3.2+ OAuth2 metadata URL
+	Deprecated       bool                                `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`               // OpenAPI 3.2+ deprecated flag
 	Extensions       *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low              *low.SecurityScheme
 }
@@ -44,6 +46,8 @@ func NewSecurityScheme(ss *low.SecurityScheme) *SecurityScheme {
 	s.In = ss.In.Value
 	s.BearerFormat = ss.BearerFormat.Value
 	s.OpenIdConnectUrl = ss.OpenIdConnectUrl.Value
+	s.OAuth2MetadataUrl = ss.OAuth2MetadataUrl.Value
+	s.Deprecated = ss.Deprecated.Value
 	s.Extensions = high.ExtractExtensions(ss.Extensions)
 	if !ss.Flows.IsEmpty() {
 		s.Flows = NewOAuthFlows(ss.Flows.Value)

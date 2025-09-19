@@ -100,3 +100,46 @@ func TestSecurityScheme_Build_Fail(t *testing.T) {
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.Error(t, err)
 }
+
+func TestSecurityScheme_OAuth2MetadataUrl(t *testing.T) {
+	yml := `type: oauth2
+description: OAuth2 security scheme
+oauth2MetadataUrl: https://auth.example.com/.well-known/oauth_authorization_server
+deprecated: true
+flows:
+  device:
+    tokenUrl: https://oauth2.example.com/device/token
+    scopes:
+      read: read access`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n SecurityScheme
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "oauth2", n.Type.Value)
+	assert.Equal(t, "OAuth2 security scheme", n.Description.Value)
+	assert.Equal(t, "https://auth.example.com/.well-known/oauth_authorization_server", n.OAuth2MetadataUrl.Value)
+	assert.True(t, n.Deprecated.Value)
+	assert.NotNil(t, n.Flows.Value)
+	assert.NotNil(t, n.Flows.Value.Device.Value)
+	assert.Equal(t, "https://oauth2.example.com/device/token", n.Flows.Value.Device.Value.TokenUrl.Value)
+
+	// test hash includes new fields
+	hash1 := n.Hash()
+	n.OAuth2MetadataUrl.Value = "https://different.example.com"
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+
+	// test deprecated field affects hash
+	n.OAuth2MetadataUrl.Value = "https://auth.example.com/.well-known/oauth_authorization_server"
+	n.Deprecated.Value = false
+	hash3 := n.Hash()
+	assert.NotEqual(t, hash1, hash3)
+}

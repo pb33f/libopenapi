@@ -15,6 +15,7 @@ type OAuthFlowsChanges struct {
 	PasswordChanges          *OAuthFlowChanges `json:"password,omitempty" yaml:"password,omitempty"`
 	ClientCredentialsChanges *OAuthFlowChanges `json:"clientCredentials,omitempty" yaml:"clientCredentials,omitempty"`
 	AuthorizationCodeChanges *OAuthFlowChanges `json:"authCode,omitempty" yaml:"authCode,omitempty"`
+	DeviceChanges            *OAuthFlowChanges `json:"device,omitempty" yaml:"device,omitempty"` // OpenAPI 3.2+ device flow
 	ExtensionChanges         *ExtensionChanges `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
@@ -37,8 +38,11 @@ func (o *OAuthFlowsChanges) GetAllChanges() []*Change {
 	if o.AuthorizationCodeChanges != nil {
 		changes = append(changes, o.AuthorizationCodeChanges.GetAllChanges()...)
 	}
+	if o.DeviceChanges != nil {
+		changes = append(changes, o.DeviceChanges.GetAllChanges()...)
+	}
 	if o.ExtensionChanges != nil {
-		changes = append(changes, o.ImplicitChanges.GetAllChanges()...)
+		changes = append(changes, o.ExtensionChanges.GetAllChanges()...)
 	}
 	return changes
 }
@@ -61,6 +65,9 @@ func (o *OAuthFlowsChanges) TotalChanges() int {
 	if o.AuthorizationCodeChanges != nil {
 		c += o.AuthorizationCodeChanges.TotalChanges()
 	}
+	if o.DeviceChanges != nil {
+		c += o.DeviceChanges.TotalChanges()
+	}
 	if o.ExtensionChanges != nil {
 		c += o.ExtensionChanges.TotalChanges()
 	}
@@ -81,6 +88,9 @@ func (o *OAuthFlowsChanges) TotalBreakingChanges() int {
 	}
 	if o.AuthorizationCodeChanges != nil {
 		c += o.AuthorizationCodeChanges.TotalBreakingChanges()
+	}
+	if o.DeviceChanges != nil {
+		c += o.DeviceChanges.TotalBreakingChanges()
 	}
 	return c
 }
@@ -154,6 +164,22 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 			nil, r.AuthorizationCode.ValueNode, false,
 			nil, r.AuthorizationCode.Value)
 	}
+
+	// device flow (OpenAPI 3.2+)
+	if !l.Device.IsEmpty() && !r.Device.IsEmpty() {
+		oa.DeviceChanges = CompareOAuthFlow(l.Device.Value, r.Device.Value)
+	}
+	if !l.Device.IsEmpty() && r.Device.IsEmpty() {
+		CreateChange(&changes, ObjectRemoved, v3.DeviceLabel,
+			l.Device.ValueNode, nil, true,
+			l.Device.Value, nil)
+	}
+	if l.Device.IsEmpty() && !r.Device.IsEmpty() {
+		CreateChange(&changes, ObjectAdded, v3.DeviceLabel,
+			nil, r.Device.ValueNode, false,
+			nil, r.Device.Value)
+	}
+
 	oa.ExtensionChanges = CompareExtensions(l.Extensions, r.Extensions)
 	oa.PropertyChanges = NewPropertyChanges(changes)
 	return oa
