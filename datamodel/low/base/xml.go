@@ -26,6 +26,7 @@ type XML struct {
 	Namespace  low.NodeReference[string]
 	Prefix     low.NodeReference[string]
 	Attribute  low.NodeReference[bool]
+	NodeType   low.NodeReference[string] // OpenAPI 3.2+ nodeType field (replaces deprecated attribute field)
 	Wrapped    low.NodeReference[bool]
 	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	RootNode   *yaml.Node
@@ -36,13 +37,14 @@ type XML struct {
 }
 
 // Build will extract extensions from the XML instance.
-func (x *XML) Build(root *yaml.Node, _ *index.SpecIndex) error {
+func (x *XML) Build(root *yaml.Node, idx *index.SpecIndex) error {
 	root = utils.NodeAlias(root)
 	utils.CheckForMergeNodes(root)
 	x.RootNode = root
 	x.Reference = new(low.Reference)
 	x.Nodes = low.ExtractNodes(nil, root)
 	x.Extensions = low.ExtractExtensions(root)
+	x.index = idx
 	return nil
 }
 
@@ -54,6 +56,11 @@ func (x *XML) GetExtensions() *orderedmap.Map[low.KeyReference[string], low.Valu
 // GetRootNode returns the root yaml node of the Tag object
 func (x *XML) GetRootNode() *yaml.Node {
 	return x.RootNode
+}
+
+// GetIndex returns the index of the XML object
+func (x *XML) GetIndex() *index.SpecIndex {
+	return x.index
 }
 
 // Hash generates a SHA256 hash of the XML object using properties
@@ -76,6 +83,10 @@ func (x *XML) Hash() [32]byte {
 	}
 	if !x.Attribute.IsEmpty() {
 		sb.WriteString(strconv.FormatBool(x.Attribute.Value))
+		sb.WriteByte('|')
+	}
+	if !x.NodeType.IsEmpty() {
+		sb.WriteString(x.NodeType.Value)
 		sb.WriteByte('|')
 	}
 	if !x.Wrapped.IsEmpty() {
