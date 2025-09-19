@@ -51,6 +51,7 @@ const (
 	PasswordLabel              = "password"
 	ClientCredentialsLabel     = "clientCredentials"
 	AuthorizationCodeLabel     = "authorizationCode"
+	DeviceLabel                = "device" // OpenAPI 3.2+ device flow
 	DescriptionLabel           = "description"
 	URLLabel                   = "url"
 	NameLabel                  = "name"
@@ -130,6 +131,7 @@ const (
 	FlowsLabel                 = "flows"
 	SchemeLabel                = "scheme"
 	OpenIdConnectUrlLabel      = "openIdConnectUrl"
+	OAuth2MetadataUrlLabel     = "oauth2MetadataUrl" // OpenAPI 3.2+ OAuth2 metadata URL
 	ScopesLabel                = "scopes"
 	OperationRefLabel          = "operationRef"
 	OperationIdLabel           = "operationId"
