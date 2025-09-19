@@ -96,6 +96,17 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		New:       r,
 	})
 
+	// NodeType (breaking change) - OpenAPI 3.2+
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.NodeType.ValueNode,
+		RightNode: r.NodeType.ValueNode,
+		Label:     base.NodeTypeLabel,
+		Changes:   &changes,
+		Breaking:  true,
+		Original:  l,
+		New:       r,
+	})
+
 	// Wrapped (breaking change)
 	props = append(props, &PropertyCheck{
 		LeftNode:  l.Wrapped.ValueNode,
