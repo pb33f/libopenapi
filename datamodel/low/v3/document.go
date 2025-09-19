@@ -36,6 +36,10 @@ type Document struct {
 	// - https://spec.openapis.org/oas/v3.1.0#schema-object
 	JsonSchemaDialect low.NodeReference[string] // 3.1
 
+	// Self is a 3.2+ property that sets the base URI for the document for resolving relative references
+	// - https://spec.openapis.org/oas/v3.2.0#openapi-object
+	Self low.NodeReference[string] // 3.2
+
 	// Webhooks is a 3.1+ property that is similar to callbacks, except, this defines incoming webhooks.
 	// The incoming webhooks that MAY be received as part of this API and that the API consumer MAY choose to implement.
 	// Closely related to the callbacks feature, this section describes requests initiated other than by an API call,
@@ -144,6 +148,10 @@ func (d *Document) Hash() [32]byte {
 	}
 	if d.JsonSchemaDialect.Value != "" {
 		sb.WriteString(d.JsonSchemaDialect.Value)
+		sb.WriteByte('|')
+	}
+	if d.Self.Value != "" {
+		sb.WriteString(d.Self.Value)
 		sb.WriteByte('|')
 	}
 

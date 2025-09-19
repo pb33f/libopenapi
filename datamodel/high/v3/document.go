@@ -77,6 +77,10 @@ type Document struct {
 	// - https://spec.openapis.org/oas/v3.1.0#schema-object
 	JsonSchemaDialect string `json:"jsonSchemaDialect,omitempty" yaml:"jsonSchemaDialect,omitempty"`
 
+	// Self is a 3.2+ property that sets the base URI for the document for resolving relative references
+	// - https://spec.openapis.org/oas/v3.2.0#openapi-object
+	Self string `json:"$self,omitempty" yaml:"$self,omitempty"`
+
 	// Webhooks is a 3.1+ property that is similar to callbacks, except, this defines incoming webhooks.
 	// The incoming webhooks that MAY be received as part of this API and that the API consumer MAY choose to implement.
 	// Closely related to the callbacks feature, this section describes requests initiated other than by an API call,
@@ -133,6 +137,9 @@ func NewDocument(document *lowv3.Document) *Document {
 	}
 	if !document.JsonSchemaDialect.IsEmpty() {
 		d.JsonSchemaDialect = document.JsonSchemaDialect.Value
+	}
+	if !document.Self.IsEmpty() {
+		d.Self = document.Self.Value
 	}
 	if !document.Webhooks.IsEmpty() {
 		d.Webhooks = low.FromReferenceMapWithFunc(document.Webhooks.Value, NewPathItem)

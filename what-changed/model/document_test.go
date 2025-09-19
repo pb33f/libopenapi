@@ -1119,6 +1119,87 @@ components:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 }
 
+func TestCompareDocuments_OpenAPI_SelfField(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+
+	// Test adding $self field
+	left := `openapi: 3.2.0
+info:
+  title: Test API
+  version: 1.0.0`
+
+	right := `openapi: 3.2.0
+$self: https://api.example.com/v1/openapi.yaml
+info:
+  title: Test API
+  version: 1.0.0`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ := v3.CreateDocumentFromConfig(siLeft, datamodel.NewDocumentConfiguration())
+	rDoc, _ := v3.CreateDocumentFromConfig(siRight, datamodel.NewDocumentConfiguration())
+
+	// compare.
+	changes := CompareDocuments(lDoc, rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges()) // adding $self is not breaking
+
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, PropertyAdded, allChanges[0].ChangeType)
+	assert.Equal(t, v3.SelfLabel, allChanges[0].Property)
+
+	// Test removing $self field
+	changes = CompareDocuments(rDoc, lDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges()) // removing $self is not breaking either
+
+	allChanges = changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, PropertyRemoved, allChanges[0].ChangeType)
+	assert.Equal(t, v3.SelfLabel, allChanges[0].Property)
+
+	// Test modifying $self field
+	left = `openapi: 3.2.0
+$self: https://api.example.com/v1/openapi.yaml
+info:
+  title: Test API
+  version: 1.0.0`
+
+	right = `openapi: 3.2.0
+$self: https://api.example.com/v2/openapi.yaml
+info:
+  title: Test API
+  version: 1.0.0`
+
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	siLeft, _ = datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ = datamodel.ExtractSpecInfo([]byte(right))
+
+	lDoc, _ = v3.CreateDocumentFromConfig(siLeft, datamodel.NewDocumentConfiguration())
+	rDoc, _ = v3.CreateDocumentFromConfig(siRight, datamodel.NewDocumentConfiguration())
+
+	changes = CompareDocuments(lDoc, rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges()) // modifying $self is not breaking
+
+	allChanges = changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, Modified, allChanges[0].ChangeType)
+	assert.Equal(t, v3.SelfLabel, allChanges[0].Property)
+}
+
 func TestCompareDocuments_OpenAPI_ModifyWebhooks(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

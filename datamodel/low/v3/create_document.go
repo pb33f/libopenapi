@@ -3,6 +3,7 @@ package v3
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/url"
 	"path/filepath"
 	"strings"
@@ -49,7 +50,47 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	idxConfig.AllowUnknownExtensionContentDetection = config.AllowUnknownExtensionContentDetection
 	idxConfig.TransformSiblingRefs = config.TransformSiblingRefs
 	idxConfig.AvoidCircularReferenceCheck = true
-	idxConfig.BaseURL = urlWithoutTrailingSlash(config.BaseURL)
+
+	// handle $self field for OpenAPI 3.2+ documents
+	baseURL := config.BaseURL
+	if info.Self != "" {
+		selfURL, err := url.Parse(info.Self)
+		if err != nil {
+			// log error but continue with original config
+			if config.Logger != nil {
+				config.Logger.Error("$self field contains invalid URL", "self", info.Self, "error", err)
+			}
+			// store error in spec info for later retrieval
+			if info.Error == nil {
+				info.Error = fmt.Errorf("$self field contains invalid URL: %w", err)
+			}
+		} else if strings.HasPrefix(info.Self, "http") {
+			// validate http/https URLs
+			if config.BaseURL != nil {
+				// conflict detected
+				if config.Logger != nil {
+					config.Logger.Error("BaseURL and $self have been set and conflict, defaulting to BaseURL",
+						"baseURL", config.BaseURL.String(), "self", info.Self)
+				}
+				// use config BaseURL (programmatic control trumps document)
+			} else {
+				// use $self as BaseURL
+				baseURL = selfURL
+			}
+		} else {
+			// for non-http URLs (like file:// or custom schemes), use as-is if no conflict
+			if config.BaseURL != nil {
+				if config.Logger != nil {
+					config.Logger.Error("BaseURL and $self have been set and conflict, defaulting to BaseURL",
+						"baseURL", config.BaseURL.String(), "self", info.Self)
+				}
+			} else {
+				baseURL = selfURL
+			}
+		}
+	}
+
+	idxConfig.BaseURL = urlWithoutTrailingSlash(baseURL)
 	idxConfig.BasePath = config.BasePath
 	idxConfig.SpecFilePath = config.SpecFilePath
 	idxConfig.Logger = config.Logger
@@ -149,6 +190,14 @@ func createDocument(info *datamodel.SpecInfo, config *datamodel.DocumentConfigur
 	if dialectNode != nil {
 		doc.JsonSchemaDialect = low.NodeReference[string]{
 			Value: dialectNode.Value, KeyNode: dialectLabel, ValueNode: dialectNode,
+		}
+	}
+
+	// if set, extract $self (3.2)
+	_, selfLabel, selfNode := utils.FindKeyNodeFull(SelfLabel, info.RootNode.Content)
+	if selfNode != nil {
+		doc.Self = low.NodeReference[string]{
+			Value: selfNode.Value, KeyNode: selfLabel, ValueNode: selfNode,
 		}
 	}
 

@@ -37,6 +37,7 @@ const (
 	UnevaluatedPropertiesLabel = "unevaluatedProperties"
 	AdditionalPropertiesLabel  = "additionalProperties"
 	XMLLabel                   = "xml"
+	NodeTypeLabel              = "nodeType"
 	ItemsLabel                 = "items"
 	PrefixItemsLabel           = "prefixItems"
 	ContainsLabel              = "contains"
