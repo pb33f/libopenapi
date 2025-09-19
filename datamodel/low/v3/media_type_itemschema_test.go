@@ -10,7 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestMediaType_Build_ItemSchema(t *testing.T) {
@@ -86,7 +86,7 @@ itemEncoding:
 	assert.NotNil(t, n.ItemEncoding.Value)
 	assert.Equal(t, 2, n.ItemEncoding.Value.Len())
 
-	// Check file encoding  
+	// Check file encoding
 	var foundFile, foundMeta bool
 	for k, v := range n.ItemEncoding.Value.FromOldest() {
 		if k.Value == "file" {
@@ -209,5 +209,3 @@ itemEncoding:
 	// Hashes should be different due to different itemEncoding
 	assert.NotEqual(t, n1.Hash(), n2.Hash())
 }
-
-
