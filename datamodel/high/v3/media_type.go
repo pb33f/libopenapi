@@ -18,12 +18,14 @@ import (
 // Each Media Type Object provides schema and examples for the media type identified by its key.
 //   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
-	Schema     *base.SchemaProxy                      `json:"schema,omitempty" yaml:"schema,omitempty"`
-	Example    *yaml.Node                             `json:"example,omitempty" yaml:"example,omitempty"`
-	Examples   *orderedmap.Map[string, *base.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
-	Encoding   *orderedmap.Map[string, *Encoding]     `json:"encoding,omitempty" yaml:"encoding,omitempty"`
-	Extensions *orderedmap.Map[string, *yaml.Node]    `json:"-" yaml:"-"`
-	low        *low.MediaType
+	Schema       *base.SchemaProxy                      `json:"schema,omitempty" yaml:"schema,omitempty"`
+	ItemSchema   *base.SchemaProxy                      `json:"itemSchema,omitempty" yaml:"itemSchema,omitempty"`
+	Example      *yaml.Node                             `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples     *orderedmap.Map[string, *base.Example] `json:"examples,omitempty" yaml:"examples,omitempty"`
+	Encoding     *orderedmap.Map[string, *Encoding]     `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	ItemEncoding *orderedmap.Map[string, *Encoding]     `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	Extensions   *orderedmap.Map[string, *yaml.Node]    `json:"-" yaml:"-"`
+	low          *low.MediaType
 }
 
 // NewMediaType will create a new high-level MediaType instance from a low-level one.
@@ -33,10 +35,16 @@ func NewMediaType(mediaType *low.MediaType) *MediaType {
 	if !mediaType.Schema.IsEmpty() {
 		m.Schema = base.NewSchemaProxy(&mediaType.Schema)
 	}
+	if !mediaType.ItemSchema.IsEmpty() {
+		m.ItemSchema = base.NewSchemaProxy(&mediaType.ItemSchema)
+	}
 	m.Example = mediaType.Example.Value
 	m.Examples = base.ExtractExamples(mediaType.Examples.Value)
 	m.Extensions = high.ExtractExtensions(mediaType.Extensions)
 	m.Encoding = ExtractEncoding(mediaType.Encoding.Value)
+	if !mediaType.ItemEncoding.IsEmpty() {
+		m.ItemEncoding = ExtractEncoding(mediaType.ItemEncoding.Value)
+	}
 	return m
 }
 
