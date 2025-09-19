@@ -21,15 +21,17 @@ import (
 // Each Media Type Object provides schema and examples for the media type identified by its key.
 //   - https://spec.openapis.org/oas/v3.1.0#media-type-object
 type MediaType struct {
-	Schema     low.NodeReference[*base.SchemaProxy]
-	Example    low.NodeReference[*yaml.Node]
-	Examples   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
-	Encoding   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
-	Extensions *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode    *yaml.Node
-	RootNode   *yaml.Node
-	index      *index.SpecIndex
-	context    context.Context
+	Schema       low.NodeReference[*base.SchemaProxy]
+	ItemSchema   low.NodeReference[*base.SchemaProxy]
+	Example      low.NodeReference[*yaml.Node]
+	Examples     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*base.Example]]]
+	Encoding     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
+	ItemEncoding low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]
+	Extensions   *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode      *yaml.Node
+	RootNode     *yaml.Node
+	index        *index.SpecIndex
+	context      context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -148,6 +150,40 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
 		}
 	}
+
+	// handle itemSchema
+	_, itemSchLabel, itemSchNode := utils.FindKeyNodeFullTop(ItemSchemaLabel, root.Content)
+	if itemSchNode != nil {
+		itemSchProxy := &base.SchemaProxy{}
+		err := itemSchProxy.Build(ctx, itemSchLabel, itemSchNode, idx)
+		if err != nil {
+			return err
+		}
+		mt.ItemSchema = low.NodeReference[*base.SchemaProxy]{
+			Value:     itemSchProxy,
+			KeyNode:   itemSchLabel,
+			ValueNode: itemSchNode,
+		}
+		mt.Nodes.Store(itemSchLabel.Line, itemSchLabel)
+	}
+
+	// handle itemEncoding
+	itemEncs, itemEncsL, itemEncsN, itemEncErr := low.ExtractMap[*Encoding](ctx, ItemEncodingLabel, root, idx)
+	if itemEncErr != nil {
+		return itemEncErr
+	}
+	if itemEncs != nil {
+		mt.ItemEncoding = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Encoding]]]{
+			Value:     itemEncs,
+			KeyNode:   itemEncsL,
+			ValueNode: itemEncsN,
+		}
+		mt.Nodes.Store(itemEncsL.Line, itemEncsL)
+		for k, v := range itemEncs.FromOldest() {
+			v.Value.Nodes.Store(k.KeyNode.Line, k.KeyNode)
+		}
+	}
+
 	return nil
 }
 
@@ -161,6 +197,10 @@ func (mt *MediaType) Hash() [32]byte {
 		sb.WriteString(low.GenerateHashString(mt.Schema.Value))
 		sb.WriteByte('|')
 	}
+	if mt.ItemSchema.Value != nil {
+		sb.WriteString(low.GenerateHashString(mt.ItemSchema.Value))
+		sb.WriteByte('|')
+	}
 	if mt.Example.Value != nil && !mt.Example.Value.IsZero() {
 		sb.WriteString(low.GenerateHashString(mt.Example.Value))
 		sb.WriteByte('|')
@@ -170,6 +210,10 @@ func (mt *MediaType) Hash() [32]byte {
 		sb.WriteByte('|')
 	}
 	for v := range orderedmap.SortAlpha(mt.Encoding.Value).ValuesFromOldest() {
+		sb.WriteString(low.GenerateHashString(v.Value))
+		sb.WriteByte('|')
+	}
+	for v := range orderedmap.SortAlpha(mt.ItemEncoding.Value).ValuesFromOldest() {
 		sb.WriteString(low.GenerateHashString(v.Value))
 		sb.WriteByte('|')
 	}
