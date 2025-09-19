@@ -298,14 +298,19 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 	lValues := make(map[string]low.ValueReference[T])
 	rValues := make(map[string]low.ValueReference[T])
 
-	for k, v := range expLeft.FromOldest() {
-		lHashes[k.Value] = low.GenerateHashString(v.Value)
-		lValues[k.Value] = v
+	// Handle nil maps gracefully
+	if expLeft != nil {
+		for k, v := range expLeft.FromOldest() {
+			lHashes[k.Value] = low.GenerateHashString(v.Value)
+			lValues[k.Value] = v
+		}
 	}
 
-	for k, v := range expRight.FromOldest() {
-		rHashes[k.Value] = low.GenerateHashString(v.Value)
-		rValues[k.Value] = v
+	if expRight != nil {
+		for k, v := range expRight.FromOldest() {
+			rHashes[k.Value] = low.GenerateHashString(v.Value)
+			rValues[k.Value] = v
+		}
 	}
 
 	expChanges := make(map[string]R)

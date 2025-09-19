@@ -8,6 +8,8 @@ const (
 	ComponentsLabel            = "components"
 	SchemasLabel               = "schemas"
 	EncodingLabel              = "encoding"
+	ItemSchemaLabel            = "itemSchema"
+	ItemEncodingLabel          = "itemEncoding"
 	HeadersLabel               = "headers"
 	ExpressionLabel            = "expression"
 	InfoLabel                  = "info"
