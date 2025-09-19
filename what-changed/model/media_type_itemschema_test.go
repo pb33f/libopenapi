@@ -11,7 +11,7 @@ import (
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
-	"gopkg.in/yaml.v3"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestCompareMediaTypes_ItemSchemaAdded(t *testing.T) {
@@ -48,7 +48,7 @@ itemSchema:
 	assert.Nil(t, changes.ItemSchemaChanges) // No changes, just addition
 	assert.Equal(t, 1, changes.TotalChanges())
 	assert.Equal(t, 1, changes.TotalBreakingChanges()) // Adding itemSchema is breaking
-	
+
 	// Check that the change is ObjectAdded for itemSchema
 	allChanges := changes.GetAllChanges()
 	assert.Len(t, allChanges, 1)
@@ -176,7 +176,7 @@ itemEncoding:
 
 	assert.NotNil(t, changes)
 	assert.Greater(t, changes.TotalChanges(), 0)
-	
+
 	// When a whole encoding block is added, it's tracked in the changes array, not ItemEncodingChanges
 	allChanges := changes.GetAllChanges()
 	assert.Len(t, allChanges, 1)

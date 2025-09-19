@@ -28,6 +28,7 @@ const (
 	WebhooksLabel              = "webhooks"
 	JSONSchemaDialectLabel     = "jsonSchemaDialect"
 	JSONSchemaLabel            = "$schema"
+	SelfLabel                  = "$self"
 	GetLabel                   = "get"
 	PostLabel                  = "post"
 	PatchLabel                 = "patch"

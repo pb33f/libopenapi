@@ -931,3 +931,67 @@ func TestURLWithoutTrailingSlash(t *testing.T) {
 		})
 	}
 }
+
+func TestCreateDocument_WithSelfField(t *testing.T) {
+	yml := `openapi: 3.2.0
+$self: https://api.example.com/v1/openapi.yaml
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	assert.Equal(t, "https://api.example.com/v1/openapi.yaml", info.Self)
+
+	// test document creation extracts $self into low-level model
+	doc, err := CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
+	assert.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.Equal(t, "https://api.example.com/v1/openapi.yaml", doc.Self.Value)
+	assert.NotNil(t, doc.Self.KeyNode)
+	assert.NotNil(t, doc.Self.ValueNode)
+}
+
+func TestCreateDocument_WithSelfField_InvalidURL(t *testing.T) {
+	yml := `openapi: 3.2.0
+$self: not a valid url://
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	assert.Equal(t, "not a valid url://", info.Self)
+
+	// create document should still work but log error
+	config := datamodel.NewDocumentConfiguration()
+	doc, err := CreateDocumentFromConfig(info, config)
+	assert.NoError(t, err) // should not fail, just log
+	assert.NotNil(t, doc)
+	assert.Equal(t, "not a valid url://", doc.Self.Value)
+}
+
+func TestCreateDocument_WithSelfField_ConflictWithBaseURL(t *testing.T) {
+	yml := `openapi: 3.2.0
+$self: https://api.example.com/v1/openapi.yaml
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+
+	// configure with a different base URL
+	config := datamodel.NewDocumentConfiguration()
+	baseURL, _ := url.Parse("https://different.example.com/")
+	config.BaseURL = baseURL
+
+	doc, err := CreateDocumentFromConfig(info, config)
+	assert.NoError(t, err)
+	assert.NotNil(t, doc)
+
+	// programmatic BaseURL should win over $self
+	assert.Equal(t, "https://api.example.com/v1/openapi.yaml", doc.Self.Value)
+	// but the index should use the configured BaseURL, not $self
+	assert.NotNil(t, doc.Index)
+}

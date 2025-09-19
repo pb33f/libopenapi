@@ -36,6 +36,7 @@ type SpecInfo struct {
 	APISchema           string                  `json:"-"`     // API Schema for supplied spec type (2 or 3)
 	Generated           time.Time               `json:"-"`
 	OriginalIndentation int                     `json:"-"` // the original whitespace
+	Self                string                  `json:"-"`     // the $self field for OpenAPI 3.2+ documents (base URI)
 }
 
 func ExtractSpecInfoWithConfig(spec []byte, config *DocumentConfiguration) (*SpecInfo, error) {
@@ -143,10 +144,20 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			specInfo.VersionNumeric = 3.1
 			specInfo.APISchema = OpenAPI31SchemaData
 			specInfo.SpecFormat = OAS31
+			// extract $self field for OpenAPI 3.1+ (might be used as forward-compatible feature)
+			_, selfNode := utils.FindKeyNode("$self", parsedSpec.Content)
+			if selfNode != nil && selfNode.Value != "" {
+				specInfo.Self = selfNode.Value
+			}
 		case "3.2":
 			specInfo.VersionNumeric = 3.2
 			specInfo.APISchema = OpenAPI32SchemaData
 			specInfo.SpecFormat = OAS32
+			// extract $self field for OpenAPI 3.2+
+			_, selfNode := utils.FindKeyNode("$self", parsedSpec.Content)
+			if selfNode != nil && selfNode.Value != "" {
+				specInfo.Self = selfNode.Value
+			}
 		default:
 			specInfo.VersionNumeric = 3.0
 			specInfo.APISchema = OpenAPI3SchemaData
