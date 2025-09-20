@@ -180,6 +180,12 @@ func CompareComponents(l, r any) *ComponentsChanges {
 				&changes, v3.CallbacksLabel, CompareCallback, doneChan)
 		}
 
+		if !lComponents.MediaTypes.IsEmpty() || !rComponents.MediaTypes.IsEmpty() {
+			comparisons++
+			go runComparison(lComponents.MediaTypes.Value, rComponents.MediaTypes.Value,
+				&changes, v3.MediaTypesLabel, CompareMediaTypes, doneChan)
+		}
+
 		cc.ExtensionChanges = CompareExtensions(lComponents.Extensions, rComponents.Extensions)
 
 		completedComponents := 0
@@ -193,7 +199,7 @@ func CompareComponents(l, r any) *ComponentsChanges {
 				completedComponents++
 				cc.SecuritySchemeChanges = res.result.(map[string]*SecuritySchemeChanges)
 			case v3.ResponsesLabel, v3.ParametersLabel, v3.ExamplesLabel, v3.RequestBodiesLabel, v3.HeadersLabel,
-				v3.LinksLabel, v3.CallbacksLabel:
+				v3.LinksLabel, v3.CallbacksLabel, v3.MediaTypesLabel:
 				completedComponents++
 			}
 		}

@@ -36,6 +36,7 @@ type Components struct {
 	Links           low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Link]]]
 	Callbacks       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Callback]]]
 	PathItems       low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]]]
+	MediaTypes      low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]] // OpenAPI 3.2+ mediaTypes section
 	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode         *yaml.Node
 	RootNode        *yaml.Node
@@ -96,6 +97,7 @@ func (co *Components) Hash() [32]byte {
 	generateHashForObjectMapBuilder(co.Links.Value, sb)
 	generateHashForObjectMapBuilder(co.Callbacks.Value, sb)
 	generateHashForObjectMapBuilder(co.PathItems.Value, sb)
+	generateHashForObjectMapBuilder(co.MediaTypes.Value, sb)
 	for _, ext := range low.HashExtensions(co.Extensions) {
 		sb.WriteString(ext)
 		sb.WriteByte('|')
@@ -160,6 +162,11 @@ func (co *Components) FindCallback(callback string) *low.ValueReference[*Callbac
 	return low.FindItemInOrderedMap[*Callback](callback, co.Callbacks.Value)
 }
 
+// FindMediaType attempts to locate a MediaType from 'mediaTypes' with a specific name
+func (co *Components) FindMediaType(mediaType string) *low.ValueReference[*MediaType] {
+	return low.FindItemInOrderedMap[*MediaType](mediaType, co.MediaTypes.Value)
+}
+
 // Build converts root YAML node containing components to low level model.
 // Process each component in parallel.
 func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) error {
@@ -177,7 +184,7 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 	var reterr error
 	var ceMutex sync.Mutex
 	var wg sync.WaitGroup
-	wg.Add(10)
+	wg.Add(11)
 
 	captureError := func(err error) {
 		ceMutex.Lock()
@@ -245,6 +252,12 @@ func (co *Components) Build(ctx context.Context, root *yaml.Node, idx *index.Spe
 		pathItems, err := extractComponentValues[*PathItem](ctx, PathItemsLabel, root, idx, co)
 		captureError(err)
 		co.PathItems = pathItems
+		wg.Done()
+	}()
+	go func() {
+		mediaTypes, err := extractComponentValues[*MediaType](ctx, MediaTypesLabel, root, idx, co)
+		captureError(err)
+		co.MediaTypes = mediaTypes
 		wg.Done()
 	}()
 
