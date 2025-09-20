@@ -11,7 +11,7 @@
 [![discord](https://img.shields.io/discord/923258363540815912)](https://discord.gg/x7VACVuEGP)
 [![Docs](https://img.shields.io/badge/godoc-reference-5fafd7)](https://pkg.go.dev/github.com/pb33f/libopenapi)
 
-libopenapi has full support for Swagger (OpenAPI 2), OpenAPI 3, 3.1 and 3.2. It can handle the largest and most
+libopenapi has full support for OpenAPI 3, 3.1 and 3.2. It can handle the largest and most
 complex specifications you can think of.
 
 ---
