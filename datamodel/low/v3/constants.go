@@ -39,6 +39,7 @@ const (
 	HeadLabel                  = "head"
 	TraceLabel                 = "trace"
 	QueryLabel                 = "query"
+	AdditionalOperationsLabel  = "additionalOperations" // OpenAPI 3.2+ additional operations
 	LinksLabel                 = "links"
 	DefaultLabel               = "default"
 	ConstLabel                 = "const"

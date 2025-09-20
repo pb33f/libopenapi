@@ -105,3 +105,58 @@ get:
 
 	assert.NotNil(t, n.RootNode)
 }
+
+func TestPathItem_AdditionalOperations(t *testing.T) {
+	yml := `get:
+  description: standard get operation
+post:
+  description: standard post operation
+purge:
+  description: purge operation for cache clearing
+  operationId: purgeCache
+  responses:
+    '204':
+      description: Cache cleared successfully
+lock:
+  description: lock operation for resource locking
+  operationId: lockResource
+  parameters:
+    - name: timeout
+      in: query
+      schema:
+        type: integer`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	// test standard operations
+	assert.NotNil(t, n.Get.Value)
+	assert.Equal(t, "standard get operation", n.Get.Value.Description.Value)
+	assert.NotNil(t, n.Post.Value)
+	assert.Equal(t, "standard post operation", n.Post.Value.Description.Value)
+
+	// test additional operations
+	assert.NotNil(t, n.AdditionalOperations.Value)
+	assert.Equal(t, 2, n.AdditionalOperations.Value.Len())
+
+	purgeOp := low.FindItemInOrderedMap[*Operation]("purge", n.AdditionalOperations.Value)
+	assert.NotNil(t, purgeOp)
+	assert.Equal(t, "purge operation for cache clearing", purgeOp.Value.Description.Value)
+	assert.Equal(t, "purgeCache", purgeOp.Value.OperationId.Value)
+
+	lockOp := low.FindItemInOrderedMap[*Operation]("lock", n.AdditionalOperations.Value)
+	assert.NotNil(t, lockOp)
+	assert.Equal(t, "lock operation for resource locking", lockOp.Value.Description.Value)
+	assert.Equal(t, "lockResource", lockOp.Value.OperationId.Value)
+
+	// test hash includes additional operations
+	hash1 := n.Hash()
+	n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Operation]]]{}
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+}

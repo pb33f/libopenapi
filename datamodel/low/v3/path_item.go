@@ -26,24 +26,25 @@ import (
 // are available.
 //   - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
-	Description low.NodeReference[string]
-	Summary     low.NodeReference[string]
-	Get         low.NodeReference[*Operation]
-	Put         low.NodeReference[*Operation]
-	Post        low.NodeReference[*Operation]
-	Delete      low.NodeReference[*Operation]
-	Options     low.NodeReference[*Operation]
-	Head        low.NodeReference[*Operation]
-	Patch       low.NodeReference[*Operation]
-	Trace       low.NodeReference[*Operation]
-	Query       low.NodeReference[*Operation]
-	Servers     low.NodeReference[[]low.ValueReference[*Server]]
-	Parameters  low.NodeReference[[]low.ValueReference[*Parameter]]
-	Extensions  *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode     *yaml.Node
-	RootNode    *yaml.Node
-	index       *index.SpecIndex
-	context     context.Context
+	Description          low.NodeReference[string]
+	Summary              low.NodeReference[string]
+	Get                  low.NodeReference[*Operation]
+	Put                  low.NodeReference[*Operation]
+	Post                 low.NodeReference[*Operation]
+	Delete               low.NodeReference[*Operation]
+	Options              low.NodeReference[*Operation]
+	Head                 low.NodeReference[*Operation]
+	Patch                low.NodeReference[*Operation]
+	Trace                low.NodeReference[*Operation]
+	Query                low.NodeReference[*Operation]
+	AdditionalOperations low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Operation]]] // OpenAPI 3.2+ additional operations
+	Servers              low.NodeReference[[]low.ValueReference[*Server]]
+	Parameters           low.NodeReference[[]low.ValueReference[*Parameter]]
+	Extensions           *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode              *yaml.Node
+	RootNode             *yaml.Node
+	index                *index.SpecIndex
+	context              context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -107,6 +108,19 @@ func (p *PathItem) Hash() [32]byte {
 	if !p.Query.IsEmpty() {
 		sb.WriteString(fmt.Sprintf("%s-%s", QueryLabel, low.GenerateHashString(p.Query.Value)))
 		sb.WriteByte('|')
+	}
+
+	// Process AdditionalOperations with pre-allocation and sorting
+	if p.AdditionalOperations.Value != nil && p.AdditionalOperations.Value.Len() > 0 {
+		keys := make([]string, 0, p.AdditionalOperations.Value.Len())
+		for k, v := range p.AdditionalOperations.Value.FromOldest() {
+			keys = append(keys, fmt.Sprintf("%s-%s", k.Value, low.GenerateHashString(v.Value)))
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			sb.WriteString(key)
+			sb.WriteByte('|')
+		}
 	}
 
 	// Process Parameters with pre-allocation and sorting
@@ -185,6 +199,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	var wg sync.WaitGroup
 	var errors []error
 	var ops []low.NodeReference[*Operation]
+	var additionalOps *orderedmap.Map[low.KeyReference[string], low.ValueReference[*Operation]]
 
 	// extract parameters
 	params, ln, vn, pErr := low.ExtractArray[*Parameter](ctx, ParametersLabel, root, idx)
@@ -250,19 +265,30 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			continue
 		}
 
-		// the only thing we now care about is handling operations, filter out anything that's not a verb.
+		// check if this is an operation (either standard or additional)
+		isStandardOp := false
+		isAdditionalOp := false
+
 		switch currentNode.Value {
-		case GetLabel:
-		case PostLabel:
-		case PutLabel:
-		case PatchLabel:
-		case DeleteLabel:
-		case HeadLabel:
-		case OptionsLabel:
-		case TraceLabel:
-		case QueryLabel:
+		case GetLabel, PostLabel, PutLabel, PatchLabel, DeleteLabel, HeadLabel, OptionsLabel, TraceLabel, QueryLabel:
+			isStandardOp = true
 		default:
-			continue // ignore everything else.
+			// check if this looks like an HTTP method (and isn't a known non-operation field)
+			switch currentNode.Value {
+			case ParametersLabel, ServersLabel, SummaryLabel, DescriptionLabel:
+				continue // ignore known non-operation fields
+			default:
+				// assume it's an additional operation if it contains a mapping to an operation object
+				if utils.IsNodeMap(pathNode) {
+					isAdditionalOp = true
+				} else {
+					continue // ignore if not a map
+				}
+			}
+		}
+
+		if !isStandardOp && !isAdditionalOp {
+			continue
 		}
 
 		foundContext := ctx
@@ -324,25 +350,39 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 
 		ops = append(ops, opRef)
 
-		switch currentNode.Value {
-		case GetLabel:
-			p.Get = opRef
-		case PostLabel:
-			p.Post = opRef
-		case PutLabel:
-			p.Put = opRef
-		case PatchLabel:
-			p.Patch = opRef
-		case DeleteLabel:
-			p.Delete = opRef
-		case HeadLabel:
-			p.Head = opRef
-		case OptionsLabel:
-			p.Options = opRef
-		case TraceLabel:
-			p.Trace = opRef
-		case QueryLabel:
-			p.Query = opRef
+		if isStandardOp {
+			switch currentNode.Value {
+			case GetLabel:
+				p.Get = opRef
+			case PostLabel:
+				p.Post = opRef
+			case PutLabel:
+				p.Put = opRef
+			case PatchLabel:
+				p.Patch = opRef
+			case DeleteLabel:
+				p.Delete = opRef
+			case HeadLabel:
+				p.Head = opRef
+			case OptionsLabel:
+				p.Options = opRef
+			case TraceLabel:
+				p.Trace = opRef
+			case QueryLabel:
+				p.Query = opRef
+			}
+		} else if isAdditionalOp {
+			// initialize additionalOps map if this is the first additional operation
+			if additionalOps == nil {
+				additionalOps = orderedmap.New[low.KeyReference[string], low.ValueReference[*Operation]]()
+			}
+			additionalOps.Set(low.KeyReference[string]{
+				KeyNode: currentNode,
+				Value:   currentNode.Value,
+			}, low.ValueReference[*Operation]{
+				Value:     opRef.Value,
+				ValueNode: opRef.ValueNode,
+			})
 		}
 	}
 
@@ -369,5 +409,13 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	if err != nil {
 		return err
 	}
+
+	// assign additionalOperations if any were found
+	if additionalOps != nil && additionalOps.Len() > 0 {
+		p.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Operation]]]{
+			Value: additionalOps,
+		}
+	}
+
 	return nil
 }
