@@ -648,6 +648,46 @@ func TestCompareParameters_V2_ItemsChange(t *testing.T) {
 	assert.Equal(t, Modified, extChanges.ItemsChanges.Changes[0].ChangeType)
 }
 
+func TestCompareParameters_QuerystringLocation(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `name: filter
+in: query
+description: Filter parameter
+schema:
+  type: string`
+
+	right := `name: filter
+in: querystring
+description: Filter parameter
+schema:
+  type: string`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Parameter
+	var rDoc v3.Parameter
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareParameters(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges()) // location change is breaking
+
+	allChanges := extChanges.GetAllChanges()
+	assert.Equal(t, Modified, allChanges[0].ChangeType)
+	assert.Equal(t, v3.InLabel, allChanges[0].Property)
+	assert.Equal(t, "query", allChanges[0].Original)
+	assert.Equal(t, "querystring", allChanges[0].New)
+}
+
 func TestCompareParameters_V2_ItemsAdd(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
