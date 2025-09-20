@@ -14,18 +14,19 @@ import (
 // PathItemChanges represents changes found between to Swagger or OpenAPI PathItem object.
 type PathItemChanges struct {
 	*PropertyChanges
-	GetChanges       *OperationChanges   `json:"get,omitempty" yaml:"get,omitempty"`
-	PutChanges       *OperationChanges   `json:"put,omitempty" yaml:"put,omitempty"`
-	PostChanges      *OperationChanges   `json:"post,omitempty" yaml:"post,omitempty"`
-	DeleteChanges    *OperationChanges   `json:"delete,omitempty" yaml:"delete,omitempty"`
-	OptionsChanges   *OperationChanges   `json:"options,omitempty" yaml:"options,omitempty"`
-	HeadChanges      *OperationChanges   `json:"head,omitempty" yaml:"head,omitempty"`
-	PatchChanges     *OperationChanges   `json:"patch,omitempty" yaml:"patch,omitempty"`
-	TraceChanges     *OperationChanges   `json:"trace,omitempty" yaml:"trace,omitempty"`
-	QueryChanges     *OperationChanges   `json:"query,omitempty" yaml:"query,omitempty"`
-	ServerChanges    []*ServerChanges    `json:"servers,omitempty" yaml:"servers,omitempty"`
-	ParameterChanges []*ParameterChanges `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	ExtensionChanges *ExtensionChanges   `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	GetChanges                 *OperationChanges               `json:"get,omitempty" yaml:"get,omitempty"`
+	PutChanges                 *OperationChanges               `json:"put,omitempty" yaml:"put,omitempty"`
+	PostChanges                *OperationChanges               `json:"post,omitempty" yaml:"post,omitempty"`
+	DeleteChanges              *OperationChanges               `json:"delete,omitempty" yaml:"delete,omitempty"`
+	OptionsChanges             *OperationChanges               `json:"options,omitempty" yaml:"options,omitempty"`
+	HeadChanges                *OperationChanges               `json:"head,omitempty" yaml:"head,omitempty"`
+	PatchChanges               *OperationChanges               `json:"patch,omitempty" yaml:"patch,omitempty"`
+	TraceChanges               *OperationChanges               `json:"trace,omitempty" yaml:"trace,omitempty"`
+	QueryChanges               *OperationChanges               `json:"query,omitempty" yaml:"query,omitempty"`
+	AdditionalOperationChanges map[string]*OperationChanges   `json:"additionalOperations,omitempty" yaml:"additionalOperations,omitempty"` // OpenAPI 3.2+ additional operations
+	ServerChanges              []*ServerChanges                `json:"servers,omitempty" yaml:"servers,omitempty"`
+	ParameterChanges           []*ParameterChanges             `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	ExtensionChanges           *ExtensionChanges               `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between PathItem objects
@@ -61,6 +62,9 @@ func (p *PathItemChanges) GetAllChanges() []*Change {
 	}
 	if p.QueryChanges != nil {
 		changes = append(changes, p.QueryChanges.GetAllChanges()...)
+	}
+	for k := range p.AdditionalOperationChanges {
+		changes = append(changes, p.AdditionalOperationChanges[k].GetAllChanges()...)
 	}
 	for i := range p.ServerChanges {
 		changes = append(changes, p.ServerChanges[i].GetAllChanges()...)
@@ -107,6 +111,9 @@ func (p *PathItemChanges) TotalChanges() int {
 	if p.QueryChanges != nil {
 		c += p.QueryChanges.TotalChanges()
 	}
+	for k := range p.AdditionalOperationChanges {
+		c += p.AdditionalOperationChanges[k].TotalChanges()
+	}
 	for i := range p.ServerChanges {
 		c += p.ServerChanges[i].TotalChanges()
 	}
@@ -148,6 +155,9 @@ func (p *PathItemChanges) TotalBreakingChanges() int {
 	}
 	if p.QueryChanges != nil {
 		c += p.QueryChanges.TotalBreakingChanges()
+	}
+	for k := range p.AdditionalOperationChanges {
+		c += p.AdditionalOperationChanges[k].TotalBreakingChanges()
 	}
 	for i := range p.ServerChanges {
 		c += p.ServerChanges[i].TotalBreakingChanges()
