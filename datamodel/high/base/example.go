@@ -17,12 +17,14 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
-	Summary       string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Description   string                              `json:"description,omitempty" yaml:"description,omitempty"`
-	Value         *yaml.Node                          `json:"value,omitempty" yaml:"value,omitempty"`
-	ExternalValue string                              `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
-	Extensions    *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low           *lowBase.Example
+	Summary         string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Description     string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Value           *yaml.Node                          `json:"value,omitempty" yaml:"value,omitempty"`
+	ExternalValue   string                              `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
+	DataValue       *yaml.Node                          `json:"dataValue,omitempty" yaml:"dataValue,omitempty"`         // OpenAPI 3.2+ dataValue field
+	SerializedValue string                              `json:"serializedValue,omitempty" yaml:"serializedValue,omitempty"` // OpenAPI 3.2+ serializedValue field
+	Extensions      *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
+	low             *lowBase.Example
 }
 
 // NewExample will create a new instance of an Example, using a low-level Example.
@@ -33,6 +35,8 @@ func NewExample(example *lowBase.Example) *Example {
 	e.Description = example.Description.Value
 	e.Value = example.Value.Value
 	e.ExternalValue = example.ExternalValue.Value
+	e.DataValue = example.DataValue.Value
+	e.SerializedValue = example.SerializedValue.Value
 	e.Extensions = high.ExtractExtensions(example.Extensions)
 	return e
 }

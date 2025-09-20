@@ -19,15 +19,17 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
-	Summary       low.NodeReference[string]
-	Description   low.NodeReference[string]
-	Value         low.NodeReference[*yaml.Node]
-	ExternalValue low.NodeReference[string]
-	Extensions    *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
-	KeyNode       *yaml.Node
-	RootNode      *yaml.Node
-	index         *index.SpecIndex
-	context       context.Context
+	Summary         low.NodeReference[string]
+	Description     low.NodeReference[string]
+	Value           low.NodeReference[*yaml.Node]
+	ExternalValue   low.NodeReference[string]
+	DataValue       low.NodeReference[*yaml.Node] // OpenAPI 3.2+ dataValue field (mutually exclusive with value/externalValue)
+	SerializedValue low.NodeReference[string]     // OpenAPI 3.2+ serializedValue field (mutually exclusive with value/externalValue)
+	Extensions      *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
+	KeyNode         *yaml.Node
+	RootNode        *yaml.Node
+	index           *index.SpecIndex
+	context         context.Context
 	*low.Reference
 	low.NodeMap
 }
@@ -71,6 +73,16 @@ func (ex *Example) Hash() [32]byte {
 		sb.WriteString(ex.ExternalValue.Value)
 		sb.WriteByte('|')
 	}
+	if ex.DataValue.Value != nil && !ex.DataValue.Value.IsZero() {
+		// dataValue could be anything!
+		b, _ := yaml.Marshal(ex.DataValue.Value)
+		sb.WriteString(fmt.Sprintf("%x", sha256.Sum256(b)))
+		sb.WriteByte('|')
+	}
+	if ex.SerializedValue.Value != "" {
+		sb.WriteString(ex.SerializedValue.Value)
+		sb.WriteByte('|')
+	}
 	for _, ext := range low.HashExtensions(ex.Extensions) {
 		sb.WriteString(ext)
 		sb.WriteByte('|')
@@ -94,6 +106,8 @@ func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 	ex.index = idx
 
 	_, ln, vn := utils.FindKeyNodeFull(ValueLabel, root.Content)
+	_, dataLn, dataVn := utils.FindKeyNodeFull(DataValueLabel, root.Content)
+	_, serializedLn, serializedVn := utils.FindKeyNodeFull(SerializedValueLabel, root.Content)
 
 	if vn != nil {
 		ex.Value = low.NodeReference[*yaml.Node]{
@@ -110,8 +124,35 @@ func (ex *Example) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			}
 			return true
 		})
-		return nil
 	}
+
+	// OpenAPI 3.2+ dataValue field
+	if dataVn != nil {
+		ex.DataValue = low.NodeReference[*yaml.Node]{
+			Value:     dataVn,
+			KeyNode:   dataLn,
+			ValueNode: dataVn,
+		}
+
+		// extract nodes for all dataValue nodes down the tree.
+		expChildNodes := low.ExtractNodesRecursive(ctx, dataVn)
+		expChildNodes.Range(func(k, v interface{}) bool {
+			if arr, ko := v.([]*yaml.Node); ko {
+				ex.Nodes.Store(k, arr)
+			}
+			return true
+		})
+	}
+
+	// OpenAPI 3.2+ serializedValue field
+	if serializedVn != nil {
+		ex.SerializedValue = low.NodeReference[string]{
+			Value:     serializedVn.Value,
+			KeyNode:   serializedLn,
+			ValueNode: serializedVn,
+		}
+	}
+
 	return nil
 }
 
