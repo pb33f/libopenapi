@@ -22,6 +22,8 @@ const (
 	ExamplesLabel              = "examples"
 	ExampleLabel               = "example"
 	ValueLabel                 = "value"
+	DataValueLabel             = "dataValue"       // OpenAPI 3.2+ dataValue field
+	SerializedValueLabel       = "serializedValue" // OpenAPI 3.2+ serializedValue field
 	InfoLabel                  = "info"
 	ContactLabel               = "contact"
 	LicenseLabel               = "license"
@@ -37,6 +39,7 @@ const (
 	UnevaluatedPropertiesLabel = "unevaluatedProperties"
 	AdditionalPropertiesLabel  = "additionalProperties"
 	XMLLabel                   = "xml"
+	NodeTypeLabel              = "nodeType"
 	ItemsLabel                 = "items"
 	PrefixItemsLabel           = "prefixItems"
 	ContainsLabel              = "contains"
@@ -46,6 +49,9 @@ const (
 	NotLabel                   = "not"
 	TypeLabel                  = "type"
 	DiscriminatorLabel         = "discriminator"
+	DefaultMappingLabel        = "defaultMapping"
+	MappingLabel               = "mapping"
+	PropertyNameLabel          = "propertyName"
 	ExclusiveMinimumLabel      = "exclusiveMinimum"
 	ExclusiveMaximumLabel      = "exclusiveMaximum"
 	SchemaLabel                = "schema"

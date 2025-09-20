@@ -32,6 +32,7 @@ type Components struct {
 	Links           *orderedmap.Map[string, *Link]                 `json:"links,omitempty" yaml:"links,omitempty"`
 	Callbacks       *orderedmap.Map[string, *Callback]             `json:"callbacks,omitempty" yaml:"callbacks,omitempty"`
 	PathItems       *orderedmap.Map[string, *PathItem]             `json:"pathItems,omitempty" yaml:"pathItems,omitempty"`
+	MediaTypes      *orderedmap.Map[string, *MediaType]            `json:"mediaTypes,omitempty" yaml:"mediaTypes,omitempty"` // OpenAPI 3.2+ mediaTypes section
 	Extensions      *orderedmap.Map[string, *yaml.Node]            `json:"-" yaml:"-"`
 	low             *low.Components
 }
@@ -54,11 +55,12 @@ func NewComponents(comp *low.Components) *Components {
 	headerMap := orderedmap.New[string, *Header]()
 	pathItemMap := orderedmap.New[string, *PathItem]()
 	securitySchemeMap := orderedmap.New[string, *SecurityScheme]()
+	mediaTypesMap := orderedmap.New[string, *MediaType]()
 	schemas := orderedmap.New[string, *highbase.SchemaProxy]()
 
 	// build all components asynchronously.
 	var wg sync.WaitGroup
-	wg.Add(10)
+	wg.Add(11)
 	go func() {
 		buildComponent[*low.Callback, *Callback](comp.Callbacks.Value, cbMap, NewCallback)
 		wg.Done()
@@ -99,6 +101,10 @@ func NewComponents(comp *low.Components) *Components {
 		buildSchema(comp.Schemas.Value, schemas)
 		wg.Done()
 	}()
+	go func() {
+		buildComponent[*low.MediaType, *MediaType](comp.MediaTypes.Value, mediaTypesMap, NewMediaType)
+		wg.Done()
+	}()
 
 	wg.Wait()
 	c.Schemas = schemas
@@ -111,6 +117,7 @@ func NewComponents(comp *low.Components) *Components {
 	c.Examples = exampleMap
 	c.SecuritySchemes = securitySchemeMap
 	c.PathItems = pathItemMap
+	c.MediaTypes = mediaTypesMap
 	return c
 }
 

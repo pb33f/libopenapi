@@ -22,10 +22,11 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
-	PropertyName low.NodeReference[string]
-	Mapping      low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
-	KeyNode      *yaml.Node
-	RootNode     *yaml.Node
+	PropertyName   low.NodeReference[string]
+	Mapping        low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[string]]]
+	DefaultMapping low.NodeReference[string] // OpenAPI 3.2+ defaultMapping for fallback schema
+	KeyNode        *yaml.Node
+	RootNode       *yaml.Node
 	low.Reference
 	low.NodeMap
 }
@@ -63,6 +64,11 @@ func (d *Discriminator) Hash() [32]byte {
 
 	for v := range orderedmap.SortAlpha(d.Mapping.Value).ValuesFromOldest() {
 		sb.WriteString(v.Value)
+		sb.WriteByte('|')
+	}
+
+	if d.DefaultMapping.Value != "" {
+		sb.WriteString(d.DefaultMapping.Value)
 		sb.WriteByte('|')
 	}
 

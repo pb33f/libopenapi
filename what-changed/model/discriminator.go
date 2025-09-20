@@ -5,7 +5,6 @@ package model
 
 import (
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 )
 
 // DiscriminatorChanges represents changes made to a Discriminator OpenAPI object
@@ -59,7 +58,18 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	props = append(props, &PropertyCheck{
 		LeftNode:  l.PropertyName.ValueNode,
 		RightNode: r.PropertyName.ValueNode,
-		Label:     v3.PropertyNameLabel,
+		Label:     base.PropertyNameLabel,
+		Changes:   &changes,
+		Breaking:  true,
+		Original:  l,
+		New:       r,
+	})
+
+	// DefaultMapping (breaking change)
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.DefaultMapping.ValueNode,
+		RightNode: r.DefaultMapping.ValueNode,
+		Label:     base.DefaultMappingLabel,
 		Changes:   &changes,
 		Breaking:  true,
 		Original:  l,

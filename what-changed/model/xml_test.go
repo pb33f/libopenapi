@@ -80,6 +80,69 @@ namespace: something`
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
+func TestCompareXML_NodeTypeAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `name: myElement
+namespace: something`
+
+	right := `name: myElement
+namespace: something
+nodeType: element`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.XML
+	var rDoc base.XML
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareXML(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, base.NodeTypeLabel, extChanges.Changes[0].Property)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareXML_NodeTypeChanged(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `name: myData
+namespace: something
+nodeType: element`
+
+	right := `name: myData
+namespace: something
+nodeType: attribute`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.XML
+	var rDoc base.XML
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(lNode.Content[0], nil)
+	_ = rDoc.Build(rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareXML(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, base.NodeTypeLabel, extChanges.Changes[0].Property)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges()) // nodeType changes are breaking
+}
+
 func TestCompareXML_ExtensionAdded(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

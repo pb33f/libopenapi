@@ -333,3 +333,35 @@ func TestParameter_Examples_NotFromSchema(t *testing.T) {
 
 	assert.Equal(t, 0, orderedmap.Len(n.Examples.Value))
 }
+
+func TestParameter_QuerystringLocation(t *testing.T) {
+	yml := `name: filter
+in: querystring
+description: Query string parameter for filtering results
+required: false
+schema:
+  type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Parameter
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "filter", n.Name.Value)
+	assert.Equal(t, "querystring", n.In.Value)
+	assert.Equal(t, "Query string parameter for filtering results", n.Description.Value)
+	assert.False(t, n.Required.Value)
+	assert.NotNil(t, n.Schema.Value)
+
+	// test hash includes querystring location
+	hash1 := n.Hash()
+	n.In.Value = "query"
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+}

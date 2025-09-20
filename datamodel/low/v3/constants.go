@@ -7,7 +7,10 @@ package v3
 const (
 	ComponentsLabel            = "components"
 	SchemasLabel               = "schemas"
+	MediaTypesLabel            = "mediaTypes" // OpenAPI 3.2+ mediaTypes component section
 	EncodingLabel              = "encoding"
+	ItemSchemaLabel            = "itemSchema"
+	ItemEncodingLabel          = "itemEncoding"
 	HeadersLabel               = "headers"
 	ExpressionLabel            = "expression"
 	InfoLabel                  = "info"
@@ -26,6 +29,7 @@ const (
 	WebhooksLabel              = "webhooks"
 	JSONSchemaDialectLabel     = "jsonSchemaDialect"
 	JSONSchemaLabel            = "$schema"
+	SelfLabel                  = "$self"
 	GetLabel                   = "get"
 	PostLabel                  = "post"
 	PatchLabel                 = "patch"
@@ -35,6 +39,7 @@ const (
 	HeadLabel                  = "head"
 	TraceLabel                 = "trace"
 	QueryLabel                 = "query"
+	AdditionalOperationsLabel  = "additionalOperations" // OpenAPI 3.2+ additional operations
 	LinksLabel                 = "links"
 	DefaultLabel               = "default"
 	ConstLabel                 = "const"
@@ -48,6 +53,7 @@ const (
 	PasswordLabel              = "password"
 	ClientCredentialsLabel     = "clientCredentials"
 	AuthorizationCodeLabel     = "authorizationCode"
+	DeviceLabel                = "device" // OpenAPI 3.2+ device flow
 	DescriptionLabel           = "description"
 	URLLabel                   = "url"
 	NameLabel                  = "name"
@@ -127,6 +133,7 @@ const (
 	FlowsLabel                 = "flows"
 	SchemeLabel                = "scheme"
 	OpenIdConnectUrlLabel      = "openIdConnectUrl"
+	OAuth2MetadataUrlLabel     = "oauth2MetadataUrl" // OpenAPI 3.2+ OAuth2 metadata URL
 	ScopesLabel                = "scopes"
 	OperationRefLabel          = "operationRef"
 	OperationIdLabel           = "operationId"

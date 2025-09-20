@@ -6,6 +6,7 @@ package v3
 import (
 	"context"
 	"crypto/sha256"
+	"strconv"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/index"
@@ -33,6 +34,8 @@ type SecurityScheme struct {
 	BearerFormat     low.NodeReference[string]
 	Flows            low.NodeReference[*OAuthFlows]
 	OpenIdConnectUrl low.NodeReference[string]
+	OAuth2MetadataUrl low.NodeReference[string] // OpenAPI 3.2+ OAuth2 metadata URL
+	Deprecated       low.NodeReference[bool]   // OpenAPI 3.2+ deprecated flag
 	Extensions       *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode          *yaml.Node
 	RootNode         *yaml.Node
@@ -135,6 +138,14 @@ func (ss *SecurityScheme) Hash() [32]byte {
 	}
 	if !ss.OpenIdConnectUrl.IsEmpty() {
 		sb.WriteString(ss.OpenIdConnectUrl.Value)
+		sb.WriteByte('|')
+	}
+	if !ss.OAuth2MetadataUrl.IsEmpty() {
+		sb.WriteString(ss.OAuth2MetadataUrl.Value)
+		sb.WriteByte('|')
+	}
+	if !ss.Deprecated.IsEmpty() {
+		sb.WriteString(strconv.FormatBool(ss.Deprecated.Value))
 		sb.WriteByte('|')
 	}
 	for _, ext := range low.HashExtensions(ss.Extensions) {

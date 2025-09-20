@@ -20,6 +20,7 @@ import (
 // operations based on the response.
 //   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
+	Summary     low.NodeReference[string]
 	Description low.NodeReference[string]
 	Headers     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Header]]]
 	Content     low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]
@@ -153,6 +154,10 @@ func (r *Response) Hash() [32]byte {
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
 
+	if r.Summary.Value != "" {
+		sb.WriteString(r.Summary.Value)
+		sb.WriteByte('|')
+	}
 	if r.Description.Value != "" {
 		sb.WriteString(r.Description.Value)
 		sb.WriteByte('|')

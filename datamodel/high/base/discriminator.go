@@ -21,9 +21,10 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#discriminator-object
 type Discriminator struct {
-	PropertyName string                          `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
-	Mapping      *orderedmap.Map[string, string] `json:"mapping,omitempty" yaml:"mapping,omitempty"`
-	low          *lowBase.Discriminator
+	PropertyName   string                          `json:"propertyName,omitempty" yaml:"propertyName,omitempty"`
+	Mapping        *orderedmap.Map[string, string] `json:"mapping,omitempty" yaml:"mapping,omitempty"`
+	DefaultMapping string                          `json:"defaultMapping,omitempty" yaml:"defaultMapping,omitempty"` // OpenAPI 3.2+ defaultMapping for fallback schema
+	low            *lowBase.Discriminator
 }
 
 // NewDiscriminator will create a new high-level Discriminator from a low-level one.
@@ -32,6 +33,7 @@ func NewDiscriminator(disc *lowBase.Discriminator) *Discriminator {
 	d.low = disc
 	d.PropertyName = disc.PropertyName.Value
 	d.Mapping = low.FromReferenceMap(disc.Mapping.Value)
+	d.DefaultMapping = disc.DefaultMapping.Value
 	return d
 }
 

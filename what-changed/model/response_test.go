@@ -189,6 +189,97 @@ x-toot: poot`
 	assert.Nil(t, extChanges)
 }
 
+func TestCompareResponse_V3_OpenAPI32_Summary(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+
+	// Test OpenAPI 3.2 summary field changes
+	left := `summary: Original summary
+description: response description
+content:
+  application/json:
+    schema:
+      type: object`
+
+	right := `summary: Updated summary
+description: response description
+content:
+  application/json:
+    schema:
+      type: object`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Response
+	var rDoc v3.Response
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	changes := CompareResponse(&lDoc, &rDoc)
+
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges()) // Summary changes are non-breaking
+
+	// Verify it's a summary field change
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, "summary", allChanges[0].Property)
+	assert.Equal(t, Modified, allChanges[0].ChangeType)
+	assert.Equal(t, "Original summary", allChanges[0].Original)
+	assert.Equal(t, "Updated summary", allChanges[0].New)
+}
+
+func TestCompareResponse_V3_OpenAPI32_Summary_Add(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+
+	// Test adding summary field
+	left := `description: response description
+content:
+  application/json:
+    schema:
+      type: object`
+
+	right := `summary: New summary added
+description: response description
+content:
+  application/json:
+    schema:
+      type: object`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Response
+	var rDoc v3.Response
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	changes := CompareResponse(&lDoc, &rDoc)
+
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges()) // Adding summary is non-breaking
+
+	// Verify it's a summary field addition
+	allChanges := changes.GetAllChanges()
+	assert.Len(t, allChanges, 1)
+	assert.Equal(t, "summary", allChanges[0].Property)
+	assert.Equal(t, PropertyAdded, allChanges[0].ChangeType)
+	assert.Equal(t, "", allChanges[0].Original) // Empty string when field doesn't exist
+	assert.Equal(t, "New summary added", allChanges[0].New)
+}
+
 func TestCompareResponse_V3_Modify(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

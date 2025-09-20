@@ -22,6 +22,7 @@ type OAuthFlows struct {
 	Password          low.NodeReference[*OAuthFlow]
 	ClientCredentials low.NodeReference[*OAuthFlow]
 	AuthorizationCode low.NodeReference[*OAuthFlow]
+	Device            low.NodeReference[*OAuthFlow] // OpenAPI 3.2+ device flow
 	Extensions        *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	KeyNode           *yaml.Node
 	RootNode          *yaml.Node
@@ -96,6 +97,13 @@ func (o *OAuthFlows) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 		return vErr
 	}
 	o.AuthorizationCode = v
+
+	v, vErr = low.ExtractObject[*OAuthFlow](ctx, DeviceLabel, root, idx)
+	if vErr != nil {
+		return vErr
+	}
+	o.Device = v
+
 	return nil
 }
 
@@ -119,6 +127,10 @@ func (o *OAuthFlows) Hash() [32]byte {
 	}
 	if !o.AuthorizationCode.IsEmpty() {
 		sb.WriteString(low.GenerateHashString(o.AuthorizationCode.Value))
+		sb.WriteByte('|')
+	}
+	if !o.Device.IsEmpty() {
+		sb.WriteString(low.GenerateHashString(o.Device.Value))
 		sb.WriteByte('|')
 	}
 	for _, ext := range low.HashExtensions(o.Extensions) {

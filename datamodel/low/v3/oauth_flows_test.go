@@ -227,6 +227,38 @@ scopes:
 	assert.NotNil(t, n2.GetIndex())
 }
 
+func TestOAuthFlows_DeviceFlow(t *testing.T) {
+	yml := `device:
+  tokenUrl: https://oauth2.example.com/device/token
+  scopes:
+    read: read access
+    write: write access`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n OAuthFlows
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.NotNil(t, n.Device.Value)
+	assert.Equal(t, "https://oauth2.example.com/device/token", n.Device.Value.TokenUrl.Value)
+	assert.Equal(t, 2, n.Device.Value.Scopes.Value.Len())
+	assert.Equal(t, "read access", n.Device.Value.FindScope("read").Value)
+	assert.Equal(t, "write access", n.Device.Value.FindScope("write").Value)
+
+	// test hash includes device flow
+	hash1 := n.Hash()
+	if !n.Device.IsEmpty() {
+		originalDevice := n.Device.Value
+		n.Device = low.NodeReference[*OAuthFlow]{} // clear the reference
+		hash2 := n.Hash()
+		assert.NotEqual(t, hash1, hash2)
+		n.Device.Value = originalDevice // restore
+	}
+}
+
 func TestOAuthFlows_Hash(t *testing.T) {
 	yml := `implicit:
   authorizationUrl: https://pb33f.io/auth

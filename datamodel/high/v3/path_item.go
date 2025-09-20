@@ -33,21 +33,22 @@ const (
 // are available.
 //   - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
-	Description string                              `json:"description,omitempty" yaml:"description,omitempty"`
-	Summary     string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Get         *Operation                          `json:"get,omitempty" yaml:"get,omitempty"`
-	Put         *Operation                          `json:"put,omitempty" yaml:"put,omitempty"`
-	Post        *Operation                          `json:"post,omitempty" yaml:"post,omitempty"`
-	Delete      *Operation                          `json:"delete,omitempty" yaml:"delete,omitempty"`
-	Options     *Operation                          `json:"options,omitempty" yaml:"options,omitempty"`
-	Head        *Operation                          `json:"head,omitempty" yaml:"head,omitempty"`
-	Patch       *Operation                          `json:"patch,omitempty" yaml:"patch,omitempty"`
-	Trace       *Operation                          `json:"trace,omitempty" yaml:"trace,omitempty"`
-	Query       *Operation                          `json:"query,omitempty" yaml:"query,omitempty"`
-	Servers     []*Server                           `json:"servers,omitempty" yaml:"servers,omitempty"`
-	Parameters  []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	Extensions  *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low         *lowV3.PathItem
+	Description          string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Summary              string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Get                  *Operation                          `json:"get,omitempty" yaml:"get,omitempty"`
+	Put                  *Operation                          `json:"put,omitempty" yaml:"put,omitempty"`
+	Post                 *Operation                          `json:"post,omitempty" yaml:"post,omitempty"`
+	Delete               *Operation                          `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Options              *Operation                          `json:"options,omitempty" yaml:"options,omitempty"`
+	Head                 *Operation                          `json:"head,omitempty" yaml:"head,omitempty"`
+	Patch                *Operation                          `json:"patch,omitempty" yaml:"patch,omitempty"`
+	Trace                *Operation                          `json:"trace,omitempty" yaml:"trace,omitempty"`
+	Query                *Operation                          `json:"query,omitempty" yaml:"query,omitempty"`
+	AdditionalOperations *orderedmap.Map[string, *Operation] `json:"additionalOperations,omitempty" yaml:"additionalOperations,omitempty"` // OpenAPI 3.2+ additional operations
+	Servers              []*Server                           `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Parameters           []*Parameter                        `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Extensions           *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
+	low                  *lowV3.PathItem
 }
 
 // NewPathItem creates a new high-level PathItem instance from a low-level one.
@@ -125,6 +126,12 @@ func NewPathItem(pathItem *lowV3.PathItem) *PathItem {
 			complete = true
 		}
 	}
+
+	// build additional operations if present
+	if !pathItem.AdditionalOperations.IsEmpty() && pathItem.AdditionalOperations.Value.Len() > 0 {
+		pi.AdditionalOperations = low.FromReferenceMapWithFunc(pathItem.AdditionalOperations.Value, NewOperation)
+	}
+
 	return pi
 }
 
@@ -190,6 +197,19 @@ func (p *PathItem) GetOperations() *orderedmap.Map[string, *Operation] {
 	}
 	if p.Query != nil {
 		ops = append(ops, op{name: lowV3.QueryLabel, op: p.Query, line: getLine("Query", 0)})
+	}
+
+	// add additional operations if present - get line numbers from low-level KeyNodes
+	if p.AdditionalOperations != nil && p.AdditionalOperations.Len() > 0 {
+		if p.GoLow() != nil && !p.GoLow().AdditionalOperations.IsEmpty() {
+			for k := range p.GoLow().AdditionalOperations.Value.KeysFromOldest() {
+				// find the corresponding high-level operation
+				if highOp := p.AdditionalOperations.GetOrZero(k.Value); highOp != nil {
+					line := k.KeyNode.Line
+					ops = append(ops, op{name: k.Value, op: highOp, line: line})
+				}
+			}
+		}
 	}
 
 	slices.SortStableFunc(ops, func(a op, b op) int {

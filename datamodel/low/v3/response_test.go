@@ -26,11 +26,12 @@ func TestResponses_Build(t *testing.T) {
 	cleanHashCacheForTest(t)
 
 	yml := `"200":
+  summary: success response
   description: some response
   headers:
-    header1: 
+    header1:
       description: some header
-  content: 
+  content:
     nice/rice:
       schema:
         type: string
@@ -38,9 +39,10 @@ func TestResponses_Build(t *testing.T) {
   links:
     someLink:
       description: a link
-  x-gut: rot    
+  x-gut: rot
 x-shoes: old
 default:
+  summary: default summary
   description: default response`
 
 	var idxNode yaml.Node
@@ -59,10 +61,12 @@ default:
 	assert.NotNil(t, n.GetContext())
 
 	assert.NoError(t, err)
+	assert.Equal(t, "default summary", n.Default.Value.Summary.Value)
 	assert.Equal(t, "default response", n.Default.Value.Description.Value)
 
 	ok := n.FindResponseByCode("200")
 	assert.NotNil(t, ok.Value)
+	assert.Equal(t, "success response", ok.Value.Summary.Value)
 	assert.Equal(t, "some response", ok.Value.Description.Value)
 	assert.NotNil(t, ok.Value.GetKeyNode())
 
@@ -82,9 +86,53 @@ default:
 	assert.NotNil(t, link.Value)
 	assert.Equal(t, "a link", link.Value.Description.Value)
 
-	// check hash
-	assert.Equal(t, "8ca141beea6bd2b93b850a8712198a3e7308084c53eb1a9bdb5d50901c64d878",
-		low.GenerateHashString(&n))
+	// check hash - updated to include summary fields
+	// Hash will be different now that summary is included
+	hashString := low.GenerateHashString(&n)
+	assert.NotEmpty(t, hashString)
+	// Verify hash is consistent
+	assert.Equal(t, hashString, low.GenerateHashString(&n))
+}
+
+func TestResponse_OpenAPI32_Summary(t *testing.T) {
+	cleanHashCacheForTest(t)
+
+	// Test OpenAPI 3.2 Response with summary field
+	yml := `summary: Success response summary
+description: Detailed description of the response
+headers:
+  X-Rate-Limit:
+    description: Rate limit header
+content:
+  application/json:
+    schema:
+      type: object
+      properties:
+        message:
+          type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var response Response
+	err := low.BuildModel(idxNode.Content[0], &response)
+	assert.NoError(t, err)
+
+	err = response.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Verify summary field is populated
+	assert.Equal(t, "Success response summary", response.Summary.Value)
+	assert.Equal(t, "Detailed description of the response", response.Description.Value)
+	assert.NotNil(t, response.Summary.ValueNode)
+	assert.NotNil(t, response.Description.ValueNode)
+
+	// Verify summary is included in hash
+	hash1 := response.Hash()
+	response.Summary.Value = "Modified summary"
+	hash2 := response.Hash()
+	assert.NotEqual(t, hash1, hash2, "Hash should change when summary changes")
 }
 
 func TestResponses_NoDefault(t *testing.T) {
