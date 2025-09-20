@@ -21,7 +21,8 @@ import (
 // with hard coded line and column numbers in them, changing the spec above the bottom will
 // create pointless test changes. So here is a standalone test. you know... for science.
 func TestNewResponse(t *testing.T) {
-	yml := `description: this is a response
+	yml := `summary: quick summary
+description: this is a response
 headers:
   someHeader:
     description: a header
@@ -43,6 +44,8 @@ links:
 
 	r := NewResponse(&n)
 
+	assert.Equal(t, "quick summary", r.Summary)
+	assert.Equal(t, "this is a response", r.Description)
 	assert.Equal(t, 1, orderedmap.Len(r.Headers))
 	assert.Equal(t, 1, orderedmap.Len(r.Content))
 
@@ -51,7 +54,7 @@ links:
 
 	assert.Equal(t, "pizza!", xPizzaMan)
 	assert.Equal(t, 1, orderedmap.Len(r.Links))
-	assert.Equal(t, 1, r.GoLow().Description.KeyNode.Line)
+	assert.Equal(t, 2, r.GoLow().Description.KeyNode.Line)
 }
 
 func TestResponse_MarshalYAML(t *testing.T) {
