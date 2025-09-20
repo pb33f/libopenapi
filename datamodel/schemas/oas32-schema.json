@@ -1,5 +1,5 @@
 {
-  "$id": "https://spec.openapis.org/oas/3.2/schema/WORK-IN-PROGRESS",
+  "$id": "https://spec.openapis.org/oas/3.2/schema/2025-09-17",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "description": "The description of OpenAPI v3.2.x Documents without Schema Object validation",
   "type": "object",
@@ -20,7 +20,7 @@
     "jsonSchemaDialect": {
       "type": "string",
       "format": "uri-reference",
-      "default": "https://spec.openapis.org/oas/3.2/dialect/WORK-IN-PROGRESS"
+      "default": "https://spec.openapis.org/oas/3.2/dialect/2025-09-17"
     },
     "servers": {
       "type": "array",
@@ -290,7 +290,7 @@
         }
       },
       "patternProperties": {
-        "^(schemas|responses|parameters|examples|requestBodies|headers|securitySchemes|links|callbacks|pathItems|mediaTypes)$": {
+        "^(?:schemas|responses|parameters|examples|requestBodies|headers|securitySchemes|links|callbacks|pathItems|mediaTypes)$": {
           "$comment": "Enumerating all of the property names in the regex above is necessary for unevaluatedProperties to work as expected",
           "propertyNames": {
             "pattern": "^[a-zA-Z0-9._-]+$"
@@ -332,10 +332,7 @@
           }
         },
         "parameters": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/parameter-or-reference"
-          }
+          "$ref": "#/$defs/parameters"
         },
         "additionalOperations": {
           "type": "object",
@@ -414,10 +411,7 @@
           "type": "string"
         },
         "parameters": {
-          "type": "array",
-          "items": {
-            "$ref": "#/$defs/parameter-or-reference"
-          }
+          "$ref": "#/$defs/parameters"
         },
         "requestBody": {
           "$ref": "#/$defs/request-body-or-reference"
@@ -468,6 +462,55 @@
       ],
       "$ref": "#/$defs/specification-extensions",
       "unevaluatedProperties": false
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/parameter-or-reference"
+      },
+      "not": {
+        "allOf": [
+          {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "in": {
+                  "const": "query"
+                }
+              },
+              "required": [
+                "in"
+              ]
+            }
+          },
+          {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "in": {
+                  "const": "querystring"
+                }
+              },
+              "required": [
+                "in"
+              ]
+            }
+          }
+        ]
+      },
+      "contains": {
+        "type": "object",
+        "properties": {
+          "in": {
+            "const": "querystring"
+          }
+        },
+        "required": [
+          "in"
+        ]
+      },
+      "minContains": 0,
+      "maxContains": 1
     },
     "parameter": {
       "$comment": "https://spec.openapis.org/oas/v3.2#parameter-object",
@@ -534,10 +577,7 @@
               "in": {
                 "const": "query"
               }
-            },
-            "required": [
-              "in"
-            ]
+            }
           },
           "then": {
             "properties": {
@@ -554,23 +594,12 @@
               "in": {
                 "const": "querystring"
               }
-            },
-            "required": [
-              "in"
-            ]
+            }
           },
           "then": {
             "required": [
               "content"
-            ],
-            "not": {
-              "required": [
-                "schema",
-                "style",
-                "explode",
-                "allowReserved"
-              ]
-            }
+            ]
           }
         }
       ],
@@ -612,10 +641,7 @@
                   "in": {
                     "const": "path"
                   }
-                },
-                "required": [
-                  "in"
-                ]
+                }
               },
               "then": {
                 "properties": {
@@ -642,10 +668,7 @@
                   "in": {
                     "const": "header"
                   }
-                },
-                "required": [
-                  "in"
-                ]
+                }
               },
               "then": {
                 "properties": {
@@ -662,10 +685,7 @@
                   "in": {
                     "const": "query"
                   }
-                },
-                "required": [
-                  "in"
-                ]
+                }
               },
               "then": {
                 "properties": {
@@ -687,16 +707,16 @@
                   "in": {
                     "const": "cookie"
                   }
-                },
-                "required": [
-                  "in"
-                ]
+                }
               },
               "then": {
                 "properties": {
                   "style": {
                     "default": "form",
-                    "const": "form"
+                    "enum": [
+                      "form",
+                      "cookie"
+                    ]
                   }
                 }
               }
@@ -794,22 +814,20 @@
           "$ref": "#/$defs/encoding"
         }
       },
+      "dependentSchemas": {
+        "encoding": {
+          "properties": {
+            "prefixEncoding": false,
+            "itemEncoding": false
+          }
+        }
+      },
       "allOf": [
         {
           "$ref": "#/$defs/examples"
         },
         {
           "$ref": "#/$defs/specification-extensions"
-        },
-        {
-          "dependentSchemas": {
-            "encoding": {
-              "properties": {
-                "prefixEncoding": false,
-                "itemEncoding": false
-              }
-            }
-          }
         }
       ],
       "unevaluatedProperties": false
@@ -843,7 +861,6 @@
           }
         },
         "style": {
-          "default": "form",
           "enum": [
             "form",
             "spaceDelimited",
@@ -855,7 +872,6 @@
           "type": "boolean"
         },
         "allowReserved": {
-          "default": false,
           "type": "boolean"
         },
         "encoding": {
@@ -874,22 +890,44 @@
           "$ref": "#/$defs/encoding"
         }
       },
+      "dependentSchemas": {
+        "encoding": {
+          "properties": {
+            "prefixEncoding": false,
+            "itemEncoding": false
+          }
+        },
+        "style": {
+          "properties": {
+            "allowReserved": {
+              "default": false
+            }
+          }
+        },
+        "explode": {
+          "properties": {
+            "style": {
+              "default": "form"
+            },
+            "allowReserved": {
+              "default": false
+            }
+          }
+        },
+        "allowReserved": {
+          "properties": {
+            "style": {
+              "default": "form"
+            }
+          }
+        }
+      },
       "allOf": [
         {
           "$ref": "#/$defs/specification-extensions"
         },
         {
           "$ref": "#/$defs/styles-for-form"
-        },
-        {
-          "dependentSchemas": {
-            "encoding": {
-              "properties": {
-                "prefixEncoding": false,
-                "itemEncoding": false
-              }
-            }
-          }
         }
       ],
       "unevaluatedProperties": false
@@ -1160,8 +1198,7 @@
               "default": false,
               "type": "boolean"
             }
-          },
-          "$ref": "#/$defs/examples"
+          }
         }
       },
       "allOf": [
@@ -1293,10 +1330,7 @@
               "type": {
                 "const": "apiKey"
               }
-            },
-            "required": [
-              "type"
-            ]
+            }
           },
           "then": {
             "properties": {
@@ -1323,10 +1357,7 @@
               "type": {
                 "const": "http"
               }
-            },
-            "required": [
-              "type"
-            ]
+            }
           },
           "then": {
             "properties": {
@@ -1369,10 +1400,7 @@
               "type": {
                 "const": "oauth2"
               }
-            },
-            "required": [
-              "type"
-            ]
+            }
           },
           "then": {
             "properties": {
@@ -1395,10 +1423,7 @@
               "type": {
                 "const": "openIdConnect"
               }
-            },
-            "required": [
-              "type"
-            ]
+            }
           },
           "then": {
             "properties": {
@@ -1597,6 +1622,12 @@
             "$ref": "#/$defs/example-or-reference"
           }
         }
+      },
+      "not": {
+        "required": [
+          "example",
+          "examples"
+        ]
       }
     },
     "map-of-strings": {

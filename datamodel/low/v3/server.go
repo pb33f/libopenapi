@@ -17,6 +17,7 @@ import (
 // Server represents a low-level OpenAPI 3+ Server object.
 //   - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
+	Name        low.NodeReference[string] // OpenAPI 3.2+ name field for documentation
 	URL         low.NodeReference[string]
 	Description low.NodeReference[string]
 	Variables   low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*ServerVariable]]]
@@ -118,6 +119,10 @@ func (s *Server) Hash() [32]byte {
 	sb := low.GetStringBuilder()
 	defer low.PutStringBuilder(sb)
 
+	if !s.Name.IsEmpty() {
+		sb.WriteString(s.Name.Value)
+		sb.WriteByte('|')
+	}
 	if s.Variables.Value != nil {
 		for v := range orderedmap.SortAlpha(s.Variables.Value).ValuesFromOldest() {
 			sb.WriteString(low.GenerateHashString(v.Value))
