@@ -279,3 +279,107 @@ func TestCompareDiscriminator_Identical(t *testing.T) {
 	extChanges := CompareDiscriminator(&lDoc, &rDoc)
 	assert.Nil(t, extChanges)
 }
+
+func TestCompareDiscriminator_DefaultMappingAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `propertyName: petType
+mapping:
+  dog: '#/components/schemas/Dog'`
+
+	right := `propertyName: petType
+mapping:
+  dog: '#/components/schemas/Dog'
+defaultMapping: '#/components/schemas/UnknownPet'`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Discriminator
+	var rDoc base.Discriminator
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+
+	// compare.
+	extChanges := CompareDiscriminator(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "defaultMapping", extChanges.Changes[0].Property)
+	assert.Equal(t, "#/components/schemas/UnknownPet", extChanges.Changes[0].New)
+
+	// should be a breaking change
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDiscriminator_DefaultMappingModified(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `propertyName: petType
+mapping:
+  dog: '#/components/schemas/Dog'
+defaultMapping: '#/components/schemas/UnknownPet'`
+
+	right := `propertyName: petType
+mapping:
+  dog: '#/components/schemas/Dog'
+defaultMapping: '#/components/schemas/GenericAnimal'`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Discriminator
+	var rDoc base.Discriminator
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+
+	// compare.
+	extChanges := CompareDiscriminator(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "defaultMapping", extChanges.Changes[0].Property)
+	assert.Equal(t, "#/components/schemas/UnknownPet", extChanges.Changes[0].Original)
+	assert.Equal(t, "#/components/schemas/GenericAnimal", extChanges.Changes[0].New)
+
+	// should be a breaking change
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestCompareDiscriminator_DefaultMappingRemoved(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `propertyName: petType
+mapping:
+  dog: '#/components/schemas/Dog'
+defaultMapping: '#/components/schemas/UnknownPet'`
+
+	right := `propertyName: petType
+mapping:
+  dog: '#/components/schemas/Dog'`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Discriminator
+	var rDoc base.Discriminator
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+
+	// compare.
+	extChanges := CompareDiscriminator(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "defaultMapping", extChanges.Changes[0].Property)
+	assert.Equal(t, "#/components/schemas/UnknownPet", extChanges.Changes[0].Original)
+
+	// should be a breaking change
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}

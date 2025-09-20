@@ -14,6 +14,7 @@ import (
 // Server represents a high-level OpenAPI 3+ Server object, that is backed by a low level one.
 //   - https://spec.openapis.org/oas/v3.1.0#server-object
 type Server struct {
+	Name        string                                   `json:"name,omitempty" yaml:"name,omitempty"`         // OpenAPI 3.2+ name field for documentation
 	URL         string                                   `json:"url,omitempty" yaml:"url,omitempty"`
 	Description string                                   `json:"description,omitempty" yaml:"description,omitempty"`
 	Variables   *orderedmap.Map[string, *ServerVariable] `json:"variables,omitempty" yaml:"variables,omitempty"`
@@ -25,6 +26,7 @@ type Server struct {
 func NewServer(server *lowv3.Server) *Server {
 	s := new(Server)
 	s.low = server
+	s.Name = server.Name.Value
 	s.Description = server.Description.Value
 	s.URL = server.URL.Value
 	s.Variables = low.FromReferenceMapWithFunc(server.Variables.Value, NewServerVariable)
