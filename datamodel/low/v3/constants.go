@@ -7,6 +7,7 @@ package v3
 const (
 	ComponentsLabel            = "components"
 	SchemasLabel               = "schemas"
+	MediaTypesLabel            = "mediaTypes" // OpenAPI 3.2+ mediaTypes component section
 	EncodingLabel              = "encoding"
 	ItemSchemaLabel            = "itemSchema"
 	ItemEncodingLabel          = "itemEncoding"

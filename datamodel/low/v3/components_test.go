@@ -360,3 +360,54 @@ pathItems:
 
 	assert.Equal(t, "#/pathItems/one", n.FindPathItem("two").Value.GetReference())
 }
+
+func TestComponents_MediaTypes(t *testing.T) {
+	yml := `mediaTypes:
+  JsonMediaType:
+    schema:
+      type: object
+      properties:
+        id:
+          type: integer
+    examples:
+      user:
+        value:
+          id: 123
+          name: John
+  XmlMediaType:
+    schema:
+      type: string
+      xml:
+        name: xmlData`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.Equal(t, 2, n.MediaTypes.Value.Len())
+
+	jsonMediaType := n.FindMediaType("JsonMediaType")
+	assert.NotNil(t, jsonMediaType)
+	assert.NotNil(t, jsonMediaType.Value.Schema.Value)
+	assert.Equal(t, "object", jsonMediaType.Value.Schema.Value.Schema().Type.Value.A)
+	assert.Equal(t, 1, jsonMediaType.Value.Examples.Value.Len())
+
+	xmlMediaType := n.FindMediaType("XmlMediaType")
+	assert.NotNil(t, xmlMediaType)
+	assert.NotNil(t, xmlMediaType.Value.Schema.Value)
+	assert.Equal(t, "string", xmlMediaType.Value.Schema.Value.Schema().Type.Value.A)
+
+	// test hash includes mediaTypes
+	hash1 := n.Hash()
+	n.MediaTypes = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*MediaType]]]{}
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+}
