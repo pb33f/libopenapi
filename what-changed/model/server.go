@@ -65,6 +65,16 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 	var changes []*Change
 	var props []*PropertyCheck
 
+	// Name (breaking change)
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.Name.ValueNode,
+		RightNode: r.Name.ValueNode,
+		Label:     v3.NameLabel,
+		Changes:   &changes,
+		Breaking:  true,
+		Original:  l,
+		New:       r,
+	})
 	// URL
 	props = append(props, &PropertyCheck{
 		LeftNode:  l.URL.ValueNode,
