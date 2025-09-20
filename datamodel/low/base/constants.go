@@ -22,6 +22,8 @@ const (
 	ExamplesLabel              = "examples"
 	ExampleLabel               = "example"
 	ValueLabel                 = "value"
+	DataValueLabel             = "dataValue"       // OpenAPI 3.2+ dataValue field
+	SerializedValueLabel       = "serializedValue" // OpenAPI 3.2+ serializedValue field
 	InfoLabel                  = "info"
 	ContactLabel               = "contact"
 	LicenseLabel               = "license"

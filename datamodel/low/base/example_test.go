@@ -214,3 +214,69 @@ func TestExample_Build_Success_Ref(t *testing.T) {
 	assert.True(t, n.IsReference())
 	assert.Equal(t, "#/responses/abc", n.GetReference())
 }
+
+func TestExample_DataValue(t *testing.T) {
+	yml := `summary: data example
+description: example using dataValue
+dataValue:
+  name: John Doe
+  age: 30
+  active: true`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+
+	var n Example
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "data example", n.Summary.Value)
+	assert.Equal(t, "example using dataValue", n.Description.Value)
+	assert.NotNil(t, n.DataValue.Value)
+
+	var data map[string]interface{}
+	err = n.DataValue.Value.Decode(&data)
+	require.NoError(t, err)
+	assert.Equal(t, "John Doe", data["name"])
+	assert.Equal(t, 30, data["age"])
+	assert.Equal(t, true, data["active"])
+
+	// test hash includes dataValue
+	hash1 := n.Hash()
+	originalData := n.DataValue.Value
+	n.DataValue = low.NodeReference[*yaml.Node]{} // clear the reference
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+	n.DataValue.Value = originalData // restore
+}
+
+func TestExample_SerializedValue(t *testing.T) {
+	yml := `summary: serialized example
+description: example using serializedValue
+serializedValue: '{"name":"John Doe","age":30,"active":true}'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateClosedAPIIndexConfig())
+
+	var n Example
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+	assert.Equal(t, "serialized example", n.Summary.Value)
+	assert.Equal(t, "example using serializedValue", n.Description.Value)
+	assert.Equal(t, `{"name":"John Doe","age":30,"active":true}`, n.SerializedValue.Value)
+
+	// test hash includes serializedValue
+	hash1 := n.Hash()
+	n.SerializedValue.Value = "different"
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+}
