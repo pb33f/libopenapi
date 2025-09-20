@@ -17,6 +17,7 @@ import (
 // operations based on the response.
 //   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
+	Summary     string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
 	Description string                              `json:"description" yaml:"description"`
 	Headers     *orderedmap.Map[string, *Header]    `json:"headers,omitempty" yaml:"headers,omitempty"`
 	Content     *orderedmap.Map[string, *MediaType] `json:"content,omitempty" yaml:"content,omitempty"`
@@ -29,6 +30,7 @@ type Response struct {
 func NewResponse(response *lowv3.Response) *Response {
 	r := new(Response)
 	r.low = response
+	r.Summary = response.Summary.Value
 	r.Description = response.Description.Value
 	if !response.Headers.IsEmpty() {
 		r.Headers = ExtractHeaders(response.Headers.Value)

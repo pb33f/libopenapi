@@ -179,9 +179,13 @@ func CompareResponse(l, r any) *ResponseChanges {
 			return nil
 		}
 
+		// summary (OpenAPI 3.2+)
+		addPropertyCheck(&props, lResponse.Summary.ValueNode, rResponse.Summary.ValueNode,
+			lResponse.Summary.Value, rResponse.Summary.Value, &changes, v3.SummaryLabel, false)
+
 		// description
 		addPropertyCheck(&props, lResponse.Description.ValueNode, rResponse.Description.ValueNode,
-			lResponse.Description.Value, lResponse.Description.Value, &changes, v3.DescriptionLabel, false)
+			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel, false)
 
 		rc.HeadersChanges = CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
 			&changes, v3.HeadersLabel, CompareHeadersV3)
