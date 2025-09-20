@@ -237,3 +237,69 @@ func TestCompareExamples_Date(t *testing.T) {
 
 	assert.Equal(t, 1, changes.TotalChanges())
 }
+
+func TestCompareExamples_DataValueAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `summary: test example
+description: basic example`
+
+	right := `summary: test example
+description: basic example
+dataValue:
+  name: John Doe
+  age: 30`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Example
+	var rDoc base.Example
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareExamples(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges()) // adding dataValue is not breaking
+
+	allChanges := extChanges.GetAllChanges()
+	assert.Equal(t, PropertyAdded, allChanges[0].ChangeType)
+	assert.Equal(t, base.DataValueLabel, allChanges[0].Property)
+}
+
+func TestCompareExamples_SerializedValueAdded(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `summary: test example
+description: basic example`
+
+	right := `summary: test example
+description: basic example
+serializedValue: '{"name":"John Doe","age":30}'`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.Example
+	var rDoc base.Example
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	extChanges := CompareExamples(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges()) // adding serializedValue is not breaking
+
+	allChanges := extChanges.GetAllChanges()
+	assert.Equal(t, PropertyAdded, allChanges[0].ChangeType)
+	assert.Equal(t, base.SerializedValueLabel, allChanges[0].Property)
+}

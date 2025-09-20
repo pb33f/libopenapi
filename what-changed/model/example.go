@@ -203,6 +203,28 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		New:       r,
 	})
 
+	// DataValue (OpenAPI 3.2+)
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.DataValue.ValueNode,
+		RightNode: r.DataValue.ValueNode,
+		Label:     base.DataValueLabel,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
+
+	// SerializedValue (OpenAPI 3.2+)
+	props = append(props, &PropertyCheck{
+		LeftNode:  l.SerializedValue.ValueNode,
+		RightNode: r.SerializedValue.ValueNode,
+		Label:     base.SerializedValueLabel,
+		Changes:   &changes,
+		Breaking:  false,
+		Original:  l,
+		New:       r,
+	})
+
 	// check properties
 	CheckProperties(props)
 
