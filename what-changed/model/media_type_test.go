@@ -289,6 +289,9 @@ example: tasty herbs in the morning
 examples:
   exampleOne:
     value: yummy coffee
+itemEncoding:
+  cupOfTea:
+    contentType: milk/hotwater
 encoding:
   something: 
     contentType: application/json
@@ -300,6 +303,9 @@ example: smoke and a pancake?
 examples:
   exampleOne:
     value: yummy coffee is great!
+itemEncoding:
+  cupOfTea:
+    contentType: milk/hotwater/sugar
 encoding:
   something:
     contentType: application/xml
@@ -320,7 +326,7 @@ x-tea: cup`
 	// compare.
 	extChanges := CompareMediaTypes(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
-	assert.Equal(t, 5, extChanges.TotalChanges())
-	assert.Len(t, extChanges.GetAllChanges(), 5)
-	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 6, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 6)
+	assert.Equal(t, 3, extChanges.TotalBreakingChanges())
 }

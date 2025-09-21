@@ -287,10 +287,6 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 			}
 		}
 
-		if !isStandardOp && !isAdditionalOp {
-			continue
-		}
-
 		foundContext, pathNode, opIsRef, opRefVal, opRefNode, err := resolveOperationReference(ctx, pathNode, idx)
 		if err != nil {
 			return err
@@ -371,25 +367,6 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 				}
 			} else {
 
-				// resolve operation reference for each additional operation
-				foundContext, pathNode, opIsRef, opRefVal, opRefNode, err = resolveOperationReference(ctx, pathNode, idx)
-				if err != nil {
-					return err
-				}
-				var addOp Operation
-				wg.Add(1)
-				low.BuildModelAsync(pathNode, &addOp, &wg, &errors)
-
-				addOpRef := low.NodeReference[*Operation]{
-					Value:     &addOp,
-					KeyNode:   currentNode,
-					ValueNode: pathNode,
-					Context:   foundContext,
-				}
-				if opIsRef {
-					addOpRef.SetReference(opRefVal, opRefNode)
-				}
-
 				kv := pathNode.Value
 				if kv == "" {
 					kv = currentNode.Value
@@ -398,7 +375,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 				additionalOps.Set(low.KeyReference[string]{
 					KeyNode: currentNode,
 					Value:   kv,
-				}, addOpRef)
+				}, opRef)
 
 			}
 		}

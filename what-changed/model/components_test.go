@@ -1072,3 +1072,65 @@ func TestCompareComponents_OpenAPI_Extensions_Modified(t *testing.T) {
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 }
+
+func TestCompareComponents_OpenAPI_MediaTypes_Add(t *testing.T) {
+	left := `schemas:
+  Test:
+    description: just a test`
+
+	right := `schemas:
+  Test:
+    description: just a test
+mediaTypes:
+  ApplicationJSON:
+    description: a json media type`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Components
+	var rDoc v3.Components
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareComponents(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, "ApplicationJSON", extChanges.Changes[0].New)
+}
+
+func TestCompareComponents_OpenAPI_MediaTypes_Remove(t *testing.T) {
+	left := `schemas:
+  Test:
+    description: just a test`
+
+	right := `schemas:
+  Test:
+    description: just a test
+mediaTypes:
+  ApplicationJSON:
+    description: a json media type`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.Components
+	var rDoc v3.Components
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), rNode.Content[0], nil)
+
+	// compare.
+	extChanges := CompareComponents(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, "ApplicationJSON", extChanges.Changes[0].Original)
+}

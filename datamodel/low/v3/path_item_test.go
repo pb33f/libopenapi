@@ -173,3 +173,109 @@ lock:
 	hash2 := n.Hash()
 	assert.NotEqual(t, hash1, hash2)
 }
+
+func TestPathItem_AdditionalOperations_InCorrectLocation(t *testing.T) {
+	yml := `get:
+  description: standard get operation
+post:
+  description: standard post operation
+additionalOperations:
+  purge:
+    description: purge operation for cache clearing
+    operationId: purgeCache
+    responses:
+      '204':
+        description: Cache cleared successfully
+  lock:
+    description: lock operation for resource locking
+    operationId: lockResource
+    parameters:
+      - name: timeout
+        in: query
+        schema:
+          type: integer
+  cycle:
+    $ref: '#/get'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	// test standard operations
+	assert.NotNil(t, n.Get.Value)
+	assert.Equal(t, "standard get operation", n.Get.Value.Description.Value)
+	assert.NotNil(t, n.Post.Value)
+	assert.Equal(t, "standard post operation", n.Post.Value.Description.Value)
+
+	// test additional operations
+	assert.NotNil(t, n.AdditionalOperations.Value)
+	assert.Equal(t, 3, n.AdditionalOperations.Value.Len())
+
+	var purgeOp low.NodeReference[*Operation]
+	for k, v := range n.AdditionalOperations.Value.FromOldest() {
+		if k.Value == "purge" {
+			purgeOp = v
+			break
+		}
+	}
+
+	assert.NotNil(t, purgeOp)
+	assert.Equal(t, "purge operation for cache clearing", purgeOp.Value.Description.Value)
+	assert.Equal(t, "purgeCache", purgeOp.Value.OperationId.Value)
+
+	var lockOp low.NodeReference[*Operation]
+	for k, v := range n.AdditionalOperations.Value.FromOldest() {
+		if k.Value == "lock" {
+			lockOp = v
+			break
+		}
+	}
+	assert.NotNil(t, lockOp)
+	assert.Equal(t, "lock operation for resource locking", lockOp.Value.Description.Value)
+	assert.Equal(t, "lockResource", lockOp.Value.OperationId.Value)
+
+	// test hash includes additional operations
+	hash1 := n.Hash()
+	n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]]{}
+	hash2 := n.Hash()
+	assert.NotEqual(t, hash1, hash2)
+}
+
+func TestPathItem_AdditionalOperations_BadRef(t *testing.T) {
+	yml := `additionalOperations:
+  smellyCatSmellyCat:
+    $ref: '#/WhatAreTheyFeedingYou'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.Nil(t, n.AdditionalOperations.Value)
+
+}
+
+func TestPathItem_AdditionalOperations_BadRef_AtRoot(t *testing.T) {
+	yml := `smellyCatSmellyCat:
+  $ref: '#/ItsNotYourFault'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n PathItem
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	err := n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.Nil(t, n.AdditionalOperations.Value)
+
+}
