@@ -69,9 +69,14 @@ var testComponentsYaml = `
   pathItems:
     /nineteen:
       get:
-        description: nineteen of many`
+        description: nineteen of many
+  mediaTypes:
+    jsonMediaType:
+      schema:
+        description: twenty of many`
 
 func TestComponents_Build_Success(t *testing.T) {
+	low.ClearHashCache()
 	var idxNode yaml.Node
 	mErr := yaml.Unmarshal([]byte(testComponentsYaml), &idxNode)
 	assert.NoError(t, mErr)
@@ -105,8 +110,9 @@ func TestComponents_Build_Success(t *testing.T) {
 	assert.Equal(t, "eighteen of many",
 		n.FindCallback("eighteen").Value.FindExpression("{raference}").Value.Post.Value.Description.Value)
 	assert.Equal(t, "nineteen of many", n.FindPathItem("/nineteen").Value.Get.Value.Description.Value)
+	assert.Equal(t, "twenty of many", n.FindMediaType("jsonMediaType").Value.Schema.Value.Schema().Description.Value)
 
-	assert.Equal(t, "b3c622e2f1cd464a644ef13f5498a5d58f7da34166cec4f03d9cbe9fd6605a6f",
+	assert.Equal(t, "f006293389659445d3f7a9c20737719cc0f6137392f8905c8ff18831aa5f0372",
 		low.GenerateHashString(&n))
 
 	assert.NotNil(t, n.GetContext())
@@ -114,6 +120,7 @@ func TestComponents_Build_Success(t *testing.T) {
 }
 
 func TestComponents_Build_Success_Skip(t *testing.T) {
+	low.ClearHashCache()
 	yml := `components:`
 
 	var idxNode yaml.Node
@@ -130,6 +137,7 @@ func TestComponents_Build_Success_Skip(t *testing.T) {
 }
 
 func TestComponents_Build_Fail(t *testing.T) {
+	low.ClearHashCache()
 	yml := `
   parameters:
     schema:
@@ -149,6 +157,7 @@ func TestComponents_Build_Fail(t *testing.T) {
 }
 
 func TestComponents_Build_ParameterFail(t *testing.T) {
+	low.ClearHashCache()
 	yml := `
   parameters:
     pizza:
@@ -171,6 +180,7 @@ func TestComponents_Build_ParameterFail(t *testing.T) {
 // Test parse failure among many parameters.
 // This stresses `TranslatePipeline`'s error handling.
 func TestComponents_Build_ParameterFail_Many(t *testing.T) {
+	low.ClearHashCache()
 	yml := `
   parameters:
 `
@@ -198,6 +208,7 @@ func TestComponents_Build_ParameterFail_Many(t *testing.T) {
 }
 
 func TestComponents_Build_Fail_TypeFail(t *testing.T) {
+	low.ClearHashCache()
 	yml := `
   parameters:
     - schema:
@@ -217,6 +228,7 @@ func TestComponents_Build_Fail_TypeFail(t *testing.T) {
 }
 
 func TestComponents_Build_ExtensionTest(t *testing.T) {
+	low.ClearHashCache()
 	yml := `x-curry: seagull
 headers:
   x-curry-gull: vinadloo`
@@ -240,6 +252,7 @@ headers:
 }
 
 func TestComponents_Build_HashEmpty(t *testing.T) {
+	low.ClearHashCache()
 	yml := `x-curry: seagull`
 
 	var idxNode yaml.Node
@@ -264,6 +277,7 @@ func TestComponents_Build_HashEmpty(t *testing.T) {
 }
 
 func TestComponents_IsReference(t *testing.T) {
+	low.ClearHashCache()
 	yml := `
 schemas:
     one:
@@ -338,6 +352,7 @@ callbacks:
 }
 
 func TestComponents_IsReference_OutOfSpecification_PathItem(t *testing.T) {
+	low.ClearHashCache()
 	yml := `
 pathItems:
     one:
@@ -362,6 +377,7 @@ pathItems:
 }
 
 func TestComponents_MediaTypes(t *testing.T) {
+	low.ClearHashCache()
 	yml := `mediaTypes:
   JsonMediaType:
     schema:
