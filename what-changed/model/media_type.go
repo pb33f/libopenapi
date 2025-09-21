@@ -12,12 +12,12 @@ import (
 // MediaTypeChanges represent changes made between two OpenAPI MediaType instances.
 type MediaTypeChanges struct {
 	*PropertyChanges
-	SchemaChanges        *SchemaChanges              `json:"schemas,omitempty" yaml:"schemas,omitempty"`
-	ItemSchemaChanges    *SchemaChanges              `json:"itemSchemas,omitempty" yaml:"itemSchemas,omitempty"`
-	ExtensionChanges     *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
-	ExampleChanges       map[string]*ExampleChanges  `json:"examples,omitempty" yaml:"examples,omitempty"`
-	EncodingChanges      map[string]*EncodingChanges `json:"encoding,omitempty" yaml:"encoding,omitempty"`
-	ItemEncodingChanges  map[string]*EncodingChanges `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
+	SchemaChanges       *SchemaChanges              `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	ItemSchemaChanges   *SchemaChanges              `json:"itemSchemas,omitempty" yaml:"itemSchemas,omitempty"`
+	ExtensionChanges    *ExtensionChanges           `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	ExampleChanges      map[string]*ExampleChanges  `json:"examples,omitempty" yaml:"examples,omitempty"`
+	EncodingChanges     map[string]*EncodingChanges `json:"encoding,omitempty" yaml:"encoding,omitempty"`
+	ItemEncodingChanges map[string]*EncodingChanges `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between MediaType objects
@@ -105,7 +105,7 @@ func (m *MediaTypeChanges) TotalBreakingChanges() int {
 }
 
 // CompareMediaTypes compares a left and a right MediaType object for any changes. If found, a pointer to a
-// MediaTypeChanges instance is returned, otherwise nothing is returned.
+// MediaTypeChanges instance is returned; otherwise nothing is returned.
 func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	var props []*PropertyCheck
 	var changes []*Change
