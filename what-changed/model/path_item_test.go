@@ -463,7 +463,10 @@ servers:
   - url: https://pb33f.io
 parameters:
   - in: head
-x-thing: thang.`
+x-thing: thang.
+additionalOperations:
+  spinner:
+    description: spanner`
 
 	right := `summary: something cute
 description: nice puppy
@@ -488,7 +491,10 @@ servers:
     description: beefy goodness
 parameters:
   - in: head
-x-thing: dang.`
+x-thing: dang.
+additionalOperations:
+  spinner:
+    description: lemons`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -504,9 +510,125 @@ x-thing: dang.`
 
 	// compare.
 	extChanges := ComparePathItems(&lDoc, &rDoc)
-	assert.Equal(t, 12, extChanges.TotalChanges())
-	assert.Len(t, extChanges.GetAllChanges(), 12)
+	assert.Equal(t, 13, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 13)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V3_AdditionalMethodsRemove(t *testing.T) {
+	left := `additionalOperations:
+  spinner:
+    description: spanner
+  dinner:
+    description: dinner time`
+
+	right := `
+additionalOperations:
+  spinner:
+    description: spanner`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V3_AdditionalMethodsAdd(t *testing.T) {
+	left := `additionalOperations:
+  spinner:
+    description: spanner
+  dinner:
+    description: dinner time`
+
+	right := `
+additionalOperations:
+  spinner:
+    description: spanner`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V3_AdditionalMethodsAddTop(t *testing.T) {
+	left := `description: nice shoes!`
+
+	right := `description: nice shoes!
+additionalOperations:
+  spinner:
+    description: spanner`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+}
+
+func TestComparePathItem_V3_AdditionalMethodsRemoveTop(t *testing.T) {
+	left := `description: nice shoes!`
+
+	right := `description: nice shoes!
+additionalOperations:
+  spinner:
+    description: spanner`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc v3.PathItem
+	var rDoc v3.PathItem
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare.
+	extChanges := ComparePathItems(&rDoc, &lDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 1)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
 func TestComparePathItem_V3_AddParams(t *testing.T) {

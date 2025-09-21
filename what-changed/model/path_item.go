@@ -14,19 +14,19 @@ import (
 // PathItemChanges represents changes found between to Swagger or OpenAPI PathItem object.
 type PathItemChanges struct {
 	*PropertyChanges
-	GetChanges                 *OperationChanges               `json:"get,omitempty" yaml:"get,omitempty"`
-	PutChanges                 *OperationChanges               `json:"put,omitempty" yaml:"put,omitempty"`
-	PostChanges                *OperationChanges               `json:"post,omitempty" yaml:"post,omitempty"`
-	DeleteChanges              *OperationChanges               `json:"delete,omitempty" yaml:"delete,omitempty"`
-	OptionsChanges             *OperationChanges               `json:"options,omitempty" yaml:"options,omitempty"`
-	HeadChanges                *OperationChanges               `json:"head,omitempty" yaml:"head,omitempty"`
-	PatchChanges               *OperationChanges               `json:"patch,omitempty" yaml:"patch,omitempty"`
-	TraceChanges               *OperationChanges               `json:"trace,omitempty" yaml:"trace,omitempty"`
-	QueryChanges               *OperationChanges               `json:"query,omitempty" yaml:"query,omitempty"`
-	AdditionalOperationChanges map[string]*OperationChanges   `json:"additionalOperations,omitempty" yaml:"additionalOperations,omitempty"` // OpenAPI 3.2+ additional operations
-	ServerChanges              []*ServerChanges                `json:"servers,omitempty" yaml:"servers,omitempty"`
-	ParameterChanges           []*ParameterChanges             `json:"parameters,omitempty" yaml:"parameters,omitempty"`
-	ExtensionChanges           *ExtensionChanges               `json:"extensions,omitempty" yaml:"extensions,omitempty"`
+	GetChanges                 *OperationChanges            `json:"get,omitempty" yaml:"get,omitempty"`
+	PutChanges                 *OperationChanges            `json:"put,omitempty" yaml:"put,omitempty"`
+	PostChanges                *OperationChanges            `json:"post,omitempty" yaml:"post,omitempty"`
+	DeleteChanges              *OperationChanges            `json:"delete,omitempty" yaml:"delete,omitempty"`
+	OptionsChanges             *OperationChanges            `json:"options,omitempty" yaml:"options,omitempty"`
+	HeadChanges                *OperationChanges            `json:"head,omitempty" yaml:"head,omitempty"`
+	PatchChanges               *OperationChanges            `json:"patch,omitempty" yaml:"patch,omitempty"`
+	TraceChanges               *OperationChanges            `json:"trace,omitempty" yaml:"trace,omitempty"`
+	QueryChanges               *OperationChanges            `json:"query,omitempty" yaml:"query,omitempty"`
+	AdditionalOperationChanges map[string]*OperationChanges `json:"additionalOperations,omitempty" yaml:"additionalOperations,omitempty"` // OpenAPI 3.2+ additional operations
+	ServerChanges              []*ServerChanges             `json:"servers,omitempty" yaml:"servers,omitempty"`
+	ParameterChanges           []*ParameterChanges          `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	ExtensionChanges           *ExtensionChanges            `json:"extensions,omitempty" yaml:"extensions,omitempty"`
 }
 
 // GetAllChanges returns a slice of all changes made between PathItem objects
@@ -610,6 +610,66 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			nil, rPath.Query.ValueNode, false, nil, lPath.Query.Value)
 	}
 
+	// additionalProperties (OpenAPI 3.2+)
+	if lPath.AdditionalOperations.Value != nil && rPath.AdditionalOperations.Value == nil {
+		CreateChange(changes, PropertyRemoved, v3.AdditionalOperationsLabel,
+			lPath.AdditionalOperations.ValueNode, nil, true, lPath.AdditionalOperations.Value, nil)
+	}
+	if lPath.AdditionalOperations.Value == nil && rPath.AdditionalOperations.Value != nil {
+		CreateChange(changes, PropertyAdded, v3.AdditionalOperationsLabel,
+			nil, rPath.AdditionalOperations.ValueNode, false, nil, rPath.AdditionalOperations.Value)
+	}
+	if lPath.AdditionalOperations.Value != nil && rPath.AdditionalOperations.Value != nil {
+
+		lKeys := make([]low.KeyReference[string], 0, lPath.AdditionalOperations.Value.Len())
+		for lk := range lPath.AdditionalOperations.Value.FromOldest() {
+			lKeys = append(lKeys, lk)
+		}
+		rKeys := make([]low.KeyReference[string], 0, rPath.AdditionalOperations.Value.Len())
+		for rk := range rPath.AdditionalOperations.Value.FromOldest() {
+			rKeys = append(rKeys, rk)
+		}
+
+		for i := range lKeys {
+			// check right keys for match
+			found := false
+			for j := range rKeys {
+				if lKeys[i].Value == rKeys[j].Value {
+					found = true
+					// compare the two operations
+					totalOps++
+					go checkOperation(lPath.AdditionalOperations.Value.GetOrZero(lKeys[j]).Value,
+						rPath.AdditionalOperations.Value.GetOrZero(rKeys[j]).Value, opChan, lKeys[i].Value)
+					break
+				}
+			}
+			// not found, was removed
+			if !found {
+				CreateChange(changes, PropertyRemoved, v3.AdditionalOperationsLabel,
+					lPath.AdditionalOperations.Value.GetOrZero(lKeys[i]).ValueNode, nil, true,
+					lPath.AdditionalOperations.Value.GetOrZero(lKeys[i]).Value, nil)
+			}
+		}
+
+		// check for added operations
+		for i := range rKeys {
+			// check left keys for match
+			found := false
+			for j := range lKeys {
+				if rKeys[i].Value == lKeys[j].Value {
+					found = true
+					break
+				}
+			}
+			// not found, was added
+			if !found {
+				CreateChange(changes, PropertyAdded, v3.AdditionalOperationsLabel,
+					nil, rPath.AdditionalOperations.Value.GetOrZero(rKeys[i]).ValueNode, false,
+					nil, rPath.AdditionalOperations.Value.GetOrZero(rKeys[i]).Value)
+			}
+		}
+	}
+
 	// servers
 	pc.ServerChanges = checkServers(lPath.Servers, rPath.Servers)
 
@@ -663,6 +723,13 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			pc.TraceChanges = n.changes
 		case v3.QueryLabel:
 			pc.QueryChanges = n.changes
+		default:
+			if pc.AdditionalOperationChanges == nil {
+				pc.AdditionalOperationChanges = make(map[string]*OperationChanges)
+			}
+			if n.changes != nil {
+				pc.AdditionalOperationChanges[n.label] = n.changes
+			}
 		}
 		completedOperations++
 	}
