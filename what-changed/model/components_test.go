@@ -194,6 +194,7 @@ param4:
 }
 
 func TestCompareComponents_Swagger_Parameters_Removed(t *testing.T) {
+	low.ClearHashCache()
 	left := `param1:
  name: nap
 param2:
@@ -232,6 +233,7 @@ param4:
 }
 
 func TestCompareComponents_Swagger_Responses_Added(t *testing.T) {
+	low.ClearHashCache()
 	left := `resp1:
  description: hi!
 resp2:
@@ -268,6 +270,7 @@ resp3:
 }
 
 func TestCompareComponents_Swagger_Responses_Removed(t *testing.T) {
+	low.ClearHashCache()
 	left := `resp1:
  description: hi!
 resp2:
@@ -304,6 +307,7 @@ resp3:
 }
 
 func TestCompareComponents_Swagger_SecurityDefinitions_Modified(t *testing.T) {
+	low.ClearHashCache()
 	left := `scheme1:
  description: hi!`
 
@@ -334,6 +338,7 @@ scheme2:
 }
 
 func TestCompareComponents_OpenAPI_Schemas_Equal(t *testing.T) {
+	low.ClearHashCache()
 	left := `
 schemas:
   coffee:
@@ -365,6 +370,7 @@ schemas:
 }
 
 func TestCompareComponents_OpenAPI_Schemas_Refs_FullBuild(t *testing.T) {
+	low.ClearHashCache()
 	left := `components:
   schemas:
     coffee:
@@ -396,6 +402,7 @@ func TestCompareComponents_OpenAPI_Schemas_Refs_FullBuild(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Schemas_Modify(t *testing.T) {
+	low.ClearHashCache()
 	left := `
 schemas:
   coffee:
@@ -430,6 +437,7 @@ schemas:
 }
 
 func TestCompareComponents_OpenAPI_Schemas_Add(t *testing.T) {
+	low.ClearHashCache()
 	left := `
 schemas:
   coffee:
@@ -465,6 +473,7 @@ schemas:
 }
 
 func TestCompareComponents_OpenAPI_Schemas_Remove(t *testing.T) {
+	low.ClearHashCache()
 	left := `
 schemas:
   coffee:
@@ -500,6 +509,7 @@ schemas:
 }
 
 func TestCompareComponents_OpenAPI_Responses_Equal(t *testing.T) {
+	low.ClearHashCache()
 	left := `
 responses:
   niceResponse:
@@ -527,6 +537,7 @@ responses:
 }
 
 func TestCompareComponents_OpenAPI_Responses_FullBuild(t *testing.T) {
+	low.ClearHashCache()
 	left := `responses:
   coffee:
     description: tasty
@@ -557,6 +568,7 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_ResponsesAdd_FullBuild(t *testing.T) {
+	low.ClearHashCache()
 	left := `responses:
   coffee:
     description: tasty
@@ -594,6 +606,7 @@ func TestCompareComponents_OpenAPI_ResponsesAdd_FullBuild(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Responses_FullBuild_IdenticalRef(t *testing.T) {
+	low.ClearHashCache()
 	left := `components:
   responses:
     coffee:
@@ -631,6 +644,7 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_IdenticalRef(t *testing.T
 }
 
 func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T) {
+	low.ClearHashCache()
 	left := `components:
   responses:
     coffee:
@@ -707,6 +721,7 @@ func TestCompareComponents_OpenAPI_Responses_FullBuild_CircularRef(t *testing.T)
 //}
 
 func TestCompareComponents_OpenAPI_Responses_Add(t *testing.T) {
+	low.ClearHashCache()
 	left := `responses:
   niceResponse:
     description: hello
@@ -741,6 +756,7 @@ func TestCompareComponents_OpenAPI_Responses_Add(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Responses_Remove(t *testing.T) {
+	low.ClearHashCache()
 	left := `responses:
   niceResponse:
     description: hello
@@ -775,6 +791,7 @@ func TestCompareComponents_OpenAPI_Responses_Remove(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Parameters_Equal(t *testing.T) {
+	low.ClearHashCache()
 	left := `parameters:
   param1:
     name: a parameter
@@ -801,6 +818,7 @@ func TestCompareComponents_OpenAPI_Parameters_Equal(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Parameters_Added(t *testing.T) {
+	low.ClearHashCache()
 	left := `parameters:
   param1:
     name: a parameter
@@ -835,6 +853,7 @@ func TestCompareComponents_OpenAPI_Parameters_Added(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Parameters_Removed(t *testing.T) {
+	low.ClearHashCache()
 	left := `parameters:
   param1:
     name: a parameter
@@ -869,6 +888,7 @@ func TestCompareComponents_OpenAPI_Parameters_Removed(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_RequestBodies_Modified(t *testing.T) {
+	low.ClearHashCache()
 	left := `requestBodies:
   body1:
     description: a request`
@@ -898,6 +918,7 @@ func TestCompareComponents_OpenAPI_RequestBodies_Modified(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Headers_Add(t *testing.T) {
+	low.ClearHashCache()
 	left := `headers:
   header1:
     description: a header`
@@ -927,6 +948,7 @@ func TestCompareComponents_OpenAPI_Headers_Add(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_SecuritySchemes_Equal(t *testing.T) {
+	low.ClearHashCache()
 	left := `securitySchemes:
   scheme1:
     description: a scheme
@@ -987,6 +1009,7 @@ func TestCompareComponents_OpenAPI_SecuritySchemes_Modified(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Links_Added(t *testing.T) {
+	low.ClearHashCache()
 	left := `links:
   link1:
     operationId: link1`
@@ -1016,6 +1039,7 @@ func TestCompareComponents_OpenAPI_Links_Added(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Callbacks_Modified(t *testing.T) {
+	low.ClearHashCache()
 	left := `callbacks:
   link1:
     '{$request.query.queryUrl}':
@@ -1051,6 +1075,7 @@ func TestCompareComponents_OpenAPI_Callbacks_Modified(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_Extensions_Modified(t *testing.T) {
+	low.ClearHashCache()
 	left := `x-components: are done"`
 
 	right := `x-components: I hope`
@@ -1074,6 +1099,7 @@ func TestCompareComponents_OpenAPI_Extensions_Modified(t *testing.T) {
 }
 
 func TestCompareComponents_OpenAPI_MediaTypes_Add(t *testing.T) {
+	low.ClearHashCache()
 	left := `schemas:
   Test:
     description: just a test`
@@ -1105,6 +1131,7 @@ mediaTypes:
 }
 
 func TestCompareComponents_OpenAPI_MediaTypes_Remove(t *testing.T) {
+	low.ClearHashCache()
 	left := `schemas:
   Test:
     description: just a test`
