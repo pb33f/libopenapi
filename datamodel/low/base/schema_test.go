@@ -1980,6 +1980,7 @@ func TestSetup(t *testing.T) {
 }
 
 func TestSchema_QuickHash(t *testing.T) {
+	low.ClearHashCache()
 	yml := `schema:
   type: object
   example:
@@ -2023,7 +2024,7 @@ func TestSchema_QuickHash(t *testing.T) {
 	}
 	duration := timeStd.Since(now)
 	//fmt.Printf("Quick Duration: %d microseconds\n", duration.Microseconds())
-
+	low.ClearHashCache()
 	// rehash each 50 times, should always be the same
 	// calculate how long loop takes to run
 	now = timeStd.Now()
@@ -2669,4 +2670,3 @@ func TestSchemaDynamicValue_Hash_IsB(t *testing.T) {
 	assert.False(t, value.IsA())
 	assert.True(t, value.IsB())
 }
-
