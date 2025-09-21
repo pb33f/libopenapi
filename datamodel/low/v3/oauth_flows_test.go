@@ -301,3 +301,19 @@ password:
 	// hash
 	assert.Equal(t, n.Hash(), n2.Hash())
 }
+
+func TestOAuthFlow_Build_Device_Fail(t *testing.T) {
+	yml := `device:
+  $ref: #bork"`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n OAuthFlows
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.Error(t, err)
+}
