@@ -103,6 +103,34 @@ itemEncoding:
 	assert.True(t, foundMeta, "metadata encoding should be present")
 }
 
+func TestMediaType_Build_ItemSchema_Bad(t *testing.T) {
+	yml := `schema:
+  type: array
+itemSchema:
+  $ref: #bork
+example: 
+  - id: "1"
+    name: "test"`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n MediaType
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, n.Schema.Value)
+	assert.Equal(t, "array", n.Schema.Value.Schema().Type.Value.A)
+
+	assert.NotNil(t, n.ItemSchema.Value)
+	itemSchema := n.ItemSchema.Value.Schema()
+	assert.Nil(t, itemSchema)
+}
+
 func TestMediaType_Build_ItemSchema_AndEncoding_Complete(t *testing.T) {
 	yml := `description: Stream of JSON Lines
 schema:
