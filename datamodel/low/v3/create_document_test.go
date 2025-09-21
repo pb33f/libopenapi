@@ -43,8 +43,28 @@ func BenchmarkCreateDocument(b *testing.B) {
 	}
 }
 
+func TestCreateDocument_SelfWithHttpURL(t *testing.T) {
+	low.ClearHashCache()
+	yml := `openapi: 3.2.0
+$self: http://pb33f.io/path/to/spec.yaml
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	// Test without BaseURL config - should use $self as BaseURL
+	config := datamodel.NewDocumentConfiguration()
+	doc, err := CreateDocumentFromConfig(info, config)
+	require.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.Equal(t, "http://pb33f.io/path/to/spec.yaml", doc.Self.Value)
+	assert.Equal(t, "8f7b690b245347286036a21ad93340f56accee2149c0d385ff5bf88cdd3254f0", fmt.Sprintf("%x", doc.Hash()))
+}
+
 func TestCreateDocument_SelfWithNonHttpURL(t *testing.T) {
-	// Test for lines 80-89: non-http URLs (file://, custom schemes) with $self
 	yml := `openapi: 3.2.0
 $self: file:///path/to/spec.yaml
 info:
@@ -349,7 +369,7 @@ func TestCreateDocument(t *testing.T) {
 func TestCreateDocumentHash(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
-	
+
 	data, _ := os.ReadFile("../../../test_specs/all-the-components.yaml")
 	info, _ := datamodel.ExtractSpecInfo(data)
 	d, _ := CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{

@@ -879,3 +879,22 @@ components:
 
 	assert.Equal(t, desired, strings.TrimSpace(string(r)))
 }
+
+func TestDocument_TestSelf32(t *testing.T) {
+	yml := `openapi: 3.2
+$self: https://pb33f.io/super-cool-schema
+`
+
+	info, _ := datamodel.ExtractSpecInfo([]byte(yml))
+	var err error
+	lowDoc, err = lowv3.CreateDocumentFromConfig(info, &datamodel.DocumentConfiguration{
+		AllowFileReferences:   true,
+		AllowRemoteReferences: true,
+	})
+	if err != nil {
+		panic("broken something")
+	}
+	h := NewDocument(lowDoc)
+
+	assert.Equal(t, h.Self, "https://pb33f.io/super-cool-schema")
+}

@@ -327,3 +327,25 @@ func TestExtractSpecInfoWithDocumentCheck_Bypass_NonYAML(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "I am not: a parsable: yaml: file: at all.", string(*info.SpecBytes))
 }
+
+func TestExtractSpecInfo_CheckSelf_BackwardsCompat(t *testing.T) {
+	random := `openapi: 3.1.0
+$self: something`
+
+	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), false)
+	assert.Nil(t, e)
+	assert.NotNil(t, r.RootNode)
+	assert.Len(t, *r.SpecBytes, 31)
+	assert.Equal(t, "something", r.Self)
+}
+
+func TestExtractSpecInfo_CheckSelf(t *testing.T) {
+	random := `openapi: 3.2
+$self: something`
+
+	r, e := ExtractSpecInfoWithDocumentCheck([]byte(random), false)
+	assert.Nil(t, e)
+	assert.NotNil(t, r.RootNode)
+	assert.Len(t, *r.SpecBytes, 29)
+	assert.Equal(t, "something", r.Self)
+}
