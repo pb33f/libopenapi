@@ -1,6 +1,7 @@
 package v3
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -40,6 +41,72 @@ func BenchmarkCreateDocument(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		doc, _ = CreateDocumentFromConfig(info, datamodel.NewDocumentConfiguration())
 	}
+}
+
+func TestCreateDocument_SelfWithNonHttpURL(t *testing.T) {
+	// Test for lines 80-89: non-http URLs (file://, custom schemes) with $self
+	yml := `openapi: 3.2.0
+$self: file:///path/to/spec.yaml
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`
+
+	info, err := datamodel.ExtractSpecInfo([]byte(yml))
+	require.NoError(t, err)
+
+	// Test without BaseURL config - should use $self as BaseURL
+	config := datamodel.NewDocumentConfiguration()
+	doc, err := CreateDocumentFromConfig(info, config)
+	require.NoError(t, err)
+	assert.NotNil(t, doc)
+	assert.Equal(t, "file:///path/to/spec.yaml", doc.Self.Value)
+
+	// Test with BaseURL config and Logger - should log error and use BaseURL
+	baseURL, _ := url.Parse("https://api.example.com/v1")
+	config2 := datamodel.NewDocumentConfiguration()
+	config2.BaseURL = baseURL
+
+	// Capture log output
+	logBuffer := &testLogHandler{}
+	config2.Logger = slog.New(logBuffer)
+
+	doc2, err := CreateDocumentFromConfig(info, config2)
+	require.NoError(t, err)
+	assert.NotNil(t, doc2)
+
+	// Verify error was logged
+	assert.Contains(t, logBuffer.String(), "BaseURL and $self have been set and conflict")
+	assert.Contains(t, logBuffer.String(), "defaulting to BaseURL")
+}
+
+// testLogHandler is a simple handler for testing log output
+type testLogHandler struct {
+	messages []string
+}
+
+func (h *testLogHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return true
+}
+
+func (h *testLogHandler) Handle(ctx context.Context, r slog.Record) error {
+	h.messages = append(h.messages, r.Message)
+	return nil
+}
+
+func (h *testLogHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return h
+}
+
+func (h *testLogHandler) WithGroup(name string) slog.Handler {
+	return h
+}
+
+func (h *testLogHandler) String() string {
+	if len(h.messages) > 0 {
+		return h.messages[0]
+	}
+	return ""
 }
 
 func BenchmarkCreateDocument_Circular(b *testing.B) {

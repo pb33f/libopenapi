@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -36,6 +37,100 @@ func TestPathItem(t *testing.T) {
 	assert.Len(t, r.Servers, 1)
 	assert.Equal(t, "so many options for things in places.", r.Servers[0].Description)
 	assert.Equal(t, 1, r.GoLow().Servers.KeyNode.Line)
+}
+
+func TestPathItem_WithAdditionalOperations(t *testing.T) {
+	// Test for lines 132-133 and 204-210: Additional operations support in OpenAPI 3.2+
+	// First test with the Query operation
+	yml := `get:
+  description: Standard GET operation
+query:
+  description: QUERY method for OpenAPI 3.2+`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n lowV3.PathItem
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewPathItem(&n)
+
+	// Test that Query operation was parsed
+	assert.NotNil(t, r.Query)
+	assert.Equal(t, "QUERY method for OpenAPI 3.2+", r.Query.Description)
+
+	// Test GetOperations includes query
+	ops := r.GetOperations()
+	assert.NotNil(t, ops)
+	assert.Equal(t, 2, ops.Len()) // get and query
+
+	// Now test with additionalOperations - need to create manually
+	// since BuildModel doesn't handle additionalOperations automatically
+	yml2 := `get:
+  description: Standard GET operation
+additionalOperations:
+  SEARCH:
+    description: Custom SEARCH method`
+
+	var idxNode2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml2), &idxNode2)
+	idx2 := index.NewSpecIndex(&idxNode2)
+
+	var n2 lowV3.PathItem
+	_ = low.BuildModel(&idxNode2, &n2)
+
+	// Manually build additionalOperations since it's a map of operations
+	// This is needed because BuildModel doesn't handle nested maps automatically
+	for i, k := range idxNode2.Content[0].Content {
+		if k.Value == "additionalOperations" && i+1 < len(idxNode2.Content[0].Content) {
+			opsNode := idxNode2.Content[0].Content[i+1]
+			if opsNode.Kind == yaml.MappingNode {
+				additionalOps := orderedmap.New[low.KeyReference[string], low.ValueReference[*lowV3.Operation]]()
+				for j := 0; j < len(opsNode.Content); j += 2 {
+					opName := opsNode.Content[j].Value
+					opNode := opsNode.Content[j+1]
+
+					var op lowV3.Operation
+					_ = low.BuildModel(opNode, &op)
+					_ = op.Build(context.Background(), nil, opNode, idx2)
+
+					additionalOps.Set(
+						low.KeyReference[string]{Value: opName, KeyNode: opsNode.Content[j]},
+						low.ValueReference[*lowV3.Operation]{Value: &op, ValueNode: opNode},
+					)
+				}
+				n2.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*lowV3.Operation]]]{
+					Value:     additionalOps,
+					ValueNode: opsNode,
+				}
+			}
+		}
+	}
+
+	_ = n2.Build(context.Background(), nil, idxNode2.Content[0], idx2)
+	r2 := NewPathItem(&n2)
+
+	// Test that additional operations were parsed
+	if r2.AdditionalOperations != nil && r2.AdditionalOperations.Len() > 0 {
+		assert.Equal(t, 1, r2.AdditionalOperations.Len())
+
+		// Check SEARCH operation
+		searchOp := r2.AdditionalOperations.GetOrZero("SEARCH")
+		assert.NotNil(t, searchOp)
+		assert.Equal(t, "Custom SEARCH method", searchOp.Description)
+
+		// Test GetOperations includes additional operations
+		ops2 := r2.GetOperations()
+		assert.NotNil(t, ops2)
+		assert.GreaterOrEqual(t, ops2.Len(), 2) // get + SEARCH
+
+		// Verify additional operations are in the operations map
+		searchOpFromMap := ops2.GetOrZero("SEARCH")
+		assert.NotNil(t, searchOpFromMap)
+		assert.Equal(t, "Custom SEARCH method", searchOpFromMap.Description)
+	}
 }
 
 func TestPathItem_GetOperations(t *testing.T) {
