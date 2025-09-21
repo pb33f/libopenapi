@@ -53,6 +53,8 @@ encoding:
 }
 
 func TestCompareMediaTypes_Modify(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
 	left := `schema:
   type: string
 example: tasty herbs in the morning
@@ -60,7 +62,11 @@ examples:
   exampleOne:
     value: yummy coffee
 encoding:
-  contentType: application/json`
+  contentType: application/json
+itemSchema:
+  type: string
+itemEncoding:
+ - contentType: application/json`
 
 	right := `schema:
   type: string
@@ -69,7 +75,11 @@ examples:
   exampleOne:
     value: yummy coffee
 encoding:
-  contentType: application/json`
+  contentType: application/json
+itemSchema:
+  type: int
+itemEncoding:
+  contentType: fish/paste`
 
 	var lNode, rNode yaml.Node
 	_ = yaml.Unmarshal([]byte(left), &lNode)
@@ -86,9 +96,9 @@ encoding:
 	// compare.
 	extChanges := CompareMediaTypes(&lDoc, &rDoc)
 	assert.NotNil(t, extChanges)
-	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 3, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 3)
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, Modified, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, v3.ExampleLabel, extChanges.Changes[0].Property)
 }

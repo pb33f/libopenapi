@@ -15,6 +15,36 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
+func TestNewOAuthFlows_WithDevice(t *testing.T) {
+	// Test for line 42: Device flow support in OpenAPI 3.2+
+	yml := `implicit:
+    authorizationUrl: https://pb33f.io/oauth/implicit
+    scopes:
+        write:burgers: modify and add new burgers implicitly
+        read:burgers: read all burgers
+device:
+    tokenUrl: https://pb33f.io/oauth/device/token
+    scopes:
+        write:burgers: modify burgers using device flow
+        read:burgers: read all burgers with device`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n v3.OAuthFlows
+	_ = low.BuildModel(&idxNode, &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewOAuthFlows(&n)
+
+	// Test that device flow was parsed
+	assert.NotNil(t, r.Device)
+	assert.Equal(t, "https://pb33f.io/oauth/device/token", r.Device.TokenUrl)
+	assert.NotNil(t, r.Device.Scopes)
+	assert.Equal(t, 2, r.Device.Scopes.Len())
+}
+
 func TestNewOAuthFlows(t *testing.T) {
 	yml := `implicit:
     authorizationUrl: https://pb33f.io/oauth/implicit
