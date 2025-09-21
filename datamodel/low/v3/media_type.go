@@ -155,10 +155,7 @@ func (mt *MediaType) Build(ctx context.Context, keyNode, root *yaml.Node, idx *i
 	_, itemSchLabel, itemSchNode := utils.FindKeyNodeFullTop(ItemSchemaLabel, root.Content)
 	if itemSchNode != nil {
 		itemSchProxy := &base.SchemaProxy{}
-		err := itemSchProxy.Build(ctx, itemSchLabel, itemSchNode, idx)
-		if err != nil {
-			return err
-		}
+		_ = itemSchProxy.Build(ctx, itemSchLabel, itemSchNode, idx)
 		mt.ItemSchema = low.NodeReference[*base.SchemaProxy]{
 			Value:     itemSchProxy,
 			KeyNode:   itemSchLabel,

@@ -113,6 +113,23 @@ func TestMediaType_Build_Fail_Encoding(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestMediaType_Build_Fail_ItemEncoding(t *testing.T) {
+	yml := `itemEncoding:
+  wiff:
+    $ref: #bork`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n MediaType
+	err := low.BuildModel(&idxNode, &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+	assert.Error(t, err)
+}
+
 func TestMediaType_Hash(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
