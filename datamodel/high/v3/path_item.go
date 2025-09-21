@@ -129,7 +129,10 @@ func NewPathItem(pathItem *lowV3.PathItem) *PathItem {
 
 	// build additional operations if present
 	if !pathItem.AdditionalOperations.IsEmpty() && pathItem.AdditionalOperations.Value.Len() > 0 {
-		pi.AdditionalOperations = low.FromReferenceMapWithFunc(pathItem.AdditionalOperations.Value, NewOperation)
+		pi.AdditionalOperations = orderedmap.New[string, *Operation]()
+		for k, v := range pathItem.AdditionalOperations.Value.FromOldest() {
+			pi.AdditionalOperations.Set(k.Value, NewOperation(v.Value))
+		}
 	}
 
 	return pi
