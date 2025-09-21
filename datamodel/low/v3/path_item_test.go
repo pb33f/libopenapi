@@ -144,19 +144,32 @@ lock:
 	assert.NotNil(t, n.AdditionalOperations.Value)
 	assert.Equal(t, 2, n.AdditionalOperations.Value.Len())
 
-	purgeOp := low.FindItemInOrderedMap[*Operation]("purge", n.AdditionalOperations.Value)
+	var purgeOp low.NodeReference[*Operation]
+	for k, v := range n.AdditionalOperations.Value.FromOldest() {
+		if k.Value == "purge" {
+			purgeOp = v
+			break
+		}
+	}
+
 	assert.NotNil(t, purgeOp)
 	assert.Equal(t, "purge operation for cache clearing", purgeOp.Value.Description.Value)
 	assert.Equal(t, "purgeCache", purgeOp.Value.OperationId.Value)
 
-	lockOp := low.FindItemInOrderedMap[*Operation]("lock", n.AdditionalOperations.Value)
+	var lockOp low.NodeReference[*Operation]
+	for k, v := range n.AdditionalOperations.Value.FromOldest() {
+		if k.Value == "lock" {
+			lockOp = v
+			break
+		}
+	}
 	assert.NotNil(t, lockOp)
 	assert.Equal(t, "lock operation for resource locking", lockOp.Value.Description.Value)
 	assert.Equal(t, "lockResource", lockOp.Value.OperationId.Value)
 
 	// test hash includes additional operations
 	hash1 := n.Hash()
-	n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*Operation]]]{}
+	n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]]{}
 	hash2 := n.Hash()
 	assert.NotEqual(t, hash1, hash2)
 }

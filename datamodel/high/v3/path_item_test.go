@@ -76,7 +76,7 @@ additionalOperations:
 		if rootNode.Content[i].Value == "additionalOperations" {
 			found = true
 			opsNode := rootNode.Content[i+1]
-			additionalOps := orderedmap.New[low.KeyReference[string], low.ValueReference[*lowV3.Operation]]()
+			additionalOps := orderedmap.New[low.KeyReference[string], low.NodeReference[*lowV3.Operation]]()
 
 			// Build each operation in additionalOperations
 			for j := 0; j < len(opsNode.Content); j += 2 {
@@ -92,7 +92,7 @@ additionalOperations:
 						Value:   opName,
 						KeyNode: opsNode.Content[j],
 					},
-					low.ValueReference[*lowV3.Operation]{
+					low.NodeReference[*lowV3.Operation]{
 						Value:     &op,
 						ValueNode: opNode,
 					},
@@ -100,9 +100,9 @@ additionalOperations:
 			}
 
 			// Set the AdditionalOperations field - must set ValueNode for IsEmpty() to return false
-			n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.ValueReference[*lowV3.Operation]]]{
+			n.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*lowV3.Operation]]]{
 				Value:     additionalOps,
-				ValueNode: opsNode,  // This must be set for IsEmpty() to return false
+				ValueNode: opsNode,             // This must be set for IsEmpty() to return false
 				KeyNode:   rootNode.Content[i], // This is the "additionalOperations" key node
 			}
 			break
@@ -393,4 +393,3 @@ lock:
 	assert.Contains(t, actualOps, "get")
 	assert.Contains(t, actualOps, "post")
 }
-

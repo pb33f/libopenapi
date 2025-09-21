@@ -338,7 +338,7 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 				additionalOps = orderedmap.New[low.KeyReference[string], low.NodeReference[*Operation]]()
 			}
 
-			// now we need to extract the keys (name of the operation) and the operation itself
+			// now we need to determine if these are inline additional operations, or just plonked into the root.
 			if currentNode.Value == AdditionalOperationsLabel {
 
 				for j := 0; j < len(pathNode.Content); j += 2 {
@@ -369,6 +369,37 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 						Value:   opKeyNode.Value,
 					}, addOpRef)
 				}
+			} else {
+
+				// resolve operation reference for each additional operation
+				foundContext, pathNode, opIsRef, opRefVal, opRefNode, err = resolveOperationReference(ctx, pathNode, idx)
+				if err != nil {
+					return err
+				}
+				var addOp Operation
+				wg.Add(1)
+				low.BuildModelAsync(pathNode, &addOp, &wg, &errors)
+
+				addOpRef := low.NodeReference[*Operation]{
+					Value:     &addOp,
+					KeyNode:   currentNode,
+					ValueNode: pathNode,
+					Context:   foundContext,
+				}
+				if opIsRef {
+					addOpRef.SetReference(opRefVal, opRefNode)
+				}
+
+				kv := pathNode.Value
+				if kv == "" {
+					kv = currentNode.Value
+				}
+
+				additionalOps.Set(low.KeyReference[string]{
+					KeyNode: currentNode,
+					Value:   kv,
+				}, addOpRef)
+
 			}
 		}
 	}
@@ -399,16 +430,14 @@ func (p *PathItem) Build(ctx context.Context, keyNode, root *yaml.Node, idx *ind
 
 	// assign additionalOperations if any were found
 	if additionalOps != nil && additionalOps.Len() > 0 {
-
+		var extrOps []low.NodeReference[*Operation]
 		// build out each additional operation
 		for _, appVal := range additionalOps.FromOldest() {
-			if appVal.Value != nil {
-				_, err = translateFunc(0, appVal)
-				if err != nil {
-					return err
-				}
-			}
+			extrOps = append(extrOps, appVal)
 		}
+
+		err = datamodel.TranslateSliceParallel[low.NodeReference[*Operation], any](extrOps, translateFunc, nil)
+
 		p.AdditionalOperations = low.NodeReference[*orderedmap.Map[low.KeyReference[string], low.NodeReference[*Operation]]]{
 			Value: additionalOps,
 		}
