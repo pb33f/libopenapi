@@ -58,7 +58,7 @@ paths:
 
 		// verify the document was parsed successfully
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)
@@ -118,7 +118,7 @@ components:
 
 		// should still build successfully but without transformation
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)
@@ -177,7 +177,7 @@ components:
 		assert.NotNil(t, doc)
 
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)
@@ -248,7 +248,7 @@ components:
 
 		// should handle circular references gracefully even with transformation
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)
@@ -308,7 +308,7 @@ components:
 
 		// should handle many transformations efficiently
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)
@@ -328,7 +328,6 @@ components:
 		assert.NotEmpty(t, refsWithSiblings, "should detect multiple sibling refs")
 	})
 }
-
 
 func TestSiblingRefs_Integration_BackwardsCompatibility(t *testing.T) {
 	t.Run("existing behavior preserved when features disabled", func(t *testing.T) {
@@ -355,7 +354,7 @@ components:
 		assert.NotNil(t, doc)
 
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)

@@ -16,6 +16,7 @@ package libopenapi
 import (
 	"errors"
 	"fmt"
+
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
 
 	"github.com/pb33f/libopenapi/index"
@@ -55,13 +56,13 @@ type Document interface {
 	// If there are any issues, then no model will be returned, instead a slice of errors will explain all the
 	// problems that occurred. This method will only support version 2 specifications and will throw an error for
 	// any other types.
-	BuildV2Model() (*DocumentModel[v2high.Swagger], []error)
+	BuildV2Model() (*DocumentModel[v2high.Swagger], error)
 
 	// BuildV3Model will build out an OpenAPI (version 3+) model from the specification used to create the document
 	// If there are any issues, then no model will be returned, instead a slice of errors will explain all the
 	// problems that occurred. This method will only support version 3 specifications and will throw an error for
 	// any other types.
-	BuildV3Model() (*DocumentModel[v3high.Document], []error)
+	BuildV3Model() (*DocumentModel[v3high.Document], error)
 
 	// RenderAndReload will render the high level model as it currently exists (including any mutations, additions
 	// and removals to and from any object in the tree). It will then reload the low level model with the new bytes
@@ -77,7 +78,7 @@ type Document interface {
 	// **IMPORTANT** This method only supports OpenAPI Documents. The Swagger model will not support mutations correctly
 	// and will not update when called. This choice has been made because we don't want to continue supporting Swagger,
 	// it's too old, so it should be motivation to upgrade to OpenAPI 3.
-	RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error)
+	RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], error)
 
 	// Render will render the high level model as it currently exists (including any mutations, additions
 	// and removals to and from any object in the tree). Unlike RenderAndReload, Render will simply print the state
@@ -197,20 +198,20 @@ func (d *document) Serialize() ([]byte, error) {
 	}
 }
 
-func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], []error) {
+func (d *document) RenderAndReload() ([]byte, Document, *DocumentModel[v3high.Document], error) {
 	newBytes, rerr := d.Render()
 	if rerr != nil {
-		return nil, nil, nil, []error{rerr}
+		return nil, nil, nil, rerr
 	}
 
 	newDoc, err := NewDocumentWithConfiguration(newBytes, d.config)
 	if err != nil {
-		return nil, nil, nil, []error{err}
+		return nil, nil, nil, err
 	}
 
 	// build the model.
 	m, buildErrs := newDoc.BuildV3Model()
-	if len(buildErrs) > 0 {
+	if buildErrs != nil {
 		return newBytes, newDoc, m, buildErrs
 	}
 	// this document is now dead, long live the new document!
@@ -247,19 +248,17 @@ func (d *document) Render() ([]byte, error) {
 	return newBytes, jsonErr
 }
 
-func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
+func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], error) {
 	if d.highSwaggerModel != nil {
 		return d.highSwaggerModel, nil
 	}
 	var errs []error
 	if d.info == nil {
-		errs = append(errs, fmt.Errorf("unable to build swagger document, no specification has been loaded"))
-		return nil, errs
+		return nil, fmt.Errorf("unable to build swagger document, no specification has been loaded")
 	}
 	if d.info.SpecFormat != datamodel.OAS2 {
-		errs = append(errs, fmt.Errorf("unable to build swagger document, "+
-			"supplied spec is a different version (%v). Try 'BuildV3Model()'", d.info.SpecFormat))
-		return nil, errs
+		return nil, fmt.Errorf("unable to build swagger document, "+
+			"supplied spec is a different version (%v). Try 'BuildV3Model()'", d.info.SpecFormat)
 	}
 
 	var lowDoc *v2low.Swagger
@@ -281,7 +280,7 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 		var refErr *index.ResolvingError
 		if errors.As(err, &refErr) {
 			if refErr.CircularReference == nil {
-				return nil, errs
+				return nil, errors.Join(errs...)
 			}
 		}
 	}
@@ -292,22 +291,20 @@ func (d *document) BuildV2Model() (*DocumentModel[v2high.Swagger], []error) {
 		Index: lowDoc.Index,
 	}
 	lowbase.SchemaQuickHashMap.Clear()
-	return d.highSwaggerModel, errs
+	return d.highSwaggerModel, errors.Join(errs...)
 }
 
-func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
+func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], error) {
 	if d.highOpenAPI3Model != nil {
 		return d.highOpenAPI3Model, nil
 	}
 	var errs []error
 	if d.info == nil {
-		errs = append(errs, fmt.Errorf("unable to build document, no specification has been loaded"))
-		return nil, errs
+		return nil, fmt.Errorf("unable to build document, no specification has been loaded")
 	}
 	if d.info.SpecFormat != datamodel.OAS3 && d.info.SpecFormat != datamodel.OAS31 && d.info.SpecFormat != datamodel.OAS32 {
-		errs = append(errs, fmt.Errorf("unable to build openapi document, "+
-			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat))
-		return nil, errs
+		return nil, fmt.Errorf("unable to build openapi document, "+
+			"supplied spec is a different version (%v). Try 'BuildV2Model()'", d.info.SpecFormat)
 	}
 
 	var lowDoc *v3low.Document
@@ -334,7 +331,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		var refErr *index.ResolvingError
 		if errors.As(err, &refErr) {
 			if refErr.CircularReference == nil {
-				return nil, errs
+				return nil, errors.Join(errs...)
 			}
 		}
 	}
@@ -347,7 +344,7 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 		Index: lowDoc.Index,
 	}
 	lowbase.SchemaQuickHashMap.Clear()
-	return d.highOpenAPI3Model, errs
+	return d.highOpenAPI3Model, errors.Join(errs...)
 }
 
 // CompareDocuments will accept a left and right Document implementing struct, build a model for the correct
@@ -356,33 +353,35 @@ func (d *document) BuildV3Model() (*DocumentModel[v3high.Document], []error) {
 // If there are any errors when building the models, those errors are returned with a nil pointer for the
 // model.DocumentChanges. If there are any changes found however between either Document, then a pointer to
 // model.DocumentChanges is returned containing every single change, broken down, model by model.
-func CompareDocuments(original, updated Document) (*model.DocumentChanges, []error) {
+func CompareDocuments(original, updated Document) (*model.DocumentChanges, error) {
 	var errs []error
 	if original.GetSpecInfo().SpecType == utils.OpenApi3 && updated.GetSpecInfo().SpecType == utils.OpenApi3 {
 		v3ModelLeft, oErrs := original.BuildV3Model()
-		if len(oErrs) > 0 {
-			errs = oErrs
+		if oErrs != nil {
+			errs = append(errs, oErrs)
 		}
 		v3ModelRight, uErrs := updated.BuildV3Model()
-		if len(uErrs) > 0 {
-			errs = append(errs, uErrs...)
+		if uErrs != nil {
+			errs = append(errs, uErrs)
 		}
 		if v3ModelLeft != nil && v3ModelRight != nil {
-			return what_changed.CompareOpenAPIDocuments(v3ModelLeft.Model.GoLow(), v3ModelRight.Model.GoLow()), errs
+			return what_changed.CompareOpenAPIDocuments(v3ModelLeft.Model.GoLow(), v3ModelRight.Model.GoLow()),
+				errors.Join(errs...)
 		} else {
-			return nil, errs
+			return nil, errors.Join(errs...)
 		}
 	}
 	if original.GetSpecInfo().SpecType == utils.OpenApi2 && updated.GetSpecInfo().SpecType == utils.OpenApi2 {
 		v2ModelLeft, oErrs := original.BuildV2Model()
-		if len(oErrs) > 0 {
-			errs = oErrs
+		if oErrs != nil {
+			errs = append(errs, oErrs)
 		}
 		v2ModelRight, uErrs := updated.BuildV2Model()
-		if len(uErrs) > 0 {
-			errs = append(errs, uErrs...)
+		if uErrs != nil {
+			errs = append(errs, uErrs)
 		}
-		return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()), errs
+		return what_changed.CompareSwaggerDocuments(v2ModelLeft.Model.GoLow(), v2ModelRight.Model.GoLow()),
+			errors.Join(errs...)
 	}
-	return nil, []error{fmt.Errorf("unable to compare documents, one or both documents are not of the same version")}
+	return nil, fmt.Errorf("unable to compare documents, one or both documents are not of the same version")
 }

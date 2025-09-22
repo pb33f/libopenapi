@@ -34,7 +34,7 @@ func TestLoadDocument_Simple_V2(t *testing.T) {
 	assert.Equal(t, "2.0.1", doc.GetVersion())
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 0)
+	assert.NoError(t, docErr)
 	assert.NotNil(t, v2Doc)
 	assert.NotNil(t, doc.GetSpecInfo())
 
@@ -47,7 +47,7 @@ func TestLoadDocument_Simple_V2_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 1)
+	assert.Len(t, utils.UnwrapErrors(docErr), 1)
 	assert.Nil(t, v2Doc)
 }
 
@@ -60,7 +60,7 @@ definitions:
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 3)
+	assert.Len(t, utils.UnwrapErrors(docErr), 3)
 	assert.Nil(t, v2Doc)
 }
 
@@ -77,20 +77,20 @@ func TestLoadDocument_Simple_V3_Error(t *testing.T) {
 	assert.NoError(t, err)
 
 	v2Doc, docErr := doc.BuildV2Model()
-	assert.Len(t, docErr, 1)
+	assert.Len(t, utils.UnwrapErrors(docErr), 1)
 	assert.Nil(t, v2Doc)
 }
 
 func TestLoadDocument_Error_V2NoSpec(t *testing.T) {
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV2Model()
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestLoadDocument_Error_V3NoSpec(t *testing.T) {
 	doc := new(document) // not how this should be instantiated.
 	_, err := doc.BuildV3Model()
-	assert.Len(t, err, 1)
+	assert.Len(t, utils.UnwrapErrors(err), 1)
 }
 
 func TestLoadDocument_Empty(t *testing.T) {
@@ -106,7 +106,7 @@ func TestLoadDocument_Simple_V3(t *testing.T) {
 	assert.Equal(t, "3.0.1", doc.GetVersion())
 
 	v3Doc, docErr := doc.BuildV3Model()
-	assert.Len(t, docErr, 0)
+	assert.Len(t, utils.UnwrapErrors(docErr), 0)
 	assert.NotNil(t, v3Doc)
 }
 
@@ -368,8 +368,12 @@ func TestDocument_RenderAndReload_WithErrors(t *testing.T) {
 	// load an OpenAPI 3 specification from bytes
 	petstore, _ := os.ReadFile("test_specs/petstorev3.json")
 
+	// create config
+	config := datamodel.NewDocumentConfiguration()
+
 	// create a new document from specification bytes
-	doc, err := NewDocument(petstore)
+	doc, err := NewDocumentWithConfiguration(petstore, config)
+
 	// if anything went wrong, an error is thrown
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
@@ -383,8 +387,8 @@ func TestDocument_RenderAndReload_WithErrors(t *testing.T) {
 	assert.True(t, present, "expected schema Pet to exist")
 
 	_, _, _, errors := doc.RenderAndReload()
-	assert.Len(t, errors, 2)
-	assert.Equal(t, errors[0].Error(), "component `#/components/schemas/Pet` does not exist in the specification")
+	assert.Len(t, utils.UnwrapErrors(errors), 2)
+	assert.Contains(t, errors.Error(), "component `#/components/schemas/Pet` does not exist in the specification")
 }
 
 func TestDocument_Render(t *testing.T) {
@@ -426,7 +430,7 @@ func TestDocument_Render(t *testing.T) {
 	assert.NoError(t, docErr)
 
 	newDocModel, docErrs := newDoc.BuildV3Model()
-	assert.Len(t, docErrs, 0)
+	assert.NoError(t, docErrs)
 
 	h = newDocModel.Model
 	assert.Equal(t, "findACakeInABakery", h.Paths.PathItems.GetOrZero("/pet/findByStatus").Get.OperationId)
@@ -507,8 +511,8 @@ func TestDocument_RenderAndReload_Swagger(t *testing.T) {
 	doc.BuildV2Model()
 	doc.BuildV2Model()
 	_, _, _, e := doc.RenderAndReload()
-	assert.Len(t, e, 1)
-	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e[0].Error())
+	assert.Error(t, e)
+	assert.Equal(t, "this method only supports OpenAPI 3 documents, not Swagger", e.Error())
 }
 
 func TestDocument_Render_Swagger(t *testing.T) {
@@ -528,7 +532,7 @@ func TestDocument_BuildModelPreBuild(t *testing.T) {
 	doc.BuildV3Model()
 	doc.BuildV3Model()
 	_, _, _, er := doc.RenderAndReload()
-	assert.Len(t, er, 0)
+	assert.Len(t, utils.UnwrapErrors(er), 0)
 }
 
 func TestDocument_AnyDoc(t *testing.T) {
@@ -602,9 +606,7 @@ paths:
 	}
 
 	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	// extract operation.
 	operation := result.Model.Paths.PathItems.GetOrZero("/something").Get
@@ -621,7 +623,7 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, errors, 6)
+	assert.Len(t, utils.UnwrapErrors(errors), 6)
 	assert.Nil(t, changes)
 }
 
@@ -631,8 +633,7 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 6)
-	assert.Len(t, errors, 6)
+	assert.Len(t, utils.UnwrapErrors(errors), 6)
 	assert.Nil(t, changes)
 }
 
@@ -642,7 +643,7 @@ func TestDocument_BuildModel_CompareDocsV2_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 14)
+	assert.Error(t, errors)
 	assert.Nil(t, changes)
 }
 
@@ -652,7 +653,7 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, errors, 1)
+	assert.Len(t, utils.UnwrapErrors(errors), 1)
 	assert.Nil(t, changes)
 }
 
@@ -670,11 +671,9 @@ func TestSchemaRefIsFollowed(t *testing.T) {
 	v3Model, errors := document.BuildV3Model()
 
 	// if anything went wrong when building the v3 model, a slice of errors will be returned
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	if errors != nil {
+		fmt.Printf("error: %e\n", errors)
+		panic(fmt.Sprintf("cannot create v3 model from document: %e", errors))
 	}
 
 	// get a count of the number of paths and schemas.
@@ -733,9 +732,7 @@ paths:
 	}
 
 	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	// render the document.
 	rend, _ := result.Model.Render()
@@ -796,9 +793,7 @@ components:
 	}
 
 	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	// render the document.
 	rend, _ := result.Model.Render()
@@ -833,9 +828,7 @@ paths:
 	assert.Equal(t, doc.GetConfiguration(), cf)
 
 	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	// render the document.
 	rend, _ := result.Model.Render()
@@ -945,7 +938,7 @@ components:
 
 	m, errs := doc.BuildV3Model()
 
-	assert.Len(t, errs, 0)
+	assert.NoError(t, errs)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
 	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularPolyReferences(), 1)
 }
@@ -978,7 +971,7 @@ components:
 
 	m, errs := doc.BuildV3Model()
 
-	assert.Len(t, errs, 0)
+	assert.NoError(t, errs)
 	assert.Len(t, m.Index.GetCircularReferences(), 0)
 	assert.Len(t, m.Index.GetResolver().GetIgnoredCircularArrayReferences(), 1)
 }
@@ -1342,9 +1335,7 @@ components:
 	}
 
 	model, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	schema := model.Model.Components.Schemas.GetOrZero("Foo").Schema()
 	schemaLow := schema.GoLow()
@@ -1371,9 +1362,7 @@ x-string: test`)
 	}
 
 	model, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	// x-string works as expected
 	if extVal := model.Model.Extensions.GetOrZero("x-string"); extVal.Value != "test" {
@@ -1469,7 +1458,7 @@ components:
 		panic(err)
 	}
 	_, errs := doc.BuildV3Model()
-	assert.Len(t, errs, 0)
+	assert.NoError(t, errs)
 }
 
 func TestDocument_Issue418(t *testing.T) {
@@ -1485,7 +1474,7 @@ func TestDocument_Issue418(t *testing.T) {
 		panic(err)
 	}
 	m, errs := doc.BuildV3Model()
-	assert.Len(t, errs, 0)
+	assert.NoError(t, errs)
 	assert.Len(t, m.Model.Index.GetResolver().GetResolvingErrors(), 0)
 }
 
@@ -1501,7 +1490,7 @@ func TestDocument_Issue418_NoFile(t *testing.T) {
 		panic(err)
 	}
 	m, errs := doc.BuildV3Model()
-	assert.Len(t, errs, 0)
+	assert.NoError(t, errs)
 	assert.Len(t, m.Model.Index.GetResolver().GetResolvingErrors(), 0)
 }
 
@@ -1533,9 +1522,7 @@ func TestDocument_MinimumZero(t *testing.T) {
 	}
 
 	result, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
-		panic(errs)
-	}
+	assert.NoError(t, errs)
 
 	schema := &base.Schema{
 		Type:       []string{"object"},

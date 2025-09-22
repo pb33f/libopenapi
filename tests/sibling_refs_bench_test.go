@@ -53,7 +53,7 @@ components:
 				b.Fatal(err)
 			}
 			_, errs := doc.BuildV3Model()
-			if len(errs) > 0 {
+			if errs != nil {
 				b.Fatalf("build errors: %v", errs)
 			}
 		}
@@ -71,7 +71,7 @@ components:
 				b.Fatal(err)
 			}
 			_, errs := doc.BuildV3Model()
-			if len(errs) > 0 {
+			if errs != nil {
 				b.Fatalf("build errors: %v", errs)
 			}
 		}
@@ -146,7 +146,7 @@ components:
 
 		// should build quickly without any transformation overhead
 		v3Doc, docErrs := doc.BuildV3Model()
-		if len(docErrs) > 0 {
+		if docErrs != nil {
 			t.Fatalf("failed to build v3 model: %v", docErrs)
 		}
 		assert.NotNil(t, v3Doc)
