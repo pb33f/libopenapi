@@ -4,9 +4,9 @@
 package bundler
 
 import (
-	"errors"
-	"github.com/pb33f/libopenapi/orderedmap"
 	"testing"
+
+	"github.com/pb33f/libopenapi/orderedmap"
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/index"
@@ -119,7 +119,7 @@ components:
 	assert.NoError(t, err)
 
 	v3doc, errs := doc.BuildV3Model()
-	assert.NoError(t, errors.Join(errs...))
+	assert.NoError(t, errs)
 
 	idx := v3doc.Model.Index
 

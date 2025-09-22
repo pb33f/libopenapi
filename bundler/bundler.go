@@ -40,8 +40,7 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 		return nil, err
 	}
 
-	v3Doc, errs := doc.BuildV3Model()
-	err = errors.Join(errs...)
+	v3Doc, err := doc.BuildV3Model()
 	if v3Doc == nil {
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
@@ -52,15 +51,17 @@ func BundleBytes(bytes []byte, configuration *datamodel.DocumentConfiguration) (
 
 // BundleBytesComposed will take a byte slice of an OpenAPI specification and return a composed bundled version of it.
 // this is the same as BundleBytes, but it will compose the bundling instead of inline it.
+//
+// Composed means that every external file will have references lifted out and added to the `components` section of the document.
+// Names will be preserved where possible, conflicts will dealt with by using a delimiter and appending a number.
 func BundleBytesComposed(bytes []byte, configuration *datamodel.DocumentConfiguration, compositionConfig *BundleCompositionConfig) ([]byte, error) {
 	doc, err := libopenapi.NewDocumentWithConfiguration(bytes, configuration)
 	if err != nil {
 		return nil, err
 	}
 
-	v3Doc, errs := doc.BuildV3Model()
-	err = errors.Join(errs...)
-	if v3Doc == nil || len(errs) > 0 {
+	v3Doc, err := doc.BuildV3Model()
+	if v3Doc == nil || err != nil {
 		return nil, errors.Join(ErrInvalidModel, err)
 	}
 

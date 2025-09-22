@@ -141,12 +141,9 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("cannot create new document: %e", err))
 	}
-	docModel, errors := document.BuildV3Model()
-	if len(errors) > 0 {
-		for i := range errors {
-			fmt.Printf("error: %e\n", errors[i])
-		}
-		panic(fmt.Sprintf("cannot create v3 model from document: %d errors reported", len(errors)))
+	docModel, err := document.BuildV3Model()
+	if err != nil {
+		panic(fmt.Sprintf("cannot create v3 model from document: %e", err))
 	}
 
 	// The following fails after the first iteration

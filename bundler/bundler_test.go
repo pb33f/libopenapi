@@ -6,7 +6,6 @@ package bundler
 import (
 	"bytes"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -56,7 +55,7 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 	}
 
 	v3Doc, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
+	if errs != nil {
 		t.Fatal("Errors building V3 model:", errs)
 	}
 
@@ -129,7 +128,7 @@ func TestBundleDocument_Circular(t *testing.T) {
 	v3Doc, errs := doc.BuildV3Model()
 
 	// three circular ref issues.
-	assert.Len(t, errs, 3)
+	assert.Len(t, utils.UnwrapErrors(errs), 3)
 
 	bytes, e := BundleDocument(&v3Doc.Model)
 	assert.NoError(t, e)
@@ -373,7 +372,7 @@ func TestBundleBytes_RootDocumentRefs(t *testing.T) {
 		assert.NoError(t, err)
 
 		v3Doc, errs := doc.BuildV3Model()
-		assert.NoError(t, errors.Join(errs...))
+		assert.NoError(t, errs)
 
 		spec, err = v3Doc.Model.Render()
 		assert.NoError(t, err)
@@ -1039,7 +1038,7 @@ paths:
       example:
         $ref: "../invalid/example.yaml"`
 
-	// Invalid example that needs inlining 
+	// Invalid example that needs inlining
 	invalidExample := `invalid: "test"`
 
 	// Create directories
@@ -1080,7 +1079,7 @@ func TestBundleComposed_EdgeCaseCoverage(t *testing.T) {
 	// Test case specifically designed to trigger the fallback path (lines 212-216)
 	// This happens when a file has multiple references but only gets processed once
 	tmpDir := t.TempDir()
-	
+
 	// Create a more complex scenario with nested references
 	mainSpec := `openapi: 3.0.1
 info:
@@ -1104,7 +1103,7 @@ content:
   application/json:
     schema:
       $ref: "../schemas/s1.yaml"`
-      
+
 	r2 := `description: "Response 2"
 content:
   application/json:
@@ -1116,7 +1115,7 @@ content:
 properties:
   data:
     $ref: "../shared/invalid.yaml"`
-    
+
 	s2 := `type: object  
 properties:
   info:
@@ -1149,17 +1148,17 @@ someData: "test"`
 	require.NoError(t, err)
 
 	bundledStr := string(bundled)
-	
+
 	// The bundled output should not contain absolute paths
 	assert.NotContains(t, bundledStr, filepath.Join(tmpDir, "shared", "invalid.yaml"),
 		"Should not contain absolute path to invalid.yaml")
 	assert.NotContains(t, bundledStr, tmpDir,
 		"No absolute paths should remain in output")
-		
+
 	// Check the actual output structure
 	// The shared/invalid.yaml should be inlined somewhere
 	// It might be represented differently depending on how it was processed
-	
+
 	// Since our invalid file can't be composed, verify it doesn't remain as external ref
 	// and that the processing completes without errors
 	assert.NotNil(t, bundled, "Bundled output should not be nil")
