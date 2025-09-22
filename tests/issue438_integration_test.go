@@ -38,7 +38,7 @@ paths:
 
 		// Verify the document was created successfully
 		model, errs := doc.BuildV3Model()
-		assert.Len(t, errs, 0)
+		assert.NoError(t, errs)
 		assert.NotNil(t, model)
 		assert.Equal(t, "Test API", model.Model.Info.Title)
 
@@ -60,7 +60,7 @@ paths:
 
 		// Verify the document was created successfully
 		model, errs := doc.BuildV3Model()
-		assert.Len(t, errs, 0)
+		assert.NoError(t, errs)
 		assert.NotNil(t, model)
 		assert.Equal(t, "Test API", model.Model.Info.Title)
 
@@ -95,7 +95,7 @@ paths:
 		assert.NotNil(t, doc)
 
 		model, errs := doc.BuildV3Model()
-		assert.Len(t, errs, 0)
+		assert.NoError(t, errs)
 		assert.NotNil(t, model)
 		assert.Equal(t, "Configuration Test API", model.Model.Info.Title)
 
@@ -113,7 +113,7 @@ paths:
 		assert.NotNil(t, doc)
 
 		model, errs := doc.BuildV3Model()
-		assert.Len(t, errs, 0)
+		assert.NoError(t, errs)
 		assert.NotNil(t, model)
 		assert.Equal(t, "Configuration Test API", model.Model.Info.Title)
 	})

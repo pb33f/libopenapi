@@ -59,7 +59,7 @@ components:
 
 		// compare using what-changed
 		changes, errs := libopenapi.CompareDocuments(originalDoc, modifiedDoc)
-		if len(errs) > 0 {
+		if errs != nil {
 			t.Fatalf("comparison failed: %v", errs)
 		}
 
@@ -113,7 +113,7 @@ components:
 
 		// what-changed should work exactly as before
 		changes, errs := libopenapi.CompareDocuments(originalDoc, modifiedDoc)
-		if len(errs) > 0 {
+		if errs != nil {
 			t.Fatalf("comparison failed: %v", errs)
 		}
 

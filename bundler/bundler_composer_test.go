@@ -34,7 +34,7 @@ func TestBundlerComposed(t *testing.T) {
 	}
 
 	v3Doc, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
+	if errs != nil {
 		panic(errs)
 	}
 
@@ -133,7 +133,7 @@ func TestBundlerComposed_StrangeRefs(t *testing.T) {
 	}
 
 	v3Doc, errs := doc.BuildV3Model()
-	if len(errs) > 0 {
+	if errs != nil {
 		panic(errs)
 	}
 
