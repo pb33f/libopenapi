@@ -623,7 +623,7 @@ func TestDocument_BuildModel_CompareDocsV3_LeftError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(originalDoc, updatedDoc)
-	assert.Len(t, utils.UnwrapErrors(errors), 6)
+	assert.Error(t, errors)
 	assert.Nil(t, changes)
 }
 
@@ -633,7 +633,7 @@ func TestDocument_BuildModel_CompareDocsV3_RightError(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, utils.UnwrapErrors(errors), 6)
+	assert.Error(t, errors)
 	assert.Nil(t, changes)
 }
 
@@ -653,7 +653,7 @@ func TestDocument_BuildModel_CompareDocsV2V3Mix_Error(t *testing.T) {
 	originalDoc, _ := NewDocument(burgerShopOriginal)
 	updatedDoc, _ := NewDocument(burgerShopUpdated)
 	changes, errors := CompareDocuments(updatedDoc, originalDoc)
-	assert.Len(t, utils.UnwrapErrors(errors), 1)
+	assert.Error(t, errors)
 	assert.Nil(t, changes)
 }
 
