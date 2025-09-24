@@ -105,18 +105,22 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	_, openAPI2 := utils.FindKeyNode(utils.OpenApi2, parsedSpec.Content)
 	_, asyncAPI := utils.FindKeyNode(utils.AsyncApi, parsedSpec.Content)
 
-	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) {
+	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) error {
 		var jsonSpec map[string]interface{}
-		if utils.IsYAML(string(bytes)) {
+		switch {
+		case utils.IsYAML(string(bytes)):
 			_ = parsedNode.Decode(&jsonSpec)
 			b, _ := json.Marshal(&jsonSpec)
 			spec.SpecJSONBytes = &b
 			spec.SpecJSON = &jsonSpec
-		} else {
-			_ = json.Unmarshal(bytes, &jsonSpec)
+		case utils.IsJSON(string(bytes)):
+			if err := json.Unmarshal(bytes, &jsonSpec); err != nil {
+				return err
+			}
 			spec.SpecJSONBytes = &bytes
 			spec.SpecJSON = &jsonSpec
 		}
+		return nil
 	}
 
 	// if !bypass {
@@ -164,7 +168,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		}
 
 		// parse JSON
-		parseJSON(spec, specInfo, &parsedSpec)
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+			specInfo.Error = fmt.Errorf("unable to parse specification: %w", err)
+			return specInfo, specInfo.Error
+		}
 		parsed = true
 
 		// double check for the right version, people mix this up.
@@ -191,7 +198,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		specInfo.APISchema = OpenAPI2SchemaData
 
 		// parse JSON
-		parseJSON(spec, specInfo, &parsedSpec)
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+			specInfo.Error = fmt.Errorf("unable to parse specification: %w", err)
+			return specInfo, specInfo.Error
+		}
 		parsed = true
 
 		// I am not certain this edge-case is very frequent, but let's make sure we handle it anyway.
@@ -215,7 +225,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 		// TODO: format for AsyncAPI.
 
 		// parse JSON
-		parseJSON(spec, specInfo, &parsedSpec)
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+			specInfo.Error = fmt.Errorf("unable to parse specification: %w", err)
+			return specInfo, nil
+		}
 		parsed = true
 
 		// so far there is only 2 as a major release of AsyncAPI
@@ -230,7 +243,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	if specInfo.SpecType == "" {
 		// parse JSON
 		if !bypass {
-			parseJSON(spec, specInfo, &parsedSpec)
+			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+				specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
+				return specInfo, specInfo.Error
+			}
 			parsed = true
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
 			return specInfo, specInfo.Error
@@ -242,7 +258,10 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	//}
 
 	if !parsed {
-		parseJSON(spec, specInfo, &parsedSpec)
+		if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
+			specInfo.Error = fmt.Errorf("unable to parse specification: %w", err)
+			return specInfo, specInfo.Error
+		}
 	}
 
 	// detect the original whitespace indentation
