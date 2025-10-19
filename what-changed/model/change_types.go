@@ -45,6 +45,11 @@ type ChangeContext struct {
 	NewColumn        *int   `json:"newColumn,omitempty" yaml:"newColumn,omitempty"`
 }
 
+type ChangeIsReferenced interface {
+	GetChangeReference() string
+	SetChangeReference(ref string)
+}
+
 // HasChanged determines if the line and column numbers of the original and new values have changed.
 //
 // It's worth noting that there is no guarantee to the positions of anything in either left or right, so
@@ -98,6 +103,9 @@ type Change struct {
 
 	// Path represents the path to the object that was changed (not used in the current implementation).
 	Path string `json:"path,omitempty"`
+
+	// Reference is populated when the change is related to a $ref change.
+	Reference string `json:"reference,omitempty"`
 }
 
 // MarshalJSON is a custom JSON marshaller for the Change object.
@@ -145,7 +153,16 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 // PropertyChanges holds a slice of Change pointers
 type PropertyChanges struct {
 	RenderPropertiesOnly bool      `json:"-" yaml:"-"`
+	ChangeReference      string    `json:"changeReference,omitempty""`
 	Changes              []*Change `json:"changes,omitempty" yaml:"changes,omitempty"`
+}
+
+func (p *PropertyChanges) SetChangeReference(ref string) {
+	p.ChangeReference = ref
+}
+
+func (p *PropertyChanges) GetChangeReference() string {
+	return p.ChangeReference
 }
 
 // TotalChanges returns the total number of property changes made.
