@@ -275,3 +275,155 @@ func Test_checkLocation_sameIdx(t *testing.T) {
 	assert.False(t, checkLocation(&ChangeContext{DocumentLocation: ""}, testHasIndex))
 
 }
+
+// TestSetReferenceIfExists tests the SetReferenceIfExists function
+func TestSetReferenceIfExists(t *testing.T) {
+	tests := []struct {
+		name           string
+		setupValue     func() *low.ValueReference[string]
+		setupChangeObj func() any
+		expectRef      string
+	}{
+		{
+			name: "sets reference when value has reference and object implements interface",
+			setupValue: func() *low.ValueReference[string] {
+				val := low.ValueReference[string]{
+					Value: "test",
+				}
+				val.SetReference("#/components/headers/TestHeader", nil)
+				return &val
+			},
+			setupChangeObj: func() any {
+				return &PropertyChanges{}
+			},
+			expectRef: "#/components/headers/TestHeader",
+		},
+		{
+			name: "does not set reference when value has no reference",
+			setupValue: func() *low.ValueReference[string] {
+				val := low.ValueReference[string]{
+					Value: "test",
+				}
+				return &val
+			},
+			setupChangeObj: func() any {
+				return &PropertyChanges{}
+			},
+			expectRef: "",
+		},
+		{
+			name:       "handles nil value without panic",
+			setupValue: func() *low.ValueReference[string] { return nil },
+			setupChangeObj: func() any {
+				return &PropertyChanges{}
+			},
+			expectRef: "",
+		},
+		{
+			name: "handles non-ChangeIsReferenced object without panic",
+			setupValue: func() *low.ValueReference[string] {
+				val := low.ValueReference[string]{
+					Value: "test",
+				}
+				val.SetReference("#/components/headers/TestHeader", nil)
+				return &val
+			},
+			setupChangeObj: func() any {
+				// Return something that doesn't implement ChangeIsReferenced
+				return &struct{}{}
+			},
+			expectRef: "",
+		},
+		{
+			name: "sets reference for remote reference",
+			setupValue: func() *low.ValueReference[string] {
+				val := low.ValueReference[string]{
+					Value: "test",
+				}
+				val.SetReference("./schemas.yaml#/components/schemas/TestSchema", nil)
+				return &val
+			},
+			setupChangeObj: func() any {
+				return &PropertyChanges{}
+			},
+			expectRef: "./schemas.yaml#/components/schemas/TestSchema",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			value := tt.setupValue()
+			changeObj := tt.setupChangeObj()
+
+			// Call the function
+			SetReferenceIfExists(value, changeObj)
+
+			// Check the result if it implements ChangeIsReferenced
+			if refObj, ok := changeObj.(ChangeIsReferenced); ok {
+				assert.Equal(t, tt.expectRef, refObj.GetChangeReference())
+			}
+		})
+	}
+}
+
+// TestSetReferenceIfExists_Integration tests the integration with actual comparison scenarios
+func TestSetReferenceIfExists_Integration(t *testing.T) {
+	// Create a referenced value
+	valueNode := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "test-value",
+	}
+
+	refValue := low.ValueReference[string]{
+		Value:     "test-value",
+		ValueNode: valueNode,
+	}
+	refValue.SetReference("#/components/parameters/TestParam", nil)
+
+	// Test with HeaderChanges (which embeds PropertyChanges)
+	t.Run("HeaderChanges with reference", func(t *testing.T) {
+		headerChanges := &HeaderChanges{
+			PropertyChanges: &PropertyChanges{},
+		}
+
+		SetReferenceIfExists(&refValue, headerChanges)
+		assert.Equal(t, "#/components/parameters/TestParam", headerChanges.GetChangeReference())
+	})
+
+	// Test with SchemaChanges
+	t.Run("SchemaChanges with reference", func(t *testing.T) {
+		schemaChanges := &SchemaChanges{
+			PropertyChanges: &PropertyChanges{},
+		}
+
+		SetReferenceIfExists(&refValue, schemaChanges)
+		assert.Equal(t, "#/components/parameters/TestParam", schemaChanges.GetChangeReference())
+	})
+
+	// Test that it preserves existing references
+	t.Run("preserves existing reference", func(t *testing.T) {
+		changes := &PropertyChanges{
+			ChangeReference: "#/existing/reference",
+		}
+
+		// Create a value without reference
+		nonRefValue := low.ValueReference[string]{
+			Value: "test",
+		}
+
+		SetReferenceIfExists(&nonRefValue, changes)
+		// Should still have the existing reference
+		assert.Equal(t, "#/existing/reference", changes.GetChangeReference())
+	})
+
+	// Test overwriting reference
+	t.Run("overwrites reference when new reference exists", func(t *testing.T) {
+		changes := &PropertyChanges{
+			ChangeReference: "#/old/reference",
+		}
+
+		SetReferenceIfExists(&refValue, changes)
+		// Should have the new reference
+		assert.Equal(t, "#/components/parameters/TestParam", changes.GetChangeReference())
+	})
+}

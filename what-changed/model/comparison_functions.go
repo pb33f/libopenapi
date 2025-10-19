@@ -5,10 +5,11 @@ package model
 
 import (
 	"fmt"
-	"github.com/pb33f/libopenapi/datamodel/low/base"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/pb33f/libopenapi/datamodel/low/base"
 
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
@@ -23,6 +24,16 @@ const (
 )
 
 var changeMutex sync.Mutex
+
+// SetReferenceIfExists checks if a low-level value has a reference and sets it on the change object
+// if the change object implements the ChangeIsReferenced interface.
+func SetReferenceIfExists[T any](value *low.ValueReference[T], changeObj any) {
+	if value != nil && value.IsReference() {
+		if refChange, ok := changeObj.(ChangeIsReferenced); ok {
+			refChange.SetChangeReference(value.GetReference())
+		}
+	}
+}
 
 func checkLocation(ctx *ChangeContext, hs base.HasIndex) bool {
 	if !reflect.ValueOf(hs).IsNil() {
@@ -341,6 +352,9 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 			// https://github.com/pb33f/libopenapi/issues/61
 			if !reflect.ValueOf(&ch).Elem().IsZero() {
 				expChanges[k] = ch
+				var cr any = ch
+				pVal := p[k]
+				SetReferenceIfExists(&pVal, cr)
 			}
 			chLock.Unlock()
 		}
