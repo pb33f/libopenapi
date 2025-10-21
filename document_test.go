@@ -247,7 +247,7 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		// get flat list of changes.
 		flatChanges := compReport.GetAllChanges()
 
-		// remove everything that is a description change (stripe has a lot of those from having 519 empty descriptions)
+		// remove everything that is a description change
 		var filtered []*model.Change
 		for i := range flatChanges {
 			if flatChanges[i].Property != "description" {
@@ -259,9 +259,9 @@ func TestDocument_RenderAndReload_ChangeCheck_Stripe(t *testing.T) {
 		tc := compReport.TotalChanges()
 		bc := compReport.TotalBreakingChanges()
 		assert.Equal(t, 0, bc)
-		assert.Equal(t, 819, tc)
+		assert.Equal(t, 9, tc)
 
-		// there should be no other changes than the 519 descriptions.
+		// there should be no other changes besides descriptions.
 		assert.Equal(t, 0, len(filtered))
 		done <- struct{}{}
 	}()
