@@ -15,6 +15,7 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -753,4 +754,105 @@ oneOf:
 	assert.True(t, foundCat, "Cat schema should be moved to components")
 
 	runtime.GC()
+}
+
+const emptyDefaultServerSpec = `openapi: 3.0.0
+info:
+  title: defaults
+  version: 1.0.0
+servers:
+  - url: https://{env}.example.com
+    variables:
+      env:
+        default: ""
+        description: environment host
+  - url: https://{shard}.example.com
+    variables:
+      shard:
+        description: shard id
+        default: ""
+  - url: https://{slot}.example.com
+    variables:
+      slot:
+        default: ""
+paths: {}`
+
+func TestBundleBytesComposed_PreservesEmptyServerVariableDefaults(t *testing.T) {
+	spec := emptyDefaultServerSpec
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(spec), 0o644))
+
+	data, err := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	require.NoError(t, err)
+
+	bundled, err := BundleBytesComposed(data, &datamodel.DocumentConfiguration{
+		BasePath: tmp,
+	}, nil)
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocument(bundled)
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	var envVar, shardVar *v3.ServerVariable
+	for _, srv := range model.Model.Servers {
+		if srv == nil || srv.Variables == nil {
+			continue
+		}
+		if candidate := srv.Variables.GetOrZero("env"); candidate != nil {
+			envVar = candidate
+		}
+		if candidate := srv.Variables.GetOrZero("shard"); candidate != nil {
+			shardVar = candidate
+		}
+	}
+
+	require.NotNil(t, envVar, "env variable must exist")
+	assert.Equal(t, "", envVar.Default)
+	assert.False(t, envVar.GoLow().Default.IsEmpty())
+	assert.Equal(t, "environment host", envVar.Description)
+
+	require.NotNil(t, shardVar, "shard variable must exist")
+	assert.Equal(t, "", shardVar.Default)
+	assert.False(t, shardVar.GoLow().Default.IsEmpty())
+	assert.Equal(t, "shard id", shardVar.Description)
+
+	slotVar := model.Model.Servers[2].Variables.GetOrZero("slot")
+	require.NotNil(t, slotVar, "slot variable must exist")
+	assert.Equal(t, "", slotVar.Default)
+	assert.False(t, slotVar.GoLow().Default.IsEmpty())
+	assert.Equal(t, "", slotVar.Description)
+}
+
+func TestBundleBytes_PreservesEmptyServerVariableDefaults(t *testing.T) {
+	spec := []byte(emptyDefaultServerSpec)
+
+	bundled, err := BundleBytes(spec, &datamodel.DocumentConfiguration{})
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocument(bundled)
+	require.NoError(t, err)
+
+	model, err := doc.BuildV3Model()
+	require.NoError(t, err)
+
+	require.Len(t, model.Model.Servers, 3)
+
+	envVar := model.Model.Servers[0].Variables.GetOrZero("env")
+	require.NotNil(t, envVar)
+	assert.Equal(t, "", envVar.Default)
+	assert.False(t, envVar.GoLow().Default.IsEmpty())
+
+	shardVar := model.Model.Servers[1].Variables.GetOrZero("shard")
+	require.NotNil(t, shardVar)
+	assert.Equal(t, "", shardVar.Default)
+	assert.False(t, shardVar.GoLow().Default.IsEmpty())
+
+	slotVar := model.Model.Servers[2].Variables.GetOrZero("slot")
+	require.NotNil(t, slotVar)
+	assert.Equal(t, "", slotVar.Default)
+	assert.False(t, slotVar.GoLow().Default.IsEmpty())
 }
