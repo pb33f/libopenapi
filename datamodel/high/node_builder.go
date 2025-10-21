@@ -59,6 +59,31 @@ func (n *NodeBuilder) add(key string, i int) {
 		return
 	}
 
+	var (
+		lowFieldValue reflect.Value
+		lowFieldValid bool
+	)
+
+	if n.Low != nil && !reflect.ValueOf(n.Low).IsZero() {
+		low := reflect.ValueOf(n.Low)
+		if low.Kind() == reflect.Ptr && !low.IsNil() {
+			elem := low.Elem()
+			if elem.IsValid() {
+				field := elem.FieldByName(key)
+				if field.IsValid() {
+					lowFieldValue = field
+					lowFieldValid = true
+				}
+			}
+		} else if low.IsValid() {
+			field := low.FieldByName(key)
+			if field.IsValid() {
+				lowFieldValue = field
+				lowFieldValid = true
+			}
+		}
+	}
+
 	// if the key is 'Extensions' then we need to extract the keys from the map
 	// and add them to the node builder.
 	if key == "Extensions" {
@@ -137,6 +162,27 @@ func (n *NodeBuilder) add(key string, i int) {
 			}
 		}
 	}
+
+	if isZero && lowFieldValid {
+		var lowInterface any
+		if lowFieldValue.Kind() == reflect.Ptr {
+			if !lowFieldValue.IsNil() {
+				lowInterface = lowFieldValue.Elem().Interface()
+			}
+		} else {
+			lowInterface = lowFieldValue.Interface()
+		}
+		if lowInterface != nil {
+			if emptier, ok := lowInterface.(interface{ IsEmpty() bool }); ok && !emptier.IsEmpty() {
+				isZero = false
+			} else if nodeGetter, ok := lowInterface.(interface{ GetValueNode() *yaml.Node }); ok {
+				if node := nodeGetter.GetValueNode(); node != nil {
+					isZero = false
+				}
+			}
+		}
+	}
+
 	if !renderZeroFlag && isZero || omitEmptyFlag && isZero {
 		return
 	}
@@ -180,8 +226,7 @@ func (n *NodeBuilder) add(key string, i int) {
 	// so skip and default to 0, which means a new entry to the spec.
 	// this will place new content and the top of the rendered object.
 	if n.Low != nil && !reflect.ValueOf(n.Low).IsZero() {
-		lowFieldValue := reflect.ValueOf(n.Low).Elem().FieldByName(key)
-		if lowFieldValue.IsValid() {
+		if lowFieldValid {
 			fLow := lowFieldValue.Interface()
 			value = reflect.ValueOf(fLow)
 
