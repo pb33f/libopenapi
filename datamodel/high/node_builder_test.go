@@ -197,6 +197,23 @@ func (t test2) GetValue() *yaml.Node {
 	return nil
 }
 
+type structLowTest struct {
+	Name string `yaml:"name,omitempty"`
+}
+
+type nonEmptyExample struct{}
+
+var nonEmptyExampleCallCount int
+
+func (nonEmptyExample) IsEmpty() bool {
+	nonEmptyExampleCallCount++
+	return false
+}
+
+type pointerFieldStruct struct {
+	Example *nonEmptyExample `yaml:"example,omitempty"`
+}
+
 func TestNewNodeBuilder_SliceRef_Inline_HasValue(t *testing.T) {
 	ty := []interface{}{utils.CreateEmptySequenceNode()}
 	t1 := test1{
@@ -1171,4 +1188,38 @@ func TestNewNodeBuilder_DescriptionOmitEmpty(t *testing.T) {
 	desired = `{}`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(data)))
+}
+
+func TestNodeBuilder_LowStructValueAccess(t *testing.T) {
+	high := &structLowTest{
+		Name: "libopenapi",
+	}
+	low := structLowTest{
+		Name: "libopenapi",
+	}
+
+	nb := NewNodeBuilder(high, low)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	assert.Equal(t, "name: libopenapi", strings.TrimSpace(string(data)))
+}
+
+func TestNodeBuilder_LowPointerIsNotEmpty(t *testing.T) {
+	nonEmptyExampleCallCount = 0
+	high := &pointerFieldStruct{}
+	low := &pointerFieldStruct{
+		Example: &nonEmptyExample{},
+	}
+
+	nb := NewNodeBuilder(high, low)
+
+	assert.Equal(t, 1, nonEmptyExampleCallCount)
+
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+
+	output := strings.TrimSpace(string(data))
+	assert.Equal(t, "{}", output)
 }
