@@ -136,6 +136,7 @@ content:
 }
 
 func TestResponses_NoDefault(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `"200":
   description: some response
   headers:
@@ -172,6 +173,7 @@ x-shoes: old`
 }
 
 func TestResponses_Build_FailCodes_WrongType(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `- "200":
   $ref: #bork`
 
@@ -188,6 +190,7 @@ func TestResponses_Build_FailCodes_WrongType(t *testing.T) {
 }
 
 func TestResponses_Build_FailCodes(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `"200":
   $ref: #bork`
 
@@ -204,6 +207,7 @@ func TestResponses_Build_FailCodes(t *testing.T) {
 }
 
 func TestResponses_Build_FailDefault(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `- default`
 
 	var idxNode yaml.Node
@@ -219,6 +223,7 @@ func TestResponses_Build_FailDefault(t *testing.T) {
 }
 
 func TestResponses_Build_FailBadHeader(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `"200":
   headers:
     header1: 
@@ -237,6 +242,7 @@ func TestResponses_Build_FailBadHeader(t *testing.T) {
 }
 
 func TestResponses_Build_FailBadContent(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `"200":
   content:
     flim/flam: 
@@ -255,6 +261,7 @@ func TestResponses_Build_FailBadContent(t *testing.T) {
 }
 
 func TestResponses_Build_FailBadLinks(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `"200":
   links:
     aLink: 
@@ -273,6 +280,7 @@ func TestResponses_Build_FailBadLinks(t *testing.T) {
 }
 
 func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `"200":
   headers:
     x-header1:
@@ -296,6 +304,9 @@ func TestResponses_Build_AllowXPrefixHeader(t *testing.T) {
 }
 
 func TestResponse_Hash(t *testing.T) {
+
+	cleanHashCacheForTest(t)
+
 	yml := `description: nice toast
 headers:
   heady:
