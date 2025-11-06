@@ -360,7 +360,8 @@ func TestExampleCompareDocuments_swagger(t *testing.T) {
 }
 
 func TestDocument_Paths_As_Array(t *testing.T) {
-	// paths can now be wrapped in an array.
+	// This test has invalid JSON (paths as array with object literal inside)
+	// Testing that we properly reject invalid JSON after fix for issue #355
 	spec := `{
     "openapi": "3.1.0",
     "paths": [
@@ -372,12 +373,9 @@ func TestDocument_Paths_As_Array(t *testing.T) {
 `
 	// create a new document from specification bytes
 	doc, err := NewDocument([]byte(spec))
-	// if anything went wrong, an error is thrown
-	if err != nil {
-		panic(fmt.Sprintf("cannot create new document: %e", err))
-	}
-	v3Model, _ := doc.BuildV3Model()
-	assert.NotNil(t, v3Model)
+	// After fix #355, invalid JSON should now produce an error
+	assert.Error(t, err, "Invalid JSON should produce an error")
+	assert.Nil(t, doc, "Document should be nil when JSON is invalid")
 }
 
 // If you want to know more about circular references that have been found
