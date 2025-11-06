@@ -41,6 +41,25 @@ var badYAML = `name: kitty
     - gggggrrraaaaaaaaaooooooowwwwwww
 `
 
+// badYAMLDuplicateKey is the exact scenario from issue #355
+// Duplicate mapping keys should trigger a decode error
+var badYAMLDuplicateKey = `openapi: 3.0.1
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      responses:
+        '200':
+          description: Success
+    get:
+      summary: Duplicate get operation (invalid!)
+      responses:
+        '200':
+          description: This is a duplicate key`
+
 var OpenApiWat = `openapi: 3.3
 info:
   title: Test API, valid, but not quite valid
@@ -138,6 +157,22 @@ func TestExtractSpecInfo_ValidYAML(t *testing.T) {
 func TestExtractSpecInfo_InvalidYAML(t *testing.T) {
 	_, e := ExtractSpecInfo([]byte(badYAML))
 	assert.Error(t, e)
+}
+
+// TestExtractSpecInfo_InvalidYAML_DuplicateKey tests issue #355
+// Malformed YAML with duplicate keys should return an error when bypass=false
+func TestExtractSpecInfo_InvalidYAML_DuplicateKey(t *testing.T) {
+	_, e := ExtractSpecInfo([]byte(badYAMLDuplicateKey))
+	assert.Error(t, e, "Should error on YAML with duplicate keys")
+	assert.Contains(t, e.Error(), "already defined", "Error should mention duplicate key")
+}
+
+// TestExtractSpecInfo_InvalidYAML_DuplicateKey_WithBypass tests that bypass mode
+// still allows malformed YAML to be processed without errors
+func TestExtractSpecInfo_InvalidYAML_DuplicateKey_WithBypass(t *testing.T) {
+	r, e := ExtractSpecInfoWithDocumentCheck([]byte(badYAMLDuplicateKey), true)
+	assert.NoError(t, e, "Bypass mode should not error on malformed YAML")
+	assert.NotNil(t, r, "Should return SpecInfo even with malformed YAML in bypass mode")
 }
 
 func TestExtractSpecInfo_InvalidOpenAPIVersion(t *testing.T) {
