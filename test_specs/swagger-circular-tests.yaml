@@ -11,25 +11,25 @@ definitions:
     description: "test one"
     properties:
       things:
-        "$ref": "#/definitions/Two"
+        $ref: "#/definitions/Two"
     required:
       - things
   Two:
     description: "test two"
     properties:
       testThing:
-        "$ref": "#/definitions/One"
+        $ref: "#/definitions/One"
     required:
       - testThing
   Three:
     description: "test three"
     properties:
       tester:
-        "$ref": "#/definitions/Four"
+        $ref: "#/definitions/Four"
       bester:
-        "$ref": "#/definitions/Seven"
+        $ref: "#/definitions/Seven"
       yester:
-        "$ref": "#/definitions/Seven"
+        $ref: "#/definitions/Seven"
     required:
       - tester
       - bester
@@ -38,25 +38,25 @@ definitions:
     description: "test four"
     properties:
       lemons:
-        "$ref": "#/definitions/Nine"
+        $ref: "#/definitions/Nine"
     required:
       - lemons
   Five:
     properties:
       rice:
-        "$ref": "#/definitions/Six"
+        $ref: "#/definitions/Six"
     required:
       - rice
   Six:
     properties:
       mints:
-        "$ref": "#/definitions/Nine"
+        $ref: "#/definitions/Nine"
     required:
       - mints
   Seven:
     properties:
       wow:
-        "$ref": "#/definitions/Three"
+        $ref: "#/definitions/Three"
     required:
       - wow
   Nine:
@@ -64,6 +64,6 @@ definitions:
   Ten:
     properties:
       yeah:
-        "$ref": "#/definitions/Ten"
+        $ref: "#/definitions/Ten"
     required:
       - yeah

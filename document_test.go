@@ -564,14 +564,15 @@ func TestDocument_BuildModelBad(t *testing.T) {
 }
 
 func TestDocument_Serialize_JSON_Modified(t *testing.T) {
-	json := `{ 'openapi': '3.0',
- 'info': {
-   'title': 'The magic API'
+	json := `{ "openapi": "3.0",
+ "info": {
+   "title": "The magic API"
  }
 }
 `
 	jsonModified := `{"info":{"title":"The magic API - but now, altered!"},"openapi":"3.0"}`
-	doc, _ := NewDocument([]byte(json))
+	doc, err := NewDocument([]byte(json))
+	assert.NoError(t, err)
 
 	v3Doc, _ := doc.BuildV3Model()
 
