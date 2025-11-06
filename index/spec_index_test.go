@@ -1976,3 +1976,385 @@ components:
 	assert.NotNil(t, index.GetRolodex())
 
 }
+
+// Tests for fix of issue #379: GetAllParametersFromOperations inconsistent parameter counting
+// https://github.com/pb33f/libopenapi/issues/379
+
+func TestSpecIndex_GetAllParametersFromOperations_ValidDifferentLocations(t *testing.T) {
+	// tests parameters with same name in different locations (valid per OpenAPI spec)
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: query
+          schema:
+            type: integer
+        - name: id
+          in: header
+          schema:
+            type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// should have 3 parameters with same name in different locations
+	idParams := params["/test/{id}"]["get"]["id"]
+	assert.Equal(t, 3, len(idParams), "should have 3 'id' parameters in different locations")
+
+	// verify no errors reported for valid spec
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 0, len(errors), "should have no errors for valid spec")
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_DuplicateInSameLocation_PathFirst(t *testing.T) {
+	// tests duplicate parameters in same location (path param first)
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: id
+          in: query
+          schema:
+            type: integer
+        - name: id
+          in: query
+          schema:
+            type: boolean`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// should have 2 parameters: 1 path and 1 query (duplicate query rejected)
+	idParams := params["/test/{id}"]["get"]["id"]
+	assert.Equal(t, 2, len(idParams), "should have 2 parameters (duplicate query rejected)")
+
+	// verify error reported for duplicate
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 1, len(errors), "should have 1 error for duplicate query parameter")
+	assert.Contains(t, errors[0].Error(), "duplicate name `id` and `in` type")
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_DuplicateInSameLocation_QueryFirst(t *testing.T) {
+	// tests duplicate parameters in same location (query params first)
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: query
+          schema:
+            type: integer
+        - name: id
+          in: query
+          schema:
+            type: boolean
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// should have 2 parameters: 1 query and 1 path (duplicate query rejected)
+	idParams := params["/test/{id}"]["get"]["id"]
+	assert.Equal(t, 2, len(idParams), "should have 2 parameters (duplicate query rejected)")
+
+	// verify error reported for duplicate
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 1, len(errors), "should have 1 error for duplicate query parameter")
+	assert.Contains(t, errors[0].Error(), "duplicate name `id` and `in` type")
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_MultipleDuplicates(t *testing.T) {
+	// tests multiple duplicates in same location
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - name: filter
+          in: query
+          schema:
+            type: string
+        - name: filter
+          in: query
+          schema:
+            type: array
+        - name: filter
+          in: query
+          schema:
+            type: object`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// should have only 1 parameter (first one, rest are duplicates)
+	filterParams := params["/test"]["get"]["filter"]
+	assert.Equal(t, 1, len(filterParams), "should have only 1 filter parameter")
+
+	// verify errors reported for duplicates
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 2, len(errors), "should have 2 errors for 2 duplicate query parameters")
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_MixedValidInvalid(t *testing.T) {
+	// tests mix of valid and invalid duplicates
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+          required: true
+        - name: id
+          in: query
+        - name: id
+          in: header
+        - name: id
+          in: query
+        - name: filter
+          in: query
+        - name: filter
+          in: header`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// should have 3 id params (path, query, header - duplicate query rejected)
+	// and 2 filter params (query and header)
+	idParams := params["/test/{id}"]["get"]["id"]
+	filterParams := params["/test/{id}"]["get"]["filter"]
+
+	assert.Equal(t, 3, len(idParams), "should have 3 id parameters")
+	assert.Equal(t, 2, len(filterParams), "should have 2 filter parameters")
+
+	// verify only 1 error for duplicate query param
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 1, len(errors), "should have 1 error for duplicate query parameter")
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_MissingInField(t *testing.T) {
+	// tests parameters without 'in' field
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      parameters:
+        - name: param1
+        - name: param1
+          in: query`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// both should be added as they don't match (one has no 'in')
+	param1Params := params["/test"]["get"]["param1"]
+	assert.Equal(t, 2, len(param1Params), "should have 2 param1 parameters")
+
+	// no duplicate error since one has no 'in' field
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 0, len(errors), "should have no duplicate errors")
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_ConsistentOrdering(t *testing.T) {
+	// tests that parameter count is consistent regardless of order
+	// test all 6 permutations of [path, query1, query2]
+	testCases := []struct {
+		name     string
+		yml      string
+		expected int
+	}{
+		{
+			name: "order: path, query1, query2",
+			yml: `openapi: 3.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+        - name: id
+          in: query
+        - name: id
+          in: query`,
+			expected: 2,
+		},
+		{
+			name: "order: path, query2, query1",
+			yml: `openapi: 3.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: path
+        - name: id
+          in: query
+        - name: id
+          in: query`,
+			expected: 2,
+		},
+		{
+			name: "order: query1, path, query2",
+			yml: `openapi: 3.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: query
+        - name: id
+          in: path
+        - name: id
+          in: query`,
+			expected: 2,
+		},
+		{
+			name: "order: query1, query2, path",
+			yml: `openapi: 3.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: query
+        - name: id
+          in: query
+        - name: id
+          in: path`,
+			expected: 2,
+		},
+		{
+			name: "order: query2, path, query1",
+			yml: `openapi: 3.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: query
+        - name: id
+          in: path
+        - name: id
+          in: query`,
+			expected: 2,
+		},
+		{
+			name: "order: query2, query1, path",
+			yml: `openapi: 3.0.0
+paths:
+  /test/{id}:
+    get:
+      parameters:
+        - name: id
+          in: query
+        - name: id
+          in: query
+        - name: id
+          in: path`,
+			expected: 2,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			var rootNode yaml.Node
+			_ = yaml.Unmarshal([]byte(tc.yml), &rootNode)
+
+			index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+			params := index.GetAllParametersFromOperations()
+
+			idParams := params["/test/{id}"]["get"]["id"]
+			assert.Equal(t, tc.expected, len(idParams),
+				"parameter count should be consistent regardless of order")
+
+			errors := index.GetOperationParametersIndexErrors()
+			assert.Equal(t, 1, len(errors),
+				"should have exactly 1 error for duplicate query parameter")
+		})
+	}
+}
+
+func TestSpecIndex_GetAllParametersFromOperations_PathLevelParameters(t *testing.T) {
+	// tests parameters at path level
+	yml := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /test:
+    parameters:
+      - name: id
+        in: query
+      - name: id
+        in: query
+      - name: id
+        in: header`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+	params := index.GetAllParametersFromOperations()
+
+	// path-level parameters use "top" as method key
+	idParams := params["/test"]["top"]["id"]
+	assert.Equal(t, 2, len(idParams), "should have 2 parameters (duplicate query rejected)")
+
+	errors := index.GetOperationParametersIndexErrors()
+	assert.Equal(t, 1, len(errors), "should have 1 error for duplicate at path level")
+	assert.Contains(t, errors[0].Error(), "index 1 has a duplicate name `id` and `in` type")
+}

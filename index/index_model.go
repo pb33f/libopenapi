@@ -40,6 +40,7 @@ type Reference struct {
 	HasSiblingProperties  bool                `json:"-"`                            // indicates if ref has sibling properties
 	SiblingProperties     map[string]*yaml.Node `json:"-"`                          // stores sibling property nodes
 	SiblingKeys           []*yaml.Node        `json:"-"`                            // stores sibling key nodes
+	In                    string              `json:"-"`                            // parameter location (path, query, header, cookie) - cached for performance
 }
 
 // ReferenceMapped is a helper struct for mapped references put into sequence (we lose the key)
