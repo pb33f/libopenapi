@@ -15,6 +15,8 @@ import (
 )
 
 func TestLink_Build(t *testing.T) {
+	cleanHashCacheForTest(t)
+
 	yml := `operationRef: '#/someref'
 operationId: someId
 parameters:
@@ -60,6 +62,7 @@ x-linky: slinky
 }
 
 func TestLink_Build_Fail(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `operationRef: '#/someref'
 operationId: someId
 parameters:
@@ -83,6 +86,7 @@ server:
 }
 
 func TestLink_Hash(t *testing.T) {
+	cleanHashCacheForTest(t)
 	yml := `operationRef: something
 operationId: someWhere
 parameters:
