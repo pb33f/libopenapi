@@ -108,14 +108,16 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 	parseJSON := func(bytes []byte, spec *SpecInfo, parsedNode *yaml.Node) error {
 		var jsonSpec map[string]interface{}
 		if utils.IsYAML(string(bytes)) {
+			// Decode YAML to map - this is critical to catch structural errors like duplicate keys
 			if err := parsedNode.Decode(&jsonSpec); err != nil {
 				return fmt.Errorf("failed to decode YAML to JSON: %w", err)
 			}
+			// Marshal to JSON - if this fails due to unsupported types (e.g. map[interface{}]interface{}),
+			// we tolerate it as it doesn't indicate spec invalidity, just YAML/JSON incompatibility
 			b, err := json.Marshal(&jsonSpec)
-			if err != nil {
-				return fmt.Errorf("failed to marshal JSON: %w", err)
+			if err == nil {
+				spec.SpecJSONBytes = &b
 			}
-			spec.SpecJSONBytes = &b
 			spec.SpecJSON = &jsonSpec
 		} else {
 			if err := json.Unmarshal(bytes, &jsonSpec); err != nil {
