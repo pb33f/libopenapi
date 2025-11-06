@@ -414,6 +414,14 @@ func seekRefEnd(ctx context.Context, index *SpecIndex, refName string) *Referenc
 	return ref
 }
 
+// formatParameterPath creates a consistent JSON path for parameter error messages
+func formatParameterPath(pathValue, method string, index int) string {
+	if method == "top" {
+		return fmt.Sprintf("$.paths['%s'].parameters[%d]", pathValue, index)
+	}
+	return fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathValue, method, index)
+}
+
 func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathItemNode *yaml.Node, method string) {
 	for i, param := range params {
 		// param is ref
@@ -447,10 +455,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 
 			// if this is a duplicate, add an error and ignore it
 			if index.paramOpRefs[pathItemNode.Value][method][paramRefName] != nil {
-				path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
-				if method == "top" {
-					path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
-				}
+				path := formatParameterPath(pathItemNode.Value, method, i)
 
 				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
 					Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
@@ -471,10 +476,7 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 			// param is inline.
 			_, vn := utils.FindKeyNode("name", param.Content)
 
-			path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
-			if method == "top" {
-				path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
-			}
+			path := formatParameterPath(pathItemNode.Value, method, i)
 
 			if vn == nil {
 				index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
@@ -493,6 +495,12 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 				KeyNode:    keyNode,
 				Path:       path,
 			}
+
+			// cache the 'in' value for performance optimization (fix for issue #379)
+			_, inNode := utils.FindKeyNodeTop("in", param.Content)
+			if inNode != nil {
+				ref.In = inNode.Value
+			}
 			if index.paramOpRefs[pathItemNode.Value] == nil {
 				index.paramOpRefs[pathItemNode.Value] = make(map[string]map[string][]*Reference)
 				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
@@ -503,23 +511,20 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 				index.paramOpRefs[pathItemNode.Value][method] = make(map[string][]*Reference)
 			}
 
-			// if this is a duplicate name, check if the `in` type is also the same, if so, it's a duplicate.
+			// Fix for issue #379: Ensure consistent parameter counting regardless of ordering
+			// https://github.com/pb33f/libopenapi/issues/379
+			// check if this parameter name already exists, and detect duplicates in the same location
 			if len(index.paramOpRefs[pathItemNode.Value][method][ref.Name]) > 0 {
 
-				currentNode := ref.Node
 				checkNodes := index.paramOpRefs[pathItemNode.Value][method][ref.Name]
-				_, currentIn := utils.FindKeyNodeTop("in", currentNode.Content)
 
+				// check if there's a duplicate with the same 'in' type (query, path, header, cookie)
+				hasDuplicateInSameLocation := false
 				for _, checkNode := range checkNodes {
-
-					_, checkIn := utils.FindKeyNodeTop("in", checkNode.Node.Content)
-
-					if currentIn != nil && checkIn != nil && currentIn.Value == checkIn.Value {
-
-						path := fmt.Sprintf("$.paths['%s'].%s.parameters[%d]", pathItemNode.Value, method, i)
-						if method == "top" {
-							path = fmt.Sprintf("$.paths['%s'].parameters[%d]", pathItemNode.Value, i)
-						}
+					// both must have 'in' values and they must match to be a duplicate
+					if ref.In != "" && checkNode.In != "" && checkNode.In == ref.In {
+						// found a duplicate parameter with same name and location
+						hasDuplicateInSameLocation = true
 
 						index.operationParamErrors = append(index.operationParamErrors, &IndexingError{
 							Err: fmt.Errorf("the `%s` operation parameter at path `%s`, "+
@@ -527,11 +532,16 @@ func (index *SpecIndex) scanOperationParams(params []*yaml.Node, keyNode, pathIt
 							Node: param,
 							Path: path,
 						})
-					} else {
-						index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
+						break // no need to check further once duplicate found
 					}
 				}
+
+				// only add the parameter if it's not a duplicate in the same location
+				if !hasDuplicateInSameLocation {
+					index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
+				}
 			} else {
+				// First parameter with this name, add it
 				index.paramOpRefs[pathItemNode.Value][method][ref.Name] = append(index.paramOpRefs[pathItemNode.Value][method][ref.Name], ref)
 			}
 			continue
