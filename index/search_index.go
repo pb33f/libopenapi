@@ -246,6 +246,15 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	}
 
 	if index.logger != nil {
+		// this is a last ditch effort. if this fails, all hope is lost.
+		if index.GetRolodex() != nil {
+			for _, i := range index.GetRolodex().GetIndexes() {
+				v := i.FindComponent(ctx, ref)
+				if v != nil {
+					return v, v.Index, ctx
+				}
+			}
+		}
 		index.logger.Error("unable to locate reference anywhere in the rolodex", "reference", ref)
 	}
 	return nil, index, ctx
