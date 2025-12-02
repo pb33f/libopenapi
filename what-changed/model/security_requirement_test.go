@@ -428,3 +428,206 @@ biscuit:
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 }
+
+// Test that scope additions show the scheme name as the property
+func TestCompareSecurityRequirement_AddScope_ShowsSchemeName(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `OAuth2:
+  - read`
+
+	right := `OAuth2:
+  - read
+  - write`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "OAuth2", extChanges.Changes[0].Property) // Verify scheme name in property
+	assert.Equal(t, "write", extChanges.Changes[0].New)       // Verify scope name in new value
+}
+
+// Test that scope removals show the scheme name as the property
+func TestCompareSecurityRequirement_RemoveScope_ShowsSchemeName(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `OAuth2:
+  - read
+  - write`
+
+	right := `OAuth2:
+  - read`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "OAuth2", extChanges.Changes[0].Property) // Verify scheme name in property
+	assert.Equal(t, "write", extChanges.Changes[0].Original)  // Verify scope name in original value
+}
+
+// Test that multiple scope additions show the scheme name as the property
+func TestCompareSecurityRequirement_AddMultipleScopes_ShowsSchemeName(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `OAuth2:
+  - read`
+
+	right := `OAuth2:
+  - read
+  - write
+  - admin`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+
+	// Both changes should have OAuth2 as the property
+	for _, change := range extChanges.Changes {
+		assert.Equal(t, ObjectAdded, change.ChangeType)
+		assert.Equal(t, "OAuth2", change.Property)
+	}
+	// Verify the scope names
+	scopes := []string{extChanges.Changes[0].New, extChanges.Changes[1].New}
+	assert.Contains(t, scopes, "write")
+	assert.Contains(t, scopes, "admin")
+}
+
+// Test that adding an entire scheme shows the scheme name as both property and value
+func TestCompareSecurityRequirement_AddEntireScheme_ShowsSchemeName(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `OAuth2:
+  - read`
+
+	right := `OAuth2:
+  - read
+ApiKey: []`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "ApiKey", extChanges.Changes[0].Property) // Verify scheme name in property
+	assert.Equal(t, "ApiKey", extChanges.Changes[0].New)      // Verify scheme name in new value (entire scheme added)
+}
+
+// Test that removing an entire scheme shows the scheme name as both property and value
+func TestCompareSecurityRequirement_RemoveEntireScheme_ShowsSchemeName(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `OAuth2:
+  - read
+ApiKey: []`
+
+	right := `OAuth2:
+  - read`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "ApiKey", extChanges.Changes[0].Property)  // Verify scheme name in property
+	assert.Equal(t, "ApiKey", extChanges.Changes[0].Original) // Verify scheme name in original value (entire scheme removed)
+}
+
+// Test real-world OAuth2 example from the bug report
+func TestCompareSecurityRequirement_OAuth2_RealWorld(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `OAuth2:
+  - read
+  - execute`
+
+	right := `OAuth2:
+  - read
+  - write
+  - execute`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	// create low level objects
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+	// The key assertion: property should be "OAuth2", not "security"
+	assert.Equal(t, "OAuth2", extChanges.Changes[0].Property)
+	assert.Equal(t, "write", extChanges.Changes[0].New)
+}

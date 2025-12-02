@@ -489,7 +489,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		checkExamples(lSchema, rSchema, &changes)
 
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(lSchema, rSchema, &changes, sc)
+		checkSchemaPropertyChanges(lSchema, rSchema, l, r, &changes, sc)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
@@ -728,6 +728,8 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 func checkSchemaPropertyChanges(
 	lSchema *base.Schema,
 	rSchema *base.Schema,
+	lProxy *base.SchemaProxy,
+	rProxy *base.SchemaProxy,
 	changes *[]*Change, sc *SchemaChanges,
 ) {
 	var props []*PropertyCheck
@@ -808,6 +810,26 @@ func checkSchemaPropertyChanges(
 		Original:  lSchema,
 		New:       rSchema,
 	})
+
+	// Post-process: Update context line numbers to use schema KeyNode for better context
+	// This provides line where "schema:" is defined, not "type: value"
+	if changes != nil && len(*changes) > 0 {
+		lastChange := (*changes)[len(*changes)-1]
+		if lastChange.Property == v3.TypeLabel && lastChange.Context != nil {
+			if lProxy != nil && lProxy.GetKeyNode() != nil {
+				line := lProxy.GetKeyNode().Line
+				col := lProxy.GetKeyNode().Column
+				lastChange.Context.OriginalLine = &line
+				lastChange.Context.OriginalColumn = &col
+			}
+			if rProxy != nil && rProxy.GetKeyNode() != nil {
+				line := rProxy.GetKeyNode().Line
+				col := rProxy.GetKeyNode().Column
+				lastChange.Context.NewLine = &line
+				lastChange.Context.NewColumn = &col
+			}
+		}
+	}
 	lnv = nil
 	rnv = nil
 
@@ -1252,15 +1274,10 @@ func checkSchemaPropertyChanges(
 		rnv = rSchema.Example.ValueNode
 	}
 	// Example
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ExampleLabel,
-		Changes:   changes,
-		Breaking:  false,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	CheckPropertyAdditionOrRemovalWithEncoding(lnv, rnv,
+		v3.ExampleLabel, changes, false, lSchema, rSchema)
+	CheckForModificationWithEncoding(lnv, rnv,
+		v3.ExampleLabel, changes, false, lSchema, rSchema)
 	lnv = nil
 	rnv = nil
 
@@ -1594,7 +1611,7 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) == len(rExampKey) {
 		for i := range lExampKey {
 			if lExampKey[i] != rExampKey[i] {
-				CreateChange(changes, Modified, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
@@ -1604,12 +1621,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) > len(rExampKey) {
 		for i := range lExampKey {
 			if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
-				CreateChange(changes, Modified, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(rExampKey) {
-				CreateChange(changes, ObjectRemoved, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, ObjectRemoved, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], nil, false,
 					lExampVal[lExampKey[i]], nil)
 			}
@@ -1620,12 +1637,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) < len(rExampKey) {
 		for i := range rExampKey {
 			if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
-				CreateChange(changes, Modified, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(lExampKey) {
-				CreateChange(changes, ObjectAdded, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, ObjectAdded, v3.ExamplesLabel,
 					nil, rExampN[rExampKey[i]], false,
 					nil, rExampVal[rExampKey[i]])
 			}

@@ -89,6 +89,29 @@ func TestChange_MarshalJSON(t *testing.T) {
 	rebuilt = rinseAndRepeat(&change)
 	assert.Equal(t, "difficult", rebuilt["path"])
 
+	// Test OriginalEncoded field
+	change = Change{
+		OriginalEncoded: "key: value\n",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "key: value\n", rebuilt["originalEncoded"])
+
+	// Test NewEncoded field
+	change = Change{
+		NewEncoded: "items:\n  - one\n  - two\n",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "items:\n  - one\n  - two\n", rebuilt["newEncoded"])
+
+	// Test both encoded fields together
+	change = Change{
+		OriginalEncoded: "old: data",
+		NewEncoded:      "new: data",
+	}
+	rebuilt = rinseAndRepeat(&change)
+	assert.Equal(t, "old: data", rebuilt["originalEncoded"])
+	assert.Equal(t, "new: data", rebuilt["newEncoded"])
+
 	prop := &PropertyChanges{Changes: []*Change{&change}}
 	assert.Len(t, prop.GetPropertyChanges(), 1)
 }

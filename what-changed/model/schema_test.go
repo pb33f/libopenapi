@@ -3513,7 +3513,7 @@ func TestCompareSchemas_fireNilCheck(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()
 	checkSchemaXML(nil, nil, nil, nil)
-	checkSchemaPropertyChanges(nil, nil, nil, nil)
+	checkSchemaPropertyChanges(nil, nil, nil, nil, nil, nil)
 	checkExamples(nil, nil, nil)
 }
 
@@ -4537,4 +4537,38 @@ components:
 		}
 	}
 	assert.True(t, foundDepReq)
+}
+
+// TestCompareSchemas_TypeChange_ContextLines tests that type changes have proper context
+func TestCompareSchemas_TypeChange_ContextLines(t *testing.T) {
+	// Clear hash cache to ensure deterministic results
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    Something:
+      type: string`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    Something:
+      type: integer`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Something").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Something").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+
+	// Verify the type change has context lines set
+	typeChange := changes.Changes[0]
+	assert.Equal(t, "type", typeChange.Property)
+	assert.NotNil(t, typeChange.Context)
+	// Context lines should be set from the schema KeyNode
+	assert.NotNil(t, typeChange.Context.OriginalLine)
+	assert.NotNil(t, typeChange.Context.NewLine)
 }
