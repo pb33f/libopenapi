@@ -89,6 +89,14 @@ type Change struct {
 	// New is the new value represented as a string.
 	New string `json:"new,omitempty" yaml:"new,omitempty"`
 
+	// OriginalEncoded is the original value serialized to YAML (for complex types like extensions).
+	// Only populated for specific use cases (e.g., extension values that are objects/arrays).
+	OriginalEncoded string `json:"originalEncoded,omitempty" yaml:"originalEncoded,omitempty"`
+
+	// NewEncoded is the new value serialized to YAML (for complex types like extensions).
+	// Only populated for specific use cases (e.g., extension values that are objects/arrays).
+	NewEncoded string `json:"newEncoded,omitempty" yaml:"newEncoded,omitempty"`
+
 	// Breaking determines if the change is a breaking one or not.
 	Breaking bool `json:"breaking" yaml:"breaking"`
 
@@ -136,6 +144,14 @@ func (c *Change) MarshalJSON() ([]byte, error) {
 
 	if c.New != "" {
 		data["new"] = c.New
+	}
+
+	if c.OriginalEncoded != "" {
+		data["originalEncoded"] = c.OriginalEncoded
+	}
+
+	if c.NewEncoded != "" {
+		data["newEncoded"] = c.NewEncoded
 	}
 
 	if c.Context != nil {

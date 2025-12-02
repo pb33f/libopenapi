@@ -442,14 +442,18 @@ func extractV3ParametersIntoInterface(l, r []low.ValueReference[*v3.Parameter]) 
 func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters], changes *[]*Change, pc *PathItemChanges) {
 	lv := make(map[string]low.SharedParameters, len(lParams))
 	rv := make(map[string]low.SharedParameters, len(rParams))
+	lRefs := make(map[string]*low.ValueReference[low.SharedParameters], len(lParams))
+	rRefs := make(map[string]*low.ValueReference[low.SharedParameters], len(rParams))
 
 	for i := range lParams {
 		s := lParams[i].Value.GetName().Value
 		lv[s] = lParams[i].Value
+		lRefs[s] = &lParams[i]  // Keep the reference wrapper
 	}
 	for i := range rParams {
 		s := rParams[i].Value.GetName().Value
 		rv[s] = rParams[i].Value
+		rRefs[s] = &rParams[i]  // Keep the reference wrapper
 	}
 
 	var paramChanges []*ParameterChanges
@@ -458,13 +462,15 @@ func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters]
 			if !low.AreEqual(lv[n], rv[n]) {
 				ch := CompareParameters(lv[n], rv[n])
 				if ch != nil {
+					// Preserve reference information if this parameter is a $ref
+					PreserveParameterReference(lRefs, rRefs, n, ch)
 					paramChanges = append(paramChanges, ch)
 				}
 			}
 			continue
 		}
 		CreateChange(changes, ObjectRemoved, v3.ParametersLabel,
-			lv[n].GetName().ValueNode, nil, true, lv[n].GetName().Value,
+			lv[n].GetName().ValueNode, nil, true, lv[n],
 			nil)
 
 	}
@@ -472,7 +478,7 @@ func checkParameters(lParams, rParams []low.ValueReference[low.SharedParameters]
 		if _, ok := lv[n]; !ok {
 			CreateChange(changes, ObjectAdded, v3.ParametersLabel,
 				nil, rv[n].GetName().ValueNode, rv[n].GetRequired().Value, nil,
-				rv[n].GetName().Value)
+				rv[n])
 		}
 	}
 	pc.ParameterChanges = paramChanges
