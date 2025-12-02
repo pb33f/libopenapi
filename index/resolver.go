@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -545,7 +546,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 								httpExp := strings.Split(ref.FullDefinition, "#/")
 
 								u, _ := url.Parse(httpExp[0])
-								abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
+								abs, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), exp[0], string(filepath.Separator)))
 								u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 								u.Fragment = ""
 								fullDef = fmt.Sprintf("%s#/%s", u.String(), exp[1])
@@ -596,8 +597,8 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						// is the file def a http link?
 						if strings.HasPrefix(fileDef[0], "http") {
 							u, _ := url.Parse(fileDef[0])
-							path, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
-							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(path)
+							absPath, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), exp[0], string(filepath.Separator)))
+							u.Path = utils.ReplaceWindowsDriveWithLinuxPath(absPath)
 							fullDef = u.String()
 
 						} else {
@@ -830,7 +831,7 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 					if strings.HasPrefix(ref.FullDefinition, "http") {
 
 						u, _ := url.Parse(ref.FullDefinition)
-						p, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), exp[0], string(filepath.Separator)))
+						p, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), exp[0], string(filepath.Separator)))
 						u.Path = utils.ReplaceWindowsDriveWithLinuxPath(p)
 						def = fmt.Sprintf("%s#/%s", u.String(), exp[1])
 
@@ -883,7 +884,7 @@ func (resolver *Resolver) buildDefPath(ref *Reference, l string) string {
 
 				// split the url.
 				u, _ := url.Parse(ref.FullDefinition)
-				abs, _ := filepath.Abs(utils.CheckPathOverlap(filepath.Dir(u.Path), l, string(filepath.Separator)))
+				abs, _ := filepath.Abs(utils.CheckPathOverlap(path.Dir(u.Path), l, string(filepath.Separator)))
 				u.Path = utils.ReplaceWindowsDriveWithLinuxPath(abs)
 				u.Fragment = ""
 				def = u.String()
