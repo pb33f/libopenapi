@@ -810,26 +810,6 @@ func checkSchemaPropertyChanges(
 		Original:  lSchema,
 		New:       rSchema,
 	})
-
-	// Post-process: Update context line numbers to use schema KeyNode for better context
-	// This provides line where "schema:" is defined, not "type: value"
-	if changes != nil && len(*changes) > 0 {
-		lastChange := (*changes)[len(*changes)-1]
-		if lastChange.Property == v3.TypeLabel && lastChange.Context != nil {
-			if lProxy != nil && lProxy.GetKeyNode() != nil {
-				line := lProxy.GetKeyNode().Line
-				col := lProxy.GetKeyNode().Column
-				lastChange.Context.OriginalLine = &line
-				lastChange.Context.OriginalColumn = &col
-			}
-			if rProxy != nil && rProxy.GetKeyNode() != nil {
-				line := rProxy.GetKeyNode().Line
-				col := rProxy.GetKeyNode().Column
-				lastChange.Context.NewLine = &line
-				lastChange.Context.NewColumn = &col
-			}
-		}
-	}
 	lnv = nil
 	rnv = nil
 
@@ -1574,6 +1554,28 @@ func checkSchemaPropertyChanges(
 
 	// check core properties
 	CheckProperties(props)
+
+	// Post-process: Update context line numbers for Type changes to use schema KeyNode for better context
+	// This provides line where "schema:" is defined, not "type: value"
+	if changes != nil && len(*changes) > 0 {
+		for _, change := range *changes {
+			if change.Property == v3.TypeLabel && change.Context != nil {
+				if lProxy != nil && lProxy.GetKeyNode() != nil {
+					line := lProxy.GetKeyNode().Line
+					col := lProxy.GetKeyNode().Column
+					change.Context.OriginalLine = &line
+					change.Context.OriginalColumn = &col
+				}
+				if rProxy != nil && rProxy.GetKeyNode() != nil {
+					line := rProxy.GetKeyNode().Line
+					col := rProxy.GetKeyNode().Column
+					change.Context.NewLine = &line
+					change.Context.NewColumn = &col
+				}
+				break // found the type change, no need to continue
+			}
+		}
+	}
 }
 
 func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change) {
