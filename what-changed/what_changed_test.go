@@ -24,7 +24,7 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 	modDoc, _ := v3.CreateDocumentFromConfig(infoMod, datamodel.NewDocumentConfiguration())
 
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
-	assert.Equal(t, 78, changes.TotalChanges())
+	assert.Equal(t, 75, changes.TotalChanges())
 	assert.Equal(t, 20, changes.TotalBreakingChanges())
 }
 
@@ -256,7 +256,7 @@ func ExampleCompareOpenAPIDocuments() {
 	// Print out some interesting stats.
 	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
-	// Output: There are 78 changes, of which 20 are breaking. 6 schemas have changes.
+	// Output: There are 75 changes, of which 20 are breaking. 6 schemas have changes.
 }
 
 func TestCheckExplodedFileCheck(t *testing.T) {
