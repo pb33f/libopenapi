@@ -58,7 +58,7 @@ func CompareExtensions(l, r *orderedmap.Map[low.KeyReference[string], low.ValueR
 	var changes []*Change
 	for i := range seenLeft {
 
-		CheckForObjectAdditionOrRemoval[*yaml.Node](seenLeft, seenRight, i, &changes, false, true)
+		CheckForObjectAdditionOrRemovalWithEncoding[*yaml.Node](seenLeft, seenRight, i, &changes, false, true)
 
 		if seenRight[i] != nil {
 			var props []*PropertyCheck
@@ -73,13 +73,13 @@ func CompareExtensions(l, r *orderedmap.Map[low.KeyReference[string], low.ValueR
 				New:       seenRight[i].Value,
 			})
 
-			// check properties
-			CheckProperties(props)
+			// check properties with encoding for extensions
+			CheckPropertiesWithEncoding(props)
 		}
 	}
 	for i := range seenRight {
 		if seenLeft[i] == nil {
-			CheckForObjectAdditionOrRemoval[*yaml.Node](seenLeft, seenRight, i, &changes, false, true)
+			CheckForObjectAdditionOrRemovalWithEncoding[*yaml.Node](seenLeft, seenRight, i, &changes, false, true)
 		}
 	}
 	ex := new(ExtensionChanges)

@@ -224,14 +224,18 @@ func CompareOperations(l, r any) *OperationChanges {
 
 			lv := make(map[string]*v2.Parameter, len(lParams))
 			rv := make(map[string]*v2.Parameter, len(rParams))
+			lRefs := make(map[string]*low.ValueReference[*v2.Parameter], len(lParams))
+			rRefs := make(map[string]*low.ValueReference[*v2.Parameter], len(rParams))
 
 			for i := range lParams {
 				s := lParams[i].Value.Name.Value
 				lv[s] = lParams[i].Value
+				lRefs[s] = &lParams[i]  // Keep the reference wrapper
 			}
 			for i := range rParams {
 				s := rParams[i].Value.Name.Value
 				rv[s] = rParams[i].Value
+				rRefs[s] = &rParams[i]  // Keep the reference wrapper
 			}
 
 			var paramChanges []*ParameterChanges
@@ -240,13 +244,15 @@ func CompareOperations(l, r any) *OperationChanges {
 					if !low.AreEqual(lv[n], rv[n]) {
 						ch := CompareParameters(lv[n], rv[n])
 						if ch != nil {
+							// Preserve reference information if this parameter is a $ref
+							PreserveParameterReference(lRefs, rRefs, n, ch)
 							paramChanges = append(paramChanges, ch)
 						}
 					}
 					continue
 				}
 				CreateChange(&changes, ObjectRemoved, v3.ParametersLabel,
-					lv[n].Name.ValueNode, nil, true, lv[n].Name.Value,
+					lv[n].Name.ValueNode, nil, true, lv[n],
 					nil)
 
 			}
@@ -254,7 +260,7 @@ func CompareOperations(l, r any) *OperationChanges {
 				if _, ok := lv[n]; !ok {
 					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
 						nil, rv[n].Name.ValueNode, rv[n].Required.Value, nil,
-						rv[n].Name.Value)
+						rv[n])
 				}
 			}
 			oc.ParameterChanges = paramChanges
@@ -327,14 +333,18 @@ func CompareOperations(l, r any) *OperationChanges {
 
 			lv := make(map[string]*v3.Parameter, len(lParams))
 			rv := make(map[string]*v3.Parameter, len(rParams))
+			lRefs := make(map[string]*low.ValueReference[*v3.Parameter], len(lParams))
+			rRefs := make(map[string]*low.ValueReference[*v3.Parameter], len(rParams))
 
 			for i := range lParams {
 				s := lParams[i].Value.Name.Value
 				lv[s] = lParams[i].Value
+				lRefs[s] = &lParams[i]  // Keep the reference wrapper
 			}
 			for i := range rParams {
 				s := rParams[i].Value.Name.Value
 				rv[s] = rParams[i].Value
+				rRefs[s] = &rParams[i]  // Keep the reference wrapper
 			}
 
 			var paramChanges []*ParameterChanges
@@ -343,13 +353,15 @@ func CompareOperations(l, r any) *OperationChanges {
 					if !low.AreEqual(lv[n], rv[n]) {
 						ch := CompareParameters(lv[n], rv[n])
 						if ch != nil {
+							// Preserve reference information if this parameter is a $ref
+							PreserveParameterReference(lRefs, rRefs, n, ch)
 							paramChanges = append(paramChanges, ch)
 						}
 					}
 					continue
 				}
 				CreateChange(&changes, ObjectRemoved, v3.ParametersLabel,
-					lv[n].Name.ValueNode, nil, true, lv[n].Name.Value,
+					lv[n].Name.ValueNode, nil, true, lv[n],
 					nil)
 
 			}
@@ -357,7 +369,7 @@ func CompareOperations(l, r any) *OperationChanges {
 				if _, ok := lv[n]; !ok {
 					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
 						nil, rv[n].Name.ValueNode, rv[n].Required.Value, nil,
-						rv[n].Name.Value)
+						rv[n])
 				}
 			}
 			oc.ParameterChanges = paramChanges
@@ -468,7 +480,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 			}
 			lv[k].ValueNode.Value = lv[k].Value.URL.Value
 			CreateChange(&changes, ObjectRemoved, v3.ServersLabel,
-				lv[k].ValueNode, nil, true, lv[k].Value.URL.Value,
+				lv[k].ValueNode, nil, true, lv[k].Value,
 				nil)
 			sc := new(ServerChanges)
 			sc.PropertyChanges = NewPropertyChanges(changes)
@@ -483,7 +495,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 				rv[k].ValueNode.Value = rv[k].Value.URL.Value
 				CreateChange(&changes, ObjectAdded, v3.ServersLabel,
 					nil, rv[k].ValueNode, false, nil,
-					rv[k].Value.URL.Value)
+					rv[k].Value)
 
 				sc := new(ServerChanges)
 				sc.PropertyChanges = NewPropertyChanges(changes)

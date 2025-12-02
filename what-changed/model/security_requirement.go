@@ -6,7 +6,6 @@ package model
 import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	"github.com/pb33f/libopenapi/datamodel/low/base"
-	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
 )
@@ -51,14 +50,32 @@ func CompareSecurityRequirement(l, r *base.SecurityRequirement) *SecurityRequire
 	return sc
 }
 
-func removedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
-	CreateChange(changes, ObjectRemoved, v3.SecurityLabel,
-		vn, nil, true, name, nil)
+func removedSecurityRequirement(vn *yaml.Node, schemeName, scopeName string, changes *[]*Change) {
+	property := schemeName
+	value := scopeName
+	var node *yaml.Node = vn
+	if scopeName == "" {
+		// entire scheme was removed, use scheme name as value
+		value = schemeName
+		// Don't use the node for entire scheme removal, as it may be an empty array []
+		node = nil
+	}
+	CreateChange(changes, ObjectRemoved, property,
+		node, nil, true, value, nil)
 }
 
-func addedSecurityRequirement(vn *yaml.Node, name string, changes *[]*Change) {
-	CreateChange(changes, ObjectAdded, v3.SecurityLabel,
-		nil, vn, false, nil, name)
+func addedSecurityRequirement(vn *yaml.Node, schemeName, scopeName string, changes *[]*Change) {
+	property := schemeName
+	value := scopeName
+	var node *yaml.Node = vn
+	if scopeName == "" {
+		// entire scheme was added, use scheme name as value
+		value = schemeName
+		// Don't use the node for entire scheme addition, as it may be an empty array []
+		node = nil
+	}
+	CreateChange(changes, ObjectAdded, property,
+		nil, node, false, nil, value)
 }
 
 // tricky to do this correctly, this is my solution.
@@ -84,7 +101,7 @@ func checkSecurityRequirement(lSec, rSec *orderedmap.Map[low.KeyReference[string
 	for z = range lKeys {
 		if z < len(rKeys) {
 			if _, ok := rValues[lKeys[z]]; !ok {
-				removedSecurityRequirement(lValues[lKeys[z]].ValueNode, lKeys[z], changes)
+				removedSecurityRequirement(lValues[lKeys[z]].ValueNode, lKeys[z], "", changes)
 				continue
 			}
 
@@ -111,45 +128,47 @@ func checkSecurityRequirement(lSec, rSec *orderedmap.Map[low.KeyReference[string
 			for t = range lRoleKeys {
 				if t < len(rRoleKeys) {
 					if _, ok := rRoleValues[lRoleKeys[t]]; !ok {
-						removedSecurityRequirement(lRoleValues[lRoleKeys[t]].ValueNode, lRoleKeys[t], changes)
+						removedSecurityRequirement(lRoleValues[lRoleKeys[t]].ValueNode, lKeys[z], lRoleKeys[t], changes)
 						continue
 					}
 				}
 				if t >= len(rRoleKeys) {
 					if _, ok := rRoleValues[lRoleKeys[t]]; !ok {
-						removedSecurityRequirement(lRoleValues[lRoleKeys[t]].ValueNode, lRoleKeys[t], changes)
+						removedSecurityRequirement(lRoleValues[lRoleKeys[t]].ValueNode, lKeys[z], lRoleKeys[t], changes)
 					}
 				}
 			}
 			for t = range rRoleKeys {
 				if t < len(lRoleKeys) {
 					if _, ok := lRoleValues[rRoleKeys[t]]; !ok {
-						addedSecurityRequirement(rRoleValues[rRoleKeys[t]].ValueNode, rRoleKeys[t], changes)
+						addedSecurityRequirement(rRoleValues[rRoleKeys[t]].ValueNode, rKeys[z], rRoleKeys[t], changes)
 						continue
 					}
 				}
 				if t >= len(lRoleKeys) {
-					addedSecurityRequirement(rRoleValues[rRoleKeys[t]].ValueNode, rRoleKeys[t], changes)
+					if _, ok := lRoleValues[rRoleKeys[t]]; !ok {
+						addedSecurityRequirement(rRoleValues[rRoleKeys[t]].ValueNode, rKeys[z], rRoleKeys[t], changes)
+					}
 				}
 			}
 
 		}
 		if z >= len(rKeys) {
 			if _, ok := rValues[lKeys[z]]; !ok {
-				removedSecurityRequirement(lValues[lKeys[z]].ValueNode, lKeys[z], changes)
+				removedSecurityRequirement(lValues[lKeys[z]].ValueNode, lKeys[z], "", changes)
 			}
 		}
 	}
 	for z = range rKeys {
 		if z < len(lKeys) {
 			if _, ok := lValues[rKeys[z]]; !ok {
-				addedSecurityRequirement(rValues[rKeys[z]].ValueNode, rKeys[z], changes)
+				addedSecurityRequirement(rValues[rKeys[z]].ValueNode, rKeys[z], "", changes)
 				continue
 			}
 		}
 		if z >= len(lKeys) {
 			if _, ok := lValues[rKeys[z]]; !ok {
-				addedSecurityRequirement(rValues[rKeys[z]].ValueNode, rKeys[z], changes)
+				addedSecurityRequirement(rValues[rKeys[z]].ValueNode, rKeys[z], "", changes)
 			}
 		}
 	}

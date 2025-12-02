@@ -109,8 +109,10 @@ func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Chang
 		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel, false)
 
 	// example
-	addPropertyCheck(&props, left.GetExample().ValueNode, right.GetExample().ValueNode,
-		left.GetExample(), right.GetExample(), changes, v3.ExampleLabel, false)
+	CheckPropertyAdditionOrRemovalWithEncoding(left.GetExample().ValueNode, right.GetExample().ValueNode,
+		v3.ExampleLabel, changes, false, left.GetExample(), right.GetExample())
+	CheckForModificationWithEncoding(left.GetExample().ValueNode, right.GetExample().ValueNode,
+		v3.ExampleLabel, changes, false, left.GetExample(), right.GetExample())
 
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,

@@ -343,21 +343,8 @@ func CompareParameters(l, r any) *ParameterChanges {
 }
 
 func checkParameterExample(expLeft, expRight low.NodeReference[*yaml.Node], changes []*Change) {
-	if !expLeft.IsEmpty() && !expRight.IsEmpty() {
-		if low.GenerateHashString(expLeft.GetValue()) != low.GenerateHashString(expRight.GetValue()) {
-			CreateChange(&changes, Modified, v3.ExampleLabel,
-				expLeft.GetValueNode(), expRight.GetValueNode(), false,
-				expLeft.GetValue(), expRight.GetValue())
-		}
-	}
-	if expLeft.Value == nil && expRight.Value != nil {
-		CreateChange(&changes, PropertyAdded, v3.ExampleLabel,
-			nil, expRight.GetValueNode(), false,
-			nil, expRight.GetValue())
-	}
-	if expLeft.Value != nil && expRight.Value == nil {
-		CreateChange(&changes, PropertyRemoved, v3.ExampleLabel,
-			expLeft.GetValueNode(), nil, false,
-			expLeft.GetValue(), nil)
-	}
+	CheckPropertyAdditionOrRemovalWithEncoding(expLeft.ValueNode, expRight.ValueNode,
+		v3.ExampleLabel, &changes, false, expLeft.Value, expRight.Value)
+	CheckForModificationWithEncoding(expLeft.ValueNode, expRight.ValueNode,
+		v3.ExampleLabel, &changes, false, expLeft.Value, expRight.Value)
 }
