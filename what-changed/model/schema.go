@@ -489,7 +489,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 		checkExamples(lSchema, rSchema, &changes)
 
 		// check schema core properties for changes.
-		checkSchemaPropertyChanges(lSchema, rSchema, &changes, sc)
+		checkSchemaPropertyChanges(lSchema, rSchema, l, r, &changes, sc)
 
 		// now for the confusing part, there is also a schema's 'properties' property to parse.
 		// inception, eat your heart out.
@@ -728,6 +728,8 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 func checkSchemaPropertyChanges(
 	lSchema *base.Schema,
 	rSchema *base.Schema,
+	lProxy *base.SchemaProxy,
+	rProxy *base.SchemaProxy,
 	changes *[]*Change, sc *SchemaChanges,
 ) {
 	var props []*PropertyCheck
@@ -1252,15 +1254,10 @@ func checkSchemaPropertyChanges(
 		rnv = rSchema.Example.ValueNode
 	}
 	// Example
-	props = append(props, &PropertyCheck{
-		LeftNode:  lnv,
-		RightNode: rnv,
-		Label:     v3.ExampleLabel,
-		Changes:   changes,
-		Breaking:  false,
-		Original:  lSchema,
-		New:       rSchema,
-	})
+	CheckPropertyAdditionOrRemovalWithEncoding(lnv, rnv,
+		v3.ExampleLabel, changes, false, lSchema, rSchema)
+	CheckForModificationWithEncoding(lnv, rnv,
+		v3.ExampleLabel, changes, false, lSchema, rSchema)
 	lnv = nil
 	rnv = nil
 
@@ -1557,6 +1554,28 @@ func checkSchemaPropertyChanges(
 
 	// check core properties
 	CheckProperties(props)
+
+	// Post-process: Update context line numbers for Type changes to use schema KeyNode for better context
+	// This provides line where "schema:" is defined, not "type: value"
+	if changes != nil && len(*changes) > 0 {
+		for _, change := range *changes {
+			if change.Property == v3.TypeLabel && change.Context != nil {
+				if lProxy != nil && lProxy.GetKeyNode() != nil {
+					line := lProxy.GetKeyNode().Line
+					col := lProxy.GetKeyNode().Column
+					change.Context.OriginalLine = &line
+					change.Context.OriginalColumn = &col
+				}
+				if rProxy != nil && rProxy.GetKeyNode() != nil {
+					line := rProxy.GetKeyNode().Line
+					col := rProxy.GetKeyNode().Column
+					change.Context.NewLine = &line
+					change.Context.NewColumn = &col
+				}
+				break // found the type change, no need to continue
+			}
+		}
+	}
 }
 
 func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Change) {
@@ -1594,7 +1613,7 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) == len(rExampKey) {
 		for i := range lExampKey {
 			if lExampKey[i] != rExampKey[i] {
-				CreateChange(changes, Modified, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
@@ -1604,12 +1623,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) > len(rExampKey) {
 		for i := range lExampKey {
 			if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
-				CreateChange(changes, Modified, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(rExampKey) {
-				CreateChange(changes, ObjectRemoved, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, ObjectRemoved, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], nil, false,
 					lExampVal[lExampKey[i]], nil)
 			}
@@ -1620,12 +1639,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 	if len(lExampKey) < len(rExampKey) {
 		for i := range rExampKey {
 			if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
-				CreateChange(changes, Modified, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
 					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(lExampKey) {
-				CreateChange(changes, ObjectAdded, v3.ExamplesLabel,
+				CreateChangeWithEncoding(changes, ObjectAdded, v3.ExamplesLabel,
 					nil, rExampN[rExampKey[i]], false,
 					nil, rExampVal[rExampKey[i]])
 			}

@@ -249,7 +249,6 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 			if err := parseJSON(spec, specInfo, &parsedSpec); err != nil {
 				return nil, err
 			}
-			parsed = true
 			specInfo.Error = errors.New("spec type not supported by libopenapi, sorry")
 			return specInfo, specInfo.Error
 		}

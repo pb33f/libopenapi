@@ -427,3 +427,189 @@ func TestSetReferenceIfExists_Integration(t *testing.T) {
 		assert.Equal(t, "#/components/parameters/TestParam", changes.GetChangeReference())
 	})
 }
+
+// TestPreserveParameterReference tests the PreserveParameterReference helper function
+func TestPreserveParameterReference(t *testing.T) {
+	t.Run("preserves left reference when left has ref", func(t *testing.T) {
+		lRef := low.ValueReference[string]{Value: "left"}
+		lRef.SetReference("#/components/parameters/LeftParam", nil)
+		rRef := low.ValueReference[string]{Value: "right"}
+
+		lRefs := map[string]*low.ValueReference[string]{"param": &lRef}
+		rRefs := map[string]*low.ValueReference[string]{"param": &rRef}
+
+		changes := &ParameterChanges{PropertyChanges: &PropertyChanges{}}
+		PreserveParameterReference(lRefs, rRefs, "param", changes)
+
+		assert.Equal(t, "#/components/parameters/LeftParam", changes.GetChangeReference())
+	})
+
+	t.Run("preserves right reference when only right has ref", func(t *testing.T) {
+		lRef := low.ValueReference[string]{Value: "left"}
+		rRef := low.ValueReference[string]{Value: "right"}
+		rRef.SetReference("#/components/parameters/RightParam", nil)
+
+		lRefs := map[string]*low.ValueReference[string]{"param": &lRef}
+		rRefs := map[string]*low.ValueReference[string]{"param": &rRef}
+
+		changes := &ParameterChanges{PropertyChanges: &PropertyChanges{}}
+		PreserveParameterReference(lRefs, rRefs, "param", changes)
+
+		assert.Equal(t, "#/components/parameters/RightParam", changes.GetChangeReference())
+	})
+
+	t.Run("handles missing parameter gracefully", func(t *testing.T) {
+		lRefs := map[string]*low.ValueReference[string]{}
+		rRefs := map[string]*low.ValueReference[string]{}
+
+		changes := &ParameterChanges{PropertyChanges: &PropertyChanges{}}
+		PreserveParameterReference(lRefs, rRefs, "missing", changes)
+
+		assert.Equal(t, "", changes.GetChangeReference())
+	})
+
+	t.Run("prefers left reference over right", func(t *testing.T) {
+		lRef := low.ValueReference[string]{Value: "left"}
+		lRef.SetReference("#/components/parameters/LeftParam", nil)
+		rRef := low.ValueReference[string]{Value: "right"}
+		rRef.SetReference("#/components/parameters/RightParam", nil)
+
+		lRefs := map[string]*low.ValueReference[string]{"param": &lRef}
+		rRefs := map[string]*low.ValueReference[string]{"param": &rRef}
+
+		changes := &ParameterChanges{PropertyChanges: &PropertyChanges{}}
+		PreserveParameterReference(lRefs, rRefs, "param", changes)
+
+		// Left takes priority
+		assert.Equal(t, "#/components/parameters/LeftParam", changes.GetChangeReference())
+	})
+}
+
+// TestCheckForRemovalWithEncoding tests the removal check with encoding
+func TestCheckForRemovalWithEncoding(t *testing.T) {
+	t.Run("detects removal with encoding", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`key: value`), &lNode)
+
+		changes := []*Change{}
+		CheckForRemovalWithEncoding(lNode.Content[0], nil, "test", &changes, false, "old", "new")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+	})
+
+	t.Run("no change when both nodes present", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`value`), &lNode)
+		_ = yaml.Unmarshal([]byte(`value`), &rNode)
+
+		changes := []*Change{}
+		CheckForRemovalWithEncoding(lNode.Content[0], rNode.Content[0], "test", &changes, false, "old", "new")
+
+		assert.Empty(t, changes)
+	})
+}
+
+// TestCheckForAdditionWithEncoding tests the addition check with encoding
+func TestCheckForAdditionWithEncoding(t *testing.T) {
+	t.Run("detects addition with encoding", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`newvalue`), &rNode)
+
+		changes := []*Change{}
+		CheckForAdditionWithEncoding[string](nil, rNode.Content[0], "test", &changes, false, "", "new")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
+	})
+
+	t.Run("detects array addition with encoding", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`[item1, item2]`), &rNode)
+
+		changes := []*Change{}
+		CheckForAdditionWithEncoding[string](nil, rNode.Content[0], "test", &changes, false, "", "new")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
+		assert.NotEmpty(t, changes[0].NewEncoded)
+	})
+}
+
+// TestCheckForModificationWithEncoding tests the modification check with encoding
+func TestCheckForModificationWithEncoding(t *testing.T) {
+	tests := []struct {
+		name   string
+		left   any
+		right  any
+		differ bool
+	}{
+		{"scalar to different scalar", "value", "changed", true},
+		{"array to non-array", []string{"a"}, "scalar", true},
+		{"non-array to array", "scalar", []string{"a"}, true},
+		{"map to non-map", map[string]string{"k": "v"}, "scalar", true},
+		{"non-map to map", "scalar", map[string]string{"k": "v"}, true},
+		{"same array", []string{"a"}, []string{"a"}, false},
+		{"different array content", []string{"a"}, []string{"b"}, true},
+		{"different array length", []string{"a"}, []string{"a", "b"}, true},
+		{"same map", map[string]string{"k": "v"}, map[string]string{"k": "v"}, false},
+		{"different map", map[string]string{"k": "v"}, map[string]string{"k": "x"}, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var lNode, rNode yaml.Node
+			encL, _ := yaml.Marshal(tt.left)
+			encR, _ := yaml.Marshal(tt.right)
+			_ = yaml.Unmarshal(encL, &lNode)
+			_ = yaml.Unmarshal(encR, &rNode)
+
+			changes := []*Change{}
+			CheckForModificationWithEncoding(lNode.Content[0], rNode.Content[0], tt.name, &changes, false, "old", "new")
+
+			if tt.differ {
+				assert.Len(t, changes, 1, "expected 1 change for %s", tt.name)
+			} else {
+				assert.Empty(t, changes, "expected no changes for %s", tt.name)
+			}
+		})
+	}
+}
+
+// TestCreateChangeWithEncoding_ComplexValues tests encoding behavior
+func TestCreateChangeWithEncoding_ComplexValues(t *testing.T) {
+	t.Run("encodes map values", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`{key: value, nested: {a: b}}`), &lNode)
+
+		changes := []*Change{}
+		CreateChangeWithEncoding(&changes, Modified, "test", lNode.Content[0], nil, false, nil, nil)
+
+		assert.Len(t, changes, 1)
+		assert.NotEmpty(t, changes[0].OriginalEncoded)
+	})
+
+	t.Run("encodes array values", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`[item1, item2, item3]`), &rNode)
+
+		changes := []*Change{}
+		CreateChangeWithEncoding(&changes, Modified, "test", nil, rNode.Content[0], false, nil, nil)
+
+		assert.Len(t, changes, 1)
+		assert.NotEmpty(t, changes[0].NewEncoded)
+	})
+
+	t.Run("does not encode scalar values", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`scalar`), &lNode)
+		_ = yaml.Unmarshal([]byte(`another`), &rNode)
+
+		changes := []*Change{}
+		CreateChangeWithEncoding(&changes, Modified, "test", lNode.Content[0], rNode.Content[0], false, nil, nil)
+
+		assert.Len(t, changes, 1)
+		assert.Empty(t, changes[0].OriginalEncoded)
+		assert.Empty(t, changes[0].NewEncoded)
+	})
+}

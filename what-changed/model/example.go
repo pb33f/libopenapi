@@ -121,63 +121,20 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		}
 		sort.Strings(lKeys)
 		sort.Strings(rKeys)
-		//if (len(lKeys) > len(rKeys)) || (len(rKeys) > len(lKeys)) {
-		//    CreateChange(&changes, Modified, v3.ValueLabel,
-		//        l.Value.GetValueNode(), r.Value.GetValueNode(), false, l.Value.GetValue(), r.Value.GetValue())
-		//}
 		for k := range lKeys {
 			if k < len(rKeys) && lKeys[k] != rKeys[k] {
-
-				if utils.IsNodeMap(l.Value.ValueNode) || utils.IsNodeArray(l.Value.ValueNode) {
-					// render down object
-					rendered, _ := low.YAMLNodeToBytes(l.Value.ValueNode)
-					l.Value.ValueNode.Value = string(rendered)
-				}
-
-				if utils.IsNodeMap(r.Value.ValueNode) || utils.IsNodeArray(r.Value.ValueNode) {
-					// render down object
-					rendered, _ := low.YAMLNodeToBytes(r.Value.ValueNode)
-					r.Value.ValueNode.Value = string(rendered)
-				}
-
-				CreateChange(&changes, Modified, v3.ValueLabel,
+				CreateChangeWithEncoding(&changes, Modified, v3.ValueLabel,
 					l.Value.GetValueNode(), r.Value.GetValueNode(), false, l.Value.GetValue(), r.Value.GetValue())
 				continue
 			}
 			if k >= len(rKeys) {
-
-				if utils.IsNodeMap(l.Value.ValueNode) || utils.IsNodeArray(l.Value.ValueNode) {
-					// render down object
-					rendered, _ := low.YAMLNodeToBytes(l.Value.ValueNode)
-					l.Value.ValueNode.Value = string(rendered)
-				}
-
-				if utils.IsNodeMap(r.Value.ValueNode) || utils.IsNodeArray(r.Value.ValueNode) {
-					// render down object
-					rendered, _ := low.YAMLNodeToBytes(r.Value.ValueNode)
-					r.Value.ValueNode.Value = string(rendered)
-				}
-
-				CreateChange(&changes, PropertyRemoved, v3.ValueLabel,
+				CreateChangeWithEncoding(&changes, PropertyRemoved, v3.ValueLabel,
 					l.Value.ValueNode, r.Value.ValueNode, false, l.Value.Value, r.Value.Value)
 			}
 		}
 		for k := range rKeys {
 			if k >= len(lKeys) {
-
-				if utils.IsNodeMap(l.Value.ValueNode) || utils.IsNodeArray(l.Value.ValueNode) {
-					// render down object
-					rendered, _ := low.YAMLNodeToBytes(l.Value.ValueNode)
-					l.Value.ValueNode.Value = string(rendered)
-				}
-
-				if utils.IsNodeMap(r.Value.ValueNode) || utils.IsNodeArray(r.Value.ValueNode) {
-					// render down object
-					rendered, _ := low.YAMLNodeToBytes(r.Value.ValueNode)
-					r.Value.ValueNode.Value = string(rendered)
-				}
-
-				CreateChange(&changes, PropertyAdded, v3.ValueLabel,
+				CreateChangeWithEncoding(&changes, PropertyAdded, v3.ValueLabel,
 					l.Value.ValueNode, r.Value.ValueNode, false, l.Value.Value, r.Value.Value)
 			}
 		}

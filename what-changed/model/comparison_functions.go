@@ -35,6 +35,16 @@ func SetReferenceIfExists[T any](value *low.ValueReference[T], changeObj any) {
 	}
 }
 
+// PreserveParameterReference checks if a parameter is a reference and preserves it on the changes object.
+// This eliminates duplicate reference preservation logic in operation.go and path_item.go.
+func PreserveParameterReference[T any](lRefs, rRefs map[string]*low.ValueReference[T], name string, changes ChangeIsReferenced) {
+	if lRef := lRefs[name]; lRef != nil && lRef.IsReference() {
+		SetReferenceIfExists(lRef, changes)
+	} else if rRef := rRefs[name]; rRef != nil && rRef.IsReference() {
+		SetReferenceIfExists(rRef, changes)
+	}
+}
+
 func checkLocation(ctx *ChangeContext, hs base.HasIndex) bool {
 	if !reflect.ValueOf(hs).IsNil() {
 		idx := hs.GetIndex()
@@ -87,6 +97,20 @@ func CreateChange(changes *[]*Change, changeType int, property string, leftValue
 	if rightValueNode != nil && rightValueNode.Value != EMPTY_STR {
 		c.New = rightValueNode.Value
 	}
+
+	// If node is nil but object is a string, use the object value as fallback
+	// This handles cases where the value is provided as the object parameter (e.g., security requirements)
+	if leftValueNode == nil && c.Original == "" {
+		if str, ok := originalObject.(string); ok {
+			c.Original = str
+		}
+	}
+	if rightValueNode == nil && c.New == "" {
+		if str, ok := newObject.(string); ok {
+			c.New = str
+		}
+	}
+
 	// original and new objects
 	c.OriginalObject = originalObject
 	c.NewObject = newObject
@@ -95,6 +119,31 @@ func CreateChange(changes *[]*Change, changeType int, property string, leftValue
 	changeMutex.Lock()
 	*changes = append(*changes, c)
 	changeMutex.Unlock()
+	return changes
+}
+
+// CreateChangeWithEncoding is like CreateChange but also populates the encoded fields for complex values.
+// use this ONLY for extensions or other cases where complex YAML structures need to be serialized.
+// the encoded values are serialized to YAML format.
+func CreateChangeWithEncoding(changes *[]*Change, changeType int, property string, leftValueNode, rightValueNode *yaml.Node,
+	breaking bool, originalObject, newObject any,
+) *[]*Change {
+	CreateChange(changes, changeType, property, leftValueNode, rightValueNode, breaking, originalObject, newObject)
+
+	c := (*changes)[len(*changes)-1]
+
+	// serialize complex values to YAML for extension rendering (avoid inflating memory for scalar values)
+	if leftValueNode != nil && (utils.IsNodeArray(leftValueNode) || utils.IsNodeMap(leftValueNode)) {
+		if encoded, err := yaml.Marshal(leftValueNode); err == nil {
+			c.OriginalEncoded = string(encoded)
+		}
+	}
+	if rightValueNode != nil && (utils.IsNodeArray(rightValueNode) || utils.IsNodeMap(rightValueNode)) {
+		if encoded, err := yaml.Marshal(rightValueNode); err == nil {
+			c.NewEncoded = string(encoded)
+		}
+	}
+
 	return changes
 }
 
@@ -135,6 +184,27 @@ func CountBreakingChanges(changes []*Change) int {
 	return b
 }
 
+// checkForObjectAdditionOrRemovalInternal is the internal implementation that handles both encoding modes.
+func checkForObjectAdditionOrRemovalInternal[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change,
+	breakingAdd, breakingRemove bool, withEncoding bool,
+) {
+	createFn := CreateChange
+	if withEncoding {
+		createFn = CreateChangeWithEncoding
+	}
+	var left, right T
+	if CheckSpecificObjectRemoved(l, r, label) {
+		left = l[label].GetValue()
+		createFn(changes, ObjectRemoved, label, l[label].GetValueNode(), nil,
+			breakingRemove, left, nil)
+	}
+	if CheckSpecificObjectAdded(l, r, label) {
+		right = r[label].GetValue()
+		createFn(changes, ObjectAdded, label, nil, r[label].GetValueNode(),
+			breakingAdd, nil, right)
+	}
+}
+
 // CheckForObjectAdditionOrRemoval will check for the addition or removal of an object from left and right maps.
 // The label is the key to look for in the left and right maps.
 //
@@ -145,17 +215,15 @@ func CountBreakingChanges(changes []*Change) int {
 func CheckForObjectAdditionOrRemoval[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change,
 	breakingAdd, breakingRemove bool,
 ) {
-	var left, right T
-	if CheckSpecificObjectRemoved(l, r, label) {
-		left = l[label].GetValue()
-		CreateChange(changes, ObjectRemoved, label, l[label].GetValueNode(), nil,
-			breakingRemove, left, nil)
-	}
-	if CheckSpecificObjectAdded(l, r, label) {
-		right = r[label].GetValue()
-		CreateChange(changes, ObjectAdded, label, nil, r[label].GetValueNode(),
-			breakingAdd, nil, right)
-	}
+	checkForObjectAdditionOrRemovalInternal(l, r, label, changes, breakingAdd, breakingRemove, false)
+}
+
+// CheckForObjectAdditionOrRemovalWithEncoding is like CheckForObjectAdditionOrRemoval but populates encoded fields.
+// Use this for extensions where complex values need to be serialized to YAML.
+func CheckForObjectAdditionOrRemovalWithEncoding[T any](l, r map[string]*low.ValueReference[T], label string, changes *[]*Change,
+	breakingAdd, breakingRemove bool,
+) {
+	checkForObjectAdditionOrRemovalInternal(l, r, label, changes, breakingAdd, breakingRemove, true)
 }
 
 // CheckSpecificObjectRemoved returns true if a specific value is not in both maps.
@@ -181,12 +249,59 @@ func CheckProperties(properties []*PropertyCheck) {
 	}
 }
 
+// CheckPropertiesWithEncoding is like CheckProperties but uses CreateChangeWithEncoding for complex values.
+// use this for extensions where YAML serialization is needed.
+func CheckPropertiesWithEncoding(properties []*PropertyCheck) {
+	for _, n := range properties {
+		CheckPropertyAdditionOrRemovalWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		CheckForModificationWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+	}
+}
+
+// CheckPropertyAdditionOrRemovalWithEncoding checks for additions and removals with encoding.
+func CheckPropertyAdditionOrRemovalWithEncoding[T any](l, r *yaml.Node,
+	label string, changes *[]*Change, breaking bool, orig, new T,
+) {
+	checkForRemovalInternal(l, r, label, changes, breaking, orig, new, true)
+	checkForAdditionInternal(l, r, label, changes, breaking, orig, new, true)
+}
+
+// CheckForRemovalWithEncoding checks for removals with YAML encoding.
+func CheckForRemovalWithEncoding[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
+	checkForRemovalInternal(l, r, label, changes, breaking, orig, new, true)
+}
+
+// CheckForAdditionWithEncoding checks for additions with YAML encoding.
+func CheckForAdditionWithEncoding[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
+	checkForAdditionInternal(l, r, label, changes, breaking, orig, new, true)
+}
+
+// CheckForModificationWithEncoding checks for modifications with YAML encoding.
+func CheckForModificationWithEncoding[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
+	checkForModificationInternal(l, r, label, changes, breaking, orig, new, true)
+}
+
 // CheckPropertyAdditionOrRemoval will run both CheckForRemoval (first) and CheckForAddition (second)
 func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
 	label string, changes *[]*Change, breaking bool, orig, new T,
 ) {
 	CheckForRemoval[T](l, r, label, changes, breaking, orig, new)
 	CheckForAddition[T](l, r, label, changes, breaking, orig, new)
+}
+
+// checkForRemovalInternal is the internal implementation for removal checks with configurable encoding.
+func checkForRemovalInternal[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T, withEncoding bool) {
+	createFn := CreateChange
+	if withEncoding {
+		createFn = CreateChangeWithEncoding
+	}
+	if l != nil && l.Value != EMPTY_STR && (r == nil || r.Value == EMPTY_STR && !utils.IsNodeArray(r) && !utils.IsNodeMap(r)) {
+		createFn(changes, PropertyRemoved, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && r == nil {
+		createFn(changes, PropertyRemoved, label, l, nil, breaking, orig, nil)
+	}
 }
 
 // CheckForRemoval will check left and right yaml.Node instances for changes. Anything that is found missing on the
@@ -196,31 +311,81 @@ func CheckPropertyAdditionOrRemoval[T any](l, r *yaml.Node,
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForRemoval[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if l != nil && l.Value != EMPTY_STR && (r == nil || r.Value == EMPTY_STR && !utils.IsNodeArray(r) && !utils.IsNodeMap(r)) {
-		CreateChange(changes, PropertyRemoved, label, l, r, breaking, orig, new)
-		return
+	checkForRemovalInternal(l, r, label, changes, breaking, orig, new, false)
+}
+
+// checkForAdditionInternal is the internal implementation for addition checks with configurable encoding.
+func checkForAdditionInternal[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T, withEncoding bool) {
+	createFn := CreateChange
+	if withEncoding {
+		createFn = CreateChangeWithEncoding
 	}
-	if l != nil && r == nil {
-		CreateChange(changes, PropertyRemoved, label, l, nil, breaking, orig, nil)
+	// left doesn't exist if: nil OR (empty scalar AND not a map/array) OR (empty map/array)
+	leftDoesNotExist := l == nil ||
+		(l.Value == EMPTY_STR && !utils.IsNodeMap(l) && !utils.IsNodeArray(l)) ||
+		((utils.IsNodeMap(l) || utils.IsNodeArray(l)) && len(l.Content) == 0)
+	// right exists if: not nil AND (has value OR is array OR is map)
+	rightExists := r != nil && (r.Value != EMPTY_STR || utils.IsNodeArray(r) || utils.IsNodeMap(r))
+
+	if leftDoesNotExist && rightExists {
+		createFn(changes, PropertyAdded, label, l, r, breaking, orig, new)
 	}
 }
 
 // CheckForAddition will check left and right yaml.Node instances for changes. Anything that is found missing on the
-// left, but present on the left, is considered an addition. A new Change[T] will be created with the type
+// left, but present on the right, is considered an addition. A new Change[T] will be created with the type
 //
 //	PropertyAdded
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if (l == nil || l.Value == EMPTY_STR) && (r != nil && (r.Value != EMPTY_STR || utils.IsNodeArray(r)) || utils.IsNodeMap(r)) {
-		if r != nil {
-			if l != nil && (len(l.Content) < len(r.Content)) && len(l.Content) <= 0 {
-				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
-			}
-			if l == nil {
-				CreateChange(changes, PropertyAdded, label, l, r, breaking, orig, new)
-			}
+	checkForAdditionInternal(l, r, label, changes, breaking, orig, new, false)
+}
+
+// checkForModificationInternal is the internal implementation for modification checks with configurable encoding.
+func checkForModificationInternal[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T, withEncoding bool) {
+	createFn := CreateChange
+	if withEncoding {
+		createFn = CreateChangeWithEncoding
+	}
+	if l != nil && l.Value != EMPTY_STR && r != nil && r.Value != EMPTY_STR && (r.Value != l.Value || r.Tag != l.Tag) {
+		createFn(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeArray(l) && r != nil && !utils.IsNodeArray(r) {
+		createFn(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && !utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
+		createFn(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeMap(l) && r != nil && !utils.IsNodeMap(r) {
+		createFn(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && !utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
+		createFn(changes, Modified, label, l, r, breaking, orig, new)
+		return
+	}
+	if l != nil && utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
+		if len(l.Content) != len(r.Content) {
+			createFn(changes, Modified, label, l, r, breaking, orig, new)
+			return
 		}
+
+		// Compare the YAML node trees directly without marshaling
+		if !low.CompareYAMLNodes(l, r) {
+			createFn(changes, Modified, label, l, r, breaking, orig, new)
+		}
+		return
+	}
+	if l != nil && utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
+		// Compare the YAML node trees directly without marshaling
+		if !low.CompareYAMLNodes(l, r) {
+			createFn(changes, Modified, label, l, r, breaking, orig, new)
+		}
+		return
 	}
 }
 
@@ -231,45 +396,7 @@ func CheckForAddition[T any](l, r *yaml.Node, label string, changes *[]*Change, 
 //
 // The Change is then added to the slice of []Change[T] instances provided as a pointer.
 func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Change, breaking bool, orig, new T) {
-	if l != nil && l.Value != EMPTY_STR && r != nil && r.Value != EMPTY_STR && (r.Value != l.Value || r.Tag != l.Tag) {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
-	}
-	if l != nil && utils.IsNodeArray(l) && r != nil && !utils.IsNodeArray(r) {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
-	}
-	if l != nil && !utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
-	}
-	if l != nil && utils.IsNodeMap(l) && r != nil && !utils.IsNodeMap(r) {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
-	}
-	if l != nil && !utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
-		CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		return
-	}
-	if l != nil && utils.IsNodeArray(l) && r != nil && utils.IsNodeArray(r) {
-		if len(l.Content) != len(r.Content) {
-			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-			return
-		}
-
-		// Compare the YAML node trees directly without marshaling
-		if !low.CompareYAMLNodes(l, r) {
-			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		}
-		return
-	}
-	if l != nil && utils.IsNodeMap(l) && r != nil && utils.IsNodeMap(r) {
-		// Compare the YAML node trees directly without marshaling
-		if !low.CompareYAMLNodes(l, r) {
-			CreateChange(changes, Modified, label, l, r, breaking, orig, new)
-		}
-		return
-	}
+	checkForModificationInternal(l, r, label, changes, breaking, orig, new, false)
 }
 
 // CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to
