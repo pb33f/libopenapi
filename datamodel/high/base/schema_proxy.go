@@ -123,7 +123,9 @@ func (sp *SchemaProxy) Schema() *Schema {
 			loc := fmt.Sprintf("%s:%d:%d", idx.GetSpecAbsolutePath(), sp.schema.GetValueNode().Line, sp.schema.GetValueNode().Column)
 			if seen, ok := idx.GetHighCache().Load(loc); ok {
 				idx.HighCacheHit()
-				return sp.copySchemaWithParentProxy(seen.(*Schema))
+				// cache locally to avoid recreating on repeated access
+				sp.rendered = sp.copySchemaWithParentProxy(seen.(*Schema))
+				return sp.rendered
 			} else {
 				idx.HighCacheMiss()
 			}
