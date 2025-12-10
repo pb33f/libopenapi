@@ -2035,10 +2035,11 @@ func TestSchema_QuickHash(t *testing.T) {
 	durationRegular := timeStd.Since(now)
 	//fmt.Printf("Regular Duration: %d microseconds\n", durationRegular.Microseconds())
 
-	// quick is always quicker.
-	if duration.Microseconds() > 0 && durationRegular.Microseconds() > 0 {
-		assert.LessOrEqual(t, duration.Microseconds(), durationRegular.Microseconds())
-	}
+	// Note: Timing assertions removed - they are flaky on CI systems (especially Windows)
+	// where CPU scheduling and runner performance vary. The important assertions above
+	// verify correctness: hashes are equal and consistent across multiple calls.
+	_ = duration
+	_ = durationRegular
 }
 
 func TestSchema_Build_DependentRequired_Success(t *testing.T) {
