@@ -63,7 +63,9 @@ func runTest(t *testing.T, specLocation string) {
 	}
 
 	require.Equal(t, uint64(1008), m.Index.GetHighCacheMisses())
-	require.Equal(t, uint64(4049727), m.Index.GetHighCacheHits())
+	// Cache hits reduced from 4,049,727 to 18,821 after optimizing SchemaProxy.Schema()
+	// to store the rendered schema on cache hits, avoiding redundant copies
+	require.Equal(t, uint64(18821), m.Index.GetHighCacheHits())
 }
 
 func iterateOperations(t *testing.T, ops *orderedmap.Map[string, *v3.Operation]) {
