@@ -1,10 +1,10 @@
 module github.com/pb33f/libopenapi
 
-go 1.24.7
+go 1.25
 
 require (
 	github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb
-	github.com/pb33f/jsonpath v0.1.2
+	github.com/pb33f/jsonpath v0.7.0
 	github.com/pb33f/ordered-map/v2 v2.3.0
 	github.com/stretchr/testify v1.11.1
 	go.yaml.in/yaml/v4 v4.0.0-rc.3
