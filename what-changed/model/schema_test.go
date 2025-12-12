@@ -3509,6 +3509,106 @@ components:
 	assert.Equal(t, changes.TotalBreakingChanges(), 1)
 }
 
+func TestCompareSchemas_OneOfRemoveItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      oneOf:
+        - type: string
+        - type: int`
+
+	right := `openapi: 3.0
+components:
+  schemas:
+    OK:
+      oneOf:
+        - type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.OneOfLabel, changes.Changes[0].Property)
+	assert.True(t, changes.Changes[0].Breaking)
+}
+
+func TestCompareSchemas_PrefixItemsRemoveItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      prefixItems:
+        - type: number
+        - type: string`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      prefixItems:
+        - type: number`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.PrefixItemsLabel, changes.Changes[0].Property)
+	assert.True(t, changes.Changes[0].Breaking)
+}
+
+func TestCompareSchemas_PrefixItemsAddItem(t *testing.T) {
+	// Clear hash cache to ensure deterministic results in concurrent test environments
+	low.ClearHashCache()
+	left := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      prefixItems:
+        - type: number`
+
+	right := `openapi: 3.1
+components:
+  schemas:
+    OK:
+      prefixItems:
+        - type: number
+        - type: string`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("OK").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("OK").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Len(t, changes.GetAllChanges(), 1)
+	// prefixItems addition is non-breaking by default
+	assert.Equal(t, 0, changes.TotalBreakingChanges())
+	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, v3.PrefixItemsLabel, changes.Changes[0].Property)
+	assert.False(t, changes.Changes[0].Breaking)
+}
+
 func TestCompareSchemas_fireNilCheck(t *testing.T) {
 	// Clear hash cache to ensure deterministic results in concurrent test environments
 	low.ClearHashCache()

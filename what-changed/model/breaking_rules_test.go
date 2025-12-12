@@ -4,6 +4,7 @@
 package model
 
 import (
+	"reflect"
 	"sync"
 	"testing"
 
@@ -691,6 +692,107 @@ func TestMerge_InfoContactLicenseOverride(t *testing.T) {
 	assert.True(t, *licenseRule.Removed)
 }
 
+func TestSetActiveBreakingRulesConfig(t *testing.T) {
+	// ensure clean state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// initially should return defaults
+	config := GetActiveBreakingRulesConfig()
+	assert.NotNil(t, config)
+	assert.True(t, *config.Schema.Type.Modified) // default is true
+
+	// create a standalone custom config (not merged from defaults to avoid shallow copy issues)
+	customConfig := &BreakingRulesConfig{
+		Schema: &SchemaRules{
+			Type: &BreakingChangeRule{
+				Added:    boolPtr(false),
+				Modified: boolPtr(false),
+				Removed:  boolPtr(false),
+			},
+		},
+	}
+
+	// set the custom config
+	SetActiveBreakingRulesConfig(customConfig)
+
+	// now should return custom config
+	activeConfig := GetActiveBreakingRulesConfig()
+	assert.NotNil(t, activeConfig)
+	assert.False(t, *activeConfig.Schema.Type.Modified) // now false
+}
+
+func TestResetActiveBreakingRulesConfig(t *testing.T) {
+	// ensure clean state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// create a standalone custom config (not merged from defaults to avoid shallow copy issues)
+	customConfig := &BreakingRulesConfig{
+		Schema: &SchemaRules{
+			Type: &BreakingChangeRule{
+				Added:    boolPtr(false),
+				Modified: boolPtr(false),
+				Removed:  boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	// verify custom config is active - Type.Modified should be false
+	assert.False(t, *GetActiveBreakingRulesConfig().Schema.Type.Modified)
+
+	// reset to defaults
+	ResetActiveBreakingRulesConfig()
+
+	// should return defaults again
+	config := GetActiveBreakingRulesConfig()
+	assert.True(t, *config.Schema.Type.Modified) // back to default true
+}
+
+func TestActiveConfigIntegration(t *testing.T) {
+	// ensure clean state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// test that IsBreakingChange uses the active config
+	assert.True(t, IsBreakingChange(CompSchema, PropType, ChangeTypeModified)) // default
+
+	// create a standalone custom config (not merged from defaults to avoid shallow copy issues)
+	customConfig := &BreakingRulesConfig{
+		Schema: &SchemaRules{
+			Type: &BreakingChangeRule{
+				Added:    boolPtr(false),
+				Modified: boolPtr(false),
+				Removed:  boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	// now should use custom config
+	assert.False(t, IsBreakingChange(CompSchema, PropType, ChangeTypeModified))
+
+	// helper functions should also use active config
+	assert.False(t, BreakingModified(CompSchema, PropType))
+
+	// reset and verify
+	ResetActiveBreakingRulesConfig()
+	assert.True(t, BreakingModified(CompSchema, PropType))
+}
+
 func BenchmarkIsBreaking(b *testing.B) {
 	config := GenerateDefaultBreakingRules()
 
@@ -707,4 +809,85 @@ func BenchmarkGetRule(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_ = config.GetRule("schema", "type")
 	}
+}
+
+func TestJsonTagName_NoOmitempty(t *testing.T) {
+	// test the case where JSON tag has no comma (no omitempty)
+	type testStruct struct {
+		Field1 string `json:"field1"`
+		Field2 string `json:"field2,omitempty"`
+		Field3 string `json:"-"`
+		Field4 string
+	}
+
+	typ := reflect.TypeOf(testStruct{})
+
+	// field1 has no comma - should return "field1"
+	name := jsonTagName(typ.Field(0))
+	assert.Equal(t, "field1", name)
+
+	// field2 has comma - should return "field2"
+	name = jsonTagName(typ.Field(1))
+	assert.Equal(t, "field2", name)
+
+	// field3 has "-" - should return ""
+	name = jsonTagName(typ.Field(2))
+	assert.Equal(t, "", name)
+
+	// field4 has no tag - should return ""
+	name = jsonTagName(typ.Field(3))
+	assert.Equal(t, "", name)
+}
+
+func TestMergeRulesStruct_NonRuleFields(t *testing.T) {
+	// test the case where struct has non-rule fields that should be skipped
+	type mixedStruct struct {
+		RuleField    *BreakingChangeRule `json:"rule,omitempty"`
+		NonRuleField string              `json:"nonrule,omitempty"`
+	}
+
+	base := mixedStruct{
+		RuleField:    &BreakingChangeRule{Added: boolPtr(true)},
+		NonRuleField: "base",
+	}
+	override := mixedStruct{
+		RuleField:    &BreakingChangeRule{Added: boolPtr(false)},
+		NonRuleField: "override",
+	}
+
+	baseVal := reflect.ValueOf(&base).Elem()
+	overrideVal := reflect.ValueOf(&override).Elem()
+
+	mergeRulesStruct(baseVal, overrideVal)
+
+	// rule field should be merged
+	assert.False(t, *base.RuleField.Added)
+	// non-rule field should remain unchanged (not merged)
+	assert.Equal(t, "base", base.NonRuleField)
+}
+
+func TestAddRulesToCache_NonRuleFields(t *testing.T) {
+	// test the case where struct has fields that should be skipped
+	type mixedStruct struct {
+		RuleField    *BreakingChangeRule `json:"rule,omitempty"`
+		NonRuleField string              `json:"nonrule,omitempty"`
+		NoTagField   *BreakingChangeRule
+	}
+
+	data := mixedStruct{
+		RuleField:    &BreakingChangeRule{Added: boolPtr(true)},
+		NonRuleField: "test",
+		NoTagField:   &BreakingChangeRule{Added: boolPtr(false)},
+	}
+
+	cache := make(map[string]*BreakingChangeRule)
+	addRulesToCache(cache, "test", reflect.ValueOf(data))
+
+	// only RuleField should be in cache (has proper tag and is rule type)
+	assert.Len(t, cache, 1)
+	assert.NotNil(t, cache["test.rule"])
+	assert.True(t, *cache["test.rule"].Added)
+	// NonRuleField and NoTagField should not be in cache
+	assert.Nil(t, cache["test.nonrule"])
+	assert.Nil(t, cache["test.NoTagField"])
 }
