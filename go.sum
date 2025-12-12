@@ -13,6 +13,8 @@ github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb h1:w1g9wNDIE/pHS
 github.com/lucasjones/reggen v0.0.0-20200904144131-37ba4fa293bb/go.mod h1:5ELEyG+X8f+meRWHuqUOewBOhvHkl7M76pdGEansxW4=
 github.com/pb33f/jsonpath v0.1.2 h1:PlqXjEyecMqoYJupLxYeClCGWEpAFnh4pmzgspbXDPI=
 github.com/pb33f/jsonpath v0.1.2/go.mod h1:TtKnUnfqZm48q7a56DxB3WtL3ipkVtukMKGKxaR/uXU=
+github.com/pb33f/jsonpath v0.7.0 h1:3oG6yu1RqNoMZpqnRjBMqi8fSIXWoDAKDrsB0QGTcoU=
+github.com/pb33f/jsonpath v0.7.0/go.mod h1:/+JlSIjWA2ijMVYGJ3IQPF4Q1nLMYbUTYNdk0exCDPQ=
 github.com/pb33f/ordered-map/v2 v2.3.0 h1:k2OhVEQkhTCQMhAicQ3Z6iInzoZNQ7L9MVomwKBZ5WQ=
 github.com/pb33f/ordered-map/v2 v2.3.0/go.mod h1:oe5ue+6ZNhy7QN9cPZvPA23Hx0vMHnNVeMg4fGdCANw=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
