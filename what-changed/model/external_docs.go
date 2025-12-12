@@ -57,7 +57,7 @@ func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExternalDocs, PropURL),
 		Original:  l,
 		New:       r,
 	})
@@ -68,7 +68,7 @@ func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExternalDocs, PropDescription),
 		Original:  l,
 		New:       r,
 	})

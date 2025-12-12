@@ -63,7 +63,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		RightNode: r.Summary.ValueNode,
 		Label:     v3.SummaryLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExample, PropSummary),
 		Original:  l,
 		New:       r,
 	})
@@ -74,7 +74,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExample, PropDescription),
 		Original:  l,
 		New:       r,
 	})
@@ -124,18 +124,18 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		for k := range lKeys {
 			if k < len(rKeys) && lKeys[k] != rKeys[k] {
 				CreateChangeWithEncoding(&changes, Modified, v3.ValueLabel,
-					l.Value.GetValueNode(), r.Value.GetValueNode(), false, l.Value.GetValue(), r.Value.GetValue())
+					l.Value.GetValueNode(), r.Value.GetValueNode(), BreakingModified(CompExample, PropValue), l.Value.GetValue(), r.Value.GetValue())
 				continue
 			}
 			if k >= len(rKeys) {
 				CreateChangeWithEncoding(&changes, PropertyRemoved, v3.ValueLabel,
-					l.Value.ValueNode, r.Value.ValueNode, false, l.Value.Value, r.Value.Value)
+					l.Value.ValueNode, r.Value.ValueNode, BreakingRemoved(CompExample, PropValue), l.Value.Value, r.Value.Value)
 			}
 		}
 		for k := range rKeys {
 			if k >= len(lKeys) {
 				CreateChangeWithEncoding(&changes, PropertyAdded, v3.ValueLabel,
-					l.Value.ValueNode, r.Value.ValueNode, false, l.Value.Value, r.Value.Value)
+					l.Value.ValueNode, r.Value.ValueNode, BreakingAdded(CompExample, PropValue), l.Value.Value, r.Value.Value)
 			}
 		}
 	} else {
@@ -144,7 +144,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 			RightNode: r.Value.ValueNode,
 			Label:     v3.ValueLabel,
 			Changes:   &changes,
-			Breaking:  false,
+			Breaking:  BreakingModified(CompExample, PropValue),
 			Original:  l,
 			New:       r,
 		})
@@ -155,7 +155,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		RightNode: r.ExternalValue.ValueNode,
 		Label:     v3.ExternalValue,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExample, PropExternalValue),
 		Original:  l,
 		New:       r,
 	})
@@ -166,7 +166,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		RightNode: r.DataValue.ValueNode,
 		Label:     base.DataValueLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExample, PropDataValue),
 		Original:  l,
 		New:       r,
 	})
@@ -177,7 +177,7 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 		RightNode: r.SerializedValue.ValueNode,
 		Label:     base.SerializedValueLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompExample, PropSerializedValue),
 		Original:  l,
 		New:       r,
 	})

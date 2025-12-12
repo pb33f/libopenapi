@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -219,7 +219,7 @@ func ComparePathItems(l, r any) *PathItemChanges {
 			RightNode: rPath.Description.ValueNode,
 			Label:     v3.DescriptionLabel,
 			Changes:   &changes,
-			Breaking:  false,
+			Breaking:  BreakingModified(CompPathItem, PropDescription),
 			Original:  lPath,
 			New:       lPath,
 		})
@@ -230,7 +230,7 @@ func ComparePathItems(l, r any) *PathItemChanges {
 			RightNode: rPath.Summary.ValueNode,
 			Label:     v3.SummaryLabel,
 			Changes:   &changes,
-			Breaking:  false,
+			Breaking:  BreakingModified(CompPathItem, PropSummary),
 			Original:  lPath,
 			New:       lPath,
 		})
@@ -497,11 +497,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Get.IsEmpty() && rPath.Get.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.GetLabel,
-			lPath.Get.ValueNode, nil, true, lPath.Get.Value, nil)
+			lPath.Get.ValueNode, nil, BreakingRemoved(CompPathItem, PropGet), lPath.Get.Value, nil)
 	}
 	if lPath.Get.IsEmpty() && !rPath.Get.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.GetLabel,
-			nil, rPath.Get.ValueNode, false, nil, lPath.Get.Value)
+			nil, rPath.Get.ValueNode, BreakingAdded(CompPathItem, PropGet), nil, lPath.Get.Value)
 	}
 
 	// put
@@ -511,11 +511,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Put.IsEmpty() && rPath.Put.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PutLabel,
-			lPath.Put.ValueNode, nil, true, lPath.Put.Value, nil)
+			lPath.Put.ValueNode, nil, BreakingRemoved(CompPathItem, PropPut), lPath.Put.Value, nil)
 	}
 	if lPath.Put.IsEmpty() && !rPath.Put.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.PutLabel,
-			nil, rPath.Put.ValueNode, false, nil, lPath.Put.Value)
+			nil, rPath.Put.ValueNode, BreakingAdded(CompPathItem, PropPut), nil, lPath.Put.Value)
 	}
 
 	// post
@@ -525,11 +525,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Post.IsEmpty() && rPath.Post.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PostLabel,
-			lPath.Post.ValueNode, nil, true, lPath.Post.Value, nil)
+			lPath.Post.ValueNode, nil, BreakingRemoved(CompPathItem, PropPost), lPath.Post.Value, nil)
 	}
 	if lPath.Post.IsEmpty() && !rPath.Post.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.PostLabel,
-			nil, rPath.Post.ValueNode, false, nil, lPath.Post.Value)
+			nil, rPath.Post.ValueNode, BreakingAdded(CompPathItem, PropPost), nil, lPath.Post.Value)
 	}
 
 	// delete
@@ -539,11 +539,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Delete.IsEmpty() && rPath.Delete.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.DeleteLabel,
-			lPath.Delete.ValueNode, nil, true, lPath.Delete.Value, nil)
+			lPath.Delete.ValueNode, nil, BreakingRemoved(CompPathItem, PropDelete), lPath.Delete.Value, nil)
 	}
 	if lPath.Delete.IsEmpty() && !rPath.Delete.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.DeleteLabel,
-			nil, rPath.Delete.ValueNode, false, nil, lPath.Delete.Value)
+			nil, rPath.Delete.ValueNode, BreakingAdded(CompPathItem, PropDelete), nil, lPath.Delete.Value)
 	}
 
 	// options
@@ -553,11 +553,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Options.IsEmpty() && rPath.Options.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.OptionsLabel,
-			lPath.Options.ValueNode, nil, true, lPath.Options.Value, nil)
+			lPath.Options.ValueNode, nil, BreakingRemoved(CompPathItem, PropOptions), lPath.Options.Value, nil)
 	}
 	if lPath.Options.IsEmpty() && !rPath.Options.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.OptionsLabel,
-			nil, rPath.Options.ValueNode, false, nil, lPath.Options.Value)
+			nil, rPath.Options.ValueNode, BreakingAdded(CompPathItem, PropOptions), nil, lPath.Options.Value)
 	}
 
 	// head
@@ -567,11 +567,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Head.IsEmpty() && rPath.Head.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.HeadLabel,
-			lPath.Head.ValueNode, nil, true, lPath.Head.Value, nil)
+			lPath.Head.ValueNode, nil, BreakingRemoved(CompPathItem, PropHead), lPath.Head.Value, nil)
 	}
 	if lPath.Head.IsEmpty() && !rPath.Head.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.HeadLabel,
-			nil, rPath.Head.ValueNode, false, nil, lPath.Head.Value)
+			nil, rPath.Head.ValueNode, BreakingAdded(CompPathItem, PropHead), nil, lPath.Head.Value)
 	}
 
 	// patch
@@ -581,11 +581,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Patch.IsEmpty() && rPath.Patch.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.PatchLabel,
-			lPath.Patch.ValueNode, nil, true, lPath.Patch.Value, nil)
+			lPath.Patch.ValueNode, nil, BreakingRemoved(CompPathItem, PropPatch), lPath.Patch.Value, nil)
 	}
 	if lPath.Patch.IsEmpty() && !rPath.Patch.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.PatchLabel,
-			nil, rPath.Patch.ValueNode, false, nil, lPath.Patch.Value)
+			nil, rPath.Patch.ValueNode, BreakingAdded(CompPathItem, PropPatch), nil, lPath.Patch.Value)
 	}
 
 	// trace
@@ -595,11 +595,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 	}
 	if !lPath.Trace.IsEmpty() && rPath.Trace.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.TraceLabel,
-			lPath.Trace.ValueNode, nil, true, lPath.Trace.Value, nil)
+			lPath.Trace.ValueNode, nil, BreakingRemoved(CompPathItem, PropTrace), lPath.Trace.Value, nil)
 	}
 	if lPath.Trace.IsEmpty() && !rPath.Trace.IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.TraceLabel,
-			nil, rPath.Trace.ValueNode, false, nil, lPath.Trace.Value)
+			nil, rPath.Trace.ValueNode, BreakingAdded(CompPathItem, PropTrace), nil, lPath.Trace.Value)
 	}
 
 	// query
@@ -689,10 +689,11 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 
 	if !lPath.Parameters.IsEmpty() && rPath.Parameters.IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.ParametersLabel,
-			lPath.Parameters.ValueNode, nil, true, lPath.Parameters.Value,
+			lPath.Parameters.ValueNode, nil, BreakingRemoved(CompPathItem, PropParameters), lPath.Parameters.Value,
 			nil)
 	}
 	if lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {
+		// adding a required parameter is breaking; check each parameter's Required flag
 		breaking := false
 		for i := range rPath.Parameters.Value {
 			param := rPath.Parameters.Value[i].Value

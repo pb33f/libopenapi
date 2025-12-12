@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -89,7 +89,7 @@ func CompareCallback(l, r *v3.Callback) *CallbackChanges {
 		rhash := rHashes[k]
 		if rhash == "" {
 			CreateChange(&changes, ObjectRemoved, k,
-				lValues[k].GetValueNode(), nil, true,
+				lValues[k].GetValueNode(), nil, BreakingRemoved(CompCallback, PropExpressions),
 				lValues[k].GetValue(), nil)
 			continue
 		}
@@ -105,7 +105,7 @@ func CompareCallback(l, r *v3.Callback) *CallbackChanges {
 		lhash := lHashes[k]
 		if lhash == "" {
 			CreateChange(&changes, ObjectAdded, k,
-				nil, rValues[k].GetValueNode(), false,
+				nil, rValues[k].GetValueNode(), BreakingAdded(CompCallback, PropExpressions),
 				nil, rValues[k].GetValue())
 			continue
 		}
