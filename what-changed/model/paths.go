@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -192,7 +192,7 @@ func ComparePaths(l, r any) *PathsChanges {
 			}
 			g, p := lPath.FindPathAndKey(k)
 			CreateChange(&changes, ObjectRemoved, v3.PathLabel,
-				g.KeyNode, nil, true,
+				g.KeyNode, nil, BreakingRemoved(CompPaths, PropPath),
 				p.Value, nil)
 		}
 
@@ -200,7 +200,7 @@ func ComparePaths(l, r any) *PathsChanges {
 			if _, ok := lKeys[k]; !ok {
 				g, p := rPath.FindPathAndKey(k)
 				CreateChange(&changes, ObjectAdded, v3.PathLabel,
-					nil, g.KeyNode, false,
+					nil, g.KeyNode, BreakingAdded(CompPaths, PropPath),
 					nil, p.Value)
 			}
 		}

@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -54,28 +54,36 @@ func removedSecurityRequirement(vn *yaml.Node, schemeName, scopeName string, cha
 	property := schemeName
 	value := scopeName
 	var node *yaml.Node = vn
+	breaking := BreakingRemoved(CompSecurityRequirement, PropSchemes)
 	if scopeName == "" {
 		// entire scheme was removed, use scheme name as value
 		value = schemeName
 		// Don't use the node for entire scheme removal, as it may be an empty array []
 		node = nil
+	} else {
+		// scope was removed
+		breaking = BreakingRemoved(CompSecurityRequirement, PropScopes)
 	}
 	CreateChange(changes, ObjectRemoved, property,
-		node, nil, true, value, nil)
+		node, nil, breaking, value, nil)
 }
 
 func addedSecurityRequirement(vn *yaml.Node, schemeName, scopeName string, changes *[]*Change) {
 	property := schemeName
 	value := scopeName
 	var node *yaml.Node = vn
+	breaking := BreakingAdded(CompSecurityRequirement, PropSchemes)
 	if scopeName == "" {
 		// entire scheme was added, use scheme name as value
 		value = schemeName
 		// Don't use the node for entire scheme addition, as it may be an empty array []
 		node = nil
+	} else {
+		// scope was added
+		breaking = BreakingAdded(CompSecurityRequirement, PropScopes)
 	}
 	CreateChange(changes, ObjectAdded, property,
-		nil, node, false, nil, value)
+		nil, node, breaking, nil, value)
 }
 
 // tricky to do this correctly, this is my solution.

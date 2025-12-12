@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -94,33 +94,42 @@ func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Chang
 
 	// style
 	addPropertyCheck(&props, left.GetStyle().ValueNode, right.GetStyle().ValueNode,
-		left.GetStyle(), right.GetStyle(), changes, v3.StyleLabel, false)
+		left.GetStyle(), right.GetStyle(), changes, v3.StyleLabel,
+		BreakingModified(CompHeader, PropStyle))
 
 	// allow reserved
 	addPropertyCheck(&props, left.GetAllowReserved().ValueNode, right.GetAllowReserved().ValueNode,
-		left.GetAllowReserved(), right.GetAllowReserved(), changes, v3.AllowReservedLabel, false)
+		left.GetAllowReserved(), right.GetAllowReserved(), changes, v3.AllowReservedLabel,
+		BreakingModified(CompHeader, PropAllowReserved))
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,
-		left.GetAllowEmptyValue(), right.GetAllowEmptyValue(), changes, v3.AllowEmptyValueLabel, true)
+		left.GetAllowEmptyValue(), right.GetAllowEmptyValue(), changes, v3.AllowEmptyValueLabel,
+		BreakingModified(CompHeader, PropAllowEmptyValue))
 
 	// explode
 	addPropertyCheck(&props, left.GetExplode().ValueNode, right.GetExplode().ValueNode,
-		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel, false)
+		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel,
+		BreakingModified(CompHeader, PropExplode))
 
 	// example
 	CheckPropertyAdditionOrRemovalWithEncoding(left.GetExample().ValueNode, right.GetExample().ValueNode,
-		v3.ExampleLabel, changes, false, left.GetExample(), right.GetExample())
+		v3.ExampleLabel, changes,
+		BreakingAdded(CompHeader, PropExample) || BreakingRemoved(CompHeader, PropExample),
+		left.GetExample(), right.GetExample())
 	CheckForModificationWithEncoding(left.GetExample().ValueNode, right.GetExample().ValueNode,
-		v3.ExampleLabel, changes, false, left.GetExample(), right.GetExample())
+		v3.ExampleLabel, changes, BreakingModified(CompHeader, PropExample),
+		left.GetExample(), right.GetExample())
 
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
-		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel, false)
+		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel,
+		BreakingModified(CompHeader, PropDeprecated))
 
 	// required
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
-		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, true)
+		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel,
+		BreakingModified(CompHeader, PropRequired))
 
 	return props
 }
@@ -194,7 +203,8 @@ func addCommonHeaderProperties(left, right low.HasDescription, changes *[]*Chang
 
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
-		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel, false)
+		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
+		BreakingModified(CompHeader, PropDescription))
 
 	return props
 }

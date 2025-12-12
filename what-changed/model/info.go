@@ -71,7 +71,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		RightNode: r.Title.ValueNode,
 		Label:     v3.TitleLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompInfo, PropTitle),
 		Original:  l,
 		New:       r,
 	})
@@ -82,7 +82,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		RightNode: r.Summary.ValueNode,
 		Label:     v3.SummaryLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompInfo, PropSummary),
 		Original:  l,
 		New:       r,
 	})
@@ -93,7 +93,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompInfo, PropDescription),
 		Original:  l,
 		New:       r,
 	})
@@ -104,7 +104,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		RightNode: r.TermsOfService.ValueNode,
 		Label:     v3.TermsOfServiceLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompInfo, PropTermsOfService),
 		Original:  l,
 		New:       r,
 	})
@@ -115,7 +115,7 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 		RightNode: r.Version.ValueNode,
 		Label:     v3.VersionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompInfo, PropVersion),
 		Original:  l,
 		New:       r,
 	})
@@ -131,11 +131,11 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 	} else {
 		if l.Contact.Value == nil && r.Contact.Value != nil {
 			CreateChange(&changes, ObjectAdded, v3.ContactLabel,
-				nil, r.Contact.ValueNode, false, nil, r.Contact.Value)
+				nil, r.Contact.ValueNode, BreakingAdded(CompInfo, PropContact), nil, r.Contact.Value)
 		}
 		if l.Contact.Value != nil && r.Contact.Value == nil {
 			CreateChange(&changes, ObjectRemoved, v3.ContactLabel,
-				l.Contact.ValueNode, nil, false, l.Contact.Value, nil)
+				l.Contact.ValueNode, nil, BreakingRemoved(CompInfo, PropContact), l.Contact.Value, nil)
 		}
 	}
 
@@ -145,11 +145,11 @@ func CompareInfo(l, r *base.Info) *InfoChanges {
 	} else {
 		if l.License.Value == nil && r.License.Value != nil {
 			CreateChange(&changes, ObjectAdded, v3.LicenseLabel,
-				nil, r.License.ValueNode, false, nil, r.License.Value)
+				nil, r.License.ValueNode, BreakingAdded(CompInfo, PropLicense), nil, r.License.Value)
 		}
 		if l.License.Value != nil && r.License.Value == nil {
 			CreateChange(&changes, ObjectRemoved, v3.LicenseLabel,
-				l.License.ValueNode, nil, false, r.License.Value, nil)
+				l.License.ValueNode, nil, BreakingRemoved(CompInfo, PropLicense), r.License.Value, nil)
 		}
 	}
 

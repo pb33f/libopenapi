@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -117,9 +117,12 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 
 	// Example
 	CheckPropertyAdditionOrRemovalWithEncoding(l.Example.ValueNode, r.Example.ValueNode,
-		v3.ExampleLabel, &changes, false, l.Example.Value, r.Example.Value)
+		v3.ExampleLabel, &changes,
+		BreakingAdded(CompMediaType, PropExample) || BreakingRemoved(CompMediaType, PropExample),
+		l.Example.Value, r.Example.Value)
 	CheckForModificationWithEncoding(l.Example.ValueNode, r.Example.ValueNode,
-		v3.ExampleLabel, &changes, false, l.Example.Value, r.Example.Value)
+		v3.ExampleLabel, &changes, BreakingModified(CompMediaType, PropExample),
+		l.Example.Value, r.Example.Value)
 
 	CheckProperties(props)
 
@@ -129,11 +132,11 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	}
 	if !l.Schema.IsEmpty() && r.Schema.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel, l.Schema.ValueNode,
-			nil, true, l.Schema.Value, nil)
+			nil, BreakingRemoved(CompMediaType, PropSchema), l.Schema.Value, nil)
 	}
 	if l.Schema.IsEmpty() && !r.Schema.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.SchemaLabel, nil,
-			r.Schema.ValueNode, true, nil, r.Schema.Value)
+			r.Schema.ValueNode, BreakingAdded(CompMediaType, PropSchema), nil, r.Schema.Value)
 	}
 
 	// examples

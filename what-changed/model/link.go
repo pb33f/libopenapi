@@ -71,7 +71,7 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 		RightNode: r.OperationRef.ValueNode,
 		Label:     v3.OperationRefLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompLink, PropOperationRef),
 		Original:  l,
 		New:       r,
 	})
@@ -82,7 +82,7 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 		RightNode: r.OperationId.ValueNode,
 		Label:     v3.OperationIdLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompLink, PropOperationID),
 		Original:  l,
 		New:       r,
 	})
@@ -93,7 +93,7 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 		RightNode: r.RequestBody.ValueNode,
 		Label:     v3.RequestBodyLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompLink, PropRequestBody),
 		Original:  l,
 		New:       r,
 	})
@@ -104,7 +104,7 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompLink, PropDescription),
 		Original:  l,
 		New:       r,
 	})
@@ -121,12 +121,12 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	}
 	if !l.Server.IsEmpty() && r.Server.IsEmpty() {
 		CreateChange(&changes, PropertyRemoved, v3.ServerLabel,
-			l.Server.ValueNode, nil, true,
+			l.Server.ValueNode, nil, BreakingRemoved(CompLink, PropServer),
 			l.Server.Value, nil)
 	}
 	if l.Server.IsEmpty() && !r.Server.IsEmpty() {
 		CreateChange(&changes, PropertyAdded, v3.ServerLabel,
-			nil, r.Server.ValueNode, true,
+			nil, r.Server.ValueNode, BreakingAdded(CompLink, PropServer),
 			nil, r.Server.Value)
 	}
 
@@ -142,13 +142,13 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	for k := range lValues {
 		if _, ok := rValues[k]; !ok {
 			CreateChange(&changes, ObjectRemoved, v3.ParametersLabel,
-				lValues[k].ValueNode, nil, true,
+				lValues[k].ValueNode, nil, BreakingRemoved(CompLink, PropParameters),
 				k, nil)
 			continue
 		}
 		if lValues[k].Value != rValues[k].Value {
 			CreateChange(&changes, Modified, v3.ParametersLabel,
-				lValues[k].ValueNode, rValues[k].ValueNode, true,
+				lValues[k].ValueNode, rValues[k].ValueNode, BreakingModified(CompLink, PropParameters),
 				k, k)
 		}
 
@@ -156,7 +156,7 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 	for k := range rValues {
 		if _, ok := lValues[k]; !ok {
 			CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
-				nil, rValues[k].ValueNode, true,
+				nil, rValues[k].ValueNode, BreakingAdded(CompLink, PropParameters),
 				nil, k)
 		}
 	}
