@@ -71,7 +71,7 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompServer, PropName),
 		Original:  l,
 		New:       r,
 	})
@@ -81,7 +81,7 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompServer, PropURL),
 		Original:  l,
 		New:       r,
 	})
@@ -91,7 +91,7 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompServer, PropDescription),
 		Original:  l,
 		New:       r,
 	})

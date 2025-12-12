@@ -71,7 +71,7 @@ func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompRequestBody, PropDescription),
 		Original:  l,
 		New:       r,
 	})
@@ -82,7 +82,7 @@ func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 		RightNode: r.Required.ValueNode,
 		Label:     v3.RequiredLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompRequestBody, PropRequired),
 		Original:  l,
 		New:       r,
 	})

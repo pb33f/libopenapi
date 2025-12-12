@@ -58,7 +58,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompLicense, PropURL),
 		Original:  l,
 		New:       r,
 	})
@@ -69,7 +69,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompLicense, PropName),
 		Original:  l,
 		New:       r,
 	})
@@ -80,7 +80,7 @@ func CompareLicense(l, r *base.License) *LicenseChanges {
 		RightNode: r.Identifier.ValueNode,
 		Label:     v3.Identifier,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompLicense, PropIdentifier),
 		Original:  l,
 		New:       r,
 	})

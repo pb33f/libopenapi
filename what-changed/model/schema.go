@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -421,7 +421,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			} else {
 				// references are different, that's all we care to know.
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode().Content[1], r.GetValueNode().Content[1], false, l.GetReference(),
+					l.GetValueNode().Content[1], r.GetValueNode().Content[1], BreakingModified(CompSchema, PropRef), l.GetReference(),
 					r.GetReference())
 				sc.PropertyChanges = NewPropertyChanges(changes)
 
@@ -442,7 +442,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			rHash := r.Schema().Hash()
 			if lHash != rHash {
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode(), r.GetValueNode().Content[1], false, l, r.GetReference())
+					l.GetValueNode(), r.GetValueNode().Content[1], BreakingModified(CompSchema, PropRef), l, r.GetReference())
 				sc.PropertyChanges = NewPropertyChanges(changes)
 
 				// check if this is a circular ref.
@@ -462,7 +462,7 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 			rHash := r.Schema().Hash()
 			if lHash != rHash {
 				CreateChange(&changes, Modified, v3.RefLabel,
-					l.GetValueNode().Content[1], r.GetValueNode(), false, l.GetReference(), r)
+					l.GetValueNode().Content[1], r.GetValueNode(), BreakingModified(CompSchema, PropRef), l.GetReference(), r)
 				sc.PropertyChanges = NewPropertyChanges(changes)
 
 				// check if this is a circular ref.
@@ -660,11 +660,11 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				if !slices.Contains(lProps, rProps[w]) {
 					// new property added.
 					CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
-						nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+						nil, rKeyNodes[rProps[w]], BreakingAdded(CompSchema, PropProperties), nil, rEntities[rProps[w]])
 				}
 				if !slices.Contains(rProps, lProps[w]) {
 					CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
-						lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+						lKeyNodes[lProps[w]], nil, BreakingRemoved(CompSchema, PropProperties), lEntities[lProps[w]], nil)
 				}
 				if slices.Contains(lProps, rProps[w]) {
 					h := slices.Index(lProps, rProps[w])
@@ -685,7 +685,7 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				go checkProperty(lProps[w], lEntities[lProps[w]], rEntities[lProps[w]])
 			} else {
 				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
-					lKeyNodes[lProps[w]], nil, true, lEntities[lProps[w]], nil)
+					lKeyNodes[lProps[w]], nil, BreakingRemoved(CompSchema, PropProperties), lEntities[lProps[w]], nil)
 			}
 		}
 		for w := range rProps {
@@ -694,7 +694,7 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				go checkProperty(rProps[w], lEntities[rProps[w]], rEntities[rProps[w]])
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
-					nil, rKeyNodes[rProps[w]], false, nil, rEntities[rProps[w]])
+					nil, rKeyNodes[rProps[w]], BreakingAdded(CompSchema, PropProperties), nil, rEntities[rProps[w]])
 			}
 		}
 	}
@@ -707,7 +707,7 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				go checkProperty(propName, lEntities[propName], rEntities[propName])
 			} else {
 				CreateChange(changes, ObjectAdded, v3.PropertiesLabel,
-					nil, rKeyNodes[propName], false, nil, rEntities[propName])
+					nil, rKeyNodes[propName], BreakingAdded(CompSchema, PropProperties), nil, rEntities[propName])
 			}
 		}
 		for _, propName := range lProps {
@@ -716,7 +716,7 @@ func buildProperty(lProps, rProps []string, lEntities, rEntities map[string]*bas
 				go checkProperty(propName, lEntities[propName], rEntities[propName])
 			} else {
 				CreateChange(changes, ObjectRemoved, v3.PropertiesLabel,
-					nil, lKeyNodes[propName], true, lEntities[propName], nil)
+					nil, lKeyNodes[propName], BreakingRemoved(CompSchema, PropProperties), lEntities[propName], nil)
 			}
 		}
 	}
@@ -748,7 +748,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.SchemaDialectLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  true, // JSON Schema dialect changes are always breaking
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -767,7 +767,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.ExclusiveMaximumLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropExclusiveMaximum),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -787,7 +787,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.ExclusiveMinimumLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropExclusiveMinimum),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -806,7 +806,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.TypeLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropType),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -825,7 +825,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.TitleLabel,
 		Changes:   changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompSchema, PropTitle),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -845,7 +845,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MultipleOfLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMultipleOf),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -864,7 +864,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MaximumLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMaximum),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -883,7 +883,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MinimumLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMinimum),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -902,7 +902,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MaxLengthLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMaxLength),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -921,7 +921,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MinLengthLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMinLength),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -940,7 +940,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.PatternLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropPattern),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -959,7 +959,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.FormatLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropFormat),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -978,7 +978,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MaxItemsLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMaxItems),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -997,7 +997,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MinItemsLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMinItems),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1016,7 +1016,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MaxPropertiesLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMaxProperties),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1036,7 +1036,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.MinPropertiesLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropMinProperties),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1055,7 +1055,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.UniqueItemsLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropUniqueItems),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1073,12 +1073,12 @@ func checkSchemaPropertyChanges(
 			if lSchema.AdditionalProperties.Value.IsB() && rSchema.AdditionalProperties.Value.IsB() {
 				if lSchema.AdditionalProperties.Value.B != rSchema.AdditionalProperties.Value.B {
 					CreateChange(changes, Modified, v3.AdditionalPropertiesLabel,
-						lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, true,
+						lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, BreakingModified(CompSchema, PropAdditionalProperties),
 						lSchema.AdditionalProperties.Value.B, rSchema.AdditionalProperties.Value.B)
 				}
 			} else {
 				CreateChange(changes, Modified, v3.AdditionalPropertiesLabel,
-					lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, true,
+					lSchema.AdditionalProperties.ValueNode, rSchema.AdditionalProperties.ValueNode, BreakingModified(CompSchema, PropAdditionalProperties),
 					lSchema.AdditionalProperties.Value.B, rSchema.AdditionalProperties.Value.B)
 			}
 		}
@@ -1087,12 +1087,12 @@ func checkSchemaPropertyChanges(
 	// added AdditionalProperties
 	if (lSchema == nil || lSchema.AdditionalProperties.Value == nil) && (rSchema != nil && rSchema.AdditionalProperties.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.AdditionalPropertiesLabel,
-			nil, rSchema.AdditionalProperties.ValueNode, true, nil, rSchema.AdditionalProperties.Value)
+			nil, rSchema.AdditionalProperties.ValueNode, BreakingAdded(CompSchema, PropAdditionalProperties), nil, rSchema.AdditionalProperties.Value)
 	}
 	// removed AdditionalProperties
 	if (lSchema != nil && lSchema.AdditionalProperties.Value != nil) && (rSchema == nil || rSchema.AdditionalProperties.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.AdditionalPropertiesLabel,
-			lSchema.AdditionalProperties.ValueNode, nil, true, lSchema.AdditionalProperties.Value, nil)
+			lSchema.AdditionalProperties.ValueNode, nil, BreakingRemoved(CompSchema, PropAdditionalProperties), lSchema.AdditionalProperties.Value, nil)
 	}
 
 	if lSchema != nil && lSchema.Description.ValueNode != nil {
@@ -1107,7 +1107,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.DescriptionLabel,
 		Changes:   changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompSchema, PropDescription),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1126,7 +1126,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.ContentEncodingLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropContentEncoding),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1145,7 +1145,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.ContentMediaType,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropContentMediaType),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1164,7 +1164,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.DefaultLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropDefault),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1183,7 +1183,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.ConstLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropConst),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1202,7 +1202,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.NullableLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropNullable),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1221,7 +1221,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.ReadOnlyLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropReadOnly),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1240,7 +1240,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.WriteOnlyLabel,
 		Changes:   changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompSchema, PropWriteOnly),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1273,7 +1273,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.DeprecatedLabel,
 		Changes:   changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompSchema, PropDeprecated),
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1344,12 +1344,12 @@ func checkSchemaPropertyChanges(
 	// added Discriminator
 	if (lSchema == nil || lSchema.Discriminator.Value == nil) && (rSchema != nil && rSchema.Discriminator.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.DiscriminatorLabel,
-			nil, rSchema.Discriminator.ValueNode, true, nil, rSchema.Discriminator.Value)
+			nil, rSchema.Discriminator.ValueNode, BreakingAdded(CompSchema, PropDiscriminator), nil, rSchema.Discriminator.Value)
 	}
 	// removed Discriminator
 	if (lSchema != nil && lSchema.Discriminator.Value != nil) && (rSchema == nil || rSchema.Discriminator.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.DiscriminatorLabel,
-			lSchema.Discriminator.ValueNode, nil, true, lSchema.Discriminator.Value, nil)
+			lSchema.Discriminator.ValueNode, nil, BreakingRemoved(CompSchema, PropDiscriminator), lSchema.Discriminator.Value, nil)
 	}
 
 	// ExternalDocs
@@ -1380,12 +1380,12 @@ func checkSchemaPropertyChanges(
 	// added If
 	if (lSchema == nil || lSchema.If.Value == nil) && (rSchema != nil && rSchema.If.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.IfLabel,
-			nil, rSchema.If.ValueNode, true, nil, rSchema.If.Value)
+			nil, rSchema.If.ValueNode, BreakingAdded(CompSchema, PropIf), nil, rSchema.If.Value)
 	}
 	// removed If
 	if (lSchema != nil && lSchema.If.Value != nil) && (rSchema == nil || rSchema.If.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.IfLabel,
-			lSchema.If.ValueNode, nil, true, lSchema.If.Value, nil)
+			lSchema.If.ValueNode, nil, BreakingRemoved(CompSchema, PropIf), lSchema.If.Value, nil)
 	}
 	// Else
 	if (lSchema != nil && lSchema.Else.Value != nil) && (rSchema == nil || rSchema.Else.Value != nil) {
@@ -1396,12 +1396,12 @@ func checkSchemaPropertyChanges(
 	// added Else
 	if (lSchema == nil || lSchema.Else.Value == nil) && (rSchema != nil && rSchema.Else.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.ElseLabel,
-			nil, rSchema.Else.ValueNode, true, nil, rSchema.Else.Value)
+			nil, rSchema.Else.ValueNode, BreakingAdded(CompSchema, PropElse), nil, rSchema.Else.Value)
 	}
 	// removed Else
 	if (lSchema != nil && lSchema.Else.Value != nil) && (rSchema == nil || rSchema.Else.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.ElseLabel,
-			lSchema.Else.ValueNode, nil, true, lSchema.Else.Value, nil)
+			lSchema.Else.ValueNode, nil, BreakingRemoved(CompSchema, PropElse), lSchema.Else.Value, nil)
 	}
 	// Then
 	if (lSchema != nil && lSchema.Then.Value != nil) && (rSchema != nil && rSchema.Then.Value != nil) {
@@ -1412,12 +1412,12 @@ func checkSchemaPropertyChanges(
 	// added Then
 	if (lSchema == nil || lSchema.Then.Value == nil) && (rSchema != nil && rSchema.Then.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.ThenLabel,
-			nil, rSchema.Then.ValueNode, true, nil, rSchema.Then.Value)
+			nil, rSchema.Then.ValueNode, BreakingAdded(CompSchema, PropThen), nil, rSchema.Then.Value)
 	}
 	// removed Then
 	if (lSchema != nil && lSchema.Then.Value != nil) && (rSchema == nil || rSchema.Then.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.ThenLabel,
-			lSchema.Then.ValueNode, nil, true, lSchema.Then.Value, nil)
+			lSchema.Then.ValueNode, nil, BreakingRemoved(CompSchema, PropThen), lSchema.Then.Value, nil)
 	}
 	// PropertyNames
 	if (lSchema != nil && lSchema.PropertyNames.Value != nil) && (rSchema != nil && rSchema.PropertyNames.Value != nil) {
@@ -1428,12 +1428,12 @@ func checkSchemaPropertyChanges(
 	// added PropertyNames
 	if (lSchema == nil || lSchema.PropertyNames.Value == nil) && (rSchema != nil && rSchema.PropertyNames.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.PropertyNamesLabel,
-			nil, rSchema.PropertyNames.ValueNode, true, nil, rSchema.PropertyNames.Value)
+			nil, rSchema.PropertyNames.ValueNode, BreakingAdded(CompSchema, PropPropertyNames), nil, rSchema.PropertyNames.Value)
 	}
 	// removed PropertyNames
 	if (lSchema != nil && lSchema.PropertyNames.Value != nil) && (rSchema == nil || rSchema.PropertyNames.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.PropertyNamesLabel,
-			lSchema.PropertyNames.ValueNode, nil, true, lSchema.PropertyNames.Value, nil)
+			lSchema.PropertyNames.ValueNode, nil, BreakingRemoved(CompSchema, PropPropertyNames), lSchema.PropertyNames.Value, nil)
 	}
 	// Contains
 	if (lSchema != nil && lSchema.Contains.Value != nil) && (rSchema != nil && rSchema.Contains.Value != nil) {
@@ -1444,12 +1444,12 @@ func checkSchemaPropertyChanges(
 	// added Contains
 	if (lSchema == nil || lSchema.Contains.Value == nil) && (rSchema != nil && rSchema.Contains.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.ContainsLabel,
-			nil, rSchema.Contains.ValueNode, true, nil, rSchema.Contains.Value)
+			nil, rSchema.Contains.ValueNode, BreakingAdded(CompSchema, PropContains), nil, rSchema.Contains.Value)
 	}
 	// removed Contains
 	if (lSchema != nil && lSchema.Contains.Value != nil) && (rSchema == nil || rSchema.Contains.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.ContainsLabel,
-			lSchema.Contains.ValueNode, nil, true, lSchema.Contains.Value, nil)
+			lSchema.Contains.ValueNode, nil, BreakingRemoved(CompSchema, PropContains), lSchema.Contains.Value, nil)
 	}
 	// UnevaluatedItems
 	if (lSchema != nil && lSchema.UnevaluatedItems.Value != nil) && (rSchema != nil && rSchema.UnevaluatedItems.Value != nil) {
@@ -1460,12 +1460,12 @@ func checkSchemaPropertyChanges(
 	// added UnevaluatedItems
 	if (lSchema == nil || lSchema.UnevaluatedItems.Value == nil) && (rSchema != nil && rSchema.UnevaluatedItems.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.UnevaluatedItemsLabel,
-			nil, rSchema.UnevaluatedItems.ValueNode, true, nil, rSchema.UnevaluatedItems.Value)
+			nil, rSchema.UnevaluatedItems.ValueNode, BreakingAdded(CompSchema, PropUnevaluatedItems), nil, rSchema.UnevaluatedItems.Value)
 	}
 	// removed UnevaluatedItems
 	if (lSchema != nil && lSchema.UnevaluatedItems.Value != nil) && (rSchema == nil || rSchema.UnevaluatedItems.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.UnevaluatedItemsLabel,
-			lSchema.UnevaluatedItems.ValueNode, nil, true, lSchema.UnevaluatedItems.Value, nil)
+			lSchema.UnevaluatedItems.ValueNode, nil, BreakingRemoved(CompSchema, PropUnevaluatedItems), lSchema.UnevaluatedItems.Value, nil)
 	}
 
 	// UnevaluatedProperties
@@ -1478,12 +1478,12 @@ func checkSchemaPropertyChanges(
 			if lSchema.UnevaluatedProperties.Value.IsB() && rSchema.UnevaluatedProperties.Value.IsB() {
 				if lSchema.UnevaluatedProperties.Value.B != rSchema.UnevaluatedProperties.Value.B {
 					CreateChange(changes, Modified, v3.UnevaluatedPropertiesLabel,
-						lSchema.UnevaluatedProperties.ValueNode, rSchema.UnevaluatedProperties.ValueNode, true,
+						lSchema.UnevaluatedProperties.ValueNode, rSchema.UnevaluatedProperties.ValueNode, BreakingModified(CompSchema, PropUnevaluatedProps),
 						lSchema.UnevaluatedProperties.Value.B, rSchema.UnevaluatedProperties.Value.B)
 				}
 			} else {
 				CreateChange(changes, Modified, v3.UnevaluatedPropertiesLabel,
-					lSchema.UnevaluatedProperties.ValueNode, rSchema.UnevaluatedProperties.ValueNode, true,
+					lSchema.UnevaluatedProperties.ValueNode, rSchema.UnevaluatedProperties.ValueNode, BreakingModified(CompSchema, PropUnevaluatedProps),
 					lSchema.UnevaluatedProperties.Value.B, rSchema.UnevaluatedProperties.Value.B)
 			}
 		}
@@ -1492,12 +1492,12 @@ func checkSchemaPropertyChanges(
 	// added UnevaluatedProperties
 	if (lSchema == nil || lSchema.UnevaluatedProperties.Value == nil) && (rSchema != nil && rSchema.UnevaluatedProperties.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.UnevaluatedPropertiesLabel,
-			nil, rSchema.UnevaluatedProperties.ValueNode, true, nil, rSchema.UnevaluatedProperties.Value)
+			nil, rSchema.UnevaluatedProperties.ValueNode, BreakingAdded(CompSchema, PropUnevaluatedProps), nil, rSchema.UnevaluatedProperties.Value)
 	}
 	// removed UnevaluatedProperties
 	if (lSchema != nil && lSchema.UnevaluatedProperties.Value != nil) && (rSchema == nil || rSchema.UnevaluatedProperties.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.UnevaluatedPropertiesLabel,
-			lSchema.UnevaluatedProperties.ValueNode, nil, true, lSchema.UnevaluatedProperties.Value, nil)
+			lSchema.UnevaluatedProperties.ValueNode, nil, BreakingRemoved(CompSchema, PropUnevaluatedProps), lSchema.UnevaluatedProperties.Value, nil)
 	}
 
 	// Not
@@ -1509,12 +1509,12 @@ func checkSchemaPropertyChanges(
 	// added Not
 	if (lSchema == nil || lSchema.Not.Value == nil) && (rSchema != nil && rSchema.Not.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.NotLabel,
-			nil, rSchema.Not.ValueNode, true, nil, rSchema.Not.Value)
+			nil, rSchema.Not.ValueNode, BreakingAdded(CompSchema, PropNot), nil, rSchema.Not.Value)
 	}
 	// removed not
 	if (lSchema != nil && lSchema.Not.Value != nil) && (rSchema == nil || rSchema.Not.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.NotLabel,
-			lSchema.Not.ValueNode, nil, true, lSchema.Not.Value, nil)
+			lSchema.Not.ValueNode, nil, BreakingRemoved(CompSchema, PropNot), lSchema.Not.Value, nil)
 	}
 
 	// items
@@ -1525,18 +1525,18 @@ func checkSchemaPropertyChanges(
 			}
 		} else {
 			CreateChange(changes, Modified, v3.ItemsLabel,
-				lSchema.Items.ValueNode, rSchema.Items.ValueNode, true, lSchema.Items.Value.B, rSchema.Items.Value.B)
+				lSchema.Items.ValueNode, rSchema.Items.ValueNode, BreakingModified(CompSchema, PropItems), lSchema.Items.Value.B, rSchema.Items.Value.B)
 		}
 	}
 	// added Items
 	if (lSchema == nil || lSchema.Items.Value == nil) && (rSchema != nil && rSchema.Items.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.ItemsLabel,
-			nil, rSchema.Items.ValueNode, true, nil, rSchema.Items.Value)
+			nil, rSchema.Items.ValueNode, BreakingAdded(CompSchema, PropItems), nil, rSchema.Items.Value)
 	}
 	// removed Items
 	if (lSchema != nil && lSchema.Items.Value != nil) && (rSchema == nil || rSchema.Items.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.ItemsLabel,
-			lSchema.Items.ValueNode, nil, true, lSchema.Items.Value, nil)
+			lSchema.Items.ValueNode, nil, BreakingRemoved(CompSchema, PropItems), lSchema.Items.Value, nil)
 	}
 
 	// check extensions
@@ -1701,8 +1701,20 @@ func extractSchemaChanges(
 				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
 			}
 			if w >= len(rKeys) {
+				// determine breaking status based on label
+				breaking := true
+				switch label {
+				case v3.AllOfLabel:
+					breaking = BreakingRemoved(CompSchema, PropAllOf)
+				case v3.AnyOfLabel:
+					breaking = BreakingRemoved(CompSchema, PropAnyOf)
+				case v3.OneOfLabel:
+					breaking = BreakingRemoved(CompSchema, PropOneOf)
+				case v3.PrefixItemsLabel:
+					breaking = BreakingRemoved(CompSchema, PropPrefixItems)
+				}
 				CreateChange(changes, ObjectRemoved, label,
-					lEntities[lKeys[w]].GetValueNode(), nil, true, lEntities[lKeys[w]], nil)
+					lEntities[lKeys[w]].GetValueNode(), nil, breaking, lEntities[lKeys[w]], nil)
 			}
 		}
 	}
@@ -1714,8 +1726,20 @@ func extractSchemaChanges(
 				*sc = append(*sc, CompareSchemas(lEntities[lKeys[w]], rEntities[rKeys[w]]))
 			}
 			if w >= len(lKeys) {
+				// determine breaking status based on label
+				breaking := false
+				switch label {
+				case v3.AllOfLabel:
+					breaking = BreakingAdded(CompSchema, PropAllOf)
+				case v3.AnyOfLabel:
+					breaking = BreakingAdded(CompSchema, PropAnyOf)
+				case v3.OneOfLabel:
+					breaking = BreakingAdded(CompSchema, PropOneOf)
+				case v3.PrefixItemsLabel:
+					breaking = BreakingAdded(CompSchema, PropPrefixItems)
+				}
 				CreateChange(changes, ObjectAdded, label,
-					nil, rEntities[rKeys[w]].GetValueNode(), false, nil, rEntities[rKeys[w]])
+					nil, rEntities[rKeys[w]].GetValueNode(), breaking, nil, rEntities[rKeys[w]])
 			}
 		}
 	}
@@ -1756,13 +1780,13 @@ func checkDependentRequiredChanges(
 			if !slicesEqual(leftReqs, rightReqs) {
 				CreateChange(&changes, Modified, prop,
 					getNodeForProperty(left, prop), getNodeForProperty(right, prop),
-					true, leftReqs, rightReqs)
+					BreakingModified(CompSchema, PropDependentRequired), leftReqs, rightReqs)
 			}
 		} else {
 			// Property added
 			CreateChange(&changes, PropertyAdded, prop,
 				nil, getNodeForProperty(right, prop),
-				false, nil, rightReqs)
+				BreakingAdded(CompSchema, PropDependentRequired), nil, rightReqs)
 		}
 	}
 
@@ -1771,7 +1795,7 @@ func checkDependentRequiredChanges(
 		if _, exists := rightMap[prop]; !exists {
 			CreateChange(&changes, PropertyRemoved, prop,
 				getNodeForProperty(left, prop), nil,
-				true, leftReqs, nil)
+				BreakingRemoved(CompSchema, PropDependentRequired), leftReqs, nil)
 		}
 	}
 

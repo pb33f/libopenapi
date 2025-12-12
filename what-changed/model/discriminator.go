@@ -60,7 +60,7 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 		RightNode: r.PropertyName.ValueNode,
 		Label:     base.PropertyNameLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompDiscriminator, PropPropertyName),
 		Original:  l,
 		New:       r,
 	})
@@ -71,7 +71,7 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 		RightNode: r.DefaultMapping.ValueNode,
 		Label:     base.DefaultMappingLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompDiscriminator, PropDefaultMapping),
 		Original:  l,
 		New:       r,
 	})
@@ -85,12 +85,12 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 
 	// check for removals, modifications and moves
 	for i := range lMap {
-		CheckForObjectAdditionOrRemoval[string](lMap, rMap, i, &mappingChanges, false, true)
+		CheckForObjectAdditionOrRemoval[string](lMap, rMap, i, &mappingChanges, BreakingAdded(CompDiscriminator, PropMapping), BreakingRemoved(CompDiscriminator, PropMapping))
 		// if the existing tag exists, let's check it.
 		if rMap[i] != nil {
 			if lMap[i].Value != rMap[i].Value {
 				CreateChange(&mappingChanges, Modified, i, lMap[i].GetValueNode(),
-					rMap[i].GetValueNode(), true, lMap[i].GetValue(), rMap[i].GetValue())
+					rMap[i].GetValueNode(), BreakingModified(CompDiscriminator, PropMapping), lMap[i].GetValue(), rMap[i].GetValue())
 			}
 		}
 	}
@@ -98,7 +98,7 @@ func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	for i := range rMap {
 		if lMap[i] == nil {
 			CreateChange(&mappingChanges, ObjectAdded, i, nil,
-				rMap[i].GetValueNode(), false, nil, rMap[i].GetValue())
+				rMap[i].GetValueNode(), BreakingAdded(CompDiscriminator, PropMapping), nil, rMap[i].GetValue())
 		}
 	}
 

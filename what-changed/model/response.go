@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -181,11 +181,13 @@ func CompareResponse(l, r any) *ResponseChanges {
 
 		// summary (OpenAPI 3.2+)
 		addPropertyCheck(&props, lResponse.Summary.ValueNode, rResponse.Summary.ValueNode,
-			lResponse.Summary.Value, rResponse.Summary.Value, &changes, v3.SummaryLabel, false)
+			lResponse.Summary.Value, rResponse.Summary.Value, &changes, v3.SummaryLabel,
+			BreakingModified(CompResponse, PropSummary))
 
 		// description
 		addPropertyCheck(&props, lResponse.Description.ValueNode, rResponse.Description.ValueNode,
-			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel, false)
+			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel,
+			BreakingModified(CompResponse, PropDescription))
 
 		rc.HeadersChanges = CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
 			&changes, v3.HeadersLabel, CompareHeadersV3)

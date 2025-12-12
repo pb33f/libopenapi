@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -112,23 +112,28 @@ func addOpenAPIParameterProperties(left, right low.OpenAPIParameter, changes *[]
 
 	// style
 	addPropertyCheck(&props, left.GetStyle().ValueNode, right.GetStyle().ValueNode,
-		left.GetStyle(), right.GetStyle(), changes, v3.StyleLabel, false)
+		left.GetStyle(), right.GetStyle(), changes, v3.StyleLabel,
+		BreakingModified(CompParameter, PropStyle))
 
 	// allow reserved
 	addPropertyCheck(&props, left.GetAllowReserved().ValueNode, right.GetAllowReserved().ValueNode,
-		left.GetAllowReserved(), right.GetAllowReserved(), changes, v3.AllowReservedLabel, true)
+		left.GetAllowReserved(), right.GetAllowReserved(), changes, v3.AllowReservedLabel,
+		BreakingModified(CompParameter, PropAllowReserved))
 
 	// explode
 	addPropertyCheck(&props, left.GetExplode().ValueNode, right.GetExplode().ValueNode,
-		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel, false)
+		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel,
+		BreakingModified(CompParameter, PropExplode))
 
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
-		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel, false)
+		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel,
+		BreakingModified(CompParameter, PropDeprecated))
 
 	// example
 	addPropertyCheck(&props, left.GetExample().ValueNode, right.GetExample().ValueNode,
-		left.GetExample(), right.GetExample(), changes, v3.ExampleLabel, false)
+		left.GetExample(), right.GetExample(), changes, v3.ExampleLabel,
+		BreakingModified(CompParameter, PropExample))
 
 	return props
 }
@@ -203,23 +208,27 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 	var props []*PropertyCheck
 
 	addPropertyCheck(&props, left.GetName().ValueNode, right.GetName().ValueNode,
-		left.GetName(), right.GetName(), changes, v3.NameLabel, true)
+		left.GetName(), right.GetName(), changes, v3.NameLabel,
+		BreakingModified(CompParameter, PropName))
 
 	// in
 	addPropertyCheck(&props, left.GetIn().ValueNode, right.GetIn().ValueNode,
-		left.GetIn(), right.GetIn(), changes, v3.InLabel, true)
+		left.GetIn(), right.GetIn(), changes, v3.InLabel,
+		BreakingModified(CompParameter, PropIn))
 
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
-		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel, false)
+		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
+		BreakingModified(CompParameter, PropDescription))
 
-	// required
+	// required - uses right.GetRequired().Value for conditional breaking status
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
 		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, right.GetRequired().Value)
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,
-		left.GetAllowEmptyValue(), right.GetAllowEmptyValue(), changes, v3.AllowEmptyValueLabel, true)
+		left.GetAllowEmptyValue(), right.GetAllowEmptyValue(), changes, v3.AllowEmptyValueLabel,
+		BreakingModified(CompParameter, PropAllowEmptyValue))
 
 	return props
 }
@@ -327,13 +336,13 @@ func CompareParameters(l, r any) *ParameterChanges {
 	}
 	if lSchema != nil && rSchema == nil {
 		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,
-			lSchema.GetValueNode(), nil, true, lSchema,
+			lSchema.GetValueNode(), nil, BreakingRemoved(CompParameter, PropSchema), lSchema,
 			nil)
 	}
 
 	if lSchema == nil && rSchema != nil {
 		CreateChange(&changes, ObjectAdded, v3.SchemaLabel,
-			nil, rSchema.GetValueNode(), true, nil,
+			nil, rSchema.GetValueNode(), BreakingAdded(CompParameter, PropSchema), nil,
 			rSchema)
 	}
 
@@ -344,7 +353,10 @@ func CompareParameters(l, r any) *ParameterChanges {
 
 func checkParameterExample(expLeft, expRight low.NodeReference[*yaml.Node], changes []*Change) {
 	CheckPropertyAdditionOrRemovalWithEncoding(expLeft.ValueNode, expRight.ValueNode,
-		v3.ExampleLabel, &changes, false, expLeft.Value, expRight.Value)
+		v3.ExampleLabel, &changes,
+		BreakingAdded(CompParameter, PropExample) || BreakingRemoved(CompParameter, PropExample),
+		expLeft.Value, expRight.Value)
 	CheckForModificationWithEncoding(expLeft.ValueNode, expRight.ValueNode,
-		v3.ExampleLabel, &changes, false, expLeft.Value, expRight.Value)
+		v3.ExampleLabel, &changes, BreakingModified(CompParameter, PropExample),
+		expLeft.Value, expRight.Value)
 }

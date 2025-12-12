@@ -77,7 +77,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 		tc := new(TagChanges)
 		var changes []*Change
 
-		CheckForObjectAdditionOrRemoval[*base.Tag](seenLeft, seenRight, i, &changes, false, true)
+		CheckForObjectAdditionOrRemoval[*base.Tag](seenLeft, seenRight, i, &changes, BreakingAdded(CompTag, PropName), BreakingRemoved(CompTag, PropName))
 
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {
@@ -90,7 +90,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 				RightNode: seenRight[i].Value.Name.ValueNode,
 				Label:     v3.NameLabel,
 				Changes:   &changes,
-				Breaking:  true,
+				Breaking:  BreakingModified(CompTag, PropName),
 				Original:  seenLeft[i].Value,
 				New:       seenRight[i].Value,
 			})
@@ -101,7 +101,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 				RightNode: seenRight[i].Value.Summary.ValueNode,
 				Label:     v3.SummaryLabel,
 				Changes:   &changes,
-				Breaking:  false,
+				Breaking:  BreakingModified(CompTag, PropSummary),
 				Original:  seenLeft[i].Value,
 				New:       seenRight[i].Value,
 			})
@@ -112,7 +112,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 				RightNode: seenRight[i].Value.Description.ValueNode,
 				Label:     v3.DescriptionLabel,
 				Changes:   &changes,
-				Breaking:  false,
+				Breaking:  BreakingModified(CompTag, PropDescription),
 				Original:  seenLeft[i].Value,
 				New:       seenRight[i].Value,
 			})
@@ -123,7 +123,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 				RightNode: seenRight[i].Value.Parent.ValueNode,
 				Label:     v3.ParentLabel,
 				Changes:   &changes,
-				Breaking:  true,
+				Breaking:  BreakingModified(CompTag, PropParent),
 				Original:  seenLeft[i].Value,
 				New:       seenRight[i].Value,
 			})
@@ -134,7 +134,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 				RightNode: seenRight[i].Value.Kind.ValueNode,
 				Label:     v3.KindLabel,
 				Changes:   &changes,
-				Breaking:  false,
+				Breaking:  BreakingModified(CompTag, PropKind),
 				Original:  seenLeft[i].Value,
 				New:       seenRight[i].Value,
 			})
@@ -149,11 +149,11 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 			}
 			if seenLeft[i].Value.ExternalDocs.IsEmpty() && !seenRight[i].Value.ExternalDocs.IsEmpty() {
 				CreateChange(&changes, ObjectAdded, v3.ExternalDocsLabel, nil, seenRight[i].GetValueNode(),
-					false, nil, seenRight[i].Value.ExternalDocs.Value)
+					BreakingAdded(CompTag, PropExternalDocs), nil, seenRight[i].Value.ExternalDocs.Value)
 			}
 			if !seenLeft[i].Value.ExternalDocs.IsEmpty() && seenRight[i].Value.ExternalDocs.IsEmpty() {
 				CreateChange(&changes, ObjectRemoved, v3.ExternalDocsLabel, seenLeft[i].GetValueNode(), nil,
-					false, seenLeft[i].Value.ExternalDocs.Value, nil)
+					BreakingRemoved(CompTag, PropExternalDocs), seenLeft[i].Value.ExternalDocs.Value, nil)
 			}
 
 			// check extensions
@@ -177,7 +177,7 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 			var changes []*Change
 
 			CreateChange(&changes, ObjectAdded, i, nil, seenRight[i].GetValueNode(),
-				false, nil, seenRight[i].GetValue())
+				BreakingAdded(CompTag, PropName), nil, seenRight[i].GetValue())
 
 			tc.PropertyChanges = NewPropertyChanges(changes)
 			tagResults = append(tagResults, tc)

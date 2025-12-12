@@ -111,12 +111,12 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	if !l.ClientCredentials.IsEmpty() && r.ClientCredentials.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.ClientCredentialsLabel,
-			l.ClientCredentials.ValueNode, nil, true,
+			l.ClientCredentials.ValueNode, nil, BreakingRemoved(CompOAuthFlows, PropClientCredentials),
 			l.ClientCredentials.Value, nil)
 	}
 	if l.ClientCredentials.IsEmpty() && !r.ClientCredentials.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.ClientCredentialsLabel,
-			nil, r.ClientCredentials.ValueNode, false,
+			nil, r.ClientCredentials.ValueNode, BreakingAdded(CompOAuthFlows, PropClientCredentials),
 			nil, r.ClientCredentials.Value)
 	}
 
@@ -126,12 +126,12 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	if !l.Implicit.IsEmpty() && r.Implicit.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.ImplicitLabel,
-			l.Implicit.ValueNode, nil, true,
+			l.Implicit.ValueNode, nil, BreakingRemoved(CompOAuthFlows, PropImplicit),
 			l.Implicit.Value, nil)
 	}
 	if l.Implicit.IsEmpty() && !r.Implicit.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.ImplicitLabel,
-			nil, r.Implicit.ValueNode, false,
+			nil, r.Implicit.ValueNode, BreakingAdded(CompOAuthFlows, PropImplicit),
 			nil, r.Implicit.Value)
 	}
 
@@ -141,12 +141,12 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	if !l.Password.IsEmpty() && r.Password.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.PasswordLabel,
-			l.Password.ValueNode, nil, true,
+			l.Password.ValueNode, nil, BreakingRemoved(CompOAuthFlows, PropPassword),
 			l.Password.Value, nil)
 	}
 	if l.Password.IsEmpty() && !r.Password.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.PasswordLabel,
-			nil, r.Password.ValueNode, false,
+			nil, r.Password.ValueNode, BreakingAdded(CompOAuthFlows, PropPassword),
 			nil, r.Password.Value)
 	}
 
@@ -156,12 +156,12 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	if !l.AuthorizationCode.IsEmpty() && r.AuthorizationCode.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.AuthorizationCodeLabel,
-			l.AuthorizationCode.ValueNode, nil, true,
+			l.AuthorizationCode.ValueNode, nil, BreakingRemoved(CompOAuthFlows, PropAuthorizationCode),
 			l.AuthorizationCode.Value, nil)
 	}
 	if l.AuthorizationCode.IsEmpty() && !r.AuthorizationCode.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.AuthorizationCodeLabel,
-			nil, r.AuthorizationCode.ValueNode, false,
+			nil, r.AuthorizationCode.ValueNode, BreakingAdded(CompOAuthFlows, PropAuthorizationCode),
 			nil, r.AuthorizationCode.Value)
 	}
 
@@ -171,12 +171,12 @@ func CompareOAuthFlows(l, r *v3.OAuthFlows) *OAuthFlowsChanges {
 	}
 	if !l.Device.IsEmpty() && r.Device.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.DeviceLabel,
-			l.Device.ValueNode, nil, true,
+			l.Device.ValueNode, nil, BreakingRemoved(CompOAuthFlows, PropDevice),
 			l.Device.Value, nil)
 	}
 	if l.Device.IsEmpty() && !r.Device.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.DeviceLabel,
-			nil, r.Device.ValueNode, false,
+			nil, r.Device.ValueNode, BreakingAdded(CompOAuthFlows, PropDevice),
 			nil, r.Device.Value)
 	}
 
@@ -237,7 +237,7 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 		RightNode: r.AuthorizationUrl.ValueNode,
 		Label:     v3.AuthorizationUrlLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompOAuthFlow, PropAuthorizationURL),
 		Original:  l,
 		New:       r,
 	})
@@ -248,7 +248,7 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 		RightNode: r.TokenUrl.ValueNode,
 		Label:     v3.TokenUrlLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompOAuthFlow, PropTokenURL),
 		Original:  l,
 		New:       r,
 	})
@@ -259,7 +259,7 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 		RightNode: r.RefreshUrl.ValueNode,
 		Label:     v3.RefreshUrlLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompOAuthFlow, PropRefreshURL),
 		Original:  l,
 		New:       r,
 	})
@@ -268,20 +268,20 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 
 	for k, v := range l.Scopes.Value.FromOldest() {
 		if r != nil && r.FindScope(k.Value) == nil {
-			CreateChange(&changes, ObjectRemoved, v3.Scopes, v.ValueNode, nil, true, k.Value, nil)
+			CreateChange(&changes, ObjectRemoved, v3.Scopes, v.ValueNode, nil, BreakingRemoved(CompOAuthFlow, PropScopes), k.Value, nil)
 			continue
 		}
 		if r != nil && r.FindScope(k.Value) != nil {
 			if v.Value != r.FindScope(k.Value).Value {
 				CreateChange(&changes, Modified, v3.Scopes,
-					v.ValueNode, r.FindScope(k.Value).ValueNode, true,
+					v.ValueNode, r.FindScope(k.Value).ValueNode, BreakingModified(CompOAuthFlow, PropScopes),
 					v.Value, r.FindScope(k.Value).Value)
 			}
 		}
 	}
 	for k, v := range r.Scopes.Value.FromOldest() {
 		if l != nil && l.FindScope(k.Value) == nil {
-			CreateChange(&changes, ObjectAdded, v3.Scopes, nil, v.ValueNode, false, nil, k.Value)
+			CreateChange(&changes, ObjectAdded, v3.Scopes, nil, v.ValueNode, BreakingAdded(CompOAuthFlow, PropScopes), nil, k.Value)
 		}
 	}
 	oa := new(OAuthFlowChanges)

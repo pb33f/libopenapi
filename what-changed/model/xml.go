@@ -58,7 +58,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompXML, PropName),
 		Original:  l,
 		New:       r,
 	})
@@ -69,7 +69,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		RightNode: r.Namespace.ValueNode,
 		Label:     v3.NamespaceLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompXML, PropNamespace),
 		Original:  l,
 		New:       r,
 	})
@@ -80,7 +80,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		RightNode: r.Prefix.ValueNode,
 		Label:     v3.PrefixLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompXML, PropPrefix),
 		Original:  l,
 		New:       r,
 	})
@@ -91,7 +91,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		RightNode: r.Attribute.ValueNode,
 		Label:     v3.AttributeLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompXML, PropAttribute),
 		Original:  l,
 		New:       r,
 	})
@@ -102,7 +102,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		RightNode: r.NodeType.ValueNode,
 		Label:     base.NodeTypeLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompXML, PropNodeType),
 		Original:  l,
 		New:       r,
 	})
@@ -113,7 +113,7 @@ func CompareXML(l, r *base.XML) *XMLChanges {
 		RightNode: r.Wrapped.ValueNode,
 		Label:     v3.WrappedLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompXML, PropWrapped),
 		Original:  l,
 		New:       r,
 	})

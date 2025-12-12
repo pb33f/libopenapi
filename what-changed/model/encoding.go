@@ -63,7 +63,7 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 		RightNode: r.ContentType.ValueNode,
 		Label:     v3.ContentTypeLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompEncoding, PropContentType),
 		Original:  l,
 		New:       r,
 	})
@@ -74,7 +74,7 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 		RightNode: r.Explode.ValueNode,
 		Label:     v3.ExplodeLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompEncoding, PropExplode),
 		Original:  l,
 		New:       r,
 	})
@@ -85,7 +85,7 @@ func CompareEncoding(l, r *v3.Encoding) *EncodingChanges {
 		RightNode: r.AllowReserved.ValueNode,
 		Label:     v3.AllowReservedLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompEncoding, PropAllowReserved),
 		Original:  l,
 		New:       r,
 	})

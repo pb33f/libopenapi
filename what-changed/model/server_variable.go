@@ -42,7 +42,7 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 	for k := range lValues {
 		if _, ok := rValues[k]; !ok {
 			CreateChange(&changes, ObjectRemoved, v3.EnumLabel,
-				lValues[k].ValueNode, nil, true,
+				lValues[k].ValueNode, nil, BreakingRemoved(CompServerVariable, PropEnum),
 				lValues[k].Value, nil)
 			continue
 		}
@@ -50,7 +50,7 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 	for k := range rValues {
 		if _, ok := lValues[k]; !ok {
 			CreateChange(&changes, ObjectAdded, v3.EnumLabel,
-				lValues[k].ValueNode, rValues[k].ValueNode, false,
+				lValues[k].ValueNode, rValues[k].ValueNode, BreakingAdded(CompServerVariable, PropEnum),
 				lValues[k].Value, rValues[k].Value)
 		}
 	}
@@ -61,7 +61,7 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 		RightNode: r.Default.ValueNode,
 		Label:     v3.DefaultLabel,
 		Changes:   &changes,
-		Breaking:  true,
+		Breaking:  BreakingModified(CompServerVariable, PropDefault),
 		Original:  l,
 		New:       r,
 	})
@@ -72,7 +72,7 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 		RightNode: r.Description.ValueNode,
 		Label:     v3.DescriptionLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompServerVariable, PropDescription),
 		Original:  l,
 		New:       r,
 	})

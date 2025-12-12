@@ -1,4 +1,4 @@
-// Copyright 2022 Princess B33f Heavy Industries / Dave Shanley
+// Copyright 2022-2025 Princess Beef Heavy Industries, LLC / Dave Shanley
 // SPDX-License-Identifier: MIT
 
 package model
@@ -132,24 +132,28 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 	// tags
 	if len(left.GetTags().Value) > 0 || len(right.GetTags().Value) > 0 {
 		ExtractStringValueSliceChanges(left.GetTags().Value, right.GetTags().Value,
-			changes, v3.TagsLabel, true)
+			changes, v3.TagsLabel, BreakingModified(CompOperation, PropTags))
 	}
 
 	// summary
 	addPropertyCheck(&props, left.GetSummary().ValueNode, right.GetSummary().ValueNode,
-		left.GetSummary(), right.GetSummary(), changes, v3.SummaryLabel, false)
+		left.GetSummary(), right.GetSummary(), changes, v3.SummaryLabel,
+		BreakingModified(CompOperation, PropSummary))
 
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
-		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel, false)
+		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
+		BreakingModified(CompOperation, PropDescription))
 
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
-		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel, false)
+		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel,
+		BreakingModified(CompOperation, PropDeprecated))
 
 	// operation id
 	addPropertyCheck(&props, left.GetOperationId().ValueNode, right.GetOperationId().ValueNode,
-		left.GetOperationId(), right.GetOperationId(), changes, v3.OperationIdLabel, true)
+		left.GetOperationId(), right.GetOperationId(), changes, v3.OperationIdLabel,
+		BreakingModified(CompOperation, PropOperationID))
 
 	return props
 }
@@ -166,12 +170,12 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 	}
 	if l.GetExternalDocs().IsEmpty() && !r.GetExternalDocs().IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.ExternalDocsLabel,
-			nil, r.GetExternalDocs().ValueNode, false, nil,
+			nil, r.GetExternalDocs().ValueNode, BreakingAdded(CompOperation, PropExternalDocs), nil,
 			r.GetExternalDocs().Value)
 	}
 	if !l.GetExternalDocs().IsEmpty() && r.GetExternalDocs().IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.ExternalDocsLabel,
-			l.GetExternalDocs().ValueNode, nil, false, l.GetExternalDocs().Value,
+			l.GetExternalDocs().ValueNode, nil, BreakingRemoved(CompOperation, PropExternalDocs), l.GetExternalDocs().Value,
 			nil)
 	}
 
@@ -181,12 +185,12 @@ func compareSharedOperationObjects(l, r low.SharedOperations, changes *[]*Change
 	}
 	if l.GetResponses().IsEmpty() && !r.GetResponses().IsEmpty() {
 		CreateChange(changes, PropertyAdded, v3.ResponsesLabel,
-			nil, r.GetResponses().ValueNode, false, nil,
+			nil, r.GetResponses().ValueNode, BreakingAdded(CompOperation, PropResponses), nil,
 			r.GetResponses().Value)
 	}
 	if !l.GetResponses().IsEmpty() && r.GetResponses().IsEmpty() {
 		CreateChange(changes, PropertyRemoved, v3.ResponsesLabel,
-			l.GetResponses().ValueNode, nil, true, l.GetResponses().Value,
+			l.GetResponses().ValueNode, nil, BreakingRemoved(CompOperation, PropResponses), l.GetResponses().Value,
 			nil)
 	}
 }
@@ -361,12 +365,13 @@ func CompareOperations(l, r any) *OperationChanges {
 					continue
 				}
 				CreateChange(&changes, ObjectRemoved, v3.ParametersLabel,
-					lv[n].Name.ValueNode, nil, true, lv[n],
+					lv[n].Name.ValueNode, nil, BreakingRemoved(CompOperation, PropParameters), lv[n],
 					nil)
 
 			}
 			for n := range rv {
 				if _, ok := lv[n]; !ok {
+					// adding a required parameter is breaking; use per-parameter Required flag
 					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
 						nil, rv[n].Name.ValueNode, rv[n].Required.Value, nil,
 						rv[n])
@@ -376,11 +381,12 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 		if !lParamsUntyped.IsEmpty() && rParamsUntyped.IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.ParametersLabel,
-				lParamsUntyped.ValueNode, nil, true, lParamsUntyped.Value,
+				lParamsUntyped.ValueNode, nil, BreakingRemoved(CompOperation, PropParameters), lParamsUntyped.Value,
 				nil)
 		}
 		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
 			rParams := rParamsUntyped.Value.([]low.ValueReference[*v3.Parameter])
+			// adding a required parameter is breaking; check each parameter's Required flag
 			breaking := false
 			for i := range rParams {
 				if rParams[i].Value.Required.Value {
@@ -405,12 +411,12 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 		if !lOperation.RequestBody.IsEmpty() && rOperation.RequestBody.IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.RequestBodyLabel,
-				lOperation.RequestBody.ValueNode, nil, true, lOperation.RequestBody.Value,
+				lOperation.RequestBody.ValueNode, nil, BreakingRemoved(CompOperation, PropRequestBody), lOperation.RequestBody.Value,
 				nil)
 		}
 		if lOperation.RequestBody.IsEmpty() && !rOperation.RequestBody.IsEmpty() {
 			CreateChange(&changes, PropertyAdded, v3.RequestBodyLabel,
-				nil, rOperation.RequestBody.ValueNode, true, nil,
+				nil, rOperation.RequestBody.ValueNode, BreakingAdded(CompOperation, PropRequestBody), nil,
 				rOperation.RequestBody.Value)
 		}
 
@@ -421,12 +427,12 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 		if !lOperation.GetCallbacks().IsEmpty() && rOperation.GetCallbacks().IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.CallbacksLabel,
-				lOperation.Callbacks.ValueNode, nil, true, lOperation.Callbacks.Value,
+				lOperation.Callbacks.ValueNode, nil, BreakingRemoved(CompOperation, PropCallbacks), lOperation.Callbacks.Value,
 				nil)
 		}
 		if lOperation.Callbacks.IsEmpty() && !rOperation.Callbacks.IsEmpty() {
 			CreateChange(&changes, PropertyAdded, v3.CallbacksLabel,
-				nil, rOperation.Callbacks.ValueNode, false, nil,
+				nil, rOperation.Callbacks.ValueNode, BreakingAdded(CompOperation, PropCallbacks), nil,
 				rOperation.Callbacks.Value)
 		}
 
@@ -480,7 +486,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 			}
 			lv[k].ValueNode.Value = lv[k].Value.URL.Value
 			CreateChange(&changes, ObjectRemoved, v3.ServersLabel,
-				lv[k].ValueNode, nil, true, lv[k].Value,
+				lv[k].ValueNode, nil, BreakingRemoved(CompOperation, PropServers), lv[k].Value,
 				nil)
 			sc := new(ServerChanges)
 			sc.PropertyChanges = NewPropertyChanges(changes)
@@ -494,7 +500,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 				var changes []*Change
 				rv[k].ValueNode.Value = rv[k].Value.URL.Value
 				CreateChange(&changes, ObjectAdded, v3.ServersLabel,
-					nil, rv[k].ValueNode, false, nil,
+					nil, rv[k].ValueNode, BreakingAdded(CompOperation, PropServers), nil,
 					rv[k].Value)
 
 				sc := new(ServerChanges)
@@ -507,12 +513,12 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 	sc := new(ServerChanges)
 	if !lServers.IsEmpty() && rServers.IsEmpty() {
 		CreateChange(&changes, PropertyRemoved, v3.ServersLabel,
-			lServers.ValueNode, nil, true, lServers.Value,
+			lServers.ValueNode, nil, BreakingRemoved(CompOperation, PropServers), lServers.Value,
 			nil)
 	}
 	if lServers.IsEmpty() && !rServers.IsEmpty() {
 		CreateChange(&changes, PropertyAdded, v3.ServersLabel,
-			nil, rServers.ValueNode, false, nil,
+			nil, rServers.ValueNode, BreakingAdded(CompOperation, PropServers), nil,
 			rServers.Value)
 	}
 	sc.PropertyChanges = NewPropertyChanges(changes)
@@ -563,7 +569,7 @@ func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*
 		}
 		lvn[n].Value = strings.Join(lv[n].GetKeys(), ", ")
 		CreateChange(changes, ObjectRemoved, v3.SecurityLabel,
-			lvn[n], nil, true, lv[n],
+			lvn[n], nil, BreakingRemoved(CompOperation, PropSecurity), lv[n],
 			nil)
 
 	}
@@ -571,7 +577,7 @@ func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*
 		if _, ok := lv[n]; !ok {
 			rvn[n].Value = strings.Join(rv[n].GetKeys(), ", ")
 			CreateChange(changes, ObjectAdded, v3.SecurityLabel,
-				nil, rvn[n], false, nil,
+				nil, rvn[n], BreakingAdded(CompOperation, PropSecurity), nil,
 				rv[n])
 		}
 	}

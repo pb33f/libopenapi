@@ -47,7 +47,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 		RightNode: r.URL.ValueNode,
 		Label:     v3.URLLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompContact, PropURL),
 		Original:  l,
 		New:       r,
 	})
@@ -58,7 +58,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 		RightNode: r.Name.ValueNode,
 		Label:     v3.NameLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompContact, PropName),
 		Original:  l,
 		New:       r,
 	})
@@ -69,7 +69,7 @@ func CompareContact(l, r *base.Contact) *ContactChanges {
 		RightNode: r.Email.ValueNode,
 		Label:     v3.EmailLabel,
 		Changes:   &changes,
-		Breaking:  false,
+		Breaking:  BreakingModified(CompContact, PropEmail),
 		Original:  l,
 		New:       r,
 	})
