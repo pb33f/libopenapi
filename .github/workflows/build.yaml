@@ -51,18 +51,11 @@ jobs:
       - name: Test
         run: go test ./...
       - name: Coverage
-        run: |
-          go get github.com/axw/gocov/gocov
-          go get github.com/AlekSi/gocov-xml
-          go install github.com/axw/gocov/gocov
-          go install github.com/AlekSi/gocov-xml
-      - run: |
-          go test -v -coverprofile cover.out ./...
-          gocov convert cover.out | gocov-xml > coverage.xml
+        run: go test -v -coverprofile=coverage.out ./...
       - uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage.xml
+          files: ./coverage.out
           flags: unittests
           fail_ci_if_error: false
           verbose: true
