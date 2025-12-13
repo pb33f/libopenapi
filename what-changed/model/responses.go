@@ -93,12 +93,12 @@ func CompareResponses(l, r any) *ResponsesChanges {
 		}
 		if !lResponses.Default.IsEmpty() && rResponses.Default.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.DefaultLabel,
-				lResponses.Default.ValueNode, nil, true,
+				lResponses.Default.ValueNode, nil, BreakingRemoved(CompResponses, PropDefault),
 				lResponses.Default.Value, nil)
 		}
 		if lResponses.Default.IsEmpty() && !rResponses.Default.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.DefaultLabel,
-				nil, rResponses.Default.ValueNode, false,
+				nil, rResponses.Default.ValueNode, BreakingAdded(CompResponses, PropDefault),
 				nil, lResponses.Default.Value)
 		}
 

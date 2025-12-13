@@ -74,6 +74,7 @@ const (
 	PropEmail                = "email"
 	PropEnum                 = "enum"
 	PropExample              = "example"
+	PropExamples             = "examples"
 	PropExclusiveMaximum     = "exclusiveMaximum"
 	PropExclusiveMinimum     = "exclusiveMinimum"
 	PropExplode              = "explode"

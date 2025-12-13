@@ -140,12 +140,12 @@ func CompareResponse(l, r any) *ResponseChanges {
 		}
 		if !lResponse.Schema.IsEmpty() && rResponse.Schema.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,
-				lResponse.Schema.ValueNode, nil, true,
+				lResponse.Schema.ValueNode, nil, BreakingRemoved(CompResponse, PropSchema),
 				lResponse.Schema.Value, nil)
 		}
 		if lResponse.Schema.IsEmpty() && !rResponse.Schema.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.SchemaLabel,
-				nil, rResponse.Schema.ValueNode, true,
+				nil, rResponse.Schema.ValueNode, BreakingAdded(CompResponse, PropSchema),
 				nil, rResponse.Schema.Value)
 		}
 
@@ -157,12 +157,12 @@ func CompareResponse(l, r any) *ResponseChanges {
 		}
 		if !lResponse.Examples.IsEmpty() && rResponse.Examples.IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.ExamplesLabel,
-				lResponse.Schema.ValueNode, nil, false,
+				lResponse.Schema.ValueNode, nil, BreakingRemoved(CompResponse, PropExamples),
 				lResponse.Schema.Value, nil)
 		}
 		if lResponse.Examples.IsEmpty() && !rResponse.Examples.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.ExamplesLabel,
-				nil, rResponse.Schema.ValueNode, false,
+				nil, rResponse.Schema.ValueNode, BreakingAdded(CompResponse, PropExamples),
 				nil, lResponse.Schema.Value)
 		}
 
