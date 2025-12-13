@@ -233,6 +233,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			Deprecated:      rule(false, false, false),
 			Example:         rule(false, false, false),
 			Schema:          rule(true, false, true),
+			Items:           rule(true, false, true),
 		},
 
 		RequestBody: &RequestBodyRules{
@@ -274,6 +275,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			Deprecated:      rule(false, false, false),
 			Required:        rule(true, true, true),
 			Schema:          rule(true, false, true),
+			Items:           rule(true, false, true),
 		},
 
 		Schema: &SchemaRules{
@@ -304,6 +306,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			WriteOnly:             rule(false, true, false),
 			Deprecated:            rule(false, false, false),
 			Example:               rule(false, false, false),
+			Examples:              rule(false, false, false),
 			Required:              rule(true, false, true),
 			Enum:                  rule(false, false, true),
 			Properties:            rule(false, false, true),
@@ -377,6 +380,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			OpenIDConnectURL:  rule(false, false, false),
 			OAuth2MetadataUrl: rule(false, false, false),
 			Flows:             rule(false, false, true),
+			Scopes:            rule(false, false, true),
 		},
 
 		SecurityRequirement: &SecurityRequirementRules{

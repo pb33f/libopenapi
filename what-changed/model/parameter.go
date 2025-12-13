@@ -280,12 +280,12 @@ func CompareParameters(l, r any) *ParameterChanges {
 		}
 		if lParam.Items.IsEmpty() && !rParam.Items.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.ItemsLabel,
-				nil, rParam.Items.ValueNode, true, nil,
+				nil, rParam.Items.ValueNode, BreakingAdded(CompParameter, PropItems), nil,
 				rParam.Items.Value)
 		}
 		if !lParam.Items.IsEmpty() && rParam.Items.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.ItemsLabel,
-				lParam.Items.ValueNode, nil, true, lParam.Items.Value,
+				lParam.Items.ValueNode, nil, BreakingRemoved(CompParameter, PropItems), lParam.Items.Value,
 				nil)
 		}
 

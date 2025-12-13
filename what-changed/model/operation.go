@@ -256,7 +256,7 @@ func CompareOperations(l, r any) *OperationChanges {
 					continue
 				}
 				CreateChange(&changes, ObjectRemoved, v3.ParametersLabel,
-					lv[n].Name.ValueNode, nil, true, lv[n],
+					lv[n].Name.ValueNode, nil, BreakingRemoved(CompOperation, PropParameters), lv[n],
 					nil)
 
 			}
@@ -271,7 +271,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 		if !lParamsUntyped.IsEmpty() && rParamsUntyped.IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.ParametersLabel,
-				lParamsUntyped.ValueNode, nil, true, lParamsUntyped.Value,
+				lParamsUntyped.ValueNode, nil, BreakingRemoved(CompOperation, PropParameters), lParamsUntyped.Value,
 				nil)
 		}
 		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {

@@ -126,11 +126,11 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 		}
 		if lSS.Scopes.IsEmpty() && !rSS.Scopes.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.ScopesLabel,
-				nil, rSS.Scopes.ValueNode, false, nil, rSS.Scopes.Value)
+				nil, rSS.Scopes.ValueNode, BreakingAdded(CompSecurityScheme, PropScopes), nil, rSS.Scopes.Value)
 		}
 		if !lSS.Scopes.IsEmpty() && rSS.Scopes.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.ScopesLabel,
-				lSS.Scopes.ValueNode, nil, true, lSS.Scopes.Value, nil)
+				lSS.Scopes.ValueNode, nil, BreakingRemoved(CompSecurityScheme, PropScopes), lSS.Scopes.Value, nil)
 		}
 
 		sc.ExtensionChanges = CompareExtensions(lSS.Extensions, rSS.Extensions)
