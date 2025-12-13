@@ -1294,14 +1294,14 @@ func checkSchemaPropertyChanges(
 	for g := range k {
 		if _, ok := j[g]; !ok {
 			CreateChange(changes, PropertyAdded, v3.RequiredLabel,
-				nil, rSchema.Required.Value[k[g]].GetValueNode(), true, nil,
+				nil, rSchema.Required.Value[k[g]].GetValueNode(), BreakingAdded(CompSchema, PropRequired), nil,
 				rSchema.Required.Value[k[g]].GetValue)
 		}
 	}
 	for g := range j {
 		if _, ok := k[g]; !ok {
 			CreateChange(changes, PropertyRemoved, v3.RequiredLabel,
-				lSchema.Required.Value[j[g]].GetValueNode(), nil, true, lSchema.Required.Value[j[g]].GetValue,
+				lSchema.Required.Value[j[g]].GetValueNode(), nil, BreakingRemoved(CompSchema, PropRequired), lSchema.Required.Value[j[g]].GetValue,
 				nil)
 		}
 	}
@@ -1322,14 +1322,14 @@ func checkSchemaPropertyChanges(
 	for g := range k {
 		if _, ok := j[g]; !ok {
 			CreateChange(changes, PropertyAdded, v3.EnumLabel,
-				nil, rSchema.Enum.Value[k[g]].GetValueNode(), false, nil,
+				nil, rSchema.Enum.Value[k[g]].GetValueNode(), BreakingAdded(CompSchema, PropEnum), nil,
 				rSchema.Enum.Value[k[g]].GetValue)
 		}
 	}
 	for g := range j {
 		if _, ok := k[g]; !ok {
 			CreateChange(changes, PropertyRemoved, v3.EnumLabel,
-				lSchema.Enum.Value[j[g]].GetValueNode(), nil, true, lSchema.Enum.Value[j[g]].GetValue,
+				lSchema.Enum.Value[j[g]].GetValueNode(), nil, BreakingRemoved(CompSchema, PropEnum), lSchema.Enum.Value[j[g]].GetValue,
 				nil)
 		}
 	}
@@ -1362,12 +1362,12 @@ func checkSchemaPropertyChanges(
 	// added ExternalDocs
 	if (lSchema == nil || lSchema.ExternalDocs.Value == nil) && (rSchema != nil && rSchema.ExternalDocs.Value != nil) {
 		CreateChange(changes, ObjectAdded, v3.ExternalDocsLabel,
-			nil, rSchema.ExternalDocs.ValueNode, false, nil, rSchema.ExternalDocs.Value)
+			nil, rSchema.ExternalDocs.ValueNode, BreakingAdded(CompSchema, PropExternalDocs), nil, rSchema.ExternalDocs.Value)
 	}
 	// removed ExternalDocs
 	if (lSchema != nil && lSchema.ExternalDocs.Value != nil) && (rSchema == nil || rSchema.ExternalDocs.Value == nil) {
 		CreateChange(changes, ObjectRemoved, v3.ExternalDocsLabel,
-			lSchema.ExternalDocs.ValueNode, nil, false, lSchema.ExternalDocs.Value, nil)
+			lSchema.ExternalDocs.ValueNode, nil, BreakingRemoved(CompSchema, PropExternalDocs), lSchema.ExternalDocs.Value, nil)
 	}
 
 	// 3.1 properties
@@ -1614,7 +1614,7 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 		for i := range lExampKey {
 			if lExampKey[i] != rExampKey[i] {
 				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
-					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+					lExampN[lExampKey[i]], rExampN[rExampKey[i]], BreakingModified(CompSchema, PropExamples),
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 		}
@@ -1624,12 +1624,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 		for i := range lExampKey {
 			if i < len(rExampKey) && lExampKey[i] != rExampKey[i] {
 				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
-					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+					lExampN[lExampKey[i]], rExampN[rExampKey[i]], BreakingModified(CompSchema, PropExamples),
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(rExampKey) {
 				CreateChangeWithEncoding(changes, ObjectRemoved, v3.ExamplesLabel,
-					lExampN[lExampKey[i]], nil, false,
+					lExampN[lExampKey[i]], nil, BreakingRemoved(CompSchema, PropExamples),
 					lExampVal[lExampKey[i]], nil)
 			}
 		}
@@ -1640,12 +1640,12 @@ func checkExamples(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chang
 		for i := range rExampKey {
 			if i < len(lExampKey) && lExampKey[i] != rExampKey[i] {
 				CreateChangeWithEncoding(changes, Modified, v3.ExamplesLabel,
-					lExampN[lExampKey[i]], rExampN[rExampKey[i]], false,
+					lExampN[lExampKey[i]], rExampN[rExampKey[i]], BreakingModified(CompSchema, PropExamples),
 					lExampVal[lExampKey[i]], rExampVal[rExampKey[i]])
 			}
 			if i >= len(lExampKey) {
 				CreateChangeWithEncoding(changes, ObjectAdded, v3.ExamplesLabel,
-					nil, rExampN[rExampKey[i]], false,
+					nil, rExampN[rExampKey[i]], BreakingAdded(CompSchema, PropExamples),
 					nil, rExampVal[rExampKey[i]])
 			}
 		}

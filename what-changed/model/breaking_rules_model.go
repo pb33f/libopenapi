@@ -88,6 +88,7 @@ type ParameterRules struct {
 	Deprecated      *BreakingChangeRule `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 	Example         *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
 	Schema          *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Items           *BreakingChangeRule `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 // RequestBodyRules defines breaking rules for the Request Body object properties.
@@ -135,6 +136,7 @@ type HeaderRules struct {
 	Deprecated      *BreakingChangeRule `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 	Required        *BreakingChangeRule `json:"required,omitempty" yaml:"required,omitempty"`
 	Schema          *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Items           *BreakingChangeRule `json:"items,omitempty" yaml:"items,omitempty"`
 }
 
 // SchemaRules defines breaking rules for the Schema object properties.
@@ -166,6 +168,7 @@ type SchemaRules struct {
 	WriteOnly             *BreakingChangeRule `json:"writeOnly,omitempty" yaml:"writeOnly,omitempty"`
 	Deprecated            *BreakingChangeRule `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 	Example               *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
+	Examples              *BreakingChangeRule `json:"examples,omitempty" yaml:"examples,omitempty"`
 	Required              *BreakingChangeRule `json:"required,omitempty" yaml:"required,omitempty"`
 	Enum                  *BreakingChangeRule `json:"enum,omitempty" yaml:"enum,omitempty"`
 	Properties            *BreakingChangeRule `json:"properties,omitempty" yaml:"properties,omitempty"`
@@ -246,6 +249,7 @@ type SecuritySchemeRules struct {
 	OpenIDConnectURL  *BreakingChangeRule `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
 	OAuth2MetadataUrl *BreakingChangeRule `json:"oauth2MetadataUrl,omitempty" yaml:"oauth2MetadataUrl,omitempty"`
 	Flows             *BreakingChangeRule `json:"flows,omitempty" yaml:"flows,omitempty"`
+	Scopes            *BreakingChangeRule `json:"scopes,omitempty" yaml:"scopes,omitempty"`
 }
 
 // SecurityRequirementRules defines breaking rules for the Security Requirement object properties.
