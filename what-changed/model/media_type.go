@@ -153,11 +153,11 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 	}
 	if !l.ItemSchema.IsEmpty() && r.ItemSchema.IsEmpty() {
 		CreateChange(&changes, ObjectRemoved, v3.ItemSchemaLabel, l.ItemSchema.ValueNode,
-			nil, true, l.ItemSchema.Value, nil)
+			nil, BreakingRemoved(CompMediaType, PropItemSchema), l.ItemSchema.Value, nil)
 	}
 	if l.ItemSchema.IsEmpty() && !r.ItemSchema.IsEmpty() {
 		CreateChange(&changes, ObjectAdded, v3.ItemSchemaLabel, nil,
-			r.ItemSchema.ValueNode, true, nil, r.ItemSchema.Value)
+			r.ItemSchema.ValueNode, BreakingAdded(CompMediaType, PropItemSchema), nil, r.ItemSchema.Value)
 	}
 
 	// itemEncoding

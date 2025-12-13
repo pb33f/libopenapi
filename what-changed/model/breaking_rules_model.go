@@ -43,18 +43,20 @@ type PathsRules struct {
 
 // PathItemRules defines breaking rules for the Path Item object properties.
 type PathItemRules struct {
-	Description *BreakingChangeRule `json:"description,omitempty" yaml:"description,omitempty"`
-	Summary     *BreakingChangeRule `json:"summary,omitempty" yaml:"summary,omitempty"`
-	Get         *BreakingChangeRule `json:"get,omitempty" yaml:"get,omitempty"`
-	Put         *BreakingChangeRule `json:"put,omitempty" yaml:"put,omitempty"`
-	Post        *BreakingChangeRule `json:"post,omitempty" yaml:"post,omitempty"`
-	Delete      *BreakingChangeRule `json:"delete,omitempty" yaml:"delete,omitempty"`
-	Options     *BreakingChangeRule `json:"options,omitempty" yaml:"options,omitempty"`
-	Head        *BreakingChangeRule `json:"head,omitempty" yaml:"head,omitempty"`
-	Patch       *BreakingChangeRule `json:"patch,omitempty" yaml:"patch,omitempty"`
-	Trace       *BreakingChangeRule `json:"trace,omitempty" yaml:"trace,omitempty"`
-	Servers     *BreakingChangeRule `json:"servers,omitempty" yaml:"servers,omitempty"`
-	Parameters  *BreakingChangeRule `json:"parameters,omitempty" yaml:"parameters,omitempty"`
+	Description          *BreakingChangeRule `json:"description,omitempty" yaml:"description,omitempty"`
+	Summary              *BreakingChangeRule `json:"summary,omitempty" yaml:"summary,omitempty"`
+	Get                  *BreakingChangeRule `json:"get,omitempty" yaml:"get,omitempty"`
+	Put                  *BreakingChangeRule `json:"put,omitempty" yaml:"put,omitempty"`
+	Post                 *BreakingChangeRule `json:"post,omitempty" yaml:"post,omitempty"`
+	Delete               *BreakingChangeRule `json:"delete,omitempty" yaml:"delete,omitempty"`
+	Options              *BreakingChangeRule `json:"options,omitempty" yaml:"options,omitempty"`
+	Head                 *BreakingChangeRule `json:"head,omitempty" yaml:"head,omitempty"`
+	Patch                *BreakingChangeRule `json:"patch,omitempty" yaml:"patch,omitempty"`
+	Trace                *BreakingChangeRule `json:"trace,omitempty" yaml:"trace,omitempty"`
+	Query                *BreakingChangeRule `json:"query,omitempty" yaml:"query,omitempty"`
+	AdditionalOperations *BreakingChangeRule `json:"additionalOperations,omitempty" yaml:"additionalOperations,omitempty"`
+	Servers              *BreakingChangeRule `json:"servers,omitempty" yaml:"servers,omitempty"`
+	Parameters           *BreakingChangeRule `json:"parameters,omitempty" yaml:"parameters,omitempty"`
 }
 
 // OperationRules defines breaking rules for the Operation object properties.
@@ -109,8 +111,10 @@ type ResponseRules struct {
 
 // MediaTypeRules defines breaking rules for the Media Type object properties.
 type MediaTypeRules struct {
-	Example *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
-	Schema  *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Example      *BreakingChangeRule `json:"example,omitempty" yaml:"example,omitempty"`
+	Schema       *BreakingChangeRule `json:"schema,omitempty" yaml:"schema,omitempty"`
+	ItemSchema   *BreakingChangeRule `json:"itemSchema,omitempty" yaml:"itemSchema,omitempty"`
+	ItemEncoding *BreakingChangeRule `json:"itemEncoding,omitempty" yaml:"itemEncoding,omitempty"`
 }
 
 // EncodingRules defines breaking rules for the Encoding object properties.
@@ -233,14 +237,15 @@ type ExternalDocsRules struct {
 
 // SecuritySchemeRules defines breaking rules for the Security Scheme object properties.
 type SecuritySchemeRules struct {
-	Type             *BreakingChangeRule `json:"type,omitempty" yaml:"type,omitempty"`
-	Description      *BreakingChangeRule `json:"description,omitempty" yaml:"description,omitempty"`
-	Name             *BreakingChangeRule `json:"name,omitempty" yaml:"name,omitempty"`
-	In               *BreakingChangeRule `json:"in,omitempty" yaml:"in,omitempty"`
-	Scheme           *BreakingChangeRule `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	BearerFormat     *BreakingChangeRule `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
-	OpenIDConnectURL *BreakingChangeRule `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
-	Flows            *BreakingChangeRule `json:"flows,omitempty" yaml:"flows,omitempty"`
+	Type              *BreakingChangeRule `json:"type,omitempty" yaml:"type,omitempty"`
+	Description       *BreakingChangeRule `json:"description,omitempty" yaml:"description,omitempty"`
+	Name              *BreakingChangeRule `json:"name,omitempty" yaml:"name,omitempty"`
+	In                *BreakingChangeRule `json:"in,omitempty" yaml:"in,omitempty"`
+	Scheme            *BreakingChangeRule `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	BearerFormat      *BreakingChangeRule `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
+	OpenIDConnectURL  *BreakingChangeRule `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
+	OAuth2MetadataUrl *BreakingChangeRule `json:"oauth2MetadataUrl,omitempty" yaml:"oauth2MetadataUrl,omitempty"`
+	Flows             *BreakingChangeRule `json:"flows,omitempty" yaml:"flows,omitempty"`
 }
 
 // SecurityRequirementRules defines breaking rules for the Security Requirement object properties.

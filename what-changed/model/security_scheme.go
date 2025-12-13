@@ -175,7 +175,8 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 
 		// OpenAPI 3.2+ fields
 		addPropertyCheck(&props, lSS.OAuth2MetadataUrl.ValueNode, rSS.OAuth2MetadataUrl.ValueNode,
-			lSS.OAuth2MetadataUrl.Value, rSS.OAuth2MetadataUrl.Value, &changes, v3.OAuth2MetadataUrlLabel, false)
+			lSS.OAuth2MetadataUrl.Value, rSS.OAuth2MetadataUrl.Value, &changes, v3.OAuth2MetadataUrlLabel,
+			BreakingModified(CompSecurityScheme, PropOAuth2MetadataUrl))
 
 		addPropertyCheck(&props, lSS.Deprecated.ValueNode, rSS.Deprecated.ValueNode,
 			lSS.Deprecated.Value, rSS.Deprecated.Value, &changes, v3.DeprecatedLabel, false)
