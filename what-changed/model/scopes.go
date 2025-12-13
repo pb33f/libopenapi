@@ -55,14 +55,14 @@ func CompareScopes(l, r *v2.Scopes) *ScopesChanges {
 	for k, v := range l.Values.FromOldest() {
 		if r != nil && r.FindScope(k.Value) == nil {
 			CreateChange(&changes, ObjectRemoved, v3.Scopes,
-				v.ValueNode, nil, true,
+				v.ValueNode, nil, BreakingRemoved(CompOAuthFlow, PropScopes),
 				k.Value, nil)
 			continue
 		}
 		if r != nil && r.FindScope(k.Value) != nil {
 			if v.Value != r.FindScope(k.Value).Value {
 				CreateChange(&changes, Modified, v3.Scopes,
-					v.ValueNode, r.FindScope(k.Value).ValueNode, true,
+					v.ValueNode, r.FindScope(k.Value).ValueNode, BreakingModified(CompOAuthFlow, PropScopes),
 					v.Value, r.FindScope(k.Value).Value)
 			}
 		}
@@ -70,7 +70,7 @@ func CompareScopes(l, r *v2.Scopes) *ScopesChanges {
 	for k, v := range r.Values.FromOldest() {
 		if l != nil && l.FindScope(k.Value) == nil {
 			CreateChange(&changes, ObjectAdded, v3.Scopes,
-				nil, v.ValueNode, false,
+				nil, v.ValueNode, BreakingAdded(CompOAuthFlow, PropScopes),
 				nil, k.Value)
 		}
 	}

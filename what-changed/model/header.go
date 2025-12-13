@@ -254,11 +254,11 @@ func CompareHeaders(l, r any) *HeaderChanges {
 		}
 		if lHeader.Items.IsEmpty() && !rHeader.Items.IsEmpty() {
 			CreateChange(&changes, ObjectAdded, v3.ItemsLabel, nil,
-				rHeader.Items.ValueNode, true, nil, rHeader.Items.Value)
+				rHeader.Items.ValueNode, BreakingAdded(CompHeader, PropItems), nil, rHeader.Items.Value)
 		}
 		if !lHeader.Items.IsEmpty() && rHeader.Items.IsEmpty() {
 			CreateChange(&changes, ObjectRemoved, v3.SchemaLabel, lHeader.Items.ValueNode,
-				nil, true, lHeader.Items.Value, nil)
+				nil, BreakingRemoved(CompHeader, PropItems), lHeader.Items.Value, nil)
 		}
 		hc.ExtensionChanges = CompareExtensions(lHeader.Extensions, rHeader.Extensions)
 	}
