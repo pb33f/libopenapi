@@ -190,18 +190,20 @@ func buildDefaultRules() *BreakingRulesConfig {
 		},
 
 		PathItem: &PathItemRules{
-			Description: rule(false, false, false),
-			Summary:     rule(false, false, false),
-			Get:         rule(false, false, true),
-			Put:         rule(false, false, true),
-			Post:        rule(false, false, true),
-			Delete:      rule(false, false, true),
-			Options:     rule(false, false, true),
-			Head:        rule(false, false, true),
-			Patch:       rule(false, false, true),
-			Trace:       rule(false, false, true),
-			Servers:     rule(false, false, true),
-			Parameters:  rule(false, false, true),
+			Description:          rule(false, false, false),
+			Summary:              rule(false, false, false),
+			Get:                  rule(false, false, true),
+			Put:                  rule(false, false, true),
+			Post:                 rule(false, false, true),
+			Delete:               rule(false, false, true),
+			Options:              rule(false, false, true),
+			Head:                 rule(false, false, true),
+			Patch:                rule(false, false, true),
+			Trace:                rule(false, false, true),
+			Query:                rule(false, false, true),
+			AdditionalOperations: rule(false, false, true),
+			Servers:              rule(false, false, true),
+			Parameters:           rule(false, false, true),
 		},
 
 		Operation: &OperationRules{
@@ -250,8 +252,10 @@ func buildDefaultRules() *BreakingRulesConfig {
 		},
 
 		MediaType: &MediaTypeRules{
-			Example: rule(false, false, false),
-			Schema:  rule(true, false, true),
+			Example:      rule(false, false, false),
+			Schema:       rule(true, false, true),
+			ItemSchema:   rule(true, false, true),
+			ItemEncoding: rule(false, false, true),
 		},
 
 		Encoding: &EncodingRules{
@@ -364,14 +368,15 @@ func buildDefaultRules() *BreakingRulesConfig {
 		},
 
 		SecurityScheme: &SecuritySchemeRules{
-			Type:             rule(true, true, true),
-			Description:      rule(false, false, false),
-			Name:             rule(true, true, true),
-			In:               rule(true, true, true),
-			Scheme:           rule(true, true, true),
-			BearerFormat:     rule(false, false, false),
-			OpenIDConnectURL: rule(false, false, false),
-			Flows:            rule(false, false, true),
+			Type:              rule(true, true, true),
+			Description:       rule(false, false, false),
+			Name:              rule(true, true, true),
+			In:                rule(true, true, true),
+			Scheme:            rule(true, true, true),
+			BearerFormat:      rule(false, false, false),
+			OpenIDConnectURL:  rule(false, false, false),
+			OAuth2MetadataUrl: rule(false, false, false),
+			Flows:             rule(false, false, true),
 		},
 
 		SecurityRequirement: &SecurityRequirementRules{
