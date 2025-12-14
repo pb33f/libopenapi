@@ -13,6 +13,8 @@ import (
 type BreakingRulesConfig struct {
 	OpenAPI             *BreakingChangeRule       `json:"openapi,omitempty" yaml:"openapi,omitempty"`
 	JSONSchemaDialect   *BreakingChangeRule       `json:"jsonSchemaDialect,omitempty" yaml:"jsonSchemaDialect,omitempty"`
+	Self                *BreakingChangeRule       `json:"$self,omitempty" yaml:"$self,omitempty"`
+	Components          *BreakingChangeRule       `json:"components,omitempty" yaml:"components,omitempty"`
 	Info                *InfoRules                `json:"info,omitempty" yaml:"info,omitempty"`
 	Contact             *ContactRules             `json:"contact,omitempty" yaml:"contact,omitempty"`
 	License             *LicenseRules             `json:"license,omitempty" yaml:"license,omitempty"`
@@ -27,11 +29,15 @@ type BreakingRulesConfig struct {
 	Encoding            *EncodingRules            `json:"encoding,omitempty" yaml:"encoding,omitempty"`
 	Header              *HeaderRules              `json:"header,omitempty" yaml:"header,omitempty"`
 	Schema              *SchemaRules              `json:"schema,omitempty" yaml:"schema,omitempty"`
+	Schemas             *BreakingChangeRule       `json:"schemas,omitempty" yaml:"schemas,omitempty"`
+	Servers             *BreakingChangeRule       `json:"servers,omitempty" yaml:"servers,omitempty"`
 	Discriminator       *DiscriminatorRules       `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
 	XML                 *XMLRules                 `json:"xml,omitempty" yaml:"xml,omitempty"`
 	Server              *ServerRules              `json:"server,omitempty" yaml:"server,omitempty"`
 	ServerVariable      *ServerVariableRules      `json:"serverVariable,omitempty" yaml:"serverVariable,omitempty"`
+	Tags                *BreakingChangeRule       `json:"tags,omitempty" yaml:"tags,omitempty"`
 	Tag                 *TagRules                 `json:"tag,omitempty" yaml:"tag,omitempty"`
+	Security            *BreakingChangeRule       `json:"security,omitempty" yaml:"security,omitempty"`
 	ExternalDocs        *ExternalDocsRules        `json:"externalDocs,omitempty" yaml:"externalDocs,omitempty"`
 	SecurityScheme      *SecuritySchemeRules      `json:"securityScheme,omitempty" yaml:"securityScheme,omitempty"`
 	SecurityRequirement *SecurityRequirementRules `json:"securityRequirement,omitempty" yaml:"securityRequirement,omitempty"`

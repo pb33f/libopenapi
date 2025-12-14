@@ -799,8 +799,9 @@ security:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, "thongs", extChanges.Changes[0].New)
+	// Whole security requirement additions now appear in SecurityRequirementChanges
+	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, "thongs", extChanges.SecurityRequirementChanges[0].Changes[0].Property)
 }
 
 func TestCompareOperations_V2_RemoveSecurityRequirement(t *testing.T) {
@@ -838,8 +839,9 @@ security:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
-	assert.Equal(t, "thongs", extChanges.Changes[0].Original)
+	// Whole security requirement removals now appear in SecurityRequirementChanges
+	assert.Equal(t, ObjectRemoved, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, "thongs", extChanges.SecurityRequirementChanges[0].Changes[0].Property)
 }
 
 func TestCompareOperations_V3(t *testing.T) {
@@ -1572,7 +1574,10 @@ security:
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Empty(t, extChanges.SecurityRequirementChanges)
+	// Whole security requirement additions now appear in SecurityRequirementChanges
+	assert.Len(t, extChanges.SecurityRequirementChanges, 1)
+	assert.Equal(t, ObjectAdded, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, "winter", extChanges.SecurityRequirementChanges[0].Changes[0].Property)
 }
 
 func TestCompareOperations_V3_RemoveSecurity(t *testing.T) {
@@ -1603,7 +1608,10 @@ security: []`
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Empty(t, extChanges.SecurityRequirementChanges)
+	// Whole security requirement removals now appear in SecurityRequirementChanges
+	assert.Len(t, extChanges.SecurityRequirementChanges, 1)
+	assert.Equal(t, ObjectRemoved, extChanges.SecurityRequirementChanges[0].Changes[0].ChangeType)
+	assert.Equal(t, "winter", extChanges.SecurityRequirementChanges[0].Changes[0].Property)
 }
 
 func TestCompareOperations_V3_ModifyRequestBody(t *testing.T) {

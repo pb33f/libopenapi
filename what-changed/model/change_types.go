@@ -226,7 +226,38 @@ type PropertyCheck struct {
 	RightNode *yaml.Node
 
 	// Breaking determines if the check is a breaking change (modifications or removals etc.)
+	//
+	// Deprecated: Use Component and Property fields for configurable breaking rules.
+	// This field is used as a fallback when Component is not set.
+	//
+	// TODO: Migration to Component/Property-based breaking rules
+	//
+	// Current state: CreateChange() takes a `breaking bool` parameter that is computed via
+	// BreakingAdded/Modified/Removed(component, property) and stored directly on this field.
+	// The breaking status is fixed at Change creation time.
+	//
+	// Target state: CreateChange() should accept `component, property string` parameters instead,
+	// store them on the Change, and breaking status should be computed at runtime via IsBreaking().
+	// This allows users to apply different breaking rule configs to the same set of changes.
+	//
+	// Migration steps:
+	//   1. Extend CreateChange signature to accept component, property string
+	//   2. Update ~198 CreateChange call sites across 23 files
+	//   3. Add IsBreaking() method on Change that computes from Component/Property
+	//   4. Keep Breaking field populated for backward compatibility
+	//
+	// Files with most CreateChange calls: schema.go (51), path_item.go (42), operation.go (22)
 	Breaking bool
+
+	// Component is the OpenAPI component type (e.g., CompTag, CompSchema) for breaking rules lookup.
+	// When set along with Property, the configurable breaking rules system is used instead of Breaking.
+	// TODO: Currently not populated - see Breaking field TODO for migration plan.
+	Component string
+
+	// Property is the property name within the component (e.g., PropParent, PropName) for breaking rules lookup.
+	// Used together with Component to look up the correct breaking rule for each change type.
+	// TODO: Currently not populated - see Breaking field TODO for migration plan.
+	Property string
 
 	// Changes represents a pointer to the slice to contain all changes found.
 	Changes *[]*Change

@@ -32,9 +32,12 @@ func (e *ExtensionChanges) TotalChanges() int {
 	return e.PropertyChanges.TotalChanges()
 }
 
-// TotalBreakingChanges always returns 0 for Extension objects, they are non-binding.
+// TotalBreakingChanges returns the total number of breaking changes in Extension objects.
 func (e *ExtensionChanges) TotalBreakingChanges() int {
-	return 0
+	if e == nil {
+		return 0
+	}
+	return e.PropertyChanges.TotalBreakingChanges()
 }
 
 // CompareExtensions will compare a left and right map of Tag/ValueReference models for any changes to

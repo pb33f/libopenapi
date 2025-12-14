@@ -241,20 +241,54 @@ func CheckSpecificObjectAdded[T any](l, r map[string]*T, label string) bool {
 //
 //	CheckPropertyAdditionOrRemoval
 //	CheckForModification
+//
+// When PropertyCheck has Component set, the configurable breaking rules system is used
+// to look up the correct breaking value for each change type (added, modified, removed).
 func CheckProperties(properties []*PropertyCheck) {
+	// cache config once outside the loop for performance (avoids repeated mutex operations)
+	config := GetActiveBreakingRulesConfig()
+
 	// todo: make this async to really speed things up.
 	for _, n := range properties {
-		CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
-		CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		if n.Component != "" {
+			// Use configurable breaking rules via cached config
+			breakingRemoved := config.IsBreaking(n.Component, n.Property, ChangeTypeRemoved)
+			breakingAdded := config.IsBreaking(n.Component, n.Property, ChangeTypeAdded)
+			breakingModified := config.IsBreaking(n.Component, n.Property, ChangeTypeModified)
+			CheckForRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, breakingRemoved, n.Original, n.New)
+			CheckForAddition(n.LeftNode, n.RightNode, n.Label, n.Changes, breakingAdded, n.Original, n.New)
+			CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, breakingModified, n.Original, n.New)
+		} else {
+			// Fallback to legacy Breaking field
+			CheckPropertyAdditionOrRemoval(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+			CheckForModification(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		}
 	}
 }
 
 // CheckPropertiesWithEncoding is like CheckProperties but uses CreateChangeWithEncoding for complex values.
 // use this for extensions where YAML serialization is needed.
+//
+// When PropertyCheck has Component set, the configurable breaking rules system is used
+// to look up the correct breaking value for each change type (added, modified, removed).
 func CheckPropertiesWithEncoding(properties []*PropertyCheck) {
+	// cache config once outside the loop for performance (avoids repeated mutex operations)
+	config := GetActiveBreakingRulesConfig()
+
 	for _, n := range properties {
-		CheckPropertyAdditionOrRemovalWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
-		CheckForModificationWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		if n.Component != "" {
+			// Use configurable breaking rules via cached config
+			breakingRemoved := config.IsBreaking(n.Component, n.Property, ChangeTypeRemoved)
+			breakingAdded := config.IsBreaking(n.Component, n.Property, ChangeTypeAdded)
+			breakingModified := config.IsBreaking(n.Component, n.Property, ChangeTypeModified)
+			CheckForRemovalWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, breakingRemoved, n.Original, n.New)
+			CheckForAdditionWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, breakingAdded, n.Original, n.New)
+			CheckForModificationWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, breakingModified, n.Original, n.New)
+		} else {
+			// Fallback to legacy Breaking field
+			CheckPropertyAdditionOrRemovalWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+			CheckForModificationWithEncoding(n.LeftNode, n.RightNode, n.Label, n.Changes, n.Breaking, n.Original, n.New)
+		}
 	}
 }
 
@@ -401,34 +435,52 @@ func CheckForModification[T any](l, r *yaml.Node, label string, changes *[]*Chan
 
 // CheckMapForChanges checks a left and right low level map for any additions, subtractions or modifications to
 // values. The compareFunc argument should reference the correct comparison function for the generic type.
+// Uses original hardcoded breaking behavior (removals breaking, additions non-breaking).
 func CheckMapForChanges[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R,
 ) map[string]R {
-	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, compareFunc, true)
+	return checkMapForChangesInternal(expLeft, expRight, changes, label, compareFunc, true, false, true)
+}
+
+// CheckMapForChangesWithRules checks a left and right low level map for any additions, subtractions or modifications
+// to values, using the configurable breaking rules system for the specified component and property.
+func CheckMapForChangesWithRules[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+	changes *[]*Change, label string, compareFunc func(l, r T) R, component, property string,
+) map[string]R {
+	return checkMapForChangesInternal(expLeft, expRight, changes, label, compareFunc, true,
+		BreakingAdded(component, property), BreakingRemoved(component, property))
 }
 
 // CheckMapForAdditionRemoval checks a left and right low level map for any additions or subtractions, but not modifications
 func CheckMapForAdditionRemoval[T any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string,
 ) any {
-	// do nothing
 	doNothing := func(l, r T) any {
 		return nil
 	}
-	// Adding purely to make sure code is called for coverage.
+	// adding purely to make sure code is called for coverage.
 	var l, r T
 	doNothing(l, r)
-	// end of coverage code.
-	return CheckMapForChangesWithComp(expLeft, expRight, changes, label, doNothing, false)
+	return checkMapForChangesInternal(expLeft, expRight, changes, label, doNothing, false, false, true)
 }
 
 // CheckMapForChangesWithComp checks a left and right low level map for any additions, subtractions or modifications to
 // values. The compareFunc argument should reference the correct comparison function for the generic type. The compare
 // bit determines if the comparison should be run or not.
+// Deprecated: Use checkMapForChangesInternal with explicit breaking parameters instead.
 func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
 	changes *[]*Change, label string, compareFunc func(l, r T) R, compare bool,
 ) map[string]R {
-	// stop concurrent threads screwing up changes.
+	return checkMapForChangesInternal(expLeft, expRight, changes, label, compareFunc, compare, false, true)
+}
+
+// checkMapForChangesInternal is the core implementation that checks a left and right low level map for any
+// additions, subtractions or modifications to values. The breakingAdded and breakingRemoved parameters control
+// whether additions and removals are marked as breaking changes.
+func checkMapForChangesInternal[T any, R any](expLeft, expRight *orderedmap.Map[low.KeyReference[string], low.ValueReference[T]],
+	changes *[]*Change, label string, compareFunc func(l, r T) R, compare bool,
+	breakingAdded, breakingRemoved bool,
+) map[string]R {
 	var chLock sync.Mutex
 
 	lHashes := make(map[string]string)
@@ -436,7 +488,6 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 	lValues := make(map[string]low.ValueReference[T])
 	rValues := make(map[string]low.ValueReference[T])
 
-	// Handle nil maps gracefully
 	if expLeft != nil {
 		for k, v := range expLeft.FromOldest() {
 			lHashes[k.Value] = low.GenerateHashString(v.Value)
@@ -461,7 +512,7 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 				p[k].GetValueNode().Value = k
 			}
 			CreateChange(changes, ObjectRemoved, label,
-				p[k].GetValueNode(), nil, true,
+				p[k].GetValueNode(), nil, breakingRemoved,
 				p[k].GetValue(), nil)
 			chLock.Unlock()
 			doneChan <- struct{}{}
@@ -471,7 +522,6 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 			doneChan <- struct{}{}
 			return
 		}
-		// run comparison.
 		if compare {
 			chLock.Lock()
 			ch := compareFunc(p[k].Value, h[k].Value)
@@ -488,49 +538,44 @@ func CheckMapForChangesWithComp[T any, R any](expLeft, expRight *orderedmap.Map[
 		doneChan <- struct{}{}
 	}
 
+	checkRight := func(k string, doneChan chan struct{}, f map[string]string, p map[string]low.ValueReference[T]) {
+		lhash := f[k]
+		if lhash == EMPTY_STR {
+			chLock.Lock()
+			if p[k].GetValueNode().Value == EMPTY_STR {
+				p[k].GetValueNode().Value = k
+			}
+			CreateChange(changes, ObjectAdded, label,
+				nil, p[k].GetValueNode(), breakingAdded,
+				nil, p[k].GetValue())
+			chLock.Unlock()
+		}
+		doneChan <- struct{}{}
+	}
+
 	doneChan := make(chan struct{})
 	count := 0
 
-	// check left example hashes
 	for k := range lHashes {
 		count++
 		go checkLeft(k, doneChan, lHashes, rHashes, lValues, rValues)
 	}
 
-	// check right example hashes
 	for k := range rHashes {
 		count++
-		go checkRightValue(k, doneChan, lHashes, rValues, changes, label, &chLock)
+		go checkRight(k, doneChan, lHashes, rValues)
 	}
 
-	// wait for all done signals.
 	completed := 0
 	for completed < count {
 		<-doneChan
 		completed++
-
 	}
 	return expChanges
 }
 
-func checkRightValue[T any](k string, doneChan chan struct{}, f map[string]string, p map[string]low.ValueReference[T],
-	changes *[]*Change, label string, lock *sync.Mutex,
-) {
-	lhash := f[k]
-	if lhash == EMPTY_STR {
-		lock.Lock()
-		if p[k].GetValueNode().Value == EMPTY_STR {
-			p[k].GetValueNode().Value = k // this is kinda dirty, but I don't want to duplicate code so sue me.
-		}
-		CreateChange(changes, ObjectAdded, label,
-			nil, p[k].GetValueNode(), false,
-			nil, p[k].GetValue())
-		lock.Unlock()
-	}
-	doneChan <- struct{}{}
-}
-
 // ExtractStringValueSliceChanges will compare two low level string slices for changes.
+// The breaking parameter is deprecated - use ExtractStringValueSliceChangesWithRules instead.
 func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
 	changes *[]*Change, label string, breaking bool,
 ) {
@@ -562,6 +607,45 @@ func ExtractStringValueSliceChanges(lParam, rParam []low.ValueReference[string],
 				nil,
 				rValues[i].ValueNode,
 				false,
+				nil,
+				rValues[i].Value)
+		}
+	}
+}
+
+// ExtractStringValueSliceChangesWithRules compares two low level string slices for changes,
+// using the configurable breaking rules system to determine breaking status.
+func ExtractStringValueSliceChangesWithRules(lParam, rParam []low.ValueReference[string],
+	changes *[]*Change, label string, component, property string,
+) {
+	lKeys := make([]string, len(lParam))
+	rKeys := make([]string, len(rParam))
+	lValues := make(map[string]low.ValueReference[string])
+	rValues := make(map[string]low.ValueReference[string])
+	for i := range lParam {
+		lKeys[i] = strings.ToLower(lParam[i].Value)
+		lValues[lKeys[i]] = lParam[i]
+	}
+	for i := range rParam {
+		rKeys[i] = strings.ToLower(rParam[i].Value)
+		rValues[rKeys[i]] = rParam[i]
+	}
+	for i := range lValues {
+		if _, ok := rValues[i]; !ok {
+			CreateChange(changes, PropertyRemoved, label,
+				lValues[i].ValueNode,
+				nil,
+				BreakingRemoved(component, property),
+				lValues[i].Value,
+				nil)
+		}
+	}
+	for i := range rValues {
+		if _, ok := lValues[i]; !ok {
+			CreateChange(changes, PropertyAdded, label,
+				nil,
+				rValues[i].ValueNode,
+				BreakingAdded(component, property),
 				nil,
 				rValues[i].Value)
 		}

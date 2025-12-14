@@ -1149,7 +1149,7 @@ info:
 	changes := CompareDocuments(lDoc, rDoc)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
-	assert.Equal(t, 0, changes.TotalBreakingChanges()) // adding $self is not breaking
+	assert.Equal(t, 1, changes.TotalBreakingChanges()) // adding $self is breaking (changes document location)
 
 	allChanges := changes.GetAllChanges()
 	assert.Len(t, allChanges, 1)
@@ -1160,7 +1160,7 @@ info:
 	changes = CompareDocuments(rDoc, lDoc)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
-	assert.Equal(t, 0, changes.TotalBreakingChanges()) // removing $self is not breaking either
+	assert.Equal(t, 1, changes.TotalBreakingChanges()) // removing $self is breaking (loses document location)
 
 	allChanges = changes.GetAllChanges()
 	assert.Len(t, allChanges, 1)
@@ -1192,7 +1192,7 @@ info:
 	changes = CompareDocuments(lDoc, rDoc)
 	assert.NotNil(t, changes)
 	assert.Equal(t, 1, changes.TotalChanges())
-	assert.Equal(t, 0, changes.TotalBreakingChanges()) // modifying $self is not breaking
+	assert.Equal(t, 1, changes.TotalBreakingChanges()) // modifying $self is breaking (changes document location)
 
 	allChanges = changes.GetAllChanges()
 	assert.Len(t, allChanges, 1)
@@ -1335,4 +1335,117 @@ func TestDocumentChanges_Nil(t *testing.T) {
 	assert.Equal(t, 0, dc.TotalChanges())
 	assert.Equal(t, 0, dc.TotalBreakingChanges())
 	assert.Nil(t, dc.GetAllChanges())
+}
+
+// TestCompareDocuments_OpenAPI_ServersConfigurable tests that root-level servers
+// use CompServers for breaking rule lookup and can be configured independently.
+func TestCompareDocuments_OpenAPI_ServersConfigurable(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// Document with server that will be removed
+	left := `openapi: 3.1
+servers:
+  - url: https://api.example.com
+  - url: https://api2.example.com`
+
+	right := `openapi: 3.1
+servers:
+  - url: https://api.example.com`
+
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+	lDoc, _ := v3.CreateDocumentFromConfig(siLeft, datamodel.NewDocumentConfiguration())
+	rDoc, _ := v3.CreateDocumentFromConfig(siRight, datamodel.NewDocumentConfiguration())
+
+	// Test 1: Default config - removing server should be breaking
+	changes := CompareDocuments(lDoc, rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "By default, removing root server should be breaking")
+
+	// Test 2: Custom config - make root server removal non-breaking
+	ResetDefaultBreakingRules()
+	low.ClearHashCache()
+
+	customConfig := &BreakingRulesConfig{
+		Servers: &BreakingChangeRule{
+			Added:    boolPtr(false),
+			Modified: boolPtr(false),
+			Removed:  boolPtr(false), // Make removal non-breaking
+		},
+	}
+	defaults := GenerateDefaultBreakingRules()
+	defaults.Merge(customConfig)
+	SetActiveBreakingRulesConfig(defaults)
+
+	// Rebuild docs to ensure clean state
+	lDoc2, _ := v3.CreateDocumentFromConfig(siLeft, datamodel.NewDocumentConfiguration())
+	rDoc2, _ := v3.CreateDocumentFromConfig(siRight, datamodel.NewDocumentConfiguration())
+
+	changes2 := CompareDocuments(lDoc2, rDoc2)
+	assert.NotNil(t, changes2)
+	assert.Equal(t, 1, changes2.TotalChanges())
+	assert.Equal(t, 0, changes2.TotalBreakingChanges(), "With custom config, removing root server should NOT be breaking")
+}
+
+// TestCompareDocuments_OpenAPI_ServersAddedConfigurable tests adding root-level servers.
+func TestCompareDocuments_OpenAPI_ServersAddedConfigurable(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// Document where server is added
+	left := `openapi: 3.1
+servers:
+  - url: https://api.example.com`
+
+	right := `openapi: 3.1
+servers:
+  - url: https://api.example.com
+  - url: https://api2.example.com`
+
+	siLeft, _ := datamodel.ExtractSpecInfo([]byte(left))
+	siRight, _ := datamodel.ExtractSpecInfo([]byte(right))
+	lDoc, _ := v3.CreateDocumentFromConfig(siLeft, datamodel.NewDocumentConfiguration())
+	rDoc, _ := v3.CreateDocumentFromConfig(siRight, datamodel.NewDocumentConfiguration())
+
+	// Test 1: Default config - adding server should NOT be breaking
+	changes := CompareDocuments(lDoc, rDoc)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges(), "By default, adding root server should NOT be breaking")
+
+	// Test 2: Custom config - make adding servers breaking
+	ResetDefaultBreakingRules()
+	low.ClearHashCache()
+
+	customConfig := &BreakingRulesConfig{
+		Servers: &BreakingChangeRule{
+			Added:    boolPtr(true), // Make adding breaking
+			Modified: boolPtr(false),
+			Removed:  boolPtr(false),
+		},
+	}
+	defaults := GenerateDefaultBreakingRules()
+	defaults.Merge(customConfig)
+	SetActiveBreakingRulesConfig(defaults)
+
+	// Rebuild docs
+	lDoc2, _ := v3.CreateDocumentFromConfig(siLeft, datamodel.NewDocumentConfiguration())
+	rDoc2, _ := v3.CreateDocumentFromConfig(siRight, datamodel.NewDocumentConfiguration())
+
+	changes2 := CompareDocuments(lDoc2, rDoc2)
+	assert.NotNil(t, changes2)
+	assert.Equal(t, 1, changes2.TotalChanges())
+	assert.Equal(t, 1, changes2.TotalBreakingChanges(), "With custom config, adding root server should be breaking")
 }

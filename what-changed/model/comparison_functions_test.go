@@ -576,6 +576,185 @@ func TestCheckForModificationWithEncoding(t *testing.T) {
 	}
 }
 
+// TestCheckMapForChangesWithComp tests the deprecated CheckMapForChangesWithComp function
+func TestCheckMapForChangesWithComp(t *testing.T) {
+	t.Run("detects removal", func(t *testing.T) {
+		l := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+		l.Set(low.KeyReference[string]{Value: "key1"}, low.ValueReference[string]{
+			Value:     "value1",
+			ValueNode: utils.CreateStringNode("value1"),
+		})
+
+		r := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+
+		var changes []*Change
+		result := CheckMapForChangesWithComp(l, r, &changes, "test", func(l, r string) *string { return nil }, false)
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, ObjectRemoved, changes[0].ChangeType)
+		assert.Empty(t, result)
+	})
+
+	t.Run("detects addition", func(t *testing.T) {
+		l := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+
+		r := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+		r.Set(low.KeyReference[string]{Value: "key1"}, low.ValueReference[string]{
+			Value:     "value1",
+			ValueNode: utils.CreateStringNode("value1"),
+		})
+
+		var changes []*Change
+		result := CheckMapForChangesWithComp(l, r, &changes, "test", func(l, r string) *string { return nil }, false)
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, ObjectAdded, changes[0].ChangeType)
+		assert.Empty(t, result)
+	})
+
+	t.Run("detects modification with compare enabled", func(t *testing.T) {
+		l := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+		l.Set(low.KeyReference[string]{Value: "key1"}, low.ValueReference[string]{
+			Value:     "value1",
+			ValueNode: utils.CreateStringNode("value1"),
+		})
+
+		r := orderedmap.New[low.KeyReference[string], low.ValueReference[string]]()
+		r.Set(low.KeyReference[string]{Value: "key1"}, low.ValueReference[string]{
+			Value:     "value2",
+			ValueNode: utils.CreateStringNode("value2"),
+		})
+
+		var changes []*Change
+		compareResult := "compared"
+		result := CheckMapForChangesWithComp(l, r, &changes, "test", func(l, r string) *string { return &compareResult }, true)
+
+		assert.Len(t, result, 1)
+		assert.Equal(t, "compared", *result["key1"])
+	})
+
+	t.Run("handles nil maps", func(t *testing.T) {
+		var changes []*Change
+		result := CheckMapForChangesWithComp[string, *string](nil, nil, &changes, "test", func(l, r string) *string { return nil }, false)
+
+		assert.Empty(t, changes)
+		assert.Empty(t, result)
+	})
+}
+
+// TestCheckPropertiesWithEncoding_Component tests the Component branch of CheckPropertiesWithEncoding
+func TestCheckPropertiesWithEncoding_Component(t *testing.T) {
+	// Reset breaking rules to ensure deterministic results
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	t.Run("uses configurable breaking rules when Component is set", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`oldvalue`), &lNode)
+		_ = yaml.Unmarshal([]byte(`newvalue`), &rNode)
+
+		var changes []*Change
+		props := []*PropertyCheck{
+			{
+				LeftNode:  lNode.Content[0],
+				RightNode: rNode.Content[0],
+				Label:     "test",
+				Changes:   &changes,
+				Breaking:  false,
+				Original:  "old",
+				New:       "new",
+				Component: CompTag,
+				Property:  PropName,
+			},
+		}
+
+		CheckPropertiesWithEncoding(props)
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, Modified, changes[0].ChangeType)
+	})
+
+	t.Run("detects removal with Component set", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`oldvalue`), &lNode)
+
+		var changes []*Change
+		props := []*PropertyCheck{
+			{
+				LeftNode:  lNode.Content[0],
+				RightNode: nil,
+				Label:     "test",
+				Changes:   &changes,
+				Breaking:  false,
+				Original:  "old",
+				New:       "",
+				Component: CompTag,
+				Property:  PropName,
+			},
+		}
+
+		CheckPropertiesWithEncoding(props)
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+	})
+
+	t.Run("detects addition with Component set", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`newvalue`), &rNode)
+
+		var changes []*Change
+		props := []*PropertyCheck{
+			{
+				LeftNode:  nil,
+				RightNode: rNode.Content[0],
+				Label:     "test",
+				Changes:   &changes,
+				Breaking:  false,
+				Original:  "",
+				New:       "new",
+				Component: CompTag,
+				Property:  PropName,
+			},
+		}
+
+		CheckPropertiesWithEncoding(props)
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
+	})
+
+	t.Run("falls back to Breaking field when Component not set", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`oldvalue`), &lNode)
+		_ = yaml.Unmarshal([]byte(`newvalue`), &rNode)
+
+		var changes []*Change
+		props := []*PropertyCheck{
+			{
+				LeftNode:  lNode.Content[0],
+				RightNode: rNode.Content[0],
+				Label:     "test",
+				Changes:   &changes,
+				Breaking:  true,
+				Original:  "old",
+				New:       "new",
+				Component: "", // No component set
+				Property:  "",
+			},
+		}
+
+		CheckPropertiesWithEncoding(props)
+
+		assert.Len(t, changes, 1)
+		assert.True(t, changes[0].Breaking)
+	})
+}
+
 // TestCreateChangeWithEncoding_ComplexValues tests encoding behavior
 func TestCreateChangeWithEncoding_ComplexValues(t *testing.T) {
 	t.Run("encodes map values", func(t *testing.T) {

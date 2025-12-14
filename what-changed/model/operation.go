@@ -131,8 +131,8 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 
 	// tags
 	if len(left.GetTags().Value) > 0 || len(right.GetTags().Value) > 0 {
-		ExtractStringValueSliceChanges(left.GetTags().Value, right.GetTags().Value,
-			changes, v3.TagsLabel, BreakingModified(CompOperation, PropTags))
+		ExtractStringValueSliceChangesWithRules(left.GetTags().Value, right.GetTags().Value,
+			changes, v3.TagsLabel, CompOperation, PropTags)
 	}
 
 	// summary
@@ -437,7 +437,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 
 		// servers
-		oc.ServerChanges = checkServers(lOperation.Servers, rOperation.Servers)
+		oc.ServerChanges = checkServers(lOperation.Servers, rOperation.Servers, CompOperation, PropServers)
 		oc.ExtensionChanges = CompareExtensions(lOperation.Extensions, rOperation.Extensions)
 
 	}
@@ -447,7 +447,8 @@ func CompareOperations(l, r any) *OperationChanges {
 }
 
 // check servers property
-func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.Server]]) []*ServerChanges {
+// component and property are used for breaking rules lookup (e.g., CompOperation/PropServers or CompServers/"")
+func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.Server]], component, property string) []*ServerChanges {
 	var serverChanges []*ServerChanges
 
 	if !lServers.IsEmpty() && !rServers.IsEmpty() {
@@ -486,7 +487,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 			}
 			lv[k].ValueNode.Value = lv[k].Value.URL.Value
 			CreateChange(&changes, ObjectRemoved, v3.ServersLabel,
-				lv[k].ValueNode, nil, BreakingRemoved(CompOperation, PropServers), lv[k].Value,
+				lv[k].ValueNode, nil, BreakingRemoved(component, property), lv[k].Value,
 				nil)
 			sc := new(ServerChanges)
 			sc.PropertyChanges = NewPropertyChanges(changes)
@@ -500,7 +501,7 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 				var changes []*Change
 				rv[k].ValueNode.Value = rv[k].Value.URL.Value
 				CreateChange(&changes, ObjectAdded, v3.ServersLabel,
-					nil, rv[k].ValueNode, BreakingAdded(CompOperation, PropServers), nil,
+					nil, rv[k].ValueNode, BreakingAdded(component, property), nil,
 					rv[k].Value)
 
 				sc := new(ServerChanges)
@@ -513,12 +514,12 @@ func checkServers(lServers, rServers low.NodeReference[[]low.ValueReference[*v3.
 	sc := new(ServerChanges)
 	if !lServers.IsEmpty() && rServers.IsEmpty() {
 		CreateChange(&changes, PropertyRemoved, v3.ServersLabel,
-			lServers.ValueNode, nil, BreakingRemoved(CompOperation, PropServers), lServers.Value,
+			lServers.ValueNode, nil, BreakingRemoved(component, property), lServers.Value,
 			nil)
 	}
 	if lServers.IsEmpty() && !rServers.IsEmpty() {
 		CreateChange(&changes, PropertyAdded, v3.ServersLabel,
-			nil, rServers.ValueNode, BreakingAdded(CompOperation, PropServers), nil,
+			nil, rServers.ValueNode, BreakingAdded(component, property), nil,
 			rServers.Value)
 	}
 	sc.PropertyChanges = NewPropertyChanges(changes)
@@ -556,6 +557,17 @@ func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*
 		rvn[s] = rSecurity.Value[i].ValueNode
 	}
 
+	// Determine breaking rules based on type (zero allocations using type switch)
+	var addedBreaking, removedBreaking bool
+	switch oc.(type) {
+	case *DocumentChanges:
+		addedBreaking = BreakingAdded(CompSecurity, "")
+		removedBreaking = BreakingRemoved(CompSecurity, "")
+	case *OperationChanges:
+		addedBreaking = BreakingAdded(CompOperation, PropSecurity)
+		removedBreaking = BreakingRemoved(CompOperation, PropSecurity)
+	}
+
 	var secChanges []*SecurityRequirementChanges
 	for n := range lv {
 		if _, ok := rv[n]; ok {
@@ -567,26 +579,37 @@ func checkSecurity(lSecurity, rSecurity low.NodeReference[[]low.ValueReference[*
 			}
 			continue
 		}
-		lvn[n].Value = strings.Join(lv[n].GetKeys(), ", ")
-		CreateChange(changes, ObjectRemoved, v3.SecurityLabel,
-			lvn[n], nil, BreakingRemoved(CompOperation, PropSecurity), lv[n],
-			nil)
+		// Whole security requirement was removed - create SecurityRequirementChanges
+		// so it appears under "Security Requirements" section
+		schemeNames := strings.Join(lv[n].GetKeys(), ", ")
 
+		var reqChanges []*Change
+		CreateChange(&reqChanges, ObjectRemoved, schemeNames,
+			lvn[n], nil, removedBreaking, lv[n], nil)
+		secChanges = append(secChanges, &SecurityRequirementChanges{
+			PropertyChanges: NewPropertyChanges(reqChanges),
+		})
 	}
 	for n := range rv {
 		if _, ok := lv[n]; !ok {
-			rvn[n].Value = strings.Join(rv[n].GetKeys(), ", ")
-			CreateChange(changes, ObjectAdded, v3.SecurityLabel,
-				nil, rvn[n], BreakingAdded(CompOperation, PropSecurity), nil,
-				rv[n])
+			// Whole security requirement was added - create SecurityRequirementChanges
+			// so it appears under "Security Requirements" section
+			schemeNames := strings.Join(rv[n].GetKeys(), ", ")
+
+			var reqChanges []*Change
+			CreateChange(&reqChanges, ObjectAdded, schemeNames,
+				nil, rvn[n], addedBreaking, nil, rv[n])
+			secChanges = append(secChanges, &SecurityRequirementChanges{
+				PropertyChanges: NewPropertyChanges(reqChanges),
+			})
 		}
 	}
 
-	// handle different change types.
-	if reflect.TypeOf(&OperationChanges{}) == reflect.TypeOf(oc) {
-		oc.(*OperationChanges).SecurityRequirementChanges = secChanges
-	}
-	if reflect.TypeOf(&DocumentChanges{}) == reflect.TypeOf(oc) {
-		oc.(*DocumentChanges).SecurityRequirementChanges = secChanges
+	// Assign to correct type using type switch (zero allocations)
+	switch v := oc.(type) {
+	case *OperationChanges:
+		v.SecurityRequirementChanges = secChanges
+	case *DocumentChanges:
+		v.SecurityRequirementChanges = secChanges
 	}
 }

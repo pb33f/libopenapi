@@ -39,9 +39,16 @@ func (e *ExternalDocChanges) TotalChanges() int {
 	return c
 }
 
-// TotalBreakingChanges always returns 0 for ExternalDoc objects, they are non-binding.
+// TotalBreakingChanges returns the total number of breaking changes in ExternalDoc objects.
 func (e *ExternalDocChanges) TotalBreakingChanges() int {
-	return 0
+	if e == nil {
+		return 0
+	}
+	c := e.PropertyChanges.TotalBreakingChanges()
+	if e.ExtensionChanges != nil {
+		c += e.ExtensionChanges.TotalBreakingChanges()
+	}
+	return c
 }
 
 // CompareExternalDocs will compare a left (original) and a right (new) slice of ValueReference
