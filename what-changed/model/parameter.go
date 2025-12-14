@@ -221,9 +221,10 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
 		BreakingModified(CompParameter, PropDescription))
 
-	// required - uses right.GetRequired().Value for conditional breaking status
+	// required
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
-		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel, right.GetRequired().Value)
+		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel,
+		BreakingModified(CompParameter, PropRequired))
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,

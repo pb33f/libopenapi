@@ -519,3 +519,161 @@ tags:
 	assert.Equal(t, "audience", kindChange.Original)
 	assert.False(t, kindChange.Breaking)
 }
+
+// TestCompareTags_ParentAddedConfigurable tests that the tag parent added rule
+// can be configured via the breaking rules system.
+func TestCompareTags_ParentAddedConfigurable(t *testing.T) {
+	// Reset state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag`
+
+	right := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag
+    parent: tag2`
+
+	// create document (which will create our correct tags low level structures)
+	lInfo, _ := datamodel.ExtractSpecInfo([]byte(left))
+	rInfo, _ := datamodel.ExtractSpecInfo([]byte(right))
+	lDoc, _ := lowv3.CreateDocumentFromConfig(lInfo, datamodel.NewDocumentConfiguration())
+	rDoc, _ := lowv3.CreateDocumentFromConfig(rInfo, datamodel.NewDocumentConfiguration())
+
+	// Test 1: With default rules, adding parent should be breaking
+	changes := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+
+	assert.Len(t, changes, 1)
+	assert.Len(t, changes[0].Changes, 1)
+
+	parentChange := changes[0].Changes[0]
+	assert.Equal(t, "parent", parentChange.Property)
+	assert.Equal(t, PropertyAdded, parentChange.ChangeType)
+	assert.True(t, parentChange.Breaking, "Default: adding parent should be breaking")
+	assert.Equal(t, 1, changes[0].TotalBreakingChanges())
+
+	// Test 2: With custom config setting parent.added to false
+	low.ClearHashCache()
+
+	falseVal := false
+	customConfig := &BreakingRulesConfig{
+		Tag: &TagRules{
+			Parent: &BreakingChangeRule{
+				Added: &falseVal,
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	changes2 := CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
+
+	assert.Len(t, changes2, 1)
+	assert.Len(t, changes2[0].Changes, 1)
+
+	parentChange2 := changes2[0].Changes[0]
+	assert.Equal(t, "parent", parentChange2.Property)
+	assert.Equal(t, PropertyAdded, parentChange2.ChangeType)
+	assert.False(t, parentChange2.Breaking, "Custom config: adding parent should NOT be breaking")
+	assert.Equal(t, 0, changes2[0].TotalBreakingChanges())
+}
+
+// TestCompareTags_AllChangeTypesConfigurable tests that all three change types
+// (added, modified, removed) for tag properties can be independently configured.
+func TestCompareTags_AllChangeTypesConfigurable(t *testing.T) {
+	// Reset state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// Test data: tag with parent added
+	leftAdd := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag`
+	rightAdd := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag
+    parent: tag2`
+
+	// Test data: tag with parent modified
+	leftMod := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag
+    parent: tag2`
+	rightMod := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag
+    parent: tag3`
+
+	// Test data: tag with parent removed
+	leftRem := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag
+    parent: tag2`
+	rightRem := `openapi: 3.0.1
+tags:
+  - name: tag1
+    description: a taggy tag`
+
+	// Set up custom config: added=false, modified=false, removed=false (all non-breaking)
+	falseVal := false
+	customConfig := &BreakingRulesConfig{
+		Tag: &TagRules{
+			Parent: &BreakingChangeRule{
+				Added:    &falseVal,
+				Modified: &falseVal,
+				Removed:  &falseVal,
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	// Test added
+	lInfoAdd, _ := datamodel.ExtractSpecInfo([]byte(leftAdd))
+	rInfoAdd, _ := datamodel.ExtractSpecInfo([]byte(rightAdd))
+	lDocAdd, _ := lowv3.CreateDocumentFromConfig(lInfoAdd, datamodel.NewDocumentConfiguration())
+	rDocAdd, _ := lowv3.CreateDocumentFromConfig(rInfoAdd, datamodel.NewDocumentConfiguration())
+
+	changesAdd := CompareTags(lDocAdd.Tags.Value, rDocAdd.Tags.Value)
+	assert.Len(t, changesAdd[0].Changes, 1)
+	assert.False(t, changesAdd[0].Changes[0].Breaking, "Custom config: adding parent should NOT be breaking")
+
+	// Test modified
+	low.ClearHashCache()
+	lInfoMod, _ := datamodel.ExtractSpecInfo([]byte(leftMod))
+	rInfoMod, _ := datamodel.ExtractSpecInfo([]byte(rightMod))
+	lDocMod, _ := lowv3.CreateDocumentFromConfig(lInfoMod, datamodel.NewDocumentConfiguration())
+	rDocMod, _ := lowv3.CreateDocumentFromConfig(rInfoMod, datamodel.NewDocumentConfiguration())
+
+	changesMod := CompareTags(lDocMod.Tags.Value, rDocMod.Tags.Value)
+	assert.Len(t, changesMod[0].Changes, 1)
+	assert.False(t, changesMod[0].Changes[0].Breaking, "Custom config: modifying parent should NOT be breaking")
+
+	// Test removed
+	low.ClearHashCache()
+	lInfoRem, _ := datamodel.ExtractSpecInfo([]byte(leftRem))
+	rInfoRem, _ := datamodel.ExtractSpecInfo([]byte(rightRem))
+	lDocRem, _ := lowv3.CreateDocumentFromConfig(lInfoRem, datamodel.NewDocumentConfiguration())
+	rDocRem, _ := lowv3.CreateDocumentFromConfig(rInfoRem, datamodel.NewDocumentConfiguration())
+
+	changesRem := CompareTags(lDocRem.Tags.Value, rDocRem.Tags.Value)
+	assert.Len(t, changesRem[0].Changes, 1)
+	assert.False(t, changesRem[0].Changes[0].Breaking, "Custom config: removing parent should NOT be breaking")
+}

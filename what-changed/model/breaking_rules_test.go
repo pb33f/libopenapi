@@ -891,3 +891,201 @@ func TestAddRulesToCache_NonRuleFields(t *testing.T) {
 	assert.Nil(t, cache["test.nonrule"])
 	assert.Nil(t, cache["test.NoTagField"])
 }
+
+// TestDefaultBreakingRules_Servers tests the default breaking rules for servers at all levels.
+func TestDefaultBreakingRules_Servers(t *testing.T) {
+	ResetDefaultBreakingRules()
+	defer ResetDefaultBreakingRules()
+
+	config := GenerateDefaultBreakingRules()
+
+	// Root-level servers (CompServers)
+	assert.NotNil(t, config.Servers, "Root-level Servers rule should exist")
+	assert.False(t, *config.Servers.Added, "Adding root-level servers should not be breaking by default")
+	assert.False(t, *config.Servers.Modified, "Modifying root-level servers should not be breaking by default")
+	assert.True(t, *config.Servers.Removed, "Removing root-level servers should be breaking by default")
+
+	// PathItem-level servers
+	assert.NotNil(t, config.PathItem.Servers, "PathItem.Servers rule should exist")
+	assert.False(t, *config.PathItem.Servers.Added, "Adding pathItem servers should not be breaking by default")
+	assert.False(t, *config.PathItem.Servers.Modified, "Modifying pathItem servers should not be breaking by default")
+	assert.True(t, *config.PathItem.Servers.Removed, "Removing pathItem servers should be breaking by default")
+
+	// Operation-level servers
+	assert.NotNil(t, config.Operation.Servers, "Operation.Servers rule should exist")
+	assert.False(t, *config.Operation.Servers.Added, "Adding operation servers should not be breaking by default")
+	assert.False(t, *config.Operation.Servers.Modified, "Modifying operation servers should not be breaking by default")
+	assert.True(t, *config.Operation.Servers.Removed, "Removing operation servers should be breaking by default")
+}
+
+// TestServersConfigIndependence tests that servers at different levels can be configured independently.
+func TestServersConfigIndependence(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// Create custom config that makes root-level servers non-breaking but keeps others breaking
+	customConfig := &BreakingRulesConfig{
+		Servers: rule(false, false, false), // root-level: all non-breaking
+		PathItem: &PathItemRules{
+			Servers: rule(true, true, true), // pathItem: all breaking
+		},
+		Operation: &OperationRules{
+			Servers: rule(false, true, false), // operation: only modify is breaking
+		},
+	}
+
+	defaults := GenerateDefaultBreakingRules()
+	defaults.Merge(customConfig)
+	SetActiveBreakingRulesConfig(defaults)
+
+	// Test root-level servers (CompServers with empty property)
+	assert.False(t, BreakingAdded(CompServers, ""), "Root servers add should not be breaking")
+	assert.False(t, BreakingModified(CompServers, ""), "Root servers modify should not be breaking")
+	assert.False(t, BreakingRemoved(CompServers, ""), "Root servers remove should not be breaking")
+
+	// Test pathItem-level servers
+	assert.True(t, BreakingAdded(CompPathItem, PropServers), "PathItem servers add should be breaking")
+	assert.True(t, BreakingModified(CompPathItem, PropServers), "PathItem servers modify should be breaking")
+	assert.True(t, BreakingRemoved(CompPathItem, PropServers), "PathItem servers remove should be breaking")
+
+	// Test operation-level servers
+	assert.False(t, BreakingAdded(CompOperation, PropServers), "Operation servers add should not be breaking")
+	assert.True(t, BreakingModified(CompOperation, PropServers), "Operation servers modify should be breaking")
+	assert.False(t, BreakingRemoved(CompOperation, PropServers), "Operation servers remove should not be breaking")
+}
+
+// TestGetRule_Servers tests that GetRule returns correct rules for servers at all levels.
+func TestGetRule_Servers(t *testing.T) {
+	ResetDefaultBreakingRules()
+	defer ResetDefaultBreakingRules()
+
+	config := GenerateDefaultBreakingRules()
+
+	// Root-level servers use component name only (no property)
+	rootRule := config.GetRule(CompServers, "")
+	assert.NotNil(t, rootRule, "Should find rule for root-level servers")
+	assert.True(t, *rootRule.Removed, "Root servers removal should be breaking by default")
+
+	// PathItem servers
+	pathItemRule := config.GetRule(CompPathItem, PropServers)
+	assert.NotNil(t, pathItemRule, "Should find rule for pathItem.servers")
+	assert.True(t, *pathItemRule.Removed, "PathItem servers removal should be breaking by default")
+
+	// Operation servers
+	operationRule := config.GetRule(CompOperation, PropServers)
+	assert.NotNil(t, operationRule, "Should find rule for operation.servers")
+	assert.True(t, *operationRule.Removed, "Operation servers removal should be breaking by default")
+}
+
+// TestIsBreaking_ServersChangeTypes tests IsBreaking for all change types at all server levels.
+func TestIsBreaking_ServersChangeTypes(t *testing.T) {
+	ResetDefaultBreakingRules()
+	defer ResetDefaultBreakingRules()
+
+	tests := []struct {
+		component  string
+		property   string
+		changeType string
+		expected   bool
+		desc       string
+	}{
+		// Root-level servers (CompServers with empty property)
+		{CompServers, "", ChangeTypeAdded, false, "root servers add"},
+		{CompServers, "", ChangeTypeModified, false, "root servers modify"},
+		{CompServers, "", ChangeTypeRemoved, true, "root servers remove"},
+
+		// PathItem servers
+		{CompPathItem, PropServers, ChangeTypeAdded, false, "pathItem servers add"},
+		{CompPathItem, PropServers, ChangeTypeModified, false, "pathItem servers modify"},
+		{CompPathItem, PropServers, ChangeTypeRemoved, true, "pathItem servers remove"},
+
+		// Operation servers
+		{CompOperation, PropServers, ChangeTypeAdded, false, "operation servers add"},
+		{CompOperation, PropServers, ChangeTypeModified, false, "operation servers modify"},
+		{CompOperation, PropServers, ChangeTypeRemoved, true, "operation servers remove"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.desc, func(t *testing.T) {
+			result := IsBreakingChange(tt.component, tt.property, tt.changeType)
+			assert.Equal(t, tt.expected, result, "IsBreaking(%s, %s, %s)", tt.component, tt.property, tt.changeType)
+		})
+	}
+}
+
+// TestDefaultBreakingRules_Tags tests the default breaking rules for tags.
+func TestDefaultBreakingRules_Tags(t *testing.T) {
+	ResetDefaultBreakingRules()
+	defer ResetDefaultBreakingRules()
+
+	config := GenerateDefaultBreakingRules()
+
+	// Root-level tags (CompTags)
+	assert.NotNil(t, config.Tags, "Root-level Tags rule should exist")
+	assert.False(t, *config.Tags.Added, "Adding tags should not be breaking by default")
+	assert.False(t, *config.Tags.Modified, "Modifying tags should not be breaking by default")
+	assert.True(t, *config.Tags.Removed, "Removing tags should be breaking by default")
+
+	// Individual tag properties
+	assert.NotNil(t, config.Tag, "Tag rules should exist")
+	assert.True(t, *config.Tag.Name.Modified, "Modifying tag name should be breaking by default")
+	assert.True(t, *config.Tag.Name.Removed, "Removing tag name should be breaking by default")
+}
+
+// TestTagsConfigIndependence tests that tags can be configured independently.
+func TestTagsConfigIndependence(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// Create custom config to make adding tags breaking
+	customConfig := &BreakingRulesConfig{
+		Tags: rule(true, false, false), // adding is breaking, removing is not
+	}
+
+	defaults := GenerateDefaultBreakingRules()
+	defaults.Merge(customConfig)
+	SetActiveBreakingRulesConfig(defaults)
+
+	// Test tags array add/remove uses CompTags
+	assert.True(t, BreakingAdded(CompTags, ""), "Tags add should be breaking with custom config")
+	assert.False(t, BreakingModified(CompTags, ""), "Tags modify should not be breaking")
+	assert.False(t, BreakingRemoved(CompTags, ""), "Tags remove should not be breaking with custom config")
+
+	// Tag properties should still use their own rules
+	assert.True(t, BreakingModified(CompTag, PropName), "Tag name modify should still be breaking")
+}
+
+// TestMerge_Servers tests that Servers rules can be merged correctly.
+func TestMerge_Servers(t *testing.T) {
+	ResetDefaultBreakingRules()
+	defer ResetDefaultBreakingRules()
+
+	config := GenerateDefaultBreakingRules()
+
+	// Verify default before merge
+	assert.True(t, *config.Servers.Removed, "Default: root servers removal should be breaking")
+
+	// Create override to make root-level servers removal non-breaking
+	override := &BreakingRulesConfig{
+		Servers: rule(false, false, false),
+	}
+
+	config.Merge(override)
+
+	// Verify override applied
+	assert.False(t, *config.Servers.Added, "After merge: root servers add should not be breaking")
+	assert.False(t, *config.Servers.Modified, "After merge: root servers modify should not be breaking")
+	assert.False(t, *config.Servers.Removed, "After merge: root servers removal should not be breaking")
+
+	// Verify other server rules unchanged
+	assert.True(t, *config.PathItem.Servers.Removed, "PathItem servers should still be breaking")
+	assert.True(t, *config.Operation.Servers.Removed, "Operation servers should still be breaking")
+}

@@ -100,6 +100,7 @@ type RequestBodyRules struct {
 // ResponsesRules defines breaking rules for the Responses object properties.
 type ResponsesRules struct {
 	Default *BreakingChangeRule `json:"default,omitempty" yaml:"default,omitempty"`
+	Codes   *BreakingChangeRule `json:"codes,omitempty" yaml:"codes,omitempty"`
 }
 
 // ResponseRules defines breaking rules for the Response object properties.
@@ -189,6 +190,8 @@ type SchemaRules struct {
 	UnevaluatedItems      *BreakingChangeRule `json:"unevaluatedItems,omitempty" yaml:"unevaluatedItems,omitempty"`
 	UnevaluatedProperties *BreakingChangeRule `json:"unevaluatedProperties,omitempty" yaml:"unevaluatedProperties,omitempty"`
 	DependentRequired     *BreakingChangeRule `json:"dependentRequired,omitempty" yaml:"dependentRequired,omitempty"`
+	XML                   *BreakingChangeRule `json:"xml,omitempty" yaml:"xml,omitempty"`
+	SchemaDialect         *BreakingChangeRule `json:"schemaDialect,omitempty" yaml:"schemaDialect,omitempty"`
 }
 
 // DiscriminatorRules defines breaking rules for the Discriminator object properties.

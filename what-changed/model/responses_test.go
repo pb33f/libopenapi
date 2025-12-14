@@ -490,3 +490,71 @@ func TestCompareResponses_V3_AddRemoveMediaType(t *testing.T) {
 	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
+
+func TestCompareResponses_V3_ConfigurableCodesBreaking(t *testing.T) {
+	// ensure clean state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `200:
+  description: OK
+404:
+  description: Not Found
+500:
+  description: Internal Server Error`
+
+	right := `200:
+  description: OK
+418:
+  description: I am a teapot`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc v3.Responses
+	var rDoc v3.Responses
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// test 1: default behavior - removing codes is breaking, adding is not
+	changes := CompareResponses(&lDoc, &rDoc)
+	assert.Equal(t, 3, changes.TotalChanges()) // 2 removed (404, 500) + 1 added (418)
+	assert.Equal(t, 2, changes.TotalBreakingChanges()) // only removals are breaking by default
+
+	// test 2: custom config - make removals non-breaking
+	customConfig := &BreakingRulesConfig{
+		Responses: &ResponsesRules{
+			Codes: &BreakingChangeRule{
+				Removed: boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	changes2 := CompareResponses(&lDoc, &rDoc)
+	assert.Equal(t, 3, changes2.TotalChanges()) // same number of changes
+	assert.Equal(t, 0, changes2.TotalBreakingChanges()) // no breaking changes now
+
+	// test 3: custom config - make additions breaking
+	customConfig2 := &BreakingRulesConfig{
+		Responses: &ResponsesRules{
+			Codes: &BreakingChangeRule{
+				Added:   boolPtr(true),
+				Removed: boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig2)
+
+	changes3 := CompareResponses(&lDoc, &rDoc)
+	assert.Equal(t, 3, changes3.TotalChanges())
+	assert.Equal(t, 1, changes3.TotalBreakingChanges()) // only the addition is breaking now
+}

@@ -40,9 +40,16 @@ func (l *LicenseChanges) TotalChanges() int {
 	return c
 }
 
-// TotalBreakingChanges always returns 0 for License objects, they are non-binding.
+// TotalBreakingChanges returns the total number of breaking changes in License objects.
 func (l *LicenseChanges) TotalBreakingChanges() int {
-	return 0
+	if l == nil {
+		return 0
+	}
+	c := l.PropertyChanges.TotalBreakingChanges()
+	if l.ExtensionChanges != nil {
+		c += l.ExtensionChanges.TotalBreakingChanges()
+	}
+	return c
 }
 
 // CompareLicense will check a left (original) and right (new) License object for any changes. If there

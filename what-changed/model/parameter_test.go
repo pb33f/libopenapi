@@ -954,10 +954,12 @@ required: false`
 	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare
+	// With configurable breaking rules, ALL required modifications are breaking by default.
+	// Users can configure this via breaking rules if they want directional behavior.
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }
 
 func TestCompareParameters_V2_RequiredToOptional(t *testing.T) {
@@ -984,8 +986,10 @@ required: false`
 	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
 	// compare.
+	// With configurable breaking rules, ALL required modifications are breaking by default.
+	// Users can configure this via breaking rules if they want directional behavior.
 	extChanges := CompareParameters(&lDoc, &rDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
+	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 }

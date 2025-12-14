@@ -385,14 +385,14 @@ func CompareSchemas(l, r *base.SchemaProxy) *SchemaChanges {
 	// Added
 	if l == nil && r != nil {
 		CreateChange(&changes, ObjectAdded, v3.SchemaLabel,
-			nil, nil, true, nil, r)
+			nil, nil, BreakingAdded(CompSchemas, ""), nil, r)
 		sc.PropertyChanges = NewPropertyChanges(changes)
 	}
 
 	// Removed
 	if l != nil && r == nil {
 		CreateChange(&changes, ObjectRemoved, v3.SchemaLabel,
-			nil, nil, true, l, nil)
+			nil, nil, BreakingRemoved(CompSchemas, ""), l, nil)
 		sc.PropertyChanges = NewPropertyChanges(changes)
 	}
 
@@ -581,12 +581,12 @@ func checkSchemaXML(lSchema *base.Schema, rSchema *base.Schema, changes *[]*Chan
 	}
 	if lSchema.XML.Value != nil && rSchema.XML.Value == nil {
 		CreateChange(changes, ObjectRemoved, v3.XMLLabel,
-			lSchema.XML.GetValueNode(), nil, true, lSchema.XML.GetValue(), nil)
+			lSchema.XML.GetValueNode(), nil, BreakingRemoved(CompSchema, PropXML), lSchema.XML.GetValue(), nil)
 	}
 	// XML added
 	if lSchema.XML.Value == nil && rSchema.XML.Value != nil {
 		CreateChange(changes, ObjectAdded, v3.XMLLabel,
-			nil, rSchema.XML.GetValueNode(), false, nil, rSchema.XML.GetValue())
+			nil, rSchema.XML.GetValueNode(), BreakingAdded(CompSchema, PropXML), nil, rSchema.XML.GetValue())
 	}
 
 	// compare XML
@@ -748,7 +748,7 @@ func checkSchemaPropertyChanges(
 		RightNode: rnv,
 		Label:     v3.SchemaDialectLabel,
 		Changes:   changes,
-		Breaking:  true, // JSON Schema dialect changes are always breaking
+		Breaking:  BreakingModified(CompSchema, PropSchemaDialect),
 		Original:  lSchema,
 		New:       rSchema,
 	})

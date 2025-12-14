@@ -165,6 +165,46 @@ func TestAllChangesModels_NilChecks(t *testing.T) {
 			var d *DocumentChanges
 			assert.Equal(t, 0, d.TotalBreakingChanges())
 		}},
+		{"ContactChanges_TotalBreakingChanges_Nil", func(t *testing.T) {
+			var c *ContactChanges
+			assert.Equal(t, 0, c.TotalBreakingChanges())
+		}},
+		{"ExtensionChanges_TotalBreakingChanges_Nil", func(t *testing.T) {
+			var e *ExtensionChanges
+			assert.Equal(t, 0, e.TotalBreakingChanges())
+		}},
+		{"ExternalDocChanges_TotalBreakingChanges_Nil", func(t *testing.T) {
+			var e *ExternalDocChanges
+			assert.Equal(t, 0, e.TotalBreakingChanges())
+		}},
+		{"InfoChanges_TotalBreakingChanges_Nil", func(t *testing.T) {
+			var i *InfoChanges
+			assert.Equal(t, 0, i.TotalBreakingChanges())
+		}},
+		{"LicenseChanges_TotalBreakingChanges_Nil", func(t *testing.T) {
+			var l *LicenseChanges
+			assert.Equal(t, 0, l.TotalBreakingChanges())
+		}},
+
+		// Test TotalBreakingChanges with nested changes
+		{"InfoChanges_TotalBreakingChanges_WithNestedChanges", func(t *testing.T) {
+			breakingChange := &Change{Breaking: true}
+			i := &InfoChanges{
+				PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}},
+				ContactChanges:  &ContactChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
+				LicenseChanges:  &LicenseChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
+				ExtensionChanges: &ExtensionChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
+			}
+			assert.Equal(t, 4, i.TotalBreakingChanges())
+		}},
+		{"LicenseChanges_TotalBreakingChanges_WithExtensions", func(t *testing.T) {
+			breakingChange := &Change{Breaking: true}
+			l := &LicenseChanges{
+				PropertyChanges:  &PropertyChanges{Changes: []*Change{breakingChange}},
+				ExtensionChanges: &ExtensionChanges{PropertyChanges: &PropertyChanges{Changes: []*Change{breakingChange}}},
+			}
+			assert.Equal(t, 2, l.TotalBreakingChanges())
+		}},
 
 		// Test GetAllChanges() nil checks
 		{"ComponentsChanges_GetAllChanges_Nil", func(t *testing.T) {

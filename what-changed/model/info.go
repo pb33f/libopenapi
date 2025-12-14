@@ -53,9 +53,22 @@ func (i *InfoChanges) TotalChanges() int {
 	return t
 }
 
-// TotalBreakingChanges always returns 0 for Info objects, they are non-binding.
+// TotalBreakingChanges returns the total number of breaking changes in Info objects.
 func (i *InfoChanges) TotalBreakingChanges() int {
-	return 0
+	if i == nil {
+		return 0
+	}
+	c := i.PropertyChanges.TotalBreakingChanges()
+	if i.ContactChanges != nil {
+		c += i.ContactChanges.TotalBreakingChanges()
+	}
+	if i.LicenseChanges != nil {
+		c += i.LicenseChanges.TotalBreakingChanges()
+	}
+	if i.ExtensionChanges != nil {
+		c += i.ExtensionChanges.TotalBreakingChanges()
+	}
+	return c
 }
 
 // CompareInfo will compare a left (original) and a right (new) Info object. Any changes

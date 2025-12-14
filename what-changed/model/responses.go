@@ -102,8 +102,8 @@ func CompareResponses(l, r any) *ResponsesChanges {
 				nil, lResponses.Default.Value)
 		}
 
-		rc.ResponseChanges = CheckMapForChanges(lResponses.Codes, rResponses.Codes,
-			&changes, v3.CodesLabel, CompareResponseV2)
+		rc.ResponseChanges = CheckMapForChangesWithRules(lResponses.Codes, rResponses.Codes,
+			&changes, v3.CodesLabel, CompareResponseV2, CompResponses, PropCodes)
 
 		rc.ExtensionChanges = CompareExtensions(lResponses.Extensions, rResponses.Extensions)
 	}
@@ -134,8 +134,8 @@ func CompareResponses(l, r any) *ResponsesChanges {
 				nil, lResponses.Default.Value)
 		}
 
-		rc.ResponseChanges = CheckMapForChanges(lResponses.Codes, rResponses.Codes,
-			&changes, v3.CodesLabel, CompareResponseV3)
+		rc.ResponseChanges = CheckMapForChangesWithRules(lResponses.Codes, rResponses.Codes,
+			&changes, v3.CodesLabel, CompareResponseV3, CompResponses, PropCodes)
 
 		rc.ExtensionChanges = CompareExtensions(lResponses.Extensions, rResponses.Extensions)
 
