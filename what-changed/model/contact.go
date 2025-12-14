@@ -29,9 +29,12 @@ func (c *ContactChanges) TotalChanges() int {
 	return c.PropertyChanges.TotalChanges()
 }
 
-// TotalBreakingChanges always returns 0 for Contact objects, they are non-binding.
+// TotalBreakingChanges returns the total number of breaking changes in Contact objects.
 func (c *ContactChanges) TotalBreakingChanges() int {
-	return 0
+	if c == nil {
+		return 0
+	}
+	return c.PropertyChanges.TotalBreakingChanges()
 }
 
 // CompareContact will check a left (original) and right (new) Contact object for any changes. If there

@@ -162,6 +162,8 @@ func buildDefaultRules() *BreakingRulesConfig {
 	return &BreakingRulesConfig{
 		OpenAPI:           rule(true, true, true),
 		JSONSchemaDialect: rule(true, true, true),
+		Self:              rule(true, true, true),
+		Components:        rule(false, false, true),
 
 		Info: &InfoRules{
 			Title:          rule(false, false, false),
@@ -207,7 +209,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 		},
 
 		Operation: &OperationRules{
-			Tags:         rule(true, true, true),
+			Tags:         rule(false, false, true),
 			Summary:      rule(false, false, false),
 			Description:  rule(false, false, false),
 			Deprecated:   rule(false, false, false),
@@ -225,7 +227,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 			Name:            rule(true, true, true),
 			In:              rule(true, true, true),
 			Description:     rule(false, false, false),
-			Required:        rule(false, false, false),
+			Required:        rule(false, true, false),
 			AllowEmptyValue: rule(true, true, true),
 			Style:           rule(false, false, false),
 			AllowReserved:   rule(true, true, true),
@@ -243,6 +245,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 
 		Responses: &ResponsesRules{
 			Default: rule(false, false, true),
+			Codes:   rule(false, false, true),
 		},
 
 		Response: &ResponseRules{
@@ -277,6 +280,9 @@ func buildDefaultRules() *BreakingRulesConfig {
 			Schema:          rule(true, false, true),
 			Items:           rule(true, false, true),
 		},
+
+		Schemas: rule(true, false, true),
+		Servers: rule(false, false, true),
 
 		Schema: &SchemaRules{
 			Ref:                   rule(false, false, false),
@@ -327,6 +333,8 @@ func buildDefaultRules() *BreakingRulesConfig {
 			UnevaluatedItems:      rule(true, false, true),
 			UnevaluatedProperties: rule(true, true, true),
 			DependentRequired:     rule(false, true, true),
+			XML:                   rule(false, false, true),
+			SchemaDialect:         rule(true, true, true),
 		},
 
 		Discriminator: &DiscriminatorRules{
@@ -355,6 +363,10 @@ func buildDefaultRules() *BreakingRulesConfig {
 			Default:     rule(true, true, true),
 			Description: rule(false, false, false),
 		},
+
+		Tags: rule(false, false, true),
+
+		Security: rule(false, false, true),
 
 		Tag: &TagRules{
 			Name:         rule(false, true, true),

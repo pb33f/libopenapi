@@ -237,15 +237,18 @@ func CompareDocuments(l, r any) *DocumentChanges {
 
 		// version
 		addPropertyCheck(&props, lDoc.Version.ValueNode, rDoc.Version.ValueNode,
-			lDoc.Version.Value, rDoc.Version.Value, &changes, v3.OpenAPILabel, true)
+			lDoc.Version.Value, rDoc.Version.Value, &changes, v3.OpenAPILabel,
+			BreakingModified(CompOpenAPI, ""))
 
 		// schema dialect
 		addPropertyCheck(&props, lDoc.JsonSchemaDialect.ValueNode, rDoc.JsonSchemaDialect.ValueNode,
-			lDoc.JsonSchemaDialect.Value, rDoc.JsonSchemaDialect.Value, &changes, v3.JSONSchemaDialectLabel, true)
+			lDoc.JsonSchemaDialect.Value, rDoc.JsonSchemaDialect.Value, &changes, v3.JSONSchemaDialectLabel,
+			BreakingModified(CompJSONSchemaDialect, ""))
 
 		// $self field (3.2+)
 		addPropertyCheck(&props, lDoc.Self.ValueNode, rDoc.Self.ValueNode,
-			lDoc.Self.Value, rDoc.Self.Value, &changes, v3.SelfLabel, false)
+			lDoc.Self.Value, rDoc.Self.Value, &changes, v3.SelfLabel,
+			BreakingModified(CompSelf, ""))
 
 		// tags
 		dc.TagChanges = CompareTags(lDoc.Tags.Value, rDoc.Tags.Value)
@@ -274,15 +277,15 @@ func CompareDocuments(l, r any) *DocumentChanges {
 		}
 		if !lDoc.Components.IsEmpty() && rDoc.Components.IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.ComponentsLabel,
-				lDoc.Components.ValueNode, nil, true, lDoc.Components.Value, nil)
+				lDoc.Components.ValueNode, nil, BreakingRemoved(CompComponents, ""), lDoc.Components.Value, nil)
 		}
 		if lDoc.Components.IsEmpty() && !rDoc.Components.IsEmpty() {
 			CreateChange(&changes, PropertyAdded, v3.ComponentsLabel,
-				nil, rDoc.Components.ValueNode, false, nil, lDoc.Components.Value)
+				nil, rDoc.Components.ValueNode, BreakingAdded(CompComponents, ""), nil, lDoc.Components.Value)
 		}
 
 		// compare servers
-		if n := checkServers(lDoc.Servers, rDoc.Servers); n != nil {
+		if n := checkServers(lDoc.Servers, rDoc.Servers, CompServers, ""); n != nil {
 			dc.ServerChanges = n
 		}
 

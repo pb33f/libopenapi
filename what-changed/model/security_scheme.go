@@ -179,7 +179,8 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 			BreakingModified(CompSecurityScheme, PropOAuth2MetadataUrl))
 
 		addPropertyCheck(&props, lSS.Deprecated.ValueNode, rSS.Deprecated.ValueNode,
-			lSS.Deprecated.Value, rSS.Deprecated.Value, &changes, v3.DeprecatedLabel, false)
+			lSS.Deprecated.Value, rSS.Deprecated.Value, &changes, v3.DeprecatedLabel,
+			BreakingModified(CompSecurityScheme, PropDeprecated))
 
 		if !lSS.Flows.IsEmpty() && !rSS.Flows.IsEmpty() {
 			if !low.AreEqual(lSS.Flows.Value, rSS.Flows.Value) {
