@@ -122,3 +122,32 @@ func TestExample_GoLow(t *testing.T) {
 	assert.Nil(t, example.GoLow())
 	assert.Nil(t, example.GoLowUntyped())
 }
+
+func TestExample_MarshalYAMLInline(t *testing.T) {
+	var cNode yaml.Node
+
+	yml := `summary: an example
+description: something more
+value: a thing
+externalValue: https://pb33f.io`
+
+	_ = yaml.Unmarshal([]byte(yml), &cNode)
+
+	// build low
+	var lowExample lowbase.Example
+	_ = lowmodel.BuildModel(cNode.Content[0], &lowExample)
+	_ = lowExample.Build(context.Background(), &cNode, cNode.Content[0], nil)
+
+	// build high
+	highExample := NewExample(&lowExample)
+
+	// test MarshalYAMLInline
+	result, err := highExample.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// verify the result is a yaml.Node
+	node, ok := result.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+}

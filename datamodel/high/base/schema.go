@@ -533,6 +533,21 @@ func (s *Schema) MarshalJSON() ([]byte, error) {
 
 // MarshalYAMLInline will render out the Schema pointer as YAML, and all refs will be inlined fully
 func (s *Schema) MarshalYAMLInline() (interface{}, error) {
+	// If this schema has a discriminator, mark OneOf/AnyOf items to preserve their references.
+	// This ensures discriminator mapping refs are not inlined during bundling.
+	if s.Discriminator != nil {
+		for _, sp := range s.OneOf {
+			if sp != nil && sp.IsReference() {
+				sp.SetPreserveReference(true)
+			}
+		}
+		for _, sp := range s.AnyOf {
+			if sp != nil && sp.IsReference() {
+				sp.SetPreserveReference(true)
+			}
+		}
+	}
+
 	nb := high.NewNodeBuilder(s, s.low)
 	nb.Resolve = true
 	// determine index version

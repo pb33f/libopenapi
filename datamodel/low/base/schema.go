@@ -729,9 +729,9 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	// determine exclusive minimum type, bool (3.0) or int (3.1)
 	_, exMinLabel, exMinValue := utils.FindKeyNodeFullTop(ExclusiveMinimumLabel, root.Content)
 	if exMinValue != nil {
-		// if there is an index, determine if this a 3.0 or 3.1 schema
+		// if there is an index, determine if this a 3.0 or 3.1+ schema
 		if idx != nil {
-			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
+			if idx.GetConfig().SpecInfo.VersionNumeric >= 3.1 {
 				val, _ := strconv.ParseFloat(exMinValue.Value, 64)
 				s.ExclusiveMinimum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
 					KeyNode:   exMinLabel,
@@ -769,12 +769,12 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 		}
 	}
 
-	// determine exclusive maximum type, bool (3.0) or int (3.1)
+	// determine exclusive maximum type, bool (3.0) or int (3.1+)
 	_, exMaxLabel, exMaxValue := utils.FindKeyNodeFullTop(ExclusiveMaximumLabel, root.Content)
 	if exMaxValue != nil {
-		// if there is an index, determine if this a 3.0 or 3.1 schema
+		// if there is an index, determine if this a 3.0 or 3.1+ schema
 		if idx != nil {
-			if idx.GetConfig().SpecInfo.VersionNumeric == 3.1 {
+			if idx.GetConfig().SpecInfo.VersionNumeric >= 3.1 {
 				val, _ := strconv.ParseFloat(exMaxValue.Value, 64)
 				s.ExclusiveMaximum = low.NodeReference[*SchemaDynamicValue[bool, float64]]{
 					KeyNode:   exMaxLabel,

@@ -70,8 +70,14 @@ func (s *SecurityScheme) Render() ([]byte, error) {
 	return yaml.Marshal(s)
 }
 
-// MarshalYAML will create a ready to render YAML representation of the Response object.
+// MarshalYAML will create a ready to render YAML representation of the SecurityScheme object.
 func (s *SecurityScheme) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(s, s.low)
 	return nb.Render(), nil
+}
+
+// MarshalYAMLInline will create a ready to render YAML representation of the SecurityScheme object,
+// with all references resolved inline.
+func (s *SecurityScheme) MarshalYAMLInline() (interface{}, error) {
+	return high.RenderInline(s, s.low)
 }

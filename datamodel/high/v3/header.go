@@ -77,8 +77,21 @@ func (h *Header) Render() ([]byte, error) {
 	return yaml.Marshal(h)
 }
 
+// RenderInline will return a YAML representation of the Header object as a byte slice with references resolved.
+func (h *Header) RenderInline() ([]byte, error) {
+	d, _ := h.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
 // MarshalYAML will create a ready to render YAML representation of the Header object.
 func (h *Header) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(h, h.low)
+	return nb.Render(), nil
+}
+
+// MarshalYAMLInline will create a ready to render YAML representation of the Header object with references resolved.
+func (h *Header) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(h, h.low)
+	nb.Resolve = true
 	return nb.Render(), nil
 }

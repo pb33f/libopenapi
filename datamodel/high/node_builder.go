@@ -279,7 +279,6 @@ func (n *NodeBuilder) renderReference(fg low.IsReferenced) *yaml.Node {
 	if origNode == nil {
 		return utils.CreateRefNode(fg.GetReference())
 	}
-
 	return origNode
 }
 

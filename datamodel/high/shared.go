@@ -41,6 +41,14 @@ func ExtractExtensions(extensions *orderedmap.Map[low.KeyReference[string], low.
 	return low.FromReferenceMap(extensions)
 }
 
+// RenderInline creates an inline YAML representation of a high-level object with all references resolved.
+// This is a shared helper used by MarshalYAMLInline implementations across high-level types.
+func RenderInline(high, low any) (interface{}, error) {
+	nb := NewNodeBuilder(high, low)
+	nb.Resolve = true
+	return nb.Render(), nil
+}
+
 // UnpackExtensions is a convenience function that makes it easy and simple to unpack an objects extensions
 // into a complex type, provided as a generic. This function is for high-level models that implement `GoesLow()`
 // and for low-level models that support extensions via `HasExtensions`.
