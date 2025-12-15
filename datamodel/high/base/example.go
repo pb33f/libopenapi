@@ -10,6 +10,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowBase "github.com/pb33f/libopenapi/datamodel/low/base"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -17,11 +18,12 @@ import (
 //
 //	v3 - https://spec.openapis.org/oas/v3.1.0#example-object
 type Example struct {
+	Reference       string                              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Summary         string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
 	Description     string                              `json:"description,omitempty" yaml:"description,omitempty"`
 	Value           *yaml.Node                          `json:"value,omitempty" yaml:"value,omitempty"`
 	ExternalValue   string                              `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
-	DataValue       *yaml.Node                          `json:"dataValue,omitempty" yaml:"dataValue,omitempty"`         // OpenAPI 3.2+ dataValue field
+	DataValue       *yaml.Node                          `json:"dataValue,omitempty" yaml:"dataValue,omitempty"`              // OpenAPI 3.2+ dataValue field
 	SerializedValue string                              `json:"serializedValue,omitempty" yaml:"serializedValue,omitempty"` // OpenAPI 3.2+ serializedValue field
 	Extensions      *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low             *lowBase.Example
@@ -57,6 +59,16 @@ func (e *Example) GoLowUntyped() any {
 	return e.low
 }
 
+// IsReference returns true if this Example is a reference to another Example definition.
+func (e *Example) IsReference() bool {
+	return e.Reference != ""
+}
+
+// GetReference returns the reference string if this is a reference Example.
+func (e *Example) GetReference() string {
+	return e.Reference
+}
+
 // Render will return a YAML representation of the Example object as a byte slice.
 func (e *Example) Render() ([]byte, error) {
 	return yaml.Marshal(e)
@@ -64,6 +76,10 @@ func (e *Example) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Example object.
 func (e *Example) MarshalYAML() (interface{}, error) {
+	// Handle reference-only example
+	if e.Reference != "" {
+		return utils.CreateRefNode(e.Reference), nil
+	}
 	nb := high.NewNodeBuilder(e, e.low)
 	return nb.Render(), nil
 }
@@ -71,7 +87,26 @@ func (e *Example) MarshalYAML() (interface{}, error) {
 // MarshalYAMLInline will create a ready to render YAML representation of the Example object,
 // with all references resolved inline.
 func (e *Example) MarshalYAMLInline() (interface{}, error) {
+	// reference-only objects render as $ref nodes
+	if e.Reference != "" {
+		return utils.CreateRefNode(e.Reference), nil
+	}
 	return high.RenderInline(e, e.low)
+}
+
+// CreateExampleRef creates an Example that renders as a $ref to another example definition.
+// This is useful when building OpenAPI specs programmatically and you want to reference
+// an example defined in components/examples rather than inlining the full definition.
+//
+// Example:
+//
+//	ex := base.CreateExampleRef("#/components/examples/UserExample")
+//
+// Renders as:
+//
+//	$ref: '#/components/examples/UserExample'
+func CreateExampleRef(ref string) *Example {
+	return &Example{Reference: ref}
 }
 
 // MarshalJSON will marshal this into a JSON byte slice

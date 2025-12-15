@@ -108,3 +108,73 @@ links:
 	rend, _ := r.RenderInline()
 	assert.Equal(t, yml, strings.TrimSpace(string(rend)))
 }
+
+func TestCreateResponseRef(t *testing.T) {
+	ref := "#/components/responses/NotFound"
+	r := CreateResponseRef(ref)
+
+	assert.True(t, r.IsReference())
+	assert.Equal(t, ref, r.GetReference())
+	assert.Nil(t, r.GoLow())
+}
+
+func TestResponse_MarshalYAML_Reference(t *testing.T) {
+	r := CreateResponseRef("#/components/responses/NotFound")
+
+	node, err := r.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/responses/NotFound", yamlNode.Content[1].Value)
+}
+
+func TestResponse_MarshalYAMLInline_Reference(t *testing.T) {
+	r := CreateResponseRef("#/components/responses/NotFound")
+
+	node, err := r.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestResponse_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	r := &Response{
+		Reference:   "#/components/responses/foo",
+		Description: "shouldBeIgnored",
+	}
+
+	assert.True(t, r.IsReference())
+
+	node, err := r.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full response
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestResponse_Render_Reference(t *testing.T) {
+	r := CreateResponseRef("#/components/responses/NotFound")
+
+	rendered, err := r.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/responses/NotFound")
+}
+
+func TestResponse_IsReference_False(t *testing.T) {
+	r := &Response{
+		Description: "A response",
+	}
+	assert.False(t, r.IsReference())
+	assert.Equal(t, "", r.GetReference())
+}

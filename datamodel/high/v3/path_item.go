@@ -11,6 +11,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -33,6 +34,7 @@ const (
 // are available.
 //   - https://spec.openapis.org/oas/v3.1.0#path-item-object
 type PathItem struct {
+	Reference            string                              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Description          string                              `json:"description,omitempty" yaml:"description,omitempty"`
 	Summary              string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
 	Get                  *Operation                          `json:"get,omitempty" yaml:"get,omitempty"`
@@ -148,6 +150,16 @@ func (p *PathItem) GoLowUntyped() any {
 	return p.low
 }
 
+// IsReference returns true if this PathItem is a reference to another PathItem definition.
+func (p *PathItem) IsReference() bool {
+	return p.Reference != ""
+}
+
+// GetReference returns the reference string if this is a reference PathItem.
+func (p *PathItem) GetReference() string {
+	return p.Reference
+}
+
 func (p *PathItem) GetOperations() *orderedmap.Map[string, *Operation] {
 	o := orderedmap.New[string, *Operation]()
 
@@ -238,14 +250,39 @@ func (p *PathItem) RenderInline() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the PathItem object.
 func (p *PathItem) MarshalYAML() (interface{}, error) {
+	// Handle reference-only path item
+	if p.Reference != "" {
+		return utils.CreateRefNode(p.Reference), nil
+	}
 	nb := high.NewNodeBuilder(p, p.low)
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the PathItem object,
+// with all references resolved inline.
 func (p *PathItem) MarshalYAMLInline() (interface{}, error) {
+	// reference-only objects render as $ref nodes
+	if p.Reference != "" {
+		return utils.CreateRefNode(p.Reference), nil
+	}
 	nb := high.NewNodeBuilder(p, p.low)
 
 	nb.Resolve = true
 
 	return nb.Render(), nil
+}
+
+// CreatePathItemRef creates a PathItem that renders as a $ref to another path item definition.
+// This is useful when building OpenAPI specs programmatically and you want to reference
+// a path item defined in components/pathItems rather than inlining the full definition.
+//
+// Example:
+//
+//	pi := v3.CreatePathItemRef("#/components/pathItems/CommonPathItem")
+//
+// Renders as:
+//
+//	$ref: '#/components/pathItems/CommonPathItem'
+func CreatePathItemRef(ref string) *PathItem {
+	return &PathItem{Reference: ref}
 }

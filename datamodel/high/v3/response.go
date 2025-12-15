@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -17,6 +18,7 @@ import (
 // operations based on the response.
 //   - https://spec.openapis.org/oas/v3.1.0#response-object
 type Response struct {
+	Reference   string                              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Summary     string                              `json:"summary,omitempty" yaml:"summary,omitempty"`
 	Description string                              `json:"description" yaml:"description"`
 	Headers     *orderedmap.Map[string, *Header]    `json:"headers,omitempty" yaml:"headers,omitempty"`
@@ -55,6 +57,16 @@ func (r *Response) GoLowUntyped() any {
 	return r.low
 }
 
+// IsReference returns true if this Response is a reference to another Response definition.
+func (r *Response) IsReference() bool {
+	return r.Reference != ""
+}
+
+// GetReference returns the reference string if this is a reference Response.
+func (r *Response) GetReference() string {
+	return r.Reference
+}
+
 // Render will return a YAML representation of the Response object as a byte slice.
 func (r *Response) Render() ([]byte, error) {
 	return yaml.Marshal(r)
@@ -67,12 +79,37 @@ func (r *Response) RenderInline() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Response object.
 func (r *Response) MarshalYAML() (interface{}, error) {
+	// Handle reference-only response
+	if r.Reference != "" {
+		return utils.CreateRefNode(r.Reference), nil
+	}
 	nb := high.NewNodeBuilder(r, r.low)
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the Response object,
+// resolving any references inline where possible.
 func (r *Response) MarshalYAMLInline() (interface{}, error) {
+	// reference-only objects render as $ref nodes
+	if r.Reference != "" {
+		return utils.CreateRefNode(r.Reference), nil
+	}
 	nb := high.NewNodeBuilder(r, r.low)
 	nb.Resolve = true
 	return nb.Render(), nil
+}
+
+// CreateResponseRef creates a Response that renders as a $ref to another response definition.
+// This is useful when building OpenAPI specs programmatically and you want to reference
+// a response defined in components/responses rather than inlining the full definition.
+//
+// Example:
+//
+//	resp := v3.CreateResponseRef("#/components/responses/NotFound")
+//
+// Renders as:
+//
+//	$ref: '#/components/responses/NotFound'
+func CreateResponseRef(ref string) *Response {
+	return &Response{Reference: ref}
 }

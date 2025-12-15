@@ -50,3 +50,73 @@ x-burgers: why not?`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
 }
+
+func TestCreateHeaderRef(t *testing.T) {
+	ref := "#/components/headers/X-Rate-Limit"
+	h := CreateHeaderRef(ref)
+
+	assert.True(t, h.IsReference())
+	assert.Equal(t, ref, h.GetReference())
+	assert.Nil(t, h.GoLow())
+}
+
+func TestHeader_MarshalYAML_Reference(t *testing.T) {
+	h := CreateHeaderRef("#/components/headers/X-Rate-Limit")
+
+	node, err := h.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/headers/X-Rate-Limit", yamlNode.Content[1].Value)
+}
+
+func TestHeader_MarshalYAMLInline_Reference(t *testing.T) {
+	h := CreateHeaderRef("#/components/headers/X-Rate-Limit")
+
+	node, err := h.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestHeader_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	h := &Header{
+		Reference:   "#/components/headers/foo",
+		Description: "shouldBeIgnored",
+	}
+
+	assert.True(t, h.IsReference())
+
+	node, err := h.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full header
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestHeader_Render_Reference(t *testing.T) {
+	h := CreateHeaderRef("#/components/headers/X-Rate-Limit")
+
+	rendered, err := h.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/headers/X-Rate-Limit")
+}
+
+func TestHeader_IsReference_False(t *testing.T) {
+	h := &Header{
+		Description: "A header",
+	}
+	assert.False(t, h.IsReference())
+	assert.Equal(t, "", h.GetReference())
+}
