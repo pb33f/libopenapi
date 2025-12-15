@@ -9,6 +9,7 @@ import (
 
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
+	"go.yaml.in/yaml/v4"
 )
 
 func TestLink_MarshalYAML(t *testing.T) {
@@ -36,4 +37,74 @@ server:
     url: https://pb33f.io`
 
 	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
+}
+
+func TestCreateLinkRef(t *testing.T) {
+	ref := "#/components/links/GetUserByUserId"
+	l := CreateLinkRef(ref)
+
+	assert.True(t, l.IsReference())
+	assert.Equal(t, ref, l.GetReference())
+	assert.Nil(t, l.GoLow())
+}
+
+func TestLink_MarshalYAML_Reference(t *testing.T) {
+	l := CreateLinkRef("#/components/links/GetUserByUserId")
+
+	node, err := l.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/links/GetUserByUserId", yamlNode.Content[1].Value)
+}
+
+func TestLink_MarshalYAMLInline_Reference(t *testing.T) {
+	l := CreateLinkRef("#/components/links/GetUserByUserId")
+
+	node, err := l.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestLink_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	l := &Link{
+		Reference:   "#/components/links/foo",
+		Description: "shouldBeIgnored",
+	}
+
+	assert.True(t, l.IsReference())
+
+	node, err := l.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full link
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestLink_Render_Reference(t *testing.T) {
+	l := CreateLinkRef("#/components/links/GetUserByUserId")
+
+	rendered, err := l.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/links/GetUserByUserId")
+}
+
+func TestLink_IsReference_False(t *testing.T) {
+	l := &Link{
+		Description: "A link",
+	}
+	assert.False(t, l.IsReference())
+	assert.Equal(t, "", l.GetReference())
 }

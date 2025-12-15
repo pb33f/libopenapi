@@ -8,6 +8,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high/base"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -16,6 +17,7 @@ import (
 // A unique parameter is defined by a combination of a name and location.
 //   - https://spec.openapis.org/oas/v3.1.0#parameter-object
 type Parameter struct {
+	Reference       string                                 `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Name            string                                 `json:"name,omitempty" yaml:"name,omitempty"`
 	In              string                                 `json:"in,omitempty" yaml:"in,omitempty"`
 	Description     string                                 `json:"description,omitempty" yaml:"description,omitempty"`
@@ -60,6 +62,21 @@ func NewParameter(param *low.Parameter) *Parameter {
 	return p
 }
 
+// CreateParameterRef creates a Parameter that renders as a $ref to another parameter definition.
+// This is useful when building OpenAPI specs programmatically and you want to reference
+// a parameter defined in components/parameters rather than inlining the full definition.
+//
+// Example:
+//
+//	param := v3.CreateParameterRef("#/components/parameters/limitParam")
+//
+// Renders as:
+//
+//	$ref: '#/components/parameters/limitParam'
+func CreateParameterRef(ref string) *Parameter {
+	return &Parameter{Reference: ref}
+}
+
 // GoLow returns the low-level Parameter used to create the high-level one.
 func (p *Parameter) GoLow() *low.Parameter {
 	return p.low
@@ -68,6 +85,16 @@ func (p *Parameter) GoLow() *low.Parameter {
 // GoLowUntyped will return the low-level Discriminator instance that was used to create the high-level one, with no type
 func (p *Parameter) GoLowUntyped() any {
 	return p.low
+}
+
+// IsReference returns true if this Parameter is a reference to another Parameter definition.
+func (p *Parameter) IsReference() bool {
+	return p.Reference != ""
+}
+
+// GetReference returns the reference string if this is a reference Parameter.
+func (p *Parameter) GetReference() string {
+	return p.Reference
 }
 
 // Render will return a YAML representation of the Encoding object as a byte slice.
@@ -80,13 +107,23 @@ func (p *Parameter) RenderInline() ([]byte, error) {
 	return yaml.Marshal(d)
 }
 
-// MarshalYAML will create a ready to render YAML representation of the Encoding object.
+// MarshalYAML will create a ready to render YAML representation of the Parameter object.
 func (p *Parameter) MarshalYAML() (interface{}, error) {
+	// Handle reference-only parameter
+	if p.Reference != "" {
+		return utils.CreateRefNode(p.Reference), nil
+	}
 	nb := high.NewNodeBuilder(p, p.low)
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the Parameter object,
+// resolving any references inline where possible.
 func (p *Parameter) MarshalYAMLInline() (interface{}, error) {
+	// reference-only objects render as $ref nodes
+	if p.Reference != "" {
+		return utils.CreateRefNode(p.Reference), nil
+	}
 	nb := high.NewNodeBuilder(p, p.low)
 	nb.Resolve = true
 	return nb.Render(), nil

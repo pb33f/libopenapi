@@ -151,3 +151,74 @@ externalValue: https://pb33f.io`
 	assert.True(t, ok)
 	assert.Equal(t, yaml.MappingNode, node.Kind)
 }
+
+func TestCreateExampleRef(t *testing.T) {
+	ref := "#/components/examples/UserExample"
+	e := CreateExampleRef(ref)
+
+	assert.True(t, e.IsReference())
+	assert.Equal(t, ref, e.GetReference())
+	assert.Nil(t, e.GoLow())
+}
+
+func TestExample_MarshalYAML_Reference(t *testing.T) {
+	e := CreateExampleRef("#/components/examples/UserExample")
+
+	node, err := e.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/examples/UserExample", yamlNode.Content[1].Value)
+}
+
+func TestExample_MarshalYAMLInline_Reference(t *testing.T) {
+	e := CreateExampleRef("#/components/examples/UserExample")
+
+	node, err := e.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestExample_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	e := &Example{
+		Reference:   "#/components/examples/foo",
+		Summary:     "shouldBeIgnored",
+		Description: "also ignored",
+	}
+
+	assert.True(t, e.IsReference())
+
+	node, err := e.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full example
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestExample_Render_Reference(t *testing.T) {
+	e := CreateExampleRef("#/components/examples/UserExample")
+
+	rendered, err := e.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/examples/UserExample")
+}
+
+func TestExample_IsReference_False(t *testing.T) {
+	e := &Example{
+		Summary: "An example",
+	}
+	assert.False(t, e.IsReference())
+	assert.Equal(t, "", e.GetReference())
+}
