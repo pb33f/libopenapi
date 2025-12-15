@@ -17,6 +17,7 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
+	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
@@ -218,77 +219,23 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 }
 
 func bundle(model *v3.Document) ([]byte, error) {
-	rolodex := model.Rolodex
-	indexes := rolodex.GetIndexes()
-	preserveRefs := map[string]struct{}{}
+	// Enable bundling mode to preserve local component refs.
+	// This ensures refs to schemas already in the root document aren't inlined.
+	highbase.SetBundlingMode(true)
+	defer highbase.SetBundlingMode(false)
 
-	collectDiscriminatorMappingValues(rolodex.GetRootIndex(), rolodex.GetRootIndex().GetRootNode(), preserveRefs)
-	for _, idx := range indexes {
-		collectDiscriminatorMappingValues(idx, idx.GetRootNode(), preserveRefs)
+	// Resolve extension refs before rendering.
+	// Extensions are raw *yaml.Node and bypass MarshalYAMLInline(), so we resolve them separately.
+	// NOTE: This mutates the model's extension nodes in-place.
+	if model.Rolodex != nil {
+		resolveExtensionRefs(model.Rolodex)
 	}
 
-	// compact function.
-	compact := func(idx *index.SpecIndex, root bool) {
-		mappedReferences := idx.GetMappedReferences()
-		sequencedReferences := idx.GetRawReferencesSequenced()
-		for _, sequenced := range sequencedReferences {
-			mappedReference := mappedReferences[sequenced.FullDefinition]
-
-			// if we're in the root document, don't bundle anything.
-			refExp := strings.Split(sequenced.FullDefinition, "#/")
-			if len(refExp) == 2 {
-
-				// make sure to use the correct index.
-				// https://github.com/pb33f/libopenapi/issues/397
-				if root {
-					for _, i := range indexes {
-						if i.GetSpecAbsolutePath() == refExp[0] {
-							if mappedReference != nil && !mappedReference.Circular {
-								mr := i.FindComponent(context.Background(), sequenced.Definition)
-								if mr != nil {
-									// found the component; this is the one we want to use.
-									mappedReference = mr
-									break
-								}
-							}
-						}
-					}
-				}
-
-				if refExp[0] == sequenced.Index.GetSpecAbsolutePath() || refExp[0] == "" {
-					if root {
-						idx.GetLogger().Debug("[bundler] skipping local root reference",
-							"ref", sequenced.Definition)
-						continue
-					}
-				}
-			}
-
-			if _, ok := preserveRefs[sequenced.FullDefinition]; ok {
-				idx.GetLogger().Debug("[bundler] skipping union type (oneOf/anyOf) with discriminator mapping",
-					"ref", sequenced.Definition)
-				continue
-			}
-
-			if mappedReference != nil && !mappedReference.Circular {
-				sequenced.Node.Content = mappedReference.Node.Content
-				continue
-			}
-
-			if mappedReference != nil && mappedReference.Circular {
-				if idx.GetLogger() != nil {
-					idx.GetLogger().Warn("[bundler] skipping circular reference",
-						"ref", sequenced.FullDefinition)
-				}
-			}
-		}
-	}
-
-	for _, idx := range indexes {
-		compact(idx, false)
-	}
-	compact(rolodex.GetRootIndex(), true)
-	return model.Render()
+	// Use RenderInline which resolves refs on-the-fly during rendering.
+	// Discriminator mappings are preserved via Schema.MarshalYAMLInline() which
+	// marks oneOf/anyOf SchemaProxy items to preserve their references.
+	// Circular references are handled in SchemaProxy.MarshalYAMLInline().
+	return model.RenderInline()
 }
 
 func collectDiscriminatorMappingValues(idx *index.SpecIndex, n *yaml.Node, pinned map[string]struct{}) {
