@@ -1814,3 +1814,41 @@ components:
 
 	runtime.GC()
 }
+
+// TestCalculateCollisionNameInline tests the collision name generation for inline bundling.
+func TestCalculateCollisionNameInline(t *testing.T) {
+	existing := map[string]bool{"Cat": true}
+
+	// Test filename-based collision resolution
+	result := calculateCollisionNameInline("Cat", "external.yaml#/components/schemas/Cat", "__", existing)
+	assert.Equal(t, "Cat__external", result)
+
+	// Test when filename-based also collides
+	existing["Cat__external"] = true
+	result = calculateCollisionNameInline("Cat", "external.yaml#/components/schemas/Cat", "__", existing)
+	assert.Equal(t, "Cat__external__1", result)
+
+	// Test no collision returns filename-based name
+	result = calculateCollisionNameInline("Dog", "file.yaml#/components/schemas/Dog", "__", existing)
+	assert.Equal(t, "Dog__file", result)
+
+	// Test with path containing directory
+	result = calculateCollisionNameInline("Bird", "schemas/birds/bird.yaml#/components/schemas/Bird", "__", existing)
+	assert.Equal(t, "Bird__bird", result)
+
+	// Test when fullDef has no file path (just fragment), baseName is empty
+	// So it tries name__ first, which is available
+	result = calculateCollisionNameInline("Zebra", "#/components/schemas/Zebra", "__", existing)
+	assert.Equal(t, "Zebra__", result) // empty baseName
+
+	// Test when name__ already exists, falls back to name__1
+	existing["Tiger__"] = true
+	result = calculateCollisionNameInline("Tiger", "#/components/schemas/Tiger", "__", existing)
+	assert.Equal(t, "Tiger____1", result) // name__ + delimiter + 1
+
+	// Test numeric suffix fallback when both filename-based and name__ exist
+	existing["Lion__"] = true
+	existing["Lion____1"] = true
+	result = calculateCollisionNameInline("Lion", "#/components/schemas/Lion", "__", existing)
+	assert.Equal(t, "Lion____2", result)
+}

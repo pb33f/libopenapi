@@ -564,3 +564,67 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 	assert.Equal(t, proxy2, schema2.ParentProxy, "Second schema should have its own ParentProxy, not the first proxy's")
 	assert.NotEqual(t, schema1.ParentProxy, schema2.ParentProxy, "Different proxies should have different parent relationships")
 }
+
+func TestSetBundlingMode(t *testing.T) {
+	// First, reset to known state by decrementing until we hit 0
+	// This handles any leftover state from parallel tests
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+	assert.False(t, IsBundlingMode(), "Bundling mode should be false initially")
+
+	// Toggle on
+	SetBundlingMode(true)
+	assert.True(t, IsBundlingMode(), "Bundling mode should be true after setting")
+
+	// Toggle off
+	SetBundlingMode(false)
+	assert.False(t, IsBundlingMode(), "Bundling mode should be false after unsetting")
+
+	// Test multiple increments (nested bundling)
+	SetBundlingMode(true)
+	SetBundlingMode(true)
+	assert.True(t, IsBundlingMode(), "Bundling mode should be true with count=2")
+
+	SetBundlingMode(false)
+	assert.True(t, IsBundlingMode(), "Bundling mode should still be true with count=1")
+
+	SetBundlingMode(false)
+	assert.False(t, IsBundlingMode(), "Bundling mode should be false with count=0")
+}
+
+func TestSetPreserveReference(t *testing.T) {
+	proxy := CreateSchemaProxyRef("#/components/schemas/Pet")
+	proxy.SetPreserveReference(true)
+
+	// Verify flag is set via marshaling behavior
+	result, err := proxy.MarshalYAML()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	// Should render as $ref
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, 2, len(node.Content))
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+}
+
+func TestSetPreserveReference_WithBundlingMode(t *testing.T) {
+	// First, reset to known state
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+
+	// Test interaction with bundling mode
+	SetBundlingMode(true)
+	defer SetBundlingMode(false)
+
+	proxy := CreateSchemaProxyRef("#/components/schemas/Test")
+
+	// Without SetPreserveReference, should still render as ref in bundling mode
+	result, err := proxy.MarshalYAML()
+	require.NoError(t, err)
+	node := result.(*yaml.Node)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+}
