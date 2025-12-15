@@ -135,3 +135,37 @@ power: hello`
 	assert.Error(t, er)
 	assert.Empty(t, res)
 }
+
+func TestRenderInline(t *testing.T) {
+	// Create a simple struct to test rendering
+	type testStruct struct {
+		Name    string `yaml:"name,omitempty"`
+		Version string `yaml:"version,omitempty"`
+	}
+
+	high := &testStruct{Name: "test", Version: "1.0.0"}
+	result, err := RenderInline(high, nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Verify the result is a yaml.Node
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+}
+
+func TestRenderInline_WithLow(t *testing.T) {
+	// Test with both high and low models (typical use case)
+	type testStruct struct {
+		Name string `yaml:"name,omitempty"`
+	}
+
+	high := &testStruct{Name: "test"}
+	low := &testStruct{Name: "low-test"} // low model, should be passed through
+
+	result, err := RenderInline(high, low)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
