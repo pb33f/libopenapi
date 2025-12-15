@@ -42,42 +42,20 @@ func (c *ContactChanges) TotalBreakingChanges() int {
 // returns nil.
 func CompareContact(l, r *base.Contact) *ContactChanges {
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 3)
 
-	// check URL
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.URL.ValueNode,
-		RightNode: r.URL.ValueNode,
-		Label:     v3.URLLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompContact, PropURL),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompContact, PropURL,
+			l.URL.ValueNode, r.URL.ValueNode,
+			v3.URLLabel, &changes, l, r),
+		NewPropertyCheck(CompContact, PropName,
+			l.Name.ValueNode, r.Name.ValueNode,
+			v3.NameLabel, &changes, l, r),
+		NewPropertyCheck(CompContact, PropEmail,
+			l.Email.ValueNode, r.Email.ValueNode,
+			v3.EmailLabel, &changes, l, r),
+	)
 
-	// check name
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Name.ValueNode,
-		RightNode: r.Name.ValueNode,
-		Label:     v3.NameLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompContact, PropName),
-		Original:  l,
-		New:       r,
-	})
-
-	// check email
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Email.ValueNode,
-		RightNode: r.Email.ValueNode,
-		Label:     v3.EmailLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompContact, PropEmail),
-		Original:  l,
-		New:       r,
-	})
-
-	// check everything.
 	CheckProperties(props)
 
 	dc := new(ContactChanges)

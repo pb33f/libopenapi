@@ -3044,7 +3044,9 @@ components:
 	assert.NotNil(t, changes)
 	assert.Equal(t, 4, changes.TotalChanges())
 	assert.Len(t, changes.GetAllChanges(), 4)
-	assert.Equal(t, 3, changes.TotalBreakingChanges())
+	// Breaking changes: name.type modified (string->integer), tag removed
+	// Non-breaking: name.format added (format added is not breaking by default), foo added
+	assert.Equal(t, 2, changes.TotalBreakingChanges())
 	assert.Len(t, changes.SchemaPropertyChanges["name"].PropertyChanges.Changes, 2)
 	assert.Len(t, changes.PropertyChanges.Changes, 2)
 }

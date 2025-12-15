@@ -1509,3 +1509,40 @@ nested:
 	assert.Equal(t, 2, strings.Count(bundledStr, "curl -X GET https://api.example.com/test"),
 		"Resolved raw text extension content should be inlined for each occurrence")
 }
+
+func TestBundleDocument_ExtensionRefsToLocalComponents(t *testing.T) {
+	// Test that extension refs to local components (#/components/...) are resolved
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+  x-schema-ref:
+    $ref: '#/components/schemas/MySchema'
+components:
+  schemas:
+    MySchema:
+      type: object
+      properties:
+        name:
+          type: string
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          description: OK`
+
+	bundled, err := BundleBytes([]byte(mainSpec), &datamodel.DocumentConfiguration{
+		ExtractRefsSequentially: true,
+	})
+	require.NoError(t, err)
+
+	bundledStr := string(bundled)
+
+	// Extension ref to local component should be resolved
+	assert.NotContains(t, bundledStr, "$ref: '#/components/schemas/MySchema'",
+		"Extension ref to local component should be resolved")
+	// The schema content should be inlined in the extension
+	assert.Contains(t, bundledStr, "x-schema-ref:",
+		"Extension key should be present")
+}

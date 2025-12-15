@@ -133,7 +133,7 @@ func CompareResponse(l, r any) *ResponseChanges {
 
 		// description
 		addPropertyCheck(&props, lResponse.Description.ValueNode, rResponse.Description.ValueNode,
-			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel, false)
+			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel, false, CompResponse, PropDescription)
 
 		if !lResponse.Schema.IsEmpty() && !rResponse.Schema.IsEmpty() {
 			rc.SchemaChanges = CompareSchemas(lResponse.Schema.Value, rResponse.Schema.Value)
@@ -182,12 +182,12 @@ func CompareResponse(l, r any) *ResponseChanges {
 		// summary (OpenAPI 3.2+)
 		addPropertyCheck(&props, lResponse.Summary.ValueNode, rResponse.Summary.ValueNode,
 			lResponse.Summary.Value, rResponse.Summary.Value, &changes, v3.SummaryLabel,
-			BreakingModified(CompResponse, PropSummary))
+			BreakingModified(CompResponse, PropSummary), CompResponse, PropSummary)
 
 		// description
 		addPropertyCheck(&props, lResponse.Description.ValueNode, rResponse.Description.ValueNode,
 			lResponse.Description.Value, rResponse.Description.Value, &changes, v3.DescriptionLabel,
-			BreakingModified(CompResponse, PropDescription))
+			BreakingModified(CompResponse, PropDescription), CompResponse, PropDescription)
 
 		rc.HeadersChanges = CheckMapForChanges(lResponse.Headers.Value, rResponse.Headers.Value,
 			&changes, v3.HeadersLabel, CompareHeadersV3)

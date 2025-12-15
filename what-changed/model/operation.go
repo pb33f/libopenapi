@@ -138,22 +138,22 @@ func addSharedOperationProperties(left, right low.SharedOperations, changes *[]*
 	// summary
 	addPropertyCheck(&props, left.GetSummary().ValueNode, right.GetSummary().ValueNode,
 		left.GetSummary(), right.GetSummary(), changes, v3.SummaryLabel,
-		BreakingModified(CompOperation, PropSummary))
+		BreakingModified(CompOperation, PropSummary), CompOperation, PropSummary)
 
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
 		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
-		BreakingModified(CompOperation, PropDescription))
+		BreakingModified(CompOperation, PropDescription), CompOperation, PropDescription)
 
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
 		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel,
-		BreakingModified(CompOperation, PropDeprecated))
+		BreakingModified(CompOperation, PropDeprecated), CompOperation, PropDeprecated)
 
 	// operation id
 	addPropertyCheck(&props, left.GetOperationId().ValueNode, right.GetOperationId().ValueNode,
 		left.GetOperationId(), right.GetOperationId(), changes, v3.OperationIdLabel,
-		BreakingModified(CompOperation, PropOperationID))
+		BreakingModified(CompOperation, PropOperationID), CompOperation, PropOperationID)
 
 	return props
 }
@@ -271,7 +271,7 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 		if !lParamsUntyped.IsEmpty() && rParamsUntyped.IsEmpty() {
 			CreateChange(&changes, PropertyRemoved, v3.ParametersLabel,
-				lParamsUntyped.ValueNode, nil, BreakingRemoved(CompOperation, PropParameters), lParamsUntyped.Value,
+				lParamsUntyped.ValueNode, nil, true, lParamsUntyped.Value,
 				nil)
 		}
 		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
@@ -371,9 +371,14 @@ func CompareOperations(l, r any) *OperationChanges {
 			}
 			for n := range rv {
 				if _, ok := lv[n]; !ok {
-					// adding a required parameter is breaking; use per-parameter Required flag
+					// Check configurable breaking rules first
+					breaking := BreakingAdded(CompOperation, PropParameters)
+					// If config doesn't say breaking, fall back to semantic check (required parameter)
+					if !breaking {
+						breaking = rv[n].Required.Value
+					}
 					CreateChange(&changes, ObjectAdded, v3.ParametersLabel,
-						nil, rv[n].Name.ValueNode, rv[n].Required.Value, nil,
+						nil, rv[n].Name.ValueNode, breaking, nil,
 						rv[n])
 				}
 			}
@@ -386,11 +391,15 @@ func CompareOperations(l, r any) *OperationChanges {
 		}
 		if lParamsUntyped.IsEmpty() && !rParamsUntyped.IsEmpty() {
 			rParams := rParamsUntyped.Value.([]low.ValueReference[*v3.Parameter])
-			// adding a required parameter is breaking; check each parameter's Required flag
-			breaking := false
-			for i := range rParams {
-				if rParams[i].Value.Required.Value {
-					breaking = true
+			// Check configurable breaking rules first
+			breaking := BreakingAdded(CompOperation, PropParameters)
+			// If config doesn't say breaking, fall back to semantic check (required parameter)
+			if !breaking {
+				for i := range rParams {
+					if rParams[i].Value.Required.Value {
+						breaking = true
+						break
+					}
 				}
 			}
 			CreateChange(&changes, PropertyAdded, v3.ParametersLabel,

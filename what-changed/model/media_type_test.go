@@ -713,3 +713,82 @@ itemSchema:
 	assert.NotNil(t, changes.ItemSchemaChanges)
 	assert.Greater(t, changes.TotalBreakingChanges(), 0) // Adding required field is breaking
 }
+
+func TestCompareMediaTypes_ExampleAdded_AppearsInMap(t *testing.T) {
+	// Test that added examples appear in ExampleChanges map for proper tree rendering
+	// (instead of just being flat ObjectAdded changes)
+	low.ClearHashCache()
+
+	left := `schema:
+  type: string`
+
+	right := `schema:
+  type: string
+examples:
+  chewy:
+    summary: A chewy example
+    value: chewy value`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	lIdx := index.NewSpecIndex(&lNode)
+	rIdx := index.NewSpecIndex(&rNode)
+
+	var lMt, rMt v3.MediaType
+	_ = low.BuildModel(&lNode, &lMt)
+	_ = low.BuildModel(&rNode, &rMt)
+	_ = lMt.Build(context.Background(), nil, lNode.Content[0], lIdx)
+	_ = rMt.Build(context.Background(), nil, rNode.Content[0], rIdx)
+
+	changes := CompareMediaTypes(&lMt, &rMt)
+
+	assert.NotNil(t, changes)
+	// The added example should appear in ExampleChanges map, not just as flat change
+	assert.NotNil(t, changes.ExampleChanges)
+	assert.NotNil(t, changes.ExampleChanges["chewy"], "Added example 'chewy' should appear in ExampleChanges map")
+	assert.Equal(t, 1, changes.ExampleChanges["chewy"].TotalChanges())
+	assert.Equal(t, ObjectAdded, changes.ExampleChanges["chewy"].Changes[0].ChangeType)
+	// Verify line numbers are set (not 0:0)
+	ctx := changes.ExampleChanges["chewy"].Changes[0].Context
+	assert.NotNil(t, ctx.NewLine, "Line number should be set for added example")
+	assert.Greater(t, *ctx.NewLine, 0, "Line number should be > 0")
+}
+
+func TestCompareMediaTypes_ExampleRemoved_AppearsInMap(t *testing.T) {
+	// Test that removed examples appear in ExampleChanges map for proper tree rendering
+	low.ClearHashCache()
+
+	left := `schema:
+  type: string
+examples:
+  oldExample:
+    summary: An old example
+    value: old value`
+
+	right := `schema:
+  type: string`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	lIdx := index.NewSpecIndex(&lNode)
+	rIdx := index.NewSpecIndex(&rNode)
+
+	var lMt, rMt v3.MediaType
+	_ = low.BuildModel(&lNode, &lMt)
+	_ = low.BuildModel(&rNode, &rMt)
+	_ = lMt.Build(context.Background(), nil, lNode.Content[0], lIdx)
+	_ = rMt.Build(context.Background(), nil, rNode.Content[0], rIdx)
+
+	changes := CompareMediaTypes(&lMt, &rMt)
+
+	assert.NotNil(t, changes)
+	// The removed example should appear in ExampleChanges map
+	assert.NotNil(t, changes.ExampleChanges)
+	assert.NotNil(t, changes.ExampleChanges["oldExample"], "Removed example 'oldExample' should appear in ExampleChanges map")
+	assert.Equal(t, 1, changes.ExampleChanges["oldExample"].TotalChanges())
+	assert.Equal(t, ObjectRemoved, changes.ExampleChanges["oldExample"].Changes[0].ChangeType)
+}
