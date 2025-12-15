@@ -360,6 +360,10 @@ func resolveDiscriminatorExternalRefs(model *v3.Document) error {
 				// Calculate relative path from root to external file
 				relPath, err := filepath.Rel(filepath.Dir(rootPath), extPath)
 				if err == nil {
+					// Normalize path separators to forward slashes for cross-platform compatibility
+					// OpenAPI refs always use forward slashes regardless of OS
+					relPath = filepath.ToSlash(relPath)
+
 					// Build external ref format: ./relpath#/components/schemas/Name
 					externalRefFormat := relPath + extSchema.originalRef
 					refMapping[externalRefFormat] = newRef
