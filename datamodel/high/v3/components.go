@@ -176,3 +176,16 @@ func (c *Components) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(c, c.low)
 	return nb.Render(), nil
 }
+
+// RenderInline will return a YAML representation of the Components object as a byte slice with references resolved.
+func (c *Components) RenderInline() ([]byte, error) {
+	d, _ := c.MarshalYAMLInline()
+	return yaml.Marshal(d)
+}
+
+// MarshalYAMLInline will create a ready to render YAML representation of the Components object with references resolved.
+func (c *Components) MarshalYAMLInline() (interface{}, error) {
+	nb := high.NewNodeBuilder(c, c.low)
+	nb.Resolve = true
+	return nb.Render(), nil
+}
