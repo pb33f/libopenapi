@@ -7,6 +7,7 @@ import (
 	"github.com/pb33f/libopenapi/datamodel/high"
 	low "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
 
@@ -15,24 +16,25 @@ import (
 // Defines a security scheme that can be used by the operations.
 //
 // Supported schemes are HTTP authentication, an API key (either as a header, a cookie parameter or as a query parameter),
-// mutual TLS (use of a client certificate), OAuth2’s common flows (implicit, password, client credentials and
+// mutual TLS (use of a client certificate), OAuth2's common flows (implicit, password, client credentials and
 // authorization code) as defined in RFC6749 (https://www.rfc-editor.org/rfc/rfc6749), and OpenID Connect Discovery.
 // Please note that as of 2020, the implicit  flow is about to be deprecated by OAuth 2.0 Security Best Current Practice.
 // Recommended for most use case is Authorization Code Grant flow with PKCE.
 //   - https://spec.openapis.org/oas/v3.1.0#security-scheme-object
 type SecurityScheme struct {
-	Type             string                              `json:"type,omitempty" yaml:"type,omitempty"`
-	Description      string                              `json:"description,omitempty" yaml:"description,omitempty"`
-	Name             string                              `json:"name,omitempty" yaml:"name,omitempty"`
-	In               string                              `json:"in,omitempty" yaml:"in,omitempty"`
-	Scheme           string                              `json:"scheme,omitempty" yaml:"scheme,omitempty"`
-	BearerFormat     string                              `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
-	Flows            *OAuthFlows                         `json:"flows,omitempty" yaml:"flows,omitempty"`
-	OpenIdConnectUrl string                              `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
-	OAuth2MetadataUrl string                             `json:"oauth2MetadataUrl,omitempty" yaml:"oauth2MetadataUrl,omitempty"` // OpenAPI 3.2+ OAuth2 metadata URL
-	Deprecated       bool                                `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`               // OpenAPI 3.2+ deprecated flag
-	Extensions       *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
-	low              *low.SecurityScheme
+	Reference         string                              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
+	Type              string                              `json:"type,omitempty" yaml:"type,omitempty"`
+	Description       string                              `json:"description,omitempty" yaml:"description,omitempty"`
+	Name              string                              `json:"name,omitempty" yaml:"name,omitempty"`
+	In                string                              `json:"in,omitempty" yaml:"in,omitempty"`
+	Scheme            string                              `json:"scheme,omitempty" yaml:"scheme,omitempty"`
+	BearerFormat      string                              `json:"bearerFormat,omitempty" yaml:"bearerFormat,omitempty"`
+	Flows             *OAuthFlows                         `json:"flows,omitempty" yaml:"flows,omitempty"`
+	OpenIdConnectUrl  string                              `json:"openIdConnectUrl,omitempty" yaml:"openIdConnectUrl,omitempty"`
+	OAuth2MetadataUrl string                              `json:"oauth2MetadataUrl,omitempty" yaml:"oauth2MetadataUrl,omitempty"` // OpenAPI 3.2+ OAuth2 metadata URL
+	Deprecated        bool                                `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`               // OpenAPI 3.2+ deprecated flag
+	Extensions        *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
+	low               *low.SecurityScheme
 }
 
 // NewSecurityScheme creates a new high-level SecurityScheme from a low-level one.
@@ -65,6 +67,16 @@ func (s *SecurityScheme) GoLowUntyped() any {
 	return s.low
 }
 
+// IsReference returns true if this SecurityScheme is a reference to another SecurityScheme definition.
+func (s *SecurityScheme) IsReference() bool {
+	return s.Reference != ""
+}
+
+// GetReference returns the reference string if this is a reference SecurityScheme.
+func (s *SecurityScheme) GetReference() string {
+	return s.Reference
+}
+
 // Render will return a YAML representation of the SecurityScheme object as a byte slice.
 func (s *SecurityScheme) Render() ([]byte, error) {
 	return yaml.Marshal(s)
@@ -72,6 +84,10 @@ func (s *SecurityScheme) Render() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the SecurityScheme object.
 func (s *SecurityScheme) MarshalYAML() (interface{}, error) {
+	// Handle reference-only security scheme
+	if s.Reference != "" {
+		return utils.CreateRefNode(s.Reference), nil
+	}
 	nb := high.NewNodeBuilder(s, s.low)
 	return nb.Render(), nil
 }
@@ -79,5 +95,24 @@ func (s *SecurityScheme) MarshalYAML() (interface{}, error) {
 // MarshalYAMLInline will create a ready to render YAML representation of the SecurityScheme object,
 // with all references resolved inline.
 func (s *SecurityScheme) MarshalYAMLInline() (interface{}, error) {
+	// reference-only objects render as $ref nodes
+	if s.Reference != "" {
+		return utils.CreateRefNode(s.Reference), nil
+	}
 	return high.RenderInline(s, s.low)
+}
+
+// CreateSecuritySchemeRef creates a SecurityScheme that renders as a $ref to another security scheme definition.
+// This is useful when building OpenAPI specs programmatically and you want to reference
+// a security scheme defined in components/securitySchemes rather than inlining the full definition.
+//
+// Example:
+//
+//	ss := v3.CreateSecuritySchemeRef("#/components/securitySchemes/BearerAuth")
+//
+// Renders as:
+//
+//	$ref: '#/components/securitySchemes/BearerAuth'
+func CreateSecuritySchemeRef(ref string) *SecurityScheme {
+	return &SecurityScheme{Reference: ref}
 }

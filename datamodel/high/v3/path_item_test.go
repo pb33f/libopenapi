@@ -393,3 +393,74 @@ lock:
 	assert.Contains(t, actualOps, "get")
 	assert.Contains(t, actualOps, "post")
 }
+
+func TestCreatePathItemRef(t *testing.T) {
+	ref := "#/components/pathItems/CommonPathItem"
+	pi := CreatePathItemRef(ref)
+
+	assert.True(t, pi.IsReference())
+	assert.Equal(t, ref, pi.GetReference())
+	assert.Nil(t, pi.GoLow())
+}
+
+func TestPathItem_MarshalYAML_Reference(t *testing.T) {
+	pi := CreatePathItemRef("#/components/pathItems/CommonPathItem")
+
+	node, err := pi.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/pathItems/CommonPathItem", yamlNode.Content[1].Value)
+}
+
+func TestPathItem_MarshalYAMLInline_Reference(t *testing.T) {
+	pi := CreatePathItemRef("#/components/pathItems/CommonPathItem")
+
+	node, err := pi.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestPathItem_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	pi := &PathItem{
+		Reference:   "#/components/pathItems/foo",
+		Description: "shouldBeIgnored",
+	}
+
+	assert.True(t, pi.IsReference())
+
+	node, err := pi.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full path item
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestPathItem_Render_Reference(t *testing.T) {
+	pi := CreatePathItemRef("#/components/pathItems/CommonPathItem")
+
+	rendered, err := pi.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/pathItems/CommonPathItem")
+}
+
+func TestPathItem_IsReference_False(t *testing.T) {
+	pi := &PathItem{
+		Description: "A path item",
+	}
+	assert.False(t, pi.IsReference())
+	assert.Equal(t, "", pi.GetReference())
+}
+

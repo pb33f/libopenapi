@@ -220,3 +220,98 @@ func TestParameter_Examples_NotFromSchema(t *testing.T) {
 
 	assert.Equal(t, 0, orderedmap.Len(r.Examples))
 }
+
+func TestCreateParameterRef(t *testing.T) {
+	ref := "#/components/parameters/limitParam"
+	p := CreateParameterRef(ref)
+
+	assert.True(t, p.IsReference())
+	assert.Equal(t, ref, p.GetReference())
+	assert.Nil(t, p.GoLow())
+}
+
+func TestParameter_MarshalYAML_Reference(t *testing.T) {
+	p := CreateParameterRef("#/components/parameters/limitParam")
+
+	node, err := p.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/parameters/limitParam", yamlNode.Content[1].Value)
+}
+
+func TestParameter_MarshalYAMLInline_Reference(t *testing.T) {
+	p := CreateParameterRef("#/components/parameters/limitParam")
+
+	node, err := p.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestParameter_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	p := &Parameter{
+		Reference: "#/components/parameters/foo",
+		Name:      "shouldBeIgnored",
+		In:        "query",
+	}
+
+	assert.True(t, p.IsReference())
+
+	node, err := p.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full parameter
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestParameter_Render_Reference(t *testing.T) {
+	p := CreateParameterRef("#/components/parameters/limitParam")
+
+	rendered, err := p.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/parameters/limitParam")
+}
+
+func TestParameter_IsReference_False(t *testing.T) {
+	p := &Parameter{
+		Name: "limit",
+		In:   "query",
+	}
+	assert.False(t, p.IsReference())
+	assert.Equal(t, "", p.GetReference())
+}
+
+func TestParameter_Integration_MixedRefAndInline(t *testing.T) {
+	// Build an operation with both ref and inline parameters
+	op := &Operation{
+		OperationId: "listUsers",
+		Parameters: []*Parameter{
+			CreateParameterRef("#/components/parameters/limitParam"),
+			{
+				Name:        "status",
+				In:          "query",
+				Description: "Filter by status",
+			},
+		},
+	}
+
+	rendered, err := op.Render()
+	assert.NoError(t, err)
+
+	output := string(rendered)
+	assert.Contains(t, output, "$ref: '#/components/parameters/limitParam'")
+	assert.Contains(t, output, "name: status")
+	assert.Contains(t, output, "in: query")
+}

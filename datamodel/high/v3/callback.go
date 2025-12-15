@@ -22,6 +22,7 @@ import (
 // that identifies a URL to use for the callback operation.
 //   - https://spec.openapis.org/oas/v3.1.0#callback-object
 type Callback struct {
+	Reference  string                              `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	Expression *orderedmap.Map[string, *PathItem]  `json:"-" yaml:"-"`
 	Extensions *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low        *lowv3.Callback
@@ -46,6 +47,16 @@ func (c *Callback) GoLowUntyped() any {
 	return c.low
 }
 
+// IsReference returns true if this Callback is a reference to another Callback definition.
+func (c *Callback) IsReference() bool {
+	return c.Reference != ""
+}
+
+// GetReference returns the reference string if this is a reference Callback.
+func (c *Callback) GetReference() string {
+	return c.Reference
+}
+
 // Render will return a YAML representation of the Callback object as a byte slice.
 func (c *Callback) Render() ([]byte, error) {
 	return yaml.Marshal(c)
@@ -59,6 +70,10 @@ func (c *Callback) RenderInline() ([]byte, error) {
 
 // MarshalYAML will create a ready to render YAML representation of the Paths object.
 func (c *Callback) MarshalYAML() (interface{}, error) {
+	// Handle reference-only callback
+	if c.Reference != "" {
+		return utils.CreateRefNode(c.Reference), nil
+	}
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
 	type pathItem struct {
@@ -127,7 +142,13 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 	return m, nil
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the Callback object,
+// with all references resolved inline.
 func (c *Callback) MarshalYAMLInline() (interface{}, error) {
+	// reference-only objects render as $ref nodes
+	if c.Reference != "" {
+		return utils.CreateRefNode(c.Reference), nil
+	}
 	// map keys correctly.
 	m := utils.CreateEmptyMapNode()
 	type pathItem struct {
@@ -195,4 +216,19 @@ func (c *Callback) MarshalYAMLInline() (interface{}, error) {
 	}
 
 	return m, nil
+}
+
+// CreateCallbackRef creates a Callback that renders as a $ref to another callback definition.
+// This is useful when building OpenAPI specs programmatically and you want to reference
+// a callback defined in components/callbacks rather than inlining the full definition.
+//
+// Example:
+//
+//	cb := v3.CreateCallbackRef("#/components/callbacks/WebhookCallback")
+//
+// Renders as:
+//
+//	$ref: '#/components/callbacks/WebhookCallback'
+func CreateCallbackRef(ref string) *Callback {
+	return &Callback{Reference: ref}
 }

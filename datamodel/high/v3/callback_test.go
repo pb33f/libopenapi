@@ -108,3 +108,81 @@ func TestCallback_RenderInline(t *testing.T) {
 	rend, _ := cb.RenderInline()
 	assert.Equal(t, "x-burgers: why not?\nhttps://pb33f.io:\n    get:\n        operationId: oneTwoThree\nhttps://pb33f.io/libopenapi:\n    get:\n        operationId: openaypeeeye\n", string(rend))
 }
+
+func TestCreateCallbackRef(t *testing.T) {
+	ref := "#/components/callbacks/WebhookCallback"
+	cb := CreateCallbackRef(ref)
+
+	assert.True(t, cb.IsReference())
+	assert.Equal(t, ref, cb.GetReference())
+	assert.Nil(t, cb.GoLow())
+}
+
+func TestCallback_MarshalYAML_Reference(t *testing.T) {
+	cb := CreateCallbackRef("#/components/callbacks/WebhookCallback")
+
+	node, err := cb.MarshalYAML()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, yamlNode.Kind)
+	assert.Equal(t, 2, len(yamlNode.Content))
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+	assert.Equal(t, "#/components/callbacks/WebhookCallback", yamlNode.Content[1].Value)
+}
+
+func TestCallback_MarshalYAMLInline_Reference(t *testing.T) {
+	cb := CreateCallbackRef("#/components/callbacks/WebhookCallback")
+
+	node, err := cb.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestCallback_Reference_TakesPrecedence(t *testing.T) {
+	// When both Reference and content are set, Reference should take precedence
+	cb := &Callback{
+		Reference: "#/components/callbacks/foo",
+		Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
+			"https://example.com": {
+				Get: &Operation{
+					OperationId: "shouldBeIgnored",
+				},
+			},
+		}),
+	}
+
+	assert.True(t, cb.IsReference())
+
+	node, err := cb.MarshalYAML()
+	assert.NoError(t, err)
+
+	// Should render as $ref only, not full callback
+	rendered, _ := yaml.Marshal(node)
+	assert.Contains(t, string(rendered), "$ref")
+	assert.NotContains(t, string(rendered), "shouldBeIgnored")
+}
+
+func TestCallback_Render_Reference(t *testing.T) {
+	cb := CreateCallbackRef("#/components/callbacks/WebhookCallback")
+
+	rendered, err := cb.Render()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/callbacks/WebhookCallback")
+}
+
+func TestCallback_IsReference_False(t *testing.T) {
+	cb := &Callback{
+		Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
+			"https://example.com": {},
+		}),
+	}
+	assert.False(t, cb.IsReference())
+	assert.Equal(t, "", cb.GetReference())
+}
