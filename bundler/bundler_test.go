@@ -1546,3 +1546,271 @@ paths:
 	assert.Contains(t, bundledStr, "x-schema-ref:",
 		"Extension key should be present")
 }
+
+// TestBundleBytesWithConfig_Issue477_DiscriminatorExternalRefs tests the fix for issue #477:
+// OneOfs with Discriminator Mappings in External Files Will Break With Inline Bundling.
+// When ResolveDiscriminatorExternalRefs is enabled, external schemas referenced by discriminators
+// are copied to the root document's components section.
+func TestBundleBytesWithConfig_Issue477_DiscriminatorExternalRefs(t *testing.T) {
+	// Parent file referencing external schema with discriminator
+	parentYAML := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /shopping:
+    get:
+      responses:
+        '200':
+          description: Catalog page response
+          content:
+            application/json:
+              schema:
+                $ref: 'internal_schemas.yaml#/components/schemas/ResponseCatalogSection'`
+
+	// External file with discriminator + oneOf pointing to local schemas
+	externalYAML := `components:
+  schemas:
+    ResponseCatalogSection:
+      oneOf:
+        - $ref: '#/components/schemas/ResponseCatalogTileGroupSection'
+        - $ref: '#/components/schemas/ResponseCatalogTableSection'
+      discriminator:
+        propertyName: type
+        mapping:
+          "TILE_GROUP_SECTION": '#/components/schemas/ResponseCatalogTileGroupSection'
+          "TABLE_GROUP_SECTION": '#/components/schemas/ResponseCatalogTableSection'
+    ResponseCatalogTileGroupSection:
+      type: object
+      properties:
+        type:
+          type: string
+        tiles:
+          type: array
+    ResponseCatalogTableSection:
+      type: object
+      properties:
+        type:
+          type: string
+        rows:
+          type: array`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(parentYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "internal_schemas.yaml"), []byte(externalYAML), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+	bCfg := &BundleInlineConfig{
+		ResolveDiscriminatorExternalRefs: true,
+	}
+
+	out, err := BundleBytesWithConfig(mainBytes, cfg, bCfg)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	// Verify components section exists and contains the discriminated schemas
+	components, ok := doc["components"].(map[string]any)
+	require.True(t, ok, "components section should exist")
+
+	schemas, ok := components["schemas"].(map[string]any)
+	require.True(t, ok, "schemas section should exist")
+
+	// Check that the discriminated schemas were copied
+	_, hasTileGroup := schemas["ResponseCatalogTileGroupSection"]
+	_, hasTableSection := schemas["ResponseCatalogTableSection"]
+	assert.True(t, hasTileGroup, "ResponseCatalogTileGroupSection should be in components")
+	assert.True(t, hasTableSection, "ResponseCatalogTableSection should be in components")
+
+	// Verify the bundled output doesn't contain external file references
+	bundledStr := string(out)
+	assert.NotContains(t, bundledStr, "internal_schemas.yaml",
+		"Bundled output should not contain external file references")
+
+	runtime.GC()
+}
+
+// TestBundleBytesWithConfig_BackwardCompatibility tests that existing behavior is preserved
+// when ResolveDiscriminatorExternalRefs is not enabled.
+func TestBundleBytesWithConfig_BackwardCompatibility(t *testing.T) {
+	spec := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          cat: './external-cat.yaml#/components/schemas/Cat'
+      oneOf:
+        - $ref: './external-cat.yaml#/components/schemas/Cat'`
+
+	ext := `components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(spec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "external-cat.yaml"), []byte(ext), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	// Test WITHOUT the config flag (existing behavior)
+	out, err := BundleBytes(mainBytes, cfg)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	animal := schemas["Animal"].(map[string]any)
+
+	// Existing behavior: external refs should remain unchanged
+	mapping := animal["discriminator"].(map[string]any)["mapping"].(map[string]any)
+	assert.Equal(t, "./external-cat.yaml#/components/schemas/Cat", mapping["cat"],
+		"Without config flag, external refs should remain unchanged")
+
+	// Test WITH nil config (should behave same as no config)
+	out2, err := BundleBytesWithConfig(mainBytes, cfg, nil)
+	require.NoError(t, err)
+
+	var doc2 map[string]any
+	require.NoError(t, yaml.Unmarshal(out2, &doc2))
+
+	schemas2 := doc2["components"].(map[string]any)["schemas"].(map[string]any)
+	animal2 := schemas2["Animal"].(map[string]any)
+	mapping2 := animal2["discriminator"].(map[string]any)["mapping"].(map[string]any)
+	assert.Equal(t, "./external-cat.yaml#/components/schemas/Cat", mapping2["cat"],
+		"With nil config, external refs should remain unchanged")
+
+	runtime.GC()
+}
+
+// TestBundleBytesWithConfig_MultipleExternalFiles tests discriminator refs pointing to
+// schemas in different external files.
+func TestBundleBytesWithConfig_MultipleExternalFiles(t *testing.T) {
+	spec := `openapi: 3.0.0
+info:
+  title: Vehicles
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Vehicle:
+      type: object
+      discriminator:
+        propertyName: kind
+        mapping:
+          car: './vehicles/car.yaml#/components/schemas/Car'
+          bike: './vehicles/bike.yaml#/components/schemas/Bike'
+      oneOf:
+        - $ref: './vehicles/car.yaml#/components/schemas/Car'
+        - $ref: './vehicles/bike.yaml#/components/schemas/Bike'`
+
+	car := `components:
+  schemas:
+    Car:
+      type: object
+      properties:
+        wheels:
+          type: integer`
+	bike := `components:
+  schemas:
+    Bike:
+      type: object
+      properties:
+        wheels:
+          type: integer`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "vehicles"), 0755))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(spec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "vehicles", "car.yaml"), []byte(car), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "vehicles", "bike.yaml"), []byte(bike), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+	bCfg := &BundleInlineConfig{
+		ResolveDiscriminatorExternalRefs: true,
+	}
+
+	out, err := BundleBytesWithConfig(mainBytes, cfg, bCfg)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	// Verify components section contains both schemas
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+
+	_, hasCar := schemas["Car"]
+	_, hasBike := schemas["Bike"]
+	assert.True(t, hasCar, "Car schema should be in components")
+	assert.True(t, hasBike, "Bike schema should be in components")
+
+	// Verify no external file references
+	bundledStr := string(out)
+	assert.NotContains(t, bundledStr, "car.yaml", "Should not contain external file refs")
+	assert.NotContains(t, bundledStr, "bike.yaml", "Should not contain external file refs")
+
+	runtime.GC()
+}
+
+// TestBundleDocumentWithConfig tests that BundleDocumentWithConfig works correctly.
+func TestBundleDocumentWithConfig(t *testing.T) {
+	spec := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	doc, err := libopenapi.NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	v3Doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	// Test with nil config
+	out, err := BundleDocumentWithConfig(&v3Doc.Model, nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(out), "Pet")
+
+	// Test with config
+	out2, err := BundleDocumentWithConfig(&v3Doc.Model, &BundleInlineConfig{
+		ResolveDiscriminatorExternalRefs: false,
+	})
+	require.NoError(t, err)
+	assert.Contains(t, string(out2), "Pet")
+
+	runtime.GC()
+}
