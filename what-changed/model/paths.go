@@ -117,7 +117,7 @@ func ComparePaths(l, r any) *PathsChanges {
 				continue
 			}
 			g, p := lPath.FindPathAndKey(k)
-			CreateChange(&changes, ObjectRemoved, v3.PathLabel,
+			CreateChange(&changes, ObjectRemoved, k,
 				g.KeyNode, nil, BreakingRemoved(CompPaths, PropPath),
 				p.Value, nil)
 		}
@@ -125,7 +125,7 @@ func ComparePaths(l, r any) *PathsChanges {
 		for k := range rKeys {
 			if _, ok := lKeys[k]; !ok {
 				g, p := rPath.FindPathAndKey(k)
-				CreateChange(&changes, ObjectAdded, v3.PathLabel,
+				CreateChange(&changes, ObjectAdded, k,
 					nil, g.KeyNode, BreakingAdded(CompPaths, PropPath),
 					nil, p.Value)
 			}
@@ -191,7 +191,7 @@ func ComparePaths(l, r any) *PathsChanges {
 				continue
 			}
 			g, p := lPath.FindPathAndKey(k)
-			CreateChange(&changes, ObjectRemoved, v3.PathLabel,
+			CreateChange(&changes, ObjectRemoved, k,
 				g.KeyNode, nil, BreakingRemoved(CompPaths, PropPath),
 				p.Value, nil)
 		}
@@ -199,7 +199,7 @@ func ComparePaths(l, r any) *PathsChanges {
 		for k := range rKeys {
 			if _, ok := lKeys[k]; !ok {
 				g, p := rPath.FindPathAndKey(k)
-				CreateChange(&changes, ObjectAdded, v3.PathLabel,
+				CreateChange(&changes, ObjectAdded, k,
 					nil, g.KeyNode, BreakingAdded(CompPaths, PropPath),
 					nil, p.Value)
 			}

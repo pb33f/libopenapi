@@ -95,22 +95,22 @@ func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Chang
 	// style
 	addPropertyCheck(&props, left.GetStyle().ValueNode, right.GetStyle().ValueNode,
 		left.GetStyle(), right.GetStyle(), changes, v3.StyleLabel,
-		BreakingModified(CompHeader, PropStyle))
+		BreakingModified(CompHeader, PropStyle), CompHeader, PropStyle)
 
 	// allow reserved
 	addPropertyCheck(&props, left.GetAllowReserved().ValueNode, right.GetAllowReserved().ValueNode,
 		left.GetAllowReserved(), right.GetAllowReserved(), changes, v3.AllowReservedLabel,
-		BreakingModified(CompHeader, PropAllowReserved))
+		BreakingModified(CompHeader, PropAllowReserved), CompHeader, PropAllowReserved)
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,
 		left.GetAllowEmptyValue(), right.GetAllowEmptyValue(), changes, v3.AllowEmptyValueLabel,
-		BreakingModified(CompHeader, PropAllowEmptyValue))
+		BreakingModified(CompHeader, PropAllowEmptyValue), CompHeader, PropAllowEmptyValue)
 
 	// explode
 	addPropertyCheck(&props, left.GetExplode().ValueNode, right.GetExplode().ValueNode,
 		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel,
-		BreakingModified(CompHeader, PropExplode))
+		BreakingModified(CompHeader, PropExplode), CompHeader, PropExplode)
 
 	// example
 	CheckPropertyAdditionOrRemovalWithEncoding(left.GetExample().ValueNode, right.GetExample().ValueNode,
@@ -124,12 +124,12 @@ func addOpenAPIHeaderProperties(left, right low.OpenAPIHeader, changes *[]*Chang
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
 		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel,
-		BreakingModified(CompHeader, PropDeprecated))
+		BreakingModified(CompHeader, PropDeprecated), CompHeader, PropDeprecated)
 
 	// required
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
 		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel,
-		BreakingModified(CompHeader, PropRequired))
+		BreakingModified(CompHeader, PropRequired), CompHeader, PropRequired)
 
 	return props
 }
@@ -140,59 +140,59 @@ func addSwaggerHeaderProperties(left, right low.SwaggerHeader, changes *[]*Chang
 
 	// type
 	addPropertyCheck(&props, left.GetType().ValueNode, right.GetType().ValueNode,
-		left.GetType(), right.GetType(), changes, v3.TypeLabel, true)
+		left.GetType(), right.GetType(), changes, v3.TypeLabel, true, CompHeader, PropType)
 
 	// format
 	addPropertyCheck(&props, left.GetFormat().ValueNode, right.GetFormat().ValueNode,
-		left.GetFormat(), right.GetFormat(), changes, v3.FormatLabel, true)
+		left.GetFormat(), right.GetFormat(), changes, v3.FormatLabel, true, CompHeader, PropFormat)
 
 	// collection format
 	addPropertyCheck(&props, left.GetCollectionFormat().ValueNode, right.GetCollectionFormat().ValueNode,
-		left.GetCollectionFormat(), right.GetCollectionFormat(), changes, v3.CollectionFormatLabel, true)
+		left.GetCollectionFormat(), right.GetCollectionFormat(), changes, v3.CollectionFormatLabel, true, CompHeader, PropCollectionFormat)
 
 	// maximum
 	addPropertyCheck(&props, left.GetMaximum().ValueNode, right.GetMaximum().ValueNode,
-		left.GetMaximum(), right.GetMaximum(), changes, v3.MaximumLabel, true)
+		left.GetMaximum(), right.GetMaximum(), changes, v3.MaximumLabel, true, CompHeader, PropMaximum)
 
 	// minimum
 	addPropertyCheck(&props, left.GetMinimum().ValueNode, right.GetMinimum().ValueNode,
-		left.GetMinimum(), right.GetMinimum(), changes, v3.MinimumLabel, true)
+		left.GetMinimum(), right.GetMinimum(), changes, v3.MinimumLabel, true, CompHeader, PropMinimum)
 
 	// exclusive maximum
 	addPropertyCheck(&props, left.GetExclusiveMaximum().ValueNode, right.GetExclusiveMaximum().ValueNode,
-		left.GetExclusiveMaximum(), right.GetExclusiveMaximum(), changes, v3.ExclusiveMaximumLabel, true)
+		left.GetExclusiveMaximum(), right.GetExclusiveMaximum(), changes, v3.ExclusiveMaximumLabel, true, CompHeader, PropExclusiveMaximum)
 
 	// exclusive minimum
 	addPropertyCheck(&props, left.GetExclusiveMinimum().ValueNode, right.GetExclusiveMinimum().ValueNode,
-		left.GetExclusiveMinimum(), right.GetExclusiveMinimum(), changes, v3.ExclusiveMinimumLabel, true)
+		left.GetExclusiveMinimum(), right.GetExclusiveMinimum(), changes, v3.ExclusiveMinimumLabel, true, CompHeader, PropExclusiveMinimum)
 
 	// max length
 	addPropertyCheck(&props, left.GetMaxLength().ValueNode, right.GetMaxLength().ValueNode,
-		left.GetMaxLength(), right.GetMaxLength(), changes, v3.MaxLengthLabel, true)
+		left.GetMaxLength(), right.GetMaxLength(), changes, v3.MaxLengthLabel, true, CompHeader, PropMaxLength)
 
 	// min length
 	addPropertyCheck(&props, left.GetMinLength().ValueNode, right.GetMinLength().ValueNode,
-		left.GetMinLength(), right.GetMinLength(), changes, v3.MinLengthLabel, true)
+		left.GetMinLength(), right.GetMinLength(), changes, v3.MinLengthLabel, true, CompHeader, PropMinLength)
 
 	// pattern
 	addPropertyCheck(&props, left.GetPattern().ValueNode, right.GetPattern().ValueNode,
-		left.GetPattern(), right.GetPattern(), changes, v3.PatternLabel, true)
+		left.GetPattern(), right.GetPattern(), changes, v3.PatternLabel, true, CompHeader, PropPattern)
 
 	// max items
 	addPropertyCheck(&props, left.GetMaxItems().ValueNode, right.GetMaxItems().ValueNode,
-		left.GetMaxItems(), right.GetMaxItems(), changes, v3.MaxItemsLabel, true)
+		left.GetMaxItems(), right.GetMaxItems(), changes, v3.MaxItemsLabel, true, CompHeader, PropMaxItems)
 
 	// min items
 	addPropertyCheck(&props, left.GetMinItems().ValueNode, right.GetMinItems().ValueNode,
-		left.GetMinItems(), right.GetMinItems(), changes, v3.MinItemsLabel, true)
+		left.GetMinItems(), right.GetMinItems(), changes, v3.MinItemsLabel, true, CompHeader, PropMinItems)
 
 	// unique items
 	addPropertyCheck(&props, left.GetUniqueItems().ValueNode, right.GetUniqueItems().ValueNode,
-		left.GetUniqueItems(), right.GetUniqueItems(), changes, v3.UniqueItemsLabel, true)
+		left.GetUniqueItems(), right.GetUniqueItems(), changes, v3.UniqueItemsLabel, true, CompHeader, PropUniqueItems)
 
 	// multiple of
 	addPropertyCheck(&props, left.GetMultipleOf().ValueNode, right.GetMultipleOf().ValueNode,
-		left.GetMultipleOf(), right.GetMultipleOf(), changes, v3.MultipleOfLabel, true)
+		left.GetMultipleOf(), right.GetMultipleOf(), changes, v3.MultipleOfLabel, true, CompHeader, PropMultipleOf)
 
 	return props
 }
@@ -204,7 +204,7 @@ func addCommonHeaderProperties(left, right low.HasDescription, changes *[]*Chang
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
 		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
-		BreakingModified(CompHeader, PropDescription))
+		BreakingModified(CompHeader, PropDescription), CompHeader, PropDescription)
 
 	return props
 }

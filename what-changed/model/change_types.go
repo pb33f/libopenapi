@@ -262,3 +262,25 @@ type PropertyCheck struct {
 	// Changes represents a pointer to the slice to contain all changes found.
 	Changes *[]*Change
 }
+
+// NewPropertyCheck creates a PropertyCheck with the Component and Property fields set for
+// configurable breaking rules. This is the preferred way to create PropertyCheck instances.
+func NewPropertyCheck(
+	component, property string,
+	leftNode, rightNode *yaml.Node,
+	label string,
+	changes *[]*Change,
+	original, new any,
+) *PropertyCheck {
+	return &PropertyCheck{
+		LeftNode:  leftNode,
+		RightNode: rightNode,
+		Label:     label,
+		Changes:   changes,
+		Breaking:  BreakingModified(component, property), // fallback for legacy code paths
+		Component: component,
+		Property:  property,
+		Original:  original,
+		New:       new,
+	}
+}

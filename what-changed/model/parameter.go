@@ -95,6 +95,7 @@ func (p *ParameterChanges) TotalBreakingChanges() int {
 
 func addPropertyCheck(props *[]*PropertyCheck,
 	lvn, rvn *yaml.Node, lv, rv any, changes *[]*Change, label string, breaking bool,
+	component, property string,
 ) {
 	*props = append(*props, &PropertyCheck{
 		LeftNode:  lvn,
@@ -102,6 +103,8 @@ func addPropertyCheck(props *[]*PropertyCheck,
 		Label:     label,
 		Changes:   changes,
 		Breaking:  breaking,
+		Component: component,
+		Property:  property,
 		Original:  lv,
 		New:       rv,
 	})
@@ -113,27 +116,27 @@ func addOpenAPIParameterProperties(left, right low.OpenAPIParameter, changes *[]
 	// style
 	addPropertyCheck(&props, left.GetStyle().ValueNode, right.GetStyle().ValueNode,
 		left.GetStyle(), right.GetStyle(), changes, v3.StyleLabel,
-		BreakingModified(CompParameter, PropStyle))
+		BreakingModified(CompParameter, PropStyle), CompParameter, PropStyle)
 
 	// allow reserved
 	addPropertyCheck(&props, left.GetAllowReserved().ValueNode, right.GetAllowReserved().ValueNode,
 		left.GetAllowReserved(), right.GetAllowReserved(), changes, v3.AllowReservedLabel,
-		BreakingModified(CompParameter, PropAllowReserved))
+		BreakingModified(CompParameter, PropAllowReserved), CompParameter, PropAllowReserved)
 
 	// explode
 	addPropertyCheck(&props, left.GetExplode().ValueNode, right.GetExplode().ValueNode,
 		left.GetExplode(), right.GetExplode(), changes, v3.ExplodeLabel,
-		BreakingModified(CompParameter, PropExplode))
+		BreakingModified(CompParameter, PropExplode), CompParameter, PropExplode)
 
 	// deprecated
 	addPropertyCheck(&props, left.GetDeprecated().ValueNode, right.GetDeprecated().ValueNode,
 		left.GetDeprecated(), right.GetDeprecated(), changes, v3.DeprecatedLabel,
-		BreakingModified(CompParameter, PropDeprecated))
+		BreakingModified(CompParameter, PropDeprecated), CompParameter, PropDeprecated)
 
 	// example
 	addPropertyCheck(&props, left.GetExample().ValueNode, right.GetExample().ValueNode,
 		left.GetExample(), right.GetExample(), changes, v3.ExampleLabel,
-		BreakingModified(CompParameter, PropExample))
+		BreakingModified(CompParameter, PropExample), CompParameter, PropExample)
 
 	return props
 }
@@ -143,63 +146,63 @@ func addSwaggerParameterProperties(left, right low.SwaggerParameter, changes *[]
 
 	// type
 	addPropertyCheck(&props, left.GetType().ValueNode, right.GetType().ValueNode,
-		left.GetType(), right.GetType(), changes, v3.TypeLabel, true)
+		left.GetType(), right.GetType(), changes, v3.TypeLabel, true, CompParameter, PropType)
 
 	// format
 	addPropertyCheck(&props, left.GetFormat().ValueNode, right.GetFormat().ValueNode,
-		left.GetFormat(), right.GetFormat(), changes, v3.FormatLabel, true)
+		left.GetFormat(), right.GetFormat(), changes, v3.FormatLabel, true, CompParameter, PropFormat)
 
 	// collection format
 	addPropertyCheck(&props, left.GetCollectionFormat().ValueNode, right.GetCollectionFormat().ValueNode,
-		left.GetCollectionFormat(), right.GetCollectionFormat(), changes, v3.CollectionFormatLabel, true)
+		left.GetCollectionFormat(), right.GetCollectionFormat(), changes, v3.CollectionFormatLabel, true, CompParameter, PropCollectionFormat)
 
 	// maximum
 	addPropertyCheck(&props, left.GetMaximum().ValueNode, right.GetMaximum().ValueNode,
-		left.GetMaximum(), right.GetMaximum(), changes, v3.MaximumLabel, true)
+		left.GetMaximum(), right.GetMaximum(), changes, v3.MaximumLabel, true, CompParameter, PropMaximum)
 
 	// minimum
 	addPropertyCheck(&props, left.GetMinimum().ValueNode, right.GetMinimum().ValueNode,
-		left.GetMinimum(), right.GetMinimum(), changes, v3.MinimumLabel, true)
+		left.GetMinimum(), right.GetMinimum(), changes, v3.MinimumLabel, true, CompParameter, PropMinimum)
 
 	// exclusive maximum
 	addPropertyCheck(&props, left.GetExclusiveMaximum().ValueNode, right.GetExclusiveMaximum().ValueNode,
-		left.GetExclusiveMaximum(), right.GetExclusiveMaximum(), changes, v3.ExclusiveMaximumLabel, true)
+		left.GetExclusiveMaximum(), right.GetExclusiveMaximum(), changes, v3.ExclusiveMaximumLabel, true, CompParameter, PropExclusiveMaximum)
 
 	// exclusive minimum
 	addPropertyCheck(&props, left.GetExclusiveMinimum().ValueNode, right.GetExclusiveMinimum().ValueNode,
-		left.GetExclusiveMinimum(), right.GetExclusiveMinimum(), changes, v3.ExclusiveMinimumLabel, true)
+		left.GetExclusiveMinimum(), right.GetExclusiveMinimum(), changes, v3.ExclusiveMinimumLabel, true, CompParameter, PropExclusiveMinimum)
 
 	// max length
 	addPropertyCheck(&props, left.GetMaxLength().ValueNode, right.GetMaxLength().ValueNode,
-		left.GetMaxLength(), right.GetMaxLength(), changes, v3.MaxLengthLabel, true)
+		left.GetMaxLength(), right.GetMaxLength(), changes, v3.MaxLengthLabel, true, CompParameter, PropMaxLength)
 
 	// min length
 	addPropertyCheck(&props, left.GetMinLength().ValueNode, right.GetMinLength().ValueNode,
-		left.GetMinLength(), right.GetMinLength(), changes, v3.MinLengthLabel, true)
+		left.GetMinLength(), right.GetMinLength(), changes, v3.MinLengthLabel, true, CompParameter, PropMinLength)
 
 	// pattern
 	addPropertyCheck(&props, left.GetPattern().ValueNode, right.GetPattern().ValueNode,
-		left.GetPattern(), right.GetPattern(), changes, v3.PatternLabel, true)
+		left.GetPattern(), right.GetPattern(), changes, v3.PatternLabel, true, CompParameter, PropPattern)
 
 	// max items
 	addPropertyCheck(&props, left.GetMaxItems().ValueNode, right.GetMaxItems().ValueNode,
-		left.GetMaxItems(), right.GetMaxItems(), changes, v3.MaxItemsLabel, true)
+		left.GetMaxItems(), right.GetMaxItems(), changes, v3.MaxItemsLabel, true, CompParameter, PropMaxItems)
 
 	// min items
 	addPropertyCheck(&props, left.GetMinItems().ValueNode, right.GetMinItems().ValueNode,
-		left.GetMinItems(), right.GetMinItems(), changes, v3.MinItemsLabel, true)
+		left.GetMinItems(), right.GetMinItems(), changes, v3.MinItemsLabel, true, CompParameter, PropMinItems)
 
 	// unique items
 	addPropertyCheck(&props, left.GetUniqueItems().ValueNode, right.GetUniqueItems().ValueNode,
-		left.GetUniqueItems(), right.GetUniqueItems(), changes, v3.UniqueItemsLabel, true)
+		left.GetUniqueItems(), right.GetUniqueItems(), changes, v3.UniqueItemsLabel, true, CompParameter, PropUniqueItems)
 
 	// default
 	addPropertyCheck(&props, left.GetDefault().ValueNode, right.GetDefault().ValueNode,
-		left.GetDefault(), right.GetDefault(), changes, v3.DefaultLabel, true)
+		left.GetDefault(), right.GetDefault(), changes, v3.DefaultLabel, true, CompParameter, PropDefault)
 
 	// multiple of
 	addPropertyCheck(&props, left.GetMultipleOf().ValueNode, right.GetMultipleOf().ValueNode,
-		left.GetMultipleOf(), right.GetMultipleOf(), changes, v3.MultipleOfLabel, true)
+		left.GetMultipleOf(), right.GetMultipleOf(), changes, v3.MultipleOfLabel, true, CompParameter, PropMultipleOf)
 
 	return props
 }
@@ -209,27 +212,27 @@ func addCommonParameterProperties(left, right low.SharedParameters, changes *[]*
 
 	addPropertyCheck(&props, left.GetName().ValueNode, right.GetName().ValueNode,
 		left.GetName(), right.GetName(), changes, v3.NameLabel,
-		BreakingModified(CompParameter, PropName))
+		BreakingModified(CompParameter, PropName), CompParameter, PropName)
 
 	// in
 	addPropertyCheck(&props, left.GetIn().ValueNode, right.GetIn().ValueNode,
 		left.GetIn(), right.GetIn(), changes, v3.InLabel,
-		BreakingModified(CompParameter, PropIn))
+		BreakingModified(CompParameter, PropIn), CompParameter, PropIn)
 
 	// description
 	addPropertyCheck(&props, left.GetDescription().ValueNode, right.GetDescription().ValueNode,
 		left.GetDescription(), right.GetDescription(), changes, v3.DescriptionLabel,
-		BreakingModified(CompParameter, PropDescription))
+		BreakingModified(CompParameter, PropDescription), CompParameter, PropDescription)
 
 	// required
 	addPropertyCheck(&props, left.GetRequired().ValueNode, right.GetRequired().ValueNode,
 		left.GetRequired(), right.GetRequired(), changes, v3.RequiredLabel,
-		BreakingModified(CompParameter, PropRequired))
+		BreakingModified(CompParameter, PropRequired), CompParameter, PropRequired)
 
 	// allow empty value
 	addPropertyCheck(&props, left.GetAllowEmptyValue().ValueNode, right.GetAllowEmptyValue().ValueNode,
 		left.GetAllowEmptyValue(), right.GetAllowEmptyValue(), changes, v3.AllowEmptyValueLabel,
-		BreakingModified(CompParameter, PropAllowEmptyValue))
+		BreakingModified(CompParameter, PropAllowEmptyValue), CompParameter, PropAllowEmptyValue)
 
 	return props
 }

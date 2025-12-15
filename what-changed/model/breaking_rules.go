@@ -264,6 +264,7 @@ func buildDefaultRules() *BreakingRulesConfig {
 
 		Encoding: &EncodingRules{
 			ContentType:   rule(true, true, true),
+			Style:         rule(true, true, true),
 			Explode:       rule(true, true, true),
 			AllowReserved: rule(false, false, false),
 		},
@@ -393,6 +394,10 @@ func buildDefaultRules() *BreakingRulesConfig {
 			OAuth2MetadataUrl: rule(false, false, false),
 			Flows:             rule(false, false, true),
 			Scopes:            rule(false, false, true),
+			Flow:              rule(true, true, true),   // Swagger 2.0
+			AuthorizationURL:  rule(true, true, true),   // Swagger 2.0
+			TokenURL:          rule(true, true, true),   // Swagger 2.0
+			Deprecated:        rule(false, false, false),
 		},
 
 		SecurityRequirement: &SecurityRequirementRules{
