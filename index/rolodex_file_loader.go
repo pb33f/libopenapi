@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"context"
+
 	"github.com/pb33f/libopenapi/datamodel"
 	"go.yaml.in/yaml/v4"
 )
@@ -94,9 +95,16 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 	// Only enter new-file logic if DirFS is not set
 	if l.fsConfig != nil && l.fsConfig.DirFS == nil {
 
-		// If we're processing, we need to block and wait for the file to be processed
-		if r, ko := l.processingFiles.Load(name); ko {
-			wait := r.(*waiterLocal)
+		// Use LoadOrStore to atomically check if someone is already processing this file.
+		// This prevents the race condition where two goroutines both see "not processing"
+		// and both start processing the same file.
+		processingWaiter := &waiterLocal{f: name}
+		processingWaiter.mu.Lock()
+
+		if existing, loaded := l.processingFiles.LoadOrStore(name, processingWaiter); loaded {
+			// Someone else is already processing this file, wait for them
+			processingWaiter.mu.Unlock() // Release our unused waiter's lock
+			wait := existing.(*waiterLocal)
 
 			wait.mu.Lock()
 			l.logger.Debug("[rolodex file loader]: waiting for existing OS load to complete", "file", name, "listeners", wait.listeners)
@@ -107,10 +115,7 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			return f, e
 		}
 
-		processingWaiter := &waiterLocal{f: name}
-		processingWaiter.mu.Lock()
-
-		l.processingFiles.Store(name, processingWaiter)
+		// We successfully stored our waiter, so we're responsible for processing this file
 
 		var extractedFile *LocalFile
 		var extErr error
@@ -125,13 +130,33 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 
 			return nil, extErr
 		}
+
+		// Store in Files and release the waiter BEFORE indexing to prevent deadlocks.
+		// If file A needs file B and file B needs file A, holding the lock during indexing
+		// would cause a deadlock. The indexOnce in IndexWithContext handles concurrent
+		// access to index creation safely.
+		if extractedFile != nil {
+			l.Files.Store(name, extractedFile)
+		}
+
+		processingWaiter.file = extractedFile
+		processingWaiter.error = extErr
+		processingWaiter.done = true
+		l.processingFiles.Delete(name)
+		processingWaiter.mu.Unlock()
+
+		// Now index the file AFTER releasing the lock
 		if extractedFile != nil && l.indexConfig != nil {
 			copiedCfg := *l.indexConfig
 			copiedCfg.SpecAbsolutePath = name
 			copiedCfg.AvoidBuildIndex = true
 			copiedCfg.SpecInfo = nil
 
-			idx, _ := extractedFile.IndexWithContext(ctx, &copiedCfg)
+			// Add this file to the context's indexing set to prevent deadlocks
+			// when circular references cause the same file to be looked up recursively.
+			indexingCtx := AddIndexingFile(ctx, name)
+
+			idx, _ := extractedFile.IndexWithContext(indexingCtx, &copiedCfg)
 			if idx != nil && l.rolodex != nil {
 				idx.rolodex = l.rolodex
 			}
@@ -149,11 +174,10 @@ func (l *LocalFS) OpenWithContext(ctx context.Context, name string) (fs.File, er
 			}
 		}
 
-		processingWaiter.file = extractedFile
-		processingWaiter.error = extErr
-		processingWaiter.done = true
-		l.processingFiles.Delete(name)
-		processingWaiter.mu.Unlock()
+		// Signal that indexing is complete - other goroutines waiting for this file can proceed
+		if extractedFile != nil {
+			extractedFile.signalIndexingComplete()
+		}
 
 		return extractedFile, nil
 	}
@@ -168,18 +192,19 @@ func (l *LocalFS) Open(name string) (fs.File, error) {
 
 // LocalFile is a file that has been indexed by the LocalFS. It implements the RolodexFile interface.
 type LocalFile struct {
-	filename      string
-	name          string
-	extension     FileExtension
-	data          []byte
-	fullPath      string
-	lastModified  time.Time
-	readingErrors []error
-	index         atomic.Value
-	parsed        *yaml.Node
-	offset        int64
-	parseMutex    sync.Mutex
-	indexOnce     sync.Once
+	filename         string
+	name             string
+	extension        FileExtension
+	data             []byte
+	fullPath         string
+	lastModified     time.Time
+	readingErrors    []error
+	index            atomic.Value
+	parsed           *yaml.Node
+	offset           int64
+	parseMutex       sync.Mutex
+	indexOnce        sync.Once
+	indexingComplete chan struct{} // Closed when indexing is complete
 }
 
 // GetIndex returns the *SpecIndex for the file.
@@ -188,6 +213,28 @@ func (l *LocalFile) GetIndex() *SpecIndex {
 		return v.(*SpecIndex)
 	}
 	return nil
+}
+
+// WaitForIndexing blocks until the file's index is ready.
+// This is used to coordinate between concurrent goroutines when one is loading
+// a file and another needs to use its index.
+func (l *LocalFile) WaitForIndexing() {
+	if l.indexingComplete != nil {
+		<-l.indexingComplete
+	}
+}
+
+// signalIndexingComplete marks the file as ready for use.
+// This should be called after indexing completes or for batch-loaded files.
+func (l *LocalFile) signalIndexingComplete() {
+	if l.indexingComplete != nil {
+		select {
+		case <-l.indexingComplete:
+			// Already closed, do nothing
+		default:
+			close(l.indexingComplete)
+		}
+	}
 }
 
 // Index returns the *SpecIndex for the file. If the index has not been created, it will be created (indexed)
@@ -408,7 +455,15 @@ func NewLocalFSWithConfig(config *LocalFSConfig) (*LocalFS, error) {
 					return nil
 				}
 			}
-			_, fErr := localFS.extractFile(p)
+			lf, fErr := localFS.extractFile(p)
+			if lf != nil {
+				// For batch loading (DirFS mode), store immediately.
+				// Indexing happens later in IndexTheRolodex.
+				localFS.Files.Store(lf.fullPath, lf)
+				// Signal that this file is ready - for batch loading, indexing
+				// is handled separately by IndexTheRolodex, so we signal immediately.
+				lf.signalIndexingComplete()
+			}
 			return fErr
 		})
 
@@ -459,15 +514,19 @@ func (l *LocalFS) extractFile(p string) (*LocalFile, error) {
 		fileData, _ = io.ReadAll(file)
 
 		lf := &LocalFile{
-			filename:      p,
-			name:          filepath.Base(p),
-			extension:     ExtractFileType(p),
-			data:          fileData,
-			fullPath:      abs,
-			lastModified:  modTime,
-			readingErrors: readingErrors,
+			filename:         p,
+			name:             filepath.Base(p),
+			extension:        ExtractFileType(p),
+			data:             fileData,
+			fullPath:         abs,
+			lastModified:     modTime,
+			readingErrors:    readingErrors,
+			indexingComplete: make(chan struct{}),
 		}
-		l.Files.Store(abs, lf)
+		// Note: We intentionally don't store in l.Files here.
+		// The caller is responsible for storing after the file is fully processed
+		// (including indexing). This prevents race conditions where a concurrent
+		// call gets an un-indexed file from the cache.
 		return lf, nil
 	case UNSUPPORTED:
 		if config != nil && config.DirFS != nil {

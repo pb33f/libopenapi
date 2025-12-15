@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -146,7 +147,7 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 		fileName = filepath.Base(file)
 		absoluteFileLocation = file
 		if !filepath.IsAbs(file) && !strings.HasPrefix(file, "http") {
-			absoluteFileLocation, _ = filepath.Abs(filepath.Join(index.config.BasePath, file))
+			absoluteFileLocation, _ = filepath.Abs(utils.CheckPathOverlap(index.config.BasePath, file, string(os.PathSeparator)))
 		}
 
 		// if the absolute file location has no file ext, then get the rolodex root.
@@ -167,6 +168,20 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 				index.logger.Error("cannot locate file in the rolodex, check specification references and base path",
 					"file", absoluteFileLocation)
 				return nil
+			}
+			// Check if the index is already available (handles recursive lookups within same goroutine).
+			// Only wait for indexing if the index isn't already set - this prevents deadlocks
+			// in recursive scenarios where A->B->A would otherwise wait forever.
+			if rFile.GetIndex() == nil {
+				// Check if this file is being indexed in the current call chain.
+				// If so, we have a circular dependency and should NOT wait (would deadlock).
+				// Instead, proceed without the index - the component lookup will still work
+				// using the parsed YAML content, and circular references will be detected later.
+				if !IsFileBeingIndexed(ctx, absoluteFileLocation) {
+					// Wait for the file's index to be ready before using it.
+					// This handles the case where another goroutine is still indexing the file.
+					rFile.WaitForIndexing()
+				}
 			}
 			if rFile.GetIndex() != nil {
 				idx = rFile.GetIndex()
@@ -221,6 +236,13 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 				foundRef.IsRemote = true
 				foundRef.RemoteLocation = absoluteFileLocation
 				return foundRef
+			} else {
+				// Debug: log when FindComponent returns nil
+				index.logger.Debug("[lookupRolodex] FindComponent returned nil",
+					"absoluteFileLocation", absoluteFileLocation,
+					"query", query,
+					"parsedDocument_nil", parsedDocument == nil,
+					"idx_nil", idx == nil)
 			}
 		}
 	}

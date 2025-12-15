@@ -1965,6 +1965,10 @@ func (trf *testRolodexFile) Mode() os.FileMode {
 	return 0
 }
 
+func (trf *testRolodexFile) WaitForIndexing() {
+	// No-op for tests - indexing is already complete
+}
+
 // Close closes the file (doesn't do anything, returns no error)
 func (trf *testRolodexFile) Close() error {
 	return nil

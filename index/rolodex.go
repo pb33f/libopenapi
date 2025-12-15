@@ -41,6 +41,10 @@ type RolodexFile interface {
 	GetErrors() []error
 	GetContentAsYAMLNode() (*yaml.Node, error)
 	GetIndex() *SpecIndex
+	// WaitForIndexing blocks until the file's index is ready.
+	// This is used to coordinate between concurrent goroutines when one is loading
+	// a file and another needs to use its index.
+	WaitForIndexing()
 	Name() string
 	ModTime() time.Time
 	IsDir() bool
