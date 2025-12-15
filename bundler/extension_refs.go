@@ -54,8 +54,11 @@ func resolveExtensionRefsFromIndex(idx *index.SpecIndex, rolodex *index.Rolodex)
 	}
 }
 
-func resolveExtensionRefContent(ctx context.Context, ref *index.Reference, rolodex *index.Rolodex) *yaml.Node {
-	// Try FindComponent first (handles #/components/... refs)
+func resolveExtensionRefContent(ctx context.Context, ref *index.Reference, _ *index.Rolodex) *yaml.Node {
+	// Use FindComponent which handles all reference types including:
+	// - #/components/... refs (local component lookups)
+	// - File refs (via lookupRolodex internally)
+	// - Both YAML and raw text files
 	if ref.Index != nil {
 		foundRef := ref.Index.FindComponent(ctx, ref.FullDefinition)
 		if foundRef != nil && foundRef.Node != nil {
@@ -63,30 +66,6 @@ func resolveExtensionRefContent(ctx context.Context, ref *index.Reference, rolod
 			return deepCopyNode(foundRef.Node)
 		}
 	}
-
-	// Try loading file directly via rolodex
-	rFile, err := rolodex.Open(ref.FullDefinition)
-	if err != nil || rFile == nil {
-		return nil
-	}
-
-	// Try as YAML
-	node, err := rFile.GetContentAsYAMLNode()
-	if err == nil && node != nil {
-		return deepCopyNode(node)
-	}
-
-	// Fallback: treat as raw text (e.g., shell scripts, markdown)
-	content := rFile.GetContent()
-	if content != "" {
-		return &yaml.Node{
-			Kind:  yaml.ScalarNode,
-			Tag:   "!!str",
-			Value: content,
-			Style: yaml.LiteralStyle,
-		}
-	}
-
 	return nil
 }
 
