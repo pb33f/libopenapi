@@ -153,3 +153,14 @@ func (rf *rolodexFile) GetErrors() []error {
 	}
 	return nil
 }
+
+func (rf *rolodexFile) WaitForIndexing() {
+	if rf.localFile != nil {
+		rf.localFile.WaitForIndexing()
+		return
+	}
+	if rf.remoteFile != nil {
+		rf.remoteFile.WaitForIndexing()
+		return
+	}
+}
