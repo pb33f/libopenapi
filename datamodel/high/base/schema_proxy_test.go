@@ -628,3 +628,41 @@ func TestSetPreserveReference_WithBundlingMode(t *testing.T) {
 	node := result.(*yaml.Node)
 	assert.Equal(t, "$ref", node.Content[0].Value)
 }
+
+func TestSetPreserveReference_MarshalYAMLInline(t *testing.T) {
+	// Test that SetPreserveReference affects MarshalYAMLInline behavior
+	proxy := CreateSchemaProxyRef("#/components/schemas/Pet")
+	proxy.SetPreserveReference(true)
+
+	// MarshalYAMLInline should return ref node when preserveReference is true
+	result, err := proxy.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	// Should render as $ref
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, 2, len(node.Content))
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
+}
+
+func TestSetPreserveReference_MarshalYAMLInline_NilRefNode(t *testing.T) {
+	// Test the fallback path when GetReferenceNode returns nil
+	// This happens when the proxy has refStr but no backing schema
+	proxy := &SchemaProxy{
+		refStr:            "#/components/schemas/Test",
+		preserveReference: true,
+		lock:              &sync.Mutex{},
+	}
+
+	result, err := proxy.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	// Should create a ref node using utils.CreateRefNode fallback
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/Test", node.Content[1].Value)
+}
