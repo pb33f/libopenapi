@@ -749,6 +749,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.SchemaDialectLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropSchemaDialect),
+		Component: CompSchema,
+		Property:  PropSchemaDialect,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -768,6 +770,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.ExclusiveMaximumLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropExclusiveMaximum),
+		Component: CompSchema,
+		Property:  PropExclusiveMaximum,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -788,6 +792,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.ExclusiveMinimumLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropExclusiveMinimum),
+		Component: CompSchema,
+		Property:  PropExclusiveMinimum,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -807,6 +813,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.TypeLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropType),
+		Component: CompSchema,
+		Property:  PropType,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -826,6 +834,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.TitleLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropTitle),
+		Component: CompSchema,
+		Property:  PropTitle,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -846,6 +856,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MultipleOfLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMultipleOf),
+		Component: CompSchema,
+		Property:  PropMultipleOf,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -865,6 +877,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MaximumLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMaximum),
+		Component: CompSchema,
+		Property:  PropMaximum,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -884,6 +898,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MinimumLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMinimum),
+		Component: CompSchema,
+		Property:  PropMinimum,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -903,6 +919,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MaxLengthLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMaxLength),
+		Component: CompSchema,
+		Property:  PropMaxLength,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -922,6 +940,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MinLengthLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMinLength),
+		Component: CompSchema,
+		Property:  PropMinLength,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -941,6 +961,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.PatternLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropPattern),
+		Component: CompSchema,
+		Property:  PropPattern,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -960,6 +982,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.FormatLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropFormat),
+		Component: CompSchema,
+		Property:  PropFormat,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -979,6 +1003,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MaxItemsLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMaxItems),
+		Component: CompSchema,
+		Property:  PropMaxItems,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -998,6 +1024,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MinItemsLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMinItems),
+		Component: CompSchema,
+		Property:  PropMinItems,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1017,6 +1045,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MaxPropertiesLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMaxProperties),
+		Component: CompSchema,
+		Property:  PropMaxProperties,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1037,6 +1067,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.MinPropertiesLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropMinProperties),
+		Component: CompSchema,
+		Property:  PropMinProperties,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1056,6 +1088,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.UniqueItemsLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropUniqueItems),
+		Component: CompSchema,
+		Property:  PropUniqueItems,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1108,6 +1142,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.DescriptionLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropDescription),
+		Component: CompSchema,
+		Property:  PropDescription,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1127,6 +1163,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.ContentEncodingLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropContentEncoding),
+		Component: CompSchema,
+		Property:  PropContentEncoding,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1146,6 +1184,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.ContentMediaType,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropContentMediaType),
+		Component: CompSchema,
+		Property:  PropContentMediaType,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1165,6 +1205,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.DefaultLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropDefault),
+		Component: CompSchema,
+		Property:  PropDefault,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1184,6 +1226,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.ConstLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropConst),
+		Component: CompSchema,
+		Property:  PropConst,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1203,6 +1247,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.NullableLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropNullable),
+		Component: CompSchema,
+		Property:  PropNullable,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1222,6 +1268,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.ReadOnlyLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropReadOnly),
+		Component: CompSchema,
+		Property:  PropReadOnly,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1241,6 +1289,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.WriteOnlyLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropWriteOnly),
+		Component: CompSchema,
+		Property:  PropWriteOnly,
 		Original:  lSchema,
 		New:       rSchema,
 	})
@@ -1274,6 +1324,8 @@ func checkSchemaPropertyChanges(
 		Label:     v3.DeprecatedLabel,
 		Changes:   changes,
 		Breaking:  BreakingModified(CompSchema, PropDeprecated),
+		Component: CompSchema,
+		Property:  PropDeprecated,
 		Original:  lSchema,
 		New:       rSchema,
 	})

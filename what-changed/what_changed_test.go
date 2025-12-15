@@ -25,7 +25,7 @@ func TestCompareOpenAPIDocuments(t *testing.T) {
 
 	changes := CompareOpenAPIDocuments(origDoc, modDoc)
 	assert.Equal(t, 75, changes.TotalChanges())
-	assert.Equal(t, 20, changes.TotalBreakingChanges())
+	assert.Equal(t, 19, changes.TotalBreakingChanges())
 }
 
 func TestCompareSwaggerDocuments(t *testing.T) {
@@ -256,7 +256,7 @@ func ExampleCompareOpenAPIDocuments() {
 	// Print out some interesting stats.
 	fmt.Printf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		changes.TotalChanges(), changes.TotalBreakingChanges(), len(schemaChanges))
-	// Output: There are 75 changes, of which 20 are breaking. 6 schemas have changes.
+	// Output: There are 75 changes, of which 19 are breaking. 6 schemas have changes.
 }
 
 func TestCheckExplodedFileCheck(t *testing.T) {

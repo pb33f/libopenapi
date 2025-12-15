@@ -81,68 +81,27 @@ func CompareTags(l, r []low.ValueReference[*base.Tag]) []*TagChanges {
 
 		// if the existing tag exists, let's check it.
 		if seenRight[i] != nil {
+			lTag := seenLeft[i].Value
+			rTag := seenRight[i].Value
+			props := make([]*PropertyCheck, 0, 5)
 
-			var props []*PropertyCheck
-
-			// Name
-			props = append(props, &PropertyCheck{
-				LeftNode:  seenLeft[i].Value.Name.ValueNode,
-				RightNode: seenRight[i].Value.Name.ValueNode,
-				Label:     v3.NameLabel,
-				Changes:   &changes,
-				Component: CompTag,
-				Property:  PropName,
-				Original:  seenLeft[i].Value,
-				New:       seenRight[i].Value,
-			})
-
-			// Summary
-			props = append(props, &PropertyCheck{
-				LeftNode:  seenLeft[i].Value.Summary.ValueNode,
-				RightNode: seenRight[i].Value.Summary.ValueNode,
-				Label:     v3.SummaryLabel,
-				Changes:   &changes,
-				Component: CompTag,
-				Property:  PropSummary,
-				Original:  seenLeft[i].Value,
-				New:       seenRight[i].Value,
-			})
-
-			// Description
-			props = append(props, &PropertyCheck{
-				LeftNode:  seenLeft[i].Value.Description.ValueNode,
-				RightNode: seenRight[i].Value.Description.ValueNode,
-				Label:     v3.DescriptionLabel,
-				Changes:   &changes,
-				Component: CompTag,
-				Property:  PropDescription,
-				Original:  seenLeft[i].Value,
-				New:       seenRight[i].Value,
-			})
-
-			// Parent
-			props = append(props, &PropertyCheck{
-				LeftNode:  seenLeft[i].Value.Parent.ValueNode,
-				RightNode: seenRight[i].Value.Parent.ValueNode,
-				Label:     v3.ParentLabel,
-				Changes:   &changes,
-				Component: CompTag,
-				Property:  PropParent,
-				Original:  seenLeft[i].Value,
-				New:       seenRight[i].Value,
-			})
-
-			// Kind
-			props = append(props, &PropertyCheck{
-				LeftNode:  seenLeft[i].Value.Kind.ValueNode,
-				RightNode: seenRight[i].Value.Kind.ValueNode,
-				Label:     v3.KindLabel,
-				Changes:   &changes,
-				Component: CompTag,
-				Property:  PropKind,
-				Original:  seenLeft[i].Value,
-				New:       seenRight[i].Value,
-			})
+			props = append(props,
+				NewPropertyCheck(CompTag, PropName,
+					lTag.Name.ValueNode, rTag.Name.ValueNode,
+					v3.NameLabel, &changes, lTag, rTag),
+				NewPropertyCheck(CompTag, PropSummary,
+					lTag.Summary.ValueNode, rTag.Summary.ValueNode,
+					v3.SummaryLabel, &changes, lTag, rTag),
+				NewPropertyCheck(CompTag, PropDescription,
+					lTag.Description.ValueNode, rTag.Description.ValueNode,
+					v3.DescriptionLabel, &changes, lTag, rTag),
+				NewPropertyCheck(CompTag, PropParent,
+					lTag.Parent.ValueNode, rTag.Parent.ValueNode,
+					v3.ParentLabel, &changes, lTag, rTag),
+				NewPropertyCheck(CompTag, PropKind,
+					lTag.Kind.ValueNode, rTag.Kind.ValueNode,
+					v3.KindLabel, &changes, lTag, rTag),
+			)
 
 			// check properties
 			CheckProperties(props)

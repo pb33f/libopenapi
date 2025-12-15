@@ -63,38 +63,19 @@ func CompareServers(l, r *v3.Server) *ServerChanges {
 		return nil
 	}
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 3)
 
-	// Name (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Name.ValueNode,
-		RightNode: r.Name.ValueNode,
-		Label:     v3.NameLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompServer, PropName),
-		Original:  l,
-		New:       r,
-	})
-	// URL
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.URL.ValueNode,
-		RightNode: r.URL.ValueNode,
-		Label:     v3.URLLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompServer, PropURL),
-		Original:  l,
-		New:       r,
-	})
-	// Description
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompServer, PropDescription),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompServer, PropName,
+			l.Name.ValueNode, r.Name.ValueNode,
+			v3.NameLabel, &changes, l, r),
+		NewPropertyCheck(CompServer, PropURL,
+			l.URL.ValueNode, r.URL.ValueNode,
+			v3.URLLabel, &changes, l, r),
+		NewPropertyCheck(CompServer, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+	)
 
 	CheckProperties(props)
 	sc := new(ServerChanges)

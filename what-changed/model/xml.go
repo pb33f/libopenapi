@@ -50,75 +50,29 @@ func (x *XMLChanges) TotalBreakingChanges() int {
 func CompareXML(l, r *base.XML) *XMLChanges {
 	xc := new(XMLChanges)
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 6)
 
-	// Name (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Name.ValueNode,
-		RightNode: r.Name.ValueNode,
-		Label:     v3.NameLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompXML, PropName),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompXML, PropName,
+			l.Name.ValueNode, r.Name.ValueNode,
+			v3.NameLabel, &changes, l, r),
+		NewPropertyCheck(CompXML, PropNamespace,
+			l.Namespace.ValueNode, r.Namespace.ValueNode,
+			v3.NamespaceLabel, &changes, l, r),
+		NewPropertyCheck(CompXML, PropPrefix,
+			l.Prefix.ValueNode, r.Prefix.ValueNode,
+			v3.PrefixLabel, &changes, l, r),
+		NewPropertyCheck(CompXML, PropAttribute,
+			l.Attribute.ValueNode, r.Attribute.ValueNode,
+			v3.AttributeLabel, &changes, l, r),
+		NewPropertyCheck(CompXML, PropNodeType,
+			l.NodeType.ValueNode, r.NodeType.ValueNode,
+			base.NodeTypeLabel, &changes, l, r),
+		NewPropertyCheck(CompXML, PropWrapped,
+			l.Wrapped.ValueNode, r.Wrapped.ValueNode,
+			v3.WrappedLabel, &changes, l, r),
+	)
 
-	// Namespace (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Namespace.ValueNode,
-		RightNode: r.Namespace.ValueNode,
-		Label:     v3.NamespaceLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompXML, PropNamespace),
-		Original:  l,
-		New:       r,
-	})
-
-	// Prefix (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Prefix.ValueNode,
-		RightNode: r.Prefix.ValueNode,
-		Label:     v3.PrefixLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompXML, PropPrefix),
-		Original:  l,
-		New:       r,
-	})
-
-	// Attribute (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Attribute.ValueNode,
-		RightNode: r.Attribute.ValueNode,
-		Label:     v3.AttributeLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompXML, PropAttribute),
-		Original:  l,
-		New:       r,
-	})
-
-	// NodeType (breaking change) - OpenAPI 3.2+
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.NodeType.ValueNode,
-		RightNode: r.NodeType.ValueNode,
-		Label:     base.NodeTypeLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompXML, PropNodeType),
-		Original:  l,
-		New:       r,
-	})
-
-	// Wrapped (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Wrapped.ValueNode,
-		RightNode: r.Wrapped.ValueNode,
-		Label:     v3.WrappedLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompXML, PropWrapped),
-		Original:  l,
-		New:       r,
-	})
-
-	// check properties
 	CheckProperties(props)
 
 	// check extensions

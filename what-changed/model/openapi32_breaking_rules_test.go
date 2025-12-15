@@ -454,3 +454,62 @@ func TestBreakingHelperFunctions_OpenAPI32(t *testing.T) {
 	assert.False(t, BreakingModified(CompSecurityScheme, PropOAuth2MetadataUrl))
 	assert.False(t, BreakingRemoved(CompSecurityScheme, PropOAuth2MetadataUrl))
 }
+
+// TestSchemaDescriptionAddedConfigurable tests that adding a schema description respects
+// the configurable breaking rules when schema.description.added is set to true.
+func TestSchemaDescriptionAddedConfigurable(t *testing.T) {
+	// ensure clean state
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	// Original schema without description
+	left := `openapi: 3.0
+components:
+  schemas:
+    Tree:
+      type: string`
+
+	// New schema with description added
+	right := `openapi: 3.0
+components:
+  schemas:
+    Tree:
+      type: string
+      description: new`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Tree").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Tree").Value
+
+	// Test 1: By default, adding a description is NOT breaking
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges()) // Default: not breaking
+
+	// Test 2: With custom config where description.added = true, should be breaking
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+
+	customConfig := &BreakingRulesConfig{
+		Schema: &SchemaRules{
+			Description: &BreakingChangeRule{
+				Added:    boolPtr(true),
+				Modified: boolPtr(false),
+				Removed:  boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	changes2 := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes2)
+	assert.Equal(t, 1, changes2.TotalChanges())
+	assert.Equal(t, 1, changes2.TotalBreakingChanges()) // Custom: IS breaking
+}

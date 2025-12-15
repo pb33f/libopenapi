@@ -99,25 +99,25 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 			return nil
 		}
 		addPropertyCheck(&props, lSS.Type.ValueNode, rSS.Type.ValueNode,
-			lSS.Type.Value, rSS.Type.Value, &changes, v3.TypeLabel, true)
+			lSS.Type.Value, rSS.Type.Value, &changes, v3.TypeLabel, true, CompSecurityScheme, PropType)
 
 		addPropertyCheck(&props, lSS.Description.ValueNode, rSS.Description.ValueNode,
-			lSS.Description.Value, rSS.Description.Value, &changes, v3.DescriptionLabel, false)
+			lSS.Description.Value, rSS.Description.Value, &changes, v3.DescriptionLabel, false, CompSecurityScheme, PropDescription)
 
 		addPropertyCheck(&props, lSS.Name.ValueNode, rSS.Name.ValueNode,
-			lSS.Name.Value, rSS.Name.Value, &changes, v3.NameLabel, true)
+			lSS.Name.Value, rSS.Name.Value, &changes, v3.NameLabel, true, CompSecurityScheme, PropName)
 
 		addPropertyCheck(&props, lSS.In.ValueNode, rSS.In.ValueNode,
-			lSS.In.Value, rSS.In.Value, &changes, v3.InLabel, true)
+			lSS.In.Value, rSS.In.Value, &changes, v3.InLabel, true, CompSecurityScheme, PropIn)
 
 		addPropertyCheck(&props, lSS.Flow.ValueNode, rSS.Flow.ValueNode,
-			lSS.Flow.Value, rSS.Flow.Value, &changes, v3.FlowLabel, true)
+			lSS.Flow.Value, rSS.Flow.Value, &changes, v3.FlowLabel, true, CompSecurityScheme, PropFlow)
 
 		addPropertyCheck(&props, lSS.AuthorizationUrl.ValueNode, rSS.AuthorizationUrl.ValueNode,
-			lSS.AuthorizationUrl.Value, rSS.AuthorizationUrl.Value, &changes, v3.AuthorizationUrlLabel, true)
+			lSS.AuthorizationUrl.Value, rSS.AuthorizationUrl.Value, &changes, v3.AuthorizationUrlLabel, true, CompSecurityScheme, PropAuthorizationURL)
 
 		addPropertyCheck(&props, lSS.TokenUrl.ValueNode, rSS.TokenUrl.ValueNode,
-			lSS.TokenUrl.Value, rSS.TokenUrl.Value, &changes, v3.TokenUrlLabel, true)
+			lSS.TokenUrl.Value, rSS.TokenUrl.Value, &changes, v3.TokenUrlLabel, true, CompSecurityScheme, PropTokenURL)
 
 		if !lSS.Scopes.IsEmpty() && !rSS.Scopes.IsEmpty() {
 			if !low.AreEqual(lSS.Scopes.Value, rSS.Scopes.Value) {
@@ -147,40 +147,40 @@ func CompareSecuritySchemes(l, r any) *SecuritySchemeChanges {
 		}
 		addPropertyCheck(&props, lSS.Type.ValueNode, rSS.Type.ValueNode,
 			lSS.Type.Value, rSS.Type.Value, &changes, v3.TypeLabel,
-			BreakingModified(CompSecurityScheme, PropType))
+			BreakingModified(CompSecurityScheme, PropType), CompSecurityScheme, PropType)
 
 		addPropertyCheck(&props, lSS.Description.ValueNode, rSS.Description.ValueNode,
 			lSS.Description.Value, rSS.Description.Value, &changes, v3.DescriptionLabel,
-			BreakingModified(CompSecurityScheme, PropDescription))
+			BreakingModified(CompSecurityScheme, PropDescription), CompSecurityScheme, PropDescription)
 
 		addPropertyCheck(&props, lSS.Name.ValueNode, rSS.Name.ValueNode,
 			lSS.Name.Value, rSS.Name.Value, &changes, v3.NameLabel,
-			BreakingModified(CompSecurityScheme, PropName))
+			BreakingModified(CompSecurityScheme, PropName), CompSecurityScheme, PropName)
 
 		addPropertyCheck(&props, lSS.In.ValueNode, rSS.In.ValueNode,
 			lSS.In.Value, rSS.In.Value, &changes, v3.InLabel,
-			BreakingModified(CompSecurityScheme, PropIn))
+			BreakingModified(CompSecurityScheme, PropIn), CompSecurityScheme, PropIn)
 
 		addPropertyCheck(&props, lSS.Scheme.ValueNode, rSS.Scheme.ValueNode,
 			lSS.Scheme.Value, rSS.Scheme.Value, &changes, v3.SchemeLabel,
-			BreakingModified(CompSecurityScheme, PropScheme))
+			BreakingModified(CompSecurityScheme, PropScheme), CompSecurityScheme, PropScheme)
 
 		addPropertyCheck(&props, lSS.BearerFormat.ValueNode, rSS.BearerFormat.ValueNode,
 			lSS.BearerFormat.Value, rSS.BearerFormat.Value, &changes, v3.SchemeLabel,
-			BreakingModified(CompSecurityScheme, PropBearerFormat))
+			BreakingModified(CompSecurityScheme, PropBearerFormat), CompSecurityScheme, PropBearerFormat)
 
 		addPropertyCheck(&props, lSS.OpenIdConnectUrl.ValueNode, rSS.OpenIdConnectUrl.ValueNode,
 			lSS.OpenIdConnectUrl.Value, rSS.OpenIdConnectUrl.Value, &changes, v3.OpenIdConnectUrlLabel,
-			BreakingModified(CompSecurityScheme, PropOpenIDConnectURL))
+			BreakingModified(CompSecurityScheme, PropOpenIDConnectURL), CompSecurityScheme, PropOpenIDConnectURL)
 
 		// OpenAPI 3.2+ fields
 		addPropertyCheck(&props, lSS.OAuth2MetadataUrl.ValueNode, rSS.OAuth2MetadataUrl.ValueNode,
 			lSS.OAuth2MetadataUrl.Value, rSS.OAuth2MetadataUrl.Value, &changes, v3.OAuth2MetadataUrlLabel,
-			BreakingModified(CompSecurityScheme, PropOAuth2MetadataUrl))
+			BreakingModified(CompSecurityScheme, PropOAuth2MetadataUrl), CompSecurityScheme, PropOAuth2MetadataUrl)
 
 		addPropertyCheck(&props, lSS.Deprecated.ValueNode, rSS.Deprecated.ValueNode,
 			lSS.Deprecated.Value, rSS.Deprecated.Value, &changes, v3.DeprecatedLabel,
-			BreakingModified(CompSecurityScheme, PropDeprecated))
+			BreakingModified(CompSecurityScheme, PropDeprecated), CompSecurityScheme, PropDeprecated)
 
 		if !lSS.Flows.IsEmpty() && !rSS.Flows.IsEmpty() {
 			if !low.AreEqual(lSS.Flows.Value, rSS.Flows.Value) {

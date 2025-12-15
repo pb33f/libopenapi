@@ -28,7 +28,6 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 		return nil
 	}
 
-	var props []*PropertyCheck
 	var changes []*Change
 
 	lValues := make(map[string]low.NodeReference[string])
@@ -55,29 +54,16 @@ func CompareServerVariables(l, r *v3.ServerVariable) *ServerVariableChanges {
 		}
 	}
 
-	// default
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Default.ValueNode,
-		RightNode: r.Default.ValueNode,
-		Label:     v3.DefaultLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompServerVariable, PropDefault),
-		Original:  l,
-		New:       r,
-	})
+	props := make([]*PropertyCheck, 0, 2)
+	props = append(props,
+		NewPropertyCheck(CompServerVariable, PropDefault,
+			l.Default.ValueNode, r.Default.ValueNode,
+			v3.DefaultLabel, &changes, l, r),
+		NewPropertyCheck(CompServerVariable, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+	)
 
-	// description
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompServerVariable, PropDescription),
-		Original:  l,
-		New:       r,
-	})
-
-	// check everything.
 	CheckProperties(props)
 	sc := new(ServerVariableChanges)
 	sc.PropertyChanges = NewPropertyChanges(changes)

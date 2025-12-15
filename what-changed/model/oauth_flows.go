@@ -229,40 +229,19 @@ func CompareOAuthFlow(l, r *v3.OAuthFlow) *OAuthFlowChanges {
 	}
 
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 3)
 
-	// authorization url
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.AuthorizationUrl.ValueNode,
-		RightNode: r.AuthorizationUrl.ValueNode,
-		Label:     v3.AuthorizationUrlLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompOAuthFlow, PropAuthorizationURL),
-		Original:  l,
-		New:       r,
-	})
-
-	// token url
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.TokenUrl.ValueNode,
-		RightNode: r.TokenUrl.ValueNode,
-		Label:     v3.TokenUrlLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompOAuthFlow, PropTokenURL),
-		Original:  l,
-		New:       r,
-	})
-
-	// refresh url
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.RefreshUrl.ValueNode,
-		RightNode: r.RefreshUrl.ValueNode,
-		Label:     v3.RefreshUrlLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompOAuthFlow, PropRefreshURL),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompOAuthFlow, PropAuthorizationURL,
+			l.AuthorizationUrl.ValueNode, r.AuthorizationUrl.ValueNode,
+			v3.AuthorizationUrlLabel, &changes, l, r),
+		NewPropertyCheck(CompOAuthFlow, PropTokenURL,
+			l.TokenUrl.ValueNode, r.TokenUrl.ValueNode,
+			v3.TokenUrlLabel, &changes, l, r),
+		NewPropertyCheck(CompOAuthFlow, PropRefreshURL,
+			l.RefreshUrl.ValueNode, r.RefreshUrl.ValueNode,
+			v3.RefreshUrlLabel, &changes, l, r),
+	)
 
 	CheckProperties(props)
 

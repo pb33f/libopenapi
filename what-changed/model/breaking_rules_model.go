@@ -122,6 +122,7 @@ type MediaTypeRules struct {
 // EncodingRules defines breaking rules for the Encoding object properties.
 type EncodingRules struct {
 	ContentType   *BreakingChangeRule `json:"contentType,omitempty" yaml:"contentType,omitempty"`
+	Style         *BreakingChangeRule `json:"style,omitempty" yaml:"style,omitempty"`
 	Explode       *BreakingChangeRule `json:"explode,omitempty" yaml:"explode,omitempty"`
 	AllowReserved *BreakingChangeRule `json:"allowReserved,omitempty" yaml:"allowReserved,omitempty"`
 }
@@ -253,6 +254,10 @@ type SecuritySchemeRules struct {
 	OAuth2MetadataUrl *BreakingChangeRule `json:"oauth2MetadataUrl,omitempty" yaml:"oauth2MetadataUrl,omitempty"`
 	Flows             *BreakingChangeRule `json:"flows,omitempty" yaml:"flows,omitempty"`
 	Scopes            *BreakingChangeRule `json:"scopes,omitempty" yaml:"scopes,omitempty"`
+	Flow              *BreakingChangeRule `json:"flow,omitempty" yaml:"flow,omitempty"`               // Swagger 2.0
+	AuthorizationURL  *BreakingChangeRule `json:"authorizationUrl,omitempty" yaml:"authorizationUrl,omitempty"` // Swagger 2.0
+	TokenURL          *BreakingChangeRule `json:"tokenUrl,omitempty" yaml:"tokenUrl,omitempty"`       // Swagger 2.0
+	Deprecated        *BreakingChangeRule `json:"deprecated,omitempty" yaml:"deprecated,omitempty"`
 }
 
 // SecurityRequirementRules defines breaking rules for the Security Requirement object properties.

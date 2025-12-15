@@ -139,8 +139,8 @@ func CompareMediaTypes(l, r *v3.MediaType) *MediaTypeChanges {
 			r.Schema.ValueNode, BreakingAdded(CompMediaType, PropSchema), nil, r.Schema.Value)
 	}
 
-	// examples
-	mc.ExampleChanges = CheckMapForChanges(l.Examples.Value, r.Examples.Value,
+	// examples - use nil-aware version so added/removed examples appear in the map for tree rendering
+	mc.ExampleChanges = CheckMapForChangesWithNilSupport(l.Examples.Value, r.Examples.Value,
 		&changes, v3.ExamplesLabel, CompareExamples)
 
 	// encoding

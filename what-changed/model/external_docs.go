@@ -56,31 +56,17 @@ func (e *ExternalDocChanges) TotalBreakingChanges() int {
 // is returned, otherwise if nothing changed - then nil is returned.
 func CompareExternalDocs(l, r *base.ExternalDoc) *ExternalDocChanges {
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 2)
 
-	// URL
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.URL.ValueNode,
-		RightNode: r.URL.ValueNode,
-		Label:     v3.URLLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExternalDocs, PropURL),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompExternalDocs, PropURL,
+			l.URL.ValueNode, r.URL.ValueNode,
+			v3.URLLabel, &changes, l, r),
+		NewPropertyCheck(CompExternalDocs, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+	)
 
-	// description.
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExternalDocs, PropDescription),
-		Original:  l,
-		New:       r,
-	})
-
-	// check everything.
 	CheckProperties(props)
 
 	dc := new(ExternalDocChanges)

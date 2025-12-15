@@ -126,6 +126,7 @@ x-windows: dirty
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/crispy/chips", extChanges.Changes[0].New)
+	assert.Equal(t, "/crispy/chips", extChanges.Changes[0].Property, "Property should show actual path, not generic 'path' label")
 }
 
 func TestComparePaths_v2_RemovePath(t *testing.T) {
@@ -167,6 +168,7 @@ x-windows: dirty
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/crispy/chips", extChanges.Changes[0].Original)
+	assert.Equal(t, "/crispy/chips", extChanges.Changes[0].Property, "Property should show actual path, not generic 'path' label")
 }
 
 func TestComparePaths_v3(t *testing.T) {
@@ -290,6 +292,7 @@ x-windows: dirty`
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/mushy/peas", extChanges.Changes[0].New)
+	assert.Equal(t, "/mushy/peas", extChanges.Changes[0].Property, "Property should show actual path, not generic 'path' label")
 }
 
 func TestComparePaths_v3_RemovePath(t *testing.T) {
@@ -338,4 +341,5 @@ x-windows: dirty`
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
 	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
 	assert.Equal(t, "/mushy/peas", extChanges.Changes[0].Original)
+	assert.Equal(t, "/mushy/peas", extChanges.Changes[0].Property, "Property should show actual path, not generic 'path' label")
 }

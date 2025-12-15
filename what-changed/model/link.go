@@ -62,52 +62,23 @@ func CompareLinks(l, r *v3.Link) *LinkChanges {
 		return nil
 	}
 
-	var props []*PropertyCheck
 	var changes []*Change
+	props := make([]*PropertyCheck, 0, 4)
 
-	// operation ref
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.OperationRef.ValueNode,
-		RightNode: r.OperationRef.ValueNode,
-		Label:     v3.OperationRefLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompLink, PropOperationRef),
-		Original:  l,
-		New:       r,
-	})
-
-	// operation id
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.OperationId.ValueNode,
-		RightNode: r.OperationId.ValueNode,
-		Label:     v3.OperationIdLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompLink, PropOperationID),
-		Original:  l,
-		New:       r,
-	})
-
-	// request body
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.RequestBody.ValueNode,
-		RightNode: r.RequestBody.ValueNode,
-		Label:     v3.RequestBodyLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompLink, PropRequestBody),
-		Original:  l,
-		New:       r,
-	})
-
-	// description
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompLink, PropDescription),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompLink, PropOperationRef,
+			l.OperationRef.ValueNode, r.OperationRef.ValueNode,
+			v3.OperationRefLabel, &changes, l, r),
+		NewPropertyCheck(CompLink, PropOperationID,
+			l.OperationId.ValueNode, r.OperationId.ValueNode,
+			v3.OperationIdLabel, &changes, l, r),
+		NewPropertyCheck(CompLink, PropRequestBody,
+			l.RequestBody.ValueNode, r.RequestBody.ValueNode,
+			v3.RequestBodyLabel, &changes, l, r),
+		NewPropertyCheck(CompLink, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+	)
 
 	CheckProperties(props)
 	lc := new(LinkChanges)

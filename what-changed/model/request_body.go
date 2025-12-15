@@ -63,29 +63,16 @@ func CompareRequestBodies(l, r *v3.RequestBody) *RequestBodyChanges {
 	}
 
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 2)
 
-	// description
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompRequestBody, PropDescription),
-		Original:  l,
-		New:       r,
-	})
-
-	// required
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Required.ValueNode,
-		RightNode: r.Required.ValueNode,
-		Label:     v3.RequiredLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompRequestBody, PropRequired),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompRequestBody, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+		NewPropertyCheck(CompRequestBody, PropRequired,
+			l.Required.ValueNode, r.Required.ValueNode,
+			v3.RequiredLabel, &changes, l, r),
+	)
 
 	CheckProperties(props)
 

@@ -51,32 +51,18 @@ func (d *DiscriminatorChanges) TotalBreakingChanges() int {
 func CompareDiscriminator(l, r *base.Discriminator) *DiscriminatorChanges {
 	dc := new(DiscriminatorChanges)
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 2)
 	var mappingChanges []*Change
 
-	// Name (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.PropertyName.ValueNode,
-		RightNode: r.PropertyName.ValueNode,
-		Label:     base.PropertyNameLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompDiscriminator, PropPropertyName),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompDiscriminator, PropPropertyName,
+			l.PropertyName.ValueNode, r.PropertyName.ValueNode,
+			base.PropertyNameLabel, &changes, l, r),
+		NewPropertyCheck(CompDiscriminator, PropDefaultMapping,
+			l.DefaultMapping.ValueNode, r.DefaultMapping.ValueNode,
+			base.DefaultMappingLabel, &changes, l, r),
+	)
 
-	// DefaultMapping (breaking change)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.DefaultMapping.ValueNode,
-		RightNode: r.DefaultMapping.ValueNode,
-		Label:     base.DefaultMappingLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompDiscriminator, PropDefaultMapping),
-		Original:  l,
-		New:       r,
-	})
-
-	// check properties
 	CheckProperties(props)
 
 	// flatten maps

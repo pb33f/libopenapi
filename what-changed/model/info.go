@@ -76,62 +76,25 @@ func (i *InfoChanges) TotalBreakingChanges() int {
 // returned instead.
 func CompareInfo(l, r *base.Info) *InfoChanges {
 	var changes []*Change
-	var props []*PropertyCheck
+	props := make([]*PropertyCheck, 0, 5)
 
-	// Title
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Title.ValueNode,
-		RightNode: r.Title.ValueNode,
-		Label:     v3.TitleLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompInfo, PropTitle),
-		Original:  l,
-		New:       r,
-	})
-
-	// Summary
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Summary.ValueNode,
-		RightNode: r.Summary.ValueNode,
-		Label:     v3.SummaryLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompInfo, PropSummary),
-		Original:  l,
-		New:       r,
-	})
-
-	// Description
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompInfo, PropDescription),
-		Original:  l,
-		New:       r,
-	})
-
-	// TermsOfService
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.TermsOfService.ValueNode,
-		RightNode: r.TermsOfService.ValueNode,
-		Label:     v3.TermsOfServiceLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompInfo, PropTermsOfService),
-		Original:  l,
-		New:       r,
-	})
-
-	// Version
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Version.ValueNode,
-		RightNode: r.Version.ValueNode,
-		Label:     v3.VersionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompInfo, PropVersion),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props,
+		NewPropertyCheck(CompInfo, PropTitle,
+			l.Title.ValueNode, r.Title.ValueNode,
+			v3.TitleLabel, &changes, l, r),
+		NewPropertyCheck(CompInfo, PropSummary,
+			l.Summary.ValueNode, r.Summary.ValueNode,
+			v3.SummaryLabel, &changes, l, r),
+		NewPropertyCheck(CompInfo, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+		NewPropertyCheck(CompInfo, PropTermsOfService,
+			l.TermsOfService.ValueNode, r.TermsOfService.ValueNode,
+			v3.TermsOfServiceLabel, &changes, l, r),
+		NewPropertyCheck(CompInfo, PropVersion,
+			l.Version.ValueNode, r.Version.ValueNode,
+			v3.VersionLabel, &changes, l, r),
+	)
 
 	// check properties
 	CheckProperties(props)

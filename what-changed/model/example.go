@@ -51,33 +51,40 @@ func (e *ExampleChanges) TotalBreakingChanges() int {
 }
 
 // CompareExamples returns a pointer to ExampleChanges that contains all changes made between
-// left and right Example instances.
+// left and right Example instances. If l is nil, the example was added. If r is nil, it was removed.
 func CompareExamples(l, r *base.Example) *ExampleChanges {
 	ec := new(ExampleChanges)
 	var changes []*Change
-	var props []*PropertyCheck
 
-	// Summary
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Summary.ValueNode,
-		RightNode: r.Summary.ValueNode,
-		Label:     v3.SummaryLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExample, PropSummary),
-		Original:  l,
-		New:       r,
-	})
+	// Handle nil cases for added/removed examples
+	if l == nil && r == nil {
+		return nil
+	}
+	if l == nil {
+		// Example was added - use RootNode for proper line/column location
+		CreateChange(&changes, ObjectAdded, v3.ExampleLabel,
+			nil, r.RootNode, BreakingAdded(CompExample, PropValue), nil, r)
+		ec.PropertyChanges = NewPropertyChanges(changes)
+		return ec
+	}
+	if r == nil {
+		// Example was removed - use RootNode for proper line/column location
+		CreateChange(&changes, ObjectRemoved, v3.ExampleLabel,
+			l.RootNode, nil, BreakingRemoved(CompExample, PropValue), l, nil)
+		ec.PropertyChanges = NewPropertyChanges(changes)
+		return ec
+	}
 
-	// Description
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.Description.ValueNode,
-		RightNode: r.Description.ValueNode,
-		Label:     v3.DescriptionLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExample, PropDescription),
-		Original:  l,
-		New:       r,
-	})
+	props := make([]*PropertyCheck, 0, 2)
+
+	props = append(props,
+		NewPropertyCheck(CompExample, PropSummary,
+			l.Summary.ValueNode, r.Summary.ValueNode,
+			v3.SummaryLabel, &changes, l, r),
+		NewPropertyCheck(CompExample, PropDescription,
+			l.Description.ValueNode, r.Description.ValueNode,
+			v3.DescriptionLabel, &changes, l, r),
+	)
 
 	// Value
 	if utils.IsNodeMap(l.Value.ValueNode) && utils.IsNodeMap(r.Value.ValueNode) {
@@ -139,48 +146,24 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 			}
 		}
 	} else {
-		props = append(props, &PropertyCheck{
-			LeftNode:  l.Value.ValueNode,
-			RightNode: r.Value.ValueNode,
-			Label:     v3.ValueLabel,
-			Changes:   &changes,
-			Breaking:  BreakingModified(CompExample, PropValue),
-			Original:  l,
-			New:       r,
-		})
+		props = append(props, NewPropertyCheck(CompExample, PropValue,
+			l.Value.ValueNode, r.Value.ValueNode,
+			v3.ValueLabel, &changes, l, r))
 	}
 	// ExternalValue
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.ExternalValue.ValueNode,
-		RightNode: r.ExternalValue.ValueNode,
-		Label:     v3.ExternalValue,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExample, PropExternalValue),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props, NewPropertyCheck(CompExample, PropExternalValue,
+		l.ExternalValue.ValueNode, r.ExternalValue.ValueNode,
+		v3.ExternalValue, &changes, l, r))
 
 	// DataValue (OpenAPI 3.2+)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.DataValue.ValueNode,
-		RightNode: r.DataValue.ValueNode,
-		Label:     base.DataValueLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExample, PropDataValue),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props, NewPropertyCheck(CompExample, PropDataValue,
+		l.DataValue.ValueNode, r.DataValue.ValueNode,
+		base.DataValueLabel, &changes, l, r))
 
 	// SerializedValue (OpenAPI 3.2+)
-	props = append(props, &PropertyCheck{
-		LeftNode:  l.SerializedValue.ValueNode,
-		RightNode: r.SerializedValue.ValueNode,
-		Label:     base.SerializedValueLabel,
-		Changes:   &changes,
-		Breaking:  BreakingModified(CompExample, PropSerializedValue),
-		Original:  l,
-		New:       r,
-	})
+	props = append(props, NewPropertyCheck(CompExample, PropSerializedValue,
+		l.SerializedValue.ValueNode, r.SerializedValue.ValueNode,
+		base.SerializedValueLabel, &changes, l, r))
 
 	// check properties
 	CheckProperties(props)

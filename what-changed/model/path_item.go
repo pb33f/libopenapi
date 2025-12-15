@@ -214,26 +214,14 @@ func ComparePathItems(l, r any) *PathItemChanges {
 		}
 
 		// description
-		props = append(props, &PropertyCheck{
-			LeftNode:  lPath.Description.ValueNode,
-			RightNode: rPath.Description.ValueNode,
-			Label:     v3.DescriptionLabel,
-			Changes:   &changes,
-			Breaking:  BreakingModified(CompPathItem, PropDescription),
-			Original:  lPath,
-			New:       lPath,
-		})
+		props = append(props, NewPropertyCheck(CompPathItem, PropDescription,
+			lPath.Description.ValueNode, rPath.Description.ValueNode,
+			v3.DescriptionLabel, &changes, lPath, rPath))
 
 		// summary
-		props = append(props, &PropertyCheck{
-			LeftNode:  lPath.Summary.ValueNode,
-			RightNode: rPath.Summary.ValueNode,
-			Label:     v3.SummaryLabel,
-			Changes:   &changes,
-			Breaking:  BreakingModified(CompPathItem, PropSummary),
-			Original:  lPath,
-			New:       lPath,
-		})
+		props = append(props, NewPropertyCheck(CompPathItem, PropSummary,
+			lPath.Summary.ValueNode, rPath.Summary.ValueNode,
+			v3.SummaryLabel, &changes, lPath, rPath))
 
 		compareOpenAPIPathItem(lPath, rPath, &changes, pc)
 	}
@@ -359,12 +347,16 @@ func compareSwaggerPathItem(lPath, rPath *v2.PathItem, changes *[]*Change, pc *P
 			nil)
 	}
 	if lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {
-		breaking := false
-		for i := range rPath.Parameters.Value {
-			param := rPath.Parameters.Value[i].Value
-			if param.Required.Value {
-				breaking = true
-				break
+		// Check configurable breaking rules first
+		breaking := BreakingAdded(CompPathItem, PropParameters)
+		// If config says not breaking, fall back to semantic check (required params are breaking)
+		if !breaking {
+			for i := range rPath.Parameters.Value {
+				param := rPath.Parameters.Value[i].Value
+				if param.Required.Value {
+					breaking = true
+					break
+				}
 			}
 		}
 		CreateChange(changes, PropertyAdded, v3.ParametersLabel,
@@ -693,13 +685,16 @@ func compareOpenAPIPathItem(lPath, rPath *v3.PathItem, changes *[]*Change, pc *P
 			nil)
 	}
 	if lPath.Parameters.IsEmpty() && !rPath.Parameters.IsEmpty() {
-		// adding a required parameter is breaking; check each parameter's Required flag
-		breaking := false
-		for i := range rPath.Parameters.Value {
-			param := rPath.Parameters.Value[i].Value
-			if param.Required.Value {
-				breaking = true
-				break
+		// Check configurable breaking rules first
+		breaking := BreakingAdded(CompPathItem, PropParameters)
+		// If config says not breaking, fall back to semantic check (required params are breaking)
+		if !breaking {
+			for i := range rPath.Parameters.Value {
+				param := rPath.Parameters.Value[i].Value
+				if param.Required.Value {
+					breaking = true
+					break
+				}
 			}
 		}
 		CreateChange(changes, PropertyAdded, v3.ParametersLabel,
