@@ -14,10 +14,69 @@ import (
 type ContextKey string
 
 const (
-	CurrentPathKey ContextKey = "currentPath"
-	FoundIndexKey  ContextKey = "foundIndex"
-	RootIndexKey   ContextKey = "currentIndex"
+	CurrentPathKey  ContextKey = "currentPath"
+	FoundIndexKey   ContextKey = "foundIndex"
+	RootIndexKey    ContextKey = "currentIndex"
+	IndexingFilesKey ContextKey = "indexingFiles" // Tracks files being indexed in current call chain
 )
+
+// GetIndexingFiles returns the set of files currently being indexed in the call chain.
+// Returns nil if not set.
+func GetIndexingFiles(ctx context.Context) map[string]bool {
+	if v := ctx.Value(IndexingFilesKey); v != nil {
+		return v.(map[string]bool)
+	}
+	return nil
+}
+
+// AddIndexingFile adds a file to the indexing set in the context.
+// Returns a new context with the updated set.
+func AddIndexingFile(ctx context.Context, filePath string) context.Context {
+	existing := GetIndexingFiles(ctx)
+	newSet := make(map[string]bool)
+	for k, v := range existing {
+		newSet[k] = v
+	}
+	newSet[filePath] = true
+	return context.WithValue(ctx, IndexingFilesKey, newSet)
+}
+
+// IsFileBeingIndexed checks if a file is currently being indexed in the call chain.
+// For HTTP URLs, it also checks if the PATH portion matches any indexed file,
+// since the same file might be referenced with different hostnames (which get normalized
+// to a common server).
+func IsFileBeingIndexed(ctx context.Context, filePath string) bool {
+	files := GetIndexingFiles(ctx)
+	if files == nil {
+		return false
+	}
+	// Direct match
+	if files[filePath] {
+		return true
+	}
+	// For HTTP URLs, also check if the path matches any indexed file's path
+	if strings.HasPrefix(filePath, "http") {
+		if u, err := url.Parse(filePath); err == nil {
+			// Check if the path portion matches any indexed file
+			for indexedFile := range files {
+				if strings.HasPrefix(indexedFile, "http") {
+					if indexedU, err2 := url.Parse(indexedFile); err2 == nil {
+						// Compare paths (the filename portion)
+						if u.Path == indexedU.Path || filepath.Base(u.Path) == filepath.Base(indexedU.Path) {
+							return true
+						}
+					}
+				} else {
+					// Compare with non-HTTP paths (just the filename)
+					if filepath.Base(u.Path) == filepath.Base(indexedFile) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
 
 func (index *SpecIndex) SearchIndexForReferenceByReference(fullRef *Reference) (*Reference, *SpecIndex) {
 	r, idx, _ := index.SearchIndexForReferenceByReferenceWithContext(context.Background(), fullRef)

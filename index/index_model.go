@@ -33,7 +33,8 @@ type Reference struct {
 	Circular              bool                `json:"-"`
 	Seen                  bool                `json:"-"`
 	IsRemote              bool                `json:"isRemote,omitempty"`
-	Index                 *SpecIndex          `json:"-"` // index that contains this reference.
+	IsExtensionRef        bool                `json:"isExtensionRef,omitempty"` // true if ref is under an x-* extension path
+	Index                 *SpecIndex          `json:"-"`                        // index that contains this reference.
 	RemoteLocation        string              `json:"remoteLocation,omitempty"`
 	Path                  string              `json:"path,omitempty"`               // this won't always be available.
 	RequiredRefProperties map[string][]string `json:"requiredProperties,omitempty"` // definition names (eg, #/definitions/One) to a list of required properties on this definition which reference that definition

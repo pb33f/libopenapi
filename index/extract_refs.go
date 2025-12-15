@@ -10,9 +10,11 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
@@ -217,18 +219,19 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 
 			if i%2 == 0 && n.Value == "$ref" {
 
-				// check if this reference is under an extension or not, if so, drop it from the index.
-				if index.config.ExcludeExtensionRefs {
-					ext := false
-					for _, spi := range seenPath {
-						if strings.HasPrefix(spi, "x-") {
-							ext = true
-							break
-						}
+				// Check if this reference is under an extension path (x-* field).
+				// Always compute this so we can mark refs with IsExtensionRef.
+				isExtensionPath := false
+				for _, spi := range seenPath {
+					if strings.HasPrefix(spi, "x-") {
+						isExtensionPath = true
+						break
 					}
-					if ext {
-						continue
-					}
+				}
+
+				// If configured to exclude extension refs, skip it entirely.
+				if index.config.ExcludeExtensionRefs && isExtensionPath {
+					continue
 				}
 
 				// only look at scalar values, not maps (looking at you k8s)
@@ -250,8 +253,14 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				if len(node.Content) > i+1 {
 
 					value := node.Content[i+1].Value
-					segs := strings.Split(value, "/")
-					name := segs[len(segs)-1]
+					// extract last path segment without allocating a full slice
+					lastSlash := strings.LastIndexByte(value, '/')
+					var name string
+					if lastSlash >= 0 {
+						name = value[lastSlash+1:]
+					} else {
+						name = value
+					}
 					uri := strings.Split(value, "#/")
 
 					// determine absolute path to this definition
@@ -378,17 +387,18 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 					}
 
 					ref := &Reference{
-						ParentNode:        parent,
-						FullDefinition:    fullDefinitionPath,
-						Definition:        componentName,
-						Name:              name,
-						Node:              node,
-						KeyNode:           node.Content[i+1],
-						Path:              p,
-						Index:             index,
+						ParentNode:           parent,
+						FullDefinition:       fullDefinitionPath,
+						Definition:           componentName,
+						Name:                 name,
+						Node:                 node,
+						KeyNode:              node.Content[i+1],
+						Path:                 p,
+						Index:                index,
+						IsExtensionRef:       isExtensionPath,
 						HasSiblingProperties: len(siblingProps) > 0,
-						SiblingProperties: siblingProps,
-						SiblingKeys:       siblingKeys,
+						SiblingProperties:    siblingProps,
+						SiblingKeys:          siblingKeys,
 					}
 
 					// add to raw sequenced refs
@@ -422,17 +432,18 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						}
 
 						copied := Reference{
-							ParentNode:        parent,
-							FullDefinition:    fullDefinitionPath,
-							Definition:        ref.Definition,
-							Name:              ref.Name,
-							Node:              &copiedNode,
-							KeyNode:           node.Content[i],
-							Path:              p,
-							Index:             index,
+							ParentNode:           parent,
+							FullDefinition:       fullDefinitionPath,
+							Definition:           ref.Definition,
+							Name:                 ref.Name,
+							Node:                 &copiedNode,
+							KeyNode:              node.Content[i],
+							Path:                 p,
+							Index:                index,
+							IsExtensionRef:       isExtensionPath,
 							HasSiblingProperties: len(siblingProps) > 0,
-							SiblingProperties: siblingProps,
-							SiblingKeys:       siblingKeys,
+							SiblingProperties:    siblingProps,
+							SiblingKeys:          siblingKeys,
 						}
 						// protect this data using a copy, prevent the resolver from destroying things.
 						index.refsWithSiblings[value] = copied
@@ -694,15 +705,15 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 // ExtractComponentsFromRefs returns located components from references. The returned nodes from here
 // can be used for resolving as they contain the actual object properties.
 func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*Reference) []*Reference {
-	var found []*Reference
+	found := make([]*Reference, 0, len(refs)) // pre-allocate capacity to avoid reallocations
+	var foundMu sync.Mutex                    // protects found slice in async mode
 
-	// run this async because when things get recursive, it can take a while
-	var c chan struct{}
-	if !index.config.ExtractRefsSequentially {
-		c = make(chan struct{})
-	}
+	var refsToCheck []*Reference
+	refsToCheck = append(refsToCheck, refs...)
 
-	locate := func(ref *Reference, refIndex int, sequence []*ReferenceMapped) {
+	mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))
+
+	locate := func(ref *Reference, refIndex int) {
 		index.refLock.Lock()
 		if index.allMappedRefs[ref.FullDefinition] != nil {
 			rm := &ReferenceMapped{
@@ -711,93 +722,97 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 				Definition:        index.allMappedRefs[ref.FullDefinition].Definition,
 				FullDefinition:    index.allMappedRefs[ref.FullDefinition].FullDefinition,
 			}
-			sequence[refIndex] = rm
+			mappedRefsInSequence[refIndex] = rm
 			index.refLock.Unlock()
-		} else {
-			index.refLock.Unlock()
-			// If it's local, this is safe to do unlocked
-			uri := strings.Split(ref.FullDefinition, "#/")
-			unsafeAsync := len(uri) == 2 && len(uri[0]) > 0
-			if unsafeAsync {
-				index.refLock.Lock()
-			}
-			located := index.FindComponent(ctx, ref.FullDefinition)
-			if unsafeAsync {
-				index.refLock.Unlock()
-			}
-			if located != nil {
+			return
+		}
+		index.refLock.Unlock()
 
-				// key node is always going to be nil when mapping, yamlpath API returns
-				// subnodes only, so we need to rollback in the nodemap a line (if we can) to extract
-				// the keynode.
-				if located.Node != nil {
-					index.nodeMapLock.RLock()
-					if located.Node.Line > 1 && len(index.nodeMap[located.Node.Line-1]) > 0 {
-						for _, v := range index.nodeMap[located.Node.Line-1] {
-							located.KeyNode = v
-							break
-						}
+		// if it's an external reference, we need to lock during FindComponent
+		uri := strings.Split(ref.FullDefinition, "#/")
+		unsafeAsync := len(uri) == 2 && len(uri[0]) > 0
+		if unsafeAsync {
+			index.refLock.Lock()
+		}
+		located := index.FindComponent(ctx, ref.FullDefinition)
+		if unsafeAsync {
+			index.refLock.Unlock()
+		}
+
+		if located != nil {
+			// key node is always going to be nil when mapping, yamlpath API returns
+			// subnodes only, so we need to rollback in the nodemap a line (if we can) to extract
+			// the keynode.
+			if located.Node != nil {
+				index.nodeMapLock.RLock()
+				if located.Node.Line > 1 && len(index.nodeMap[located.Node.Line-1]) > 0 {
+					for _, v := range index.nodeMap[located.Node.Line-1] {
+						located.KeyNode = v
+						break
 					}
-					index.nodeMapLock.RUnlock()
 				}
-
-				// have we already mapped this?
-				index.refLock.Lock()
-				if index.allMappedRefs[ref.FullDefinition] == nil {
-					found = append(found, located)
-					index.allMappedRefs[located.FullDefinition] = located
-				}
-				rm := &ReferenceMapped{
-					OriginalReference: ref,
-					Reference:         located,
-					Definition:        located.Definition,
-					FullDefinition:    located.FullDefinition,
-				}
-				sequence[refIndex] = rm
-				index.refLock.Unlock()
-
-			} else {
-
-				_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
-				indexError := &IndexingError{
-					Err:     fmt.Errorf("component `%s` does not exist in the specification", ref.Definition),
-					Node:    ref.Node,
-					Path:    path,
-					KeyNode: ref.KeyNode,
-				}
-
-				index.errorLock.Lock()
-				index.refErrors = append(index.refErrors, indexError)
-				index.errorLock.Unlock()
+				index.nodeMapLock.RUnlock()
 			}
 
-		}
-		if !index.config.ExtractRefsSequentially {
-			c <- struct{}{}
-		}
-	}
-
-	var refsToCheck []*Reference
-	refsToCheck = append(refsToCheck, refs...)
-
-	mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))
-
-	for r := range refsToCheck {
-		// expand our index of all mapped refs
-		if !index.config.ExtractRefsSequentially {
-			go locate(refsToCheck[r], r, mappedRefsInSequence) // run async
+			// have we already mapped this?
+			index.refLock.Lock()
+			if index.allMappedRefs[ref.FullDefinition] == nil {
+				foundMu.Lock()
+				found = append(found, located)
+				foundMu.Unlock()
+				index.allMappedRefs[located.FullDefinition] = located
+			}
+			rm := &ReferenceMapped{
+				OriginalReference: ref,
+				Reference:         located,
+				Definition:        located.Definition,
+				FullDefinition:    located.FullDefinition,
+			}
+			mappedRefsInSequence[refIndex] = rm
+			index.refLock.Unlock()
 		} else {
-			locate(refsToCheck[r], r, mappedRefsInSequence) // run synchronously
+			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
+			indexError := &IndexingError{
+				Err:     fmt.Errorf("component `%s` does not exist in the specification", ref.Definition),
+				Node:    ref.Node,
+				Path:    path,
+				KeyNode: ref.KeyNode,
+			}
+
+			index.errorLock.Lock()
+			index.refErrors = append(index.refErrors, indexError)
+			index.errorLock.Unlock()
 		}
 	}
 
-	completedRefs := 0
-	if !index.config.ExtractRefsSequentially {
-		for completedRefs < len(refsToCheck) {
-			<-c
-			completedRefs++
+	if index.config.ExtractRefsSequentially {
+		// sequential mode: process refs one at a time
+		for r := range refsToCheck {
+			locate(refsToCheck[r], r)
 		}
+	} else {
+		// async mode: use WaitGroup for proper synchronization
+		maxConcurrency := runtime.NumCPU()
+		if maxConcurrency < 4 {
+			maxConcurrency = 4
+		}
+		sem := make(chan struct{}, maxConcurrency)
+		var wg sync.WaitGroup
+		wg.Add(len(refsToCheck))
+
+		for r := range refsToCheck {
+			go func(ref *Reference, idx int) {
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				defer wg.Done()
+				locate(ref, idx)
+			}(refsToCheck[r], r)
+		}
+
+		wg.Wait()
 	}
+
+	// collect results
 	for m := range mappedRefsInSequence {
 		if mappedRefsInSequence[m] != nil {
 			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, mappedRefsInSequence[m])

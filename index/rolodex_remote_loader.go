@@ -262,19 +262,20 @@ type RemoteFS struct {
 
 // RemoteFile is a file that has been indexed by the RemoteFS. It implements the RolodexFile interface.
 type RemoteFile struct {
-	filename      string
-	name          string
-	extension     FileExtension
-	data          []byte
-	fullPath      string
-	URL           *url.URL
-	lastModified  time.Time
-	seekingErrors []error
-	index         atomic.Value // *SpecIndex
-	parsed        *yaml.Node
-	offset        int64
-	indexOnce     sync.Once
-	contentLock   sync.Mutex
+	filename         string
+	name             string
+	extension        FileExtension
+	data             []byte
+	fullPath         string
+	URL              *url.URL
+	lastModified     time.Time
+	seekingErrors    []error
+	index            atomic.Value // *SpecIndex
+	parsed           *yaml.Node
+	offset           int64
+	indexOnce        sync.Once
+	contentLock      sync.Mutex
+	indexingComplete chan struct{} // Closed when indexing is complete
 }
 
 // GetFileName returns the name of the file.
@@ -430,6 +431,28 @@ func (f *RemoteFile) GetIndex() *SpecIndex {
 	return nil
 }
 
+// WaitForIndexing blocks until the file's index is ready.
+// This is used to coordinate between concurrent goroutines when one is loading
+// a file and another needs to use its index.
+func (f *RemoteFile) WaitForIndexing() {
+	if f.indexingComplete != nil {
+		<-f.indexingComplete
+	}
+}
+
+// signalIndexingComplete marks the file as ready for use.
+// This should be called after indexing completes.
+func (f *RemoteFile) signalIndexingComplete() {
+	if f.indexingComplete != nil {
+		select {
+		case <-f.indexingComplete:
+			// Already closed, do nothing
+		default:
+			close(f.indexingComplete)
+		}
+	}
+}
+
 // NewRemoteFSWithConfig creates a new RemoteFS using the supplied SpecIndexConfig.
 func NewRemoteFSWithConfig(specIndexConfig *SpecIndexConfig) (*RemoteFS, error) {
 	if specIndexConfig == nil {
@@ -536,23 +559,6 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		return r.(*RemoteFile), nil
 	}
 
-	// if we're processing, we need to block and wait for the file to be processed
-	// try path first
-	if r, ok := i.ProcessingFiles.Load(remoteParsedURL.Path); ok {
-
-		wait := r.(*waiterRemote)
-
-		wait.mu.Lock()
-		i.logger.Debug("[rolodex remote loader] waiting for existing fetch to complete", "file", remoteURL,
-			"remoteURL", remoteParsedURL.String())
-		f := wait.file
-		e := wait.error
-		i.logger.Debug("[rolodex remote loader]: waiting done, remote completed, returning file", "file",
-			remoteParsedURL.String(), "listeners", wait.listeners)
-		wait.mu.Unlock()
-		return f, e
-	}
-
 	fileExt := ExtractFileType(remoteParsedURL.Path)
 
 	// Handle unsupported file extensions with content detection if enabled
@@ -596,11 +602,29 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		}
 	}
 
+	// Use LoadOrStore to atomically check if someone is already processing this file.
+	// This prevents the race condition where two goroutines both see "not processing"
+	// and both start processing the same file.
 	processingWaiter := &waiterRemote{f: remoteParsedURL.Path}
 	processingWaiter.mu.Lock()
 
-	// add to processing
-	i.ProcessingFiles.Store(remoteParsedURL.Path, processingWaiter)
+	if existing, loaded := i.ProcessingFiles.LoadOrStore(remoteParsedURL.Path, processingWaiter); loaded {
+		// Someone else is already processing this file, wait for them
+		processingWaiter.mu.Unlock() // Release our unused waiter's lock
+		wait := existing.(*waiterRemote)
+
+		wait.mu.Lock()
+		i.logger.Debug("[rolodex remote loader] waiting for existing fetch to complete", "file", remoteURL,
+			"remoteURL", remoteParsedURL.String())
+		f := wait.file
+		e := wait.error
+		i.logger.Debug("[rolodex remote loader]: waiting done, remote completed, returning file", "file",
+			remoteParsedURL.String(), "listeners", wait.listeners)
+		wait.mu.Unlock()
+		return f, e
+	}
+
+	// We successfully stored our waiter, so we're responsible for processing this file
 
 	// if the remote URL is absolute (http:// or https://), and we have a rootURL defined, we need to override
 	// the host being defined by this URL, and use the rootURL instead, but keep the path.
@@ -617,9 +641,6 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	if remoteParsedURL.Scheme == "" {
 
 		processingWaiter.done = true
-		//if processingWaiter.cond != nil {
-		//	processingWaiter.cond.Broadcast()
-		//}
 		i.ProcessingFiles.Delete(remoteParsedURL.Path)
 		processingWaiter.mu.Unlock()
 		return nil, nil // not a remote file, nothing wrong with that - just we can't keep looking here partner.
@@ -694,13 +715,14 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 	filename := filepath.Base(remoteParsedURL.Path)
 
 	remoteFile := &RemoteFile{
-		filename:     filename,
-		name:         remoteParsedURL.Path,
-		extension:    fileExt,
-		data:         responseBytes,
-		fullPath:     remoteParsedURL.String(),
-		URL:          remoteParsedURL,
-		lastModified: lastModifiedTime,
+		filename:         filename,
+		name:             remoteParsedURL.Path,
+		extension:        fileExt,
+		data:             responseBytes,
+		fullPath:         remoteParsedURL.String(),
+		URL:              remoteParsedURL,
+		lastModified:     lastModifiedTime,
+		indexingComplete: make(chan struct{}),
 	}
 
 	copiedCfg := *i.indexConfig
@@ -713,17 +735,45 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		copiedCfg.BaseURL = newBaseURL
 	}
 	copiedCfg.SpecAbsolutePath = remoteParsedURL.String()
+	// Force sequential extraction for child indexes to avoid cascading async issues.
+	// When the main index uses async mode, spawning async operations for each remote
+	// file creates complex timing dependencies that can result in missing references.
+	copiedCfg.ExtractRefsSequentially = true
 
 	if len(remoteFile.data) > 0 {
 		i.logger.Debug("[rolodex remote loaded] successfully loaded file", "file", absolutePath)
 	}
 
+	// Store in Files and release the waiter BEFORE indexing to prevent deadlocks.
+	// If file A needs file B and file B needs file A, holding the lock during indexing
+	// would cause a deadlock. The indexOnce in Index handles concurrent access safely.
 	i.Files.Store(absolutePath, remoteFile)
 
-	idx, idxError := remoteFile.Index(ctx, &copiedCfg)
+	// remove from processing
+	processingWaiter.file = remoteFile
+	processingWaiter.done = true
+	i.ProcessingFiles.Delete(remoteParsedURL.Path)
+	processingWaiter.mu.Unlock()
+
+	// Add this file to the context's indexing set to prevent deadlocks
+	// when circular references cause the same file to be looked up recursively.
+	// We add multiple forms of the URL to handle different lookup patterns:
+	// - absolutePath: the path portion (e.g., /second.yaml)
+	// - remoteParsedURL.String(): the normalized URL (after host override)
+	// - remoteParsedURLOriginal.String(): the ORIGINAL URL before host normalization
+	// The original URL is critical because lookupRolodex uses the original reference URL
+	// when checking IsFileBeingIndexed, not the normalized one.
+	indexingCtx := AddIndexingFile(ctx, absolutePath)
+	indexingCtx = AddIndexingFile(indexingCtx, remoteParsedURL.String())
+	indexingCtx = AddIndexingFile(indexingCtx, remoteParsedURLOriginal.String())
+
+	// Now index the file AFTER releasing the lock
+	idx, idxError := remoteFile.Index(indexingCtx, &copiedCfg)
 
 	if idxError != nil && idx == nil {
+		i.errMutex.Lock()
 		i.remoteErrors = append(i.remoteErrors, idxError)
+		i.errMutex.Unlock()
 	} else {
 
 		// for each index, we need a resolver
@@ -735,11 +785,9 @@ func (i *RemoteFS) OpenWithContext(ctx context.Context, remoteURL string) (fs.Fi
 		}
 	}
 
-	// remove from processing
-	processingWaiter.file = remoteFile
-	processingWaiter.done = true
-	i.ProcessingFiles.Delete(remoteParsedURL.Path)
-	processingWaiter.mu.Unlock()
+	// Signal that indexing is complete - other goroutines waiting for this file can proceed
+	remoteFile.signalIndexingComplete()
+
 	return remoteFile, errors.Join(i.remoteErrors...)
 }
 

@@ -314,6 +314,18 @@ func (index *SpecIndex) GetRawReferencesSequenced() []*Reference {
 	return index.rawSequencedRefs
 }
 
+// GetExtensionRefsSequenced returns all references that are under extension paths (x-* fields),
+// in the order they were found in the document.
+func (index *SpecIndex) GetExtensionRefsSequenced() []*Reference {
+	var extensionRefs []*Reference
+	for _, ref := range index.rawSequencedRefs {
+		if ref.IsExtensionRef {
+			extensionRefs = append(extensionRefs, ref)
+		}
+	}
+	return extensionRefs
+}
+
 // GetMappedReferencesSequenced will return all references that were mapped successfully to nodes, performed in sequence
 // as they were read in from the document.
 func (index *SpecIndex) GetMappedReferencesSequenced() []*ReferenceMapped {

@@ -4,6 +4,7 @@
 package index
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -474,6 +475,92 @@ components:
 	assert.Len(t, idx.allMappedRefs, 0)
 	assert.Len(t, idx.allRefs, 0)
 	assert.Len(t, idx.refErrors, 0)
+}
+
+func TestSpecIndex_ExtractRefs_IsExtensionRef_MarkedCorrectly(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+  x-custom:
+    $ref: './external.yaml'
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          $ref: '#/components/responses/OK'
+components:
+  responses:
+    OK:
+      description: OK`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	c := CreateClosedAPIIndexConfig()
+	c.AvoidCircularReferenceCheck = true
+
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	refs := idx.GetRawReferencesSequenced()
+
+	// Find the extension ref and normal ref
+	var extensionRef, normalRef *Reference
+	for _, ref := range refs {
+		if strings.Contains(ref.FullDefinition, "external.yaml") {
+			extensionRef = ref
+		}
+		if strings.Contains(ref.Definition, "#/components/responses/OK") {
+			normalRef = ref
+		}
+	}
+
+	assert.NotNil(t, extensionRef, "Extension ref should be found")
+	assert.True(t, extensionRef.IsExtensionRef, "Extension ref should be marked as IsExtensionRef")
+
+	assert.NotNil(t, normalRef, "Normal ref should be found")
+	assert.False(t, normalRef.IsExtensionRef, "Normal ref should NOT be marked as IsExtensionRef")
+}
+
+func TestSpecIndex_GetExtensionRefsSequenced(t *testing.T) {
+	yml := `openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+  x-custom:
+    $ref: './ext1.yaml'
+  x-another:
+    nested:
+      $ref: './ext2.yaml'
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          $ref: '#/components/responses/OK'
+components:
+  responses:
+    OK:
+      description: OK`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	c := CreateClosedAPIIndexConfig()
+	c.AvoidCircularReferenceCheck = true
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	extensionRefs := idx.GetExtensionRefsSequenced()
+
+	assert.Len(t, extensionRefs, 2, "Should find 2 extension refs")
+	for _, ref := range extensionRefs {
+		assert.True(t, ref.IsExtensionRef, "All returned refs should be extension refs")
+	}
+
+	// Verify the total refs include both extension and non-extension
+	allRefs := idx.GetRawReferencesSequenced()
+	assert.Greater(t, len(allRefs), len(extensionRefs), "Should have more total refs than extension refs")
 }
 
 func TestSpecIndex_ExtractRefs_SiblingPropertiesDetection(t *testing.T) {
