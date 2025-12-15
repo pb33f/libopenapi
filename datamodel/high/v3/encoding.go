@@ -58,6 +58,12 @@ func (e *Encoding) MarshalYAML() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the Encoding object,
+// with all references resolved inline.
+func (e *Encoding) MarshalYAMLInline() (interface{}, error) {
+	return high.RenderInline(e, e.low)
+}
+
 // ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into a high-level simple map
 func ExtractEncoding(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowv3.Encoding]]) *orderedmap.Map[string, *Encoding] {
 	return low.FromReferenceMapWithFunc(elements, NewEncoding)

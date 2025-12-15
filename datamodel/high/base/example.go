@@ -68,6 +68,12 @@ func (e *Example) MarshalYAML() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInline will create a ready to render YAML representation of the Example object,
+// with all references resolved inline.
+func (e *Example) MarshalYAMLInline() (interface{}, error) {
+	return high.RenderInline(e, e.low)
+}
+
 // MarshalJSON will marshal this into a JSON byte slice
 func (e *Example) MarshalJSON() ([]byte, error) {
 	var g map[string]any

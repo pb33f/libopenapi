@@ -70,3 +70,9 @@ func (l *Link) MarshalYAML() (interface{}, error) {
 	nb := high.NewNodeBuilder(l, l.low)
 	return nb.Render(), nil
 }
+
+// MarshalYAMLInline will create a ready to render YAML representation of the Link object,
+// with all references resolved inline.
+func (l *Link) MarshalYAMLInline() (interface{}, error) {
+	return high.RenderInline(l, l.low)
+}
