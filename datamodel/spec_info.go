@@ -4,6 +4,7 @@
 package datamodel
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -79,7 +80,15 @@ func ExtractSpecInfoWithDocumentCheck(spec []byte, bypass bool) (*SpecInfo, erro
 
 	specInfo.NumLines = strings.Count(stringSpec, "\n") + 1
 
-	err := yaml.Unmarshal(spec, &parsedSpec)
+	// Pre-process JSON to handle \/ escape sequences that YAML parser doesn't recognize.
+	// JSON (RFC 8259) allows \/ as an optional escape for forward slash, but YAML does not.
+	// See: https://github.com/pb33f/libopenapi/issues/479
+	parseBytes := spec
+	if specInfo.SpecFileType == JSONFileType {
+		parseBytes = unescapeJSONSlashes(spec)
+	}
+
+	err := yaml.Unmarshal(parseBytes, &parsedSpec)
 	if err != nil {
 		if !bypass {
 			return nil, fmt.Errorf("unable to parse specification: %s", err.Error())
@@ -286,4 +295,41 @@ func parseVersionTypeData(d interface{}) (string, int, error) {
 		return "", 0, fmt.Errorf("unable to extract version from: %v", d)
 	}
 	return string(r), int(r[0]) - '0', nil
+}
+
+// unescapeJSONSlashes replaces the optional \/ escape sequence in JSON with /
+// JSON (RFC 8259) allows \/ as an optional escape for forward slash, but YAML
+// parsers (including go.yaml.in/yaml/v4) do not recognize it.
+// This handles escaped backslashes correctly: \\/ becomes \/ not //
+// Returns the original slice if no transformation is needed (zero allocation).
+func unescapeJSONSlashes(jsonBytes []byte) []byte {
+	// fast path: check if transformation is needed
+	if !bytes.Contains(jsonBytes, []byte(`\/`)) {
+		return jsonBytes
+	}
+
+	result := make([]byte, 0, len(jsonBytes))
+	i := 0
+	for i < len(jsonBytes) {
+		if jsonBytes[i] == '\\' && i+1 < len(jsonBytes) {
+			switch jsonBytes[i+1] {
+			case '/':
+				// \/ -> / (json optional escape for solidus)
+				result = append(result, '/')
+				i += 2
+			case '\\':
+				// preserve escaped backslash to prevent \\/ becoming //
+				result = append(result, '\\', '\\')
+				i += 2
+			default:
+				// preserve other escape sequences (\n, \t, \", etc.)
+				result = append(result, jsonBytes[i])
+				i++
+			}
+		} else {
+			result = append(result, jsonBytes[i])
+			i++
+		}
+	}
+	return result
 }

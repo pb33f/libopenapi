@@ -384,3 +384,106 @@ $self: something`
 	assert.Len(t, *r.SpecBytes, 29)
 	assert.Equal(t, "something", r.Self)
 }
+
+// TestUnescapeJSONSlashes tests the unescapeJSONSlashes helper function
+// This addresses issue #479 where JSON files with \/ escape sequences fail to parse
+func TestUnescapeJSONSlashes(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{"simple escaped slash", `\/`, `/`},
+		{"url with escapes", `https:\/\/example.com\/path`, `https://example.com/path`},
+		// \\ followed by / - the \\ is kept as \\, then / stays as /
+		{"escaped backslash then literal slash", `\\/`, `\\/`},
+		// \\ followed by \/ - the \\ is kept as \\, then \/ becomes /
+		{"escaped backslash then escaped slash", `\\\/`, `\\/`},
+		// \\\\ followed by \/ - two \\ pairs kept, then \/ becomes /
+		{"double escaped backslash then escaped slash", `\\\\\/`, `\\\\/`},
+		{"no escapes", `hello`, `hello`},
+		{"empty", ``, ``},
+		{"other escapes preserved", `\n\t\/`, `\n\t/`},
+		{"multiple escaped slashes", `\/one\/two\/three`, `/one/two/three`},
+		{"mixed content", `{"path":"\/test","url":"https:\/\/example.com"}`, `{"path":"/test","url":"https://example.com"}`},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := unescapeJSONSlashes([]byte(tt.input))
+			assert.Equal(t, tt.expected, string(result))
+		})
+	}
+}
+
+// TestUnescapeJSONSlashes_NoAllocation tests that the fast path returns original slice
+func TestUnescapeJSONSlashes_NoAllocation(t *testing.T) {
+	input := []byte(`{"path":"/test"}`)
+	result := unescapeJSONSlashes(input)
+	// Should return same slice when no \/ present
+	assert.Equal(t, &input[0], &result[0], "Should return original slice when no \\/ present")
+}
+
+// TestExtractSpecInfo_JSON_EscapedSlashes tests issue #479
+// JSON files containing \/ (escaped forward slash) should parse correctly
+func TestExtractSpecInfo_JSON_EscapedSlashes(t *testing.T) {
+	// Exact test case from issue #479
+	jsonWithEscapedSlash := `{"openapi":"3.0.0","info":{"title":"Escaped Slash Test","description":"This spec contains escaped forward slashes (\\/) that cause parsing issues","version":"1.0.0"},"paths":{"\/test":{"get":{"summary":"Test endpoint with escaped slashes","description":"The path \/test\/ contains escaped forward slashes","responses":{"200":{"description":"OK","content":{"application\/json":{"schema":{"type":"object","properties":{"url":{"type":"string","example":"https:\/\/example.com\/api\/test"},"path":{"type":"string","example":"\/users\/{id}\/profile"}}}}}}}}}}}`
+
+	r, e := ExtractSpecInfo([]byte(jsonWithEscapedSlash))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.0", r.Version)
+	assert.Equal(t, JSONFileType, r.SpecFileType)
+	assert.Equal(t, utils.OpenApi3, r.SpecType)
+}
+
+// TestExtractSpecInfo_JSON_EscapedSlashes_URL tests URL paths with escaped slashes
+func TestExtractSpecInfo_JSON_EscapedSlashes_URL(t *testing.T) {
+	jsonWithURL := `{"openapi":"3.0.0","info":{"title":"Test","version":"1.0.0"},"servers":[{"url":"https:\/\/api.example.com\/v1"}],"paths":{}}`
+
+	r, e := ExtractSpecInfo([]byte(jsonWithURL))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.0", r.Version)
+	assert.Equal(t, JSONFileType, r.SpecFileType)
+}
+
+// TestExtractSpecInfo_JSON_EscapedBackslashAndSlash tests edge case with both \\ and \/
+func TestExtractSpecInfo_JSON_EscapedBackslashAndSlash(t *testing.T) {
+	// \\/ in JSON is escaped backslash followed by literal slash = \/ in the value
+	// This should NOT be transformed incorrectly
+	jsonWithBoth := `{"openapi":"3.0.0","info":{"title":"Test with \\\\/path","version":"1.0.0"},"paths":{}}`
+
+	r, e := ExtractSpecInfo([]byte(jsonWithBoth))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.0", r.Version)
+}
+
+// TestExtractSpecInfo_JSON_NoEscapedSlashes verifies normal JSON still works
+func TestExtractSpecInfo_JSON_NoEscapedSlashes(t *testing.T) {
+	normalJSON := `{"openapi":"3.0.0","info":{"title":"Test","version":"1.0.0"},"paths":{"/test":{"get":{"summary":"Test","responses":{"200":{"description":"OK"}}}}}}`
+
+	r, e := ExtractSpecInfo([]byte(normalJSON))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.0", r.Version)
+	assert.Equal(t, JSONFileType, r.SpecFileType)
+}
+
+// TestExtractSpecInfo_YAML_NotAffected verifies YAML files are not affected by the fix
+func TestExtractSpecInfo_YAML_NotAffected(t *testing.T) {
+	yamlSpec := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      summary: Test
+      responses:
+        '200':
+          description: OK`
+
+	r, e := ExtractSpecInfo([]byte(yamlSpec))
+	assert.NoError(t, e)
+	assert.Equal(t, "3.0.0", r.Version)
+	assert.Equal(t, YAMLFileType, r.SpecFileType)
+}
