@@ -4,6 +4,7 @@
 package index
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 
@@ -669,4 +670,40 @@ components:
 		assert.Contains(t, ref.SiblingProperties, "title")
 		assert.Equal(t, "Custom Title", ref.SiblingProperties["title"].Value)
 	}
+}
+
+func TestSpecIndex_ExtractRefs_LowCPUConcurrencyFloor(t *testing.T) {
+	// Set GOMAXPROCS to 2 (less than 4) to trigger the concurrency floor
+	oldMaxProcs := runtime.GOMAXPROCS(2)
+	defer runtime.GOMAXPROCS(oldMaxProcs)
+
+	// Test spec with multiple references to trigger async processing
+	yml := `openapi: 3.1.0
+info:
+  title: Test
+  version: "1.0"
+components:
+  schemas:
+    A:
+      type: object
+    B:
+      $ref: '#/components/schemas/A'
+    C:
+      $ref: '#/components/schemas/A'
+    D:
+      $ref: '#/components/schemas/A'
+    E:
+      $ref: '#/components/schemas/A'`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.ExtractRefsSequentially = false // Ensure async mode
+
+	idx := NewSpecIndexWithConfig(&rootNode, c)
+
+	// Verify the index was built successfully with refs resolved
+	assert.NotNil(t, idx)
+	assert.Greater(t, len(idx.GetAllReferences()), 0)
 }

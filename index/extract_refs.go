@@ -792,7 +792,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 		}
 	} else {
 		// async mode: use WaitGroup for proper synchronization
-		maxConcurrency := runtime.NumCPU()
+		maxConcurrency := runtime.GOMAXPROCS(0)
 		if maxConcurrency < 4 {
 			maxConcurrency = 4
 		}
