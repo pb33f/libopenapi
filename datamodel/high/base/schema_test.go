@@ -1508,3 +1508,306 @@ dependentRequired:
 	assert.Equal(t, []string{"firstName"}, schema.DependentRequired.GetOrZero("lastName"))
 	assert.Equal(t, []string{"username"}, schema.DependentRequired.GetOrZero("email"))
 }
+
+// Tests for Schema.MarshalYAMLInline discriminator reference preservation (lines 539-549 in schema.go)
+
+func TestSchema_MarshalYAMLInline_DiscriminatorPreservesOneOfRefs(t *testing.T) {
+	// Test that when a schema has a discriminator, oneOf refs are preserved (not inlined)
+	// This covers lines 539-544 in schema.go
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+        bark:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+  mapping:
+    cat: '#/components/schemas/Cat'
+    dog: '#/components/schemas/Dog'
+oneOf:
+  - $ref: '#/components/schemas/Cat'
+  - $ref: '#/components/schemas/Dog'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Call MarshalYAMLInline - this should set preserveReference on oneOf refs
+	result, err := compiled.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// The oneOf refs should be preserved as $ref, not inlined
+	assert.Contains(t, output, "$ref:")
+	assert.Contains(t, output, "#/components/schemas/Cat")
+	assert.Contains(t, output, "#/components/schemas/Dog")
+	// Should NOT contain the inlined properties
+	assert.NotContains(t, output, "meow:")
+	assert.NotContains(t, output, "bark:")
+}
+
+func TestSchema_MarshalYAMLInline_DiscriminatorPreservesAnyOfRefs(t *testing.T) {
+	// Test that when a schema has a discriminator, anyOf refs are preserved (not inlined)
+	// This covers lines 545-549 in schema.go
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+        bark:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+  mapping:
+    cat: '#/components/schemas/Cat'
+    dog: '#/components/schemas/Dog'
+anyOf:
+  - $ref: '#/components/schemas/Cat'
+  - $ref: '#/components/schemas/Dog'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Call MarshalYAMLInline - this should set preserveReference on anyOf refs
+	result, err := compiled.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// The anyOf refs should be preserved as $ref, not inlined
+	assert.Contains(t, output, "$ref:")
+	assert.Contains(t, output, "#/components/schemas/Cat")
+	assert.Contains(t, output, "#/components/schemas/Dog")
+	// Should NOT contain the inlined properties
+	assert.NotContains(t, output, "meow:")
+	assert.NotContains(t, output, "bark:")
+}
+
+func TestSchema_MarshalYAMLInline_DiscriminatorMixedOneOf(t *testing.T) {
+	// Test that when a schema has a discriminator with mixed oneOf (refs and inline),
+	// only the refs are preserved, inline schemas remain inline
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+  mapping:
+    cat: '#/components/schemas/Cat'
+oneOf:
+  - $ref: '#/components/schemas/Cat'
+  - type: object
+    properties:
+      type:
+        type: string
+      inline_prop:
+        type: string`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Call MarshalYAMLInline
+	result, err := compiled.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// The ref should be preserved
+	assert.Contains(t, output, "$ref:")
+	assert.Contains(t, output, "#/components/schemas/Cat")
+	// The inline schema properties should still be present
+	assert.Contains(t, output, "inline_prop:")
+}
+
+func TestSchema_MarshalYAMLInline_NoDiscriminatorInlinesRefs(t *testing.T) {
+	// Test that without a discriminator, oneOf refs ARE inlined
+	// This is the control case to verify the discriminator logic makes a difference
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: boolean`
+
+	testSpec := `oneOf:
+  - $ref: '#/components/schemas/Cat'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Call MarshalYAMLInline - without discriminator, refs should be inlined
+	result, err := compiled.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// Without discriminator, the ref should be inlined - we should see the property
+	assert.Contains(t, output, "meow:")
+}
+
+func TestSchema_MarshalYAMLInline_DiscriminatorWithNonRefSchemaProxy(t *testing.T) {
+	// Test that non-reference SchemaProxy entries are handled correctly
+	// (IsReference() returns false, so SetPreserveReference is not called)
+	//
+	// This tests that the `sp.IsReference()` check in lines 541 and 546 works correctly
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Dog:
+      type: object
+      properties:
+        bark:
+          type: boolean`
+
+	// Schema with discriminator, but oneOf contains an inline schema (not a ref)
+	testSpec := `discriminator:
+  propertyName: type
+oneOf:
+  - type: object
+    properties:
+      type:
+        type: string
+      meow:
+        type: boolean`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// The oneOf entry is an inline schema, not a reference
+	assert.Len(t, compiled.OneOf, 1)
+	assert.False(t, compiled.OneOf[0].IsReference())
+
+	// Call MarshalYAMLInline - inline schemas should remain inline
+	result, err := compiled.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// Should contain the inline schema properties, not a $ref
+	assert.Contains(t, output, "meow:")
+	assert.Contains(t, output, "type:")
+}

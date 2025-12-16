@@ -4,11 +4,14 @@
 package index
 
 import (
+	"bytes"
+	"context"
+	"log/slog"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
-	"context"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
 )
@@ -431,4 +434,75 @@ func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
 
 	// if the reference is not found, it should return the root.
 	assert.NotNil(t, n)
+}
+
+func TestFindComponent_LookupRolodex_FindComponentReturnsNil_DebugLog(t *testing.T) {
+	// Test that triggers the debug log at lines 241-245 when FindComponent returns nil.
+	// This happens when a file exists in the rolodex but the queried component doesn't exist.
+
+	// Create a valid external file with some components
+	externalContent := `type: object
+properties:
+  name:
+    type: string
+  age:
+    type: integer`
+
+	// Write the external file
+	err := os.WriteFile("external_schema.yaml", []byte(externalContent), 0o644)
+	assert.NoError(t, err)
+	defer os.Remove("external_schema.yaml")
+
+	// Create main spec that references a non-existent component in the external file
+	mainSpec := `openapi: 3.1.0
+components:
+  schemas:
+    MySchema:
+      $ref: 'external_schema.yaml#/components/schemas/NonExistent'`
+
+	var rootNode yaml.Node
+	err = yaml.Unmarshal([]byte(mainSpec), &rootNode)
+	assert.NoError(t, err)
+
+	// Create a buffer to capture log output
+	var logBuf bytes.Buffer
+	logger := slog.New(slog.NewJSONHandler(&logBuf, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+
+	// Create config with debug logger
+	cf := CreateOpenAPIIndexConfig()
+	cf.BasePath = "."
+	cf.Logger = logger
+	cf.AvoidCircularReferenceCheck = true
+
+	// Create rolodex
+	rolo := NewRolodex(cf)
+	rolo.SetRootNode(&rootNode)
+	cf.Rolodex = rolo
+
+	// Add local filesystem
+	fsCfg := LocalFSConfig{
+		BaseDirectory: cf.BasePath,
+		FileFilters:   []string{"external_schema.yaml"},
+		DirFS:         os.DirFS(cf.BasePath),
+		IndexConfig:   cf,
+	}
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+	rolo.AddLocalFS(cf.BasePath, fileFS)
+
+	// Index the rolodex - errors are expected because the component doesn't exist
+	_ = rolo.IndexTheRolodex(context.Background())
+
+	index := rolo.GetRootIndex()
+	assert.NotNil(t, index)
+
+	// The reference to NonExistent should trigger the debug log
+	// because the file exists but the component path doesn't
+	logOutput := logBuf.String()
+	assert.True(t, strings.Contains(logOutput, "[lookupRolodex] FindComponent returned nil"),
+		"Expected debug log about FindComponent returning nil, got: %s", logOutput)
+	assert.True(t, strings.Contains(logOutput, "external_schema.yaml"),
+		"Expected log to contain the file location")
 }
