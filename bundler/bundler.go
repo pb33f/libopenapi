@@ -496,35 +496,27 @@ func copySchemaToComponents(model *v3.Document, extSchema *externalSchemaRef, ex
 func calculateCollisionNameInline(name, fullDef, delimiter string, existingNames map[string]bool) string {
 	// Extract filename from the full definition path
 	parts := strings.Split(fullDef, "#")
-	if len(parts) >= 1 {
-		filePath := parts[0]
-		baseName := filepath.Base(filePath)
-		// Remove extension
-		baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
+	filePath := parts[0]
+	baseName := filepath.Base(filePath)
+	// Remove extension
+	baseName = strings.TrimSuffix(baseName, filepath.Ext(baseName))
 
-		// Try filename-based name first
-		candidate := fmt.Sprintf("%s%s%s", name, delimiter, baseName)
-		if !existingNames[candidate] {
-			return candidate
-		}
-
-		// If filename-based collision exists, try numeric suffixes
-		for i := 1; i < 1000; i++ {
-			candidate = fmt.Sprintf("%s%s%s%s%d", name, delimiter, baseName, delimiter, i)
-			if !existingNames[candidate] {
-				return candidate
-			}
-		}
+	// Try filename-based name first
+	candidate := fmt.Sprintf("%s%s%s", name, delimiter, baseName)
+	if !existingNames[candidate] {
+		return candidate
 	}
 
-	// Fallback: try numeric suffixes on original name
+	// If filename-based collision exists, try numeric suffixes
 	for i := 1; i < 1000; i++ {
-		candidate := fmt.Sprintf("%s%s%d", name, delimiter, i)
+		candidate = fmt.Sprintf("%s%s%s%s%d", name, delimiter, baseName, delimiter, i)
 		if !existingNames[candidate] {
 			return candidate
 		}
 	}
-	return fmt.Sprintf("%s%s1", name, delimiter)
+
+	// 1000+ collisions - return best effort (caller has bigger problems)
+	return fmt.Sprintf("%s%s%s%s1", name, delimiter, baseName, delimiter)
 }
 
 // rewriteInlineDiscriminatorRefs updates discriminator mapping refs and oneOf/anyOf refs
