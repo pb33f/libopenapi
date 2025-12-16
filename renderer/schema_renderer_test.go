@@ -2345,3 +2345,26 @@ properties:
 	// It should be different from the first two
 	assert.NotEqual(t, string(rendered1), string(rendered3))
 }
+
+func TestSchemaRenderer_RandomWord_RecursiveCall(t *testing.T) {
+	// Test that triggers the recursive call at line 544 when the selected word
+	// doesn't match the min/max bounds.
+
+	// Create a renderer with a controlled word list where words have varying lengths
+	// Words: "a" (1), "bb" (2), "ccc" (3), "dddddddd" (8), "eeeeeeeee" (9)
+	wr := &SchemaRenderer{
+		words: []string{"a", "bb", "ccc", "dddddddd", "eeeeeeeee"},
+		rand:  rand.New(rand.NewSource(42)), // deterministic seed
+	}
+
+	// Set min=7, max=10 - only "dddddddd" (8) and "eeeeeeeee" (9) qualify
+	// The random selection will initially pick words that don't match,
+	// triggering the recursive call until a matching word is found
+	result := wr.RandomWord(7, 10, 0)
+
+	// The result should be one of the qualifying words
+	assert.True(t, len(result) >= 7 && len(result) <= 10,
+		"Expected word length between 7 and 10, got %d for word '%s'", len(result), result)
+	assert.True(t, result == "dddddddd" || result == "eeeeeeeee",
+		"Expected 'dddddddd' or 'eeeeeeeee', got '%s'", result)
+}
