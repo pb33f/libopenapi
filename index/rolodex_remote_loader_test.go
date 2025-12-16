@@ -443,3 +443,38 @@ func TestNewRemoteFS_BadURL(t *testing.T) {
 	assert.Nil(t, x)
 	assert.Error(t, y)
 }
+
+func TestRemoteFile_SignalIndexingComplete_DoubleClose(t *testing.T) {
+	// Test that calling signalIndexingComplete twice doesn't panic
+	// (i.e., the closed channel check works correctly)
+	rf := &RemoteFile{
+		indexingComplete: make(chan struct{}),
+	}
+
+	// First call should close the channel
+	rf.signalIndexingComplete()
+
+	// Verify channel is closed
+	select {
+	case <-rf.indexingComplete:
+		// Channel is closed, as expected
+	default:
+		t.Error("Expected channel to be closed after first signalIndexingComplete call")
+	}
+
+	// Second call should not panic (this is the key test)
+	assert.NotPanics(t, func() {
+		rf.signalIndexingComplete()
+	}, "signalIndexingComplete should not panic when called on already-closed channel")
+}
+
+func TestRemoteFile_SignalIndexingComplete_NilChannel(t *testing.T) {
+	// Test that calling signalIndexingComplete with a nil channel doesn't panic
+	rf := &RemoteFile{
+		indexingComplete: nil,
+	}
+
+	assert.NotPanics(t, func() {
+		rf.signalIndexingComplete()
+	}, "signalIndexingComplete should not panic when channel is nil")
+}

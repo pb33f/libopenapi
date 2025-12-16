@@ -382,3 +382,38 @@ func Test_LocalFSWaiter(t *testing.T) {
 	wg.Wait()
 	close(done)
 }
+
+func TestLocalFile_SignalIndexingComplete_DoubleClose(t *testing.T) {
+	// Test that calling signalIndexingComplete twice doesn't panic
+	// (i.e., the closed channel check works correctly)
+	lf := &LocalFile{
+		indexingComplete: make(chan struct{}),
+	}
+
+	// First call should close the channel
+	lf.signalIndexingComplete()
+
+	// Verify channel is closed
+	select {
+	case <-lf.indexingComplete:
+		// Channel is closed, as expected
+	default:
+		t.Error("Expected channel to be closed after first signalIndexingComplete call")
+	}
+
+	// Second call should not panic (this is the key test)
+	assert.NotPanics(t, func() {
+		lf.signalIndexingComplete()
+	}, "signalIndexingComplete should not panic when called on already-closed channel")
+}
+
+func TestLocalFile_SignalIndexingComplete_NilChannel(t *testing.T) {
+	// Test that calling signalIndexingComplete with a nil channel doesn't panic
+	lf := &LocalFile{
+		indexingComplete: nil,
+	}
+
+	assert.NotPanics(t, func() {
+		lf.signalIndexingComplete()
+	}, "signalIndexingComplete should not panic when channel is nil")
+}
