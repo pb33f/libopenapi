@@ -342,11 +342,7 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 	// If preserveReference is set, return the reference node instead of inlining.
 	// This is used for discriminator mapping scenarios where refs must be preserved.
 	if sp.preserveReference && sp.IsReference() {
-		refNode := sp.GetReferenceNode()
-		if refNode != nil {
-			return refNode, nil
-		}
-		return utils.CreateRefNode(sp.GetReference()), nil
+		return sp.GetReferenceNode(), nil
 	}
 
 	// In bundling mode, preserve local component refs that point to schemas in the SAME document.
@@ -366,11 +362,7 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 						rootIdx := rolodex.GetRootIndex()
 						// If the schema is in the root index, preserve the ref
 						if rootIdx != nil && schemaIdx == rootIdx {
-							refNode := sp.GetReferenceNode()
-							if refNode != nil {
-								return refNode, nil
-							}
-							return utils.CreateRefNode(ref), nil
+							return sp.GetReferenceNode(), nil
 						}
 					}
 				}

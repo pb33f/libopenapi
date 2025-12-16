@@ -88,12 +88,12 @@ func TestBundleDocument_DigitalOcean(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
 
-	spec, _ := filepath.Abs(filepath.Join(tmp+"/specification", "DigitalOcean-public.v2.yaml"))
+	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)
 
 	doc, err := libopenapi.NewDocumentWithConfiguration(digi, &datamodel.DocumentConfiguration{
 		SpecFilePath:            spec,
-		BasePath:                tmp + "/specification",
+		BasePath:                filepath.Join(tmp, "specification"),
 		ExtractRefsSequentially: true,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelError,
@@ -135,12 +135,12 @@ func TestBundleDocument_DigitalOceanAsync(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
 
-	spec, _ := filepath.Abs(filepath.Join(tmp+"/specification", "DigitalOcean-public.v2.yaml"))
+	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)
 
 	doc, err := libopenapi.NewDocumentWithConfiguration(digi, &datamodel.DocumentConfiguration{
 		SpecFilePath:            spec,
-		BasePath:                tmp + "/specification",
+		BasePath:                filepath.Join(tmp, "specification"),
 		ExtractRefsSequentially: false,
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelError,
@@ -1405,12 +1405,12 @@ func TestRenderInline_DigitalOceanAsync(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n", err)
 	}
 
-	spec, _ := filepath.Abs(filepath.Join(tmp+"/specification", "DigitalOcean-public.v2.yaml"))
+	spec, _ := filepath.Abs(filepath.Join(tmp, "specification", "DigitalOcean-public.v2.yaml"))
 	digi, _ := os.ReadFile(spec)
 
 	doc, err := libopenapi.NewDocumentWithConfiguration(digi, &datamodel.DocumentConfiguration{
 		SpecFilePath:            spec,
-		BasePath:                tmp + "/specification",
+		BasePath:                filepath.Join(tmp, "specification"),
 		ExtractRefsSequentially: false, // ASYNC mode
 		Logger: slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelWarn, // Reduce noise
