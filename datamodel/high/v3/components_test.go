@@ -81,3 +81,47 @@ pathItems:
 	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
 	assert.NotNil(t, r.GoLowUntyped())
 }
+
+func TestComponents_RenderInline(t *testing.T) {
+	comp := &Components{
+		Responses: orderedmap.ToOrderedMap(map[string]*Response{
+			"200": {
+				Description: "OK",
+			},
+		}),
+		Parameters: orderedmap.ToOrderedMap(map[string]*Parameter{
+			"id": {
+				Name: "id",
+				In:   "path",
+			},
+		}),
+	}
+
+	rendered, err := comp.RenderInline()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "responses:")
+	assert.Contains(t, string(rendered), "description: OK")
+	assert.Contains(t, string(rendered), "parameters:")
+	assert.Contains(t, string(rendered), "name: id")
+}
+
+func TestComponents_MarshalYAMLInline(t *testing.T) {
+	comp := &Components{
+		Responses: orderedmap.ToOrderedMap(map[string]*Response{
+			"404": {
+				Description: "Not Found",
+			},
+		}),
+	}
+
+	node, err := comp.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	// Verify it can be marshaled to YAML
+	rendered, err := yaml.Marshal(node)
+	assert.NoError(t, err)
+	assert.Contains(t, string(rendered), "responses:")
+	assert.Contains(t, string(rendered), "description: Not Found")
+}

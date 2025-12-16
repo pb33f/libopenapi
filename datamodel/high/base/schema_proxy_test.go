@@ -828,3 +828,151 @@ func TestMarshalYAMLInline_CircularReferenceDetection_WithoutReference(t *testin
 	assert.Equal(t, yaml.MappingNode, resultNode.Kind)
 	assert.Equal(t, "!!map", resultNode.Tag)
 }
+
+func TestGetInlineRenderKey_ReferenceWithoutIndex(t *testing.T) {
+	// Test line 324: return ref when IsReference() is true but index is nil
+	// This covers the path where we have a reference but no index to get the path from
+	// Need schema.Value to be non-nil but GetIndex() to return nil
+
+	// Create a low-level proxy that is a reference but has no index
+	lowProxy := &lowbase.SchemaProxy{}
+	lowProxy.SetReference("#/components/schemas/TestSchema", nil)
+	// Don't call Build() so index stays nil
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	proxy := &SchemaProxy{
+		schema: &lowRef,
+		lock:   &sync.Mutex{},
+	}
+
+	renderKey := proxy.getInlineRenderKey()
+
+	// Should return just the ref since there's no index
+	assert.Equal(t, "#/components/schemas/TestSchema", renderKey)
+}
+
+func TestGetInlineRenderKey_NilSchemaReturnsRefStr(t *testing.T) {
+	// Test line 312: return refStr when schema is nil
+	// This covers the early return path
+
+	proxy := &SchemaProxy{
+		refStr: "#/components/schemas/EarlyReturn",
+		lock:   &sync.Mutex{},
+	}
+
+	renderKey := proxy.getInlineRenderKey()
+
+	// Should return refStr via early return path
+	assert.Equal(t, "#/components/schemas/EarlyReturn", renderKey)
+}
+
+func TestGetInlineRenderKey_NilSchemaValueReturnsRefStr(t *testing.T) {
+	// Test line 312: return refStr when schema.Value is nil
+	// This covers the early return path
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: nil, // nil value
+	}
+
+	proxy := &SchemaProxy{
+		refStr: "#/components/schemas/AnotherEarlyReturn",
+		schema: &lowRef,
+		lock:   &sync.Mutex{},
+	}
+
+	renderKey := proxy.getInlineRenderKey()
+
+	// Should return refStr via early return path since schema.Value is nil
+	assert.Equal(t, "#/components/schemas/AnotherEarlyReturn", renderKey)
+}
+
+func TestMarshalYAMLInline_PreserveReference_ViaLowLevel(t *testing.T) {
+	// Test preserveReference path when reference is set via low-level proxy
+	// (refStr is empty, so GetReferenceNode uses low-level path)
+
+	lowProxy := &lowbase.SchemaProxy{}
+	lowProxy.SetReference("#/components/schemas/TestRef", nil)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	proxy := &SchemaProxy{
+		schema:            &lowRef,
+		preserveReference: true,
+		lock:              &sync.Mutex{},
+	}
+
+	result, err := proxy.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/TestRef", node.Content[1].Value)
+}
+
+func TestMarshalYAMLInline_BundlingMode_ViaLowLevelRef(t *testing.T) {
+	// Test bundling mode preserves refs when schema is in root index
+	// Reference is set via low-level proxy (not refStr)
+
+	// Reset bundling mode state
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+
+	// Create a minimal spec with components
+	const ymlComponents = `components:
+  schemas:
+    TestSchema:
+      type: object`
+
+	var idxNode yaml.Node
+	err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+	require.NoError(t, err)
+
+	cfg := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// Create rolodex and set as root
+	rolodex := index.NewRolodex(cfg)
+	rolodex.SetRootNode(&idxNode)
+	rolodex.SetRootIndex(idx)
+	idx.SetRolodex(rolodex)
+
+	// Create a low-level proxy using Build with the ref
+	const ref = "#/components/schemas/TestSchema"
+	const ymlRef = `$ref: '` + ref + `'`
+	var refNode yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlRef), &refNode)
+
+	lowProxy := &lowbase.SchemaProxy{}
+	err = lowProxy.Build(context.Background(), nil, refNode.Content[0], idx)
+	require.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	proxy := &SchemaProxy{
+		schema: &lowRef,
+		lock:   &sync.Mutex{},
+	}
+
+	// Enable bundling mode
+	SetBundlingMode(true)
+	defer SetBundlingMode(false)
+
+	result, err := proxy.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+	assert.Equal(t, "$ref", node.Content[0].Value)
+	assert.Equal(t, "#/components/schemas/TestSchema", node.Content[1].Value)
+}

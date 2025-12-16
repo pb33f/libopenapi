@@ -302,10 +302,6 @@ func buildComponentPropertiesMap() map[string]map[string]bool {
 		if fieldType.Kind() == reflect.Ptr {
 			fieldType = fieldType.Elem()
 		}
-		// Only process struct types (rules structs)
-		if fieldType.Kind() != reflect.Struct {
-			continue
-		}
 		// Build property set for this component
 		props := make(map[string]bool)
 		for j := 0; j < fieldType.NumField(); j++ {

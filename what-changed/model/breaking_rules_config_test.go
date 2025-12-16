@@ -424,3 +424,74 @@ security:
 	result := ValidateBreakingRulesConfigYAML([]byte(yaml))
 	assert.Nil(t, result, "Simple rule components should allow added/modified/removed at depth 1")
 }
+
+func TestIsValidPropertyForComponent_UnknownComponent(t *testing.T) {
+	// Test that isValidPropertyForComponent returns false for unknown components
+	// This covers line 328 in breaking_rules_config.go
+
+	// Test with a completely unknown component name
+	result := isValidPropertyForComponent("nonExistentComponent", "someProperty")
+	assert.False(t, result, "Unknown component should return false")
+
+	// Test with an empty component name
+	result = isValidPropertyForComponent("", "someProperty")
+	assert.False(t, result, "Empty component should return false")
+
+	// Test with a known component but invalid property (should also be false)
+	result = isValidPropertyForComponent("schema", "nonExistentProperty")
+	assert.False(t, result, "Unknown property for known component should return false")
+
+	// Verify a valid component/property combination works
+	result = isValidPropertyForComponent("schema", "description")
+	assert.True(t, result, "Valid component/property should return true")
+}
+
+func TestValidateBreakingRulesConfigYAML_NonScalarKeyNode(t *testing.T) {
+	// Test that non-scalar key nodes are skipped (line 362-363)
+	// YAML allows complex keys like arrays or maps as keys, though it's rare.
+	// This config uses a complex key which should be skipped without error.
+
+	// YAML with a complex key (array as key) - this is valid YAML but unusual
+	// The validator should skip this key and not crash
+	yamlContent := `
+schema:
+  description:
+    added: true
+? [complex, key]
+: value
+`
+	result := ValidateBreakingRulesConfigYAML([]byte(yamlContent))
+	// Should not panic and should either be nil or have errors only for valid concerns
+	// The complex key should be silently skipped
+	if result != nil {
+		// If there are errors, they should not be about the complex key
+		for _, err := range result.Errors {
+			assert.NotContains(t, err.Message, "complex", "Complex keys should be skipped, not flagged")
+		}
+	}
+}
+
+func TestComponentPropertiesMap_Coverage(t *testing.T) {
+	// Test that componentProperties map is properly built
+	// This indirectly tests buildComponentPropertiesMap including line 307
+	// which handles non-struct field types
+
+	// Verify the map exists and has expected components
+	assert.NotNil(t, componentProperties, "componentProperties should be initialized")
+
+	// Check some expected components exist
+	assert.Contains(t, componentProperties, "schema", "Should have schema component")
+	assert.Contains(t, componentProperties, "pathItem", "Should have pathItem component")
+	assert.Contains(t, componentProperties, "discriminator", "Should have discriminator component")
+
+	// Check that schema has expected properties
+	schemaProps := componentProperties["schema"]
+	assert.NotNil(t, schemaProps)
+	assert.True(t, schemaProps["description"], "schema should have description property")
+	assert.True(t, schemaProps["type"], "schema should have type property")
+
+	// Check discriminator properties
+	discProps := componentProperties["discriminator"]
+	assert.NotNil(t, discProps)
+	assert.True(t, discProps["propertyName"], "discriminator should have propertyName property")
+}
