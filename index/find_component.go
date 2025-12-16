@@ -147,7 +147,15 @@ func (index *SpecIndex) lookupRolodex(ctx context.Context, uri []string) *Refere
 		fileName = filepath.Base(file)
 		absoluteFileLocation = file
 		if !filepath.IsAbs(file) && !strings.HasPrefix(file, "http") {
-			absoluteFileLocation, _ = filepath.Abs(utils.CheckPathOverlap(index.config.BasePath, file, string(os.PathSeparator)))
+			// When resolving relative references, use the directory of the current index's spec file
+			// if available, not the root BasePath. This ensures that external files can resolve
+			// relative paths correctly (e.g., "./models/foo.yaml" from an external file should
+			// resolve relative to that external file's directory, not the root spec directory).
+			basePath := index.config.BasePath
+			if index.specAbsolutePath != "" {
+				basePath = filepath.Dir(index.specAbsolutePath)
+			}
+			absoluteFileLocation, _ = filepath.Abs(utils.CheckPathOverlap(basePath, file, string(os.PathSeparator)))
 		}
 
 		// if the absolute file location has no file ext, then get the rolodex root.
