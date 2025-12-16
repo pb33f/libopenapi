@@ -666,3 +666,165 @@ func TestSetPreserveReference_MarshalYAMLInline_NilRefNode(t *testing.T) {
 	assert.Equal(t, "$ref", node.Content[0].Value)
 	assert.Equal(t, "#/components/schemas/Test", node.Content[1].Value)
 }
+
+func TestMarshalYAMLInline_BundlingMode_PreservesLocalComponentRefs(t *testing.T) {
+	// Test that in bundling mode, local #/components/ refs pointing to schemas
+	// in the same root document are preserved (not inlined).
+	// This covers lines 356-373 in schema_proxy.go
+
+	// Reset bundling mode state
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+
+	// Create a document with components
+	const ymlComponents = `components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        name:
+          type: string
+    Dog:
+      type: object
+      properties:
+        pet:
+          $ref: '#/components/schemas/Pet'`
+
+	var idxNode yaml.Node
+	err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+	require.NoError(t, err)
+
+	// Create spec index and rolodex
+	cfg := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, cfg)
+
+	// Create a rolodex and set it up - use SetRootIndex to make this the root
+	rolodex := index.NewRolodex(cfg)
+	rolodex.SetRootNode(&idxNode)
+	rolodex.SetRootIndex(idx)
+	idx.SetRolodex(rolodex)
+
+	// Build a schema proxy referencing #/components/schemas/Pet
+	const ref = "#/components/schemas/Pet"
+	const ymlSchema = `$ref: '` + ref + `'`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err = lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	require.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+
+	// Enable bundling mode
+	SetBundlingMode(true)
+	defer SetBundlingMode(false)
+
+	// MarshalYAMLInline should preserve the ref since the schema is in the root index
+	result, err := sp.MarshalYAMLInline()
+	require.NoError(t, err)
+
+	resultNode, ok := result.(*yaml.Node)
+	require.True(t, ok)
+
+	// Should render as $ref
+	assert.Equal(t, yaml.MappingNode, resultNode.Kind)
+	require.GreaterOrEqual(t, len(resultNode.Content), 2)
+	assert.Equal(t, "$ref", resultNode.Content[0].Value)
+	assert.Equal(t, ref, resultNode.Content[1].Value)
+}
+
+func TestMarshalYAMLInline_CircularReferenceDetection_WithReference(t *testing.T) {
+	// Test that circular reference detection returns the ref node and error
+	// when a reference proxy is already being rendered.
+	// This covers lines 388-390 in schema_proxy.go
+
+	// Reset bundling mode state
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+
+	// Create a schema proxy with a refStr to generate a render key
+	ref := "#/components/schemas/CircularTest"
+	proxy := &SchemaProxy{
+		refStr: ref,
+		lock:   &sync.Mutex{},
+	}
+
+	// Pre-load the render key to simulate being mid-render (cycle detected)
+	renderKey := proxy.getInlineRenderKey()
+	require.NotEmpty(t, renderKey, "render key should be generated from refStr")
+
+	// Store the key in the tracker to simulate a cycle
+	inlineRenderingTracker.Store(renderKey, true)
+	defer inlineRenderingTracker.Delete(renderKey)
+
+	// MarshalYAMLInline should detect the cycle and return ref node + error
+	result, err := proxy.MarshalYAMLInline()
+
+	// Should return an error about circular reference
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "circular reference")
+	assert.Contains(t, err.Error(), ref)
+
+	// Result should be a ref node (fallback for reference proxy)
+	resultNode, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, resultNode.Kind)
+	assert.Equal(t, "$ref", resultNode.Content[0].Value)
+}
+
+func TestMarshalYAMLInline_CircularReferenceDetection_WithoutReference(t *testing.T) {
+	// Test that circular reference detection returns an empty map node and error
+	// when an inline (non-reference) proxy is already being rendered.
+	// This covers lines 392-394 in schema_proxy.go
+
+	// Reset bundling mode state
+	for IsBundlingMode() {
+		SetBundlingMode(false)
+	}
+
+	// Create an inline schema proxy (no refStr, with value node for position)
+	valueNode := &yaml.Node{
+		Kind:   yaml.MappingNode,
+		Line:   10,
+		Column: 5,
+	}
+
+	lowProxy := &lowbase.SchemaProxy{}
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: valueNode,
+	}
+
+	proxy := NewSchemaProxy(&lowRef)
+
+	// Get the render key (should be position-based for inline schemas)
+	renderKey := proxy.getInlineRenderKey()
+	require.NotEmpty(t, renderKey, "render key should be generated from node position")
+
+	// Store the key in the tracker to simulate a cycle
+	inlineRenderingTracker.Store(renderKey, true)
+	defer inlineRenderingTracker.Delete(renderKey)
+
+	// MarshalYAMLInline should detect the cycle and return empty map + error
+	result, err := proxy.MarshalYAMLInline()
+
+	// Should return an error about circular reference
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "circular reference")
+	assert.Contains(t, err.Error(), "inline rendering")
+
+	// Result should be an empty mapping node (fallback for inline schemas)
+	resultNode, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, resultNode.Kind)
+	assert.Equal(t, "!!map", resultNode.Tag)
+}
