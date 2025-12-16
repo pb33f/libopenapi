@@ -993,6 +993,74 @@ components:
 	runtime.GC()
 }
 
+// TestBundleBytes_DiscriminatorMappingAnyOf tests that an anyOf schema with a discriminator mapping
+// keeps external refs as $refs instead of inlining them (same behavior as oneOf with discriminator).
+func TestBundleBytes_DiscriminatorMappingAnyOf(t *testing.T) {
+	spec := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}
+components:
+  schemas:
+    Animal:
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          cat: './external-cat.yaml#/components/schemas/Cat'
+      anyOf:
+        - $ref: './external-cat.yaml#/components/schemas/Cat'
+    Dog:
+      type: object`
+
+	ext := `components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", spec)
+	write("external-cat.yaml", ext)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+
+	out, err := BundleBytes(mainBytes, cfg)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	schemas := doc["components"].(map[string]any)["schemas"].(map[string]any)
+	animal := schemas["Animal"].(map[string]any)
+
+	// mapping value unchanged
+	mapping := animal["discriminator"].(map[string]any)["mapping"].(map[string]any)
+	assert.Equal(t, "./external-cat.yaml#/components/schemas/Cat", mapping["cat"])
+
+	// the same $ref inside anyOf is also unchanged
+	anyOf := animal["anyOf"].([]any)[0].(map[string]any)
+	assert.Equal(t, "./external-cat.yaml#/components/schemas/Cat", anyOf["$ref"])
+
+	// Cat schema NOT copied into components
+	_, copied := schemas["Cat"]
+	assert.False(t, copied, "Cat schema must not be inlined")
+
+	runtime.GC()
+}
+
 // TestBundleBytes_DiscriminatorEdgeCases exercises the edge-cases of a discriminator that are likely
 // not intended, but still parseable by the OpenAPI parser
 func TestBundleBytes_DiscriminatorEdgeCases(t *testing.T) {
@@ -1635,6 +1703,92 @@ paths:
 	runtime.GC()
 }
 
+// TestBundleBytesWithConfig_DiscriminatorExternalRefs_AnyOf tests that anyOf with discriminator
+// mappings pointing to external files works correctly with ResolveDiscriminatorExternalRefs.
+func TestBundleBytesWithConfig_DiscriminatorExternalRefs_AnyOf(t *testing.T) {
+	// Parent file referencing external schema with discriminator using anyOf
+	parentYAML := `openapi: 3.0.0
+info:
+  title: Test API
+  version: 1.0.0
+paths:
+  /shopping:
+    get:
+      responses:
+        '200':
+          description: Catalog page response
+          content:
+            application/json:
+              schema:
+                $ref: 'internal_schemas.yaml#/components/schemas/ResponseCatalogSection'`
+
+	// External file with discriminator + anyOf pointing to local schemas
+	externalYAML := `components:
+  schemas:
+    ResponseCatalogSection:
+      anyOf:
+        - $ref: '#/components/schemas/ResponseCatalogTileGroupSection'
+        - $ref: '#/components/schemas/ResponseCatalogTableSection'
+      discriminator:
+        propertyName: type
+        mapping:
+          "TILE_GROUP_SECTION": '#/components/schemas/ResponseCatalogTileGroupSection'
+          "TABLE_GROUP_SECTION": '#/components/schemas/ResponseCatalogTableSection'
+    ResponseCatalogTileGroupSection:
+      type: object
+      properties:
+        type:
+          type: string
+        tiles:
+          type: array
+    ResponseCatalogTableSection:
+      type: object
+      properties:
+        type:
+          type: string
+        rows:
+          type: array`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "main.yaml"), []byte(parentYAML), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmp, "internal_schemas.yaml"), []byte(externalYAML), 0644))
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+	cfg := &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}
+	bCfg := &BundleInlineConfig{
+		ResolveDiscriminatorExternalRefs: true,
+	}
+
+	out, err := BundleBytesWithConfig(mainBytes, cfg, bCfg)
+	require.NoError(t, err)
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(out, &doc))
+
+	// Verify components section exists and contains the discriminated schemas
+	components, ok := doc["components"].(map[string]any)
+	require.True(t, ok, "components section should exist")
+
+	schemas, ok := components["schemas"].(map[string]any)
+	require.True(t, ok, "schemas section should exist")
+
+	// Check that the discriminated schemas were copied
+	_, hasTileGroup := schemas["ResponseCatalogTileGroupSection"]
+	_, hasTableSection := schemas["ResponseCatalogTableSection"]
+	assert.True(t, hasTileGroup, "ResponseCatalogTileGroupSection should be in components")
+	assert.True(t, hasTableSection, "ResponseCatalogTableSection should be in components")
+
+	// Verify the bundled output doesn't contain external file references
+	bundledStr := string(out)
+	assert.NotContains(t, bundledStr, "internal_schemas.yaml",
+		"Bundled output should not contain external file references")
+
+	runtime.GC()
+}
+
 // TestBundleBytesWithConfig_BackwardCompatibility tests that existing behavior is preserved
 // when ResolveDiscriminatorExternalRefs is not enabled.
 func TestBundleBytesWithConfig_BackwardCompatibility(t *testing.T) {
@@ -1852,3 +2006,66 @@ func TestCalculateCollisionNameInline(t *testing.T) {
 	result = calculateCollisionNameInline("Lion", "#/components/schemas/Lion", "__", existing)
 	assert.Equal(t, "Lion____2", result)
 }
+
+func TestErrorHandlingOnBundleDocument(t *testing.T) {
+
+	b, err := BundleBytesWithConfig([]byte("hey: hey: hey: : hey : hey"), nil, nil)
+	assert.Nil(t, b)
+	assert.Error(t, err)
+
+	err = resolveDiscriminatorExternalRefs(nil)
+	assert.Nil(t, err)
+
+	rewriteInlineDiscriminatorRefs(nil, nil)
+	updateOneOfAnyOfRefs(nil, nil)
+	walkDiscriminatorMapping(nil, &yaml.Node{Kind: yaml.ScalarNode}, nil)
+
+	// walkUnionRefs: hit first continue (item.Kind != yaml.MappingNode)
+	walkUnionRefs(nil, &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "not-a-mapping"},
+		},
+	}, nil)
+
+	// walkUnionRefs: hit second continue (k.Value != "$ref")
+	walkUnionRefs(nil, &yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "notRef"},
+					{Kind: yaml.ScalarNode, Value: "someValue"},
+				},
+			},
+		},
+	}, nil)
+
+	// updateUnionRefs: hit continue (item.Kind != yaml.MappingNode)
+	updateUnionRefs(&yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			{Kind: yaml.ScalarNode, Value: "not-a-mapping"},
+		},
+	}, nil)
+
+	// updateUnionRefs: MappingNode but key != "$ref" (skips inner if)
+	updateUnionRefs(&yaml.Node{
+		Kind: yaml.SequenceNode,
+		Content: []*yaml.Node{
+			{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "notRef"},
+					{Kind: yaml.ScalarNode, Value: "someValue"},
+				},
+			},
+		},
+	}, nil)
+
+	s, err := copySchemaToComponents(nil, &externalSchemaRef{}, nil)
+	assert.Empty(t, s)
+	assert.Error(t, err)
+}
+
