@@ -792,3 +792,151 @@ func TestCreateChangeWithEncoding_ComplexValues(t *testing.T) {
 		assert.Empty(t, changes[0].NewEncoded)
 	})
 }
+
+// TestCheckPropertyAdditionOrRemoval tests the combined addition/removal check (lines 322-328)
+func TestCheckPropertyAdditionOrRemoval(t *testing.T) {
+	t.Run("detects removal when left exists but right is nil", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`oldvalue`), &lNode)
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemoval[string](lNode.Content[0], nil, "test", &changes, true, "old", "")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+		assert.True(t, changes[0].Breaking)
+	})
+
+	t.Run("detects addition when left is nil but right exists", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`newvalue`), &rNode)
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemoval[string](nil, rNode.Content[0], "test", &changes, true, "", "new")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
+		assert.True(t, changes[0].Breaking)
+	})
+
+	t.Run("detects both removal and addition when values swap", func(t *testing.T) {
+		// Simulates a property being removed from left and added to right
+		// This tests that both CheckForRemoval and CheckForAddition are called
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`oldvalue`), &lNode)
+
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(``), &rNode) // Empty value simulates removal on left side
+
+		changes := []*Change{}
+		// Left has value, right is empty - should detect removal
+		CheckPropertyAdditionOrRemoval[string](lNode.Content[0], nil, "test", &changes, false, "old", "")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+	})
+
+	t.Run("no changes when both nil", func(t *testing.T) {
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemoval[string](nil, nil, "test", &changes, false, "", "")
+
+		assert.Empty(t, changes)
+	})
+
+	t.Run("no changes when both have same value", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`samevalue`), &lNode)
+		_ = yaml.Unmarshal([]byte(`samevalue`), &rNode)
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemoval[string](lNode.Content[0], rNode.Content[0], "test", &changes, false, "same", "same")
+
+		assert.Empty(t, changes)
+	})
+
+	t.Run("detects removal when left has value and right node is empty", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`hasvalue`), &lNode)
+
+		// Create an empty node (simulating empty value)
+		emptyNode := &yaml.Node{Kind: yaml.ScalarNode, Value: ""}
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemoval[string](lNode.Content[0], emptyNode, "test", &changes, false, "old", "")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+	})
+}
+
+// TestCheckPropertyAdditionOrRemovalWithEncoding tests the combined addition/removal check with encoding (lines 299-305)
+func TestCheckPropertyAdditionOrRemovalWithEncoding(t *testing.T) {
+	t.Run("detects removal with encoding", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`{key: value, nested: data}`), &lNode)
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemovalWithEncoding[string](lNode.Content[0], nil, "test", &changes, true, "old", "")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+		assert.True(t, changes[0].Breaking)
+		assert.NotEmpty(t, changes[0].OriginalEncoded)
+	})
+
+	t.Run("detects addition with encoding", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`[item1, item2, item3]`), &rNode)
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemovalWithEncoding[string](nil, rNode.Content[0], "test", &changes, false, "", "new")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
+		assert.NotEmpty(t, changes[0].NewEncoded)
+	})
+
+	t.Run("no changes when both nil", func(t *testing.T) {
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemovalWithEncoding[string](nil, nil, "test", &changes, false, "", "")
+
+		assert.Empty(t, changes)
+	})
+
+	t.Run("no changes when both have same value", func(t *testing.T) {
+		var lNode, rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`{same: value}`), &lNode)
+		_ = yaml.Unmarshal([]byte(`{same: value}`), &rNode)
+
+		changes := []*Change{}
+		CheckPropertyAdditionOrRemovalWithEncoding[string](lNode.Content[0], rNode.Content[0], "test", &changes, false, "same", "same")
+
+		assert.Empty(t, changes)
+	})
+
+	t.Run("detects removal of complex structure with encoding via nil", func(t *testing.T) {
+		var lNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`{complex: {nested: {deeply: value}}}`), &lNode)
+
+		changes := []*Change{}
+		// Removal is detected when right is nil
+		CheckPropertyAdditionOrRemovalWithEncoding[string](lNode.Content[0], nil, "test", &changes, true, "old", "")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyRemoved, changes[0].ChangeType)
+		assert.NotEmpty(t, changes[0].OriginalEncoded)
+	})
+
+	t.Run("detects addition of array with encoding via nil", func(t *testing.T) {
+		var rNode yaml.Node
+		_ = yaml.Unmarshal([]byte(`[a, b, c, d]`), &rNode)
+
+		changes := []*Change{}
+		// Addition is detected when left is nil
+		CheckPropertyAdditionOrRemovalWithEncoding[string](nil, rNode.Content[0], "test", &changes, false, "", "new")
+
+		assert.Len(t, changes, 1)
+		assert.Equal(t, PropertyAdded, changes[0].ChangeType)
+		assert.NotEmpty(t, changes[0].NewEncoded)
+	})
+}
