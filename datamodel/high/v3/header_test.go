@@ -120,3 +120,27 @@ func TestHeader_IsReference_False(t *testing.T) {
 	assert.False(t, h.IsReference())
 	assert.Equal(t, "", h.GetReference())
 }
+
+func TestHeader_RenderInline_Reference(t *testing.T) {
+	h := CreateHeaderRef("#/components/headers/X-Rate-Limit")
+
+	rendered, err := h.RenderInline()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "$ref")
+	assert.Contains(t, string(rendered), "#/components/headers/X-Rate-Limit")
+}
+
+func TestHeader_RenderInline_NonReference(t *testing.T) {
+	h := &Header{
+		Description: "A rate limit header",
+		Required:    true,
+	}
+
+	rendered, err := h.RenderInline()
+	assert.NoError(t, err)
+
+	assert.Contains(t, string(rendered), "description:")
+	assert.Contains(t, string(rendered), "A rate limit header")
+	assert.Contains(t, string(rendered), "required:")
+}
