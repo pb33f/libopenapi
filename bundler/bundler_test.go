@@ -24,7 +24,10 @@ import (
 
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -1789,6 +1792,22 @@ paths:
 	runtime.GC()
 }
 
+func TestBundleBytesWithConfig_InvalidModel(t *testing.T) {
+	// Test that BundleBytesWithConfig returns ErrInvalidModel when BuildV3Model fails
+	// Using Swagger 2.0 spec triggers "wrong version" error from BuildV3Model
+
+	swagger2Spec := []byte(`swagger: "2.0"
+info:
+  title: Test API
+  version: 1.0.0
+paths: {}`)
+
+	_, err := BundleBytesWithConfig(swagger2Spec, nil, nil)
+	require.Error(t, err)
+	assert.ErrorIs(t, err, ErrInvalidModel)
+	assert.Contains(t, err.Error(), "different version")
+}
+
 // TestBundleBytesWithConfig_BackwardCompatibility tests that existing behavior is preserved
 // when ResolveDiscriminatorExternalRefs is not enabled.
 func TestBundleBytesWithConfig_BackwardCompatibility(t *testing.T) {
@@ -2013,8 +2032,8 @@ func TestErrorHandlingOnBundleDocument(t *testing.T) {
 	assert.Nil(t, b)
 	assert.Error(t, err)
 
-	err = resolveDiscriminatorExternalRefs(nil)
-	assert.Nil(t, err)
+	// resolveDiscriminatorExternalRefs handles nil gracefully (no return value)
+	resolveDiscriminatorExternalRefs(nil)
 
 	rewriteInlineDiscriminatorRefs(nil, nil)
 	updateOneOfAnyOfRefs(nil, nil)
@@ -2063,9 +2082,139 @@ func TestErrorHandlingOnBundleDocument(t *testing.T) {
 			},
 		},
 	}, nil)
+}
 
-	s, err := copySchemaToComponents(nil, &externalSchemaRef{}, nil)
-	assert.Empty(t, s)
-	assert.Error(t, err)
+func TestResolveDiscriminatorExternalRefs_NoExternalSchemas(t *testing.T) {
+	// Test: len(externalSchemas) == 0 path
+	// Spec with discriminator that only references internal schemas (no external refs)
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      type: object
+      discriminator:
+        propertyName: petType
+        mapping:
+          dog: '#/components/schemas/Dog'
+          cat: '#/components/schemas/Cat'
+      oneOf:
+        - $ref: '#/components/schemas/Dog'
+        - $ref: '#/components/schemas/Cat'
+    Dog:
+      type: object
+      properties:
+        petType:
+          type: string
+        bark:
+          type: boolean
+    Cat:
+      type: object
+      properties:
+        petType:
+          type: string
+        meow:
+          type: boolean
+paths: {}`
+
+	bundleConfig := &BundleInlineConfig{
+		ResolveDiscriminatorExternalRefs: true,
+	}
+
+	result, err := BundleBytesWithConfig([]byte(spec), nil, bundleConfig)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+
+	// Verify the output still has the internal refs (not modified)
+	assert.Contains(t, string(result), "#/components/schemas/Dog")
+	assert.Contains(t, string(result), "#/components/schemas/Cat")
+}
+
+func TestCollectExternalDiscriminatorSchemas_RootPathSkip(t *testing.T) {
+	// Test: filePath == rootPath path
+	// This is implicitly tested by TestResolveDiscriminatorExternalRefs_NoExternalSchemas
+	// since internal refs have filePath == rootPath and get skipped
+
+	// Additional explicit test using the internal function
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      type: object
+      discriminator:
+        propertyName: petType
+        mapping:
+          dog: '#/components/schemas/Dog'
+      oneOf:
+        - $ref: '#/components/schemas/Dog'
+    Dog:
+      type: object
+paths: {}`
+
+	doc, err := libopenapi.NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	model, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	rolodex := model.Model.Rolodex
+	rootIdx := rolodex.GetRootIndex()
+
+	// Collect external schemas - should return empty since all refs are internal
+	result := collectExternalDiscriminatorSchemas(rolodex, rootIdx)
+	assert.Empty(t, result, "Expected no external schemas when all discriminator refs are internal")
+}
+
+func TestCopySchemaToComponents_NameCollision(t *testing.T) {
+	// Test: existingNames[finalName] collision path
+	existingNames := map[string]bool{
+		"Cat": true, // Simulate existing schema named "Cat"
+	}
+
+	// Create a mock external schema ref
+	extSchema := &externalSchemaRef{
+		schemaName: "Cat",
+		fullDef:    "/some/path/external.yaml#/components/schemas/Cat",
+		ref: &index.Reference{
+			Node: &yaml.Node{
+				Kind: yaml.MappingNode,
+				Content: []*yaml.Node{
+					{Kind: yaml.ScalarNode, Value: "type"},
+					{Kind: yaml.ScalarNode, Value: "object"},
+				},
+			},
+		},
+	}
+
+	// Create a minimal document with components
+	doc := &v3high.Document{
+		Components: &v3high.Components{
+			Schemas: orderedmap.New[string, *base.SchemaProxy](),
+		},
+	}
+
+	// Copy should handle collision by appending filename
+	newRef := copySchemaToComponents(doc, extSchema, existingNames)
+
+	// Should have created a collision-avoidance name
+	assert.Equal(t, "#/components/schemas/Cat__external", newRef)
+	assert.True(t, existingNames["Cat__external"], "Should track the new name")
+}
+
+func TestCalculateCollisionNameInline_NumericSuffix(t *testing.T) {
+	// Test: When filename-based name also collides, use numeric suffix
+	existingNames := map[string]bool{
+		"Cat":             true,
+		"Cat__external":   true, // Filename-based collision also exists
+		"Cat__external__1": true, // First numeric suffix also taken (format: name__basename__N)
+	}
+
+	result := calculateCollisionNameInline("Cat", "/path/external.yaml#/components/schemas/Cat", "__", existingNames)
+	assert.Equal(t, "Cat__external__2", result)
 }
 

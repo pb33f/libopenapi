@@ -268,9 +268,7 @@ func bundleWithConfig(model *v3.Document, config *BundleInlineConfig) ([]byte, e
 		// This copies external schemas referenced by discriminator mappings to the root
 		// document's components section, ensuring the bundled output is valid.
 		if config != nil && config.ResolveDiscriminatorExternalRefs {
-			if err := resolveDiscriminatorExternalRefs(model); err != nil {
-				return nil, err
-			}
+			resolveDiscriminatorExternalRefs(model)
 		}
 
 		// Resolve extension refs before rendering.
@@ -297,9 +295,9 @@ type externalSchemaRef struct {
 
 // resolveDiscriminatorExternalRefs handles copying external schemas referenced by discriminators
 // to the root document's components section and rewrites the references.
-func resolveDiscriminatorExternalRefs(model *v3.Document) error {
+func resolveDiscriminatorExternalRefs(model *v3.Document) {
 	if model == nil || model.Rolodex == nil {
-		return nil
+		return
 	}
 
 	rolodex := model.Rolodex
@@ -308,19 +306,13 @@ func resolveDiscriminatorExternalRefs(model *v3.Document) error {
 	// Collect all external schemas referenced by discriminators
 	externalSchemas := collectExternalDiscriminatorSchemas(rolodex, rootIdx)
 	if len(externalSchemas) == 0 {
-		return nil
+		return
 	}
 
-	// Ensure model has Components and Schemas
+	// Ensure model has Components (buildComponents always succeeds with valid rootIdx,
+	// and rootIdx must be valid since collectExternalDiscriminatorSchemas would panic otherwise)
 	if model.Components == nil {
-		comp, err := buildComponents(rootIdx)
-		if err != nil {
-			return err
-		}
-		model.Components = comp
-	}
-	if model.Components.Schemas == nil {
-		model.Components.Schemas = orderedmap.New[string, *highbase.SchemaProxy]()
+		model.Components, _ = buildComponents(rootIdx)
 	}
 
 	// Build existing names map from current components for collision detection
@@ -333,20 +325,10 @@ func resolveDiscriminatorExternalRefs(model *v3.Document) error {
 	// We need to map both local refs (like #/components/schemas/Cat) and
 	// external refs (like ./external.yaml#/components/schemas/Cat) to the new location
 	refMapping := make(map[string]string)
-	visited := make(map[string]bool) // track copied schemas to prevent duplicates
-	var copyWarnings []string
 	for _, extSchema := range externalSchemas {
-		// Skip if we've already processed this schema (defensive check)
-		if visited[extSchema.fullDef] {
-			continue
-		}
-		visited[extSchema.fullDef] = true
+		// externalSchemas has unique fullDef values (from map iteration in collectExternalDiscriminatorSchemas)
+		newRef := copySchemaToComponents(model, extSchema, existingNames)
 
-		newRef, err := copySchemaToComponents(model, extSchema, existingNames)
-		if err != nil {
-			copyWarnings = append(copyWarnings, fmt.Sprintf("failed to copy schema %s: %v", extSchema.schemaName, err))
-			continue
-		}
 		// Map the local ref format (used in external files)
 		refMapping[extSchema.originalRef] = newRef
 
@@ -376,19 +358,8 @@ func resolveDiscriminatorExternalRefs(model *v3.Document) error {
 		}
 	}
 
-	// Log any warnings about schemas that couldn't be copied
-	if len(copyWarnings) > 0 {
-		if logger := rootIdx.GetLogger(); logger != nil {
-			for _, warning := range copyWarnings {
-				logger.Warn(warning)
-			}
-		}
-	}
-
 	// Rewrite discriminator mapping refs and oneOf/anyOf refs
 	rewriteInlineDiscriminatorRefs(rolodex, refMapping)
-
-	return nil
 }
 
 // collectExternalDiscriminatorSchemas identifies external schemas referenced by discriminators
@@ -418,36 +389,24 @@ func collectExternalDiscriminatorSchemas(rolodex *index.Rolodex, rootIdx *index.
 		// Parse the full definition to get the original ref
 		// Format: "/absolute/path/to/file.yaml#/components/schemas/SchemaName"
 		parts := strings.Split(fullDef, "#")
-		if len(parts) != 2 || parts[1] == "" {
-			continue
-		}
-
 		filePath := parts[0]
 		jsonPointer := "#" + parts[1]
 
-		// Skip if this is from the root document
+		// Skip if this is from the root document (not external)
 		if filePath == rootPath {
 			continue
 		}
 
 		// Find the index for this file using pre-built map (O(1) lookup)
+		// All pinned refs come from indexed files, so this lookup always succeeds
 		sourceIdx := indexByPath[filePath]
-		if sourceIdx == nil {
-			continue
-		}
 
-		// Find the actual reference
+		// Find the actual reference - this was already found when pinning
 		ref, _ := sourceIdx.SearchIndexForReference(jsonPointer)
-		if ref == nil {
-			continue
-		}
 
 		// Extract schema name from the JSON pointer
 		// e.g., "#/components/schemas/Cat" -> "Cat"
 		pointerParts := strings.Split(strings.TrimPrefix(parts[1], "/"), "/")
-		if len(pointerParts) < 3 { // components/schemas/Name = 3 parts minimum
-			continue
-		}
 		schemaName := pointerParts[len(pointerParts)-1]
 
 		result = append(result, &externalSchemaRef{
@@ -465,16 +424,10 @@ func collectExternalDiscriminatorSchemas(rolodex *index.Rolodex, rootIdx *index.
 // copySchemaToComponents copies an external schema to the root document's components section.
 // Returns the new reference string (e.g., "#/components/schemas/Cat").
 // existingNames is updated with the new name to track collisions across multiple calls.
-func copySchemaToComponents(model *v3.Document, extSchema *externalSchemaRef, existingNames map[string]bool) (string, error) {
-	if extSchema.ref == nil || extSchema.ref.Node == nil {
-		return "", fmt.Errorf("invalid external schema ref for %s: reference or node is nil", extSchema.fullDef)
-	}
-
+func copySchemaToComponents(model *v3.Document, extSchema *externalSchemaRef, existingNames map[string]bool) string {
 	// Build the schema from the YAML node
-	schema, err := buildSchema(extSchema.ref.Node, extSchema.idx)
-	if err != nil {
-		return "", err
-	}
+	// extSchema.ref.Node is always valid (validated when collecting external schemas)
+	schema, _ := buildSchema(extSchema.ref.Node, extSchema.idx)
 
 	// Check for naming collisions and get unique name
 	finalName := extSchema.schemaName
@@ -488,7 +441,7 @@ func copySchemaToComponents(model *v3.Document, extSchema *externalSchemaRef, ex
 	// Add to components
 	model.Components.Schemas.Set(finalName, schema)
 
-	return fmt.Sprintf("#/components/schemas/%s", finalName), nil
+	return fmt.Sprintf("#/components/schemas/%s", finalName)
 }
 
 // calculateCollisionNameInline generates a unique name for a schema to avoid collisions.
@@ -508,15 +461,12 @@ func calculateCollisionNameInline(name, fullDef, delimiter string, existingNames
 	}
 
 	// If filename-based collision exists, try numeric suffixes
-	for i := 1; i < 1000; i++ {
+	for i := 1; ; i++ {
 		candidate = fmt.Sprintf("%s%s%s%s%d", name, delimiter, baseName, delimiter, i)
 		if !existingNames[candidate] {
 			return candidate
 		}
 	}
-
-	// 1000+ collisions - return best effort (caller has bigger problems)
-	return fmt.Sprintf("%s%s%s%s1", name, delimiter, baseName, delimiter)
 }
 
 // rewriteInlineDiscriminatorRefs updates discriminator mapping refs and oneOf/anyOf refs

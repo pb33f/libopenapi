@@ -6,6 +6,7 @@ package bundler
 
 import (
 	"context"
+	"reflect"
 	"testing"
 
 	"github.com/pb33f/libopenapi/index"
@@ -49,7 +50,81 @@ func TestResolveExtensionRefsFromIndex_SkipConditions(t *testing.T) {
 		cfg := index.CreateOpenAPIIndexConfig()
 		idx := index.NewSpecIndexWithConfig(&node, cfg)
 
-		// This exercises the loop even if there are no extension refs
+		// Use reflection to inject a ref with nil Node into the index's rawSequencedRefs
+		// This tests the defensive nil check in resolveExtensionRefsFromIndex
+		nilNodeRef := &index.Reference{
+			Node:           nil, // nil Node - should trigger skip
+			FullDefinition: "#/components/schemas/Test",
+			IsExtensionRef: true,
+		}
+
+		// Access private field rawSequencedRefs via reflection
+		idxValue := reflect.ValueOf(idx).Elem()
+		rawRefsField := idxValue.FieldByName("rawSequencedRefs")
+		if rawRefsField.IsValid() && rawRefsField.CanAddr() {
+			// Get the underlying slice and append our test ref
+			rawRefsPtr := reflect.NewAt(rawRefsField.Type(), rawRefsField.Addr().UnsafePointer())
+			rawRefs := rawRefsPtr.Elem()
+			newSlice := reflect.Append(rawRefs, reflect.ValueOf(nilNodeRef))
+			rawRefs.Set(newSlice)
+		}
+
+		// This should skip the ref with nil Node without panicking
+		resolveExtensionRefsFromIndex(idx, nil)
+	})
+
+	t.Run("empty FullDefinition in ref", func(t *testing.T) {
+		yml := `openapi: 3.1.0`
+		var node yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &node)
+
+		cfg := index.CreateOpenAPIIndexConfig()
+		idx := index.NewSpecIndexWithConfig(&node, cfg)
+
+		// Inject a ref with empty FullDefinition
+		emptyDefRef := &index.Reference{
+			Node:           &yaml.Node{Kind: yaml.ScalarNode, Value: "test"},
+			FullDefinition: "", // empty - should trigger skip
+			IsExtensionRef: true,
+		}
+
+		idxValue := reflect.ValueOf(idx).Elem()
+		rawRefsField := idxValue.FieldByName("rawSequencedRefs")
+		if rawRefsField.IsValid() && rawRefsField.CanAddr() {
+			rawRefsPtr := reflect.NewAt(rawRefsField.Type(), rawRefsField.Addr().UnsafePointer())
+			rawRefs := rawRefsPtr.Elem()
+			newSlice := reflect.Append(rawRefs, reflect.ValueOf(emptyDefRef))
+			rawRefs.Set(newSlice)
+		}
+
+		resolveExtensionRefsFromIndex(idx, nil)
+	})
+
+	t.Run("circular ref", func(t *testing.T) {
+		yml := `openapi: 3.1.0`
+		var node yaml.Node
+		_ = yaml.Unmarshal([]byte(yml), &node)
+
+		cfg := index.CreateOpenAPIIndexConfig()
+		idx := index.NewSpecIndexWithConfig(&node, cfg)
+
+		// Inject a circular ref
+		circularRef := &index.Reference{
+			Node:           &yaml.Node{Kind: yaml.ScalarNode, Value: "test"},
+			FullDefinition: "#/components/schemas/Test",
+			IsExtensionRef: true,
+			Circular:       true, // circular - should trigger skip
+		}
+
+		idxValue := reflect.ValueOf(idx).Elem()
+		rawRefsField := idxValue.FieldByName("rawSequencedRefs")
+		if rawRefsField.IsValid() && rawRefsField.CanAddr() {
+			rawRefsPtr := reflect.NewAt(rawRefsField.Type(), rawRefsField.Addr().UnsafePointer())
+			rawRefs := rawRefsPtr.Elem()
+			newSlice := reflect.Append(rawRefs, reflect.ValueOf(circularRef))
+			rawRefs.Set(newSlice)
+		}
+
 		resolveExtensionRefsFromIndex(idx, nil)
 	})
 }
