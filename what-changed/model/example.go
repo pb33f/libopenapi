@@ -56,10 +56,6 @@ func CompareExamples(l, r *base.Example) *ExampleChanges {
 	ec := new(ExampleChanges)
 	var changes []*Change
 
-	// Handle nil cases for added/removed examples
-	if l == nil && r == nil {
-		return nil
-	}
 	if l == nil {
 		// Example was added - use RootNode for proper line/column location
 		CreateChange(&changes, ObjectAdded, v3.ExampleLabel,
