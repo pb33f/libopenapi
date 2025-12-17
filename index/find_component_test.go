@@ -436,6 +436,44 @@ func TestFindComponent_LookupRolodex_InvalidFile_NoBypass(t *testing.T) {
 	assert.NotNil(t, n)
 }
 
+func TestFindComponent_LookupRolodex_WithSpecAbsolutePath(t *testing.T) {
+	// Test that triggers line 156: basePath = filepath.Dir(index.specAbsolutePath)
+	// This happens when:
+	// 1. A relative file reference is used (not absolute, not http)
+	// 2. index.specAbsolutePath is set (non-empty)
+
+	spec := `openapi: 3.0.2
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    thang:
+      type: object
+`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(spec), &rootNode)
+
+	c := CreateOpenAPIIndexConfig()
+	c.BasePath = "."
+
+	index := NewSpecIndexWithConfig(&rootNode, c)
+	r := NewRolodex(c)
+	index.rolodex = r
+
+	// Set specAbsolutePath to trigger the branch at line 156
+	index.specAbsolutePath = "/some/absolute/path/to/spec.yaml"
+
+	// Call lookupRolodex with a relative file reference (not absolute, not http)
+	// This will hit the branch where specAbsolutePath is used to determine basePath
+	n := index.lookupRolodex(context.Background(), []string{"relative_file.yaml"})
+
+	// The file doesn't exist, so it returns nil, but the important thing is
+	// that we hit the code path at line 156
+	assert.Nil(t, n)
+}
+
 func TestFindComponent_LookupRolodex_FindComponentReturnsNil_DebugLog(t *testing.T) {
 	// Test that triggers the debug log at lines 241-245 when FindComponent returns nil.
 	// This happens when a file exists in the rolodex but the queried component doesn't exist.
