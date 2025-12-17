@@ -315,7 +315,7 @@ func TestExampleCompareDocuments_openAPI(t *testing.T) {
 	schemaChanges := documentChanges.ComponentsChanges.SchemaChanges
 
 	// Print out some interesting stats about the OpenAPI document changes.
-	assert.Equal(t, `There are 75 changes, of which 19 are breaking. 6 schemas have changes.`, fmt.Sprintf("There are %d changes, of which %d are breaking. %v schemas have changes.",
+	assert.Equal(t, `There are 77 changes, of which 19 are breaking. 6 schemas have changes.`, fmt.Sprintf("There are %d changes, of which %d are breaking. %v schemas have changes.",
 		documentChanges.TotalChanges(), documentChanges.TotalBreakingChanges(), len(schemaChanges)))
 }
 
