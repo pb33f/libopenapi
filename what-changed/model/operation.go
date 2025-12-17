@@ -429,21 +429,10 @@ func CompareOperations(l, r any) *OperationChanges {
 				rOperation.RequestBody.Value)
 		}
 
-		// callbacks
-		if !lOperation.GetCallbacks().IsEmpty() && !rOperation.GetCallbacks().IsEmpty() {
-			oc.CallbackChanges = CheckMapForChanges(lOperation.Callbacks.Value, rOperation.Callbacks.Value, &changes,
-				v3.CallbacksLabel, CompareCallback)
-		}
-		if !lOperation.GetCallbacks().IsEmpty() && rOperation.GetCallbacks().IsEmpty() {
-			CreateChange(&changes, PropertyRemoved, v3.CallbacksLabel,
-				lOperation.Callbacks.ValueNode, nil, BreakingRemoved(CompOperation, PropCallbacks), lOperation.Callbacks.Value,
-				nil)
-		}
-		if lOperation.Callbacks.IsEmpty() && !rOperation.Callbacks.IsEmpty() {
-			CreateChange(&changes, PropertyAdded, v3.CallbacksLabel,
-				nil, rOperation.Callbacks.ValueNode, BreakingAdded(CompOperation, PropCallbacks), nil,
-				rOperation.Callbacks.Value)
-		}
+		// callbacks - use CheckMapForChangesWithNilSupport to properly populate CallbackChanges
+		// for added/removed callbacks, enabling proper tree hierarchy rendering
+		oc.CallbackChanges = CheckMapForChangesWithNilSupport(lOperation.Callbacks.Value, rOperation.Callbacks.Value,
+			&changes, v3.CallbacksLabel, CompareCallback)
 
 		// servers
 		oc.ServerChanges = checkServers(lOperation.Servers, rOperation.Servers, CompOperation, PropServers)

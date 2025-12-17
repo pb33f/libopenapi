@@ -1278,7 +1278,9 @@ func TestCompareOperations_V3_AddCallback(t *testing.T) {
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+	// The new callback is now properly tracked in CallbackChanges map
+	assert.NotNil(t, extChanges.CallbackChanges["aNewCallback"])
+	assert.Equal(t, ObjectAdded, extChanges.CallbackChanges["aNewCallback"].Changes[0].ChangeType)
 }
 
 func TestCompareOperations_V3_AddCallbacks(t *testing.T) {
@@ -1311,10 +1313,14 @@ callbacks:
 
 	// compare.
 	extChanges := CompareOperations(&lDoc, &rDoc)
-	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Len(t, extChanges.GetAllChanges(), 1)
+	// Both callbacks are added, each with one expression
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
 	assert.Equal(t, 0, extChanges.TotalBreakingChanges())
-	assert.Equal(t, PropertyAdded, extChanges.Changes[0].ChangeType)
+	// Callbacks are now properly tracked in CallbackChanges map
+	assert.Len(t, extChanges.CallbackChanges, 2)
+	assert.NotNil(t, extChanges.CallbackChanges["myCallback"])
+	assert.NotNil(t, extChanges.CallbackChanges["aNewCallback"])
 }
 
 func TestCompareOperations_V3_RemoveCallbacks(t *testing.T) {
@@ -1345,12 +1351,16 @@ callbacks:
 	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
 	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
-	// compare.
+	// compare - swapped order means callbacks are being removed
 	extChanges := CompareOperations(&rDoc, &lDoc)
-	assert.Equal(t, 1, extChanges.TotalChanges())
-	assert.Len(t, extChanges.GetAllChanges(), 1)
-	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, PropertyRemoved, extChanges.Changes[0].ChangeType)
+	// Both callbacks are removed, each with one expression
+	assert.Equal(t, 2, extChanges.TotalChanges())
+	assert.Len(t, extChanges.GetAllChanges(), 2)
+	assert.Equal(t, 2, extChanges.TotalBreakingChanges())
+	// Callbacks are now properly tracked in CallbackChanges map
+	assert.Len(t, extChanges.CallbackChanges, 2)
+	assert.NotNil(t, extChanges.CallbackChanges["myCallback"])
+	assert.NotNil(t, extChanges.CallbackChanges["aNewCallback"])
 }
 
 func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
@@ -1384,12 +1394,14 @@ func TestCompareOperations_V3_RemoveCallback(t *testing.T) {
 	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
 	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
 
-	// compare.
+	// compare - swapped order means aNewCallback is being removed
 	extChanges := CompareOperations(&rDoc, &lDoc)
 	assert.Equal(t, 1, extChanges.TotalChanges())
 	assert.Len(t, extChanges.GetAllChanges(), 1)
 	assert.Equal(t, 1, extChanges.TotalBreakingChanges())
-	assert.Equal(t, ObjectRemoved, extChanges.Changes[0].ChangeType)
+	// The removed callback is properly tracked in CallbackChanges map
+	assert.NotNil(t, extChanges.CallbackChanges["aNewCallback"])
+	assert.Equal(t, ObjectRemoved, extChanges.CallbackChanges["aNewCallback"].Changes[0].ChangeType)
 }
 
 func TestCompareOperations_V3_AddServer(t *testing.T) {
