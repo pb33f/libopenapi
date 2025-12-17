@@ -153,4 +153,6 @@ const (
 	DependentSchemasLabel      = "dependentSchemas"
 	PatternPropertiesLabel     = "patternProperties"
 	AnchorLabel                = "$anchor"
+	DynamicAnchorLabel         = "$dynamicAnchor"
+	DynamicRefLabel            = "$dynamicRef"
 )

@@ -2218,3 +2218,69 @@ func TestCalculateCollisionNameInline_NumericSuffix(t *testing.T) {
 	assert.Equal(t, "Cat__external__2", result)
 }
 
+// TestBundlePreservesDynamicAnchorAndRef tests that $dynamicAnchor and $dynamicRef
+// (JSON Schema 2020-12 keywords) are preserved during bundling.
+func TestBundlePreservesDynamicAnchorAndRef(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: "1.0"
+paths: {}
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: node
+      properties:
+        value:
+          type: string
+        children:
+          type: array
+          items:
+            $dynamicRef: "#node"
+`
+
+	doc, err := libopenapi.NewDocument([]byte(spec))
+	require.NoError(t, err)
+
+	v3Doc, errs := doc.BuildV3Model()
+	require.Nil(t, errs)
+	require.NotNil(t, v3Doc)
+
+	// Bundle the document
+	bundledBytes, err := BundleDocument(&v3Doc.Model)
+	require.NoError(t, err)
+
+	bundledStr := string(bundledBytes)
+
+	// Verify $dynamicAnchor is preserved
+	assert.Contains(t, bundledStr, "$dynamicAnchor: node", "$dynamicAnchor should be preserved after bundling")
+
+	// Verify $dynamicRef is preserved (not resolved/inlined)
+	assert.Contains(t, bundledStr, `$dynamicRef: "#node"`, "$dynamicRef should be preserved after bundling")
+
+	// Additional verification: parse the bundled document and check the schema values
+	bundledDoc, err := libopenapi.NewDocument(bundledBytes)
+	require.NoError(t, err)
+
+	bundledV3, errs := bundledDoc.BuildV3Model()
+	require.Nil(t, errs)
+
+	treeNodeSchema := bundledV3.Model.Components.Schemas.GetOrZero("TreeNode").Schema()
+	require.NotNil(t, treeNodeSchema)
+
+	// Check $dynamicAnchor
+	assert.Equal(t, "node", treeNodeSchema.DynamicAnchor, "DynamicAnchor should be 'node'")
+
+	// Check $dynamicRef on the items schema
+	childrenProp := treeNodeSchema.Properties.GetOrZero("children")
+	require.NotNil(t, childrenProp)
+	childrenSchema := childrenProp.Schema()
+	require.NotNil(t, childrenSchema)
+	require.NotNil(t, childrenSchema.Items)
+	require.True(t, childrenSchema.Items.IsA(), "Items should be a schema")
+	itemsSchema := childrenSchema.Items.A.Schema()
+	require.NotNil(t, itemsSchema)
+	assert.Equal(t, "#node", itemsSchema.DynamicRef, "DynamicRef should be '#node'")
+}
+
