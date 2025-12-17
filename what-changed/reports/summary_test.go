@@ -26,7 +26,9 @@ func TestCreateSummary_OverallReport(t *testing.T) {
 	changes := createDiff()
 	report := CreateOverallReport(changes)
 	assert.Equal(t, 1, report.ChangeReport[v3.InfoLabel].Total)
-	assert.Equal(t, 43, report.ChangeReport[v3.PathsLabel].Total)
+	// Callbacks are now properly counted as individual expression changes
+	// instead of a single PropertyAdded/PropertyRemoved change
+	assert.Equal(t, 45, report.ChangeReport[v3.PathsLabel].Total)
 	assert.Equal(t, 10, report.ChangeReport[v3.PathsLabel].Breaking)
 	assert.Equal(t, 3, report.ChangeReport[v3.TagsLabel].Total)
 	assert.Equal(t, 1, report.ChangeReport[v3.ExternalDocsLabel].Total)
