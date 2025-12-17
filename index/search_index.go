@@ -233,7 +233,10 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 				}
 			}
 
-			if strings.HasSuffix(n, refParsed) {
+			// Normalize separators for Windows comparisons.
+			normPath := filepath.ToSlash(n)
+			normRef := filepath.ToSlash(refParsed)
+			if strings.HasSuffix(normPath, normRef) {
 				node, _ := rFile.GetContentAsYAMLNode()
 				if node != nil {
 					r := &Reference{

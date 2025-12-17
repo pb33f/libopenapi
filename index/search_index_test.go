@@ -6,6 +6,7 @@ package index
 import (
 	"context"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -91,4 +92,50 @@ components:
 	assert.NotNil(t, ref, "Reference should be found via rolodex fallback")
 	assert.NotNil(t, idx, "Index should be returned")
 	assert.Equal(t, "Pet", ref.Name)
+}
+
+func TestSearchIndexForReference_RolodexSuffixMatch(t *testing.T) {
+	tempDir := t.TempDir()
+	externalDir := filepath.Join(tempDir, "subdir")
+	err := os.MkdirAll(externalDir, 0o755)
+	assert.NoError(t, err)
+
+	externalPath := filepath.Join(externalDir, "external.yaml")
+	externalSpec := []byte(`openapi: "3.0.0"
+info:
+  title: External
+  version: "1.0.0"
+paths: {}`)
+	err = os.WriteFile(externalPath, externalSpec, 0o644)
+	assert.NoError(t, err)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(`openapi: "3.0.0"
+info:
+  title: Root
+  version: "1.0.0"
+paths: {}`), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.SpecAbsolutePath = filepath.Join(tempDir, "root.yaml")
+	config.SpecFilePath = config.SpecAbsolutePath
+	config.BasePath = tempDir
+
+	rolo := NewRolodex(config)
+	localFS, fsErr := NewLocalFSWithConfig(&LocalFSConfig{
+		BaseDirectory: tempDir,
+		IndexConfig:   config,
+	})
+	assert.NoError(t, fsErr)
+	rolo.AddLocalFS(tempDir, localFS)
+
+	idx := NewSpecIndexWithConfig(&rootNode, config)
+	idx.SetRolodex(rolo)
+
+	ref := filepath.ToSlash(filepath.Join("subdir", "external.yaml"))
+	found, _ := idx.SearchIndexForReference(ref)
+
+	assert.NotNil(t, found)
+	assert.True(t, found.IsRemote)
+	assert.Equal(t, "external.yaml", filepath.Base(found.FullDefinition))
 }
