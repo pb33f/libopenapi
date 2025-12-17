@@ -61,11 +61,50 @@ func (c *CallbackChanges) TotalBreakingChanges() int {
 }
 
 // CompareCallback will compare two Callback objects and return a pointer to CallbackChanges with all the things
-// that have changed between them.
+// that have changed between them. Handles nil inputs for added/removed callback scenarios.
 func CompareCallback(l, r *v3.Callback) *CallbackChanges {
 	cc := new(CallbackChanges)
 	var changes []*Change
 
+	if l == nil && r == nil {
+		return nil
+	}
+
+	// whole callback added - use operation.callbacks breaking rules
+	if l == nil {
+		expChanges := make(map[string]*PathItemChanges)
+		for k, v := range r.Expression.FromOldest() {
+			CreateChange(&changes, ObjectAdded, k.Value,
+				nil, v.GetValueNode(), BreakingAdded(CompOperation, PropCallbacks),
+				nil, v.GetValue())
+		}
+		cc.ExpressionChanges = expChanges
+		cc.ExtensionChanges = CompareExtensions(nil, r.Extensions)
+		cc.PropertyChanges = NewPropertyChanges(changes)
+		if cc.TotalChanges() <= 0 {
+			return nil
+		}
+		return cc
+	}
+
+	// whole callback removed - use operation.callbacks breaking rules
+	if r == nil {
+		expChanges := make(map[string]*PathItemChanges)
+		for k, v := range l.Expression.FromOldest() {
+			CreateChange(&changes, ObjectRemoved, k.Value,
+				v.GetValueNode(), nil, BreakingRemoved(CompOperation, PropCallbacks),
+				v.GetValue(), nil)
+		}
+		cc.ExpressionChanges = expChanges
+		cc.ExtensionChanges = CompareExtensions(l.Extensions, nil)
+		cc.PropertyChanges = NewPropertyChanges(changes)
+		if cc.TotalChanges() <= 0 {
+			return nil
+		}
+		return cc
+	}
+
+	// Both exist - compare them
 	lHashes := make(map[string]string)
 	rHashes := make(map[string]string)
 

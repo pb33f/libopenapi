@@ -123,15 +123,24 @@ func checkSecurityRequirement(lSec, rSec *orderedmap.Map[low.KeyReference[string
 			rRoleValues := make(map[string]low.ValueReference[string])
 			var t, k int
 			for i := range lValue {
+				if lValue[i].Value == "" {
+					continue // Skip empty scope values (from malformed YAML)
+				}
 				lRoleKeys[t] = lValue[i].Value
 				lRoleValues[lValue[i].Value] = lValue[i]
 				t++
 			}
+			lRoleKeys = lRoleKeys[:t] // Trim to actual size
+
 			for i := range rValue {
+				if rValue[i].Value == "" {
+					continue // Skip empty scope values (from malformed YAML)
+				}
 				rRoleKeys[k] = rValue[i].Value
 				rRoleValues[rValue[i].Value] = rValue[i]
 				k++
 			}
+			rRoleKeys = rRoleKeys[:k] // Trim to actual size
 
 			for t = range lRoleKeys {
 				if t < len(rRoleKeys) {

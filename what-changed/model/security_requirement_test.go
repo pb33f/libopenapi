@@ -631,3 +631,78 @@ func TestCompareSecurityRequirement_OAuth2_RealWorld(t *testing.T) {
 	assert.Equal(t, "OAuth2", extChanges.Changes[0].Property)
 	assert.Equal(t, "write", extChanges.Changes[0].New)
 }
+
+// Test that empty scope values from malformed YAML are ignored
+// This handles cases where YAML like "secure:\n  lock:" (mapping) instead of
+// "secure:\n  - lock" (sequence) causes empty string scope values
+func TestCompareSecurityRequirement_IgnoresEmptyScopeValues(t *testing.T) {
+	low.ClearHashCache()
+
+	// Simulating malformed YAML where scope values include empty strings
+	// Original: secure with no scopes
+	left := `secure:`
+
+	// Modified: secure with "lock" scope (plus potential empty string from malformed YAML)
+	// In properly formed YAML this would be "secure:\n  - lock"
+	// But malformed "secure:\n  lock:" could create ["lock", ""]
+	right := `secure:
+  - lock`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.NotNil(t, extChanges)
+	// Should only have 1 change (the "lock" scope addition), NOT 2 (lock + empty string)
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "secure", extChanges.Changes[0].Property)
+	assert.Equal(t, "lock", extChanges.Changes[0].New)
+}
+
+// Test that empty scope values are properly filtered during comparison
+// This covers lines 126-127 and 136-137 in checkSecurityRequirement
+func TestCompareSecurityRequirement_EmptyScopeValuesFiltered(t *testing.T) {
+	low.ClearHashCache()
+
+	// Left has scopes with an empty string mixed in
+	left := `secure:
+  - lock
+  - ""
+  - key`
+
+	// Right has scopes with an empty string mixed in
+	right := `secure:
+  - lock
+  - ""
+  - key
+  - newscope`
+
+	var lNode, rNode yaml.Node
+	_ = yaml.Unmarshal([]byte(left), &lNode)
+	_ = yaml.Unmarshal([]byte(right), &rNode)
+
+	var lDoc base.SecurityRequirement
+	var rDoc base.SecurityRequirement
+	_ = low.BuildModel(lNode.Content[0], &lDoc)
+	_ = low.BuildModel(rNode.Content[0], &rDoc)
+	_ = lDoc.Build(context.Background(), nil, lNode.Content[0], nil)
+	_ = rDoc.Build(context.Background(), nil, rNode.Content[0], nil)
+
+	// compare - empty strings should be filtered out
+	extChanges := CompareSecurityRequirement(&lDoc, &rDoc)
+	assert.NotNil(t, extChanges)
+	// Should only detect the "newscope" addition, empty strings filtered
+	assert.Equal(t, 1, extChanges.TotalChanges())
+	assert.Equal(t, ObjectAdded, extChanges.Changes[0].ChangeType)
+	assert.Equal(t, "newscope", extChanges.Changes[0].New)
+}
