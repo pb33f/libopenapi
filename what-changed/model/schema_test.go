@@ -4674,3 +4674,291 @@ components:
 	assert.NotNil(t, typeChange.Context.OriginalLine)
 	assert.NotNil(t, typeChange.Context.NewLine)
 }
+
+// TestCompareSchemas_DynamicAnchor_Added tests adding $dynamicAnchor (JSON Schema 2020-12)
+func TestCompareSchemas_DynamicAnchor_Added(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: node`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges(), "Adding $dynamicAnchor should not be breaking by default")
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, "$dynamicAnchor", changes.Changes[0].Property)
+}
+
+// TestCompareSchemas_DynamicAnchor_Modified tests modifying $dynamicAnchor
+func TestCompareSchemas_DynamicAnchor_Modified(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: nodeOld`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: nodeNew`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "Modifying $dynamicAnchor should be breaking by default")
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, "$dynamicAnchor", changes.Changes[0].Property)
+}
+
+// TestCompareSchemas_DynamicAnchor_Removed tests removing $dynamicAnchor
+func TestCompareSchemas_DynamicAnchor_Removed(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: node`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "Removing $dynamicAnchor should be breaking by default")
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, "$dynamicAnchor", changes.Changes[0].Property)
+}
+
+// TestCompareSchemas_DynamicRef_Added tests adding $dynamicRef (JSON Schema 2020-12)
+func TestCompareSchemas_DynamicRef_Added(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicRef: "#node"`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 0, changes.TotalBreakingChanges(), "Adding $dynamicRef should not be breaking by default")
+	assert.Equal(t, PropertyAdded, changes.Changes[0].ChangeType)
+	assert.Equal(t, "$dynamicRef", changes.Changes[0].Property)
+}
+
+// TestCompareSchemas_DynamicRef_Modified tests modifying $dynamicRef
+func TestCompareSchemas_DynamicRef_Modified(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicRef: "#oldNode"`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicRef: "#newNode"`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "Modifying $dynamicRef should be breaking by default")
+	assert.Equal(t, Modified, changes.Changes[0].ChangeType)
+	assert.Equal(t, "$dynamicRef", changes.Changes[0].Property)
+}
+
+// TestCompareSchemas_DynamicRef_Removed tests removing $dynamicRef
+func TestCompareSchemas_DynamicRef_Removed(t *testing.T) {
+	low.ClearHashCache()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicRef: "#node"`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "Removing $dynamicRef should be breaking by default")
+	assert.Equal(t, PropertyRemoved, changes.Changes[0].ChangeType)
+	assert.Equal(t, "$dynamicRef", changes.Changes[0].Property)
+}
+
+// TestCompareSchemas_DynamicAnchor_ConfigurableBreakingRules tests that $dynamicAnchor
+// breaking behavior can be configured
+func TestCompareSchemas_DynamicAnchor_ConfigurableBreakingRules(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: nodeOld`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicAnchor: nodeNew`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	// Default behavior: modification should be breaking
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "Modifying $dynamicAnchor should be breaking by default")
+
+	// Now configure $dynamicAnchor modification as non-breaking
+	customConfig := &BreakingRulesConfig{
+		Schema: &SchemaRules{
+			DynamicAnchor: &BreakingChangeRule{
+				Added:    boolPtr(false),
+				Modified: boolPtr(false), // Override: modification is not breaking
+				Removed:  boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	// Re-run comparison with custom config
+	changes2 := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes2)
+	assert.Equal(t, 0, changes2.TotalBreakingChanges(), "With custom config, modifying $dynamicAnchor should not be breaking")
+}
+
+// TestCompareSchemas_DynamicRef_ConfigurableBreakingRules tests that $dynamicRef
+// breaking behavior can be configured
+func TestCompareSchemas_DynamicRef_ConfigurableBreakingRules(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicRef: "#oldNode"`
+
+	right := `openapi: "3.1.0"
+components:
+  schemas:
+    TreeNode:
+      type: object
+      $dynamicRef: "#newNode"`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("TreeNode").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("TreeNode").Value
+
+	// Default behavior: modification should be breaking
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalBreakingChanges(), "Modifying $dynamicRef should be breaking by default")
+
+	// Now configure $dynamicRef modification as non-breaking
+	customConfig := &BreakingRulesConfig{
+		Schema: &SchemaRules{
+			DynamicRef: &BreakingChangeRule{
+				Added:    boolPtr(false),
+				Modified: boolPtr(false), // Override: modification is not breaking
+				Removed:  boolPtr(false),
+			},
+		},
+	}
+	SetActiveBreakingRulesConfig(customConfig)
+
+	// Re-run comparison with custom config
+	changes2 := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes2)
+	assert.Equal(t, 0, changes2.TotalBreakingChanges(), "With custom config, modifying $dynamicRef should not be breaking")
+}

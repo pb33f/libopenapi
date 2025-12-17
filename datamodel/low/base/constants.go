@@ -57,6 +57,8 @@ const (
 	SchemaLabel                = "schema"
 	SchemaTypeLabel            = "$schema"
 	AnchorLabel                = "$anchor"
+	DynamicAnchorLabel         = "$dynamicAnchor"
+	DynamicRefLabel            = "$dynamicRef"
 )
 
 /*
