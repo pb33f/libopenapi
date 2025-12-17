@@ -267,6 +267,8 @@ minItems: 10
 maxProperties: 30
 minProperties: 1
 $anchor: anchor
+$dynamicAnchor: dynamicAnchorValue
+$dynamicRef: "#dynamicRefTarget"
 $schema: https://example.com/custom-json-schema-dialect`
 
 	var compNode yaml.Node
@@ -312,6 +314,8 @@ $schema: https://example.com/custom-json-schema-dialect`
 	assert.True(t, *compiled.Deprecated)
 	assert.True(t, *compiled.Nullable)
 	assert.Equal(t, "anchor", compiled.Anchor)
+	assert.Equal(t, "dynamicAnchorValue", compiled.DynamicAnchor)
+	assert.Equal(t, "#dynamicRefTarget", compiled.DynamicRef)
 	assert.Equal(t, "https://example.com/custom-json-schema-dialect", compiled.SchemaTypeRef)
 
 	wentLow := compiled.GoLow()
@@ -320,7 +324,7 @@ $schema: https://example.com/custom-json-schema-dialect`
 
 	// now render it out!
 	schemaBytes, _ := compiled.Render()
-	assert.Len(t, schemaBytes, 3473)
+	assert.Len(t, schemaBytes, 3541)
 }
 
 func TestSchemaObjectWithAllOfSequenceOrder(t *testing.T) {
