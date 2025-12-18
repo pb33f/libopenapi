@@ -1352,3 +1352,57 @@ func TestNodeBuilder_RenderContext_FallbackToInline_Slice(t *testing.T) {
 	data, _ := yaml.Marshal(node)
 	assert.Contains(t, string(data), "inline-item1")
 }
+
+// basicRenderable only implements Renderable (MarshalYAML), not RenderableInline or RenderableInlineWithContext
+// This tests the final else fallback branch in node_builder.go lines 434-436 and 545-547
+type basicRenderable struct {
+	Value string
+}
+
+func (b *basicRenderable) MarshalYAML() (interface{}, error) {
+	return utils.CreateStringNode("basic-" + b.Value), nil
+}
+
+type testWithBasicPtr struct {
+	Item *basicRenderable `yaml:"item,omitempty"`
+}
+
+type testWithBasicSlice struct {
+	Items []*basicRenderable `yaml:"items,omitempty"`
+}
+
+func TestNodeBuilder_RenderContext_FallbackToMarshalYAML_Pointer(t *testing.T) {
+	// Test the final else branch when RenderContext is set but object only implements Renderable
+	// (not RenderableInlineWithContext or RenderableInline)
+	high := &testWithBasicPtr{
+		Item: &basicRenderable{Value: "test"},
+	}
+
+	// With context but object only implements MarshalYAML
+	// Should fall back to MarshalYAML
+	nb := NewNodeBuilder(high, nil)
+	nb.Resolve = true
+	nb.RenderContext = struct{}{}
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+	assert.Contains(t, string(data), "basic-test")
+}
+
+func TestNodeBuilder_RenderContext_FallbackToMarshalYAML_Slice(t *testing.T) {
+	// Test the final else branch when RenderContext is set but object only implements Renderable
+	// (not RenderableInlineWithContext or RenderableInline)
+	high := &testWithBasicSlice{
+		Items: []*basicRenderable{
+			{Value: "item1"},
+		},
+	}
+
+	// With context but object only implements MarshalYAML
+	// Should fall back to MarshalYAML
+	nb := NewNodeBuilder(high, nil)
+	nb.Resolve = true
+	nb.RenderContext = struct{}{}
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+	assert.Contains(t, string(data), "basic-item1")
+}

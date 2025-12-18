@@ -1123,3 +1123,82 @@ func TestSchemaProxy_MarshalYAMLInlineWithContext_Concurrent_NoFalsePositives(t 
 	// Should have NO false positive circular reference errors
 	assert.Equal(t, 0, errorCount, "Should not have false positive circular reference errors")
 }
+
+func TestSchemaProxy_MarshalYAMLInlineWithContext_WrongContextType(t *testing.T) {
+	// Test the fallback branch when wrong context type is passed
+	// The function should fall back to creating a fresh InlineRenderContext
+	const ymlComponents = `components:
+    schemas:
+     Pet:
+       type: object
+       properties:
+         name:
+           type: string`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: object
+properties:
+  name:
+    type: string`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	require.NoError(t, err)
+
+	highProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
+
+	// Pass wrong context type (not *InlineRenderContext)
+	// Should fall back to creating fresh context
+	wrongCtx := struct{ foo string }{foo: "bar"}
+	result, err := highProxy.MarshalYAMLInlineWithContext(wrongCtx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestSchemaProxy_MarshalYAMLInlineWithContext_NilContext(t *testing.T) {
+	// Test when nil is passed as context
+	const ymlComponents = `components:
+    schemas:
+     Pet:
+       type: object`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: string`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	require.NoError(t, err)
+
+	highProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
+
+	// Pass nil - should fall back to creating fresh context
+	result, err := highProxy.MarshalYAMLInlineWithContext(nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
