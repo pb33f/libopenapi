@@ -49,6 +49,16 @@ func RenderInline(high, low any) (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// RenderInlineWithContext creates an inline YAML representation of a high-level object with all references resolved.
+// Uses the provided context for cycle detection during inline rendering.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to avoid import cycles.
+func RenderInlineWithContext(high, low, ctx any) (interface{}, error) {
+	nb := NewNodeBuilder(high, low)
+	nb.Resolve = true
+	nb.RenderContext = ctx
+	return nb.Render(), nil
+}
+
 // UnpackExtensions is a convenience function that makes it easy and simple to unpack an objects extensions
 // into a complex type, provided as a generic. This function is for high-level models that implement `GoesLow()`
 // and for low-level models that support extensions via `HasExtensions`.

@@ -64,6 +64,14 @@ func (e *Encoding) MarshalYAMLInline() (interface{}, error) {
 	return high.RenderInline(e, e.low)
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the Encoding object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (e *Encoding) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	return high.RenderInlineWithContext(e, e.low, ctx)
+}
+
 // ExtractEncoding converts hard to navigate low-level plumbing Encoding definitions, into a high-level simple map
 func ExtractEncoding(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*lowv3.Encoding]]) *orderedmap.Map[string, *Encoding] {
 	return low.FromReferenceMapWithFunc(elements, NewEncoding)

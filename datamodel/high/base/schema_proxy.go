@@ -49,6 +49,35 @@ func IsBundlingMode() bool {
 	return bundlingModeCount.Load() > 0
 }
 
+// InlineRenderContext provides isolated tracking for inline rendering operations.
+// Each render call-chain should use its own context to prevent false positive
+// cycle detection when multiple goroutines render the same schemas concurrently.
+type InlineRenderContext struct {
+	tracker sync.Map
+}
+
+// NewInlineRenderContext creates a new isolated rendering context.
+func NewInlineRenderContext() *InlineRenderContext {
+	return &InlineRenderContext{}
+}
+
+// StartRendering marks a key as being rendered. Returns true if already rendering (cycle detected).
+// The key should be stable and unique per schema instance (e.g., filePath:$ref).
+func (ctx *InlineRenderContext) StartRendering(key string) bool {
+	if key == "" {
+		return false
+	}
+	_, loaded := ctx.tracker.LoadOrStore(key, true)
+	return loaded
+}
+
+// StopRendering marks a key as done rendering.
+func (ctx *InlineRenderContext) StopRendering(key string) {
+	if key != "" {
+		ctx.tracker.Delete(key)
+	}
+}
+
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
 // underlying low-level SchemaProxy backs this high-level one.
 //
@@ -335,10 +364,30 @@ func (sp *SchemaProxy) getInlineRenderKey() string {
 	return ""
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the SchemaProxy object
+// using the provided InlineRenderContext for cycle detection. Use this when multiple goroutines may render
+// the same schemas concurrently to avoid false positive cycle detection.
+// The ctx parameter should be *InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (sp *SchemaProxy) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if renderCtx, ok := ctx.(*InlineRenderContext); ok {
+		return sp.marshalYAMLInlineInternal(renderCtx)
+	}
+	// Fallback to fresh context if wrong type passed
+	return sp.marshalYAMLInlineInternal(NewInlineRenderContext())
+}
+
 // MarshalYAMLInline will create a ready to render YAML representation of the SchemaProxy object. The
 // $ref values will be inlined instead of kept as is. All circular references will be ignored, regardless
 // of the type of circular reference, they are all bad when rendering.
+// This method creates a fresh InlineRenderContext internally. For concurrent scenarios, use
+// MarshalYAMLInlineWithContext instead.
 func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
+	ctx := NewInlineRenderContext()
+	return sp.marshalYAMLInlineInternal(ctx)
+}
+
+func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (interface{}, error) {
 	// If preserveReference is set, return the reference node instead of inlining.
 	// This is used for discriminator mapping scenarios where refs must be preserved.
 	if sp.preserveReference && sp.IsReference() {
@@ -370,27 +419,22 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 		}
 	}
 
-	// Check for recursive rendering using the tracking map.
+	// Check for recursive rendering using the context's tracker.
 	// This prevents infinite recursion when circular references aren't properly detected.
+	// Using a scoped context instead of a global tracker prevents false positive cycle detection
+	// when multiple goroutines render the same schemas concurrently.
 	renderKey := sp.getInlineRenderKey()
-	if renderKey != "" {
-		// LoadOrStore atomically checks and sets - if already present, we have a cycle
-		if _, loaded := inlineRenderingTracker.LoadOrStore(renderKey, true); loaded {
-			// We're already rendering this schema - return ref to break the cycle
-			if sp.IsReference() {
-				return sp.GetReferenceNode(),
-					fmt.Errorf("schema render failure, circular reference: `%s`", sp.GetReference())
-			}
-			// For inline schemas, return an empty map to avoid infinite recursion
-			return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"},
-				fmt.Errorf("schema render failure, circular reference detected during inline rendering")
+	if ctx.StartRendering(renderKey) {
+		// We're already rendering this schema in THIS call chain - return ref to break the cycle
+		if sp.IsReference() {
+			return sp.GetReferenceNode(),
+				fmt.Errorf("schema render failure, circular reference: `%s`", sp.GetReference())
 		}
-
-		// Ensure we clean up when done
-		defer func() {
-			inlineRenderingTracker.Delete(renderKey)
-		}()
+		// For inline schemas, return an empty map to avoid infinite recursion
+		return &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"},
+			fmt.Errorf("schema render failure, circular reference detected during inline rendering")
 	}
+	defer ctx.StopRendering(renderKey)
 
 	var s *Schema
 	var err error

@@ -315,3 +315,58 @@ func TestParameter_Integration_MixedRefAndInline(t *testing.T) {
 	assert.Contains(t, output, "name: status")
 	assert.Contains(t, output, "in: query")
 }
+
+func TestParameter_MarshalYAMLInlineWithContext(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
+
+	explode := true
+	param := Parameter{
+		Name:          "chicken",
+		In:            "nuggets",
+		Description:   "beefy",
+		Deprecated:    true,
+		Style:         "simple",
+		Explode:       &explode,
+		AllowReserved: true,
+		Example:       utils.CreateStringNode("example"),
+		Examples: orderedmap.ToOrderedMap(map[string]*base.Example{
+			"example": {Value: utils.CreateStringNode("example")},
+		}),
+		Extensions: ext,
+	}
+
+	ctx := base.NewInlineRenderContext()
+	node, err := param.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	rend, _ := yaml.Marshal(node)
+
+	desired := `name: chicken
+in: nuggets
+description: beefy
+deprecated: true
+style: simple
+explode: true
+allowReserved: true
+example: example
+examples:
+    example:
+        value: example
+x-burgers: why not?`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+}
+
+func TestParameter_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	p := CreateParameterRef("#/components/parameters/limitParam")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := p.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}

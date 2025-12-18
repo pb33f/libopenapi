@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -117,5 +118,42 @@ func TestSecurityScheme_IsReference_False(t *testing.T) {
 	}
 	assert.False(t, ss.IsReference())
 	assert.Equal(t, "", ss.GetReference())
+}
+
+func TestSecurityScheme_MarshalYAMLInlineWithContext(t *testing.T) {
+	ss := &SecurityScheme{
+		Type:        "apiKey",
+		Description: "this is a description",
+		Name:        "superSecret",
+		In:          "header",
+		Scheme:      "https",
+	}
+
+	ctx := base.NewInlineRenderContext()
+	node, err := ss.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	dat, _ := yaml.Marshal(node)
+
+	desired := `type: apiKey
+description: this is a description
+name: superSecret
+in: header
+scheme: https`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
+}
+
+func TestSecurityScheme_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	ss := CreateSecuritySchemeRef("#/components/securitySchemes/BearerAuth")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := ss.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
 

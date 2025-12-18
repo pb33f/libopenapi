@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -177,4 +178,47 @@ func TestResponse_IsReference_False(t *testing.T) {
 	}
 	assert.False(t, r.IsReference())
 	assert.Equal(t, "", r.GetReference())
+}
+
+func TestResponse_MarshalYAMLInlineWithContext(t *testing.T) {
+	yml := `description: this is a response
+headers:
+    someHeader:
+        description: a header
+content:
+    something/thing:
+        example: cake
+links:
+    someLink:
+        description: a link!`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.Response
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewResponse(&n)
+
+	ctx := base.NewInlineRenderContext()
+	node, err := r.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	rendered, _ := yaml.Marshal(node)
+	assert.Equal(t, yml, strings.TrimSpace(string(rendered)))
+}
+
+func TestResponse_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	r := CreateResponseRef("#/components/responses/NotFound")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := r.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }

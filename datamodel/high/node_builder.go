@@ -21,12 +21,20 @@ import (
 // NodeBuilder is a structure used by libopenapi high-level objects, to render themselves back to YAML.
 // this allows high-level objects to be 'mutable' because all changes will be rendered out.
 type NodeBuilder struct {
-	Version float32
-	Nodes   []*nodes.NodeEntry
-	High    any
-	Low     any
-	Resolve bool // If set to true, all references will be rendered inline
-	Errors  []error
+	Version       float32
+	Nodes         []*nodes.NodeEntry
+	High          any
+	Low           any
+	Resolve       bool // If set to true, all references will be rendered inline
+	RenderContext any  // Context for inline rendering cycle detection (*base.InlineRenderContext)
+	Errors        []error
+}
+
+// RenderableInlineWithContext is an interface that can be implemented by types that support
+// context-aware inline rendering for proper cycle detection in concurrent scenarios.
+// The context parameter should be *base.InlineRenderContext but is typed as any to avoid import cycles.
+type RenderableInlineWithContext interface {
+	MarshalYAMLInlineWithContext(ctx any) (interface{}, error)
 }
 
 const renderZero = "renderZero"
@@ -415,8 +423,20 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 						nodeErrors = append(nodeErrors, ne)
 					} else {
 						// try and render inline, if we can, otherwise treat as normal.
-						if _, ko := er.(RenderableInline); ko {
-							rend, ne = er.(RenderableInline).MarshalYAMLInline()
+						// Prefer a context-aware method when RenderContext is available
+						if n.RenderContext != nil {
+							if ctxRenderer, ko := er.(RenderableInlineWithContext); ko {
+								rend, ne = ctxRenderer.MarshalYAMLInlineWithContext(n.RenderContext)
+								nodeErrors = append(nodeErrors, ne)
+							} else if inliner, ko := er.(RenderableInline); ko {
+								rend, ne = inliner.MarshalYAMLInline()
+								nodeErrors = append(nodeErrors, ne)
+							} else {
+								rend, ne = er.MarshalYAML()
+								nodeErrors = append(nodeErrors, ne)
+							}
+						} else if inliner, ko := er.(RenderableInline); ko {
+							rend, ne = inliner.MarshalYAMLInline()
 							nodeErrors = append(nodeErrors, ne)
 						} else {
 							rend, ne = er.MarshalYAML()
@@ -514,10 +534,20 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 				nodeErrors = append(nodeErrors, ne)
 			} else {
 				// try an inline render if we can, otherwise there is no option but to default to the
-				// full render.
-
-				if _, ko := r.(RenderableInline); ko {
-					rawRender, ne = r.(RenderableInline).MarshalYAMLInline()
+				// full render. Prefer a context-aware method when RenderContext is available
+				if n.RenderContext != nil {
+					if ctxRenderer, ko := r.(RenderableInlineWithContext); ko {
+						rawRender, ne = ctxRenderer.MarshalYAMLInlineWithContext(n.RenderContext)
+						nodeErrors = append(nodeErrors, ne)
+					} else if inliner, ko := r.(RenderableInline); ko {
+						rawRender, ne = inliner.MarshalYAMLInline()
+						nodeErrors = append(nodeErrors, ne)
+					} else {
+						rawRender, ne = r.MarshalYAML()
+						nodeErrors = append(nodeErrors, ne)
+					}
+				} else if inliner, ko := r.(RenderableInline); ko {
+					rawRender, ne = inliner.MarshalYAMLInline()
 					nodeErrors = append(nodeErrors, ne)
 				} else {
 					rawRender, ne = r.MarshalYAML()

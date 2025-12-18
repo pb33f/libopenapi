@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
@@ -107,4 +108,48 @@ func TestLink_IsReference_False(t *testing.T) {
 	}
 	assert.False(t, l.IsReference())
 	assert.Equal(t, "", l.GetReference())
+}
+
+func TestLink_MarshalYAMLInlineWithContext(t *testing.T) {
+	link := Link{
+		OperationRef: "somewhere",
+		OperationId:  "somewhereOutThere",
+		Parameters: orderedmap.ToOrderedMap(map[string]string{
+			"over": "theRainbow",
+		}),
+		RequestBody: "hello?",
+		Description: "are you there?",
+		Server: &Server{
+			URL: "https://pb33f.io",
+		},
+	}
+
+	ctx := base.NewInlineRenderContext()
+	node, err := link.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	dat, _ := yaml.Marshal(node)
+	desired := `operationRef: somewhere
+operationId: somewhereOutThere
+parameters:
+    over: theRainbow
+requestBody: hello?
+description: are you there?
+server:
+    url: https://pb33f.io`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(dat)))
+}
+
+func TestLink_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	l := CreateLinkRef("#/components/links/GetUserByUserId")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := l.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }

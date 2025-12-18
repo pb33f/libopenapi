@@ -496,16 +496,26 @@ func (s *Schema) Render() ([]byte, error) {
 	return yaml.Marshal(s)
 }
 
-// RenderInline will return a YAML representation of the Schema object as a byte slice.
-// All the $ref values will be inlined, as in resolved in place.
-//
-// Make sure you don't have any circular references!
-func (s *Schema) RenderInline() ([]byte, error) {
-	d, err := s.MarshalYAMLInline()
+// RenderInlineWithContext will return a YAML representation of the Schema object as a byte slice
+// using the provided InlineRenderContext for cycle detection.
+// Use this when multiple goroutines may render the same schemas concurrently.
+// The ctx parameter should be *InlineRenderContext but is typed as any to avoid import cycles.
+func (s *Schema) RenderInlineWithContext(ctx any) ([]byte, error) {
+	d, err := s.MarshalYAMLInlineWithContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 	return yaml.Marshal(d)
+}
+
+// RenderInline will return a YAML representation of the Schema object as a byte slice.
+// All the $ref values will be inlined, as in resolved in place.
+// This method creates a fresh InlineRenderContext internally.
+//
+// Make sure you don't have any circular references!
+func (s *Schema) RenderInline() ([]byte, error) {
+	ctx := NewInlineRenderContext()
+	return s.RenderInlineWithContext(ctx)
 }
 
 // MarshalYAML will create a ready to render YAML representation of the Schema object.
@@ -544,8 +554,12 @@ func (s *Schema) MarshalJSON() ([]byte, error) {
 	return json.Marshal(renderedJSON)
 }
 
-// MarshalYAMLInline will render out the Schema pointer as YAML, and all refs will be inlined fully
-func (s *Schema) MarshalYAMLInline() (interface{}, error) {
+// MarshalYAMLInlineWithContext will render out the Schema pointer as YAML using the provided
+// InlineRenderContext for cycle detection. All refs will be inlined fully.
+// Use this when multiple goroutines may render the same schemas concurrently.
+// The ctx parameter should be *InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (s *Schema) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	// If this schema has a discriminator, mark OneOf/AnyOf items to preserve their references.
 	// This ensures discriminator mapping refs are not inlined during bundling.
 	if s.Discriminator != nil {
@@ -563,6 +577,7 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 
 	nb := high.NewNodeBuilder(s, s.low)
 	nb.Resolve = true
+	nb.RenderContext = ctx
 	// determine index version
 	idx := s.GoLow().Index
 	if idx != nil {
@@ -571,6 +586,13 @@ func (s *Schema) MarshalYAMLInline() (interface{}, error) {
 		}
 	}
 	return nb.Render(), errors.Join(nb.Errors...)
+}
+
+// MarshalYAMLInline will render out the Schema pointer as YAML, and all refs will be inlined fully.
+// This method creates a fresh InlineRenderContext internally.
+func (s *Schema) MarshalYAMLInline() (interface{}, error) {
+	ctx := NewInlineRenderContext()
+	return s.MarshalYAMLInlineWithContext(ctx)
 }
 
 // MarshalJSONInline will render out the Schema pointer as JSON, and all refs will be inlined fully

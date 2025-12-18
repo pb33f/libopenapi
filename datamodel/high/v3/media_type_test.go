@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -188,4 +189,36 @@ func TestMediaType_Examples_NotFromSchema(t *testing.T) {
 	r := NewMediaType(&n)
 
 	assert.Equal(t, 0, orderedmap.Len(r.Examples))
+}
+
+func TestMediaType_MarshalYAMLInlineWithContext(t *testing.T) {
+	yml := `examples:
+    pbjBurger:
+        summary: A horrible, nutty, sticky mess.
+        value:
+            name: Peanut And Jelly
+            numPatties: 3
+    cakeBurger:
+        summary: A sickly, sweet, atrocity
+        value:
+            name: Chocolate Cake Burger
+            numPatties: 5`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	var n v3.MediaType
+	_ = low.BuildModel(idxNode.Content[0], &n)
+	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
+
+	r := NewMediaType(&n)
+
+	ctx := base.NewInlineRenderContext()
+	node, err := r.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	rend, _ := yaml.Marshal(node)
+	assert.Len(t, rend, 290)
 }

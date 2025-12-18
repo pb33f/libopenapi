@@ -742,8 +742,8 @@ func TestMarshalYAMLInline_BundlingMode_PreservesLocalComponentRefs(t *testing.T
 
 func TestMarshalYAMLInline_CircularReferenceDetection_WithReference(t *testing.T) {
 	// Test that circular reference detection returns the ref node and error
-	// when a reference proxy is already being rendered.
-	// This covers lines 388-390 in schema_proxy.go
+	// when a reference proxy is already being rendered within the same context.
+	// This covers lines 421-425 in schema_proxy.go
 
 	// Reset bundling mode state
 	for IsBundlingMode() {
@@ -761,12 +761,12 @@ func TestMarshalYAMLInline_CircularReferenceDetection_WithReference(t *testing.T
 	renderKey := proxy.getInlineRenderKey()
 	require.NotEmpty(t, renderKey, "render key should be generated from refStr")
 
-	// Store the key in the tracker to simulate a cycle
-	inlineRenderingTracker.Store(renderKey, true)
-	defer inlineRenderingTracker.Delete(renderKey)
+	// Create context and store the key to simulate a cycle
+	ctx := NewInlineRenderContext()
+	ctx.StartRendering(renderKey)
 
-	// MarshalYAMLInline should detect the cycle and return ref node + error
-	result, err := proxy.MarshalYAMLInline()
+	// MarshalYAMLInlineWithContext should detect the cycle and return ref node + error
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
 
 	// Should return an error about circular reference
 	require.Error(t, err)
@@ -782,8 +782,8 @@ func TestMarshalYAMLInline_CircularReferenceDetection_WithReference(t *testing.T
 
 func TestMarshalYAMLInline_CircularReferenceDetection_WithoutReference(t *testing.T) {
 	// Test that circular reference detection returns an empty map node and error
-	// when an inline (non-reference) proxy is already being rendered.
-	// This covers lines 392-394 in schema_proxy.go
+	// when an inline (non-reference) proxy is already being rendered within the same context.
+	// This covers lines 427-429 in schema_proxy.go
 
 	// Reset bundling mode state
 	for IsBundlingMode() {
@@ -810,12 +810,12 @@ func TestMarshalYAMLInline_CircularReferenceDetection_WithoutReference(t *testin
 	renderKey := proxy.getInlineRenderKey()
 	require.NotEmpty(t, renderKey, "render key should be generated from node position")
 
-	// Store the key in the tracker to simulate a cycle
-	inlineRenderingTracker.Store(renderKey, true)
-	defer inlineRenderingTracker.Delete(renderKey)
+	// Create context and store the key to simulate a cycle
+	ctx := NewInlineRenderContext()
+	ctx.StartRendering(renderKey)
 
-	// MarshalYAMLInline should detect the cycle and return empty map + error
-	result, err := proxy.MarshalYAMLInline()
+	// MarshalYAMLInlineWithContext should detect the cycle and return empty map + error
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
 
 	// Should return an error about circular reference
 	require.Error(t, err)
@@ -975,4 +975,151 @@ func TestMarshalYAMLInline_BundlingMode_ViaLowLevelRef(t *testing.T) {
 	assert.Equal(t, yaml.MappingNode, node.Kind)
 	assert.Equal(t, "$ref", node.Content[0].Value)
 	assert.Equal(t, "#/components/schemas/TestSchema", node.Content[1].Value)
+}
+
+// InlineRenderContext tests
+
+func TestInlineRenderContext_NewContext(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	assert.NotNil(t, ctx)
+}
+
+func TestInlineRenderContext_StartRendering_EmptyKey(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	// Empty key should return false (no cycle)
+	assert.False(t, ctx.StartRendering(""))
+}
+
+func TestInlineRenderContext_CycleDetection(t *testing.T) {
+	ctx := NewInlineRenderContext()
+
+	// First call - no cycle
+	assert.False(t, ctx.StartRendering("file.yaml:#/Pet"))
+
+	// Second call same key - cycle detected
+	assert.True(t, ctx.StartRendering("file.yaml:#/Pet"))
+
+	// Stop rendering
+	ctx.StopRendering("file.yaml:#/Pet")
+
+	// Can start again after stopping
+	assert.False(t, ctx.StartRendering("file.yaml:#/Pet"))
+}
+
+func TestInlineRenderContext_Isolation(t *testing.T) {
+	ctx1 := NewInlineRenderContext()
+	ctx2 := NewInlineRenderContext()
+
+	// Start in ctx1
+	ctx1.StartRendering("key1")
+
+	// ctx2 should NOT see ctx1's key
+	assert.False(t, ctx2.StartRendering("key1"))
+}
+
+func TestInlineRenderContext_DifferentKeys(t *testing.T) {
+	ctx := NewInlineRenderContext()
+
+	ctx.StartRendering("file1.yaml:#/Pet")
+	// Different key should not trigger cycle
+	assert.False(t, ctx.StartRendering("file2.yaml:#/Pet"))
+}
+
+func TestInlineRenderContext_StopRendering_EmptyKey(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	// Should not panic on empty key
+	ctx.StopRendering("")
+}
+
+func TestSchemaProxy_MarshalYAMLInlineWithContext_Basic(t *testing.T) {
+	// Test basic rendering with context
+	const ymlComponents = `components:
+    schemas:
+     rice:
+       type: string`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: object
+properties:
+  name:
+    type: string`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	require.NoError(t, err)
+
+	highProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
+
+	ctx := NewInlineRenderContext()
+	result, err := highProxy.MarshalYAMLInlineWithContext(ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestSchemaProxy_MarshalYAMLInlineWithContext_Concurrent_NoFalsePositives(t *testing.T) {
+	// Test that concurrent rendering with separate contexts doesn't cause false positive cycles
+	const ymlComponents = `components:
+    schemas:
+     Pet:
+       type: object
+       properties:
+         name:
+           type: string`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `$ref: '#/components/schemas/Pet'`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	require.NoError(t, err)
+
+	highProxy := NewSchemaProxy(&low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     lowProxy,
+		ValueNode: node.Content[0],
+	})
+
+	// Run concurrent renders with separate contexts
+	var wg sync.WaitGroup
+	errorCount := 0
+	var mu sync.Mutex
+
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ctx := NewInlineRenderContext()
+			_, err := highProxy.MarshalYAMLInlineWithContext(ctx)
+			if err != nil && strings.Contains(err.Error(), "circular reference") {
+				mu.Lock()
+				errorCount++
+				mu.Unlock()
+			}
+		}()
+	}
+
+	wg.Wait()
+
+	// Should have NO false positive circular reference errors
+	assert.Equal(t, 0, errorCount, "Should not have false positive circular reference errors")
 }

@@ -145,6 +145,18 @@ func (c *Callback) MarshalYAML() (interface{}, error) {
 // MarshalYAMLInline will create a ready to render YAML representation of the Callback object,
 // with all references resolved inline.
 func (c *Callback) MarshalYAMLInline() (interface{}, error) {
+	return c.marshalYAMLInlineInternal(nil)
+}
+
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the Callback object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (c *Callback) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	return c.marshalYAMLInlineInternal(ctx)
+}
+
+func (c *Callback) marshalYAMLInlineInternal(ctx any) (interface{}, error) {
 	// reference-only objects render as $ref nodes
 	if c.Reference != "" {
 		return utils.CreateRefNode(c.Reference), nil
@@ -181,6 +193,7 @@ func (c *Callback) MarshalYAMLInline() (interface{}, error) {
 
 	nb := high.NewNodeBuilder(c, c.low)
 	nb.Resolve = true
+	nb.RenderContext = ctx
 	extNode := nb.Render()
 	if extNode != nil && extNode.Content != nil {
 		var label string
@@ -201,7 +214,12 @@ func (c *Callback) MarshalYAMLInline() (interface{}, error) {
 	})
 	for _, mp := range mapped {
 		if mp.pi != nil {
-			rendered, _ := mp.pi.MarshalYAMLInline()
+			var rendered interface{}
+			if ctx != nil {
+				rendered, _ = mp.pi.MarshalYAMLInlineWithContext(ctx)
+			} else {
+				rendered, _ = mp.pi.MarshalYAMLInline()
+			}
 
 			kn := utils.CreateStringNode(mp.path)
 			kn.Style = mp.style

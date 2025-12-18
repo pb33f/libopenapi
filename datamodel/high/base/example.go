@@ -94,6 +94,17 @@ func (e *Example) MarshalYAMLInline() (interface{}, error) {
 	return high.RenderInline(e, e.low)
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the Example object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (e *Example) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if e.Reference != "" {
+		return utils.CreateRefNode(e.Reference), nil
+	}
+	return high.RenderInlineWithContext(e, e.low, ctx)
+}
+
 // CreateExampleRef creates an Example that renders as a $ref to another example definition.
 // This is useful when building OpenAPI specs programmatically and you want to reference
 // an example defined in components/examples rather than inlining the full definition.

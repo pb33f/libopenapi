@@ -80,6 +80,17 @@ func (m *MediaType) MarshalYAMLInline() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the MediaType object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (m *MediaType) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	nb := high.NewNodeBuilder(m, m.low)
+	nb.Resolve = true
+	nb.RenderContext = ctx
+	return nb.Render(), nil
+}
+
 // ExtractContent takes in a complex and hard to navigate low-level content map, and converts it in to a much simpler
 // and easier to navigate high-level one.
 func ExtractContent(elements *orderedmap.Map[lowmodel.KeyReference[string], lowmodel.ValueReference[*low.MediaType]]) *orderedmap.Map[string, *MediaType] {

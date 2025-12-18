@@ -102,6 +102,17 @@ func (s *SecurityScheme) MarshalYAMLInline() (interface{}, error) {
 	return high.RenderInline(s, s.low)
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the SecurityScheme object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (s *SecurityScheme) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if s.Reference != "" {
+		return utils.CreateRefNode(s.Reference), nil
+	}
+	return high.RenderInlineWithContext(s, s.low, ctx)
+}
+
 // CreateSecuritySchemeRef creates a SecurityScheme that renders as a $ref to another security scheme definition.
 // This is useful when building OpenAPI specs programmatically and you want to reference
 // a security scheme defined in components/securitySchemes rather than inlining the full definition.
