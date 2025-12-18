@@ -1815,3 +1815,58 @@ oneOf:
 	assert.Contains(t, output, "meow:")
 	assert.Contains(t, output, "type:")
 }
+
+func TestSchema_RenderInlineWithContext_Error(t *testing.T) {
+	// Test the error path in RenderInlineWithContext (line 506)
+	// Create a schema with a circular reference that will trigger an error
+
+	idxYaml := `components:
+  schemas:
+    Circular:
+      type: object
+      properties:
+        self:
+          $ref: '#/components/schemas/Circular'`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	// Build the circular schema
+	schemas := idxNode.Content[0].Content[1].Content[1] // components -> schemas -> Circular
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, schemas.Content[1], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: schemas.Content[1],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Create a context and pre-mark the schema's render key to simulate a cycle
+	ctx := NewInlineRenderContext()
+
+	// Get the render key for the self-referencing property's schema proxy
+	if compiled.Properties != nil {
+		selfProp := compiled.Properties.GetOrZero("self")
+		if selfProp != nil {
+			// Pre-mark this key as rendering to force a cycle error
+			renderKey := selfProp.getInlineRenderKey()
+			if renderKey != "" {
+				ctx.StartRendering(renderKey)
+			}
+		}
+	}
+
+	// RenderInlineWithContext should return an error due to the pre-marked cycle
+	result, err := compiled.RenderInlineWithContext(ctx)
+
+	// The error path should be triggered
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "circular reference")
+}
