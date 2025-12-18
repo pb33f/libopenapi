@@ -1223,3 +1223,132 @@ func TestNodeBuilder_LowPointerIsNotEmpty(t *testing.T) {
 	output := strings.TrimSpace(string(data))
 	assert.Equal(t, "{}", output)
 }
+
+// contextAwareRenderable implements RenderableInlineWithContext for testing
+type contextAwareRenderable struct {
+	Value string
+}
+
+func (c *contextAwareRenderable) MarshalYAML() (interface{}, error) {
+	return utils.CreateStringNode("normal-" + c.Value), nil
+}
+
+func (c *contextAwareRenderable) MarshalYAMLInline() (interface{}, error) {
+	return utils.CreateStringNode("inline-" + c.Value), nil
+}
+
+func (c *contextAwareRenderable) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	return utils.CreateStringNode("context-" + c.Value), nil
+}
+
+// Test struct with context-aware renderable pointer field
+type testWithContextAwarePtr struct {
+	Item *contextAwareRenderable `yaml:"item,omitempty"`
+}
+
+// Test struct with context-aware renderable slice field
+type testWithContextAwareSlice struct {
+	Items []*contextAwareRenderable `yaml:"items,omitempty"`
+}
+
+func TestNodeBuilder_RenderContext_PointerField(t *testing.T) {
+	high := &testWithContextAwarePtr{
+		Item: &contextAwareRenderable{Value: "test"},
+	}
+
+	// Without context - should use MarshalYAMLInline
+	nb := NewNodeBuilder(high, nil)
+	nb.Resolve = true
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+	assert.Contains(t, string(data), "inline-test")
+
+	// With context - should use MarshalYAMLInlineWithContext
+	nb2 := NewNodeBuilder(high, nil)
+	nb2.Resolve = true
+	nb2.RenderContext = struct{}{} // any non-nil context
+	node2 := nb2.Render()
+	data2, _ := yaml.Marshal(node2)
+	assert.Contains(t, string(data2), "context-test")
+}
+
+func TestNodeBuilder_RenderContext_SliceField(t *testing.T) {
+	high := &testWithContextAwareSlice{
+		Items: []*contextAwareRenderable{
+			{Value: "item1"},
+			{Value: "item2"},
+		},
+	}
+
+	// Without context - should use MarshalYAMLInline
+	nb := NewNodeBuilder(high, nil)
+	nb.Resolve = true
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+	assert.Contains(t, string(data), "inline-item1")
+	assert.Contains(t, string(data), "inline-item2")
+
+	// With context - should use MarshalYAMLInlineWithContext
+	nb2 := NewNodeBuilder(high, nil)
+	nb2.Resolve = true
+	nb2.RenderContext = struct{}{} // any non-nil context
+	node2 := nb2.Render()
+	data2, _ := yaml.Marshal(node2)
+	assert.Contains(t, string(data2), "context-item1")
+	assert.Contains(t, string(data2), "context-item2")
+}
+
+// noContextRenderable only implements RenderableInline, not RenderableInlineWithContext
+type noContextRenderable struct {
+	Value string
+}
+
+func (n *noContextRenderable) MarshalYAML() (interface{}, error) {
+	return utils.CreateStringNode("normal-" + n.Value), nil
+}
+
+func (n *noContextRenderable) MarshalYAMLInline() (interface{}, error) {
+	return utils.CreateStringNode("inline-" + n.Value), nil
+}
+
+type testWithNoContextPtr struct {
+	Item *noContextRenderable `yaml:"item,omitempty"`
+}
+
+type testWithNoContextSlice struct {
+	Items []*noContextRenderable `yaml:"items,omitempty"`
+}
+
+func TestNodeBuilder_RenderContext_FallbackToInline_Pointer(t *testing.T) {
+	// Test fallback when RenderContext is set but object doesn't implement RenderableInlineWithContext
+	high := &testWithNoContextPtr{
+		Item: &noContextRenderable{Value: "test"},
+	}
+
+	// With context but object doesn't implement RenderableInlineWithContext
+	// Should fall back to MarshalYAMLInline
+	nb := NewNodeBuilder(high, nil)
+	nb.Resolve = true
+	nb.RenderContext = struct{}{}
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+	assert.Contains(t, string(data), "inline-test")
+}
+
+func TestNodeBuilder_RenderContext_FallbackToInline_Slice(t *testing.T) {
+	// Test fallback when RenderContext is set but object doesn't implement RenderableInlineWithContext
+	high := &testWithNoContextSlice{
+		Items: []*noContextRenderable{
+			{Value: "item1"},
+		},
+	}
+
+	// With context but object doesn't implement RenderableInlineWithContext
+	// Should fall back to MarshalYAMLInline
+	nb := NewNodeBuilder(high, nil)
+	nb.Resolve = true
+	nb.RenderContext = struct{}{}
+	node := nb.Render()
+	data, _ := yaml.Marshal(node)
+	assert.Contains(t, string(data), "inline-item1")
+}
