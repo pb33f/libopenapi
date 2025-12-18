@@ -499,10 +499,11 @@ func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (inte
 		return nil, err
 	}
 	if s != nil {
-		// Delegate to Schema.MarshalYAMLInline to ensure discriminator handling is applied.
-		// Schema.MarshalYAMLInline sets preserveReference on OneOf/AnyOf items when
+		// Delegate to Schema.MarshalYAMLInlineWithContext to ensure discriminator handling is applied
+		// and cycle detection context is propagated.
+		// Schema.MarshalYAMLInlineWithContext sets preserveReference on OneOf/AnyOf items when
 		// a discriminator is present, which is required for proper bundling.
-		return s.MarshalYAMLInline()
+		return s.MarshalYAMLInlineWithContext(ctx)
 	}
 	return nil, errors.New("unable to render schema")
 }
