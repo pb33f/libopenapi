@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowV3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -462,5 +463,62 @@ func TestPathItem_IsReference_False(t *testing.T) {
 	}
 	assert.False(t, pi.IsReference())
 	assert.Equal(t, "", pi.GetReference())
+}
+
+func TestPathItem_MarshalYAMLInlineWithContext(t *testing.T) {
+	pi := &PathItem{
+		Description: "a path item",
+		Summary:     "It's a test, don't worry about it, Jim",
+		Servers: []*Server{
+			{
+				Description: "a server",
+			},
+		},
+		Parameters: []*Parameter{
+			{
+				Name: "I am a query parameter",
+				In:   "query",
+			},
+		},
+		Get: &Operation{
+			Description: "a get operation",
+		},
+		Post: &Operation{
+			Description: "a post operation",
+		},
+	}
+
+	ctx := base.NewInlineRenderContext()
+	node, err := pi.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	rend, _ := yaml.Marshal(node)
+
+	desired := `description: a path item
+summary: It's a test, don't worry about it, Jim
+get:
+    description: a get operation
+post:
+    description: a post operation
+servers:
+    - description: a server
+parameters:
+    - name: I am a query parameter
+      in: query`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+}
+
+func TestPathItem_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	pi := CreatePathItemRef("#/components/pathItems/CommonPathItem")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := pi.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
 

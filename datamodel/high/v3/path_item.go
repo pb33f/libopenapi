@@ -272,6 +272,20 @@ func (p *PathItem) MarshalYAMLInline() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the PathItem object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (p *PathItem) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if p.Reference != "" {
+		return utils.CreateRefNode(p.Reference), nil
+	}
+	nb := high.NewNodeBuilder(p, p.low)
+	nb.Resolve = true
+	nb.RenderContext = ctx
+	return nb.Render(), nil
+}
+
 // CreatePathItemRef creates a PathItem that renders as a $ref to another path item definition.
 // This is useful when building OpenAPI specs programmatically and you want to reference
 // a path item defined in components/pathItems rather than inlining the full definition.

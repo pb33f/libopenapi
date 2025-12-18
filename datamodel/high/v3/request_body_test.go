@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -158,4 +159,41 @@ func TestRequestBody_IsReference_False(t *testing.T) {
 	}
 	assert.False(t, rb.IsReference())
 	assert.Equal(t, "", rb.GetReference())
+}
+
+func TestRequestBody_MarshalYAMLInlineWithContext(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-high-gravity", utils.CreateStringNode("why not?"))
+
+	rb := true
+	req := &RequestBody{
+		Description: "beer",
+		Required:    &rb,
+		Extensions:  ext,
+	}
+
+	ctx := base.NewInlineRenderContext()
+	node, err := req.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	rend, _ := yaml.Marshal(node)
+
+	desired := `description: beer
+required: true
+x-high-gravity: why not?`
+
+	assert.Equal(t, desired, strings.TrimSpace(string(rend)))
+}
+
+func TestRequestBody_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	rb := CreateRequestBodyRef("#/components/requestBodies/UserInput")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := rb.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }

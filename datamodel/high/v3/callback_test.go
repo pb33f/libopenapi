@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
@@ -185,4 +186,45 @@ func TestCallback_IsReference_False(t *testing.T) {
 	}
 	assert.False(t, cb.IsReference())
 	assert.Equal(t, "", cb.GetReference())
+}
+
+func TestCallback_MarshalYAMLInlineWithContext(t *testing.T) {
+	ext := orderedmap.New[string, *yaml.Node]()
+	ext.Set("x-burgers", utils.CreateStringNode("why not?"))
+
+	cb := &Callback{
+		Expression: orderedmap.ToOrderedMap(map[string]*PathItem{
+			"https://pb33f.io": {
+				Get: &Operation{
+					OperationId: "oneTwoThree",
+				},
+			},
+			"https://pb33f.io/libopenapi": {
+				Get: &Operation{
+					OperationId: "openaypeeeye",
+				},
+			},
+		}),
+		Extensions: ext,
+	}
+
+	ctx := base.NewInlineRenderContext()
+	node, err := cb.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, node)
+
+	rend, _ := yaml.Marshal(node)
+	assert.Equal(t, "x-burgers: why not?\nhttps://pb33f.io:\n    get:\n        operationId: oneTwoThree\nhttps://pb33f.io/libopenapi:\n    get:\n        operationId: openaypeeeye\n", string(rend))
+}
+
+func TestCallback_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
+	cb := CreateCallbackRef("#/components/callbacks/WebhookCallback")
+
+	ctx := base.NewInlineRenderContext()
+	node, err := cb.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }

@@ -15,7 +15,7 @@ import (
 	"go.yaml.in/yaml/v4"
 )
 
-// Header represents a high-level OpenAPI 3+ Header object that is backed by a low-level one.
+// Header represents a high-level OpenAPI 3+ Header object backed by a low-level one.
 //   - https://spec.openapis.org/oas/v3.1.0#header-object
 type Header struct {
 	Reference       string                                     `json:"$ref,omitempty" yaml:"$ref,omitempty"`
@@ -116,8 +116,22 @@ func (h *Header) MarshalYAMLInline() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the Header object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (h *Header) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if h.Reference != "" {
+		return utils.CreateRefNode(h.Reference), nil
+	}
+	nb := high.NewNodeBuilder(h, h.low)
+	nb.Resolve = true
+	nb.RenderContext = ctx
+	return nb.Render(), nil
+}
+
 // CreateHeaderRef creates a Header that renders as a $ref to another header definition.
-// This is useful when building OpenAPI specs programmatically and you want to reference
+// This is useful when building OpenAPI specs programmatically, and you want to reference
 // a header defined in components/headers rather than inlining the full definition.
 //
 // Example:
