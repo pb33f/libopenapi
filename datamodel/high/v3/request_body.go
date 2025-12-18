@@ -87,6 +87,20 @@ func (r *RequestBody) MarshalYAMLInline() (interface{}, error) {
 	return nb.Render(), nil
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the RequestBody object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (r *RequestBody) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if r.Reference != "" {
+		return utils.CreateRefNode(r.Reference), nil
+	}
+	nb := high.NewNodeBuilder(r, r.low)
+	nb.Resolve = true
+	nb.RenderContext = ctx
+	return nb.Render(), nil
+}
+
 // CreateRequestBodyRef creates a RequestBody that renders as a $ref to another request body definition.
 // This is useful when building OpenAPI specs programmatically and you want to reference
 // a request body defined in components/requestBodies rather than inlining the full definition.

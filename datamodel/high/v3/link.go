@@ -97,8 +97,19 @@ func (l *Link) MarshalYAMLInline() (interface{}, error) {
 	return high.RenderInline(l, l.low)
 }
 
+// MarshalYAMLInlineWithContext will create a ready to render YAML representation of the Link object,
+// resolving any references inline where possible. Uses the provided context for cycle detection.
+// The ctx parameter should be *base.InlineRenderContext but is typed as any to satisfy the
+// high.RenderableInlineWithContext interface without import cycles.
+func (l *Link) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
+	if l.Reference != "" {
+		return utils.CreateRefNode(l.Reference), nil
+	}
+	return high.RenderInlineWithContext(l, l.low, ctx)
+}
+
 // CreateLinkRef creates a Link that renders as a $ref to another link definition.
-// This is useful when building OpenAPI specs programmatically and you want to reference
+// This is useful when building OpenAPI specs programmatically, and you want to reference
 // a link defined in components/links rather than inlining the full definition.
 //
 // Example:
