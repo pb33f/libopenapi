@@ -169,3 +169,40 @@ func TestRenderInline_WithLow(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }
+
+func TestRenderInlineWithContext(t *testing.T) {
+	// Create a simple struct to test rendering with context
+	type testStruct struct {
+		Name    string `yaml:"name,omitempty"`
+		Version string `yaml:"version,omitempty"`
+	}
+
+	high := &testStruct{Name: "test", Version: "1.0.0"}
+	// Pass a mock context (any type is accepted)
+	ctx := struct{}{}
+	result, err := RenderInlineWithContext(high, nil, ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Verify the result is a yaml.Node
+	node, ok := result.(*yaml.Node)
+	require.True(t, ok)
+	assert.Equal(t, yaml.MappingNode, node.Kind)
+}
+
+func TestRenderInlineWithContext_WithLow(t *testing.T) {
+	// Test with both high and low models and context
+	type testStruct struct {
+		Name string `yaml:"name,omitempty"`
+	}
+
+	high := &testStruct{Name: "test"}
+	low := &testStruct{Name: "low-test"}
+	ctx := struct{}{}
+
+	result, err := RenderInlineWithContext(high, low, ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
