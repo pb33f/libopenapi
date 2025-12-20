@@ -1000,6 +1000,51 @@ func TestSpecIndex_ExtractComponentsFromRefs(t *testing.T) {
 	assert.Len(t, index.GetReferenceIndexErrors(), 0)
 }
 
+func TestSpecIndex_ExtractComponentsFromRefs_EmptyRefs(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	index := NewSpecIndexWithConfig(&rootNode, CreateOpenAPIIndexConfig())
+
+	// Call with empty refs - should return nil (covers line 725)
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{})
+	assert.Nil(t, result)
+}
+
+func TestSpecIndex_ExtractComponentsFromRefs_NotFoundAsync(t *testing.T) {
+	yml := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    exists:
+      type: string`
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.ExtractRefsSequentially = false // Ensure async mode
+	index := NewSpecIndexWithConfig(&rootNode, config)
+
+	// Create a reference to a non-existent component
+	ref := &Reference{
+		FullDefinition: "#/components/schemas/doesNotExist",
+		Definition:     "#/components/schemas/doesNotExist",
+	}
+
+	// Call with a ref that won't be found - covers line 811 (nil result in async mode)
+	result := index.ExtractComponentsFromRefs(context.Background(), []*Reference{ref})
+	assert.Empty(t, result)
+	assert.Len(t, index.GetReferenceIndexErrors(), 1)
+}
+
 func TestSpecIndex_FindComponent_WithACrazyAssPath(t *testing.T) {
 	yml := `paths:
   /crazy/ass/references:
