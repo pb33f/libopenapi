@@ -394,6 +394,9 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 		sl := utils.CreateEmptySequenceNode()
 		skip := false
 		for i := 0; i < m.Len(); i++ {
+			// Reset skip at the start of each iteration to handle items without low-level models
+			// (e.g., newly created high-level objects appended to an existing slice)
+			skip = false
 			sqi := m.Index(i).Interface()
 			// check if this is a reference.
 			if glu, ok := sqi.(GoesLowUntyped); ok {
@@ -406,11 +409,7 @@ func (n *NodeBuilder) AddYAMLNode(parent *yaml.Node, entry *nodes.NodeEntry) *ya
 							if !n.Resolve {
 								sl.Content = append(sl.Content, n.renderReference(glu.GoLowUntyped().(low.IsReferenced)))
 								skip = true
-							} else {
-								skip = false
 							}
-						} else {
-							skip = false
 						}
 					}
 				}
