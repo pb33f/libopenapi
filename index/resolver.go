@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/pb33f/libopenapi/utils"
@@ -250,8 +251,17 @@ func visitIndexWithoutDamagingIt(res *Resolver, idx *SpecIndex) {
 		res.journeysTaken++
 		res.VisitReference(ref.Reference, seenReferences, journey, false)
 	}
+
+	// Sort schema keys for deterministic iteration order
 	schemas := idx.GetAllComponentSchemas()
-	for s, schemaRef := range schemas {
+	schemaKeys := make([]string, 0, len(schemas))
+	for k := range schemas {
+		schemaKeys = append(schemaKeys, k)
+	}
+	sort.Strings(schemaKeys)
+
+	for _, s := range schemaKeys {
+		schemaRef := schemas[s]
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
 			var journey []*Reference
@@ -291,8 +301,16 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	}
 	idx.pendingResolve = refs
 
+	// Sort schema keys for deterministic iteration order
 	schemas := idx.GetAllComponentSchemas()
-	for s, schemaRef := range schemas {
+	schemaKeys := make([]string, 0, len(schemas))
+	for k := range schemas {
+		schemaKeys = append(schemaKeys, k)
+	}
+	sort.Strings(schemaKeys)
+
+	for _, s := range schemaKeys {
+		schemaRef := schemas[s]
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
 			var journey []*Reference
@@ -301,8 +319,16 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 		}
 	}
 
-	schemas = idx.GetAllSecuritySchemes()
-	for s, schemaRef := range schemas {
+	// Sort security scheme keys for deterministic iteration order
+	securitySchemes := idx.GetAllSecuritySchemes()
+	securityKeys := make([]string, 0, len(securitySchemes))
+	for k := range securitySchemes {
+		securityKeys = append(securityKeys, k)
+	}
+	sort.Strings(securityKeys)
+
+	for _, s := range securityKeys {
+		schemaRef := securitySchemes[s]
 		if mappedIndex[s] == nil {
 			seenReferences := make(map[string]bool)
 			var journey []*Reference
