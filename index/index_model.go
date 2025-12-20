@@ -383,7 +383,7 @@ type SpecIndex struct {
 	enumCount                           int
 	descriptionCount                    int
 	summaryCount                        int
-	refLock                             sync.Mutex
+	refLock                             sync.RWMutex
 	nodeMapLock                         sync.RWMutex
 	componentLock                       sync.RWMutex
 	errorLock                           sync.RWMutex

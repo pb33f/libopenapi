@@ -103,12 +103,15 @@ func createNewIndex(ctx context.Context, rootNode *yaml.Node, index *SpecIndex, 
 		}
 	}
 
-	// map poly refs
+	// map poly refs - sort keys for deterministic ordering
+	polyKeys := make([]string, 0, len(index.polymorphicRefs))
+	for k := range index.polymorphicRefs {
+		polyKeys = append(polyKeys, k)
+	}
+	sort.Strings(polyKeys)
 	poly := make([]*Reference, len(index.polymorphicRefs))
-	z := 0
-	for i := range index.polymorphicRefs {
-		poly[z] = index.polymorphicRefs[i]
-		z++
+	for i, k := range polyKeys {
+		poly[i] = index.polymorphicRefs[k]
 	}
 
 	// pull out references

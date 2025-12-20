@@ -12,13 +12,25 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
+	"golang.org/x/sync/singleflight"
 )
+
+// preserveLegacyRefOrder allows opt-out of deterministic ordering if issues arise.
+// Set LIBOPENAPI_LEGACY_REF_ORDER=true to use the old non-deterministic ordering.
+var preserveLegacyRefOrder = os.Getenv("LIBOPENAPI_LEGACY_REF_ORDER") == "true"
+
+// indexedRef pairs a resolved reference with its original input position for deterministic ordering.
+type indexedRef struct {
+	ref *Reference
+	pos int
+}
 
 // ExtractRefs will return a deduplicated slice of references for every unique ref found in the document.
 // The total number of refs, will generally be much higher, you can extract those from GetRawReferenceCount()
@@ -704,120 +716,204 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 
 // ExtractComponentsFromRefs returns located components from references. The returned nodes from here
 // can be used for resolving as they contain the actual object properties.
+//
+// This function uses singleflight to deduplicate concurrent lookups for the same reference,
+// channel-based collection to avoid mutex contention during resolution, and sorts results
+// by input position for deterministic ordering.
 func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*Reference) []*Reference {
-	found := make([]*Reference, 0, len(refs)) // pre-allocate capacity to avoid reallocations
-	var foundMu sync.Mutex                    // protects found slice in async mode
+	if len(refs) == 0 {
+		return nil
+	}
 
-	var refsToCheck []*Reference
-	refsToCheck = append(refsToCheck, refs...)
-
+	refsToCheck := refs
 	mappedRefsInSequence := make([]*ReferenceMapped, len(refsToCheck))
 
-	locate := func(ref *Reference, refIndex int) {
-		index.refLock.Lock()
-		if index.allMappedRefs[ref.FullDefinition] != nil {
-			rm := &ReferenceMapped{
-				OriginalReference: ref,
-				Reference:         index.allMappedRefs[ref.FullDefinition],
-				Definition:        index.allMappedRefs[ref.FullDefinition].Definition,
-				FullDefinition:    index.allMappedRefs[ref.FullDefinition].FullDefinition,
+	// Sequential mode: process refs one at a time (used for bundling)
+	if index.config.ExtractRefsSequentially {
+		found := make([]*Reference, 0, len(refsToCheck))
+		for i, ref := range refsToCheck {
+			located := index.locateRef(ctx, ref)
+			if located != nil {
+				index.refLock.Lock()
+				if index.allMappedRefs[ref.FullDefinition] == nil {
+					index.allMappedRefs[located.FullDefinition] = located
+					found = append(found, located)
+				}
+				mappedRefsInSequence[i] = &ReferenceMapped{
+					OriginalReference: ref,
+					Reference:         located,
+					Definition:        located.Definition,
+					FullDefinition:    located.FullDefinition,
+				}
+				index.refLock.Unlock()
+			} else {
+				// Record error for definitive failure
+				_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
+				index.errorLock.Lock()
+				index.refErrors = append(index.refErrors, &IndexingError{
+					Err:     fmt.Errorf("component `%s` does not exist in the specification", ref.Definition),
+					Node:    ref.Node,
+					Path:    path,
+					KeyNode: ref.KeyNode,
+				})
+				index.errorLock.Unlock()
 			}
-			mappedRefsInSequence[refIndex] = rm
-			index.refLock.Unlock()
-			return
 		}
-		index.refLock.Unlock()
+		// Collect sequenced results
+		for _, rm := range mappedRefsInSequence {
+			if rm != nil {
+				index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, rm)
+			}
+		}
+		return found
+	}
 
-		// if it's an external reference, we need to lock during FindComponent
-		uri := strings.Split(ref.FullDefinition, "#/")
-		unsafeAsync := len(uri) == 2 && len(uri[0]) > 0
-		if unsafeAsync {
-			index.refLock.Lock()
-		}
-		located := index.FindComponent(ctx, ref.FullDefinition)
-		if unsafeAsync {
-			index.refLock.Unlock()
+	// Async mode: use singleflight for deduplication and channel-based collection
+	var wg sync.WaitGroup
+	var sfGroup singleflight.Group // Local to this call - no cross-index coupling
+
+	// Channel-based collection - no mutex needed during resolution
+	resultsChan := make(chan indexedRef, len(refsToCheck))
+
+	// Concurrency control
+	maxConcurrency := runtime.GOMAXPROCS(0)
+	if maxConcurrency < 4 {
+		maxConcurrency = 4
+	}
+	sem := make(chan struct{}, maxConcurrency)
+
+	for i, ref := range refsToCheck {
+		i, ref := i, ref // capture loop variables
+		wg.Add(1)
+
+		go func() {
+			sem <- struct{}{}
+			defer func() { <-sem }()
+			defer wg.Done()
+
+			// Singleflight deduplication - one lookup per FullDefinition
+			result, _, _ := sfGroup.Do(ref.FullDefinition, func() (interface{}, error) {
+				// Fast path: already mapped
+				index.refLock.RLock()
+				if existing := index.allMappedRefs[ref.FullDefinition]; existing != nil {
+					index.refLock.RUnlock()
+					return existing, nil
+				}
+				index.refLock.RUnlock()
+
+				// Do the actual lookup (only one goroutine per FullDefinition)
+				return index.locateRef(ctx, ref), nil
+			})
+
+			if result != nil {
+				resultsChan <- indexedRef{ref: result.(*Reference), pos: i}
+			} else {
+				resultsChan <- indexedRef{ref: nil, pos: i} // Track failures for reconciliation
+			}
+		}()
+	}
+
+	// Close channel after all goroutines complete
+	go func() {
+		wg.Wait()
+		close(resultsChan)
+	}()
+
+	// Collect results - single consumer, no lock needed
+	collected := make([]indexedRef, 0, len(refsToCheck))
+	for r := range resultsChan {
+		collected = append(collected, r)
+	}
+
+	// Sort by input position for deterministic ordering
+	if !preserveLegacyRefOrder {
+		sort.Slice(collected, func(i, j int) bool {
+			return collected[i].pos < collected[j].pos
+		})
+	}
+
+	// RECONCILIATION PHASE: Build final results with minimal locking
+	found := make([]*Reference, 0, len(collected))
+
+	for _, c := range collected {
+		ref := refsToCheck[c.pos]
+		located := c.ref
+
+		// Reconcile nil results - check if another goroutine succeeded
+		if located == nil {
+			index.refLock.RLock()
+			located = index.allMappedRefs[ref.FullDefinition]
+			index.refLock.RUnlock()
 		}
 
 		if located != nil {
-			// key node is always going to be nil when mapping, yamlpath API returns
-			// subnodes only, so we need to rollback in the nodemap a line (if we can) to extract
-			// the keynode.
-			if located.Node != nil {
-				index.nodeMapLock.RLock()
-				if located.Node.Line > 1 && len(index.nodeMap[located.Node.Line-1]) > 0 {
-					for _, v := range index.nodeMap[located.Node.Line-1] {
-						located.KeyNode = v
-						break
-					}
-				}
-				index.nodeMapLock.RUnlock()
-			}
-
-			// have we already mapped this?
+			// Add to allMappedRefs if not present
 			index.refLock.Lock()
-			if index.allMappedRefs[ref.FullDefinition] == nil {
-				foundMu.Lock()
-				found = append(found, located)
-				foundMu.Unlock()
+			if index.allMappedRefs[located.FullDefinition] == nil {
 				index.allMappedRefs[located.FullDefinition] = located
+				found = append(found, located)
 			}
-			rm := &ReferenceMapped{
+			mappedRefsInSequence[c.pos] = &ReferenceMapped{
 				OriginalReference: ref,
 				Reference:         located,
 				Definition:        located.Definition,
 				FullDefinition:    located.FullDefinition,
 			}
-			mappedRefsInSequence[refIndex] = rm
 			index.refLock.Unlock()
 		} else {
+			// Definitive failure - record error
 			_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(ref.Definition)
-			indexError := &IndexingError{
+			index.errorLock.Lock()
+			index.refErrors = append(index.refErrors, &IndexingError{
 				Err:     fmt.Errorf("component `%s` does not exist in the specification", ref.Definition),
 				Node:    ref.Node,
 				Path:    path,
 				KeyNode: ref.KeyNode,
-			}
-
-			index.errorLock.Lock()
-			index.refErrors = append(index.refErrors, indexError)
+			})
 			index.errorLock.Unlock()
 		}
 	}
 
-	if index.config.ExtractRefsSequentially {
-		// sequential mode: process refs one at a time
-		for r := range refsToCheck {
-			locate(refsToCheck[r], r)
-		}
-	} else {
-		// async mode: use WaitGroup for proper synchronization
-		maxConcurrency := runtime.GOMAXPROCS(0)
-		if maxConcurrency < 4 {
-			maxConcurrency = 4
-		}
-		sem := make(chan struct{}, maxConcurrency)
-		var wg sync.WaitGroup
-		wg.Add(len(refsToCheck))
-
-		for r := range refsToCheck {
-			go func(ref *Reference, idx int) {
-				sem <- struct{}{}
-				defer func() { <-sem }()
-				defer wg.Done()
-				locate(ref, idx)
-			}(refsToCheck[r], r)
-		}
-
-		wg.Wait()
-	}
-
-	// collect results
-	for m := range mappedRefsInSequence {
-		if mappedRefsInSequence[m] != nil {
-			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, mappedRefsInSequence[m])
+	// Collect sequenced results in input order
+	for _, rm := range mappedRefsInSequence {
+		if rm != nil {
+			index.allMappedRefsSequenced = append(index.allMappedRefsSequenced, rm)
 		}
 	}
 
 	return found
+}
+
+// locateRef finds a component for a reference, including KeyNode extraction.
+// This is a helper used by ExtractComponentsFromRefs to isolate the lookup logic.
+func (index *SpecIndex) locateRef(ctx context.Context, ref *Reference) *Reference {
+	// External references need locking during FindComponent
+	uri := strings.Split(ref.FullDefinition, "#/")
+	unsafeAsync := len(uri) == 2 && len(uri[0]) > 0
+	if unsafeAsync {
+		index.refLock.Lock()
+	}
+	located := index.FindComponent(ctx, ref.FullDefinition)
+	if unsafeAsync {
+		index.refLock.Unlock()
+	}
+
+	if located == nil {
+		return nil
+	}
+
+	// Extract KeyNode - yamlpath API returns subnodes only, so we need to
+	// rollback in the nodemap a line (if we can) to extract the keynode.
+	if located.Node != nil {
+		index.nodeMapLock.RLock()
+		if located.Node.Line > 1 && len(index.nodeMap[located.Node.Line-1]) > 0 {
+			for _, v := range index.nodeMap[located.Node.Line-1] {
+				located.KeyNode = v
+				break
+			}
+		}
+		index.nodeMapLock.RUnlock()
+	}
+
+	return located
 }
