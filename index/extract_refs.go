@@ -735,7 +735,7 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 			located := index.locateRef(ctx, ref)
 			if located != nil {
 				index.refLock.Lock()
-				if index.allMappedRefs[ref.FullDefinition] == nil {
+				if index.allMappedRefs[located.FullDefinition] == nil {
 					index.allMappedRefs[located.FullDefinition] = located
 					found = append(found, located)
 				}
@@ -839,7 +839,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 		ref := refsToCheck[c.pos]
 		located := c.ref
 
-		// Reconcile nil results - check if another goroutine succeeded
+		// Reconcile nil results - check if another goroutine succeeded.
+		// We use ref.FullDefinition here because that's the singleflight key,
+		// and located.FullDefinition should match ref.FullDefinition for the
+		// same reference (FindComponent returns the component at that definition).
 		if located == nil {
 			index.refLock.RLock()
 			located = index.allMappedRefs[ref.FullDefinition]
@@ -887,14 +890,17 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 // locateRef finds a component for a reference, including KeyNode extraction.
 // This is a helper used by ExtractComponentsFromRefs to isolate the lookup logic.
 func (index *SpecIndex) locateRef(ctx context.Context, ref *Reference) *Reference {
-	// External references need locking during FindComponent
+	// External references require a full Lock (not RLock) during FindComponent because
+	// FindComponent may trigger rolodex file loading which mutates index state.
+	// Internal references can proceed without locking since they only read from
+	// already-populated data structures.
 	uri := strings.Split(ref.FullDefinition, "#/")
-	unsafeAsync := len(uri) == 2 && len(uri[0]) > 0
-	if unsafeAsync {
+	isExternalRef := len(uri) == 2 && len(uri[0]) > 0
+	if isExternalRef {
 		index.refLock.Lock()
 	}
 	located := index.FindComponent(ctx, ref.FullDefinition)
-	if unsafeAsync {
+	if isExternalRef {
 		index.refLock.Unlock()
 	}
 
