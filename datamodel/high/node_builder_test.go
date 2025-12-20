@@ -1406,3 +1406,195 @@ func TestNodeBuilder_RenderContext_FallbackToMarshalYAML_Slice(t *testing.T) {
 	data, _ := yaml.Marshal(node)
 	assert.Contains(t, string(data), "basic-item1")
 }
+
+// nilLowRenderable implements GoesLowUntyped but returns nil for GoLowUntyped()
+// This simulates a newly created high-level object without a low-level model
+type nilLowRenderable struct {
+	Value string
+}
+
+func (n *nilLowRenderable) MarshalYAML() (interface{}, error) {
+	return utils.CreateStringNode("nillow-" + n.Value), nil
+}
+
+func (n *nilLowRenderable) GoLowUntyped() any {
+	return nil // Simulates newly created high-level object without low-level model
+}
+
+type testWithMixedSlice struct {
+	Items []*valueReferenceStruct `yaml:"items,omitempty"`
+}
+
+type testWithNilLowSlice struct {
+	Items []*nilLowRenderable `yaml:"items,omitempty"`
+}
+
+// TestNodeBuilder_SliceRefFollowedByNilLow tests the bug fix for rendering slices
+// where a $ref item is followed by a newly created item without a low-level model.
+// Before the fix, the 'skip' variable was not reset between iterations, causing
+// items following a $ref to be incorrectly skipped when they had no low-level model.
+func TestNodeBuilder_SliceRefFollowedByNilLow(t *testing.T) {
+	// Create a slice with a $ref followed by a new item without low-level model
+	refItem := &valueReferenceStruct{
+		ref:    true,
+		refStr: "#/components/parameters/RefId",
+		Value:  "refValue",
+	}
+	newItem := &valueReferenceStruct{
+		ref:   false, // Not a reference
+		Value: "newValue",
+	}
+
+	// The new item's GoLowUntyped returns a pointer to itself (not nil),
+	// but it's not a reference, so it should be rendered normally.
+	// However, to truly test the nil case, we need a different approach.
+
+	ty := []*valueReferenceStruct{refItem, newItem}
+	t1 := test1{
+		Throg: ty,
+	}
+
+	nb := NewNodeBuilder(&t1, &t1)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+
+	// Both items should be rendered - the ref as $ref and the new item normally
+	assert.Contains(t, string(data), "$ref: '#/components/parameters/RefId'")
+	assert.Contains(t, string(data), "pizza") // newItem renders as "pizza" via MarshalYAML
+}
+
+// testMixedItem can have either a reference low-level model or nil low-level model
+type testMixedItem struct {
+	ref       bool
+	refStr    string
+	Value     string
+	hasLowRef bool // if true, GoLowUntyped returns a reference; if false, returns nil
+}
+
+func (t *testMixedItem) MarshalYAML() (interface{}, error) {
+	return utils.CreateStringNode("mixed-" + t.Value), nil
+}
+
+func (t *testMixedItem) GoLowUntyped() any {
+	if t.hasLowRef {
+		return t
+	}
+	return nil
+}
+
+func (t *testMixedItem) IsReference() bool {
+	return t.ref
+}
+
+func (t *testMixedItem) GetReference() string {
+	return t.refStr
+}
+
+func (t *testMixedItem) SetReference(ref string, _ *yaml.Node) {
+	t.refStr = ref
+}
+
+func (t *testMixedItem) GetReferenceNode() *yaml.Node {
+	return nil
+}
+
+type testWithMixedItems struct {
+	Items []*testMixedItem `yaml:"items,omitempty"`
+}
+
+// TestNodeBuilder_SliceRefFollowedByNilLowItem tests the specific bug case:
+// a $ref item followed by an item with nil GoLowUntyped() (newly created high-level object)
+func TestNodeBuilder_SliceRefFollowedByNilLowItem(t *testing.T) {
+	// Create a slice where:
+	// 1. First item IS a reference with a low-level model
+	// 2. Second item has NO low-level model (GoLowUntyped returns nil)
+	refItem := &testMixedItem{
+		ref:       true,
+		refStr:    "#/components/parameters/RefId",
+		Value:     "refValue",
+		hasLowRef: true, // Has a low-level reference
+	}
+	newItem := &testMixedItem{
+		ref:       false,
+		Value:     "newValue",
+		hasLowRef: false, // NO low-level model (simulates newly created item)
+	}
+
+	ty := []*testMixedItem{refItem, newItem}
+	t1 := testWithMixedItems{
+		Items: ty,
+	}
+
+	nb := NewNodeBuilder(&t1, nil)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+	result := strings.TrimSpace(string(data))
+
+	// The bug was that 'newItem' would be skipped because 'skip' wasn't reset
+	// after processing the $ref item, and newItem's GoLowUntyped() returns nil.
+	// After the fix, both items should be rendered.
+	assert.Contains(t, result, "$ref: '#/components/parameters/RefId'", "Reference item should be rendered")
+	assert.Contains(t, result, "mixed-newValue", "New item without low-level model should also be rendered")
+}
+
+// TestNodeBuilder_SliceNilLowFollowedByRef tests the reverse case:
+// an item with nil GoLowUntyped() followed by a $ref (should work in both cases)
+func TestNodeBuilder_SliceNilLowFollowedByRef(t *testing.T) {
+	// Create a slice where:
+	// 1. First item has NO low-level model
+	// 2. Second item IS a reference with a low-level model
+	newItem := &testMixedItem{
+		ref:       false,
+		Value:     "newValue",
+		hasLowRef: false, // NO low-level model
+	}
+	refItem := &testMixedItem{
+		ref:       true,
+		refStr:    "#/components/parameters/RefId",
+		Value:     "refValue",
+		hasLowRef: true, // Has a low-level reference
+	}
+
+	ty := []*testMixedItem{newItem, refItem}
+	t1 := testWithMixedItems{
+		Items: ty,
+	}
+
+	nb := NewNodeBuilder(&t1, nil)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+	result := strings.TrimSpace(string(data))
+
+	// Both items should be rendered
+	assert.Contains(t, result, "mixed-newValue", "New item without low-level model should be rendered")
+	assert.Contains(t, result, "$ref: '#/components/parameters/RefId'", "Reference item should be rendered")
+}
+
+// TestNodeBuilder_SliceMultipleRefsAndNilLow tests multiple refs interspersed with nil-low items
+func TestNodeBuilder_SliceMultipleRefsAndNilLow(t *testing.T) {
+	items := []*testMixedItem{
+		{ref: true, refStr: "#/ref1", Value: "ref1", hasLowRef: true},
+		{ref: false, Value: "new1", hasLowRef: false}, // nil low
+		{ref: true, refStr: "#/ref2", Value: "ref2", hasLowRef: true},
+		{ref: false, Value: "new2", hasLowRef: false}, // nil low
+	}
+
+	t1 := testWithMixedItems{
+		Items: items,
+	}
+
+	nb := NewNodeBuilder(&t1, nil)
+	node := nb.Render()
+
+	data, _ := yaml.Marshal(node)
+	result := strings.TrimSpace(string(data))
+
+	// All items should be rendered
+	assert.Contains(t, result, "$ref: '#/ref1'")
+	assert.Contains(t, result, "mixed-new1")
+	assert.Contains(t, result, "$ref: '#/ref2'")
+	assert.Contains(t, result, "mixed-new2")
+}

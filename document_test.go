@@ -887,6 +887,149 @@ func TestDocument_InputAsJSON_LargeIndent(t *testing.T) {
 	assert.Equal(t, d, strings.TrimSpace(string(rend)))
 }
 
+// TestDocument_AppendParameterAfterRef tests the bug fix for appending new parameters
+// to an operation that has $ref parameters. Before the fix, if a $ref was the last
+// parameter in the original spec, any appended parameters would be silently dropped
+// during rendering because the 'skip' flag wasn't reset between slice iterations.
+func TestDocument_AppendParameterAfterRef(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+    title: Test
+    version: 1.0.0
+paths:
+    /test/{id}:
+        get:
+            parameters:
+                - $ref: '#/components/parameters/IdParam'
+            responses:
+                "200":
+                    description: ok
+components:
+    parameters:
+        IdParam:
+            name: id
+            in: path
+            required: true
+            schema:
+                type: string`
+
+	doc, err := NewDocument([]byte(spec))
+	if err != nil {
+		t.Fatalf("failed to create document: %v", err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	assert.NoError(t, errs)
+
+	// Get the operation and append a new parameter
+	pathItem := result.Model.Paths.PathItems.GetOrZero("/test/{id}")
+	assert.NotNil(t, pathItem)
+	assert.NotNil(t, pathItem.Get)
+
+	// Verify we have the original $ref parameter
+	assert.Len(t, pathItem.Get.Parameters, 1)
+
+	// Append a new parameter (simulating what the user does)
+	newParam := &v3high.Parameter{
+		Name: "Host",
+		In:   "header",
+	}
+	pathItem.Get.Parameters = append(pathItem.Get.Parameters, newParam)
+
+	// Render and reload
+	_, newDoc, _, err := doc.RenderAndReload()
+	assert.NoError(t, err)
+
+	// Build the new model
+	newResult, errs := newDoc.BuildV3Model()
+	assert.NoError(t, errs)
+
+	// Check that the new parameter is present
+	newPathItem := newResult.Model.Paths.PathItems.GetOrZero("/test/{id}")
+	assert.NotNil(t, newPathItem)
+	assert.NotNil(t, newPathItem.Get)
+
+	// This was the bug: the new "Host" parameter was being dropped
+	assert.Len(t, newPathItem.Get.Parameters, 2, "Expected 2 parameters (original $ref + appended Host)")
+
+	// Verify the Host parameter is present
+	foundHost := false
+	for _, p := range newPathItem.Get.Parameters {
+		if p.Name == "Host" && p.In == "header" {
+			foundHost = true
+			break
+		}
+	}
+	assert.True(t, foundHost, "Expected to find the appended 'Host' header parameter")
+}
+
+// TestDocument_AppendParameterBeforeRef tests that appending works when $ref is not last
+func TestDocument_AppendParameterBeforeRef(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+    title: Test
+    version: 1.0.0
+paths:
+    /test/{id}:
+        get:
+            parameters:
+                - name: existing
+                  in: query
+                  schema:
+                      type: string
+                - $ref: '#/components/parameters/IdParam'
+            responses:
+                "200":
+                    description: ok
+components:
+    parameters:
+        IdParam:
+            name: id
+            in: path
+            required: true
+            schema:
+                type: string`
+
+	doc, err := NewDocument([]byte(spec))
+	if err != nil {
+		t.Fatalf("failed to create document: %v", err)
+	}
+
+	result, errs := doc.BuildV3Model()
+	assert.NoError(t, errs)
+
+	// Get the operation and append a new parameter
+	pathItem := result.Model.Paths.PathItems.GetOrZero("/test/{id}")
+
+	// Append a new parameter
+	newParam := &v3high.Parameter{
+		Name: "Host",
+		In:   "header",
+	}
+	pathItem.Get.Parameters = append(pathItem.Get.Parameters, newParam)
+
+	// Render and reload
+	_, newDoc, _, err := doc.RenderAndReload()
+	assert.NoError(t, err)
+
+	newResult, errs := newDoc.BuildV3Model()
+	assert.NoError(t, errs)
+
+	newPathItem := newResult.Model.Paths.PathItems.GetOrZero("/test/{id}")
+
+	// Should have 3 parameters: existing + $ref + Host
+	assert.Len(t, newPathItem.Get.Parameters, 3, "Expected 3 parameters")
+
+	foundHost := false
+	for _, p := range newPathItem.Get.Parameters {
+		if p.Name == "Host" && p.In == "header" {
+			foundHost = true
+			break
+		}
+	}
+	assert.True(t, foundHost, "Expected to find the appended 'Host' header parameter")
+}
+
 func TestDocument_RenderWithIndention(t *testing.T) {
 	spec := `openapi: "3.1.0"
 info:
