@@ -805,8 +805,10 @@ func (index *SpecIndex) ExtractComponentsFromRefs(ctx context.Context, refs []*R
 				return index.locateRef(ctx, ref), nil
 			})
 
-			if result != nil {
-				resultsChan <- indexedRef{ref: result.(*Reference), pos: i}
+			// Type assert and check for nil - interface containing nil pointer is not nil
+			located := result.(*Reference)
+			if located != nil {
+				resultsChan <- indexedRef{ref: located, pos: i}
 			} else {
 				resultsChan <- indexedRef{ref: nil, pos: i} // Track failures for reconciliation
 			}
