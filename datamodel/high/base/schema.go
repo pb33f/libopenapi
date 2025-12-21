@@ -74,6 +74,9 @@ type Schema struct {
 	// in 3.1 Items can be a Schema or a boolean
 	Items *DynamicValue[*SchemaProxy, bool] `json:"items,omitempty" yaml:"items,omitempty"`
 
+	// 3.1+ only, JSON Schema 2020-12 $id - declares this schema as a schema resource with a URI identifier
+	Id string `json:"$id,omitempty" yaml:"$id,omitempty"`
+
 	// 3.1 only, part of the JSON Schema spec provides a way to identify a sub-schema
 	Anchor string `json:"$anchor,omitempty" yaml:"$anchor,omitempty"`
 
@@ -312,6 +315,9 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 	s.Required = req
 
+	if !schema.Id.IsEmpty() {
+		s.Id = schema.Id.Value
+	}
 	if !schema.Anchor.IsEmpty() {
 		s.Anchor = schema.Anchor.Value
 	}

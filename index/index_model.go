@@ -405,6 +405,8 @@ type SpecIndex struct {
 	nodeMapCompleted                    chan struct{}
 	pendingResolve                      []refMap
 	highModelCache                      Cache
+	schemaIdRegistry                    map[string]*SchemaIdEntry // registry of $id declarations for JSON Schema 2020-12
+	schemaIdRegistryLock                sync.RWMutex              // lock for concurrent access to schemaIdRegistry
 }
 
 // GetResolver returns the resolver for this index.

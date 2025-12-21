@@ -84,6 +84,8 @@ type Rolodex struct {
 	ignoredCircularReferences  []*CircularReferenceResult
 	logger                     *slog.Logger
 	id                         string // unique ID for the rolodex, can be used to identify it in logs or other contexts.
+	globalSchemaIdRegistry     map[string]*SchemaIdEntry
+	schemaIdRegistryLock       sync.RWMutex
 }
 
 // NewRolodex creates a new rolodex with the provided index configuration.
@@ -249,6 +251,9 @@ func (r *Rolodex) AddExternalIndex(idx *SpecIndex, location string) {
 	if r.indexMap[location] == nil {
 		r.indexMap[location] = idx
 	}
+
+	// Aggregate $id registrations from this index into the global registry
+	r.RegisterIdsFromIndex(idx)
 }
 
 func (r *Rolodex) AddIndex(idx *SpecIndex) {
@@ -882,5 +887,62 @@ func (r *Rolodex) ClearIndexCaches() {
 	}
 	for _, idx := range r.indexes {
 		idx.GetHighCache().Clear()
+	}
+}
+
+// RegisterGlobalSchemaId registers a schema $id in the Rolodex global registry.
+// Returns an error if the $id is invalid.
+func (r *Rolodex) RegisterGlobalSchemaId(entry *SchemaIdEntry) error {
+	if r == nil {
+		return fmt.Errorf("cannot register $id on nil Rolodex")
+	}
+
+	r.schemaIdRegistryLock.Lock()
+	defer r.schemaIdRegistryLock.Unlock()
+
+	if r.globalSchemaIdRegistry == nil {
+		r.globalSchemaIdRegistry = make(map[string]*SchemaIdEntry)
+	}
+
+	_, err := registerSchemaIdToRegistry(r.globalSchemaIdRegistry, entry, r.logger, "global registry")
+	return err
+}
+
+// LookupSchemaById looks up a schema by its $id URI across all indexes.
+func (r *Rolodex) LookupSchemaById(uri string) *SchemaIdEntry {
+	if r == nil {
+		return nil
+	}
+
+	r.schemaIdRegistryLock.RLock()
+	defer r.schemaIdRegistryLock.RUnlock()
+
+	if r.globalSchemaIdRegistry == nil {
+		return nil
+	}
+	return r.globalSchemaIdRegistry[uri]
+}
+
+// GetAllGlobalSchemaIds returns a copy of all registered $id entries across all indexes.
+func (r *Rolodex) GetAllGlobalSchemaIds() map[string]*SchemaIdEntry {
+	if r == nil {
+		return make(map[string]*SchemaIdEntry)
+	}
+
+	r.schemaIdRegistryLock.RLock()
+	defer r.schemaIdRegistryLock.RUnlock()
+	return copySchemaIdRegistry(r.globalSchemaIdRegistry)
+}
+
+// RegisterIdsFromIndex aggregates all $id registrations from an index into the global registry.
+// Called after each index is built to populate the Rolodex global registry.
+func (r *Rolodex) RegisterIdsFromIndex(idx *SpecIndex) {
+	if r == nil || idx == nil {
+		return
+	}
+
+	entries := idx.GetAllSchemaIds()
+	for _, entry := range entries {
+		_ = r.RegisterGlobalSchemaId(entry)
 	}
 }

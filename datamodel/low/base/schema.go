@@ -107,6 +107,7 @@ type Schema struct {
 	PropertyNames         low.NodeReference[*SchemaProxy]
 	UnevaluatedItems      low.NodeReference[*SchemaProxy]
 	UnevaluatedProperties low.NodeReference[*SchemaDynamicValue[*SchemaProxy, bool]]
+	Id                    low.NodeReference[string] // JSON Schema 2020-12 $id - schema resource identifier
 	Anchor                low.NodeReference[string]
 	DynamicAnchor         low.NodeReference[string]
 	DynamicRef            low.NodeReference[string]
@@ -489,6 +490,10 @@ func (s *Schema) hash(quick bool) [32]byte {
 		sb.WriteString(low.GenerateHashString(s.UnevaluatedItems.Value))
 		sb.WriteByte('|')
 	}
+	if !s.Id.IsEmpty() {
+		sb.WriteString(s.Id.Value)
+		sb.WriteByte('|')
+	}
 	if !s.Anchor.IsEmpty() {
 		sb.WriteString(s.Anchor.Value)
 		sb.WriteByte('|')
@@ -827,6 +832,14 @@ func (s *Schema) Build(ctx context.Context, root *yaml.Node, idx *index.SpecInde
 	if schemaRefNode != nil {
 		s.SchemaTypeRef = low.NodeReference[string]{
 			Value: schemaRefNode.Value, KeyNode: schemaRefLabel, ValueNode: schemaRefNode,
+		}
+	}
+
+	// handle $id if set. (3.1+, JSON Schema 2020-12)
+	_, idLabel, idNode := utils.FindKeyNodeFullTop(IdLabel, root.Content)
+	if idNode != nil {
+		s.Id = low.NodeReference[string]{
+			Value: idNode.Value, KeyNode: idLabel, ValueNode: idNode,
 		}
 	}
 

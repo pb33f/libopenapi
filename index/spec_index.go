@@ -1473,3 +1473,35 @@ func (index *SpecIndex) GetAllDescriptionsCount() int {
 func (index *SpecIndex) GetAllSummariesCount() int {
 	return len(index.allSummaries)
 }
+
+// RegisterSchemaId registers a schema by its $id in this index.
+// Returns an error if the $id is invalid (e.g., contains a fragment).
+func (index *SpecIndex) RegisterSchemaId(entry *SchemaIdEntry) error {
+	index.schemaIdRegistryLock.Lock()
+	defer index.schemaIdRegistryLock.Unlock()
+
+	if index.schemaIdRegistry == nil {
+		index.schemaIdRegistry = make(map[string]*SchemaIdEntry)
+	}
+
+	_, err := registerSchemaIdToRegistry(index.schemaIdRegistry, entry, index.logger, "local index")
+	return err
+}
+
+// GetSchemaById looks up a schema by its $id URI.
+func (index *SpecIndex) GetSchemaById(uri string) *SchemaIdEntry {
+	index.schemaIdRegistryLock.RLock()
+	defer index.schemaIdRegistryLock.RUnlock()
+
+	if index.schemaIdRegistry == nil {
+		return nil
+	}
+	return index.schemaIdRegistry[uri]
+}
+
+// GetAllSchemaIds returns a copy of all registered $id entries in this index.
+func (index *SpecIndex) GetAllSchemaIds() map[string]*SchemaIdEntry {
+	index.schemaIdRegistryLock.RLock()
+	defer index.schemaIdRegistryLock.RUnlock()
+	return copySchemaIdRegistry(index.schemaIdRegistry)
+}
