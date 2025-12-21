@@ -852,7 +852,11 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 		}
 	}
 
-	// Use single string builder for final assembly with # -> $ replacement
+	// use single string builder for final assembly.
+	// note: we do NOT replace # with $ here. the leading # from JSON Pointer notation
+	// (e.g., "#/components/...") is already stripped when we split by "/", and any #
+	// characters within component names (e.g., "async_search.submit#wait_for_completion_timeout")
+	// should be preserved literally in the JSONPath query. see issue #485.
 	var finalBuilder strings.Builder
 	if len(cleaned) > 1 {
 		// Estimate final size
@@ -867,27 +871,14 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 			if i > 0 {
 				finalBuilder.WriteByte('.')
 			}
-			// Replace # with $ as we write
-			for _, ch := range segment {
-				if ch == '#' {
-					finalBuilder.WriteByte('$')
-				} else {
-					finalBuilder.WriteRune(ch)
-				}
-			}
+			finalBuilder.WriteString(segment)
 		}
 	} else {
 		// Handle single segment case
 		if len(cleaned) == 1 {
 			finalBuilder.Grow(len(cleaned[0]) + 5)
 			finalBuilder.WriteString("$.")
-			for _, ch := range cleaned[0] {
-				if ch == '#' {
-					finalBuilder.WriteByte('$')
-				} else {
-					finalBuilder.WriteRune(ch)
-				}
-			}
+			finalBuilder.WriteString(cleaned[0])
 		} else {
 			finalBuilder.WriteString("$.")
 		}

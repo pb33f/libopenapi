@@ -1046,9 +1046,9 @@ func TestConvertComponentIdIntoFriendlyPathSearch_SpecialCharacterEdgeCases(t *t
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_CleanedSingleSegment(t *testing.T) {
-	// Test case that results in single cleaned segment with # replacement
+	// Test case that results in single cleaned segment - # should be preserved (issue #485)
 	_, path := ConvertComponentIdIntoFriendlyPathSearch("#single")
-	assert.Equal(t, "$.['$single']", path)
+	assert.Equal(t, "$.['#single']", path)
 
 	// Test empty cleaned result
 	_, path = ConvertComponentIdIntoFriendlyPathSearch("/")
@@ -1064,14 +1064,14 @@ func TestConvertComponentIdIntoFriendlyPathSearch_PathWithoutDotAfterDollar(t *t
 		expected string
 	}{
 		{
-			// Path with only non-path chars that get wrapped - # gets replaced with $
+			// Path with only non-path chars that get wrapped - # is preserved (issue #485)
 			input:    "!@#",
-			expected: "$.['!@$']",
+			expected: "$.['!@#']",
 		},
 		{
-			// Complex path to test final builder logic - # in segment name causes wrapping
+			// Complex path to test final builder logic - # in segment name is preserved (issue #485)
 			input:    "#/test#value",
-			expected: "$.['test$value']",
+			expected: "$.['test#value']",
 		},
 	}
 
@@ -1082,13 +1082,13 @@ func TestConvertComponentIdIntoFriendlyPathSearch_PathWithoutDotAfterDollar(t *t
 }
 
 func TestConvertComponentIdIntoFriendlyPathSearch_HashCharacterHandling(t *testing.T) {
-	// Test # character replacement in segments - # causes segments to be wrapped
+	// Test # character in segments - # should be preserved in component names (issue #485)
 	_, path := ConvertComponentIdIntoFriendlyPathSearch("#/path/with#hash/in#middle")
-	assert.Equal(t, "$.path['with$hash']['in$middle']", path)
+	assert.Equal(t, "$.path['with#hash']['in#middle']", path)
 
-	// Test multiple # in single segment
+	// Test multiple # in single segment - all should be preserved (issue #485)
 	_, path = ConvertComponentIdIntoFriendlyPathSearch("#/seg#ment#with#many")
-	assert.Equal(t, "$.['seg$ment$with$many']", path)
+	assert.Equal(t, "$.['seg#ment#with#many']", path)
 }
 
 // Additional tests to hit uncovered branches
@@ -1164,13 +1164,13 @@ func TestConvertComponentIdIntoFriendlyPathSearch_IntegerWithoutCleanedArray(t *
 
 // Test to hit line 870 - # character in multi-segment cleaned path
 func TestConvertComponentIdIntoFriendlyPathSearch_HashInMultiSegment(t *testing.T) {
-	// This creates multiple cleaned segments with # that needs replacement
+	// This creates multiple cleaned segments
 	_, path := ConvertComponentIdIntoFriendlyPathSearch("#/segment1/segment2")
 	assert.Equal(t, "$.segment1.segment2", path)
 
-	// Another test with # in actual segment names that go through multi-segment processing
+	// Another test with # in actual segment names - # should be preserved (issue #485)
 	_, path = ConvertComponentIdIntoFriendlyPathSearch("#/test/another#segment/end")
-	assert.Equal(t, "$.test['another$segment'].end", path)
+	assert.Equal(t, "$.test['another#segment'].end", path)
 }
 
 // Test appendSegmentOptimized with no cleaned array
@@ -1253,6 +1253,67 @@ func TestConvertComponentIdIntoFriendlyPathSearch_Brackets(t *testing.T) {
 	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/OhNoWhy[HaveYouDoneThis]")
 	assert.Equal(t, "$.components.schemas['OhNoWhy[HaveYouDoneThis]']", path)
 	assert.Equal(t, "OhNoWhy[HaveYouDoneThis]", segment)
+}
+
+// Issue #485 tests - Hash character in component names should be preserved
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_HashInComponentName(t *testing.T) {
+	// Real-world Elasticsearch example from issue #485
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/parameters/async_search.submit#wait_for_completion_timeout")
+	assert.Equal(t, "$.components.parameters['async_search.submit#wait_for_completion_timeout']", path)
+	assert.Equal(t, "async_search.submit#wait_for_completion_timeout", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_MultipleHashesInName(t *testing.T) {
+	// Component name with multiple # characters
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/model#v1#beta")
+	assert.Equal(t, "$.components.schemas['model#v1#beta']", path)
+	assert.Equal(t, "model#v1#beta", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_HashAtEndOfName(t *testing.T) {
+	// Component name with # at the end
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/deprecated#")
+	assert.Equal(t, "$.components.schemas['deprecated#']", path)
+	assert.Equal(t, "deprecated#", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_HashAtStartOfName(t *testing.T) {
+	// Component name with # at the start (after the path)
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/#internal")
+	assert.Equal(t, "$.components.schemas['#internal']", path)
+	assert.Equal(t, "#internal", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_OnlyHashInName(t *testing.T) {
+	// Component name that is just a #
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/#")
+	assert.Equal(t, "$.components.schemas['#']", path)
+	assert.Equal(t, "#", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_HashWithSpecialChars(t *testing.T) {
+	// Component name with # mixed with other special characters
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/components/schemas/model#v1-beta.final")
+	assert.Equal(t, "$.components.schemas['model#v1-beta.final']", path)
+	assert.Equal(t, "model#v1-beta.final", segment)
+}
+
+func TestConvertComponentIdIntoFriendlyPathSearch_Issue485_NormalPathsUnaffected(t *testing.T) {
+	// Verify normal paths (without # in component names) still work correctly
+	testCases := []struct {
+		input        string
+		expectedPath string
+		expectedName string
+	}{
+		{"#/components/schemas/Pet", "$.components.schemas['Pet']", "Pet"},
+		{"#/components/parameters/page-size", "$.components.parameters['page-size']", "page-size"},
+	}
+
+	for _, tc := range testCases {
+		segment, path := ConvertComponentIdIntoFriendlyPathSearch(tc.input)
+		assert.Equal(t, tc.expectedPath, path, "Path mismatch for input: %s", tc.input)
+		assert.Equal(t, tc.expectedName, segment, "Name mismatch for input: %s", tc.input)
+	}
 }
 
 func TestDetermineYAMLWhitespaceLength(t *testing.T) {
