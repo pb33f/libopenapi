@@ -1635,6 +1635,27 @@ func checkSchemaPropertyChanges(
 	lnv = nil
 	rnv = nil
 
+	// $id (JSON Schema 2020-12)
+	if lSchema != nil && lSchema.Id.ValueNode != nil {
+		lnv = lSchema.Id.ValueNode
+	}
+	if rSchema != nil && rSchema.Id.ValueNode != nil {
+		rnv = rSchema.Id.ValueNode
+	}
+	props = append(props, &PropertyCheck{
+		LeftNode:  lnv,
+		RightNode: rnv,
+		Label:     base.IdLabel,
+		Changes:   changes,
+		Breaking:  BreakingModified(CompSchema, PropId),
+		Component: CompSchema,
+		Property:  PropId,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+	lnv = nil
+	rnv = nil
+
 	// check extensions
 	var lext *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	var rext *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]

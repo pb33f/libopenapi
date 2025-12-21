@@ -82,6 +82,7 @@ const (
 	PropDiscriminator        = "discriminator"
 	PropDynamicAnchor        = "$dynamicAnchor"
 	PropDynamicRef           = "$dynamicRef"
+	PropId                   = "$id"
 	PropElse                 = "else"
 	PropEmail                = "email"
 	PropEnum                 = "enum"
