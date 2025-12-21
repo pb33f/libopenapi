@@ -102,6 +102,15 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 		}
 	}
 
+	// Try to resolve via JSON Schema 2020-12 $id registry first
+	// This handles refs like "a.json" resolving to schemas with $id: "https://example.com/a.json"
+	if resolved := index.ResolveRefViaSchemaId(searchRef.FullDefinition); resolved != nil {
+		if index.cache != nil {
+			index.cache.Store(searchRef.FullDefinition, resolved)
+		}
+		return resolved, resolved.Index, context.WithValue(ctx, CurrentPathKey, resolved.RemoteLocation)
+	}
+
 	ref := searchRef.FullDefinition
 	refAlt := ref
 	absPath := index.specAbsolutePath

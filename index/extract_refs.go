@@ -26,6 +26,20 @@ import (
 // Set LIBOPENAPI_LEGACY_REF_ORDER=true to use the old non-deterministic ordering.
 var preserveLegacyRefOrder = os.Getenv("LIBOPENAPI_LEGACY_REF_ORDER") == "true"
 
+// findSchemaIdInNode looks for a $id key in a mapping node and returns its value.
+// Returns empty string if not found or if the node is not a mapping.
+func findSchemaIdInNode(node *yaml.Node) string {
+	if node == nil || node.Kind != yaml.MappingNode {
+		return ""
+	}
+	for i := 0; i < len(node.Content)-1; i += 2 {
+		if node.Content[i].Value == "$id" && utils.IsNodeStringValue(node.Content[i+1]) {
+			return node.Content[i+1].Value
+		}
+	}
+	return ""
+}
+
 // indexedRef pairs a resolved reference with its original input position for deterministic ordering.
 type indexedRef struct {
 	ref *Reference
@@ -38,6 +52,33 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 	if node == nil {
 		return nil
 	}
+
+	// Initialize $id scope if not present (uses document base as initial scope)
+	scope := GetSchemaIdScope(ctx)
+	if scope == nil {
+		scope = NewSchemaIdScope(index.specAbsolutePath)
+		ctx = WithSchemaIdScope(ctx, scope)
+	}
+
+	// Capture the parent's base URI BEFORE any $id in this node is processed
+	// This is used for registering any $id found in this node
+	parentBaseUri := scope.BaseUri
+
+	// Check if THIS node has a $id and update scope for processing children
+	// This must happen before iterating children so they see the updated scope
+	if node.Kind == yaml.MappingNode {
+		if nodeId := findSchemaIdInNode(node); nodeId != "" {
+			resolvedNodeId, _ := ResolveSchemaId(nodeId, parentBaseUri)
+			if resolvedNodeId == "" {
+				resolvedNodeId = nodeId
+			}
+			// Update scope for children of this node
+			scope = scope.Copy()
+			scope.PushId(resolvedNodeId)
+			ctx = WithSchemaIdScope(ctx, scope)
+		}
+	}
+
 	var found []*Reference
 	if len(node.Content) > 0 {
 		var prev, polyName string
@@ -54,6 +95,7 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						polyName = prev
 					}
 				}
+
 				found = append(found, index.ExtractRefs(ctx, n, node, seenPath, level, poly, polyName)...)
 			}
 
@@ -507,6 +549,84 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 					// This sets the ref in the path using the full URL and sub-path.
 					index.allRefs[fullDefinitionPath] = ref
 					found = append(found, ref)
+				}
+			}
+
+			// Detect and register JSON Schema 2020-12 $id declarations
+			if i%2 == 0 && n.Value == "$id" {
+				if len(node.Content) > i+1 && utils.IsNodeStringValue(node.Content[i+1]) {
+					idValue := node.Content[i+1].Value
+					idNode := node.Content[i+1]
+
+					// Build the definition path for this schema
+					var definitionPath string
+					if len(seenPath) > 0 {
+						definitionPath = "#/" + strings.Join(seenPath, "/")
+					} else {
+						definitionPath = "#"
+					}
+
+					// Validate the $id (must not contain fragment)
+					if err := ValidateSchemaId(idValue); err != nil {
+						index.errorLock.Lock()
+						index.refErrors = append(index.refErrors, &IndexingError{
+							Err:     fmt.Errorf("invalid $id value '%s': %w", idValue, err),
+							Node:    idNode,
+							KeyNode: node.Content[i],
+							Path:    definitionPath,
+						})
+						index.errorLock.Unlock()
+						continue
+					}
+
+					// Resolve the $id against the PARENT scope's base URI (nearest ancestor $id)
+					// This implements JSON Schema 2020-12 hierarchical $id resolution
+					// We use parentBaseUri which was captured before this node's $id was pushed
+					baseUri := parentBaseUri
+					if baseUri == "" {
+						baseUri = index.specAbsolutePath
+					}
+					resolvedUri, resolveErr := ResolveSchemaId(idValue, baseUri)
+					if resolveErr != nil {
+						if index.logger != nil {
+							index.logger.Warn("failed to resolve $id",
+								"id", idValue,
+								"base", baseUri,
+								"definitionPath", definitionPath,
+								"error", resolveErr.Error(),
+								"line", idNode.Line)
+						}
+						resolvedUri = idValue // Use original as fallback
+					}
+
+					// Create and register the schema ID entry
+					// ParentId is the parent scope's base URI (if it differs from document base)
+					parentId := ""
+					if parentBaseUri != index.specAbsolutePath && parentBaseUri != "" {
+						parentId = parentBaseUri
+					}
+					entry := &SchemaIdEntry{
+						Id:             idValue,
+						ResolvedUri:    resolvedUri,
+						SchemaNode:     node,
+						ParentId:       parentId,
+						Index:          index,
+						DefinitionPath: definitionPath,
+						Line:           idNode.Line,
+						Column:         idNode.Column,
+					}
+
+					// Register in the index - propagate errors
+					if regErr := index.RegisterSchemaId(entry); regErr != nil {
+						index.errorLock.Lock()
+						index.refErrors = append(index.refErrors, &IndexingError{
+							Err:     fmt.Errorf("failed to register $id '%s': %w", idValue, regErr),
+							Node:    idNode,
+							KeyNode: node.Content[i],
+							Path:    definitionPath,
+						})
+						index.errorLock.Unlock()
+					}
 				}
 			}
 
