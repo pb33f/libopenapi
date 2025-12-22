@@ -337,6 +337,14 @@ func TestResolveRefAgainstSchemaId_InvalidBaseInScope(t *testing.T) {
 	assert.Contains(t, err.Error(), "invalid base URI in scope")
 }
 
+func TestResolveRefAgainstSchemaId_InvalidRefUri(t *testing.T) {
+	// Test invalid ref URI with bad percent-encoding
+	scope := NewSchemaIdScope("https://example.com/base.json")
+	_, err := ResolveRefAgainstSchemaId("schema%zz.json", scope)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid $ref URI")
+}
+
 func TestSchemaIdScope_NestedScopes(t *testing.T) {
 	// Test a realistic nested $id scenario
 	// Document base: https://example.com/openapi.yaml
