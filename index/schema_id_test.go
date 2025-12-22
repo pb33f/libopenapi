@@ -975,6 +975,11 @@ items:
 			fragment: "#/items/99",
 			wantNil:  true,
 		},
+		{
+			name:     "empty segments skipped (double slash)",
+			fragment: "#//properties//name",
+			wantNil:  false,
+		},
 	}
 
 	for _, tt := range tests {
