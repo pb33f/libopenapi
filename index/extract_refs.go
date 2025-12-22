@@ -621,7 +621,8 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 				}
 			}
 
-			if i%2 == 0 && n.Value != "$ref" && n.Value != "" {
+			// Skip $ref and $id from path building - they are keywords, not schema properties
+			if i%2 == 0 && n.Value != "$ref" && n.Value != "$id" && n.Value != "" {
 
 				v := n.Value
 				if strings.HasPrefix(v, "/") {
