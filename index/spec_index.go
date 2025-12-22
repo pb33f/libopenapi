@@ -340,11 +340,17 @@ func (index *SpecIndex) GetOperationParameterReferences() map[string]map[string]
 	return index.paramOpRefs
 }
 
-// GetAllSchemas will return references to all schemas found in the document both inline and those under components
-// The first elements of at the top of the slice, are all the inline references (using GetAllInlineSchemas),
-// and then following on are all the references extracted from the components section (using GetAllComponentSchemas).
-// finally all the references that are not inline, but marked as $ref in the document are returned (using GetAllReferenceSchemas).
-// the results are sorted by line number.
+// GetAllSchemas returns references to ALL schemas found in the document:
+//   - Inline schemas (defined directly in operations, parameters, etc.)
+//   - Component schemas (defined under components/schemas or definitions)
+//   - Reference schemas ($ref pointers to schemas)
+//
+// Results are sorted by line number in the source document.
+//
+// Note: This is the only GetAll* function that returns inline and $ref variants.
+// Other GetAll* functions (GetAllRequestBodies, GetAllResponses, etc.) only return
+// items defined in the components section. Use GetAllInlineSchemas, GetAllComponentSchemas,
+// and GetAllReferenceSchemas for more granular access.
 func (index *SpecIndex) GetAllSchemas() []*Reference {
 	componentSchemas := index.GetAllComponentSchemas()
 	inlineSchemas := index.GetAllInlineSchemas()
@@ -413,12 +419,14 @@ func (index *SpecIndex) GetAllComponentSchemas() map[string]*Reference {
 	return index.allComponentSchemas
 }
 
-// GetAllSecuritySchemes will return all security schemes / definitions found in the document.
+// GetAllSecuritySchemes returns all security schemes defined in the components section
+// (components/securitySchemes in OpenAPI 3.x, or securityDefinitions in Swagger 2.0).
 func (index *SpecIndex) GetAllSecuritySchemes() map[string]*Reference {
 	return syncMapToMap[string, *Reference](index.allSecuritySchemes)
 }
 
-// GetAllHeaders will return all headers found in the document (under components)
+// GetAllHeaders returns all headers defined in the components section (components/headers).
+// This does not include inline headers defined directly in operations or $ref pointers.
 func (index *SpecIndex) GetAllHeaders() map[string]*Reference {
 	return index.allHeaders
 }
@@ -428,7 +436,8 @@ func (index *SpecIndex) GetAllExternalDocuments() map[string]*Reference {
 	return index.allExternalDocuments
 }
 
-// GetAllExamples will return all examples found in the document (under components)
+// GetAllExamples returns all examples defined in the components section (components/examples).
+// This does not include inline examples defined directly in operations or $ref pointers.
 func (index *SpecIndex) GetAllExamples() map[string]*Reference {
 	return index.allExamples
 }
@@ -453,32 +462,40 @@ func (index *SpecIndex) GetAllSummaries() []*DescriptionReference {
 	return index.allSummaries
 }
 
-// GetAllRequestBodies will return all requestBodies found in the document (under components)
+// GetAllRequestBodies returns all request bodies defined in the components section (components/requestBodies).
+// This does not include inline request bodies defined directly in operations or $ref pointers.
 func (index *SpecIndex) GetAllRequestBodies() map[string]*Reference {
 	return index.allRequestBodies
 }
 
-// GetAllLinks will return all links found in the document (under components)
+// GetAllLinks returns all links defined in the components section (components/links).
+// This does not include inline links defined directly in responses or $ref pointers.
 func (index *SpecIndex) GetAllLinks() map[string]*Reference {
 	return index.allLinks
 }
 
-// GetAllParameters will return all parameters found in the document (under components)
+// GetAllParameters returns all parameters defined in the components section (components/parameters).
+// This does not include inline parameters defined directly in operations or path items.
+// For operation-level parameters, use GetOperationParameterReferences.
 func (index *SpecIndex) GetAllParameters() map[string]*Reference {
 	return index.allParameters
 }
 
-// GetAllResponses will return all responses found in the document (under components)
+// GetAllResponses returns all responses defined in the components section (components/responses).
+// This does not include inline responses defined directly in operations or $ref pointers.
 func (index *SpecIndex) GetAllResponses() map[string]*Reference {
 	return index.allResponses
 }
 
-// GetAllCallbacks will return all links found in the document (under components)
+// GetAllCallbacks returns all callbacks defined in the components section (components/callbacks).
+// This does not include inline callbacks defined directly in operations or $ref pointers.
 func (index *SpecIndex) GetAllCallbacks() map[string]*Reference {
 	return index.allCallbacks
 }
 
-// GetAllComponentPathItems will return all path items found in the document (under components)
+// GetAllComponentPathItems returns all path items defined in the components section (components/pathItems).
+// This does not include path items defined directly under the paths object or $ref pointers.
+// For paths-level path items, use GetAllPaths.
 func (index *SpecIndex) GetAllComponentPathItems() map[string]*Reference {
 	return index.allComponentPathItems
 }
