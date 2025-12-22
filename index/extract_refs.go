@@ -616,17 +616,8 @@ func (index *SpecIndex) ExtractRefs(ctx context.Context, node, parent *yaml.Node
 						Column:         idNode.Column,
 					}
 
-					// Register in the index - propagate errors
-					if regErr := index.RegisterSchemaId(entry); regErr != nil {
-						index.errorLock.Lock()
-						index.refErrors = append(index.refErrors, &IndexingError{
-							Err:     fmt.Errorf("failed to register $id '%s': %w", idValue, regErr),
-							Node:    idNode,
-							KeyNode: node.Content[i],
-							Path:    definitionPath,
-						})
-						index.errorLock.Unlock()
-					}
+					// Register in the index (validation already done above)
+					_ = index.RegisterSchemaId(entry)
 				}
 			}
 

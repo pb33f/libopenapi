@@ -1452,3 +1452,107 @@ func TestCopySchemaIdRegistry_IndependentCopy(t *testing.T) {
 	_, exists := copied["key2"]
 	assert.False(t, exists)
 }
+
+// Test $id at document root level (definitionPath = "#")
+func TestSchemaId_RootLevelId(t *testing.T) {
+	// A schema with $id at the root level (not nested under components/schemas)
+	spec := `$id: "https://example.com/root-schema.json"
+type: object
+properties:
+  name:
+    type: string
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	allIds := index.GetAllSchemaIds()
+	assert.Len(t, allIds, 1)
+
+	entry := allIds["https://example.com/root-schema.json"]
+	assert.NotNil(t, entry)
+	assert.Equal(t, "https://example.com/root-schema.json", entry.Id)
+	// Root level should have definitionPath of "#"
+	assert.Equal(t, "#", entry.DefinitionPath)
+}
+
+// Test malformed $id URL that causes ResolveSchemaId to fail
+// This tests the fallback path where resolvedNodeId == "" or resolveErr != nil
+func TestSchemaId_MalformedUrlFallback(t *testing.T) {
+	// A $id with a malformed URL that url.Parse will reject
+	// "://missing-scheme" should cause a parse error
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      $id: "://missing-scheme"
+      type: object
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	// The $id should still be registered using the original value as fallback
+	allIds := index.GetAllSchemaIds()
+	assert.Len(t, allIds, 1)
+
+	// Should be registered with original value since resolution failed
+	entry := allIds["://missing-scheme"]
+	assert.NotNil(t, entry, "Malformed $id should still be registered with original value")
+	assert.Equal(t, "://missing-scheme", entry.Id)
+	assert.Equal(t, "://missing-scheme", entry.ResolvedUri) // Falls back to original
+}
+
+// Test malformed $id URL in nested context (tests scope update fallback)
+func TestSchemaId_MalformedUrlInNestedContext(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Parent:
+      $id: "https://example.com/parent.json"
+      type: object
+      properties:
+        child:
+          $id: "://bad-child-url"
+          type: string
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	allIds := index.GetAllSchemaIds()
+	assert.Len(t, allIds, 2)
+
+	// Parent should resolve normally
+	parentEntry := allIds["https://example.com/parent.json"]
+	assert.NotNil(t, parentEntry)
+
+	// Child has malformed URL, should fall back to original value
+	childEntry := allIds["://bad-child-url"]
+	assert.NotNil(t, childEntry, "Malformed nested $id should still be registered")
+	assert.Equal(t, "://bad-child-url", childEntry.Id)
+}
