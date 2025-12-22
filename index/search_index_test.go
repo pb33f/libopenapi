@@ -139,3 +139,24 @@ paths: {}`), &rootNode)
 	assert.True(t, found.IsRemote)
 	assert.Equal(t, "external.yaml", filepath.Base(found.FullDefinition))
 }
+
+
+func TestIsFileBeingIndexed_HTTPPathMatch(t *testing.T) {
+	// Test that HTTP paths match when the path portion is the same
+	ctx := context.Background()
+
+	// Add an HTTP file to the indexing context
+	files := make(map[string]bool)
+	files["https://example.com/schemas/pet.yaml"] = true
+	ctx = context.WithValue(ctx, IndexingFilesKey, files)
+
+	// Same path, different host - should match
+	assert.True(t, IsFileBeingIndexed(ctx, "https://different-host.com/schemas/pet.yaml"))
+
+	// Same exact URL - should match
+	assert.True(t, IsFileBeingIndexed(ctx, "https://example.com/schemas/pet.yaml"))
+
+	// Different path - should not match
+	assert.False(t, IsFileBeingIndexed(ctx, "https://example.com/other/file.yaml"))
+}
+
