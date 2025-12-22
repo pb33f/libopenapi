@@ -4962,3 +4962,197 @@ components:
 	assert.NotNil(t, changes2)
 	assert.Equal(t, 0, changes2.TotalBreakingChanges(), "With custom config, modifying $dynamicRef should not be breaking")
 }
+
+// TestCompareSchemas_Id_Added tests detection of $id being added
+func TestCompareSchemas_Id_Added(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+info:
+  title: left
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      type: object`
+
+	right := `openapi: "3.1.0"
+info:
+  title: right
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Pet").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Pet").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+
+	// Find the $id change
+	found := false
+	for _, change := range changes.Changes {
+		if change.Property == PropId {
+			found = true
+			assert.Equal(t, PropertyAdded, change.ChangeType)
+			assert.Equal(t, "https://example.com/schemas/pet.json", change.New)
+			break
+		}
+	}
+	assert.True(t, found, "Should find $id property change")
+}
+
+// TestCompareSchemas_Id_Removed tests detection of $id being removed
+func TestCompareSchemas_Id_Removed(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+info:
+  title: left
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object`
+
+	right := `openapi: "3.1.0"
+info:
+  title: right
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Pet").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Pet").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+
+	// Find the $id change
+	found := false
+	for _, change := range changes.Changes {
+		if change.Property == PropId {
+			found = true
+			assert.Equal(t, PropertyRemoved, change.ChangeType)
+			assert.Equal(t, "https://example.com/schemas/pet.json", change.Original)
+			break
+		}
+	}
+	assert.True(t, found, "Should find $id property change")
+}
+
+// TestCompareSchemas_Id_Modified tests detection of $id being modified
+func TestCompareSchemas_Id_Modified(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+info:
+  title: left
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet-v1.json"
+      type: object`
+
+	right := `openapi: "3.1.0"
+info:
+  title: right
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet-v2.json"
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Pet").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Pet").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Equal(t, 1, changes.TotalChanges())
+
+	// Find the $id change
+	found := false
+	for _, change := range changes.Changes {
+		if change.Property == PropId {
+			found = true
+			assert.Equal(t, Modified, change.ChangeType)
+			assert.Equal(t, "https://example.com/schemas/pet-v1.json", change.Original)
+			assert.Equal(t, "https://example.com/schemas/pet-v2.json", change.New)
+			break
+		}
+	}
+	assert.True(t, found, "Should find $id property change")
+}
+
+// TestCompareSchemas_Id_NoChange tests that identical $id produces no changes
+func TestCompareSchemas_Id_NoChange(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+info:
+  title: left
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object`
+
+	right := `openapi: "3.1.0"
+info:
+  title: right
+  version: "1.0"
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("Pet").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("Pet").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.Nil(t, changes)
+}
