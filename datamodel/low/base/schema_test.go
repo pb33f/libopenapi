@@ -2675,3 +2675,81 @@ func TestSchemaDynamicValue_Hash_IsB(t *testing.T) {
 	assert.False(t, value.IsA())
 	assert.True(t, value.IsB())
 }
+
+// TestSchema_Id tests that the $id field is correctly extracted and included in the hash
+func TestSchema_Id(t *testing.T) {
+	yml := `type: object
+$id: "https://example.com/schemas/pet.json"
+description: A pet schema`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "https://example.com/schemas/pet.json", sch.Id.Value)
+	assert.NotNil(t, sch.Id.KeyNode)
+	assert.NotNil(t, sch.Id.ValueNode)
+}
+
+// TestSchema_Id_Hash tests that $id is included in the schema hash
+func TestSchema_Id_Hash(t *testing.T) {
+	yml1 := `type: object
+$id: "https://example.com/schemas/a.json"
+description: Schema A`
+
+	yml2 := `type: object
+$id: "https://example.com/schemas/b.json"
+description: Schema A`
+
+	yml3 := `type: object
+description: Schema A`
+
+	var node1, node2, node3 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml1), &node1)
+	_ = yaml.Unmarshal([]byte(yml2), &node2)
+	_ = yaml.Unmarshal([]byte(yml3), &node3)
+
+	var sch1, sch2, sch3 Schema
+	_ = low.BuildModel(node1.Content[0], &sch1)
+	_ = sch1.Build(context.Background(), node1.Content[0], nil)
+
+	_ = low.BuildModel(node2.Content[0], &sch2)
+	_ = sch2.Build(context.Background(), node2.Content[0], nil)
+
+	_ = low.BuildModel(node3.Content[0], &sch3)
+	_ = sch3.Build(context.Background(), node3.Content[0], nil)
+
+	hash1 := sch1.Hash()
+	hash2 := sch2.Hash()
+	hash3 := sch3.Hash()
+
+	// Different $id values should produce different hashes
+	assert.NotEqual(t, hash1, hash2)
+	// Schema without $id should differ from schema with $id
+	assert.NotEqual(t, hash1, hash3)
+	assert.NotEqual(t, hash2, hash3)
+}
+
+// TestSchema_Id_Empty tests that empty $id is not set
+func TestSchema_Id_Empty(t *testing.T) {
+	yml := `type: object
+description: A schema without $id`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.True(t, sch.Id.IsEmpty())
+}

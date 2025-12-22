@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -1154,4 +1155,300 @@ components:
 	level2Entry := allIds["https://example.com/level1/level2.json"]
 	assert.NotNil(t, level2Entry, "Level 2 should resolve against level 1, not root")
 	assert.Equal(t, "https://example.com/level1/level2.json", level2Entry.ResolvedUri)
+}
+
+// Test $id lookup through rolodex global registry
+func TestResolveRefViaSchemaId_WithRolodex(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object
+      properties:
+        name:
+          type: string
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	rolodex := NewRolodex(config)
+	config.SpecAbsolutePath = "https://example.com/openapi.yaml"
+
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	// Add index to rolodex (triggers RegisterIdsFromIndex)
+	rolodex.AddIndex(index)
+
+	// Create a second index that references the first via $id
+	spec2 := `openapi: "3.1.0"
+info:
+  title: Test API 2
+  version: 1.0.0
+`
+	var rootNode2 yaml.Node
+	err = yaml.Unmarshal([]byte(spec2), &rootNode2)
+	assert.NoError(t, err)
+
+	config2 := CreateClosedAPIIndexConfig()
+	config2.SpecAbsolutePath = "https://example.com/api2.yaml"
+	index2 := NewSpecIndexWithConfig(&rootNode2, config2)
+
+	// Set rolodex on the second index
+	index2.rolodex = rolodex
+
+	// ResolveRefViaSchemaId should find the schema via rolodex global registry
+	resolved := index2.ResolveRefViaSchemaId("https://example.com/schemas/pet.json")
+	assert.NotNil(t, resolved)
+	assert.Equal(t, "https://example.com/schemas/pet.json", resolved.FullDefinition)
+}
+
+// Test that findSchemaIdInNode returns empty for non-mapping nodes
+func TestFindSchemaIdInNode_NonMapping(t *testing.T) {
+	// Sequence node
+	seqNode := &yaml.Node{Kind: yaml.SequenceNode}
+	assert.Equal(t, "", findSchemaIdInNode(seqNode))
+
+	// Nil node
+	assert.Equal(t, "", findSchemaIdInNode(nil))
+}
+
+// Test that findSchemaIdInNode returns empty when $id is not a string
+func TestFindSchemaIdInNode_NonStringId(t *testing.T) {
+	yml := `$id: 123`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	assert.Equal(t, "", findSchemaIdInNode(node.Content[0]))
+}
+
+// Test error path when $id contains fragment
+func TestSchemaId_ExtractionWithFragmentError(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json#invalid"
+      type: object
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	// Invalid $id should not be registered
+	allIds := index.GetAllSchemaIds()
+	assert.Len(t, allIds, 0)
+
+	// Should have an error recorded
+	errors := index.GetReferenceIndexErrors()
+	assert.True(t, len(errors) > 0, "Should have recorded an error for invalid $id")
+
+	found := false
+	for _, e := range errors {
+		if e != nil && strings.Contains(e.Error(), "invalid $id") {
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "Should find invalid $id error")
+}
+
+// Test fragment navigation with DocumentNode wrapper
+func TestNavigateToFragment_DocumentNode(t *testing.T) {
+	yamlContent := `type: object
+properties:
+  name:
+    type: string
+`
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yamlContent), &node)
+	assert.NoError(t, err)
+
+	// node is a DocumentNode wrapping the actual content
+	assert.Equal(t, yaml.DocumentNode, node.Kind)
+
+	// Navigate should handle DocumentNode
+	result := navigateToFragment(&node, "#/type")
+	assert.NotNil(t, result)
+	assert.Equal(t, "object", result.Value)
+
+	result = navigateToFragment(&node, "#/properties/name/type")
+	assert.NotNil(t, result)
+	assert.Equal(t, "string", result.Value)
+}
+
+// Test fragment navigation with invalid array index format
+func TestNavigateToFragment_InvalidArrayIndex(t *testing.T) {
+	yamlContent := `items:
+  - first
+  - second
+`
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yamlContent), &node)
+	assert.NoError(t, err)
+
+	root := node.Content[0]
+
+	// Non-numeric index
+	result := navigateToFragment(root, "#/items/abc")
+	assert.Nil(t, result)
+
+	// Negative-like index (actually invalid format)
+	result = navigateToFragment(root, "#/items/-1")
+	assert.Nil(t, result)
+}
+
+// Test ResolveRefViaSchemaId caches results
+func TestResolveRefViaSchemaId_Caching(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	// First resolution
+	resolved1 := index.ResolveRefViaSchemaId("https://example.com/schemas/pet.json")
+	assert.NotNil(t, resolved1)
+
+	// Second resolution should use cache
+	resolved2 := index.ResolveRefViaSchemaId("https://example.com/schemas/pet.json")
+	assert.NotNil(t, resolved2)
+
+	// Results should be equivalent
+	assert.Equal(t, resolved1.FullDefinition, resolved2.FullDefinition)
+}
+
+// Test $id extraction uses document base when no scope exists
+func TestSchemaId_ExtractionWithDocumentBase(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      $id: "schemas/pet.json"
+      type: object
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	config.SpecAbsolutePath = "https://example.com/api/openapi.yaml"
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	allIds := index.GetAllSchemaIds()
+	assert.Len(t, allIds, 1)
+
+	// Should be resolved relative to document base
+	entry := allIds["https://example.com/api/schemas/pet.json"]
+	assert.NotNil(t, entry)
+	assert.Equal(t, "schemas/pet.json", entry.Id)
+	assert.Equal(t, "https://example.com/api/schemas/pet.json", entry.ResolvedUri)
+}
+
+// Test that SearchIndexForReferenceByReferenceWithContext uses $id lookup
+func TestSearchIndexForReferenceByReferenceWithContext_ViaSchemaId(t *testing.T) {
+	spec := `openapi: "3.1.0"
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  schemas:
+    Pet:
+      $id: "https://example.com/schemas/pet.json"
+      type: object
+      properties:
+        name:
+          type: string
+    Owner:
+      type: object
+      properties:
+        pet:
+          $ref: "https://example.com/schemas/pet.json"
+`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	assert.NoError(t, err)
+
+	config := CreateClosedAPIIndexConfig()
+	index := NewSpecIndexWithConfig(&rootNode, config)
+	assert.NotNil(t, index)
+
+	// Search for the reference using the $id
+	ref, foundIdx, ctx := index.SearchIndexForReferenceWithContext(context.Background(), "https://example.com/schemas/pet.json")
+
+	assert.NotNil(t, ref, "Should find reference via $id")
+	assert.NotNil(t, foundIdx)
+	assert.NotNil(t, ctx)
+	assert.Equal(t, "https://example.com/schemas/pet.json", ref.FullDefinition)
+}
+
+// Test SchemaIdEntry GetKey with empty ResolvedUri falls back to Id
+func TestSchemaIdEntry_GetKey_FallbackToId(t *testing.T) {
+	entry := &SchemaIdEntry{
+		Id:          "schema.json",
+		ResolvedUri: "", // Empty
+	}
+
+	assert.Equal(t, "schema.json", entry.GetKey())
+}
+
+// Test copySchemaIdRegistry with nil registry
+func TestCopySchemaIdRegistry_Nil(t *testing.T) {
+	result := copySchemaIdRegistry(nil)
+	assert.NotNil(t, result)
+	assert.Empty(t, result)
+}
+
+// Test copySchemaIdRegistry creates independent copy
+func TestCopySchemaIdRegistry_IndependentCopy(t *testing.T) {
+	original := make(map[string]*SchemaIdEntry)
+	original["key1"] = &SchemaIdEntry{Id: "a.json"}
+
+	copied := copySchemaIdRegistry(original)
+
+	// Should be equal initially
+	assert.Len(t, copied, 1)
+	assert.NotNil(t, copied["key1"])
+
+	// Modify original
+	original["key2"] = &SchemaIdEntry{Id: "b.json"}
+
+	// Copy should not be affected
+	assert.Len(t, copied, 1)
+	_, exists := copied["key2"]
+	assert.False(t, exists)
 }

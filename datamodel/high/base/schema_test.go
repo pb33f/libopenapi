@@ -1870,3 +1870,40 @@ func TestSchema_RenderInlineWithContext_Error(t *testing.T) {
 	assert.Nil(t, result)
 	assert.Contains(t, err.Error(), "circular reference")
 }
+
+// TestNewSchema_Id tests that the $id field is correctly mapped from low to high level
+func TestNewSchema_Id(t *testing.T) {
+	yml := `type: object
+$id: "https://example.com/schemas/pet.json"
+description: A pet schema`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.Equal(t, "https://example.com/schemas/pet.json", highSch.Id)
+	assert.Equal(t, "object", highSch.Type[0])
+	assert.Equal(t, "A pet schema", highSch.Description)
+}
+
+// TestNewSchema_Id_Empty tests that empty $id results in empty string
+func TestNewSchema_Id_Empty(t *testing.T) {
+	yml := `type: object
+description: A schema without $id`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.Equal(t, "", highSch.Id)
+}
