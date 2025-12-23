@@ -76,16 +76,12 @@ func (o *Overlay) Build(ctx context.Context, keyNode, root *yaml.Node, idx *inde
 	o.Info = info
 
 	// Extract actions array
-	actions, err := o.extractActions(ctx, root, idx)
-	if err != nil {
-		return err
-	}
-	o.Actions = actions
+	o.Actions = o.extractActions(ctx, root, idx)
 
 	return nil
 }
 
-func (o *Overlay) extractActions(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (low.NodeReference[[]low.ValueReference[*Action]], error) {
+func (o *Overlay) extractActions(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) low.NodeReference[[]low.ValueReference[*Action]] {
 	var result low.NodeReference[[]low.ValueReference[*Action]]
 
 	for i := 0; i < len(root.Content); i += 2 {
@@ -107,9 +103,7 @@ func (o *Overlay) extractActions(ctx context.Context, root *yaml.Node, idx *inde
 			for _, actionNode := range value.Content {
 				action := &Action{}
 				_ = low.BuildModel(actionNode, action)
-				if err := action.Build(ctx, nil, actionNode, idx); err != nil {
-					return result, err
-				}
+				_ = action.Build(ctx, nil, actionNode, idx)
 				actions = append(actions, low.ValueReference[*Action]{
 					Value:     action,
 					ValueNode: actionNode,
@@ -119,7 +113,7 @@ func (o *Overlay) extractActions(ctx context.Context, root *yaml.Node, idx *inde
 			break
 		}
 	}
-	return result, nil
+	return result
 }
 
 // GetExtensions returns all Overlay extensions and satisfies the low.HasExtensions interface.

@@ -49,19 +49,6 @@ like our _very kind_ sponsors:
 
 ---
 
-`libopenapi` is kinda new, so our list of notable projects that depend on `libopenapi` is small (let me know if you'd like to add your project)
-
-- [github.com/daveshanley/vacuum](https://github.com/daveshanley/vacuum) - "The world's fastest and most scalable OpenAPI/Swagger linter/quality tool"
-- [github.com/pb33f/openapi-changes](https://github.com/pb33f/openapi-changes) - "The world's **sexiest** OpenAPI breaking changes detector"
-- [github.com/pb33f/wiretap](https://github.com/pb33f/wiretap) - "The world's **coolest** OpenAPI compliance analysis tool"
-- [github.com/danielgtaylor/restish](https://github.com/danielgtaylor/restish) - "Restish is a CLI for interacting with REST-ish HTTP APIs"
-- [github.com/speakeasy-api/speakeasy](https://github.com/speakeasy-api/speakeasy) - "Speakeasy CLI makes validating OpenAPI docs and generating idiomatic SDKs easy!"
-- [github.com/apicat/apicat](https://github.com/apicat/apicat) - "AI-powered API development tool"
-- [github.com/mattermost/mattermost](https://github.com/mattermost/mattermost) - "Software development lifecycle platform"
-- [github.com/gopher-fleece/gleece](https://github.com/gopher-fleece/gleece) - "Building and documenting REST APIs through code-first development"
-- Your project here?
----
-
 ## Come chat with us
 
 Need help? Have a question? Want to share your work? [Join our discord](https://discord.gg/x7VACVuEGP) and
@@ -90,6 +77,7 @@ See all the documentation at https://pb33f.io/libopenapi/
 - [Circular References](https://pb33f.io/libopenapi/circular-references/)
 - [Bundling Specs](https://pb33f.io/libopenapi/bundling/)
 - [What Changed / Diff Engine](https://pb33f.io/libopenapi/what-changed/)
+- [Overlays](https://pb33f.io/libopenapi/overlays/)
 - [FAQ](https://pb33f.io/libopenapi/faq/)
 - [About libopenapi](https://pb33f.io/libopenapi/about/)
 ---

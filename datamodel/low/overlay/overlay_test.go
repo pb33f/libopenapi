@@ -382,3 +382,56 @@ x-custom: value`
 	hash := overlay.Hash()
 	assert.NotEqual(t, [32]byte{}, hash)
 }
+
+// TestOverlay_Build_InfoEmptyRef tests line 74 - error from ExtractObject when info has empty $ref
+func TestOverlay_Build_InfoEmptyRef(t *testing.T) {
+	yml := `overlay: 1.0.0
+info:
+  $ref: ""`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	var overlay Overlay
+	err = low.BuildModel(node.Content[0], &overlay)
+	require.NoError(t, err)
+
+	err = overlay.Build(context.Background(), nil, node.Content[0], nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "object extraction failed")
+	assert.Contains(t, err.Error(), "empty")
+}
+
+// TestOverlay_Build_OddContentLengthExtractActions tests line 93 - break on odd content length
+func TestOverlay_Build_OddContentLengthExtractActions(t *testing.T) {
+	// Create an overlay WITHOUT actions - so extractActions iterates through all content
+	yml := `overlay: 1.0.0
+info:
+  title: Test
+  version: 1.0.0`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	// Manually corrupt the root node to have odd number of content elements
+	// This simulates a malformed YAML structure that extractActions must handle
+	root := node.Content[0]
+	// Root content is: [overlay, "1.0.0", info, {...}] - 4 elements (even)
+	// Add an orphan key to make it 5 elements (odd)
+	root.Content = append(root.Content, &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "orphan-key",
+	})
+
+	var overlay Overlay
+	err = low.BuildModel(root, &overlay)
+	require.NoError(t, err)
+
+	// This should trigger the break at line 93 due to odd content length
+	// The loop will iterate: i=0 (overlay), i=2 (info), i=4 (orphan-key)
+	// At i=4, i+1=5 >= len(Content)=5, so break is executed
+	err = overlay.Build(context.Background(), nil, root, nil)
+	require.NoError(t, err) // Build should succeed, just skip the odd element
+}
