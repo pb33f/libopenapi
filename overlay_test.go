@@ -7,6 +7,9 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel"
+	v2 "github.com/pb33f/libopenapi/datamodel/high/v2"
+	v3 "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/overlay"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -424,3 +427,108 @@ actions:
 	assert.NotNil(t, model)
 	assert.Equal(t, "Updated Title", model.Model.Info.Title)
 }
+
+// mockDocument is a minimal Document implementation for testing edge cases
+type mockDocument struct {
+	specBytes *[]byte
+	config    *datamodel.DocumentConfiguration
+	version   string
+}
+
+func (m *mockDocument) GetSpecInfo() *datamodel.SpecInfo {
+	return &datamodel.SpecInfo{SpecBytes: m.specBytes}
+}
+
+func (m *mockDocument) GetConfiguration() *datamodel.DocumentConfiguration {
+	return m.config
+}
+
+func (m *mockDocument) GetVersion() string                                { return m.version }
+func (m *mockDocument) GetRolodex() *index.Rolodex                        { return nil }
+func (m *mockDocument) SetConfiguration(*datamodel.DocumentConfiguration) {}
+func (m *mockDocument) Render() ([]byte, error)                           { return nil, nil }
+func (m *mockDocument) BuildV2Model() (*DocumentModel[v2.Swagger], error) { return nil, nil }
+func (m *mockDocument) BuildV3Model() (*DocumentModel[v3.Document], error) {
+	return nil, nil
+}
+func (m *mockDocument) Serialize() ([]byte, error) { return nil, nil }
+func (m *mockDocument) RenderAndReload() ([]byte, Document, *DocumentModel[v3.Document], error) {
+	return nil, nil, nil, nil
+}
+
+func TestApplyOverlay_NilSpecBytes(t *testing.T) {
+	// Test line 63: specBytes == nil
+	doc := &mockDocument{
+		specBytes: nil,
+		config:    nil,
+	}
+
+	overlayYAML := `overlay: 1.0.0
+info:
+  title: Test Overlay
+  version: 1.0.0
+actions:
+  - target: $.info
+    update:
+      title: Updated`
+
+	ov, err := NewOverlayDocument([]byte(overlayYAML))
+	require.NoError(t, err)
+
+	result, err := ApplyOverlay(doc, ov)
+	assert.ErrorIs(t, err, overlay.ErrNoTargetDocument)
+	assert.Nil(t, result)
+}
+
+func TestApplyOverlay_InvalidResultDocument(t *testing.T) {
+	// Test line 73: NewDocumentWithConfiguration fails
+	// Create an overlay that removes the openapi version, making the result invalid
+	targetYAML := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0`
+
+	overlayYAML := `overlay: 1.0.0
+info:
+  title: Test Overlay
+  version: 1.0.0
+actions:
+  - target: $.openapi
+    remove: true`
+
+	doc, err := NewDocument([]byte(targetYAML))
+	require.NoError(t, err)
+
+	ov, err := NewOverlayDocument([]byte(overlayYAML))
+	require.NoError(t, err)
+
+	result, err := ApplyOverlay(doc, ov)
+	// Should fail because resulting document has no openapi version
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestApplyOverlayToSpecBytes_InvalidResultDocument(t *testing.T) {
+	// Test line 126: NewDocumentWithConfiguration fails in applyOverlayToBytesWithConfig
+	targetYAML := `openapi: 3.0.0
+info:
+  title: Test
+  version: 1.0.0`
+
+	overlayYAML := `overlay: 1.0.0
+info:
+  title: Test Overlay
+  version: 1.0.0
+actions:
+  - target: $.openapi
+    remove: true`
+
+	ov, err := NewOverlayDocument([]byte(overlayYAML))
+	require.NoError(t, err)
+
+	result, err := ApplyOverlayToSpecBytes([]byte(targetYAML), ov)
+	// Should fail because resulting document has no openapi version
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
