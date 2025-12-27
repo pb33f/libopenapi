@@ -5,6 +5,7 @@ package bundler
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"sync"
 
@@ -38,13 +39,25 @@ type handleIndexConfig struct {
 // handleIndex will recursively explore the indexes and their references, building a map of references
 // to be processed later. It will also check for circular references and avoid infinite loops.
 // everything is stored in the handleIndexConfig, which is passed around to avoid passing too many parameters.
-func handleIndex(c *handleIndexConfig) {
+func handleIndex(c *handleIndexConfig) error {
 	mappedReferences := c.idx.GetMappedReferences()
 	sequencedReferences := c.idx.GetRawReferencesSequenced()
 	var indexesToExplore []*index.SpecIndex
 
 	for _, sequenced := range sequencedReferences {
 		mappedReference := mappedReferences[sequenced.FullDefinition]
+
+		// Check for invalid sibling properties if strict validation is enabled
+		if c.compositionConfig.StrictValidation &&
+				c.idx.GetConfig().SpecInfo.VersionNumeric == 3.0 &&
+				sequenced.HasSiblingProperties {
+			siblingKeys := make([]string, 0, len(sequenced.SiblingProperties))
+			for key := range sequenced.SiblingProperties {
+				siblingKeys = append(siblingKeys, key)
+			}
+			return fmt.Errorf("invalid OpenAPI 3.0 specification: $ref cannot have sibling properties. Found $ref '%s' with siblings %v at line %d, column %d",
+				sequenced.FullDefinition, siblingKeys, sequenced.Node.Line, sequenced.Node.Column)
+		}
 
 		// if we're in the root document, don't bundle anything.
 		refExp := strings.Split(sequenced.FullDefinition, "#/")
@@ -90,8 +103,11 @@ func handleIndex(c *handleIndexConfig) {
 
 	for _, idx := range indexesToExplore {
 		c.idx = idx
-		handleIndex(c)
+		if err := handleIndex(c); err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // processReference will extract a reference from the current index, and transform it into a first class
