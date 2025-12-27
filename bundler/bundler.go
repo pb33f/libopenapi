@@ -114,7 +114,8 @@ func BundleDocumentWithConfig(model *v3.Document, bundleConfig *BundleInlineConf
 
 // BundleCompositionConfig is used to configure the composition of OpenAPI documents when using BundleDocumentComposed.
 type BundleCompositionConfig struct {
-	Delimiter string // Delimiter is used to separate clashing names. Defaults to `__`.
+	Delimiter           string // Delimiter is used to separate clashing names. Defaults to `__`.
+	StrictValidation    bool   // StrictValidation will cause bundling to fail on invalid OpenAPI specs (e.g. $ref with siblings)
 }
 
 // BundleInlineConfig provides configuration options for inline bundling.
@@ -174,7 +175,9 @@ func compose(model *v3.Document, compositionConfig *BundleCompositionConfig) ([]
 		compositionConfig:     compositionConfig,
 		discriminatorMappings: discriminatorMappings,
 	}
-	handleIndex(cf)
+	if err := handleIndex(cf); err != nil {
+		return nil, err
+	}
 
 	processedNodes := orderedmap.New[string, *processRef]()
 	var errs []error
