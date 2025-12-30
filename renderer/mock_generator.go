@@ -6,12 +6,11 @@ package renderer
 import (
 	"encoding/json"
 	"fmt"
-	"reflect"
-	"strconv"
-
 	highbase "github.com/pb33f/libopenapi/datamodel/high/base"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"go.yaml.in/yaml/v4"
+	"reflect"
+	"strconv"
 )
 
 const (
@@ -107,7 +106,25 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 			"fields (%s, %s)", fieldCount, Example, Examples)
 	}
 
-	// if the value has an example, try and render it out as is.
+	var fallbackExample *highbase.Example = nil
+	// trying to find a named example
+	examples := v.FieldByName(Examples)
+	examplesValue := examples.Interface()
+	if examplesValue != nil && !examples.IsNil() {
+
+		// cast examples to *orderedmap.Map[string, *highbase.Example]
+		examplesMap := examplesValue.(*orderedmap.Map[string, *highbase.Example])
+		if examplesMap.Len() > 0 {
+			if example, ok := examplesMap.Get(name); ok {
+				return mg.renderMock(example.Value), nil
+			} else {
+				//take the first example from the list
+				fallbackExample = examplesMap.Oldest().Value
+			}
+		}
+	}
+
+	// looking for an inline example
 	f := v.FieldByName(Example)
 	if !f.IsNil() {
 		// Pointer/Interface Shenanigans
@@ -120,30 +137,14 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 			}
 		}
 		if ex != nil {
-			// try and serialize the example value
+			// try and serialize the example value (very hacky since ex can be anything)
 			return mg.renderMock(ex), nil
 		}
 	}
 
-	// if there is no example, but there are multi-examples.
-	examples := v.FieldByName(Examples)
-	examplesValue := examples.Interface()
-	if examplesValue != nil && !examples.IsNil() {
-
-		// cast examples to *orderedmap.Map[string, *highbase.Example]
-		examplesMap := examplesValue.(*orderedmap.Map[string, *highbase.Example])
-
-		// if the name is not empty, try and find the example by name
-		for k, exp := range examplesMap.FromOldest() {
-			if k == name {
-				return mg.renderMock(exp.Value), nil
-			}
-		}
-
-		// if the name is empty, just return the first example
-		for exp := range examplesMap.ValuesFromOldest() {
-			return mg.renderMock(exp.Value), nil
-		}
+	// rendering fallback if it's not nil
+	if fallbackExample != nil {
+		return mg.renderMock(fallbackExample.Value), nil
 	}
 
 	// no examples? no problem, we can try and generate a mock from the schema.
@@ -167,7 +168,7 @@ func (mg *MockGenerator) GenerateMock(mock any, name string) ([]byte, error) {
 
 	if schemaValue != nil {
 
-		// now lets check the schema for `Examples` and `Example` fields.
+		// now let's check the schema for `Examples` and `Example` fields.
 		if schemaValue.Examples != nil {
 			if name != "" {
 				// try and convert the example to an integer
