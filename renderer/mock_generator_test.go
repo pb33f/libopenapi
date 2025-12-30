@@ -523,3 +523,77 @@ properties:
 	// It should be different from the first two
 	assert.NotEqual(t, string(mock1), string(mock3))
 }
+
+func TestMockGenerator_GenerateMock_PickNamedExample(t *testing.T) {
+	mg := NewMockGenerator(YAML)
+
+	type mockable struct {
+		Example  *base.Example
+		Examples *orderedmap.Map[string, *base.Example]
+	}
+
+	inlineExample := &base.Example{
+		Value: utils.CreateStringNode("inline example"),
+	}
+	examples := orderedmap.New[string, *base.Example]()
+	examples.Set("exampleOne", &base.Example{
+		Value: utils.CreateStringNode("example 1"),
+	})
+
+	mock, err := mg.GenerateMock(&mockable{
+		Example:  inlineExample,
+		Examples: examples,
+	}, "exampleOne")
+	assert.NoError(t, err)
+	assert.Equal(t, "example 1", strings.TrimSpace(string(mock)))
+}
+
+func TestMockGenerator_GenerateMock_PickOldestExample(t *testing.T) {
+	mg := NewMockGenerator(YAML)
+
+	type mockable struct {
+		Example  any
+		Examples *orderedmap.Map[string, *base.Example]
+	}
+
+	examples := orderedmap.New[string, *base.Example]()
+	examples.Set("exampleOne", &base.Example{
+		Value: utils.CreateStringNode("example 1"),
+	})
+	examples.Set("exampleTwo", &base.Example{
+		Value: utils.CreateStringNode("example 2"),
+	})
+
+	mock, err := mg.GenerateMock(&mockable{
+		Examples: examples,
+	}, "nonexisting example")
+	assert.NoError(t, err)
+	assert.Equal(t, "example 1", strings.TrimSpace(string(mock)))
+}
+
+func TestMockGenerator_GenerateMock_GetInline(t *testing.T) {
+	mg := NewMockGenerator(YAML)
+
+	type mockable struct {
+		Example  any
+		Examples *orderedmap.Map[string, *base.Example]
+	}
+	inlineExample := &yaml.Node{
+		Kind:  yaml.ScalarNode,
+		Value: "inline example",
+	}
+	examples := orderedmap.New[string, *base.Example]()
+	examples.Set("exampleOne", &base.Example{
+		Value: utils.CreateStringNode("example 1"),
+	})
+	examples.Set("exampleTwo", &base.Example{
+		Value: utils.CreateStringNode("example 2"),
+	})
+
+	mock, err := mg.GenerateMock(&mockable{
+		Example:  inlineExample,
+		Examples: examples,
+	}, "nonexisting example")
+	assert.NoError(t, err)
+	assert.Equal(t, "inline example", strings.TrimSpace(string(mock)))
+}
