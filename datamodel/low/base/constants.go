@@ -60,6 +60,9 @@ const (
 	AnchorLabel                = "$anchor"
 	DynamicAnchorLabel         = "$dynamicAnchor"
 	DynamicRefLabel            = "$dynamicRef"
+	CommentLabel               = "$comment"
+	ContentSchemaLabel         = "contentSchema"
+	VocabularyLabel            = "$vocabulary"
 )
 
 /*

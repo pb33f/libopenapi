@@ -2753,3 +2753,297 @@ description: A schema without $id`
 
 	assert.True(t, sch.Id.IsEmpty())
 }
+
+// JSON Schema 2020-12 keyword tests
+
+func TestSchema_Comment(t *testing.T) {
+	yml := `type: object
+$comment: This is a comment that explains the schema purpose
+description: A schema with $comment`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.Equal(t, "This is a comment that explains the schema purpose", sch.Comment.Value)
+}
+
+func TestSchema_Comment_Empty(t *testing.T) {
+	yml := `type: object
+description: A schema without $comment`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.True(t, sch.Comment.IsEmpty())
+}
+
+func TestSchema_ContentSchema(t *testing.T) {
+	yml := `type: string
+contentMediaType: application/jwt
+contentSchema:
+  type: object
+  properties:
+    iss:
+      type: string
+    exp:
+      type: integer`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.False(t, sch.ContentSchema.IsEmpty())
+	assert.NotNil(t, sch.ContentSchema.Value)
+
+	// Verify the contentSchema is a valid schema proxy
+	contentSch := sch.ContentSchema.Value.Schema()
+	assert.NotNil(t, contentSch)
+	assert.Equal(t, "object", contentSch.Type.Value.A)
+}
+
+func TestSchema_ContentSchema_Empty(t *testing.T) {
+	yml := `type: string
+contentMediaType: text/plain`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.True(t, sch.ContentSchema.IsEmpty())
+}
+
+func TestSchema_Vocabulary(t *testing.T) {
+	yml := `$vocabulary:
+  https://json-schema.org/draft/2020-12/vocab/core: true
+  https://json-schema.org/draft/2020-12/vocab/applicator: true
+  https://json-schema.org/draft/2020-12/vocab/validation: false
+type: object`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, sch.Vocabulary.Value)
+	assert.Equal(t, 3, sch.Vocabulary.Value.Len())
+
+	// Check specific vocabulary entries
+	for k, v := range sch.Vocabulary.Value.FromOldest() {
+		switch k.Value {
+		case "https://json-schema.org/draft/2020-12/vocab/core":
+			assert.True(t, v.Value)
+		case "https://json-schema.org/draft/2020-12/vocab/applicator":
+			assert.True(t, v.Value)
+		case "https://json-schema.org/draft/2020-12/vocab/validation":
+			assert.False(t, v.Value)
+		}
+	}
+}
+
+func TestSchema_Vocabulary_Empty(t *testing.T) {
+	yml := `type: object
+description: A regular schema without $vocabulary`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.Nil(t, sch.Vocabulary.Value)
+}
+
+func TestSchema_Hash_IncludesNewFields(t *testing.T) {
+	// Test that hash() includes the new JSON Schema 2020-12 fields
+	yml1 := `type: object
+$comment: Comment 1`
+
+	yml2 := `type: object
+$comment: Comment 2`
+
+	var node1, node2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml1), &node1)
+	_ = yaml.Unmarshal([]byte(yml2), &node2)
+
+	var sch1, sch2 Schema
+	_ = low.BuildModel(node1.Content[0], &sch1)
+	_ = sch1.Build(context.Background(), node1.Content[0], nil)
+
+	_ = low.BuildModel(node2.Content[0], &sch2)
+	_ = sch2.Build(context.Background(), node2.Content[0], nil)
+
+	hash1 := sch1.Hash()
+	hash2 := sch2.Hash()
+
+	// Different comments should produce different hashes
+	assert.NotEqual(t, hash1, hash2)
+}
+
+// TestSchema_Vocabulary_AlternativeBooleanFormats tests that strconv.ParseBool handles
+// various boolean representations correctly (1, 0, t, f, T, F, TRUE, FALSE, etc.)
+func TestSchema_Vocabulary_AlternativeBooleanFormats(t *testing.T) {
+	yml := `type: object
+$vocabulary:
+  "https://example.com/vocab/one": 1
+  "https://example.com/vocab/zero": 0
+  "https://example.com/vocab/t": t
+  "https://example.com/vocab/f": f
+  "https://example.com/vocab/TRUE": TRUE
+  "https://example.com/vocab/FALSE": FALSE`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, sch.Vocabulary.Value)
+	assert.Equal(t, 6, sch.Vocabulary.Value.Len())
+
+	// Check specific vocabulary entries with alternative boolean formats
+	for k, v := range sch.Vocabulary.Value.FromOldest() {
+		switch k.Value {
+		case "https://example.com/vocab/one":
+			assert.True(t, v.Value, "1 should parse as true")
+		case "https://example.com/vocab/zero":
+			assert.False(t, v.Value, "0 should parse as false")
+		case "https://example.com/vocab/t":
+			assert.True(t, v.Value, "t should parse as true")
+		case "https://example.com/vocab/f":
+			assert.False(t, v.Value, "f should parse as false")
+		case "https://example.com/vocab/TRUE":
+			assert.True(t, v.Value, "TRUE should parse as true")
+		case "https://example.com/vocab/FALSE":
+			assert.False(t, v.Value, "FALSE should parse as false")
+		}
+	}
+}
+
+// TestSchema_Vocabulary_InvalidBooleanDefaultsToFalse tests that invalid boolean values
+// default to false when parsed with strconv.ParseBool
+func TestSchema_Vocabulary_InvalidBooleanDefaultsToFalse(t *testing.T) {
+	yml := `type: object
+$vocabulary:
+  "https://example.com/vocab/invalid": notaboolean
+  "https://example.com/vocab/valid": true`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var sch Schema
+	err := low.BuildModel(idxNode.Content[0], &sch)
+	assert.NoError(t, err)
+
+	err = sch.Build(context.Background(), idxNode.Content[0], nil)
+	assert.NoError(t, err)
+
+	assert.NotNil(t, sch.Vocabulary.Value)
+	assert.Equal(t, 2, sch.Vocabulary.Value.Len())
+
+	// Check that invalid boolean defaults to false
+	for k, v := range sch.Vocabulary.Value.FromOldest() {
+		switch k.Value {
+		case "https://example.com/vocab/invalid":
+			assert.False(t, v.Value, "Invalid boolean should default to false")
+		case "https://example.com/vocab/valid":
+			assert.True(t, v.Value, "true should parse as true")
+		}
+	}
+}
+
+// TestSchema_Hash_VocabularyDifferent tests that different vocabulary values produce different hashes
+func TestSchema_Hash_VocabularyDifferent(t *testing.T) {
+	yml1 := `type: object
+$vocabulary:
+  "https://example.com/vocab/core": true`
+
+	yml2 := `type: object
+$vocabulary:
+  "https://example.com/vocab/core": false`
+
+	var node1, node2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml1), &node1)
+	_ = yaml.Unmarshal([]byte(yml2), &node2)
+
+	var sch1, sch2 Schema
+	_ = low.BuildModel(node1.Content[0], &sch1)
+	_ = sch1.Build(context.Background(), node1.Content[0], nil)
+
+	_ = low.BuildModel(node2.Content[0], &sch2)
+	_ = sch2.Build(context.Background(), node2.Content[0], nil)
+
+	hash1 := sch1.Hash()
+	hash2 := sch2.Hash()
+
+	// Different vocabulary values should produce different hashes
+	assert.NotEqual(t, hash1, hash2)
+}
+
+// TestSchema_Hash_ContentSchemaDifferent tests that different contentSchema produces different hashes
+func TestSchema_Hash_ContentSchemaDifferent(t *testing.T) {
+	yml1 := `type: string
+contentMediaType: application/json
+contentSchema:
+  type: object`
+
+	yml2 := `type: string
+contentMediaType: application/json
+contentSchema:
+  type: array`
+
+	var node1, node2 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml1), &node1)
+	_ = yaml.Unmarshal([]byte(yml2), &node2)
+
+	var sch1, sch2 Schema
+	_ = low.BuildModel(node1.Content[0], &sch1)
+	_ = sch1.Build(context.Background(), node1.Content[0], nil)
+
+	_ = low.BuildModel(node2.Content[0], &sch2)
+	_ = sch2.Build(context.Background(), node2.Content[0], nil)
+
+	hash1 := sch1.Hash()
+	hash2 := sch2.Hash()
+
+	// Different contentSchema types should produce different hashes
+	assert.NotEqual(t, hash1, hash2)
+}
