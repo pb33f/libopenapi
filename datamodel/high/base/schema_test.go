@@ -1907,3 +1907,119 @@ description: A schema without $id`
 
 	assert.Equal(t, "", highSch.Id)
 }
+
+// TestNewSchema_Comment tests that $comment is populated in high-level schema
+func TestNewSchema_Comment(t *testing.T) {
+	yml := `type: object
+$comment: This is a test comment explaining the schema purpose
+description: A schema with $comment`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.Equal(t, "This is a test comment explaining the schema purpose", highSch.Comment)
+	assert.Equal(t, "object", highSch.Type[0])
+}
+
+// TestNewSchema_ContentSchema tests that contentSchema is populated in high-level schema
+func TestNewSchema_ContentSchema(t *testing.T) {
+	yml := `type: string
+contentMediaType: application/json
+contentSchema:
+  type: object
+  properties:
+    name:
+      type: string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.NotNil(t, highSch.ContentSchema)
+	contentSch := highSch.ContentSchema.Schema()
+	assert.NotNil(t, contentSch)
+	assert.Equal(t, "object", contentSch.Type[0])
+	assert.NotNil(t, contentSch.Properties)
+	assert.Equal(t, 1, contentSch.Properties.Len())
+}
+
+// TestNewSchema_Vocabulary tests that $vocabulary is populated in high-level schema
+func TestNewSchema_Vocabulary(t *testing.T) {
+	yml := `$vocabulary:
+  "https://json-schema.org/draft/2020-12/vocab/core": true
+  "https://json-schema.org/draft/2020-12/vocab/validation": false
+  "https://json-schema.org/draft/2020-12/vocab/applicator": true`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.NotNil(t, highSch.Vocabulary)
+	assert.Equal(t, 3, highSch.Vocabulary.Len())
+
+	// Check specific vocabulary entries
+	for k, v := range highSch.Vocabulary.FromOldest() {
+		switch k {
+		case "https://json-schema.org/draft/2020-12/vocab/core":
+			assert.True(t, v)
+		case "https://json-schema.org/draft/2020-12/vocab/validation":
+			assert.False(t, v)
+		case "https://json-schema.org/draft/2020-12/vocab/applicator":
+			assert.True(t, v)
+		}
+	}
+}
+
+// TestNewSchema_ContentEncoding tests that contentEncoding is populated in high-level schema
+func TestNewSchema_ContentEncoding(t *testing.T) {
+	yml := `type: string
+contentEncoding: base64
+description: A base64 encoded string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.Equal(t, "base64", highSch.ContentEncoding)
+	assert.Equal(t, "string", highSch.Type[0])
+}
+
+// TestNewSchema_ContentMediaType tests that contentMediaType is populated in high-level schema
+func TestNewSchema_ContentMediaType(t *testing.T) {
+	yml := `type: string
+contentMediaType: image/png
+description: A binary image encoded as string`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+
+	var lowSch lowbase.Schema
+	_ = low.BuildModel(idxNode.Content[0], &lowSch)
+	_ = lowSch.Build(context.Background(), idxNode.Content[0], nil)
+
+	highSch := NewSchema(&lowSch)
+
+	assert.Equal(t, "image/png", highSch.ContentMediaType)
+	assert.Equal(t, "string", highSch.Type[0])
+}
