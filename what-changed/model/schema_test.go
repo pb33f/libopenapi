@@ -5813,3 +5813,103 @@ components:
 	assert.Equal(t, 3, changes.TotalChanges())
 	assert.Len(t, changes.VocabularyChanges, 3)
 }
+
+// TestSchemaChanges_TotalBreakingChanges_ContentSchema tests that TotalBreakingChanges
+// correctly counts breaking changes from ContentSchemaChanges
+func TestSchemaChanges_TotalBreakingChanges_ContentSchema(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+info:
+  title: left
+  version: "1.0"
+components:
+  schemas:
+    EncodedData:
+      type: string
+      contentMediaType: application/json
+      contentSchema:
+        type: object
+        properties:
+          name:
+            type: string`
+
+	right := `openapi: "3.1.0"
+info:
+  title: right
+  version: "1.0"
+components:
+  schemas:
+    EncodedData:
+      type: string
+      contentMediaType: application/json
+      contentSchema:
+        type: object
+        properties:
+          name:
+            type: integer`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("EncodedData").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("EncodedData").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.NotNil(t, changes.ContentSchemaChanges)
+	// ContentSchemaChanges should have changes and TotalBreakingChanges should count them
+	assert.GreaterOrEqual(t, changes.ContentSchemaChanges.TotalChanges(), 1)
+	// TotalBreakingChanges on parent should include ContentSchemaChanges breaking changes
+	assert.GreaterOrEqual(t, changes.TotalBreakingChanges(), 1)
+}
+
+// TestSchemaChanges_TotalBreakingChanges_Vocabulary tests that TotalBreakingChanges
+// correctly counts breaking changes from VocabularyChanges
+func TestSchemaChanges_TotalBreakingChanges_Vocabulary(t *testing.T) {
+	ResetDefaultBreakingRules()
+	ResetActiveBreakingRulesConfig()
+	low.ClearHashCache()
+	defer func() {
+		ResetActiveBreakingRulesConfig()
+		ResetDefaultBreakingRules()
+	}()
+
+	left := `openapi: "3.1.0"
+info:
+  title: left
+  version: "1.0"
+components:
+  schemas:
+    MetaSchema:
+      type: object`
+
+	right := `openapi: "3.1.0"
+info:
+  title: right
+  version: "1.0"
+components:
+  schemas:
+    MetaSchema:
+      $vocabulary:
+        "https://json-schema.org/draft/2020-12/vocab/core": true
+      type: object`
+
+	leftDoc, rightDoc := test_BuildDoc(left, right)
+
+	lSchemaProxy := leftDoc.Components.Value.FindSchema("MetaSchema").Value
+	rSchemaProxy := rightDoc.Components.Value.FindSchema("MetaSchema").Value
+
+	changes := CompareSchemas(lSchemaProxy, rSchemaProxy)
+	assert.NotNil(t, changes)
+	assert.Len(t, changes.VocabularyChanges, 1)
+	// Vocabulary addition is breaking by default
+	assert.True(t, changes.VocabularyChanges[0].Breaking)
+	// TotalBreakingChanges should count the vocabulary change
+	assert.Equal(t, 1, changes.TotalBreakingChanges())
+}
