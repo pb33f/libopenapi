@@ -48,6 +48,8 @@ type SchemaChanges struct {
 	DependentSchemasChanges      map[string]*SchemaChanges `json:"dependentSchemas,omitempty" yaml:"dependentSchemas,omitempty"`
 	DependentRequiredChanges     []*Change                 `json:"dependentRequired,omitempty" yaml:"dependentRequired,omitempty"`
 	PatternPropertiesChanges     map[string]*SchemaChanges `json:"patternProperties,omitempty" yaml:"patternProperties,omitempty"`
+	ContentSchemaChanges         *SchemaChanges            `json:"contentSchema,omitempty" yaml:"contentSchema,omitempty"`
+	VocabularyChanges            []*Change                 `json:"$vocabulary,omitempty" yaml:"$vocabulary,omitempty"`
 }
 
 func (s *SchemaChanges) GetPropertyChanges() []*Change {
@@ -271,6 +273,12 @@ func (s *SchemaChanges) TotalChanges() int {
 			t += s.PatternPropertiesChanges[n].TotalChanges()
 		}
 	}
+	if s.ContentSchemaChanges != nil {
+		t += s.ContentSchemaChanges.TotalChanges()
+	}
+	if len(s.VocabularyChanges) > 0 {
+		t += len(s.VocabularyChanges)
+	}
 	if s.ExternalDocChanges != nil {
 		t += s.ExternalDocChanges.TotalChanges()
 	}
@@ -363,6 +371,16 @@ func (s *SchemaChanges) TotalBreakingChanges() int {
 	if s.PatternPropertiesChanges != nil {
 		for n := range s.PatternPropertiesChanges {
 			t += s.PatternPropertiesChanges[n].TotalBreakingChanges()
+		}
+	}
+	if s.ContentSchemaChanges != nil {
+		t += s.ContentSchemaChanges.TotalBreakingChanges()
+	}
+	if len(s.VocabularyChanges) > 0 {
+		for _, change := range s.VocabularyChanges {
+			if change.Breaking {
+				t++
+			}
 		}
 	}
 	if s.XMLChanges != nil {
@@ -1656,6 +1674,58 @@ func checkSchemaPropertyChanges(
 	lnv = nil
 	rnv = nil
 
+	// $comment (JSON Schema 2020-12)
+	if lSchema != nil && lSchema.Comment.ValueNode != nil {
+		lnv = lSchema.Comment.ValueNode
+	}
+	if rSchema != nil && rSchema.Comment.ValueNode != nil {
+		rnv = rSchema.Comment.ValueNode
+	}
+	props = append(props, &PropertyCheck{
+		LeftNode:  lnv,
+		RightNode: rnv,
+		Label:     base.CommentLabel,
+		Changes:   changes,
+		Breaking:  BreakingModified(CompSchema, PropComment),
+		Component: CompSchema,
+		Property:  PropComment,
+		Original:  lSchema,
+		New:       rSchema,
+	})
+	lnv = nil
+	rnv = nil
+
+	// contentSchema (JSON Schema 2020-12) - recursive schema comparison
+	if lSchema != nil && !lSchema.ContentSchema.IsEmpty() && rSchema != nil && !rSchema.ContentSchema.IsEmpty() {
+		sc.ContentSchemaChanges = CompareSchemas(lSchema.ContentSchema.Value, rSchema.ContentSchema.Value)
+	}
+	if lSchema != nil && !lSchema.ContentSchema.IsEmpty() && (rSchema == nil || rSchema.ContentSchema.IsEmpty()) {
+		CreateChange(changes, PropertyRemoved, base.ContentSchemaLabel,
+			lSchema.ContentSchema.ValueNode, nil,
+			BreakingRemoved(CompSchema, PropContentSchema),
+			lSchema.ContentSchema.Value, nil)
+	}
+	if (lSchema == nil || lSchema.ContentSchema.IsEmpty()) && rSchema != nil && !rSchema.ContentSchema.IsEmpty() {
+		CreateChange(changes, PropertyAdded, base.ContentSchemaLabel,
+			nil, rSchema.ContentSchema.ValueNode,
+			BreakingAdded(CompSchema, PropContentSchema),
+			nil, rSchema.ContentSchema.Value)
+	}
+
+	// $vocabulary (JSON Schema 2020-12) - map comparison
+	// note: vocabulary changes are stored in VocabularyChanges and counted separately
+	// in TotalChanges(), so they should NOT be appended to the main changes slice
+	var lVocab, rVocab *orderedmap.Map[low.KeyReference[string], low.ValueReference[bool]]
+	if lSchema != nil {
+		lVocab = lSchema.Vocabulary.Value
+	}
+	if rSchema != nil {
+		rVocab = rSchema.Vocabulary.Value
+	}
+	if lVocab != nil || rVocab != nil {
+		sc.VocabularyChanges = checkVocabularyChanges(lVocab, rVocab)
+	}
+
 	// check extensions
 	var lext *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
 	var rext *orderedmap.Map[low.KeyReference[string], low.ValueReference[*yaml.Node]]
@@ -1943,4 +2013,92 @@ func getNodeForProperty(depMap *orderedmap.Map[low.KeyReference[string], low.Val
 		}
 	}
 	return nil
+}
+
+// checkVocabularyChanges compares $vocabulary maps and returns a list of changes.
+// the caller is responsible for appending the returned changes to their main changes slice.
+func checkVocabularyChanges(lVocab, rVocab *orderedmap.Map[low.KeyReference[string], low.ValueReference[bool]]) []*Change {
+	if lVocab == nil && rVocab == nil {
+		return nil
+	}
+
+	// pre-allocate maps with size hints for better memory efficiency
+	lSize := orderedmap.Len(lVocab)
+	rSize := orderedmap.Len(rVocab)
+
+	lVocabMap := make(map[string]bool, lSize)
+	lVocabNodes := make(map[string]*yaml.Node, lSize)
+	rVocabMap := make(map[string]bool, rSize)
+	rVocabNodes := make(map[string]*yaml.Node, rSize)
+
+	if lVocab != nil {
+		for k, v := range lVocab.FromOldest() {
+			lVocabMap[k.Value] = v.Value
+			lVocabNodes[k.Value] = v.ValueNode
+		}
+	}
+	if rVocab != nil {
+		for k, v := range rVocab.FromOldest() {
+			rVocabMap[k.Value] = v.Value
+			rVocabNodes[k.Value] = v.ValueNode
+		}
+	}
+
+	// pre-allocate result slice with reasonable capacity
+	var vocabChanges []*Change
+
+	// check for removed or modified vocabularies
+	for uri, lVal := range lVocabMap {
+		if rVal, ok := rVocabMap[uri]; ok {
+			// vocabulary exists in both - check if value changed
+			if lVal != rVal {
+				c := &Change{
+					Property:       base.VocabularyLabel,
+					ChangeType:     Modified,
+					Original:       fmt.Sprintf("%s=%v", uri, lVal),
+					New:            fmt.Sprintf("%s=%v", uri, rVal),
+					Breaking:       BreakingModified(CompSchema, PropVocabulary),
+					OriginalObject: lVocabMap,
+					NewObject:      rVocabMap,
+				}
+				if lVocabNodes[uri] != nil {
+					c.Context = CreateContext(lVocabNodes[uri], rVocabNodes[uri])
+				}
+				vocabChanges = append(vocabChanges, c)
+			}
+		} else {
+			// vocabulary was removed
+			c := &Change{
+				Property:       base.VocabularyLabel,
+				ChangeType:     PropertyRemoved,
+				Original:       uri,
+				Breaking:       BreakingRemoved(CompSchema, PropVocabulary),
+				OriginalObject: lVocabMap,
+			}
+			if lVocabNodes[uri] != nil {
+				c.Context = CreateContext(lVocabNodes[uri], nil)
+			}
+			vocabChanges = append(vocabChanges, c)
+		}
+	}
+
+	// check for added vocabularies
+	for uri := range rVocabMap {
+		if _, ok := lVocabMap[uri]; !ok {
+			// vocabulary was added
+			c := &Change{
+				Property:   base.VocabularyLabel,
+				ChangeType: PropertyAdded,
+				New:        uri,
+				Breaking:   BreakingAdded(CompSchema, PropVocabulary),
+				NewObject:  rVocabMap,
+			}
+			if rVocabNodes[uri] != nil {
+				c.Context = CreateContext(nil, rVocabNodes[uri])
+			}
+			vocabChanges = append(vocabChanges, c)
+		}
+	}
+
+	return vocabChanges
 }

@@ -86,6 +86,15 @@ type Schema struct {
 	// 3.1+ only, JSON Schema 2020-12 dynamic reference for recursive schema resolution
 	DynamicRef string `json:"$dynamicRef,omitempty" yaml:"$dynamicRef,omitempty"`
 
+	// 3.1+ only, JSON Schema 2020-12 $comment - explanatory notes without affecting validation
+	Comment string `json:"$comment,omitempty" yaml:"$comment,omitempty"`
+
+	// 3.1+ only, JSON Schema 2020-12 contentSchema - describes structure of decoded content
+	ContentSchema *SchemaProxy `json:"contentSchema,omitempty" yaml:"contentSchema,omitempty"`
+
+	// 3.1+ only, JSON Schema 2020-12 $vocabulary - defines available vocabularies in meta-schemas
+	Vocabulary *orderedmap.Map[string, bool] `json:"$vocabulary,omitempty" yaml:"$vocabulary,omitempty"`
+
 	// Compatible with all versions
 	Not                  *SchemaProxy                          `json:"not,omitempty" yaml:"not,omitempty"`
 	Properties           *orderedmap.Map[string, *SchemaProxy] `json:"properties,omitempty" yaml:"properties,omitempty"`
@@ -106,6 +115,8 @@ type Schema struct {
 	Enum                 []*yaml.Node                          `json:"enum,omitempty" yaml:"enum,omitempty"`
 	AdditionalProperties *DynamicValue[*SchemaProxy, bool]     `json:"additionalProperties,renderZero,omitempty" yaml:"additionalProperties,renderZero,omitempty"`
 	Description          string                                `json:"description,omitempty" yaml:"description,omitempty"`
+	ContentEncoding      string                                `json:"contentEncoding,omitempty" yaml:"contentEncoding,omitempty"`
+	ContentMediaType     string                                `json:"contentMediaType,omitempty" yaml:"contentMediaType,omitempty"`
 	Default              *yaml.Node                            `json:"default,omitempty" yaml:"default,renderZero,omitempty"`
 	Const                *yaml.Node                            `json:"const,omitempty" yaml:"const,renderZero,omitempty"`
 	Nullable             *bool                                 `json:"nullable,omitempty" yaml:"nullable,omitempty"`
@@ -277,6 +288,8 @@ func NewSchema(schema *base.Schema) *Schema {
 	s.AdditionalProperties = additionalProperties
 
 	s.Description = schema.Description.Value
+	s.ContentEncoding = schema.ContentEncoding.Value
+	s.ContentMediaType = schema.ContentMediaType.Value
 	s.Default = schema.Default.Value
 	s.Const = schema.Const.Value
 	if !schema.Nullable.IsEmpty() {
@@ -326,6 +339,22 @@ func NewSchema(schema *base.Schema) *Schema {
 	}
 	if !schema.DynamicRef.IsEmpty() {
 		s.DynamicRef = schema.DynamicRef.Value
+	}
+	if !schema.Comment.IsEmpty() {
+		s.Comment = schema.Comment.Value
+	}
+	if !schema.ContentSchema.IsEmpty() {
+		s.ContentSchema = NewSchemaProxy(&lowmodel.NodeReference[*base.SchemaProxy]{
+			ValueNode: schema.ContentSchema.ValueNode,
+			Value:     schema.ContentSchema.Value,
+		})
+	}
+	if schema.Vocabulary.Value != nil {
+		vocabularyMap := orderedmap.New[string, bool]()
+		for k, v := range schema.Vocabulary.Value.FromOldest() {
+			vocabularyMap.Set(k.Value, v.Value)
+		}
+		s.Vocabulary = vocabularyMap
 	}
 
 	var enum []*yaml.Node
