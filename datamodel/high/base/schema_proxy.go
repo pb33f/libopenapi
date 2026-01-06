@@ -49,16 +49,39 @@ func IsBundlingMode() bool {
 	return bundlingModeCount.Load() > 0
 }
 
+// RenderingMode controls how inline rendering handles discriminator $refs.
+type RenderingMode int
+
+const (
+	// RenderingModeBundle is the default mode - preserves $refs in discriminator
+	// oneOf/anyOf for compatibility with discriminator mappings during bundling.
+	RenderingModeBundle RenderingMode = iota
+
+	// RenderingModeValidation forces full inlining of all $refs, ignoring
+	// discriminator preservation. Use this when rendering schemas for JSON
+	// Schema validation where the compiler needs a self-contained schema.
+	RenderingModeValidation
+)
+
 // InlineRenderContext provides isolated tracking for inline rendering operations.
 // Each render call-chain should use its own context to prevent false positive
 // cycle detection when multiple goroutines render the same schemas concurrently.
 type InlineRenderContext struct {
-	tracker sync.Map
+	tracker       sync.Map
+	Mode          RenderingMode
+	preservedRefs sync.Map // tracks refs that should be preserved in this render
 }
 
-// NewInlineRenderContext creates a new isolated rendering context.
+// NewInlineRenderContext creates a new isolated rendering context with default bundle mode.
 func NewInlineRenderContext() *InlineRenderContext {
-	return &InlineRenderContext{}
+	return &InlineRenderContext{Mode: RenderingModeBundle}
+}
+
+// NewInlineRenderContextForValidation creates a context that fully inlines
+// all refs, including discriminator oneOf/anyOf refs. Use this when rendering
+// schemas for JSON Schema validation.
+func NewInlineRenderContextForValidation() *InlineRenderContext {
+	return &InlineRenderContext{Mode: RenderingModeValidation}
 }
 
 // StartRendering marks a key as being rendered. Returns true if already rendering (cycle detected).
@@ -76,6 +99,23 @@ func (ctx *InlineRenderContext) StopRendering(key string) {
 	if key != "" {
 		ctx.tracker.Delete(key)
 	}
+}
+
+// MarkRefAsPreserved marks a reference as one that should be preserved (not inlined) in this render.
+// used by discriminator handling to track which refs need preservation without mutating shared state.
+func (ctx *InlineRenderContext) MarkRefAsPreserved(ref string) {
+	if ref != "" {
+		ctx.preservedRefs.Store(ref, true)
+	}
+}
+
+// ShouldPreserveRef returns true if the given reference was marked for preservation.
+func (ctx *InlineRenderContext) ShouldPreserveRef(ref string) bool {
+	if ref == "" {
+		return false
+	}
+	_, ok := ctx.preservedRefs.Load(ref)
+	return ok
 }
 
 // SchemaProxy exists as a stub that will create a Schema once (and only once) the Schema() method is called. An
@@ -112,12 +152,11 @@ func (ctx *InlineRenderContext) StopRendering(key string) {
 // it's not actually JSONSchema until 3.1, so lots of times a bad schema will break parsing. Errors are only found
 // when a schema is needed, so the rest of the document is parsed and ready to use.
 type SchemaProxy struct {
-	schema            *low.NodeReference[*base.SchemaProxy]
-	buildError        error
-	rendered          *Schema
-	refStr            string
-	lock              *sync.Mutex
-	preserveReference bool // When true, MarshalYAMLInline returns the ref node instead of inlining
+	schema     *low.NodeReference[*base.SchemaProxy]
+	buildError error
+	rendered   *Schema
+	refStr     string
+	lock       *sync.Mutex
 }
 
 // NewSchemaProxy creates a new high-level SchemaProxy from a low-level one.
@@ -226,7 +265,7 @@ func (sp *SchemaProxy) IsReference() bool {
 	if sp.refStr != "" {
 		return true
 	}
-	if sp.schema != nil {
+	if sp.schema != nil && sp.schema.Value != nil {
 		return sp.schema.Value.IsReference()
 	}
 	return false
@@ -324,13 +363,6 @@ func (sp *SchemaProxy) MarshalYAML() (interface{}, error) {
 	}
 }
 
-// SetPreserveReference sets whether this SchemaProxy should preserve its reference when rendering inline.
-// When true, MarshalYAMLInline will return the reference node instead of inlining the schema.
-// This is used for discriminator mapping scenarios where refs must be preserved.
-func (sp *SchemaProxy) SetPreserveReference(preserve bool) {
-	sp.preserveReference = preserve
-}
-
 // getInlineRenderKey generates a unique key for tracking this schema during inline rendering.
 // This prevents infinite recursion when schemas reference each other circularly.
 func (sp *SchemaProxy) getInlineRenderKey() string {
@@ -388,10 +420,14 @@ func (sp *SchemaProxy) MarshalYAMLInline() (interface{}, error) {
 }
 
 func (sp *SchemaProxy) marshalYAMLInlineInternal(ctx *InlineRenderContext) (interface{}, error) {
-	// If preserveReference is set, return the reference node instead of inlining.
-	// This is used for discriminator mapping scenarios where refs must be preserved.
-	if sp.preserveReference && sp.IsReference() {
-		return sp.GetReferenceNode(), nil
+	// check if this reference should be preserved (set via context by discriminator handling).
+	// this avoids mutating shared SchemaProxy state and prevents race conditions.
+	// need to guard against nil schema.Value which can happen with bad/incomplete proxies.
+	if sp.IsReference() {
+		ref := sp.GetReference()
+		if ref != "" && ctx.ShouldPreserveRef(ref) {
+			return sp.GetReferenceNode(), nil
+		}
 	}
 
 	// In bundling mode, preserve local component refs that point to schemas in the SAME document.
