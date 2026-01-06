@@ -1871,6 +1871,291 @@ func TestSchema_RenderInlineWithContext_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "circular reference")
 }
 
+// Tests for RenderingModeValidation - discriminator refs should be inlined in validation mode
+
+func TestSchema_MarshalYAMLInlineWithContext_ValidationMode_InlinesDiscriminatorOneOfRefs(t *testing.T) {
+	// Test that in validation mode, discriminator oneOf refs are inlined (not preserved)
+	// This is the opposite of bundle mode behavior
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+        bark:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+  mapping:
+    cat: '#/components/schemas/Cat'
+    dog: '#/components/schemas/Dog'
+oneOf:
+  - $ref: '#/components/schemas/Cat'
+  - $ref: '#/components/schemas/Dog'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Use validation mode context - refs should be inlined
+	ctx := NewInlineRenderContextForValidation()
+	result, err := compiled.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// In validation mode, the oneOf refs should be INLINED, not preserved as $ref
+	// Should contain the inlined properties
+	assert.Contains(t, output, "meow:")
+	assert.Contains(t, output, "bark:")
+}
+
+func TestSchema_MarshalYAMLInlineWithContext_ValidationMode_InlinesDiscriminatorAnyOfRefs(t *testing.T) {
+	// Test that in validation mode, discriminator anyOf refs are inlined (not preserved)
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean
+    Dog:
+      type: object
+      properties:
+        type:
+          type: string
+        bark:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+anyOf:
+  - $ref: '#/components/schemas/Cat'
+  - $ref: '#/components/schemas/Dog'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Use validation mode context - refs should be inlined
+	ctx := NewInlineRenderContextForValidation()
+	result, err := compiled.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// In validation mode, the anyOf refs should be INLINED, not preserved as $ref
+	// Should contain the inlined properties
+	assert.Contains(t, output, "meow:")
+	assert.Contains(t, output, "bark:")
+}
+
+func TestSchema_MarshalYAMLInlineWithContext_BundleMode_PreservesDiscriminatorRefs(t *testing.T) {
+	// Test that in bundle mode (default), discriminator refs are preserved
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        type:
+          type: string
+        meow:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+oneOf:
+  - $ref: '#/components/schemas/Cat'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Use bundle mode context (default) - refs should be preserved
+	ctx := NewInlineRenderContext()
+	assert.Equal(t, RenderingModeBundle, ctx.Mode)
+
+	result, err := compiled.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// In bundle mode, the oneOf refs should be PRESERVED as $ref
+	assert.Contains(t, output, "$ref:")
+	assert.Contains(t, output, "#/components/schemas/Cat")
+	// Should NOT contain the inlined properties
+	assert.NotContains(t, output, "meow:")
+}
+
+func TestSchema_MarshalYAMLInlineWithContext_NilContext_PreservesDiscriminatorRefs(t *testing.T) {
+	// Test that with nil context (backward compatibility), discriminator refs are preserved
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: boolean`
+
+	testSpec := `discriminator:
+  propertyName: type
+oneOf:
+  - $ref: '#/components/schemas/Cat'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Pass nil context - should behave like bundle mode (backward compatible)
+	result, err := compiled.MarshalYAMLInlineWithContext(nil)
+	assert.NoError(t, err)
+
+	// Marshal to YAML to check output
+	yamlBytes, _ := yaml.Marshal(result)
+	output := string(yamlBytes)
+
+	// Nil context should preserve refs (like bundle mode)
+	assert.Contains(t, output, "$ref:")
+	assert.Contains(t, output, "#/components/schemas/Cat")
+	// Should NOT contain the inlined properties
+	assert.NotContains(t, output, "meow:")
+}
+
+func TestSchema_MarshalYAMLInlineWithContext_NoDiscriminator_ModeDoesNotMatter(t *testing.T) {
+	// Test that without discriminator, both modes behave the same (refs inlined)
+
+	idxYaml := `openapi: 3.1.0
+components:
+  schemas:
+    Cat:
+      type: object
+      properties:
+        meow:
+          type: boolean`
+
+	testSpec := `oneOf:
+  - $ref: '#/components/schemas/Cat'`
+
+	var compNode, idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(testSpec), &compNode)
+	_ = yaml.Unmarshal([]byte(idxYaml), &idxNode)
+
+	idx := index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+
+	sp := new(lowbase.SchemaProxy)
+	err := sp.Build(context.Background(), nil, compNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowproxy := low.NodeReference[*lowbase.SchemaProxy]{
+		Value:     sp,
+		ValueNode: compNode.Content[0],
+	}
+
+	schemaProxy := NewSchemaProxy(&lowproxy)
+	compiled := schemaProxy.Schema()
+
+	// Test with bundle mode
+	ctxBundle := NewInlineRenderContext()
+	resultBundle, err := compiled.MarshalYAMLInlineWithContext(ctxBundle)
+	assert.NoError(t, err)
+	yamlBundle, _ := yaml.Marshal(resultBundle)
+
+	// Without discriminator, refs should be inlined in both modes
+	// Need to reset the proxy for second render
+	schemaProxy2 := NewSchemaProxy(&lowproxy)
+	compiled2 := schemaProxy2.Schema()
+
+	ctxValidation := NewInlineRenderContextForValidation()
+	resultValidation, err := compiled2.MarshalYAMLInlineWithContext(ctxValidation)
+	assert.NoError(t, err)
+	yamlValidation, _ := yaml.Marshal(resultValidation)
+
+	// Both should contain the inlined properties (refs not preserved without discriminator)
+	assert.Contains(t, string(yamlBundle), "meow:")
+	assert.Contains(t, string(yamlValidation), "meow:")
+}
+
 // TestNewSchema_Id tests that the $id field is correctly mapped from low to high level
 func TestNewSchema_Id(t *testing.T) {
 	yml := `type: object
