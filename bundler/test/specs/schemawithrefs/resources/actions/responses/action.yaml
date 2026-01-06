@@ -1,0 +1,10 @@
+description: >-
+  The result will be a JSON object with an action key. 
+  This will be set to an action object containing the standard action attributes.
+
+content:
+  application/json:
+    schema:
+      properties:
+        action:
+          $ref: '../models/action.yaml'

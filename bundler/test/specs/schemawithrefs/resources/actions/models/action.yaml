@@ -1,0 +1,17 @@
+type: object
+
+properties:
+  id:
+    type: integer
+    description: A description of id
+    example: 36804636
+
+  status:
+    type: string
+    description: A description of status
+    enum:
+      - started
+      - completed
+      - errored
+    example: completed
+    default: started
