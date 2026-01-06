@@ -5,6 +5,7 @@ package base
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -566,22 +567,22 @@ func TestSchemaProxy_ParentProxyPreservedForCachedSchemas(t *testing.T) {
 }
 
 func TestSetBundlingMode(t *testing.T) {
-	// First, reset to known state by decrementing until we hit 0
-	// This handles any leftover state from parallel tests
+	// first, reset to known state by decrementing until we hit 0
+	// this handles any leftover state from parallel tests
 	for IsBundlingMode() {
 		SetBundlingMode(false)
 	}
 	assert.False(t, IsBundlingMode(), "Bundling mode should be false initially")
 
-	// Toggle on
+	// toggle on
 	SetBundlingMode(true)
 	assert.True(t, IsBundlingMode(), "Bundling mode should be true after setting")
 
-	// Toggle off
+	// toggle off
 	SetBundlingMode(false)
 	assert.False(t, IsBundlingMode(), "Bundling mode should be false after unsetting")
 
-	// Test multiple increments (nested bundling)
+	// test multiple increments (nested bundling)
 	SetBundlingMode(true)
 	SetBundlingMode(true)
 	assert.True(t, IsBundlingMode(), "Bundling mode should be true with count=2")
@@ -593,78 +594,132 @@ func TestSetBundlingMode(t *testing.T) {
 	assert.False(t, IsBundlingMode(), "Bundling mode should be false with count=0")
 }
 
-func TestSetPreserveReference(t *testing.T) {
-	proxy := CreateSchemaProxyRef("#/components/schemas/Pet")
-	proxy.SetPreserveReference(true)
+func TestInlineRenderContext_MarkRefAsPreserved(t *testing.T) {
+	ctx := NewInlineRenderContext()
 
-	// Verify flag is set via marshaling behavior
-	result, err := proxy.MarshalYAML()
+	// initially ref should not be marked as preserved
+	assert.False(t, ctx.ShouldPreserveRef("#/components/schemas/Pet"))
+
+	// mark the ref as preserved
+	ctx.MarkRefAsPreserved("#/components/schemas/Pet")
+
+	// now it should be preserved
+	assert.True(t, ctx.ShouldPreserveRef("#/components/schemas/Pet"))
+
+	// different ref should not be preserved
+	assert.False(t, ctx.ShouldPreserveRef("#/components/schemas/Other"))
+}
+
+func TestInlineRenderContext_ShouldPreserveRef_EmptyString(t *testing.T) {
+	ctx := NewInlineRenderContext()
+
+	// empty string should not be preserved
+	assert.False(t, ctx.ShouldPreserveRef(""))
+
+	// marking empty string should be a no-op
+	ctx.MarkRefAsPreserved("")
+	assert.False(t, ctx.ShouldPreserveRef(""))
+}
+
+func TestInlineRenderContext_PreservedRefs_Concurrent(t *testing.T) {
+	ctx := NewInlineRenderContext()
+
+	// test concurrent access to preservedRefs
+	done := make(chan bool)
+	for i := 0; i < 10; i++ {
+		go func(n int) {
+			ref := fmt.Sprintf("#/components/schemas/Schema%d", n)
+			ctx.MarkRefAsPreserved(ref)
+			_ = ctx.ShouldPreserveRef(ref)
+			done <- true
+		}(i)
+	}
+
+	// wait for all goroutines
+	for i := 0; i < 10; i++ {
+		<-done
+	}
+
+	// verify all refs were preserved
+	for i := 0; i < 10; i++ {
+		ref := fmt.Sprintf("#/components/schemas/Schema%d", i)
+		assert.True(t, ctx.ShouldPreserveRef(ref))
+	}
+}
+
+func TestMarkRefAsPreserved(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	ctx.MarkRefAsPreserved("#/components/schemas/Pet")
+
+	proxy := CreateSchemaProxyRef("#/components/schemas/Pet")
+
+	// MarshalYAMLInlineWithContext should return ref node when ref is marked as preserved
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
 	require.NoError(t, err)
 
 	node, ok := result.(*yaml.Node)
 	require.True(t, ok)
-	// Should render as $ref
+	// should render as $ref
 	assert.Equal(t, yaml.MappingNode, node.Kind)
 	assert.Equal(t, 2, len(node.Content))
 	assert.Equal(t, "$ref", node.Content[0].Value)
 	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
 }
 
-func TestSetPreserveReference_WithBundlingMode(t *testing.T) {
-	// First, reset to known state
+func TestMarkRefAsPreserved_WithBundlingMode(t *testing.T) {
+	// first, reset to known state
 	for IsBundlingMode() {
 		SetBundlingMode(false)
 	}
 
-	// Test interaction with bundling mode
+	// test interaction with bundling mode
 	SetBundlingMode(true)
 	defer SetBundlingMode(false)
 
 	proxy := CreateSchemaProxyRef("#/components/schemas/Test")
 
-	// Without SetPreserveReference, should still render as ref in bundling mode
+	// without marking ref as preserved, should still render as ref in bundling mode via MarshalYAML
 	result, err := proxy.MarshalYAML()
 	require.NoError(t, err)
 	node := result.(*yaml.Node)
 	assert.Equal(t, "$ref", node.Content[0].Value)
 }
 
-func TestSetPreserveReference_MarshalYAMLInline(t *testing.T) {
-	// Test that SetPreserveReference affects MarshalYAMLInline behavior
-	proxy := CreateSchemaProxyRef("#/components/schemas/Pet")
-	proxy.SetPreserveReference(true)
+func TestMarkRefAsPreserved_MarshalYAMLInlineWithContext(t *testing.T) {
+	// test that marking ref as preserved affects MarshalYAMLInlineWithContext behavior
+	ctx := NewInlineRenderContext()
+	ctx.MarkRefAsPreserved("#/components/schemas/Pet")
 
-	// MarshalYAMLInline should return ref node when preserveReference is true
-	result, err := proxy.MarshalYAMLInline()
+	proxy := CreateSchemaProxyRef("#/components/schemas/Pet")
+
+	// MarshalYAMLInlineWithContext should return ref node when ref is marked as preserved
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
 	require.NoError(t, err)
 
 	node, ok := result.(*yaml.Node)
 	require.True(t, ok)
-	// Should render as $ref
+	// should render as $ref
 	assert.Equal(t, yaml.MappingNode, node.Kind)
 	assert.Equal(t, 2, len(node.Content))
 	assert.Equal(t, "$ref", node.Content[0].Value)
 	assert.Equal(t, "#/components/schemas/Pet", node.Content[1].Value)
 }
 
-func TestSetPreserveReference_MarshalYAMLInline_NilRefNode(t *testing.T) {
-	// Test the fallback path when GetReferenceNode returns nil
-	// This happens when the proxy has refStr but no backing schema
-	proxy := &SchemaProxy{
-		refStr:            "#/components/schemas/Test",
-		preserveReference: true,
-		lock:              &sync.Mutex{},
-	}
+func TestMarkRefAsPreserved_RefNotMarked(t *testing.T) {
+	// test that unmarked refs are NOT preserved and attempt to inline
+	ctx := NewInlineRenderContext()
+	// mark a DIFFERENT ref as preserved
+	ctx.MarkRefAsPreserved("#/components/schemas/Other")
 
-	result, err := proxy.MarshalYAMLInline()
-	require.NoError(t, err)
+	proxy := CreateSchemaProxyRef("#/components/schemas/Test")
 
-	node, ok := result.(*yaml.Node)
-	require.True(t, ok)
-	// Should create a ref node using utils.CreateRefNode fallback
-	assert.Equal(t, yaml.MappingNode, node.Kind)
-	assert.Equal(t, "$ref", node.Content[0].Value)
-	assert.Equal(t, "#/components/schemas/Test", node.Content[1].Value)
+	// MarshalYAMLInlineWithContext should attempt to inline when ref is not marked as preserved.
+	// since this proxy has no backing schema, it returns an error - this confirms the
+	// context-based preservation check is working (if it were preserved, we'd get ref node back)
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "unable to render schema")
+	assert.Nil(t, result)
 }
 
 func TestMarshalYAMLInline_BundlingMode_PreservesLocalComponentRefs(t *testing.T) {
@@ -889,8 +944,8 @@ func TestGetInlineRenderKey_NilSchemaValueReturnsRefStr(t *testing.T) {
 	assert.Equal(t, "#/components/schemas/AnotherEarlyReturn", renderKey)
 }
 
-func TestMarshalYAMLInline_PreserveReference_ViaLowLevel(t *testing.T) {
-	// Test preserveReference path when reference is set via low-level proxy
+func TestMarshalYAMLInlineWithContext_PreserveReference_ViaLowLevel(t *testing.T) {
+	// test context-based ref preservation when reference is set via low-level proxy
 	// (refStr is empty, so GetReferenceNode uses low-level path)
 
 	lowProxy := &lowbase.SchemaProxy{}
@@ -901,12 +956,15 @@ func TestMarshalYAMLInline_PreserveReference_ViaLowLevel(t *testing.T) {
 	}
 
 	proxy := &SchemaProxy{
-		schema:            &lowRef,
-		preserveReference: true,
-		lock:              &sync.Mutex{},
+		schema: &lowRef,
+		lock:   &sync.Mutex{},
 	}
 
-	result, err := proxy.MarshalYAMLInline()
+	// create context and mark the ref as preserved
+	ctx := NewInlineRenderContext()
+	ctx.MarkRefAsPreserved("#/components/schemas/TestRef")
+
+	result, err := proxy.MarshalYAMLInlineWithContext(ctx)
 	require.NoError(t, err)
 
 	node, ok := result.(*yaml.Node)
@@ -1201,4 +1259,35 @@ func TestSchemaProxy_MarshalYAMLInlineWithContext_NilContext(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+}
+
+// RenderingMode tests
+
+func TestRenderingMode_Constants(t *testing.T) {
+	// Verify the constants have expected values (iota order)
+	assert.Equal(t, RenderingMode(0), RenderingModeBundle)
+	assert.Equal(t, RenderingMode(1), RenderingModeValidation)
+}
+
+func TestNewInlineRenderContextForValidation(t *testing.T) {
+	ctx := NewInlineRenderContextForValidation()
+	assert.NotNil(t, ctx)
+	assert.Equal(t, RenderingModeValidation, ctx.Mode)
+}
+
+func TestNewInlineRenderContext_DefaultMode(t *testing.T) {
+	ctx := NewInlineRenderContext()
+	assert.NotNil(t, ctx)
+	assert.Equal(t, RenderingModeBundle, ctx.Mode)
+}
+
+func TestInlineRenderContext_ModePreservedDuringOperations(t *testing.T) {
+	// Verify mode is preserved when using start/stop rendering
+	ctx := NewInlineRenderContextForValidation()
+
+	ctx.StartRendering("test-key")
+	assert.Equal(t, RenderingModeValidation, ctx.Mode)
+
+	ctx.StopRendering("test-key")
+	assert.Equal(t, RenderingModeValidation, ctx.Mode)
 }

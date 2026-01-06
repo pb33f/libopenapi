@@ -170,3 +170,88 @@ func TestDynamicValue_MarshalYAMLInline_Error(t *testing.T) {
 	assert.Nil(t, rend)
 	assert.Error(t, er)
 }
+
+// Tests for MarshalYAMLInlineWithContext
+
+func TestDynamicValue_MarshalYAMLInlineWithContext_PassesContextToSchemaProxy(t *testing.T) {
+	// Test that context is properly passed through DynamicValue to nested SchemaProxy
+	const ymlComponents = `components:
+    schemas:
+     rice:
+       type: string`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: string`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+
+	dv := &DynamicValue[*SchemaProxy, bool]{N: 0, A: sp}
+
+	// Test with validation context
+	ctx := NewInlineRenderContextForValidation()
+	result, err := dv.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestDynamicValue_MarshalYAMLInlineWithContext_NilContextFallsBack(t *testing.T) {
+	// Test that nil context falls back to MarshalYAMLInline behavior
+	const ymlComponents = `components:
+    schemas:
+     rice:
+       type: string`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: string`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+
+	dv := &DynamicValue[*SchemaProxy, bool]{N: 0, A: sp}
+
+	// Test with nil context
+	result, err := dv.MarshalYAMLInlineWithContext(nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestDynamicValue_MarshalYAMLInlineWithContext_BoolValue(t *testing.T) {
+	// Test that bool values work correctly with context
+	dv := &DynamicValue[*SchemaProxy, bool]{N: 1, B: true}
+
+	ctx := NewInlineRenderContextForValidation()
+	result, err := dv.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
