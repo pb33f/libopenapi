@@ -255,3 +255,66 @@ func TestDynamicValue_MarshalYAMLInlineWithContext_BoolValue(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }
+
+func TestDynamicValue_MarshalYAMLInline_WithSchemaProxy(t *testing.T) {
+	// Test MarshalYAMLInline directly (covers lines 109-112)
+	// This tests the code path where renderCtx is explicitly set to nil
+	const ymlComponents = `components:
+    schemas:
+     rice:
+       type: string`
+
+	idx := func() *index.SpecIndex {
+		var idxNode yaml.Node
+		err := yaml.Unmarshal([]byte(ymlComponents), &idxNode)
+		assert.NoError(t, err)
+		return index.NewSpecIndexWithConfig(&idxNode, index.CreateOpenAPIIndexConfig())
+	}()
+
+	const ymlSchema = `type: string`
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlSchema), &node)
+
+	lowProxy := new(lowbase.SchemaProxy)
+	err := lowProxy.Build(context.Background(), nil, node.Content[0], idx)
+	assert.NoError(t, err)
+
+	lowRef := low.NodeReference[*lowbase.SchemaProxy]{
+		Value: lowProxy,
+	}
+
+	sp := NewSchemaProxy(&lowRef)
+
+	dv := &DynamicValue[*SchemaProxy, bool]{N: 0, A: sp}
+
+	// Call MarshalYAMLInline directly - this sets inline=true, renderCtx=nil
+	result, err := dv.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Verify it rendered correctly
+	bits, _ := yaml.Marshal(result)
+	assert.Contains(t, string(bits), "type: string")
+}
+
+func TestDynamicValue_MarshalYAMLInline_PtrNotRenderableInline(t *testing.T) {
+	// Test the else branch at line 78 - pointer type that does NOT implement RenderableInline
+	// This covers the fallback path where we call n.Encode(value) directly
+	type simpleStruct struct {
+		Name  string `yaml:"name"`
+		Value int    `yaml:"value"`
+	}
+
+	dv := &DynamicValue[*simpleStruct, bool]{N: 0, A: &simpleStruct{Name: "test", Value: 42}}
+
+	// Call MarshalYAMLInline - simpleStruct doesn't implement RenderableInline
+	// so it should fall through to the else branch and use n.Encode()
+	result, err := dv.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+
+	// Verify it rendered correctly via the fallback path
+	bits, _ := yaml.Marshal(result)
+	assert.Contains(t, string(bits), "name: test")
+	assert.Contains(t, string(bits), "value: 42")
+}
