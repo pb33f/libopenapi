@@ -80,7 +80,17 @@ func FindComponent(_ context.Context, root *yaml.Node, componentId, absoluteFile
 		friendlySearch = "$"
 	}
 	path, err := jsonpath.NewPath(friendlySearch, jsonpathconfig.WithPropertyNameExtension())
-	if path == nil || err != nil || root == nil {
+	if err != nil {
+		index.logger.Warn("[FindComponent] error creating JSON path",
+			"absoluteFilePath", absoluteFilePath,
+			"componentId", componentId,
+			"name", name,
+			"friendlySearch", friendlySearch,
+			"error", err.Error(),
+		)
+		return nil
+	}
+	if path == nil || root == nil {
 		return nil // no component found
 	}
 	res := path.Query(root)

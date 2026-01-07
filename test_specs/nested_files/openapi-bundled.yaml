@@ -153,6 +153,16 @@ components:
                 responses:
                     "200":
                         $ref: '#/components/responses/Unspecified200'
+                    "403":
+                        description: None or insufficient credentials provided.
+                        content:
+                            application/json:
+                                schema:
+                                    additionalProperties: false
+                                    properties:
+                                        message:
+                                            type: string
+                                            default: Permission denied.
             put:
                 summary: TODO
                 description: TODO
@@ -166,3 +176,23 @@ components:
                 responses:
                     "200":
                         $ref: '#/components/responses/Unspecified200'
+                    "400":
+                        description: Unexpected request body provided.
+                        content:
+                            application/json:
+                                schema:
+                                    additionalProperties: false
+                                    properties:
+                                        message:
+                                            type: string
+                                            default: Unexpected request body provided.
+                    "403":
+                        description: None or insufficient credentials provided.
+                        content:
+                            application/json:
+                                schema:
+                                    additionalProperties: false
+                                    properties:
+                                        message:
+                                            type: string
+                                            default: Permission denied.

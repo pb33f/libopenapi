@@ -830,6 +830,18 @@ func ConvertComponentIdIntoFriendlyPathSearch(id string) (string, string) {
 				continue
 			}
 
+			// If segment starts with a number
+			if len(segs[i]) > 0 && segs[i][0] >= '0' && segs[i][0] <= '9' {
+				var pluralBuilder strings.Builder
+				pluralBuilder.Grow(len(segs[i]) + 4)
+				pluralBuilder.WriteString("['")
+				pluralBuilder.WriteString(segs[i])
+				pluralBuilder.WriteString("']")
+				segs[i] = pluralBuilder.String()
+				cleaned = append(cleaned, segs[i])
+				continue
+			}
+
 			// if we have a plural parent, wrap it in quotes.
 			if i > 0 && segs[i-1] != "" && segs[i-1][len(segs[i-1])-1] == 's' {
 				if i == 2 { // ignore first segment.

@@ -560,6 +560,9 @@ func TestBundleDocument_BundleBytesComposed_NestedFiles(t *testing.T) {
 		AllowFileReferences:     true,
 		BasePath:                "../test_specs/nested_files",
 		ExtractRefsSequentially: true,
+		Logger: slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})),
 	}
 
 	bundledBytes, e := BundleBytesComposed(specBytes, config, nil)

@@ -26,7 +26,8 @@ post:
   responses:
     "200":
       $ref: ../components/responses/Unspecified200.yaml
-
+    "403":
+      $ref: '../components/responses/4xxClientErrors.yaml#/403_permission_denied'
 put:
   summary: TODO
   description: TODO
@@ -40,3 +41,7 @@ put:
   responses:
     "200":
       $ref: ../components/responses/Unspecified200.yaml
+    "400":
+      $ref: '../components/responses/4xxClientErrors.yaml#/400_unexpected_request_body'
+    "403":
+      $ref: '../components/responses/4xxClientErrors.yaml#/403_permission_denied'
