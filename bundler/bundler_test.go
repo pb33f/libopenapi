@@ -20,18 +20,19 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-
-	"github.com/pb33f/libopenapi"
-	"github.com/pb33f/libopenapi/datamodel"
-	"github.com/pb33f/libopenapi/datamodel/high/base"
-	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
-	"github.com/pb33f/libopenapi/index"
-	"github.com/pb33f/libopenapi/orderedmap"
-	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.yaml.in/yaml/v4"
+
+	"github.com/pb33f/libopenapi"
+	"github.com/pb33f/libopenapi/bundler/test/specs/schemawithrefs"
+	"github.com/pb33f/libopenapi/datamodel"
+	"github.com/pb33f/libopenapi/datamodel/high/base"
+	v3high "github.com/pb33f/libopenapi/datamodel/high/v3"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
+	"github.com/pb33f/libopenapi/orderedmap"
+	"github.com/pb33f/libopenapi/utils"
 )
 
 // Test helper functions to reduce duplication across DigitalOcean tests
@@ -2209,8 +2210,8 @@ func TestCopySchemaToComponents_NameCollision(t *testing.T) {
 func TestCalculateCollisionNameInline_NumericSuffix(t *testing.T) {
 	// Test: When filename-based name also collides, use numeric suffix
 	existingNames := map[string]bool{
-		"Cat":             true,
-		"Cat__external":   true, // Filename-based collision also exists
+		"Cat":              true,
+		"Cat__external":    true, // Filename-based collision also exists
 		"Cat__external__1": true, // First numeric suffix also taken (format: name__basename__N)
 	}
 
@@ -2284,3 +2285,44 @@ components:
 	assert.Equal(t, "#node", itemsSchema.DynamicRef, "DynamicRef should be '#node'")
 }
 
+func TestBundleDocument_Embedded(t *testing.T) {
+	expected, err := os.ReadFile("test/specs/schemawithrefs_expected.yaml")
+	require.NoError(t, err)
+
+	tests := []struct {
+		name   string
+		config *datamodel.DocumentConfiguration
+	}{
+		{
+			name: "directory",
+			config: &datamodel.DocumentConfiguration{
+				BasePath:            "test/specs/schemawithrefs",
+				AllowFileReferences: true,
+			},
+		},
+		{
+			name: "embed",
+			config: &datamodel.DocumentConfiguration{
+				LocalFS:             schemawithrefs.Files,
+				AllowFileReferences: true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			doc, err := libopenapi.NewDocumentWithConfiguration(schemawithrefs.Schema, tt.config)
+			require.NoError(t, err)
+
+			t.Run("v3", func(t *testing.T) {
+				v3, err := doc.BuildV3Model()
+				require.NoError(t, err)
+
+				b, err := BundleDocument(&v3.Model)
+				require.NoError(t, err)
+
+				assert.Equal(t, string(b), string(expected))
+			})
+		})
+	}
+}

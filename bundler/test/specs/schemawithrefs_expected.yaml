@@ -1,0 +1,46 @@
+openapi: "3.0.0"
+info:
+    title: Test API
+    version: "2.0"
+    description: ""
+paths:
+    /v2/actions/{action_id}:
+        get:
+            operationId: actions_get
+            summary: Retrieve an action
+            description: The description for this endpoint
+            tags:
+                - Actions
+            parameters:
+                - in: path
+                  name: action_id
+                  description: A unique numeric ID that can be used to identify and reference an action.
+                  required: true
+                  schema:
+                    type: integer
+                    minimum: 1
+                  example: 36804636
+            responses:
+                '200':
+                    description: >-
+                        The result will be a JSON object with an action key.  This will be set to an action object containing the standard action attributes.
+                    content:
+                        application/json:
+                            schema:
+                                properties:
+                                    action:
+                                        type: object
+                                        properties:
+                                            id:
+                                                type: integer
+                                                description: A description of id
+                                                example: 36804636
+                                            status:
+                                                type: string
+                                                description: A description of status
+                                                enum:
+                                                    - started
+                                                    - completed
+                                                    - errored
+                                                example: completed
+                                                default: started

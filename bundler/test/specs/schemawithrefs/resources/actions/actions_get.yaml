@@ -1,0 +1,16 @@
+operationId: actions_get
+
+summary: Retrieve an action
+
+description: The description for this endpoint
+
+tags:
+  - Actions
+
+parameters:
+  - $ref: 'parameters.yaml#/action_id'
+
+responses:
+  '200':
+    $ref: 'responses/action.yaml'
+
