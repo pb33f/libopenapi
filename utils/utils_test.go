@@ -1663,6 +1663,72 @@ func TestConvertComponentIdIntoFriendlyPathSearch_ExtremeEdgeCases(t *testing.T)
 	}
 }
 
+// https://github.com/pb33f/libopenapi/issues/500
+// Test digit-starting property names require bracket notation in JSONPath
+func TestConvertComponentIdIntoFriendlyPathSearch_DigitStartingSegments(t *testing.T) {
+	// Root-level key starting with digit (like error codes)
+	segment, path := ConvertComponentIdIntoFriendlyPathSearch("#/403_permission_denied")
+	assert.Equal(t, "$.['403_permission_denied']", path)
+	assert.Equal(t, "403_permission_denied", segment)
+
+	// Nested path with digit-starting segment
+	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/responses/400_unexpected_request_body")
+	assert.Equal(t, "$.responses['400_unexpected_request_body']", path)
+	assert.Equal(t, "400_unexpected_request_body", segment)
+
+	// Multiple digit-starting segments
+	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/4xx_errors/403_forbidden")
+	assert.Equal(t, "$.['4xx_errors']['403_forbidden']", path)
+	assert.Equal(t, "403_forbidden", segment)
+
+	// Digit-starting in middle of path
+	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/components/responses/5xx_server_error/description")
+	assert.Equal(t, "$.components.responses['5xx_server_error'].description", path)
+	assert.Equal(t, "description", segment)
+
+	// Pure numeric segment (handled by integer code path, uses [0] not ['0'])
+	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/items/0/name")
+	assert.Equal(t, "$.items[0].name", path)
+	assert.Equal(t, "name", segment)
+
+	// Segment starting with digit but not pure number
+	segment, path = ConvertComponentIdIntoFriendlyPathSearch("#/2xx_success")
+	assert.Equal(t, "$.['2xx_success']", path)
+	assert.Equal(t, "2xx_success", segment)
+}
+
+// Test isPathChar function directly for comprehensive coverage
+func TestIsPathChar(t *testing.T) {
+	// Valid path characters (letters, numbers not at start, underscore, backslash)
+	assert.True(t, isPathChar("validName"))
+	assert.True(t, isPathChar("Valid123"))
+	assert.True(t, isPathChar("with_underscore"))
+	assert.True(t, isPathChar(`with\backslash`))
+	assert.True(t, isPathChar("MixedCase123_test"))
+
+	// Pure integers return true - they're handled separately as array indices
+	assert.True(t, isPathChar("0"))
+	assert.True(t, isPathChar("123"))
+	assert.True(t, isPathChar("99"))
+
+	// Invalid: empty string
+	assert.False(t, isPathChar(""))
+
+	// Invalid: starts with digit but NOT a pure integer (requires bracket notation in JSONPath)
+	assert.False(t, isPathChar("403_permission_denied"))
+	assert.False(t, isPathChar("4xx_errors"))
+	assert.False(t, isPathChar("123abc"))
+	assert.False(t, isPathChar("9_starts_with_nine"))
+	assert.False(t, isPathChar("0x123")) // hex-like but has 'x'
+
+	// Invalid: contains special characters
+	assert.False(t, isPathChar("with-dash"))
+	assert.False(t, isPathChar("with space"))
+	assert.False(t, isPathChar("with@symbol"))
+	assert.False(t, isPathChar("with#hash"))
+	assert.False(t, isPathChar("with.dot"))
+}
+
 // Test documenting the defensive safeguard code behavior
 func TestConvertComponentIdIntoFriendlyPathSearch_DefensiveCodeDocumentation(t *testing.T) {
 	// This test documents that the defensive safeguard code at lines 897-903 in ConvertComponentIdIntoFriendlyPathSearch
