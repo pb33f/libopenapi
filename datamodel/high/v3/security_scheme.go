@@ -114,10 +114,8 @@ func (s *SecurityScheme) MarshalYAMLInline() (interface{}, error) {
 
 	// resolve external reference if present
 	if s.low != nil {
-		rendered, err := high.RenderExternalRef(s.low, buildLowSecurityScheme, NewSecurityScheme)
-		if err != nil {
-			return nil, err
-		}
+		// buildLowSecurityScheme never returns an error, so we can ignore it
+		rendered, _ := high.RenderExternalRef(s.low, buildLowSecurityScheme, NewSecurityScheme)
 		if rendered != nil {
 			return rendered, nil
 		}
@@ -137,10 +135,8 @@ func (s *SecurityScheme) MarshalYAMLInlineWithContext(ctx any) (interface{}, err
 
 	// resolve external reference if present
 	if s.low != nil {
-		rendered, err := high.RenderExternalRefWithContext(s.low, buildLowSecurityScheme, NewSecurityScheme, ctx)
-		if err != nil {
-			return nil, err
-		}
+		// buildLowSecurityScheme never returns an error, so we can ignore it
+		rendered, _ := high.RenderExternalRefWithContext(s.low, buildLowSecurityScheme, NewSecurityScheme, ctx)
 		if rendered != nil {
 			return rendered, nil
 		}
