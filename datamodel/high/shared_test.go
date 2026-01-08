@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/low"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -205,4 +206,356 @@ func TestRenderInlineWithContext_WithLow(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
+}
+
+// mockExternalRefResolver is a mock implementation of ExternalRefResolver for testing
+type mockExternalRefResolver struct {
+	isRef    bool
+	ref      string
+	indexVal *index.SpecIndex
+}
+
+func (m *mockExternalRefResolver) IsReference() bool {
+	return m.isRef
+}
+
+func (m *mockExternalRefResolver) GetReference() string {
+	return m.ref
+}
+
+func (m *mockExternalRefResolver) GetIndex() *index.SpecIndex {
+	return m.indexVal
+}
+
+func TestResolveExternalRef_NilLowObj(t *testing.T) {
+	result, err := ResolveExternalRef[string, string](nil, nil, nil)
+
+	assert.NoError(t, err)
+	assert.False(t, result.Resolved)
+}
+
+func TestResolveExternalRef_NotAReference(t *testing.T) {
+	mock := &mockExternalRefResolver{isRef: false}
+
+	result, err := ResolveExternalRef[string, string](mock, nil, nil)
+
+	assert.NoError(t, err)
+	assert.False(t, result.Resolved)
+}
+
+func TestResolveExternalRef_NilIndex(t *testing.T) {
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/test", indexVal: nil}
+
+	result, err := ResolveExternalRef[string, string](mock, nil, nil)
+
+	assert.NoError(t, err)
+	assert.False(t, result.Resolved)
+}
+
+func TestRenderExternalRef_NilLowObj(t *testing.T) {
+	result, err := RenderExternalRef[string, string](nil, nil, nil)
+
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestRenderExternalRef_NotAReference(t *testing.T) {
+	mock := &mockExternalRefResolver{isRef: false}
+
+	result, err := RenderExternalRef[string, string](mock, nil, nil)
+
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestRenderExternalRefWithContext_NilLowObj(t *testing.T) {
+	ctx := struct{}{}
+	result, err := RenderExternalRefWithContext[string, string](nil, nil, nil, ctx)
+
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestRenderExternalRefWithContext_NotAReference(t *testing.T) {
+	mock := &mockExternalRefResolver{isRef: false}
+	ctx := struct{}{}
+
+	result, err := RenderExternalRefWithContext[string, string](mock, nil, nil, ctx)
+
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestResolveExternalRef_ComponentNotFound(t *testing.T) {
+	// Create a real index with no components
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(nil, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/NotFound", indexVal: idx}
+
+	result, err := ResolveExternalRef[string, string](mock, nil, nil)
+
+	assert.NoError(t, err)
+	assert.False(t, result.Resolved)
+}
+
+func TestRenderExternalRef_ComponentNotFound(t *testing.T) {
+	// Create a real index with no components
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(nil, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/NotFound", indexVal: idx}
+
+	result, err := RenderExternalRef[string, string](mock, nil, nil)
+
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+func TestRenderExternalRefWithContext_ComponentNotFound(t *testing.T) {
+	// Create a real index with no components
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(nil, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/NotFound", indexVal: idx}
+	ctx := struct{}{}
+
+	result, err := RenderExternalRefWithContext[string, string](mock, nil, nil, ctx)
+
+	assert.NoError(t, err)
+	assert.Nil(t, result)
+}
+
+// testLow is a simple low-level type for testing
+type testLow struct {
+	Name string `yaml:"name"`
+}
+
+// testHigh is a simple high-level type for testing
+type testHigh struct {
+	Name string `yaml:"name"`
+}
+
+func TestResolveExternalRef_Success(t *testing.T) {
+	// Create a spec with a component
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    TestSchema:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	require.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema", indexVal: idx}
+
+	buildLow := func(node *yaml.Node, idx *index.SpecIndex) (*testLow, error) {
+		var l testLow
+		err := node.Decode(&l)
+		return &l, err
+	}
+
+	buildHigh := func(l *testLow) *testHigh {
+		return &testHigh{Name: l.Name}
+	}
+
+	result, err := ResolveExternalRef(mock, buildLow, buildHigh)
+
+	assert.NoError(t, err)
+	assert.True(t, result.Resolved)
+	assert.NotNil(t, result.High)
+	assert.NotNil(t, result.Low)
+}
+
+func TestResolveExternalRef_BuildLowError(t *testing.T) {
+	// Create a spec with a component
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    TestSchema:
+      type: object`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	require.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema", indexVal: idx}
+
+	buildLow := func(node *yaml.Node, idx *index.SpecIndex) (*testLow, error) {
+		return nil, assert.AnError // Return an error
+	}
+
+	buildHigh := func(l *testLow) *testHigh {
+		return &testHigh{}
+	}
+
+	result, err := ResolveExternalRef(mock, buildLow, buildHigh)
+
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to build resolved external reference")
+	assert.False(t, result.Resolved)
+}
+
+func TestRenderExternalRef_Success(t *testing.T) {
+	// Create a spec with a component
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    TestSchema:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	require.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema", indexVal: idx}
+
+	buildLow := func(node *yaml.Node, idx *index.SpecIndex) (*testLow, error) {
+		var l testLow
+		err := node.Decode(&l)
+		return &l, err
+	}
+
+	buildHigh := func(l *testLow) *testHigh {
+		return &testHigh{Name: l.Name}
+	}
+
+	result, err := RenderExternalRef(mock, buildLow, buildHigh)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestRenderExternalRefWithContext_Success(t *testing.T) {
+	// Create a spec with a component
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    TestSchema:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	require.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema", indexVal: idx}
+	ctx := struct{}{}
+
+	buildLow := func(node *yaml.Node, idx *index.SpecIndex) (*testLow, error) {
+		var l testLow
+		err := node.Decode(&l)
+		return &l, err
+	}
+
+	buildHigh := func(l *testLow) *testHigh {
+		return &testHigh{Name: l.Name}
+	}
+
+	result, err := RenderExternalRefWithContext(mock, buildLow, buildHigh, ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestRenderExternalRef_BuildLowError(t *testing.T) {
+	// Create a spec with a component
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    TestSchema:
+      type: object`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	require.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema", indexVal: idx}
+
+	buildLow := func(node *yaml.Node, idx *index.SpecIndex) (*testLow, error) {
+		return nil, assert.AnError // Return an error
+	}
+
+	buildHigh := func(l *testLow) *testHigh {
+		return &testHigh{}
+	}
+
+	result, err := RenderExternalRef(mock, buildLow, buildHigh)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
+
+func TestRenderExternalRefWithContext_BuildLowError(t *testing.T) {
+	// Create a spec with a component
+	spec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+components:
+  schemas:
+    TestSchema:
+      type: object`
+
+	var rootNode yaml.Node
+	err := yaml.Unmarshal([]byte(spec), &rootNode)
+	require.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&rootNode, config)
+
+	mock := &mockExternalRefResolver{isRef: true, ref: "#/components/schemas/TestSchema", indexVal: idx}
+	ctx := struct{}{}
+
+	buildLow := func(node *yaml.Node, idx *index.SpecIndex) (*testLow, error) {
+		return nil, assert.AnError // Return an error
+	}
+
+	buildHigh := func(l *testLow) *testHigh {
+		return &testHigh{}
+	}
+
+	result, err := RenderExternalRefWithContext(mock, buildLow, buildHigh, ctx)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
 }

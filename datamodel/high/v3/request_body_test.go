@@ -197,3 +197,41 @@ func TestRequestBody_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
+
+func TestBuildLowRequestBody_Success(t *testing.T) {
+	yml := `description: A test request body
+required: true
+content:
+  application/json:
+    schema:
+      type: object`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowRequestBody(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "A test request body", result.Description.Value)
+}
+
+func TestBuildLowRequestBody_BuildNeverErrors(t *testing.T) {
+	// RequestBody.Build never returns an error (no error return paths in the Build method)
+	// This test verifies the success path
+	yml := `description: test
+content:
+  application/json:
+    schema:
+      type: string`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowRequestBody(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}

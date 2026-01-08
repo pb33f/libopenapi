@@ -157,3 +157,36 @@ func TestSecurityScheme_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
 
+
+func TestBuildLowSecurityScheme_Success(t *testing.T) {
+	yml := `type: apiKey
+name: X-API-Key
+in: header`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowSecurityScheme(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "apiKey", result.Type.Value)
+}
+
+func TestBuildLowSecurityScheme_BuildNeverErrors(t *testing.T) {
+	// SecurityScheme.Build never returns an error (no error return paths in the Build method)
+	// This test verifies the success path
+	yml := `type: http
+scheme: bearer
+bearerFormat: JWT`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowSecurityScheme(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
