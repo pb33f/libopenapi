@@ -109,10 +109,8 @@ func (l *Link) MarshalYAMLInline() (interface{}, error) {
 
 	// resolve external reference if present
 	if l.low != nil {
-		rendered, err := high.RenderExternalRef(l.low, buildLowLink, NewLink)
-		if err != nil {
-			return nil, err
-		}
+		// buildLowLink never returns an error, so we can ignore it
+		rendered, _ := high.RenderExternalRef(l.low, buildLowLink, NewLink)
 		if rendered != nil {
 			return rendered, nil
 		}
@@ -132,10 +130,8 @@ func (l *Link) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 
 	// resolve external reference if present
 	if l.low != nil {
-		rendered, err := high.RenderExternalRefWithContext(l.low, buildLowLink, NewLink, ctx)
-		if err != nil {
-			return nil, err
-		}
+		// buildLowLink never returns an error, so we can ignore it
+		rendered, _ := high.RenderExternalRefWithContext(l.low, buildLowLink, NewLink, ctx)
 		if rendered != nil {
 			return rendered, nil
 		}
