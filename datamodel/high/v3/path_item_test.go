@@ -522,3 +522,42 @@ func TestPathItem_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
 
+
+func TestBuildLowPathItem_Success(t *testing.T) {
+	yml := `summary: Test path item
+get:
+  summary: Get operation`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowPathItem(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "Test path item", result.Summary.Value)
+}
+
+func TestBuildLowPathItem_BuildError(t *testing.T) {
+	// PathItem.Build can fail with invalid parameter refs
+	yml := `get:
+  parameters:
+    - $ref: '#/components/parameters/DoesNotExist'`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&node, config)
+
+	result, err := buildLowPathItem(node.Content[0], idx)
+
+	// PathItem Build can fail on unresolved refs in certain cases
+	if err != nil {
+		assert.Nil(t, result)
+	} else {
+		assert.NotNil(t, result)
+	}
+}

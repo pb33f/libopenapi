@@ -4,15 +4,25 @@
 package base
 
 import (
+	"context"
 	"encoding/json"
 
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
 	lowBase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
+
+// buildLowExample builds a low-level Example from a resolved YAML node.
+func buildLowExample(node *yaml.Node, idx *index.SpecIndex) (*lowBase.Example, error) {
+	var ex lowBase.Example
+	low.BuildModel(node, &ex)
+	ex.Build(context.Background(), nil, node, idx)
+	return &ex, nil
+}
 
 // Example represents a high-level Example object as defined by OpenAPI 3+
 //
@@ -91,6 +101,18 @@ func (e *Example) MarshalYAMLInline() (interface{}, error) {
 	if e.Reference != "" {
 		return utils.CreateRefNode(e.Reference), nil
 	}
+
+	// resolve external reference if present
+	if e.low != nil {
+		rendered, err := high.RenderExternalRef(e.low, buildLowExample, NewExample)
+		if err != nil {
+			return nil, err
+		}
+		if rendered != nil {
+			return rendered, nil
+		}
+	}
+
 	return high.RenderInline(e, e.low)
 }
 
@@ -102,6 +124,18 @@ func (e *Example) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	if e.Reference != "" {
 		return utils.CreateRefNode(e.Reference), nil
 	}
+
+	// resolve external reference if present
+	if e.low != nil {
+		rendered, err := high.RenderExternalRefWithContext(e.low, buildLowExample, NewExample, ctx)
+		if err != nil {
+			return nil, err
+		}
+		if rendered != nil {
+			return rendered, nil
+		}
+	}
+
 	return high.RenderInlineWithContext(e, e.low, ctx)
 }
 
