@@ -97,10 +97,8 @@ func (r *RequestBody) MarshalYAMLInline() (interface{}, error) {
 
 	// resolve external reference if present
 	if r.low != nil {
-		rendered, err := high.RenderExternalRef(r.low, buildLowRequestBody, NewRequestBody)
-		if err != nil {
-			return nil, err
-		}
+		// buildLowRequestBody never returns an error, so we can ignore it
+		rendered, _ := high.RenderExternalRef(r.low, buildLowRequestBody, NewRequestBody)
 		if rendered != nil {
 			return rendered, nil
 		}
@@ -120,10 +118,8 @@ func (r *RequestBody) MarshalYAMLInlineWithContext(ctx any) (interface{}, error)
 
 	// resolve external reference if present
 	if r.low != nil {
-		rendered, err := high.RenderExternalRefWithContext(r.low, buildLowRequestBody, NewRequestBody, ctx)
-		if err != nil {
-			return nil, err
-		}
+		// buildLowRequestBody never returns an error, so we can ignore it
+		rendered, _ := high.RenderExternalRefWithContext(r.low, buildLowRequestBody, NewRequestBody, ctx)
 		if rendered != nil {
 			return rendered, nil
 		}

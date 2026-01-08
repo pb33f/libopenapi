@@ -553,3 +553,420 @@ paths:
 	assert.Contains(t, bundledStr, "summary: Common GET operation")
 	assert.Contains(t, bundledStr, "summary: Common POST operation")
 }
+
+// TestMarshalYAMLInlineWithContext_ExternalRequestBodyRef tests MarshalYAMLInlineWithContext
+// with external refs to ensure the "if rendered != nil" path is covered
+func TestMarshalYAMLInlineWithContext_ExternalRequestBodyRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  requestBodies:
+    UserInput:
+      $ref: "./request_bodies.yaml#/UserInput"
+paths:
+  /users:
+    post:
+      requestBody:
+        $ref: "#/components/requestBodies/UserInput"
+      responses:
+        "201":
+          description: Created
+`
+	requestBodiesFile := `UserInput:
+  description: User input data
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "request_bodies.yaml"), []byte(requestBodiesFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	// Get the request body and call MarshalYAMLInlineWithContext directly
+	rb := v3doc.Model.Components.RequestBodies.GetOrZero("UserInput")
+	require.NotNil(t, rb)
+
+	// Use nil context to test the path
+	result, err := rb.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalLinkRef tests MarshalYAMLInlineWithContext for Link
+func TestMarshalYAMLInlineWithContext_ExternalLinkRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  links:
+    GetUserById:
+      $ref: "./links.yaml#/GetUserById"
+paths:
+  /users/{id}:
+    get:
+      operationId: getUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: OK
+          links:
+            GetUserById:
+              $ref: "#/components/links/GetUserById"
+`
+	linksFile := `GetUserById:
+  operationId: getUser
+  description: Get user by ID
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "links.yaml"), []byte(linksFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	link := v3doc.Model.Components.Links.GetOrZero("GetUserById")
+	require.NotNil(t, link)
+
+	result, err := link.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalSecuritySchemeRef tests MarshalYAMLInlineWithContext for SecurityScheme
+func TestMarshalYAMLInlineWithContext_ExternalSecuritySchemeRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "./security.yaml#/BearerAuth"
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          description: OK
+`
+	securityFile := `BearerAuth:
+  type: http
+  scheme: bearer
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "security.yaml"), []byte(securityFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	ss := v3doc.Model.Components.SecuritySchemes.GetOrZero("BearerAuth")
+	require.NotNil(t, ss)
+
+	result, err := ss.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalExampleRef tests MarshalYAMLInlineWithContext for Example
+func TestMarshalYAMLInlineWithContext_ExternalExampleRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  examples:
+    UserExample:
+      $ref: "./examples.yaml#/UserExample"
+paths:
+  /users:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              examples:
+                user:
+                  $ref: "#/components/examples/UserExample"
+`
+	examplesFile := `UserExample:
+  summary: Example user
+  value:
+    id: 123
+    name: John Doe
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "examples.yaml"), []byte(examplesFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	ex := v3doc.Model.Components.Examples.GetOrZero("UserExample")
+	require.NotNil(t, ex)
+
+	result, err := ex.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalParameterRef tests MarshalYAMLInlineWithContext for Parameter
+func TestMarshalYAMLInlineWithContext_ExternalParameterRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  parameters:
+    FilterParam:
+      $ref: "./params.yaml#/FilterParam"
+paths:
+  /test:
+    get:
+      parameters:
+        - $ref: "#/components/parameters/FilterParam"
+      responses:
+        "200":
+          description: OK
+`
+	paramsFile := `FilterParam:
+  name: filter
+  in: query
+  schema:
+    type: string
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "params.yaml"), []byte(paramsFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	param := v3doc.Model.Components.Parameters.GetOrZero("FilterParam")
+	require.NotNil(t, param)
+
+	result, err := param.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalResponseRef tests MarshalYAMLInlineWithContext for Response
+func TestMarshalYAMLInlineWithContext_ExternalResponseRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  responses:
+    NotFound:
+      $ref: "./responses.yaml#/NotFound"
+paths:
+  /test:
+    get:
+      responses:
+        "404":
+          $ref: "#/components/responses/NotFound"
+`
+	responsesFile := `NotFound:
+  description: Resource not found
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "responses.yaml"), []byte(responsesFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	resp := v3doc.Model.Components.Responses.GetOrZero("NotFound")
+	require.NotNil(t, resp)
+
+	result, err := resp.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalHeaderRef tests MarshalYAMLInlineWithContext for Header
+func TestMarshalYAMLInlineWithContext_ExternalHeaderRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  headers:
+    RateLimitHeader:
+      $ref: "./headers.yaml#/RateLimitHeader"
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          description: OK
+          headers:
+            X-Rate-Limit:
+              $ref: "#/components/headers/RateLimitHeader"
+`
+	headersFile := `RateLimitHeader:
+  description: Rate limit header
+  schema:
+    type: integer
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "headers.yaml"), []byte(headersFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	header := v3doc.Model.Components.Headers.GetOrZero("RateLimitHeader")
+	require.NotNil(t, header)
+
+	result, err := header.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+// TestMarshalYAMLInlineWithContext_ExternalPathItemRef tests MarshalYAMLInlineWithContext for PathItem
+func TestMarshalYAMLInlineWithContext_ExternalPathItemRef(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	mainSpec := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  pathItems:
+    CommonPath:
+      $ref: "./path_items.yaml#/CommonPath"
+paths:
+  /common:
+    $ref: "#/components/pathItems/CommonPath"
+`
+	pathItemsFile := `CommonPath:
+  get:
+    summary: Common GET operation
+    responses:
+      "200":
+        description: OK
+`
+
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "openapi.yaml"), []byte(mainSpec), 0644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpDir, "path_items.yaml"), []byte(pathItemsFile), 0644))
+
+	config := datamodel.NewDocumentConfiguration()
+	config.BasePath = tmpDir
+	config.AllowFileReferences = true
+
+	specBytes, err := os.ReadFile(filepath.Join(tmpDir, "openapi.yaml"))
+	require.NoError(t, err)
+
+	doc, err := libopenapi.NewDocumentWithConfiguration(specBytes, config)
+	require.NoError(t, err)
+
+	v3doc, errs := doc.BuildV3Model()
+	require.Empty(t, errs)
+
+	pi := v3doc.Model.Components.PathItems.GetOrZero("CommonPath")
+	require.NotNil(t, pi)
+
+	result, err := pi.MarshalYAMLInlineWithContext(nil)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
