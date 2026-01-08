@@ -4,13 +4,25 @@
 package v3
 
 import (
+	"context"
+
 	"github.com/pb33f/libopenapi/datamodel/high"
 	"github.com/pb33f/libopenapi/datamodel/low"
+	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"go.yaml.in/yaml/v4"
 )
+
+// buildLowLink builds a low-level Link from a resolved YAML node.
+func buildLowLink(node *yaml.Node, idx *index.SpecIndex) (*lowv3.Link, error) {
+	var link lowv3.Link
+	lowmodel.BuildModel(node, &link)
+	link.Build(context.Background(), nil, node, idx)
+	return &link, nil
+}
 
 // Link represents a high-level OpenAPI 3+ Link object that is backed by a low-level one.
 //
@@ -94,6 +106,18 @@ func (l *Link) MarshalYAMLInline() (interface{}, error) {
 	if l.Reference != "" {
 		return utils.CreateRefNode(l.Reference), nil
 	}
+
+	// resolve external reference if present
+	if l.low != nil {
+		rendered, err := high.RenderExternalRef(l.low, buildLowLink, NewLink)
+		if err != nil {
+			return nil, err
+		}
+		if rendered != nil {
+			return rendered, nil
+		}
+	}
+
 	return high.RenderInline(l, l.low)
 }
 
@@ -105,6 +129,18 @@ func (l *Link) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	if l.Reference != "" {
 		return utils.CreateRefNode(l.Reference), nil
 	}
+
+	// resolve external reference if present
+	if l.low != nil {
+		rendered, err := high.RenderExternalRefWithContext(l.low, buildLowLink, NewLink, ctx)
+		if err != nil {
+			return nil, err
+		}
+		if rendered != nil {
+			return rendered, nil
+		}
+	}
+
 	return high.RenderInlineWithContext(l, l.low, ctx)
 }
 

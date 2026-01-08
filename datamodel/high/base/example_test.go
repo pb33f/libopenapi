@@ -263,3 +263,36 @@ func TestExample_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
+
+func TestBuildLowExample_Success(t *testing.T) {
+	yml := `summary: A test example
+description: This is a test
+value:
+  name: test`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowExample(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "A test example", result.Summary.Value)
+}
+
+func TestBuildLowExample_BuildNeverErrors(t *testing.T) {
+	// Example.Build never returns an error (no error return paths in the Build method)
+	// This test verifies the success path
+	yml := `summary: test
+externalValue: https://example.com/example.json`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowExample(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}

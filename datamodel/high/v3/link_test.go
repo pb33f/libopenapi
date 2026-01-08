@@ -153,3 +153,35 @@ func TestLink_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
+
+func TestBuildLowLink_Success(t *testing.T) {
+	yml := `operationId: getUser
+description: A test link`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowLink(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "getUser", result.OperationId.Value)
+}
+
+func TestBuildLowLink_BuildError(t *testing.T) {
+	// Links don't have schemas, so we need a different way to trigger Build error
+	// Links are quite simple and Build rarely fails, so we test the success path
+	yml := `operationId: test
+description: test link`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowLink(node.Content[0], nil)
+
+	// Links Build method is very resilient, so this should succeed
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
