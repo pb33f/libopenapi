@@ -370,3 +370,45 @@ func TestParameter_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
+
+func TestBuildLowParameter_Success(t *testing.T) {
+	// Test the success path of buildLowParameter
+	yml := `name: testParam
+in: query
+description: A test parameter
+required: true`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowParameter(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "testParam", result.Name.Value)
+	assert.Equal(t, "query", result.In.Value)
+}
+
+func TestBuildLowParameter_BuildError(t *testing.T) {
+	// Create a parameter with a schema that has an unresolvable $ref
+	// This triggers an error in ExtractSchema during Build
+	yml := `name: test
+in: query
+schema:
+  $ref: '#/components/schemas/DoesNotExist'`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	// Create an empty index - the ref won't be found
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&node, config)
+
+	result, err := buildLowParameter(node.Content[0], idx)
+
+	// The schema extraction should fail because the ref doesn't exist
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
