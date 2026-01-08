@@ -1,0 +1,20 @@
+400_unexpected_request_body:
+  description: Unexpected request body provided.
+  content:
+    application/json:
+      schema:
+        additionalProperties: false
+        properties:
+          message:
+            type: string
+            default: Unexpected request body provided.
+403_permission_denied:
+  description: None or insufficient credentials provided.
+  content:
+    application/json:
+      schema:
+        additionalProperties: false
+        properties:
+          message:
+            type: string
+            default: Permission denied.

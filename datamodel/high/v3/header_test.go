@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -197,4 +198,37 @@ func TestHeader_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	yamlNode, ok := node.(*yaml.Node)
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
+func TestBuildLowHeader_Success(t *testing.T) {
+	yml := `description: A test header
+required: true`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowHeader(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "A test header", result.Description.Value)
+}
+
+func TestBuildLowHeader_BuildError(t *testing.T) {
+	yml := `description: test
+schema:
+  $ref: '#/components/schemas/DoesNotExist'`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&node, config)
+
+	result, err := buildLowHeader(node.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
 }

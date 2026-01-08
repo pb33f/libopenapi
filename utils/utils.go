@@ -698,14 +698,36 @@ var (
 	bracketNameExp = regexp.MustCompile(`^(\w+)\['?([\w/]+)'?]$`)
 )
 
-// isPathChar checks if a string contains only alphanumeric, underscore, or backslash characters
-// This is an optimized replacement for the pathCharExp regex
+// isPathChar checks if a string is valid for JSONPath dot notation.
+// returns true only if the string contains only alphanumeric, underscore, or backslash characters
+// and does not start with a digit (unless it's a pure integer, which is handled separately).
+// jsonPath requires bracket notation for property names starting with digits like "403_permission_denied".
+// this is an optimized replacement for the pathCharExp regex.
 func isPathChar(s string) bool {
+	if len(s) == 0 {
+		return false
+	}
+
+	firstChar := s[0]
+	startsWithDigit := firstChar >= '0' && firstChar <= '9'
+	allDigits := startsWithDigit
+
+	// single pass: validate characters and track if all are digits
 	for _, r := range s {
 		if !((r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '\\') {
 			return false
 		}
+		if allDigits && (r < '0' || r > '9') {
+			allDigits = false
+		}
 	}
+
+	// if starts with digit but not pure integer, requires bracket notation
+	// property names like "403_permission_denied" must use bracket notation
+	if startsWithDigit && !allDigits {
+		return false
+	}
+
 	return true
 }
 

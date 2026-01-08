@@ -222,3 +222,41 @@ func TestResponse_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
+
+func TestBuildLowResponse_Success(t *testing.T) {
+	yml := `description: A successful response
+content:
+  application/json:
+    schema:
+      type: object`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	result, err := buildLowResponse(node.Content[0], nil)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, "A successful response", result.Description.Value)
+}
+
+func TestBuildLowResponse_BuildError(t *testing.T) {
+	yml := `description: test
+content:
+  application/json:
+    schema:
+      $ref: '#/components/schemas/DoesNotExist'`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	assert.NoError(t, err)
+
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&node, config)
+
+	result, err := buildLowResponse(node.Content[0], idx)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+}
