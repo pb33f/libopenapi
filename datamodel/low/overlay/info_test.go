@@ -132,3 +132,116 @@ func TestInfo_FindExtension_NotFound(t *testing.T) {
 	ext := info.FindExtension("x-nonexistent")
 	assert.Nil(t, ext)
 }
+
+func TestInfo_Build_WithDescription(t *testing.T) {
+	yml := `title: My Overlay
+version: 1.0.0
+description: This is a **markdown** description of the overlay`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	var info Info
+	err = low.BuildModel(node.Content[0], &info)
+	require.NoError(t, err)
+
+	err = info.Build(context.Background(), nil, node.Content[0], nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, "My Overlay", info.Title.Value)
+	assert.Equal(t, "1.0.0", info.Version.Value)
+	assert.Equal(t, "This is a **markdown** description of the overlay", info.Description.Value)
+}
+
+func TestInfo_Build_EmptyDescription(t *testing.T) {
+	yml := `title: Overlay
+description: ""`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	var info Info
+	err = low.BuildModel(node.Content[0], &info)
+	require.NoError(t, err)
+
+	err = info.Build(context.Background(), nil, node.Content[0], nil)
+	require.NoError(t, err)
+
+	assert.Equal(t, "Overlay", info.Title.Value)
+	assert.Equal(t, "", info.Description.Value)
+	assert.False(t, info.Description.IsEmpty())
+}
+
+func TestInfo_Build_NoDescription(t *testing.T) {
+	yml := `title: Overlay
+version: 1.0.0`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	var info Info
+	err = low.BuildModel(node.Content[0], &info)
+	require.NoError(t, err)
+
+	err = info.Build(context.Background(), nil, node.Content[0], nil)
+	require.NoError(t, err)
+
+	assert.True(t, info.Description.IsEmpty())
+}
+
+func TestInfo_Hash_WithDescription(t *testing.T) {
+	yml1 := `title: Overlay
+version: 1.0.0
+description: Same description`
+
+	yml2 := `title: Overlay
+version: 1.0.0
+description: Same description`
+
+	yml3 := `title: Overlay
+version: 1.0.0
+description: Different description`
+
+	var node1, node2, node3 yaml.Node
+	_ = yaml.Unmarshal([]byte(yml1), &node1)
+	_ = yaml.Unmarshal([]byte(yml2), &node2)
+	_ = yaml.Unmarshal([]byte(yml3), &node3)
+
+	var info1, info2, info3 Info
+	_ = low.BuildModel(node1.Content[0], &info1)
+	_ = info1.Build(context.Background(), nil, node1.Content[0], nil)
+
+	_ = low.BuildModel(node2.Content[0], &info2)
+	_ = info2.Build(context.Background(), nil, node2.Content[0], nil)
+
+	_ = low.BuildModel(node3.Content[0], &info3)
+	_ = info3.Build(context.Background(), nil, node3.Content[0], nil)
+
+	assert.Equal(t, info1.Hash(), info2.Hash())
+	assert.NotEqual(t, info1.Hash(), info3.Hash())
+}
+
+func TestInfo_Hash_DescriptionAffectsHash(t *testing.T) {
+	ymlWithDesc := `title: Overlay
+version: 1.0.0
+description: Has description`
+
+	ymlWithoutDesc := `title: Overlay
+version: 1.0.0`
+
+	var node1, node2 yaml.Node
+	_ = yaml.Unmarshal([]byte(ymlWithDesc), &node1)
+	_ = yaml.Unmarshal([]byte(ymlWithoutDesc), &node2)
+
+	var info1, info2 Info
+	_ = low.BuildModel(node1.Content[0], &info1)
+	_ = info1.Build(context.Background(), nil, node1.Content[0], nil)
+
+	_ = low.BuildModel(node2.Content[0], &info2)
+	_ = info2.Build(context.Background(), nil, node2.Content[0], nil)
+
+	assert.NotEqual(t, info1.Hash(), info2.Hash())
+}

@@ -118,3 +118,103 @@ func TestInfo_MarshalYAML_Empty(t *testing.T) {
 	require.NoError(t, err)
 	assert.NotNil(t, result)
 }
+
+func TestNewInfo_WithDescription(t *testing.T) {
+	yml := `title: My Overlay
+version: 1.0.0
+description: This is a **markdown** description`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	var lowInfo lowoverlay.Info
+	err = low.BuildModel(node.Content[0], &lowInfo)
+	require.NoError(t, err)
+	err = lowInfo.Build(context.Background(), nil, node.Content[0], nil)
+	require.NoError(t, err)
+
+	highInfo := NewInfo(&lowInfo)
+
+	assert.Equal(t, "My Overlay", highInfo.Title)
+	assert.Equal(t, "1.0.0", highInfo.Version)
+	assert.Equal(t, "This is a **markdown** description", highInfo.Description)
+}
+
+func TestNewInfo_EmptyDescription(t *testing.T) {
+	yml := `title: Overlay`
+
+	var node yaml.Node
+	err := yaml.Unmarshal([]byte(yml), &node)
+	require.NoError(t, err)
+
+	var lowInfo lowoverlay.Info
+	err = low.BuildModel(node.Content[0], &lowInfo)
+	require.NoError(t, err)
+	err = lowInfo.Build(context.Background(), nil, node.Content[0], nil)
+	require.NoError(t, err)
+
+	highInfo := NewInfo(&lowInfo)
+
+	assert.Equal(t, "Overlay", highInfo.Title)
+	assert.Empty(t, highInfo.Description)
+}
+
+func TestInfo_MarshalYAML_WithDescription(t *testing.T) {
+	yml := `title: Test
+version: 2.0.0
+description: A long description here`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	var lowInfo lowoverlay.Info
+	_ = low.BuildModel(node.Content[0], &lowInfo)
+	_ = lowInfo.Build(context.Background(), nil, node.Content[0], nil)
+
+	highInfo := NewInfo(&lowInfo)
+
+	result, err := highInfo.MarshalYAML()
+	require.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestInfo_MarshalYAML_OmitsEmptyDescription(t *testing.T) {
+	yml := `title: Test
+version: 1.0.0`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	var lowInfo lowoverlay.Info
+	_ = low.BuildModel(node.Content[0], &lowInfo)
+	_ = lowInfo.Build(context.Background(), nil, node.Content[0], nil)
+
+	highInfo := NewInfo(&lowInfo)
+
+	rendered, err := highInfo.Render()
+	require.NoError(t, err)
+	// Should NOT contain description key when empty
+	assert.NotContains(t, string(rendered), "description:")
+}
+
+func TestInfo_Render_WithDescription(t *testing.T) {
+	yml := `title: My Overlay
+version: 1.0.0
+description: This overlay adds documentation`
+
+	var node yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &node)
+
+	var lowInfo lowoverlay.Info
+	_ = low.BuildModel(node.Content[0], &lowInfo)
+	_ = lowInfo.Build(context.Background(), nil, node.Content[0], nil)
+
+	highInfo := NewInfo(&lowInfo)
+
+	rendered, err := highInfo.Render()
+	require.NoError(t, err)
+	assert.Contains(t, string(rendered), "title: My Overlay")
+	assert.Contains(t, string(rendered), "version: 1.0.0")
+	assert.Contains(t, string(rendered), "description: This overlay adds documentation")
+}
