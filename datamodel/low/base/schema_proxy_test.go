@@ -5,7 +5,6 @@ package base
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"os"
 	"testing"
@@ -34,8 +33,9 @@ description: something`
 	assert.NoError(t, err)
 	assert.Equal(t, "value", sch.GetContext().Value("key"))
 
-	assert.Equal(t, "be79763a610e8016259d370c7f286eb747ee2ada7add3d21634ba96f8aa99838",
-		low.GenerateHashString(&sch))
+	// maphash uses random seed per process, so test consistency, not specific values
+	hash1 := low.GenerateHashString(&sch)
+	assert.NotEmpty(t, hash1)
 
 	assert.Equal(t, "something", sch.Schema().Description.GetValue())
 	assert.Empty(t, sch.GetReference())
@@ -45,9 +45,9 @@ description: something`
 	sch.SetReference("coffee", nil)
 	assert.Equal(t, "coffee", sch.GetReference())
 
-	// already rendered, should spit out the same
-	assert.Equal(t, "be79763a610e8016259d370c7f286eb747ee2ada7add3d21634ba96f8aa99838",
-		low.GenerateHashString(&sch))
+	// already rendered, should spit out the same hash
+	hash2 := low.GenerateHashString(&sch)
+	assert.Equal(t, hash1, hash2)
 
 	assert.Equal(t, 1, orderedmap.Len(sch.Schema().GetExtensions()))
 	assert.Nil(t, sch.GetIndex())
@@ -64,8 +64,8 @@ func TestSchemaProxy_Build_CheckRef(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, sch.IsReference())
 	assert.Equal(t, "wat", sch.GetReference())
-	assert.Equal(t, "f00a787f7492a95e165b470702f4fe9373583fbdc025b2c8bdf0262cc48fcff4",
-		low.GenerateHashString(&sch))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&sch))
 }
 
 func TestSchemaProxy_Build_HashInline(t *testing.T) {
@@ -79,8 +79,8 @@ func TestSchemaProxy_Build_HashInline(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, sch.IsReference())
 	assert.NotNil(t, sch.Schema())
-	assert.Equal(t, "5a5bb0d7677da2b3f5fa37fe78786e124568729675d0933b2a2982cd1410c14f",
-		low.GenerateHashString(&sch))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&sch))
 }
 
 func TestSchemaProxy_Build_UsingMergeNodes(t *testing.T) {
@@ -171,7 +171,8 @@ func TestSchemaProxy_Build_HashFail(t *testing.T) {
 	idx := index.NewSpecIndexWithConfig(nil, &index.SpecIndexConfig{Logger: logger})
 	sp.idx = idx
 	v := sp.Hash()
-	assert.Equal(t, [32]byte{}, v)
+	// Now returns uint64(0) instead of [32]byte{} for empty/error cases
+	assert.Equal(t, uint64(0), v)
 }
 
 func TestSchemaProxy_AddNodePassthrough(t *testing.T) {
@@ -210,8 +211,8 @@ func TestSchemaProxy_HashRef(t *testing.T) {
 	sp.rendered = &Schema{}
 
 	v := sp.Hash()
-	y := fmt.Sprintf("%x", v)
-	assert.Equal(t, "811eb81b9d11d65a36c53c3ebdb738ee303403cb79d781ccf4b40764e0a9d12a", y)
+	// maphash uses random seed per process, so just test non-zero
+	assert.NotEqual(t, uint64(0), v)
 }
 
 func TestSchemaProxy_HashRef_NoRender(t *testing.T) {
@@ -235,8 +236,8 @@ func TestSchemaProxy_HashRef_NoRender(t *testing.T) {
 	sp.idx = idx
 
 	v := sp.Hash()
-	y := fmt.Sprintf("%x", v)
-	assert.Equal(t, "7ebbb597617277b740e49886cf332de3de8c47baf1da4931cc59ff71944f81d9", y)
+	// maphash uses random seed per process, so just test non-zero
+	assert.NotEqual(t, uint64(0), v)
 }
 
 func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
@@ -256,7 +257,8 @@ func TestSchemaProxy_QuickHash_Empty(t *testing.T) {
 	rolo.SetRootIndex(idx)
 
 	v := sp.Hash()
-	assert.Equal(t, [32]byte{}, v)
+	// Now returns uint64(0) instead of [32]byte{} for empty/error cases
+	assert.Equal(t, uint64(0), v)
 }
 
 func TestSchemaProxy_TestRolodexHasId(t *testing.T) {
@@ -276,8 +278,8 @@ func TestSchemaProxy_TestRolodexHasId(t *testing.T) {
 	assert.NoError(t, err)
 	assert.False(t, sch.IsReference())
 	assert.NotNil(t, sch.Schema())
-	assert.Equal(t, "5a5bb0d7677da2b3f5fa37fe78786e124568729675d0933b2a2982cd1410c14f",
-		low.GenerateHashString(&sch))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&sch))
 }
 
 func TestSchemaProxy_Hash_UseSchemaQuickHash_NonCircular(t *testing.T) {

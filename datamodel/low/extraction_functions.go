@@ -87,8 +87,8 @@ func HashExtensions(ext *orderedmap.Map[KeyReference[string], ValueReference[*ya
 	f := []string{}
 
 	for e, node := range orderedmap.SortAlpha(ext).FromOldest() {
-		b, _ := yaml.Marshal(node.GetValue())
-		f = append(f, fmt.Sprintf("%s-%x", e.Value, sha256.Sum256([]byte(b))))
+		// Use content-only hash (not index.HashNode which includes line/column)
+		f = append(f, fmt.Sprintf("%s-%s", e.Value, hashYamlNodeFast(node.GetValue())))
 	}
 
 	return f
@@ -952,9 +952,9 @@ func GenerateHashString(v any) string {
 
 	if h, ok := v.(Hashable); ok {
 		if h != nil {
-			// Use hex.EncodeToString which is more efficient than fmt.Sprintf
+			// Format uint64 hash as hex string
 			hash := h.Hash()
-			hashStr = hex.EncodeToString(hash[:])
+			hashStr = strconv.FormatUint(hash, 16)
 		}
 	} else if n, ok := v.(*yaml.Node); ok {
 		// Fast path for common YAML node types to avoid marshaling
