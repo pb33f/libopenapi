@@ -5,8 +5,8 @@ package v3
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"hash/maphash"
 	"strings"
 	"sync"
 
@@ -117,21 +117,19 @@ func (p *Paths) Build(ctx context.Context, keyNode, root *yaml.Node, idx *index.
 	return nil
 }
 
-// Hash will return a consistent SHA256 Hash of the PathItem object
-func (p *Paths) Hash() [32]byte {
-	// Use string builder pool
-	sb := low.GetStringBuilder()
-	defer low.PutStringBuilder(sb)
-
-	for _, hash := range low.AppendMapHashes(nil, p.PathItems) {
-		sb.WriteString(hash)
-		sb.WriteByte('|')
-	}
-	for _, ext := range low.HashExtensions(p.Extensions) {
-		sb.WriteString(ext)
-		sb.WriteByte('|')
-	}
-	return sha256.Sum256([]byte(sb.String()))
+// Hash will return a consistent Hash of the Paths object
+func (p *Paths) Hash() uint64 {
+	return low.WithHasher(func(h *maphash.Hash) uint64 {
+		for _, hash := range low.AppendMapHashes(nil, p.PathItems) {
+			h.WriteString(hash)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		for _, ext := range low.HashExtensions(p.Extensions) {
+			h.WriteString(ext)
+			h.WriteByte(low.HASH_PIPE)
+		}
+		return h.Sum64()
+	})
 }
 
 func extractPathItemsMap(ctx context.Context, root *yaml.Node, idx *index.SpecIndex) (*orderedmap.Map[low.KeyReference[string], low.ValueReference[*PathItem]], error) {

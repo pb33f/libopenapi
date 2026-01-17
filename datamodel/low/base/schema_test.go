@@ -2,7 +2,6 @@ package base
 
 import (
 	"context"
-	"crypto/sha256"
 	"sync"
 	"testing"
 	timeStd "time"
@@ -1650,8 +1649,8 @@ func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsTrue(t *testing.T) {
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.IsB())
 	assert.True(t, res.Value.Schema().UnevaluatedProperties.Value.B)
 
-	assert.Equal(t, "571bd1853c22393131e2dcadce86894da714ec14968895c8b7ed18154b2be8cd",
-		low.GenerateHashString(res.Value.Schema().UnevaluatedProperties.Value))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(res.Value.Schema().UnevaluatedProperties.Value))
 }
 
 func TestSchema_UnevaluatedPropertiesAsBool_DefinedAsFalse(t *testing.T) {
@@ -2607,11 +2606,8 @@ func TestSchemaDynamicValue_Hash_IsA(t *testing.T) {
 
 	hash := value.Hash()
 
-	// verify it uses the A value (string)
-	expectedHashString := low.GenerateHashString("test value")
-	expectedHash := sha256.Sum256([]byte(expectedHashString))
-
-	assert.Equal(t, expectedHash, hash)
+	// maphash uses random seed per process, just verify it's non-zero
+	assert.NotEqual(t, uint64(0), hash)
 	assert.True(t, value.IsA())
 	assert.False(t, value.IsB())
 }
@@ -2667,11 +2663,8 @@ func TestSchemaDynamicValue_Hash_IsB(t *testing.T) {
 
 	hash := value.Hash()
 
-	// verify it uses the B value (int)
-	expectedHashString := low.GenerateHashString(42)
-	expectedHash := sha256.Sum256([]byte(expectedHashString))
-
-	assert.Equal(t, expectedHash, hash)
+	// maphash uses random seed per process, just verify it's non-zero
+	assert.NotEqual(t, uint64(0), hash)
 	assert.False(t, value.IsA())
 	assert.True(t, value.IsB())
 }

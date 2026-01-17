@@ -4,7 +4,6 @@
 package low
 
 import (
-	"crypto/sha256"
 	"fmt"
 	"strings"
 	"testing"
@@ -553,8 +552,10 @@ func TestGetCircularReferenceResult_NothingFound(t *testing.T) {
 }
 
 func TestHashToString(t *testing.T) {
-	assert.Equal(t, "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
-		HashToString(sha256.Sum256([]byte("12345"))))
+	// Test with a known uint64 value
+	hash := uint64(0x123456789abcdef0)
+	result := HashToString(hash)
+	assert.Equal(t, "123456789abcdef0", result)
 }
 
 func TestReference_IsReference(t *testing.T) {

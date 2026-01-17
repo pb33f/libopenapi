@@ -20,8 +20,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/pb33f/libopenapi/datamodel/low"
-
 	"github.com/pb33f/libopenapi"
 	"github.com/pb33f/libopenapi/datamodel"
 	"github.com/pb33f/libopenapi/datamodel/high/base"
@@ -575,8 +573,8 @@ func TestBundleDocument_BundleBytesComposed_NestedFiles(t *testing.T) {
 		assert.Equal(t, len1, len2)
 
 		// hash the two files and ensure they match
-		hash1 := low.HashToString(sha256.Sum256(preBundled))
-		hash2 := low.HashToString(sha256.Sum256(bundledBytes))
+		hash1 := sha256.Sum256(preBundled)
+		hash2 := sha256.Sum256(bundledBytes)
 		assert.Equal(t, hash1, hash2)
 	}
 }

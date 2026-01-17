@@ -65,8 +65,8 @@ x-milk: please`
 	assert.NotNil(t, n.GetRootNode())
 	assert.Nil(t, n.GetKeyNode())
 
-	assert.Equal(t, "45cf8d044a079a416a22ef0b1ff6947d0eca31ae39170a2493bae4d845df663b",
-		low.GenerateHashString(&n))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&n))
 
 	assert.Equal(t, "tea", n.Type.Value)
 	assert.Equal(t, "cake", n.Description.Value)

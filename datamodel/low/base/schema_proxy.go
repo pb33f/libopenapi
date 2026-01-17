@@ -5,9 +5,9 @@ package base
 
 import (
 	"context"
-	"crypto/sha256"
 	"errors"
 	"fmt"
+	"hash/maphash"
 	"log/slog"
 	"sync"
 
@@ -58,7 +58,7 @@ type SchemaProxy struct {
 	rendered       *Schema
 	buildError     error
 	ctx            context.Context
-	cachedHash     *[32]byte  // Cache computed hash to avoid recalculation
+	cachedHash     *uint64    // Cache computed hash to avoid recalculation
 	TransformedRef *yaml.Node // Original node that contained the ref before transformation
 	*low.NodeMap
 }
@@ -183,20 +183,23 @@ func (sp *SchemaProxy) GetValueNode() *yaml.Node {
 	return sp.vn
 }
 
-// Hash will return a consistent SHA256 Hash of the SchemaProxy object (it will resolve it)
-func (sp *SchemaProxy) Hash() [32]byte {
+// Hash will return a consistent Hash of the SchemaProxy object (it will resolve it)
+func (sp *SchemaProxy) Hash() uint64 {
 	if sp.cachedHash != nil {
 		return *sp.cachedHash
 	}
 
-	var hash [32]byte
+	var hash uint64
 
 	if sp.rendered != nil {
 		if !sp.IsReference() {
 			hash = sp.rendered.Hash()
 		} else {
 			// For references, hash the reference value
-			hash = sha256.Sum256([]byte(sp.GetReference()))
+			hash = low.WithHasher(func(h *maphash.Hash) uint64 {
+				h.WriteString(sp.GetReference())
+				return h.Sum64()
+			})
 		}
 	} else {
 		if !sp.IsReference() {
@@ -223,7 +226,7 @@ func (sp *SchemaProxy) Hash() [32]byte {
 						logger.Warn("SchemaProxy.Hash() unable to complete hash: ", "error", bErr.Error())
 					}
 				}
-				hash = [32]byte{}
+				hash = 0
 			}
 		} else {
 			// Handle UseSchemaQuickHash case for references
@@ -234,11 +237,17 @@ func (sp *SchemaProxy) Hash() [32]byte {
 					}
 					hash = sp.rendered.QuickHash() // quick hash uses a cache to keep things fast.
 				} else {
-					hash = sha256.Sum256([]byte(sp.GetReference()))
+					hash = low.WithHasher(func(h *maphash.Hash) uint64 {
+						h.WriteString(sp.GetReference())
+						return h.Sum64()
+					})
 				}
 			} else {
 				// Hash reference value only, do not resolve!
-				hash = sha256.Sum256([]byte(sp.GetReference()))
+				hash = low.WithHasher(func(h *maphash.Hash) uint64 {
+					h.WriteString(sp.GetReference())
+					return h.Sum64()
+				})
 			}
 		}
 	}

@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"hash/maphash"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -1519,15 +1520,18 @@ type test_fresh struct {
 	thang *bool
 }
 
-func (f test_fresh) Hash() [32]byte {
-	var data []string
-	if f.val != "" {
-		data = append(data, f.val)
-	}
-	if f.thang != nil {
-		data = append(data, fmt.Sprintf("%v", *f.thang))
-	}
-	return sha256.Sum256([]byte(strings.Join(data, "|")))
+func (f test_fresh) Hash() uint64 {
+	return WithHasher(func(h *maphash.Hash) uint64 {
+		if f.val != "" {
+			h.WriteString(f.val)
+			h.WriteByte(HASH_PIPE)
+		}
+		if f.thang != nil {
+			HashBool(h, *f.thang)
+			h.WriteByte(HASH_PIPE)
+		}
+		return h.Sum64()
+	})
 }
 
 func TestAreEqual(t *testing.T) {
@@ -1543,28 +1547,44 @@ func TestAreEqual(t *testing.T) {
 }
 
 func TestGenerateHashString(t *testing.T) {
-	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-		GenerateHashString(test_fresh{val: "hello"}))
+	// Note: maphash uses a random seed per process, so we can't test for specific values.
+	// Instead, we test for consistency and properties.
 
-	assert.Equal(t, "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-		GenerateHashString("hello"))
+	// Hashable produces consistent hash
+	hash1 := GenerateHashString(test_fresh{val: "hello"})
+	hash2 := GenerateHashString(test_fresh{val: "hello"})
+	assert.Equal(t, hash1, hash2)
+	assert.NotEmpty(t, hash1)
 
-	assert.Equal(t, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-		GenerateHashString(""))
+	// String produces a hash (uses maphash for primitives)
+	strHash := GenerateHashString("hello")
+	assert.NotEmpty(t, strHash)
 
-	assert.Equal(t, "",
-		GenerateHashString(nil))
+	// Empty string still produces a hash
+	emptyHash := GenerateHashString("")
+	assert.NotEmpty(t, emptyHash)
 
-	assert.Equal(t, "a8468424300fc9f9206c220da9683b8b8e70474586e28a9002e740cd687b74df", GenerateHashString(utils.CreateStringNode("test")))
+	// Nil returns empty string
+	assert.Equal(t, "", GenerateHashString(nil))
+
+	// YAML node produces a hash
+	nodeHash := GenerateHashString(utils.CreateStringNode("test"))
+	assert.NotEmpty(t, nodeHash)
 }
 
 func TestGenerateHashString_Pointer(t *testing.T) {
+	// Note: maphash uses a random seed per process, so we can't test for specific values.
 	val := true
-	assert.Equal(t, "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
-		GenerateHashString(test_fresh{thang: &val}))
 
-	assert.Equal(t, "b5bea41b6c623f7c09f1bf24dcae58ebab3c0cdd90ad966bc43a45b44867e12b",
-		GenerateHashString(&val))
+	// Hashable with boolean produces consistent hash
+	hash1 := GenerateHashString(test_fresh{thang: &val})
+	hash2 := GenerateHashString(test_fresh{thang: &val})
+	assert.Equal(t, hash1, hash2)
+	assert.NotEmpty(t, hash1)
+
+	// Boolean pointer produces a hash
+	boolHash := GenerateHashString(&val)
+	assert.NotEmpty(t, boolHash)
 }
 
 func TestSetReference(t *testing.T) {
@@ -2119,45 +2139,40 @@ func TestArray_NotRefNotArray(t *testing.T) {
 }
 
 func TestHashExtensions(t *testing.T) {
-	type args struct {
-		ext *orderedmap.Map[KeyReference[string], ValueReference[*yaml.Node]]
-	}
-	tests := []struct {
-		name string
-		args args
-		want []string
-	}{
-		{
-			name: "empty",
-			args: args{
-				ext: orderedmap.New[KeyReference[string], ValueReference[*yaml.Node]](),
+	// Test empty extensions
+	t.Run("empty", func(t *testing.T) {
+		ext := orderedmap.New[KeyReference[string], ValueReference[*yaml.Node]]()
+		hash := HashExtensions(ext)
+		assert.Equal(t, []string{}, hash)
+	})
+
+	// Test hashing extensions - check structure, not specific values
+	// (maphash uses random seed per process)
+	t.Run("hashes extensions", func(t *testing.T) {
+		ext := orderedmap.ToOrderedMap(map[KeyReference[string]]ValueReference[*yaml.Node]{
+			{Value: "x-burger"}: {
+				Value: utils.CreateStringNode("yummy"),
 			},
-			want: []string{},
-		},
-		{
-			name: "hashes extensions",
-			args: args{
-				ext: orderedmap.ToOrderedMap(map[KeyReference[string]]ValueReference[*yaml.Node]{
-					{Value: "x-burger"}: {
-						Value: utils.CreateStringNode("yummy"),
-					},
-					{Value: "x-car"}: {
-						Value: utils.CreateStringNode("ford"),
-					},
-				}),
+			{Value: "x-car"}: {
+				Value: utils.CreateStringNode("ford"),
 			},
-			want: []string{
-				"x-burger-2a296977a4572521773eb7e7773cc054fae3e8589511ce9bf90cec7dd93d016a",
-				"x-car-7d3aa6a5c79cdb0c2585daed714fa0936a18e6767b2dcc804992a90f6d0b8f5e",
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hash := HashExtensions(tt.args.ext)
-			assert.Equal(t, tt.want, hash)
 		})
-	}
+		hash := HashExtensions(ext)
+
+		// Should have 2 entries
+		assert.Len(t, hash, 2)
+
+		// Each should have format "x-name-hexhash"
+		for _, h := range hash {
+			assert.True(t, strings.HasPrefix(h, "x-"), "should have x- prefix")
+			parts := strings.Split(h, "-")
+			assert.GreaterOrEqual(t, len(parts), 2, "should have name-hash format")
+		}
+
+		// Should be consistent (same input = same output)
+		hash2 := HashExtensions(ext)
+		assert.Equal(t, hash, hash2)
+	})
 }
 
 func TestValueToString(t *testing.T) {
@@ -3019,8 +3034,8 @@ func TestGenerateHashString_EmptyHashStr(t *testing.T) {
 	// Hit the hashStr == "" condition in cache storage check (line ~1014)
 	ClearHashCache()
 	result := GenerateHashString(&testHashable{})
-	// Empty hash should not be cached, but should return the empty hex string
-	assert.Equal(t, "0000000000000000000000000000000000000000000000000000000000000000", result)
+	// testHashable returns 0, which should convert to "0"
+	assert.Equal(t, "0", result)
 }
 
 func TestExtractMapExtensions_RefError(t *testing.T) {
@@ -3184,8 +3199,8 @@ components:
 // Custom Hashable implementation for testing nil hash
 type testHashable struct{}
 
-func (t testHashable) Hash() [32]byte {
-	return [32]byte{} // All zeros - empty hash
+func (t testHashable) Hash() uint64 {
+	return 0 // Zero hash for testing
 }
 
 func TestGenerateHashString_EdgeCaseCoverage(t *testing.T) {

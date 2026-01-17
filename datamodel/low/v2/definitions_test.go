@@ -61,8 +61,8 @@ func TestDefinitions_Hash(t *testing.T) {
 	assert.NoError(t, err)
 
 	_ = n.Build(context.Background(), nil, idxNode.Content[0], idx)
-	assert.Equal(t, "e32477b3f3c2dc0b95126b51a34564ad19d7d0b6b43cde4783fae4c4e04dfdf6",
-		low.GenerateHashString(&n))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&n))
 }
 
 func TestDefinitions_Responses_Build_Error(t *testing.T) {
