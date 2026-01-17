@@ -2,8 +2,8 @@ package base
 
 import (
 	"context"
-	"crypto/sha256"
 	"fmt"
+	"hash/maphash"
 	"sort"
 	"strconv"
 	"sync"
@@ -43,14 +43,15 @@ func (s *SchemaDynamicValue[A, B]) IsB() bool {
 }
 
 // Hash will generate a stable hash of the SchemaDynamicValue
-func (s *SchemaDynamicValue[A, B]) Hash() [32]byte {
-	var hash string
-	if s.IsA() {
-		hash = low.GenerateHashString(s.A)
-	} else {
-		hash = low.GenerateHashString(s.B)
-	}
-	return sha256.Sum256([]byte(hash))
+func (s *SchemaDynamicValue[A, B]) Hash() uint64 {
+	return low.WithHasher(func(h *maphash.Hash) uint64 {
+		if s.IsA() {
+			h.WriteString(low.GenerateHashString(s.A))
+		} else {
+			h.WriteString(low.GenerateHashString(s.B))
+		}
+		return h.Sum64()
+	})
 }
 
 // Schema represents a JSON Schema that support Swagger, OpenAPI 3 and OpenAPI 3.1
@@ -156,7 +157,7 @@ type Schema struct {
 	RootNode *yaml.Node
 	index    *index.SpecIndex
 	context  context.Context
-	hashed   [32]byte   // quick hash of the schema, used for quick equality checking
+	hashed   uint64     // quick hash of the schema, used for quick equality checking
 	hashLock sync.Mutex // lock to prevent concurrent hashing of the same schema
 	*low.Reference
 	low.NodeMap
@@ -172,16 +173,16 @@ func (s *Schema) GetContext() context.Context {
 	return s.context
 }
 
-// QuickHash will calculate a SHA256 hash from the values of the schema, however the hash is not very deep
+// QuickHash will calculate a hash from the values of the schema, however the hash is not very deep
 // and is used for quick equality checking, This method exists because a full hash could end up churning through
 // thousands of polymorphic references. With a quick hash, polymorphic properties are not included.
-func (s *Schema) QuickHash() [32]byte {
+func (s *Schema) QuickHash() uint64 {
 	return s.hash(true)
 }
 
-// Hash will calculate a SHA256 hash from the values of the schema, This allows equality checking against
+// Hash will calculate a hash from the values of the schema, This allows equality checking against
 // Schemas defined inside an OpenAPI document. The only way to know if a schema has changed, is to hash it.
-func (s *Schema) Hash() [32]byte {
+func (s *Schema) Hash() uint64 {
 	return s.hash(false)
 }
 
@@ -194,9 +195,9 @@ func (s *Schema) Hash() [32]byte {
 // The hash map means each schema is hashed once, and then the hash is reused for quick equality checking.
 var SchemaQuickHashMap sync.Map
 
-func (s *Schema) hash(quick bool) [32]byte {
+func (s *Schema) hash(quick bool) uint64 {
 	if s == nil {
-		return [32]byte{}
+		return 0
 	}
 
 	// create a key for the schema, this is used to quickly check if the schema has been hashed before, and prevent re-hashing.
@@ -218,7 +219,7 @@ func (s *Schema) hash(quick bool) [32]byte {
 	key := fmt.Sprintf("%s:%d:%d:%s", path, s.RootNode.Line, s.RootNode.Column, cfId)
 	if quick {
 		if v, ok := SchemaQuickHashMap.Load(key); ok {
-			if r, k := v.([32]byte); k {
+			if r, k := v.(uint64); k {
 				return r
 			}
 		}
@@ -620,7 +621,10 @@ func (s *Schema) hash(quick bool) [32]byte {
 		}
 	}
 
-	h := sha256.Sum256([]byte(sb.String()))
+	h := low.WithHasher(func(hasher *maphash.Hash) uint64 {
+		hasher.WriteString(sb.String())
+		return hasher.Sum64()
+	})
 	SchemaQuickHashMap.Store(key, h)
 	return h
 }

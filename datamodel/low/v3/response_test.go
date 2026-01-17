@@ -164,9 +164,8 @@ x-shoes: old`
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 
-	// check hash
-	assert.Equal(t, "9fc8294b7dcfc242fffe2586e10c9272fa2b9c828702a6b268ca68e8aa35cbbe",
-		low.GenerateHashString(&n))
+	// check hash - maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&n))
 
 	assert.Equal(t, 1, orderedmap.Len(n.FindResponseByCode("200").Value.GetExtensions()))
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))

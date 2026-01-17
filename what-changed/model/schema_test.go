@@ -2147,8 +2147,8 @@ components:
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
-	assert.Equal(t, "d998db65844824d9fe1c4b3fe13d9d969697a3f5353611dc7f2a6a158da77de1",
-		low.HashToString(changes.Changes[0].NewObject.(*base.Discriminator).Hash()))
+	// maphash uses random seed per process, just verify non-zero
+	assert.NotEqual(t, uint64(0), changes.Changes[0].NewObject.(*base.Discriminator).Hash())
 }
 
 func TestCompareSchemas_DiscriminatorRemove(t *testing.T) {
@@ -2181,8 +2181,8 @@ components:
 	assert.Equal(t, 1, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.DiscriminatorLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, "d998db65844824d9fe1c4b3fe13d9d969697a3f5353611dc7f2a6a158da77de1",
-		low.HashToString(changes.Changes[0].OriginalObject.(*base.Discriminator).Hash()))
+	// maphash uses random seed per process, just verify non-zero
+	assert.NotEqual(t, uint64(0), changes.Changes[0].OriginalObject.(*base.Discriminator).Hash())
 }
 
 func TestCompareSchemas_ExternalDocsChange(t *testing.T) {
@@ -2251,8 +2251,8 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectAdded, changes.Changes[0].ChangeType)
-	assert.Equal(t, "cc072505e1639fd745ccaf6d2d4188db0c0475d4e9a48a6b4d1b33a77183a882",
-		low.HashToString(changes.Changes[0].NewObject.(*base.ExternalDoc).Hash()))
+	// maphash uses random seed per process, just verify non-zero
+	assert.NotEqual(t, uint64(0), changes.Changes[0].NewObject.(*base.ExternalDoc).Hash())
 }
 
 func TestCompareSchemas_ExternalDocsRemove(t *testing.T) {
@@ -2285,8 +2285,8 @@ components:
 	assert.Equal(t, 0, changes.TotalBreakingChanges())
 	assert.Equal(t, v3.ExternalDocsLabel, changes.Changes[0].Property)
 	assert.Equal(t, ObjectRemoved, changes.Changes[0].ChangeType)
-	assert.Equal(t, "cc072505e1639fd745ccaf6d2d4188db0c0475d4e9a48a6b4d1b33a77183a882",
-		low.HashToString(changes.Changes[0].OriginalObject.(*base.ExternalDoc).Hash()))
+	// maphash uses random seed per process, just verify non-zero
+	assert.NotEqual(t, uint64(0), changes.Changes[0].OriginalObject.(*base.ExternalDoc).Hash())
 }
 
 func TestCompareSchemas_AddExtension(t *testing.T) {

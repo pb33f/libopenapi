@@ -36,18 +36,17 @@ variables:
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, n.GetRootNode())
-	assert.Equal(t, "0c2c833ff3934ac3a0351f56e0ed42e5ffee1d5a7856fb0278857701ef52d6ae",
-		low.GenerateHashString(&n))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&n))
 
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
 	assert.Equal(t, "high quality software for developers.", n.Description.Value)
 	assert.Equal(t, "hello", n.FindVariable("var1").Value.Default.Value)
 	assert.Equal(t, "a var", n.FindVariable("var1").Value.Description.Value)
 
-	// test var hash
+	// test var hash - maphash uses random seed per process, so just test non-empty
 	s := n.FindVariable("var1")
-	assert.Equal(t, "c58f2e9eb6548e9ea9c3bd6ca3ff1f6c5ba850cdb20eb6f362eba5520fc3a011",
-		low.GenerateHashString(s.Value))
+	assert.NotEmpty(t, low.GenerateHashString(s.Value))
 
 	assert.Equal(t, 1, orderedmap.Len(n.GetExtensions()))
 	assert.NotNil(t, n.GetContext())
@@ -84,8 +83,8 @@ variables:
 	err = n.Build(context.Background(), nil, idxNode.Content[0], idx)
 	assert.NoError(t, err)
 	assert.NotNil(t, n.GetRootNode())
-	assert.Equal(t, "841e49335ea4ae63b677544ae815f9605988f625d24fbaa0a1992ec97f71b00b",
-		low.GenerateHashString(&n))
+	// maphash uses random seed per process, so just test non-empty
+	assert.NotEmpty(t, low.GenerateHashString(&n))
 
 	assert.Equal(t, "https://pb33f.io", n.URL.Value)
 	assert.Equal(t, "high quality software for developers.", n.Description.Value)
@@ -100,10 +99,9 @@ variables:
 	assert.Equal(t, "allowMissing", variable_pair.Value.Value.Content[0].Value)
 	assert.Equal(t, "true", variable_pair.Value.Value.Content[1].Value)
 
-	// test var hash
+	// test var hash - maphash uses random seed per process, so just test non-empty
 	s := n.FindVariable("var1")
-	assert.Equal(t, "c58f2e9eb6548e9ea9c3bd6ca3ff1f6c5ba850cdb20eb6f362eba5520fc3a011",
-		low.GenerateHashString(s.Value))
+	assert.NotEmpty(t, low.GenerateHashString(s.Value))
 
 	assert.Equal(t, 0, orderedmap.Len(n.GetExtensions()))
 

@@ -61,7 +61,8 @@ paths: {}`
 	require.NoError(t, err)
 	assert.NotNil(t, doc)
 	assert.Equal(t, "http://pb33f.io/path/to/spec.yaml", doc.Self.Value)
-	assert.Equal(t, "8f7b690b245347286036a21ad93340f56accee2149c0d385ff5bf88cdd3254f0", fmt.Sprintf("%x", doc.Hash()))
+	// maphash uses random seed per process, just verify non-zero
+	assert.NotEqual(t, uint64(0), doc.Hash())
 }
 
 func TestCreateDocument_SelfWithNonHttpURL(t *testing.T) {
