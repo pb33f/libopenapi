@@ -4,6 +4,7 @@
 package index
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/url"
@@ -348,6 +349,35 @@ func visitIndex(res *Resolver, idx *SpecIndex) {
 	}
 }
 
+// searchReferenceWithContext resolves a reference using document context when enabled in the config.
+func (resolver *Resolver) searchReferenceWithContext(sourceRef, searchRef *Reference) (*Reference, *SpecIndex, context.Context) {
+	if resolver.specIndex == nil || resolver.specIndex.config == nil || !resolver.specIndex.config.ResolveNestedRefsWithDocumentContext {
+		ref, idx := resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
+		return ref, idx, context.Background()
+	}
+
+	searchIndex := resolver.specIndex
+	if searchRef != nil && searchRef.Index != nil {
+		searchIndex = searchRef.Index
+	} else if sourceRef != nil && sourceRef.Index != nil {
+		searchIndex = sourceRef.Index
+	}
+
+	ctx := context.Background()
+	currentPath := ""
+	if sourceRef != nil {
+		currentPath = sourceRef.RemoteLocation
+	}
+	if currentPath == "" && searchIndex != nil {
+		currentPath = searchIndex.specAbsolutePath
+	}
+	if currentPath != "" {
+		ctx = context.WithValue(ctx, CurrentPathKey, currentPath)
+	}
+
+	return searchIndex.SearchIndexForReferenceByReferenceWithContext(ctx, searchRef)
+}
+
 // VisitReference will visit a reference as part of a journey and will return resolved nodes.
 func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, journey []*Reference, resolve bool) []*yaml.Node {
 	resolver.referencesVisited++
@@ -374,7 +404,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 				if j.FullDefinition == r.FullDefinition {
 
 					var foundDup *Reference
-					foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
+					foundRef, _, _ := resolver.searchReferenceWithContext(ref, r)
 					if foundRef != nil {
 						foundDup = foundRef
 					}
@@ -421,7 +451,7 @@ func (resolver *Resolver) VisitReference(ref *Reference, seen map[string]bool, j
 
 			if !skip {
 				var original *Reference
-				foundRef, _ := resolver.specIndex.SearchIndexForReferenceByReference(r)
+				foundRef, _, _ := resolver.searchReferenceWithContext(ref, r)
 				if foundRef != nil {
 					original = foundRef
 				}
@@ -530,7 +560,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 				depth++
 
 				var foundRef *Reference
-				foundRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(ref)
+				foundRef, _, _ = resolver.searchReferenceWithContext(ref, ref)
 				if foundRef != nil && !foundRef.Circular {
 					found = append(found, resolver.extractRelatives(foundRef, n, node, foundRelatives, journey, seen, resolve, depth)...)
 					depth--
@@ -591,10 +621,14 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 						}
 					} else {
 						// local component, full def is based on passed in ref
-						if strings.HasPrefix(ref.FullDefinition, "http") {
+						baseLocation := ref.FullDefinition
+						if ref.RemoteLocation != "" {
+							baseLocation = ref.RemoteLocation
+						}
+						if strings.HasPrefix(baseLocation, "http") {
 
 							// split the http URI into parts
-							httpExp := strings.Split(ref.FullDefinition, "#/")
+							httpExp := strings.Split(baseLocation, "#/")
 
 							// parse a URL from the full def
 							u, _ := url.Parse(httpExp[0])
@@ -604,7 +638,7 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 
 						} else {
 							// split the full def into parts
-							fileDef := strings.Split(ref.FullDefinition, "#/")
+							fileDef := strings.Split(baseLocation, "#/")
 							fullDef = fmt.Sprintf("%s#/%s", fileDef[0], exp[1])
 						}
 					}
@@ -618,7 +652,11 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					} else {
 
 						// split the full def into parts
-						fileDef := strings.Split(ref.FullDefinition, "#/")
+						baseLocation := ref.FullDefinition
+						if ref.RemoteLocation != "" {
+							baseLocation = ref.RemoteLocation
+						}
+						fileDef := strings.Split(baseLocation, "#/")
 
 						// is the file def a http link?
 						if strings.HasPrefix(fileDef[0], "http") {
@@ -639,9 +677,10 @@ func (resolver *Resolver) extractRelatives(ref *Reference, node, parent *yaml.No
 					FullDefinition: fullDef,
 					RemoteLocation: ref.RemoteLocation,
 					IsRemote:       true,
+					Index:          ref.Index,
 				}
 
-				locatedRef, _ = resolver.specIndex.SearchIndexForReferenceByReference(searchRef)
+				locatedRef, _, _ = resolver.searchReferenceWithContext(ref, searchRef)
 
 				if locatedRef == nil {
 					_, path := utils.ConvertComponentIdIntoFriendlyPathSearch(value)

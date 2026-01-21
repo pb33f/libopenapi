@@ -126,27 +126,50 @@ func LocateRefNodeWithContext(ctx context.Context, root *yaml.Node, idx *index.S
 		for _, collection := range collections {
 			found = collection()
 			if found != nil && found[rv] != nil {
+				foundRef := found[rv]
+				foundIndex := idx
+				if foundRef.Index != nil {
+					foundIndex = foundRef.Index
+				}
+				if foundIndex != nil && foundRef.RemoteLocation != "" &&
+					foundIndex.GetSpecAbsolutePath() != foundRef.RemoteLocation {
+					if rolo := foundIndex.GetRolodex(); rolo != nil {
+						for _, candidate := range append(rolo.GetIndexes(), rolo.GetRootIndex()) {
+							if candidate == nil {
+								continue
+							}
+							if candidate.GetSpecAbsolutePath() == foundRef.RemoteLocation {
+								foundIndex = candidate
+								break
+							}
+						}
+					}
+				}
+				foundCtx := ctx
+				if foundRef.RemoteLocation != "" {
+					foundCtx = context.WithValue(foundCtx, index.CurrentPathKey, foundRef.RemoteLocation)
+				}
 				// if this is a ref node, we need to keep diving
 				// until we hit something that isn't a ref.
-				if jh, _, _ := utils.IsNodeRefValue(found[rv].Node); jh {
+				if jh, _, _ := utils.IsNodeRefValue(foundRef.Node); jh {
 					// if this node is circular, stop drop and roll.
-					if !IsCircular(found[rv].Node, idx) && found[rv].Node != root {
-						return LocateRefNodeWithContext(ctx, found[rv].Node, idx)
+					if !IsCircular(foundRef.Node, foundIndex) && foundRef.Node != root {
+						return LocateRefNodeWithContext(foundCtx, foundRef.Node, foundIndex)
 					} else {
 
-						crr := GetCircularReferenceResult(found[rv].Node, idx)
+						crr := GetCircularReferenceResult(foundRef.Node, foundIndex)
 						jp := ""
 						if crr != nil {
 							jp = crr.GenerateJourneyPath()
 						}
-						return found[rv].Node, idx, fmt.Errorf("circular reference '%s' found during lookup at line "+
+						return foundRef.Node, foundIndex, fmt.Errorf("circular reference '%s' found during lookup at line "+
 							"%d, column %d, It cannot be resolved",
 							jp,
-							found[rv].Node.Line,
-							found[rv].Node.Column), ctx
+							foundRef.Node.Line,
+							foundRef.Node.Column), foundCtx
 					}
 				}
-				return utils.NodeAlias(found[rv].Node), idx, nil, ctx
+				return utils.NodeAlias(foundRef.Node), foundIndex, nil, foundCtx
 			}
 		}
 

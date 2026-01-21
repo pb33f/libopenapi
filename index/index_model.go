@@ -211,6 +211,10 @@ type SpecIndexConfig struct {
 	// When enabled, properties from referenced schemas will be merged with local sibling properties.
 	MergeReferencedProperties bool
 
+	// ResolveNestedRefsWithDocumentContext uses the referenced document's path/index as the base for any nested refs.
+	// This is disabled by default to preserve historical resolver behavior.
+	ResolveNestedRefsWithDocumentContext bool
+
 	// PropertyMergeStrategy defines how to handle conflicts when merging properties.
 	PropertyMergeStrategy datamodel.PropertyMergeStrategy
 

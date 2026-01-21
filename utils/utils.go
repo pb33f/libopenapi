@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"context"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
@@ -12,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pb33f/jsonpath/pkg/jsonpath"
@@ -42,14 +42,36 @@ const (
 	UnknownCase
 )
 
+type cachedJSONPath struct {
+	path *jsonpath.JSONPath
+	err  error
+}
+
+// jsonPathCache stores compiled JSONPath expressions keyed by normalized string.
+var jsonPathCache sync.Map
+
+// getJSONPath returns a cached JSONPath when available, compiling and caching otherwise.
+func getJSONPath(rawPath string) (*jsonpath.JSONPath, error) {
+	cleaned := FixContext(rawPath)
+	if cached, ok := jsonPathCache.Load(cleaned); ok {
+		entry := cached.(cachedJSONPath)
+		return entry.path, entry.err
+	}
+
+	path, err := jsonpath.NewPath(cleaned, jsonpathconfig.WithPropertyNameExtension())
+	jsonPathCache.Store(cleaned, cachedJSONPath{
+		path: path,
+		err:  err,
+	})
+	return path, err
+}
+
 // FindNodes will find a node based on JSONPath, it accepts raw yaml/json as input.
 func FindNodes(yamlData []byte, jsonPath string) ([]*yaml.Node, error) {
-	jsonPath = FixContext(jsonPath)
-
 	var node yaml.Node
 	yaml.Unmarshal(yamlData, &node)
 
-	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
+	path, err := getJSONPath(jsonPath)
 	if err != nil {
 		return nil, err
 	}
@@ -116,18 +138,16 @@ func FindNodesWithoutDeserializing(node *yaml.Node, jsonPath string) ([]*yaml.No
 // FindNodesWithoutDeserializingWithTimeout will find a node based on JSONPath, without deserializing from yaml/json
 // This function can be customized with a timeout.
 func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, timeout time.Duration) ([]*yaml.Node, error) {
-	jsonPath = FixContext(jsonPath)
-
-	path, err := jsonpath.NewPath(jsonPath, jsonpathconfig.WithPropertyNameExtension())
+	path, err := getJSONPath(jsonPath)
 	if err != nil {
 		return nil, err
 	}
 
 	// this can spin out, to lets gatekeep it.
-	done := make(chan struct{})
+	done := make(chan struct{}, 1)
 	var results []*yaml.Node
-	to, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	go func() {
 		results = path.Query(node)
 		done <- struct{}{}
@@ -136,7 +156,7 @@ func FindNodesWithoutDeserializingWithTimeout(node *yaml.Node, jsonPath string, 
 	select {
 	case <-done:
 		return results, nil
-	case <-to.Done():
+	case <-timer.C:
 		return nil, fmt.Errorf("node lookup timeout exceeded (%v)", timeout)
 	}
 }
