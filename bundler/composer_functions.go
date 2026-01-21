@@ -152,6 +152,27 @@ func remapIndex(idx *index.SpecIndex, processedNodes *orderedmap.Map[string, *pr
 	}
 }
 
+// encodeJSONPointerSegment encodes a string for use in a JSON Pointer per RFC 6901.
+// The escape sequence is: ~ → ~0, / → ~1 (order matters: ~ must be escaped first).
+func encodeJSONPointerSegment(s string) string {
+	if !strings.ContainsAny(s, "~/") {
+		return s
+	}
+	s = strings.ReplaceAll(s, "~", "~0")
+	s = strings.ReplaceAll(s, "/", "~1")
+	return s
+}
+
+// joinLocationAsJSONPointer joins location segments into a JSON Pointer,
+// properly encoding each segment per RFC 6901.
+func joinLocationAsJSONPointer(location []string) string {
+	encoded := make([]string, len(location))
+	for i, seg := range location {
+		encoded[i] = encodeJSONPointerSegment(seg)
+	}
+	return strings.Join(encoded, "/")
+}
+
 func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[string, *processRef]) string {
 	if strings.Contains(def, "#/") {
 		defSplit := strings.Split(def, "#/")
@@ -161,18 +182,22 @@ func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[
 		ptr := defSplit[1]
 		segs := strings.Split(ptr, "/")
 		if len(segs) < 2 {
+			// check if this single-segment pointer was processed and has a location
+			if pr := processedNodes.GetOrZero(def); pr != nil && len(pr.location) > 0 {
+				return "#/" + joinLocationAsJSONPointer(pr.location)
+			}
 			return def
 		}
 		prefix := strings.Join(segs[:len(segs)-1], "/")
 
 		// reference already renamed during composition
 		if pr := processedNodes.GetOrZero(def); pr != nil {
-			return fmt.Sprintf("#/%s/%s", prefix, pr.name)
+			return fmt.Sprintf("#/%s/%s", prefix, encodeJSONPointerSegment(pr.name))
 		}
 
 		if idx != nil {
 			if ref, ok := idx.GetMappedReferences()[def]; ok && ref != nil {
-				return fmt.Sprintf("#/%s/%s", prefix, ref.Name)
+				return fmt.Sprintf("#/%s/%s", prefix, encodeJSONPointerSegment(ref.Name))
 			}
 		}
 
@@ -182,7 +207,7 @@ func renameRef(idx *index.SpecIndex, def string, processedNodes *orderedmap.Map[
 
 	// root-file import lifted into components
 	if pn := processedNodes.GetOrZero(def); pn != nil && len(pn.location) > 0 {
-		return "#/" + strings.Join(pn.location, "/")
+		return "#/" + joinLocationAsJSONPointer(pn.location)
 	}
 
 	return def
