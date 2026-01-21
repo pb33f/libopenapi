@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -672,6 +673,104 @@ func TestResolver_ResolveThroughPaths(t *testing.T) {
 
 	err := resolver.Resolve()
 	assert.Len(t, err, 0)
+}
+
+func TestResolver_ResolveComponents_RemoteNestedRefs(t *testing.T) {
+	remoteSpec := `openapi: 3.0.0
+info:
+  title: Remote
+  version: 1.0.0
+components:
+  schemas:
+    landingPage:
+      type: object
+      properties:
+        extra:
+          $ref: "schemas/extra.yaml#/components/schemas/Extra"
+  responses:
+    LandingPage:
+      description: landing
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/landingPage"`
+
+	extraSpec := `openapi: 3.0.0
+info:
+  title: Extra
+  version: 1.0.0
+components:
+  schemas:
+    Extra:
+      type: object
+      properties:
+        name:
+          type: string`
+
+	server := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.URL.Path {
+		case "/remote.yaml":
+			_, _ = rw.Write([]byte(remoteSpec))
+		case "/schemas/extra.yaml":
+			_, _ = rw.Write([]byte(extraSpec))
+		default:
+			rw.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	rootSpec := fmt.Sprintf(`openapi: 3.0.0
+info:
+  title: Root
+  version: 1.0.0
+paths:
+  /landing:
+    get:
+      responses:
+        "200":
+          $ref: "%s/remote.yaml#/components/responses/LandingPage"`, server.URL)
+
+	tempDir := t.TempDir()
+	rootPath := filepath.Join(tempDir, "root.yaml")
+	writeErr := os.WriteFile(rootPath, []byte(rootSpec), 0o600)
+	assert.NoError(t, writeErr)
+
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte(rootSpec), &rootNode)
+
+	config := CreateOpenAPIIndexConfig()
+	config.AllowRemoteLookup = true
+	config.AvoidBuildIndex = true
+	config.AvoidCircularReferenceCheck = true
+	config.ResolveNestedRefsWithDocumentContext = true
+	config.BasePath = tempDir
+	config.SpecAbsolutePath = rootPath
+	config.ExtractRefsSequentially = true
+
+	rolo := NewRolodex(config)
+	rolo.SetRootNode(&rootNode)
+
+	remoteFS, _ := NewRemoteFSWithRootURL(server.URL)
+	remoteFS.SetIndexConfig(config)
+	remoteFS.RemoteHandlerFunc = (&http.Client{}).Get
+
+	fsCfg := LocalFSConfig{
+		BaseDirectory: config.BasePath,
+		IndexConfig:   config,
+	}
+	fileFS, err := NewLocalFSWithConfig(&fsCfg)
+	assert.NoError(t, err)
+
+	rolo.AddLocalFS(config.BasePath, fileFS)
+	rolo.AddRemoteFS(server.URL, remoteFS)
+
+	indexedErr := rolo.IndexTheRolodex(context.Background())
+	assert.NoError(t, indexedErr)
+
+	rolo.Resolve()
+	resolver := rolo.GetRootIndex().GetResolver()
+	assert.NotNil(t, resolver)
+	assert.Len(t, resolver.GetResolvingErrors(), 0)
 }
 
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
