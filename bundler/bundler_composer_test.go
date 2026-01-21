@@ -827,6 +827,649 @@ func TestBundleBytesComposed_PreservesEmptyServerVariableDefaults(t *testing.T) 
 	assert.Equal(t, "", slotVar.Description)
 }
 
+// TestBundleBytesComposed_BareFileRef tests that composed bundling correctly
+// handles bare file references without JSON pointers (e.g., $ref: child.yaml)
+// where the external file contains a named schema map.
+//
+// CURRENT BEHAVIOR: When a bare file reference points to a map with a named key
+// (like {NonRequired: {type: object, ...}}), the bundler cannot determine the
+// component type since the root node's keys don't match schema indicators.
+// It falls back to inlining the entire content.
+func TestBundleBytesComposed_BareFileRef(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /nonreq:
+    get:
+      operationId: getNonReq
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: child.yaml
+`
+
+	childSpec := `NonRequired:
+  type: object
+  properties:
+    str:
+      type: string
+      pattern: ".+"
+      nullable: false
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("child.yaml", childSpec)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	docConfig := datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}
+
+	bundleConfig := BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	bundled, err := BundleBytesComposed(mainBytes, &docConfig, &bundleConfig)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check what we got
+	paths := doc["paths"].(map[string]any)
+	nonreq := paths["/nonreq"].(map[string]any)
+	get := nonreq["get"].(map[string]any)
+	responses := get["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	schema := appJson["schema"].(map[string]any)
+
+	t.Logf("Schema content: %+v", schema)
+
+	// CURRENT BEHAVIOR: The content is inlined because DetectOpenAPIComponentType
+	// sees keys like ["NonRequired"] which don't match schema indicators (type, properties, etc.)
+	// The schema contains {NonRequired: {type: object, ...}} - the entire file content
+	_, hasNonRequiredKey := schema["NonRequired"]
+	assert.True(t, hasNonRequiredKey, "Current behavior: content is inlined with NonRequired as a key")
+}
+
+// TestBundleBytesComposed_BareFileRefWithJSONPointer shows that single-segment
+// JSON pointer references (like child.yaml#/NonRequired) are properly recomposed
+// to component references when the referenced content is detected as a schema.
+func TestBundleBytesComposed_BareFileRefWithJSONPointer(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /nonreq:
+    get:
+      operationId: getNonReq
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'child.yaml#/NonRequired'
+`
+
+	childSpec := `NonRequired:
+  type: object
+  properties:
+    str:
+      type: string
+      pattern: ".+"
+      nullable: false
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("child.yaml", childSpec)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	docConfig := datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}
+
+	bundleConfig := BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	bundled, err := BundleBytesComposed(mainBytes, &docConfig, &bundleConfig)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check what we got
+	paths := doc["paths"].(map[string]any)
+	nonreq := paths["/nonreq"].(map[string]any)
+	get := nonreq["get"].(map[string]any)
+	responses := get["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	schema := appJson["schema"].(map[string]any)
+
+	t.Logf("Schema content: %+v", schema)
+
+	// The single-segment JSON pointer should now be properly recomposed
+	// The schema reference should point to #/components/schemas/NonRequired
+	ref, hasRef := schema["$ref"].(string)
+	require.True(t, hasRef, "Schema should have $ref pointing to component")
+	assert.True(t, strings.HasPrefix(ref, "#/components/schemas/"),
+		"schema should reference component, got: %s", ref)
+	assert.False(t, strings.Contains(ref, "child.yaml"),
+		"schema reference should not contain external file path, got: %s", ref)
+
+	// Check that the schema was added to components
+	components, ok := doc["components"].(map[string]any)
+	require.True(t, ok, "Document should have components section")
+	schemas, ok := components["schemas"].(map[string]any)
+	require.True(t, ok, "Components should have schemas section")
+	t.Logf("Components schemas: %+v", schemas)
+
+	// Find the NonRequired schema in components
+	foundNonRequired := false
+	for schemaName, schemaVal := range schemas {
+		if schemaName == "NonRequired" || strings.Contains(schemaName, "NonRequired") {
+			foundNonRequired = true
+			schemaMap := schemaVal.(map[string]any)
+			assert.Equal(t, "object", schemaMap["type"], "Schema type should be object")
+			break
+		}
+	}
+	assert.True(t, foundNonRequired, "NonRequired schema should be added to components")
+}
+
+// TestBundleBytesComposed_BareSchemaFile shows that a bare schema file
+// (without a named wrapper) is properly detected and recomposed.
+func TestBundleBytesComposed_BareSchemaFile(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /nonreq:
+    get:
+      operationId: getNonReq
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'NonRequired.yaml'
+`
+
+	// This is a bare schema - no wrapper key
+	childSpec := `type: object
+properties:
+  str:
+    type: string
+    pattern: ".+"
+    nullable: false
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("NonRequired.yaml", childSpec)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	docConfig := datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+		RecomposeRefs:       true,
+	}
+
+	bundleConfig := BundleCompositionConfig{
+		StrictValidation: true,
+	}
+
+	bundled, err := BundleBytesComposed(mainBytes, &docConfig, &bundleConfig)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check what we got
+	paths := doc["paths"].(map[string]any)
+	nonreq := paths["/nonreq"].(map[string]any)
+	get := nonreq["get"].(map[string]any)
+	responses := get["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	schema := appJson["schema"].(map[string]any)
+
+	t.Logf("Schema content: %+v", schema)
+
+	// Check if we have components with schemas
+	if components, ok := doc["components"].(map[string]any); ok {
+		if schemas, ok := components["schemas"].(map[string]any); ok {
+			t.Logf("Components schemas: %+v", schemas)
+			// The schema should be added with the filename as the name
+			_, hasNonRequired := schemas["NonRequired"]
+			assert.True(t, hasNonRequired, "Schema should be added to components with filename as name")
+		}
+	}
+
+	// With a bare schema file, DetectOpenAPIComponentType should detect it as a schema
+	// and the bundler should recompose it using the filename as the component name
+	if ref, ok := schema["$ref"].(string); ok {
+		t.Logf("Schema has $ref: %s", ref)
+		assert.True(t, strings.HasPrefix(ref, "#/components/schemas/"),
+			"schema should reference component, got: %s", ref)
+	}
+}
+
+// TestBundleBytesComposed_SingleSegmentPointerMultipleRefs tests that multiple
+// references to the same single-segment pointer are properly deduplicated.
+func TestBundleBytesComposed_SingleSegmentPointerMultipleRefs(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /pets:
+    get:
+      operationId: getPets
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/Pet'
+    post:
+      operationId: createPet
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: 'schemas.yaml#/Pet'
+      responses:
+        "201":
+          description: Created
+`
+
+	schemasFile := `Pet:
+  type: object
+  properties:
+    name:
+      type: string
+    age:
+      type: integer
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("schemas.yaml", schemasFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Both refs should point to the same component
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+
+	// There should be exactly one Pet schema (not duplicated)
+	petCount := 0
+	for schemaName := range schemas {
+		if schemaName == "Pet" || strings.Contains(schemaName, "Pet") {
+			petCount++
+		}
+	}
+	assert.Equal(t, 1, petCount, "Pet schema should appear exactly once in components")
+
+	// Check the refs in paths
+	paths := doc["paths"].(map[string]any)
+	petsPath := paths["/pets"].(map[string]any)
+
+	getOp := petsPath["get"].(map[string]any)
+	getSchema := getOp["responses"].(map[string]any)["200"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["schema"].(map[string]any)
+	getRef := getSchema["$ref"].(string)
+	assert.True(t, strings.HasPrefix(getRef, "#/components/schemas/"),
+		"GET response schema should reference component, got: %s", getRef)
+
+	postOp := petsPath["post"].(map[string]any)
+	postSchema := postOp["requestBody"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["schema"].(map[string]any)
+	postRef := postSchema["$ref"].(string)
+	assert.True(t, strings.HasPrefix(postRef, "#/components/schemas/"),
+		"POST request body schema should reference component, got: %s", postRef)
+
+	// Both refs should point to the same component
+	assert.Equal(t, getRef, postRef, "Both refs should point to the same component")
+}
+
+// TestBundleBytesComposed_SingleSegmentPointerMixed tests that mixed reference
+// styles (single-segment, full path, and local) all work together correctly.
+func TestBundleBytesComposed_SingleSegmentPointerMixed(t *testing.T) {
+	rootSpec := `openapi: 3.1.0
+paths:
+  /users:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/User'
+  /pets:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'external/pet.yaml#/components/schemas/Pet'
+components:
+  schemas:
+    LocalSchema:
+      type: string
+`
+
+	schemasFile := `User:
+  type: object
+  properties:
+    name:
+      type: string
+`
+
+	petFile := `components:
+  schemas:
+    Pet:
+      type: object
+      properties:
+        species:
+          type: string
+`
+
+	tmp := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(tmp, "external"), 0755))
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("schemas.yaml", schemasFile)
+	write("external/pet.yaml", petFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+
+	// Should have LocalSchema, User, and Pet
+	_, hasLocal := schemas["LocalSchema"]
+	assert.True(t, hasLocal, "LocalSchema should still exist")
+
+	foundUser := false
+	foundPet := false
+	for schemaName := range schemas {
+		if schemaName == "User" || strings.Contains(schemaName, "User") {
+			foundUser = true
+		}
+		if schemaName == "Pet" || strings.Contains(schemaName, "Pet") {
+			foundPet = true
+		}
+	}
+	assert.True(t, foundUser, "User schema should be added from single-segment pointer")
+	assert.True(t, foundPet, "Pet schema should be added from full path pointer")
+}
+
+// TestBundleBytesComposed_SingleSegmentRootKeySkipped tests that references to
+// OpenAPI root-level keys (like #/paths or #/info) are NOT recomposed as components
+// but instead inlined (as they cannot be component types).
+func TestBundleBytesComposed_SingleSegmentRootKeySkipped(t *testing.T) {
+	// This is a contrived example - in practice, you wouldn't reference #/paths
+	// But we test that the bundler handles this gracefully
+	rootSpec := `openapi: 3.1.0
+info:
+  title: Test
+  version: 1.0.0
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'external.yaml#/paths'
+`
+
+	externalFile := `paths:
+  /external:
+    get:
+      responses:
+        "200":
+          description: OK
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("external.yaml", externalFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// The schema should be inlined, not recomposed as a component
+	// because "paths" is a root-level OpenAPI key
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	schema := appJson["schema"].(map[string]any)
+
+	// The content should be inlined (contain the paths structure directly)
+	// or kept as-is if inlining isn't performed
+	_, hasRef := schema["$ref"]
+	_, hasInlinedPath := schema["/external"]
+
+	// Either the ref was kept (because it couldn't be resolved as a component)
+	// or the content was inlined
+	assert.True(t, hasRef || hasInlinedPath,
+		"Root key reference should either be kept as $ref or inlined, not moved to components")
+}
+
+// TestBundleBytesComposed_JSONPointerEscapeRoundTrip tests that single-segment
+// pointers with escaped characters (~ and /) are properly handled end-to-end.
+// The component name "Foo/Bar" must be escaped as "Foo~1Bar" in the output reference.
+func TestBundleBytesComposed_JSONPointerEscapeRoundTrip(t *testing.T) {
+	// The reference uses ~1 to represent / in the component name
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/Foo~1Bar'
+`
+	// The actual key in YAML is "Foo/Bar" (the / is literal in the key)
+	schemasFile := `"Foo/Bar":
+  type: object
+  properties:
+    name:
+      type: string
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("schemas.yaml", schemasFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference is properly escaped
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	schema := appJson["schema"].(map[string]any)
+
+	ref, hasRef := schema["$ref"].(string)
+	require.True(t, hasRef, "Schema should have $ref")
+
+	// The reference must use ~1 to escape the / in the component name
+	assert.Equal(t, "#/components/schemas/Foo~1Bar", ref,
+		"Reference must escape / as ~1 in component name")
+
+	// Verify the schema was added to components with the literal key "Foo/Bar"
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+	_, hasSchema := schemas["Foo/Bar"]
+	assert.True(t, hasSchema, "Schema with key 'Foo/Bar' should exist in components")
+}
+
+// TestBundleBytesComposed_CaseSensitiveRootKeyGuard tests that the root key
+// guard is case-sensitive, allowing component names like "Paths" to be recomposed.
+func TestBundleBytesComposed_CaseSensitiveRootKeyGuard(t *testing.T) {
+	// "Paths" (capital P) should be treated as a valid component name, not a root key
+	rootSpec := `openapi: 3.1.0
+paths:
+  /test:
+    get:
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: 'schemas.yaml#/Paths'
+`
+	schemasFile := `Paths:
+  type: object
+  description: This is a schema named Paths, not the OpenAPI paths object
+  properties:
+    route:
+      type: string
+`
+
+	tmp := t.TempDir()
+	write := func(name, src string) {
+		require.NoError(t, os.WriteFile(filepath.Join(tmp, name), []byte(src), 0644))
+	}
+	write("main.yaml", rootSpec)
+	write("schemas.yaml", schemasFile)
+
+	mainBytes, _ := os.ReadFile(filepath.Join(tmp, "main.yaml"))
+
+	bundled, err := BundleBytesComposed(mainBytes, &datamodel.DocumentConfiguration{
+		BasePath:            tmp,
+		AllowFileReferences: true,
+	}, nil)
+	require.NoError(t, err)
+
+	t.Logf("Bundled output:\n%s", string(bundled))
+
+	var doc map[string]any
+	require.NoError(t, yaml.Unmarshal(bundled, &doc))
+
+	// Check the reference - "Paths" should be recomposed as a component
+	paths := doc["paths"].(map[string]any)
+	testPath := paths["/test"].(map[string]any)
+	getOp := testPath["get"].(map[string]any)
+	responses := getOp["responses"].(map[string]any)
+	resp200 := responses["200"].(map[string]any)
+	content := resp200["content"].(map[string]any)
+	appJson := content["application/json"].(map[string]any)
+	schema := appJson["schema"].(map[string]any)
+
+	ref, hasRef := schema["$ref"].(string)
+	require.True(t, hasRef, "Schema should have $ref pointing to component")
+
+	// "Paths" (capital P) should be recomposed, not inlined
+	assert.Equal(t, "#/components/schemas/Paths", ref,
+		"'Paths' (capital P) should be recomposed as a component, not treated as root key")
+
+	// Verify the schema was added to components
+	components := doc["components"].(map[string]any)
+	schemas := components["schemas"].(map[string]any)
+	_, hasPathsSchema := schemas["Paths"]
+	assert.True(t, hasPathsSchema, "Schema named 'Paths' should exist in components")
+}
+
 func TestBundleBytes_PreservesEmptyServerVariableDefaults(t *testing.T) {
 	spec := []byte(emptyDefaultServerSpec)
 

@@ -6,6 +6,7 @@ package bundler
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -108,6 +109,30 @@ func handleIndex(c *handleIndexConfig) error {
 		}
 	}
 	return nil
+}
+
+// openAPIRootKeys contains known OpenAPI root-level keys that should NOT be
+// recomposed as components. OpenAPI root keys are always lowercase per spec.
+// Package-level to avoid allocation on each call.
+var openAPIRootKeys = map[string]bool{
+	"openapi":          true,
+	"info":             true,
+	"jsonSchemaDialect": true,
+	"servers":          true,
+	"paths":            true,
+	"webhooks":         true,
+	"components":       true,
+	"security":         true,
+	"tags":             true,
+	"externalDocs":     true,
+}
+
+// isOpenAPIRootKey returns true if the key is a known OpenAPI root-level key
+// that should NOT be recomposed as a component. The check is case-sensitive
+// because OpenAPI root keys are always lowercase, allowing component names
+// like "Paths" or "INFO" to be recomposed normally.
+func isOpenAPIRootKey(key string) bool {
+	return openAPIRootKeys[key]
 }
 
 // processReference will extract a reference from the current index, and transform it into a first class
@@ -263,6 +288,86 @@ func processReference(model *v3.Document, pr *processRef, cf *handleIndexConfig)
 				}
 			}
 		} else {
+			// handle single-segment JSON pointers (e.g., #/NonRequired)
+			if len(location) == 1 && location[0] != "" {
+				componentName := location[0]
+
+				// decode URL-encoded characters (e.g., "My%20Schema" -> "My Schema")
+				if decoded, err := url.PathUnescape(componentName); err == nil {
+					componentName = decoded
+				}
+				// process JSON Pointer escapes per RFC 6901 (~1 before ~0 to avoid mangling "~0")
+				if strings.Contains(componentName, "~") {
+					componentName = strings.ReplaceAll(componentName, "~1", "/")
+					componentName = strings.ReplaceAll(componentName, "~0", "~")
+				}
+
+				// skip known OpenAPI root-level keys that are not reusable components
+				if isOpenAPIRootKey(componentName) {
+					unknown(pr, cf)
+					return nil
+				}
+
+				if importType, ok := DetectOpenAPIComponentType(pr.ref.Node); ok {
+					switch importType {
+					case v3low.SchemasLabel:
+						if components.Schemas != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Schemas)
+							pr.location = []string{v3low.ComponentsLabel, v3low.SchemasLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Schemas, buildSchema)
+						}
+					case v3low.ResponsesLabel:
+						if components.Responses != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Responses)
+							pr.location = []string{v3low.ComponentsLabel, v3low.ResponsesLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Responses, buildResponse)
+						}
+					case v3low.ParametersLabel:
+						if components.Parameters != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Parameters)
+							pr.location = []string{v3low.ComponentsLabel, v3low.ParametersLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Parameters, buildParameter)
+						}
+					case v3low.HeadersLabel:
+						if components.Headers != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Headers)
+							pr.location = []string{v3low.ComponentsLabel, v3low.HeadersLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Headers, buildHeader)
+						}
+					case v3low.RequestBodiesLabel:
+						if components.RequestBodies != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.RequestBodies)
+							pr.location = []string{v3low.ComponentsLabel, v3low.RequestBodiesLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.RequestBodies, buildRequestBody)
+						}
+					case v3low.ExamplesLabel:
+						if components.Examples != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Examples)
+							pr.location = []string{v3low.ComponentsLabel, v3low.ExamplesLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Examples, buildExample)
+						}
+					case v3low.LinksLabel:
+						if components.Links != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Links)
+							pr.location = []string{v3low.ComponentsLabel, v3low.LinksLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Links, buildLink)
+						}
+					case v3low.CallbacksLabel:
+						if components.Callbacks != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.Callbacks)
+							pr.location = []string{v3low.ComponentsLabel, v3low.CallbacksLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.Callbacks, buildCallback)
+						}
+					case v3low.PathItemsLabel:
+						if components.PathItems != nil {
+							pr.name = checkForCollision(componentName, delim, pr, components.PathItems)
+							pr.location = []string{v3low.ComponentsLabel, v3low.PathItemsLabel, pr.name}
+							return checkReferenceAndBubbleUp(pr.name, delim, pr, idx, components.PathItems, buildPathItem)
+						}
+					}
+				}
+			}
+			// type detection failed or multi-segment non-component path - inline instead
 			unknown(pr, cf)
 		}
 	} else {
