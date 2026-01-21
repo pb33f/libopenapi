@@ -56,6 +56,30 @@ func TestFindNodes_BadPath(t *testing.T) {
 	assert.Nil(t, nodes)
 }
 
+func TestGetJSONPath_CacheHit(t *testing.T) {
+	jsonPathCache = sync.Map{}
+
+	path1, err := getJSONPath("$.info.contact")
+	assert.NoError(t, err)
+	assert.NotNil(t, path1)
+
+	path2, err := getJSONPath("$.info.contact")
+	assert.NoError(t, err)
+	assert.Equal(t, path1, path2)
+}
+
+func TestGetJSONPath_CacheHit_Invalid(t *testing.T) {
+	jsonPathCache = sync.Map{}
+
+	path1, err := getJSONPath("I am not valid")
+	assert.Error(t, err)
+	assert.Nil(t, path1)
+
+	path2, err := getJSONPath("I am not valid")
+	assert.Error(t, err)
+	assert.Equal(t, path1, path2)
+}
+
 func TestFindLastChildNode(t *testing.T) {
 	nodes, _ := FindNodes(getPetstore(), "$.info")
 	lastNode := FindLastChildNode(nodes[0])
@@ -1546,6 +1570,14 @@ func TestFindNodesWithoutDeserializingWithTimeout(t *testing.T) {
 	nodes, err := FindNodesWithoutDeserializingWithTimeout(a, "$..chicken", timeout)
 	assert.Nil(t, nodes)
 	assert.Error(t, err)
+}
+
+func TestFindNodesWithoutDeserializingWithTimeout_Success(t *testing.T) {
+	root, _ := FindNodes(getPetstore(), "$")
+	nodes, err := FindNodesWithoutDeserializingWithTimeout(root[0], "$.info.contact", 100*time.Millisecond)
+	assert.NoError(t, err)
+	assert.NotNil(t, nodes)
+	assert.Len(t, nodes, 1)
 }
 
 func TestGenerateAlphanumericString(t *testing.T) {
