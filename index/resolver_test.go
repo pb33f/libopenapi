@@ -773,6 +773,59 @@ paths:
 	assert.Len(t, resolver.GetResolvingErrors(), 0)
 }
 
+func TestResolver_SearchReferenceWithContext_SourceIndex(t *testing.T) {
+	rootCfg := CreateClosedAPIIndexConfig()
+	rootCfg.ResolveNestedRefsWithDocumentContext = true
+	var rootNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &rootNode)
+	rootIdx := NewSpecIndexWithConfig(&rootNode, rootCfg)
+
+	otherCfg := CreateClosedAPIIndexConfig()
+	otherCfg.SpecAbsolutePath = filepath.Join(t.TempDir(), "other.yaml")
+	var otherNode yaml.Node
+	_ = yaml.Unmarshal([]byte("openapi: 3.0.0"), &otherNode)
+	otherIdx := NewSpecIndexWithConfig(&otherNode, otherCfg)
+
+	searchRef := &Reference{
+		FullDefinition: "#/components/schemas/Thing",
+	}
+	otherIdx.SetMappedReferences(map[string]*Reference{
+		searchRef.FullDefinition: {
+			FullDefinition: searchRef.FullDefinition,
+			Node:           utils.CreateStringNode("value"),
+			Index:          otherIdx,
+			RemoteLocation: otherCfg.SpecAbsolutePath,
+		},
+	})
+
+	resolver := NewResolver(rootIdx)
+	sourceRef := &Reference{
+		Index:          otherIdx,
+		RemoteLocation: otherCfg.SpecAbsolutePath,
+	}
+
+	foundRef, foundIdx, _ := resolver.searchReferenceWithContext(sourceRef, searchRef)
+	assert.NotNil(t, foundRef)
+	assert.Equal(t, otherIdx, foundIdx)
+}
+
+func TestResolver_ExtractRelatives_HttpFullDefinition(t *testing.T) {
+	refNode := utils.CreateRefNode("#/components/schemas/Root")
+	ref := &Reference{
+		FullDefinition: "#/components/schemas/Root",
+		Node:           refNode,
+	}
+
+	targetNode := utils.CreateRefNode("http://example.com/other.yaml#/components/schemas/Thing")
+
+	idx := NewSpecIndexWithConfig(refNode, CreateClosedAPIIndexConfig())
+	resolver := NewResolver(idx)
+	ref.Index = idx
+
+	_ = resolver.extractRelatives(ref, targetNode, nil, map[string]bool{}, []*Reference{}, map[int]bool{}, false, 0)
+	assert.NotEmpty(t, resolver.GetResolvingErrors())
+}
+
 func TestResolver_ResolveComponents_MixedRef(t *testing.T) {
 	mixedref, _ := os.ReadFile("../test_specs/mixedref-burgershop.openapi.yaml")
 	var rootNode yaml.Node
