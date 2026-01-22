@@ -1731,6 +1731,81 @@ func TestLocateRefNode_CurrentPathKey_HttpLink_RemoteCtx_WithPath(t *testing.T) 
 	assert.NotNil(t, c)
 }
 
+func TestLocateRefNodeWithContext_RemoteIndexLookup(t *testing.T) {
+	tempDir := t.TempDir()
+	rootPath := filepath.Join(tempDir, "root.yaml")
+	externalPath := filepath.Join(tempDir, "external.yaml")
+
+	rootCfg := index.CreateClosedAPIIndexConfig()
+	rootCfg.SpecAbsolutePath = rootPath
+	rootNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	rootIdx := index.NewSpecIndexWithConfig(rootNode, rootCfg)
+
+	externalCfg := index.CreateClosedAPIIndexConfig()
+	externalCfg.SpecAbsolutePath = externalPath
+	externalNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	externalIdx := index.NewSpecIndexWithConfig(externalNode, externalCfg)
+
+	rolo := index.NewRolodex(rootCfg)
+	rolo.AddExternalIndex(externalIdx, externalPath)
+
+	rootIdx.SetRolodex(rolo)
+	externalIdx.SetRolodex(rolo)
+
+	refValue := "external.yaml#/components/schemas/Thing"
+	refNode := utils.CreateRefNode(refValue)
+
+	rootIdx.SetMappedReferences(map[string]*index.Reference{
+		refValue: {
+			FullDefinition: refValue,
+			Node:           utils.CreateStringNode("value"),
+			RemoteLocation: externalPath,
+			Index:          rootIdx,
+		},
+	})
+
+	_, foundIdx, _, foundCtx := LocateRefNodeWithContext(context.Background(), refNode, rootIdx)
+	assert.Equal(t, externalIdx, foundIdx)
+	assert.Equal(t, externalPath, foundCtx.Value(index.CurrentPathKey))
+}
+
+func TestLocateRefNodeWithContext_RolodexNilCandidate(t *testing.T) {
+	tempDir := t.TempDir()
+	rootPath := filepath.Join(tempDir, "root.yaml")
+	dummyPath := filepath.Join(tempDir, "dummy.yaml")
+
+	rootCfg := index.CreateClosedAPIIndexConfig()
+	rootCfg.SpecAbsolutePath = rootPath
+	rootNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	rootIdx := index.NewSpecIndexWithConfig(rootNode, rootCfg)
+
+	dummyCfg := index.CreateClosedAPIIndexConfig()
+	dummyCfg.SpecAbsolutePath = dummyPath
+	dummyNode := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+	dummyIdx := index.NewSpecIndexWithConfig(dummyNode, dummyCfg)
+
+	rolo := index.NewRolodex(rootCfg)
+	rolo.AddExternalIndex(dummyIdx, dummyPath)
+
+	rootIdx.SetRolodex(rolo)
+	dummyIdx.SetRolodex(rolo)
+
+	refValue := "missing.yaml#/components/schemas/Thing"
+	refNode := utils.CreateRefNode(refValue)
+
+	rootIdx.SetMappedReferences(map[string]*index.Reference{
+		refValue: {
+			FullDefinition: refValue,
+			Node:           utils.CreateStringNode("value"),
+			RemoteLocation: "not-matching.yaml",
+			Index:          rootIdx,
+		},
+	})
+
+	_, foundIdx, _, _ := LocateRefNodeWithContext(context.Background(), refNode, rootIdx)
+	assert.Equal(t, rootIdx, foundIdx)
+}
+
 func TestLocateRefNode_CurrentPathKey_Path_Link(t *testing.T) {
 	no := yaml.Node{
 		Kind: yaml.MappingNode,
