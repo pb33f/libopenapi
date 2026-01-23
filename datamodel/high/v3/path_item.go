@@ -282,11 +282,8 @@ func (p *PathItem) MarshalYAMLInline() (interface{}, error) {
 	// resolve external reference if present
 	if p.low != nil {
 		rendered, err := high.RenderExternalRef(p.low, buildLowPathItem, NewPathItem)
-		if err != nil {
-			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
+		if err != nil || rendered != nil {
+			return rendered, err
 		}
 	}
 
@@ -305,11 +302,8 @@ func (p *PathItem) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	// resolve external reference if present
 	if p.low != nil {
 		rendered, err := high.RenderExternalRefWithContext(p.low, buildLowPathItem, NewPathItem, ctx)
-		if err != nil {
+		if err != nil || rendered != nil {
 			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
 		}
 	}
 
