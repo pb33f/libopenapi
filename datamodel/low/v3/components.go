@@ -299,10 +299,6 @@ func extractComponentValues[T low.Buildable[N], N any](ctx context.Context, labe
 				currentLabel = node
 				continue
 			}
-			// only check for lowercase extensions as 'X-' is still valid as a key (annoyingly).
-			if strings.HasPrefix(currentLabel.Value, "x-") {
-				continue
-			}
 
 			select {
 			case in <- componentInput{
