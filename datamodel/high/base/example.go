@@ -33,7 +33,7 @@ type Example struct {
 	Description     string                              `json:"description,omitempty" yaml:"description,omitempty"`
 	Value           *yaml.Node                          `json:"value,omitempty" yaml:"value,omitempty"`
 	ExternalValue   string                              `json:"externalValue,omitempty" yaml:"externalValue,omitempty"`
-	DataValue       *yaml.Node                          `json:"dataValue,omitempty" yaml:"dataValue,omitempty"`              // OpenAPI 3.2+ dataValue field
+	DataValue       *yaml.Node                          `json:"dataValue,omitempty" yaml:"dataValue,omitempty"`             // OpenAPI 3.2+ dataValue field
 	SerializedValue string                              `json:"serializedValue,omitempty" yaml:"serializedValue,omitempty"` // OpenAPI 3.2+ serializedValue field
 	Extensions      *orderedmap.Map[string, *yaml.Node] `json:"-" yaml:"-"`
 	low             *lowBase.Example
@@ -105,9 +105,9 @@ func (e *Example) MarshalYAMLInline() (interface{}, error) {
 	// resolve external reference if present
 	if e.low != nil {
 		// buildLowExample never returns an error, so we can ignore it
-		rendered, _ := high.RenderExternalRef(e.low, buildLowExample, NewExample)
-		if rendered != nil {
-			return rendered, nil
+		rendered, err := high.RenderExternalRef(e.low, buildLowExample, NewExample)
+		if rendered != nil || err != nil {
+			return rendered, err
 		}
 	}
 
