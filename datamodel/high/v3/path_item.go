@@ -303,7 +303,7 @@ func (p *PathItem) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	if p.low != nil {
 		rendered, err := high.RenderExternalRefWithContext(p.low, buildLowPathItem, NewPathItem, ctx)
 		if err != nil || rendered != nil {
-			return nil, err
+			return rendered, err
 		}
 	}
 
