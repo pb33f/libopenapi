@@ -112,11 +112,8 @@ func (r *Response) MarshalYAMLInline() (interface{}, error) {
 	// resolve external reference if present
 	if r.low != nil {
 		rendered, err := high.RenderExternalRef(r.low, buildLowResponse, NewResponse)
-		if err != nil {
+		if err != nil || rendered == nil {
 			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
 		}
 	}
 

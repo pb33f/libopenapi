@@ -182,11 +182,8 @@ func RenderExternalRef[H any, L any](
 	buildHigh func(L) H,
 ) (interface{}, error) {
 	result, err := ResolveExternalRef(lowObj, buildLow, buildHigh)
-	if err != nil {
+	if err != nil || !result.Resolved {
 		return nil, err
-	}
-	if !result.Resolved {
-		return nil, nil
 	}
 	return RenderInline(result.High, result.Low)
 }
@@ -199,11 +196,8 @@ func RenderExternalRefWithContext[H any, L any](
 	ctx any,
 ) (interface{}, error) {
 	result, err := ResolveExternalRef(lowObj, buildLow, buildHigh)
-	if err != nil {
+	if err != nil || !result.Resolved {
 		return nil, err
-	}
-	if !result.Resolved {
-		return nil, nil
 	}
 	return RenderInlineWithContext(result.High, result.Low, ctx)
 }

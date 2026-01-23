@@ -429,6 +429,36 @@ func TestPathItem_MarshalYAMLInline_Reference(t *testing.T) {
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
 
+func TestPathItem_MarshalYAMLInline_Reference_Bad(t *testing.T) {
+
+	yml := `openapi: 3.2
+minty: fresh`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+
+	var lpi lowV3.PathItem
+	low.BuildModel(&yaml.Node{Value: "ref: cakes.yaml#/no"}, &lpi)
+	lpi.Build(context.Background(), &yaml.Node{Value: "ref: cakes.yaml#/no"}, idxNode.Content[0], idx)
+	if err := lpi.Build(context.Background(), &yaml.Node{Value: "ref: cakes.yaml#/no"}, &yaml.Node{Value: "ref: cakes.yaml#/no"}, idx); err != nil {
+		t.Fatal("failed to build")
+		return
+	}
+	ref := low.Reference{}
+	ref.SetReference("#/minty", nil)
+	lpi.Reference = &ref
+	pi := NewPathItem(&lpi)
+
+	node, err := pi.MarshalYAMLInline()
+	assert.NoError(t, err)
+
+	yamlNode, ok := node.(*yaml.Node)
+	assert.True(t, ok)
+	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
+}
+
 func TestPathItem_Reference_TakesPrecedence(t *testing.T) {
 	// When both Reference and content are set, Reference should take precedence
 	pi := &PathItem{
@@ -521,7 +551,6 @@ func TestPathItem_MarshalYAMLInlineWithContext_Reference(t *testing.T) {
 	assert.True(t, ok)
 	assert.Equal(t, "$ref", yamlNode.Content[0].Value)
 }
-
 
 func TestBuildLowPathItem_Success(t *testing.T) {
 	yml := `summary: Test path item

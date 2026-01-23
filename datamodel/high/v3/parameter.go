@@ -142,11 +142,8 @@ func (p *Parameter) MarshalYAMLInline() (interface{}, error) {
 	// resolve external reference if present
 	if p.low != nil {
 		rendered, err := high.RenderExternalRef(p.low, buildLowParameter, NewParameter)
-		if err != nil {
-			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
+		if err != nil || rendered != nil {
+			return rendered, err
 		}
 	}
 
@@ -165,11 +162,8 @@ func (p *Parameter) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	// resolve external reference if present
 	if p.low != nil {
 		rendered, err := high.RenderExternalRefWithContext(p.low, buildLowParameter, NewParameter, ctx)
-		if err != nil {
-			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
+		if err != nil || rendered != nil {
+			return rendered, err
 		}
 	}
 

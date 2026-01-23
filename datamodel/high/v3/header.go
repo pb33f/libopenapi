@@ -128,11 +128,8 @@ func (h *Header) MarshalYAMLInline() (interface{}, error) {
 	// resolve external reference if present
 	if h.low != nil {
 		rendered, err := high.RenderExternalRef(h.low, buildLowHeader, NewHeader)
-		if err != nil {
-			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
+		if err != nil || rendered != nil {
+			return rendered, err
 		}
 	}
 
@@ -151,11 +148,8 @@ func (h *Header) MarshalYAMLInlineWithContext(ctx any) (interface{}, error) {
 	// resolve external reference if present
 	if h.low != nil {
 		rendered, err := high.RenderExternalRefWithContext(h.low, buildLowHeader, NewHeader, ctx)
-		if err != nil {
-			return nil, err
-		}
-		if rendered != nil {
-			return rendered, nil
+		if err != nil || rendered != nil {
+			return rendered, err
 		}
 	}
 
