@@ -320,6 +320,7 @@ func Test_WriteIntToHash(t *testing.T) {
 	assert.NotZero(t, h.Sum64())
 }
 
+	// verify consistency - hash should be same on repeated calls
 func Test_Empty_HashNode(t *testing.T) {
 	assert.Equal(t, emptyNodeHash, HashNode(nil))
 }

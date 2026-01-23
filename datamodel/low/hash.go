@@ -6,7 +6,6 @@ package low
 import (
 	"encoding/binary"
 	"hash/maphash"
-	"math"
 	"sync"
 )
 
@@ -38,16 +37,6 @@ func WithHasher(fn func(h *maphash.Hash) uint64) uint64 {
 	return result
 }
 
-// HashString writes a string to the hasher (zero allocation).
-func HashString(h *maphash.Hash, s string) {
-	h.WriteString(s)
-}
-
-// HashByte writes a single byte (typically a separator).
-func HashByte(h *maphash.Hash, b byte) {
-	h.WriteByte(b)
-}
-
 // HashBool writes a boolean as a single byte.
 func HashBool(h *maphash.Hash, b bool) {
 	if b {
@@ -61,13 +50,6 @@ func HashBool(h *maphash.Hash, b bool) {
 func HashInt64(h *maphash.Hash, n int64) {
 	var buf [8]byte
 	binary.LittleEndian.PutUint64(buf[:], uint64(n))
-	h.Write(buf[:])
-}
-
-// HashFloat64 writes a float64 using its IEEE 754 bit pattern (zero allocation).
-func HashFloat64(h *maphash.Hash, f float64) {
-	var buf [8]byte
-	binary.LittleEndian.PutUint64(buf[:], math.Float64bits(f))
 	h.Write(buf[:])
 }
 
