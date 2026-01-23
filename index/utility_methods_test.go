@@ -5,6 +5,7 @@ package index
 
 import (
 	"context"
+	"hash/maphash"
 	"net/url"
 	"runtime"
 	"testing"
@@ -311,4 +312,14 @@ func Test_HashNode_Nil(t *testing.T) {
 	var nodeA *yaml.Node
 	hash := HashNode(nodeA)
 	assert.NotEmpty(t, hash) // nil node should still produce a hash
+}
+
+func Test_WriteIntToHash(t *testing.T) {
+	h := maphash.Hash{}
+	writeIntToHash(&h, -42)
+	assert.NotZero(t, h.Sum64())
+}
+
+func Test_Empty_HashNode(t *testing.T) {
+	assert.Equal(t, emptyNodeHash, HashNode(nil))
 }
