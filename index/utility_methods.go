@@ -700,16 +700,12 @@ func init() {
 	emptyNodeHash = strconv.FormatUint(h.Sum64(), 16)
 }
 
-// writeIntToHash writes an integer to the hash without heap allocations.
-// uses a stack-allocated buffer to avoid strconv.Itoa's string allocation.
+// writeIntToHash writes a non-negative integer to the hash without heap allocations.
+// Uses a stack-allocated buffer. Line/Column values are always non-negative.
 func writeIntToHash(h *maphash.Hash, n int) {
 	if n == 0 {
 		h.WriteByte('0')
 		return
-	}
-	if n < 0 {
-		h.WriteByte('-')
-		n = -n
 	}
 	// max int64 is 19 digits, 20 is safe
 	var buf [20]byte
@@ -742,18 +738,10 @@ func HashNode(n *yaml.Node) string {
 
 	// get stack from pool, reset length but keep capacity
 	stackPtr := stackPool.Get().(*[]*yaml.Node)
-	origStack := *stackPtr // save original before any growth
-	stack := origStack[:0]
+	stack := (*stackPtr)[:0]
 	stack = append(stack, n)
 	defer func() {
-		if cap(stack) > 256 {
-			// stack grew too large - return original small slice to pool
-			// let the grown slice be GC'd
-			*stackPtr = origStack[:0]
-		} else {
-			// acceptable size - return current (possibly grown) slice
-			*stackPtr = stack[:0]
-		}
+		*stackPtr = stack[:0]
 		stackPool.Put(stackPtr)
 	}()
 
