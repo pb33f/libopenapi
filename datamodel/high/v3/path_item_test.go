@@ -430,7 +430,8 @@ func TestPathItem_MarshalYAMLInline_Reference(t *testing.T) {
 }
 
 func TestPathItem_MarshalYAMLInline_Reference_Bad(t *testing.T) {
-
+	// Test that a PathItem with a Reference set renders as a $ref node
+	// even when the low-level object also has a reference set
 	yml := `openapi: 3.2
 minty: fresh`
 
@@ -450,6 +451,9 @@ minty: fresh`
 	ref.SetReference("#/minty", nil)
 	lpi.Reference = &ref
 	pi := NewPathItem(&lpi)
+
+	// Set the high-level Reference field directly since NewPathItem doesn't copy it
+	pi.Reference = "#/minty"
 
 	node, err := pi.MarshalYAMLInline()
 	assert.NoError(t, err)
