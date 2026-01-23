@@ -427,3 +427,308 @@ func TestComponents_MediaTypes(t *testing.T) {
 	hash2 := n.Hash()
 	assert.NotEqual(t, hash1, hash2)
 }
+
+// TestComponents_XPrefixedComponentNames tests that component names starting with x- are correctly
+// parsed as components and not incorrectly filtered out as extensions.
+// This is a regression test for https://github.com/pb33f/libopenapi/issues/503
+func TestComponents_XPrefixedComponentNames(t *testing.T) {
+	low.ClearHashCache()
+
+	yml := `schemas:
+  x-custom-schema:
+    type: object
+    description: A schema with x- prefix
+  RegularSchema:
+    type: string
+parameters:
+  x-custom-param:
+    name: x-custom-param
+    in: header
+    schema:
+      type: string
+  regular-param:
+    name: regular-param
+    in: query
+    schema:
+      type: string
+responses:
+  x-custom-response:
+    description: A response with x- prefix
+headers:
+  x-rate-limit:
+    schema:
+      type: integer
+    description: Rate limit header
+examples:
+  x-custom-example:
+    value: example-value
+    description: An example with x- prefix
+requestBodies:
+  x-custom-body:
+    description: A request body with x- prefix
+    content:
+      application/json:
+        schema:
+          type: object
+securitySchemes:
+  x-custom-auth:
+    type: apiKey
+    name: X-API-Key
+    in: header
+    description: Custom auth scheme
+links:
+  x-custom-link:
+    description: A link with x- prefix
+callbacks:
+  x-custom-callback:
+    '{$request.body#/callbackUrl}':
+      post:
+        description: Callback operation
+pathItems:
+  /x-custom-path:
+    get:
+      description: A path item with x- prefix
+mediaTypes:
+  x-custom-media:
+    schema:
+      type: object
+      description: Custom media type`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Test x-prefixed schemas are included
+	xSchema := n.FindSchema("x-custom-schema")
+	assert.NotNil(t, xSchema, "x-custom-schema should be found")
+	assert.Equal(t, "A schema with x- prefix", xSchema.Value.Schema().Description.Value)
+
+	regularSchema := n.FindSchema("RegularSchema")
+	assert.NotNil(t, regularSchema, "RegularSchema should also be found")
+
+	// Test x-prefixed parameters are included
+	xParam := n.FindParameter("x-custom-param")
+	assert.NotNil(t, xParam, "x-custom-param should be found")
+	assert.Equal(t, "x-custom-param", xParam.Value.Name.Value)
+	assert.Equal(t, "header", xParam.Value.In.Value)
+
+	regularParam := n.FindParameter("regular-param")
+	assert.NotNil(t, regularParam, "regular-param should also be found")
+
+	// Test x-prefixed responses are included
+	xResponse := n.FindResponse("x-custom-response")
+	assert.NotNil(t, xResponse, "x-custom-response should be found")
+	assert.Equal(t, "A response with x- prefix", xResponse.Value.Description.Value)
+
+	// Test x-prefixed headers are included
+	xHeader := n.FindHeader("x-rate-limit")
+	assert.NotNil(t, xHeader, "x-rate-limit should be found")
+	assert.Equal(t, "Rate limit header", xHeader.Value.Description.Value)
+
+	// Test x-prefixed examples are included
+	xExample := n.FindExample("x-custom-example")
+	assert.NotNil(t, xExample, "x-custom-example should be found")
+	assert.Equal(t, "An example with x- prefix", xExample.Value.Description.Value)
+
+	// Test x-prefixed request bodies are included
+	xRequestBody := n.FindRequestBody("x-custom-body")
+	assert.NotNil(t, xRequestBody, "x-custom-body should be found")
+	assert.Equal(t, "A request body with x- prefix", xRequestBody.Value.Description.Value)
+
+	// Test x-prefixed security schemes are included
+	xSecurityScheme := n.FindSecurityScheme("x-custom-auth")
+	assert.NotNil(t, xSecurityScheme, "x-custom-auth should be found")
+	assert.Equal(t, "Custom auth scheme", xSecurityScheme.Value.Description.Value)
+	assert.Equal(t, "apiKey", xSecurityScheme.Value.Type.Value)
+
+	// Test x-prefixed links are included
+	xLink := n.FindLink("x-custom-link")
+	assert.NotNil(t, xLink, "x-custom-link should be found")
+	assert.Equal(t, "A link with x- prefix", xLink.Value.Description.Value)
+
+	// Test x-prefixed callbacks are included
+	xCallback := n.FindCallback("x-custom-callback")
+	assert.NotNil(t, xCallback, "x-custom-callback should be found")
+	expr := xCallback.Value.FindExpression("{$request.body#/callbackUrl}")
+	assert.NotNil(t, expr, "Callback expression should be found")
+	assert.Equal(t, "Callback operation", expr.Value.Post.Value.Description.Value)
+
+	// Test x-prefixed path items are included
+	xPathItem := n.FindPathItem("/x-custom-path")
+	assert.NotNil(t, xPathItem, "/x-custom-path should be found")
+	assert.Equal(t, "A path item with x- prefix", xPathItem.Value.Get.Value.Description.Value)
+
+	// Test x-prefixed media types are included
+	xMediaType := n.FindMediaType("x-custom-media")
+	assert.NotNil(t, xMediaType, "x-custom-media should be found")
+	assert.Equal(t, "Custom media type", xMediaType.Value.Schema.Value.Schema().Description.Value)
+}
+
+// TestComponents_XPrefixedWithUpperCase tests that both x- (lowercase) and X- (uppercase)
+// prefixed component names are correctly parsed.
+func TestComponents_XPrefixedWithUpperCase(t *testing.T) {
+	low.ClearHashCache()
+
+	yml := `schemas:
+  x-lowercase-schema:
+    type: string
+    description: lowercase x- prefix
+  X-UPPERCASE-SCHEMA:
+    type: string
+    description: uppercase X- prefix
+parameters:
+  x-lowercase-param:
+    name: x-param
+    in: header
+    schema:
+      type: string
+  X-UPPERCASE-PARAM:
+    name: X-param
+    in: header
+    schema:
+      type: string`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Test lowercase x- prefix
+	xLowerSchema := n.FindSchema("x-lowercase-schema")
+	assert.NotNil(t, xLowerSchema, "x-lowercase-schema should be found")
+	assert.Equal(t, "lowercase x- prefix", xLowerSchema.Value.Schema().Description.Value)
+
+	// Test uppercase X- prefix
+	xUpperSchema := n.FindSchema("X-UPPERCASE-SCHEMA")
+	assert.NotNil(t, xUpperSchema, "X-UPPERCASE-SCHEMA should be found")
+	assert.Equal(t, "uppercase X- prefix", xUpperSchema.Value.Schema().Description.Value)
+
+	// Test lowercase x- param
+	xLowerParam := n.FindParameter("x-lowercase-param")
+	assert.NotNil(t, xLowerParam, "x-lowercase-param should be found")
+
+	// Test uppercase X- param
+	xUpperParam := n.FindParameter("X-UPPERCASE-PARAM")
+	assert.NotNil(t, xUpperParam, "X-UPPERCASE-PARAM should be found")
+}
+
+// TestComponents_XPrefixedExtensionsStillWork verifies that extensions at the Components level
+// (like x-custom-extension) are still captured correctly, while x-prefixed component names
+// within schemas/parameters/etc are also captured.
+func TestComponents_XPrefixedExtensionsStillWork(t *testing.T) {
+	low.ClearHashCache()
+
+	yml := `x-components-extension: this is an extension at components level
+x-another-extension:
+  nested: value
+schemas:
+  x-custom-schema:
+    type: object
+    description: This is a schema, not an extension
+  RegularSchema:
+    type: string`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// Extensions at Components level should still work
+	ext1 := n.FindExtension("x-components-extension")
+	assert.NotNil(t, ext1, "x-components-extension should be found as extension")
+	var ext1Val string
+	_ = ext1.Value.Decode(&ext1Val)
+	assert.Equal(t, "this is an extension at components level", ext1Val)
+
+	ext2 := n.FindExtension("x-another-extension")
+	assert.NotNil(t, ext2, "x-another-extension should be found as extension")
+
+	// x-prefixed schemas should be found as schemas
+	xSchema := n.FindSchema("x-custom-schema")
+	assert.NotNil(t, xSchema, "x-custom-schema should be found as a schema")
+	assert.Equal(t, "This is a schema, not an extension", xSchema.Value.Schema().Description.Value)
+
+	// Regular schemas also work
+	regularSchema := n.FindSchema("RegularSchema")
+	assert.NotNil(t, regularSchema, "RegularSchema should be found")
+}
+
+// TestComponents_XPrefixedReferenceResolution tests that references to x-prefixed components
+// resolve correctly.
+func TestComponents_XPrefixedReferenceResolution(t *testing.T) {
+	low.ClearHashCache()
+
+	yml := `schemas:
+  x-base-schema:
+    type: object
+    properties:
+      id:
+        type: integer
+  derived-schema:
+    allOf:
+      - $ref: '#/schemas/x-base-schema'
+      - type: object
+        properties:
+          name:
+            type: string
+parameters:
+  x-auth-header:
+    name: Authorization
+    in: header
+    schema:
+      type: string
+  uses-x-param:
+    $ref: '#/parameters/x-auth-header'`
+
+	var idxNode yaml.Node
+	mErr := yaml.Unmarshal([]byte(yml), &idxNode)
+	assert.NoError(t, mErr)
+	idx := index.NewSpecIndex(&idxNode)
+
+	var n Components
+	err := low.BuildModel(idxNode.Content[0], &n)
+	assert.NoError(t, err)
+
+	err = n.Build(context.Background(), idxNode.Content[0], idx)
+	assert.NoError(t, err)
+
+	// The x-prefixed schema should be found
+	xBaseSchema := n.FindSchema("x-base-schema")
+	assert.NotNil(t, xBaseSchema, "x-base-schema should be found")
+
+	// The derived schema should also be found
+	derivedSchema := n.FindSchema("derived-schema")
+	assert.NotNil(t, derivedSchema, "derived-schema should be found")
+
+	// The x-prefixed parameter should be found
+	xAuthHeader := n.FindParameter("x-auth-header")
+	assert.NotNil(t, xAuthHeader, "x-auth-header should be found")
+	assert.Equal(t, "Authorization", xAuthHeader.Value.Name.Value)
+
+	// The parameter that references x-auth-header should have reference
+	usesXParam := n.FindParameter("uses-x-param")
+	assert.NotNil(t, usesXParam, "uses-x-param should be found")
+	assert.Equal(t, "#/parameters/x-auth-header", usesXParam.Value.GetReference())
+}
