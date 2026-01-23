@@ -190,3 +190,78 @@ bearerFormat: JWT`
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }
+
+func TestSecurityScheme_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "#/components/securitySchemes/InternalAuth"
+    InternalAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.SecurityScheme
+	schemeNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.securitySchemes.BearerAuth
+	_ = low.BuildModel(schemeNode, &n)
+	_ = n.Build(context.Background(), nil, schemeNode, idx)
+
+	ss := NewSecurityScheme(&n)
+
+	result, err := ss.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestSecurityScheme_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: "#/components/securitySchemes/InternalAuth"
+    InternalAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.SecurityScheme
+	schemeNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.securitySchemes.BearerAuth
+	_ = low.BuildModel(schemeNode, &n)
+	_ = n.Build(context.Background(), nil, schemeNode, idx)
+
+	ss := NewSecurityScheme(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := ss.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}

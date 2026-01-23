@@ -12,6 +12,7 @@ import (
 
 	lowmodel "github.com/pb33f/libopenapi/datamodel/low"
 	lowbase "github.com/pb33f/libopenapi/datamodel/low/base"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/stretchr/testify/assert"
 	"go.yaml.in/yaml/v4"
@@ -293,6 +294,79 @@ externalValue: https://example.com/example.json`
 
 	result, err := buildLowExample(node.Content[0], nil)
 
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestExample_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  examples:
+    UserExample:
+      $ref: "#/components/examples/InternalExample"
+    InternalExample:
+      summary: Example user
+      description: An example user object
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n lowbase.Example
+	exampleNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.examples.UserExample
+	_ = lowmodel.BuildModel(exampleNode, &n)
+	_ = n.Build(context.Background(), nil, exampleNode, idx)
+
+	ex := NewExample(&n)
+
+	result, err := ex.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestExample_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  examples:
+    UserExample:
+      $ref: "#/components/examples/InternalExample"
+    InternalExample:
+      summary: Example user
+      description: An example user object
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n lowbase.Example
+	exampleNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.examples.UserExample
+	_ = lowmodel.BuildModel(exampleNode, &n)
+	_ = n.Build(context.Background(), nil, exampleNode, idx)
+
+	ex := NewExample(&n)
+
+	ctx := NewInlineRenderContext()
+	result, err := ex.MarshalYAMLInlineWithContext(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }

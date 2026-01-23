@@ -412,3 +412,86 @@ schema:
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
+
+func TestParameter_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	// This covers the "if rendered != nil" path in MarshalYAMLInline
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  parameters:
+    FilterParam:
+      $ref: "#/components/parameters/InternalParam"
+    InternalParam:
+      name: filter
+      in: query
+      description: Filter query parameter
+      schema:
+        type: string
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	// Build the low-level parameter that has an internal reference
+	// When we call MarshalYAMLInline, it should resolve it
+	var n v3.Parameter
+	paramNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.parameters.FilterParam
+	_ = low.BuildModel(paramNode, &n)
+	_ = n.Build(context.Background(), nil, paramNode, idx)
+
+	p := NewParameter(&n)
+
+	// Call MarshalYAMLInline which should resolve the reference
+	result, err := p.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestParameter_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  parameters:
+    FilterParam:
+      $ref: "#/components/parameters/InternalParam"
+    InternalParam:
+      name: filter
+      in: query
+      description: Filter query parameter
+      schema:
+        type: string
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Parameter
+	paramNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.parameters.FilterParam
+	_ = low.BuildModel(paramNode, &n)
+	_ = n.Build(context.Background(), nil, paramNode, idx)
+
+	p := NewParameter(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := p.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
