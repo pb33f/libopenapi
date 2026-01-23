@@ -14,9 +14,9 @@ import (
 type ContextKey string
 
 const (
-	CurrentPathKey  ContextKey = "currentPath"
-	FoundIndexKey   ContextKey = "foundIndex"
-	RootIndexKey    ContextKey = "currentIndex"
+	CurrentPathKey   ContextKey = "currentPath"
+	FoundIndexKey    ContextKey = "foundIndex"
+	RootIndexKey     ContextKey = "currentIndex"
 	IndexingFilesKey ContextKey = "indexingFiles" // Tracks files being indexed in current call chain
 )
 
@@ -117,7 +117,7 @@ func (index *SpecIndex) SearchIndexForReferenceByReferenceWithContext(ctx contex
 	if searchRef.RemoteLocation != "" {
 		absPath = searchRef.RemoteLocation
 	}
-	if absPath == "" {
+	if absPath == "" && index.config != nil {
 		absPath = index.config.BasePath
 	}
 	var roloLookup string
