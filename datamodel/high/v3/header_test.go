@@ -4,10 +4,13 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	lowv3 "github.com/pb33f/libopenapi/datamodel/low/v3"
 	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
@@ -231,4 +234,79 @@ schema:
 
 	assert.Error(t, err)
 	assert.Nil(t, result)
+}
+
+func TestHeader_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  headers:
+    RateLimitHeader:
+      $ref: "#/components/headers/InternalHeader"
+    InternalHeader:
+      description: Rate limit header
+      schema:
+        type: integer
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n lowv3.Header
+	headerNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.headers.RateLimitHeader
+	_ = low.BuildModel(headerNode, &n)
+	_ = n.Build(context.Background(), nil, headerNode, idx)
+
+	h := NewHeader(&n)
+
+	result, err := h.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestHeader_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  headers:
+    RateLimitHeader:
+      $ref: "#/components/headers/InternalHeader"
+    InternalHeader:
+      description: Rate limit header
+      schema:
+        type: integer
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n lowv3.Header
+	headerNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.headers.RateLimitHeader
+	_ = low.BuildModel(headerNode, &n)
+	_ = n.Build(context.Background(), nil, headerNode, idx)
+
+	h := NewHeader(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := h.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
 }

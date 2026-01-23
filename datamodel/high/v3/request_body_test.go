@@ -4,10 +4,14 @@
 package v3
 
 import (
+	"context"
 	"strings"
 	"testing"
 
 	"github.com/pb33f/libopenapi/datamodel/high/base"
+	"github.com/pb33f/libopenapi/datamodel/low"
+	v3 "github.com/pb33f/libopenapi/datamodel/low/v3"
+	"github.com/pb33f/libopenapi/index"
 	"github.com/pb33f/libopenapi/orderedmap"
 	"github.com/pb33f/libopenapi/utils"
 	"github.com/stretchr/testify/assert"
@@ -232,6 +236,87 @@ content:
 
 	result, err := buildLowRequestBody(node.Content[0], nil)
 
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestRequestBody_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  requestBodies:
+    UserInput:
+      $ref: "#/components/requestBodies/InternalBody"
+    InternalBody:
+      description: User input data
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.RequestBody
+	bodyNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.requestBodies.UserInput
+	_ = low.BuildModel(bodyNode, &n)
+	_ = n.Build(context.Background(), nil, bodyNode, idx)
+
+	rb := NewRequestBody(&n)
+
+	result, err := rb.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestRequestBody_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  requestBodies:
+    UserInput:
+      $ref: "#/components/requestBodies/InternalBody"
+    InternalBody:
+      description: User input data
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.RequestBody
+	bodyNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.requestBodies.UserInput
+	_ = low.BuildModel(bodyNode, &n)
+	_ = n.Build(context.Background(), nil, bodyNode, idx)
+
+	rb := NewRequestBody(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := rb.MarshalYAMLInlineWithContext(ctx)
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
 }

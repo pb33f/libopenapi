@@ -268,3 +268,84 @@ func TestBuildLowCallback_BuildError(t *testing.T) {
 		assert.NotNil(t, result)
 	}
 }
+
+func TestCallback_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  callbacks:
+    WebhookCallback:
+      $ref: "#/components/callbacks/InternalCallback"
+    InternalCallback:
+      "{$request.body#/callbackUrl}":
+        post:
+          summary: Webhook event
+          responses:
+            "200":
+              description: OK
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Callback
+	callbackNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.callbacks.WebhookCallback
+	_ = low.BuildModel(callbackNode, &n)
+	_ = n.Build(context.Background(), nil, callbackNode, idx)
+
+	cb := NewCallback(&n)
+
+	result, err := cb.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestCallback_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  callbacks:
+    WebhookCallback:
+      $ref: "#/components/callbacks/InternalCallback"
+    InternalCallback:
+      "{$request.body#/callbackUrl}":
+        post:
+          summary: Webhook event
+          responses:
+            "200":
+              description: OK
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Callback
+	callbackNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.callbacks.WebhookCallback
+	_ = low.BuildModel(callbackNode, &n)
+	_ = n.Build(context.Background(), nil, callbackNode, idx)
+
+	cb := NewCallback(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := cb.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}

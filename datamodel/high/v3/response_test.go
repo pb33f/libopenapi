@@ -260,3 +260,82 @@ content:
 	assert.Error(t, err)
 	assert.Nil(t, result)
 }
+
+func TestResponse_MarshalYAMLInline_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInline resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  responses:
+    NotFound:
+      $ref: "#/components/responses/InternalResponse"
+    InternalResponse:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Response
+	respNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.responses.NotFound
+	_ = low.BuildModel(respNode, &n)
+	_ = n.Build(context.Background(), nil, respNode, idx)
+
+	r := NewResponse(&n)
+
+	result, err := r.MarshalYAMLInline()
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
+
+func TestResponse_MarshalYAMLInlineWithContext_ExternalRef(t *testing.T) {
+	// Test that MarshalYAMLInlineWithContext resolves external references properly
+	yml := `openapi: 3.1.0
+info:
+  title: Test API
+  version: 1.0.0
+components:
+  responses:
+    NotFound:
+      $ref: "#/components/responses/InternalResponse"
+    InternalResponse:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+paths: {}`
+
+	var idxNode yaml.Node
+	_ = yaml.Unmarshal([]byte(yml), &idxNode)
+	config := index.CreateOpenAPIIndexConfig()
+	idx := index.NewSpecIndexWithConfig(&idxNode, config)
+	resolver := index.NewResolver(idx)
+	idx.SetResolver(resolver)
+	errs := resolver.Resolve()
+	assert.Empty(t, errs)
+
+	var n v3.Response
+	respNode := idxNode.Content[0].Content[5].Content[1].Content[1] // components.responses.NotFound
+	_ = low.BuildModel(respNode, &n)
+	_ = n.Build(context.Background(), nil, respNode, idx)
+
+	r := NewResponse(&n)
+
+	ctx := base.NewInlineRenderContext()
+	result, err := r.MarshalYAMLInlineWithContext(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+}
